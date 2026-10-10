@@ -20,6 +20,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
@@ -66,6 +67,8 @@ def main(argv):
     tot = {k: [0, 0] for k in ("elements", "attrs", "values", "edges")}
     same = n = 0
     shown = 0
+    import collections
+    why = collections.Counter()
     for x in sorted(glob.glob(os.path.join(CACHE, "*.xml")), key=os.path.getsize):
         meta = x[:-4] + ".json"
         if not os.path.exists(meta):
@@ -79,12 +82,17 @@ def main(argv):
         st = os.stat(vp)
         if m.get("ViSize") not in (None, st.st_size):
             continue
+        tmp = tempfile.mkdtemp(prefix="cmp_")
         try:
             ref = ET.parse(x).getroot()
-            mine = vi2aixml.Reader(lvheap.extract(vp, tempfile.mkdtemp(prefix="cmp_"))).read()
+            if sum(1 for e in ref.iter() if e.get("uid")) == 0:
+                continue        # a password-protected VI: NI's export is empty, nothing to compare
+            mine = vi2aixml.Reader(lvheap.extract(vp, tmp)).read()
         except Exception as ex:   # an unreadable VI is counted, not fatal
             print("SKIP %s: %s" % (os.path.basename(vp), str(ex).splitlines()[0][:100]), file=sys.stderr)
             continue
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
         a, b = facts(ref), facts(mine)
         ok = True
         for k, fa, fb in zip(("elements", "attrs", "values", "edges"), a, b):
@@ -94,6 +102,12 @@ def main(argv):
                 ok = False
         same += ok
         n += 1
+        for f in a[0] - b[0]:
+            why["element " + f[0] + " " + (f[3] if f[0] in ("Node", "Structure") else "")] += 1
+        for f in a[1] - b[1]:
+            why["attr " + f[1]] += 1
+        for f in a[3] - b[3]:
+            why["edge into %s" % next((e[0] + " " + e[3] for e in a[0] if e[1] == f[0]), "?")[:60]] += 1
         if not ok and shown < show:
             shown += 1
             print("== %s" % vp)
@@ -104,6 +118,9 @@ def main(argv):
                     print("   extra   %s %s" % (k, f))
         if n >= limit:
             break
+    if "--why" in argv:
+        for k, c in why.most_common(40):
+            print("  %5d  %s" % (c, k))
     print("%d of %d VIs identical in every fact" % (same, n))
     for k, (hit, all_) in tot.items():
         print("  %-9s %d of %d (%.1f %%)" % (k, hit, all_, 100.0 * hit / max(1, all_)))

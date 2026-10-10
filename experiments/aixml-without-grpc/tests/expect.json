@@ -886,5 +886,21 @@
     }
    }
   ]
+ },
+ "t96_stacked_shift_register": {
+  "cases": [
+   {
+    "inputs": "n=5",
+    "outputs": {
+     "last three": 6
+    }
+   },
+   {
+    "inputs": "n=3",
+    "outputs": {
+     "last three": 1
+    }
+   }
+  ]
  }
 }

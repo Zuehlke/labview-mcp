@@ -75,6 +75,17 @@ class Unsupported(Exception):
 
 
 _CALLEES = {}
+_CALLEE_DIRS = []
+
+
+def _cleanup_callees():
+    import shutil
+    for d in _CALLEE_DIRS:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+import atexit  # noqa: E402
+atexit.register(_cleanup_callees)
 
 
 def _extract_callee(path):
@@ -85,7 +96,9 @@ def _extract_callee(path):
     got = _CALLEES.get(key)
     if got is None:
         try:
-            got = lvheap.extract(path, tempfile.mkdtemp(prefix="callee_"), timeout=30)
+            d = tempfile.mkdtemp(prefix="callee_")
+            _CALLEE_DIRS.append(d)
+            got = lvheap.extract(path, d, timeout=30)
         except RuntimeError as ex:
             got = ex
         _CALLEES[key] = got
@@ -2018,7 +2031,9 @@ class Composer:
         waveform's fields, the node flagged 0x80000 on top (0xC0000 / 0xD0000, measured on an
         AIXML-generated VI); each field DCO carries <i>, t0 0, dt 1, Y 2, error 3, attributes 4."""
         name = unescape(el.get("_name"))
-        self.check_attrs(el)
+        # `fields` restates which fields the node shows; the terminals named in inputs/outputs
+        # already say it, so it is accepted and cross-checked rather than refused
+        self.check_attrs(el, ("fields",))
         build = name == "Build Waveform"
         diag = self.diag_of(el)
         node, _, src = self.instantiate("node/nMux/%s" % ("bundle" if build else "unbundle"), own_uid=el.get("uid"))
@@ -2629,6 +2644,9 @@ class Composer:
         sels = [unescape(f.get("selector") or "") for f in frames_el]
         items = [self._selector_items(s) for s in sels]
         flat = [x for its in items for x in its if x != "Default"]
+        # NI's own export writes the error frame "Error .." (23 of 23 in the cache)
+        items = [[("Error" if x.strip() == "Error .." else x) for x in its] for its in items]
+        flat = [x for its in items for x in its if x != "Default"]
         if flat and all(x in ("No Error", "Error") for x in flat):
             kind = "error"
         elif any(x.startswith('"') for x in flat):
@@ -3123,14 +3141,17 @@ class Composer:
             ET.SubElement(info, "Tag0000", {"elements": "0"})
             ET.SubElement(info, "activeDiag", {"elements": "0"})
             return info
-        m = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)\s*==\s*(\S+)", s)
+        # the operator is the root TreeElt's activePlot: FD for ==, FE for != (read off NI's
+        # Scale TDMS Data.vi, " TARGET_TYPE!=RT ")
+        m = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)\s*(==|!=)\s*(\S+)", s)
         if not m:
             raise Unsupported("Conditional Disable %s: condition %r is not composable yet" % (el.get("uid"), s))
         strs = ET.SubElement(info, "Tag0000", {"elements": "2"})
-        for x in m.groups():
+        for x in (m.group(1), m.group(3)):
             ET.SubElement(strs, "SL__arrayElement").text = x.encode("mac_roman").hex().upper()
         tree = ET.SubElement(info, "activeDiag", {"elements": "3"})
-        for tag0, ad, mk, plot in (("FF", "01", "2", "FD"), ("00", "FF", "-1", "00"), ("00", "FF", "-1", "01")):
+        op_plot = "FE" if m.group(2) == "!=" else "FD"
+        for tag0, ad, mk, plot in (("FF", "01", "2", op_plot), ("00", "FF", "-1", "00"), ("00", "FF", "-1", "01")):
             t = ET.SubElement(tree, "SL__arrayElement", {"class": "TreeElt"})
             ET.SubElement(t, "Tag0000").text = tag0
             ET.SubElement(t, "activeDiag").text = ad
@@ -3377,13 +3398,12 @@ class Composer:
         left = next((c for c in el if isinstance(c.tag, str) and c.tag == "Left"), None)
         right = next((c for c in el if isinstance(c.tag, str) and c.tag == "Right"), None)
         init = [n for _, n in pairs(left.get("inputs"))] if left is not None else []
-        if len(init) > 1 or len(pairs(left.get("outputs") if left is not None else "")) > 1:
-            # a STACKED register (Left with several elements: value, value2, value3) mapped onto
-            # one left terminal put that terminal into several signals - "Insane List {dupe}"
-            # and a FATAL DAbort that killed LabVIEW (measured on NI's Running Average with
-            # Shift Registers.vi). Refused until its heap form is measured.
-            raise Unsupported("ShiftReg %s: a stacked shift register (%d elements) is not composable yet"
-                              % (el.get("uid"), max(len(init), len(pairs(left.get("outputs"))))))
+        # a STACKED register has one Left with several elements (value, value2, value3 - the
+        # k-th input initializes, the k-th output reads, element k): each element is an lSR of
+        # its own, all named in the rSR's lsrDCOList top to bottom (NI's Running Average with
+        # Shift Registers.vi). Mapped onto ONE left terminal it put that terminal into three
+        # signals - "Insane List {dupe}" and a fatal DAbort that killed LabVIEW.
+        stack = max(len(init), len(pairs(left.get("outputs") if left is not None else "")), 1)
         if not init or init[0] is None or init[0] not in self.net_type:
             raise Unsupported("ShiftReg %s: only an initialized register is composable" % el.get("uid"))
         tree = self.net_type[init[0]]
@@ -3408,6 +3428,28 @@ class Composer:
                 tb.text = lvheap.fmt_bounds((60 + 20 * n, l, 60 + 20 * n + (b - a), r))
         self.ends[(left.get("uid"), "in")] = (l_out.get("uid"), parent)
         self.ends[(left.get("uid"), "out")] = (l_in.get("uid"), inner)
+        r_dco = r_out.find("dco")
+        lsr_list = r_dco.find("lsrDCOList")
+        for k in range(1, stack):
+            lo, li = copy.deepcopy(l_out), copy.deepcopy(l_in)
+            lo.set("uid", str(self.alloc()))
+            li.set("uid", str(self.alloc()))
+            lod = lo.find("dco")
+            lod.set("uid", str(self.alloc()))
+            tl = lod.find("termList")
+            for c in list(tl):
+                tl.remove(c)
+            ET.SubElement(tl, "SL__arrayElement", {"uid": li.get("uid")})
+            ET.SubElement(tl, "SL__arrayElement", {"uid": lo.get("uid")})
+            li.find("dco").set("uid", lod.get("uid"))
+            if k >= len(init) or init[k] is None:
+                lo.find("objFlags").text = str(int(lo.findtext("objFlags") or 0) & ~0x8000)
+            ET.SubElement(lsr_list, "SL__arrayElement", {"uid": lod.get("uid")})
+            loop.find("termList").append(lo)
+            inner.srn_terms.append(li)
+            self.ends[(left.get("uid"), "in#%d" % k)] = (lo.get("uid"), parent)
+            self.ends[(left.get("uid"), "out#%d" % k)] = (li.get("uid"), inner)
+        lsr_list.set("elements", str(len(lsr_list)))
         self.ends[(right.get("uid"), "in")] = (r_in.get("uid"), inner)
         self.ends[(right.get("uid"), "out")] = (r_out.get("uid"), parent)
         for side in (left, right):
@@ -3476,7 +3518,12 @@ class Composer:
             # a name used twice (Build Array's `element`) is numbered: element, element#1, ...
             return ([(n, (uid, t)) for t, n in keyed(pairs(el.get("outputs"))) if n],
                     [(n, (uid, t)) for t, n in keyed(pairs(el.get("inputs"))) if n])
-        if el.tag in ("Tunnel", "Left", "Right"):
+        if el.tag == "Left":
+            # a stacked register's elements in order: out, out#1, out#2 / in, in#1, in#2
+            k = lambda base, i: base if i == 0 else "%s#%d" % (base, i)
+            return ([(n, (uid, k("out", i))) for i, (_, n) in enumerate(pairs(el.get("outputs"))) if n],
+                    [(n, (uid, k("in", i))) for i, (_, n) in enumerate(pairs(el.get("inputs"))) if n])
+        if el.tag in ("Tunnel", "Right"):
             return ([(n, (uid, "out")) for _, n in pairs(el.get("outputs")) if n],
                     [(n, (uid, "in")) for _, n in pairs(el.get("inputs")) if n])
         if el.tag == "Condition":

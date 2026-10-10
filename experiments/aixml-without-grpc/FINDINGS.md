@@ -9,10 +9,16 @@ gRPC service **not running at all** — Nigel was never opened in this session.
 
 **Yes, for a real and growing subset, in both directions.**
 
+State of 2026-10-10 morning (the night's work is §4d; the table below is the current one):
+
 | direction | tool | result |
 |---|---|---|
-| AIXML → VI | `aixml2vi.py` | **28 of 28** test VIs load (`ExecState 1`) and compute the right answer, one of them a composed caller of a composed callee; **19 of 19** of NI's own exports that the composer accepts load clean |
-| VI → AIXML | `vi2aixml.py` | over **552** installation VIs, compared with LabVIEW's own exports: **415 identical in every fact**, elements 99.6 %, constant values 95.5 %, wires 78.7 % |
+| AIXML → VI | `aixml2vi.py` | **70 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs: loops, case/event/sequence/disable structures, clusters, arrays, enums, waveforms, refnums, property and invoke nodes, references, subVI calls into `vi.lib` and libraries - see §4d for the coverage of NI's own code |
+| VI → AIXML | `vi2aixml.py` | over **all 760** cached NI exports, nested structures included (`compare_full.py`): **81 identical in every fact**, elements 84.9 %, wires 77.1 %, constant values 77.1 %, attributes 66.9 % |
+| both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI: see §4d |
+
+The earlier table (2026-10-09), kept for the record: 28 of 28 tests; the reader on the TOP-LEVEL
+subset only, 415 of 552 identical.
 
 Neither direction needs LabVIEW. LabVIEW is used only as the **oracle** that loads and runs
 the result, and it is reached over **ActiveX/COM** (`lv-com.ps1`), not over gRPC.
@@ -402,6 +408,30 @@ node behind it is typed with that refnum and has objFlags 640, not 0x2000280. **
 Reference`** is a `statVIRef` (label = the VI's name, `connectorTM` = its pane) with a link pair -
 `BSVR` in the VI's block typed with the VI refnum, `SVVI` in the diagram's naming the node.
 
+**Feedback Node inside a loop** (`t95`): LabVIEW moves the initializer OUT of the node - the
+`initFeedback` terminal sits in the LOOP's `termList` (a border terminal fed from outside) and
+names the loop in `iFeedbackLoop`; the `hiddenFBNode` keeps only `leftFeedback`, and
+`rightFeedback`'s `lsrDCOList` names both (read off NI's *Feedback Node - Building an Array.vi*).
+The earlier "broken, cause unknown" had a second cause: **every plain For Loop OUTPUT tunnel was
+broken** (`t31` too), because the harvested For-Loop tunnel part carried `TunnelType 02` and
+`DefaultTunnelType 02` - a CONCATENATING tunnel. A plain tunnel now carries neither.
+**Expression Node** (`t94`): an `exprNode` with one input and one output `bDDCO`, the formula
+as the text of its `textNodeLabel`, `errOfst` = the formula's length.
+
+**Three composed VIs KILLED LabVIEW in the load check of 152 composed NI VIs**, all three on a
+fatal `Insane Wire {sub}` / `Insane List {dupe}` (`cov_load.py` now records such a VI as
+`CRASH` and restarts LabVIEW). The causes, each now REFUSED rather than composed:
+a **stacked shift register** (one `Left` with `value,value2,value3`) mapped onto one left
+terminal, which put that terminal into three signals; a wire carrying a **typedef** whose `.ctl`
+the caller does not link; and a wire carrying a **DataLog refnum** handed out by a subVI's pane.
+The rule since then: a wire may only carry a type a composed wire has carried in a test that
+loads clean (`unverified_wire_type`); anything else is refused by name.
+
+**The property table** (`parts/vi-server-props.json`) was swept over 17 590 VIs of `vi.lib`,
+the examples and `resource\Framework` in six parallel processes (`harvest_parts.py --props`,
+`merge_props.py`): **104 classes, 1 052 properties, 496 invoke methods** (each method a whole
+part). pylabview hangs on some Wovalab VIs; the per-VI timeout now kills the whole process tree.
+
 **NI's converter crashes on an unknown property name.** `read+Version Number` on
 `{LV.Application}` (the catalogue name is `Application:Version Number`) killed LabVIEW inside
 `ConvertAIXMLToVI` four times out of four - `Insanity detected in heap BDHP … {id}`, then
@@ -419,6 +449,8 @@ The probes here use only names NI's own exports use. Flagged as a separate task 
 | `t91` | property nodes on an opened application and on the VI, an invoke node | `LabVIEW.exe`, its directory, name length, control index 1 |
 | `t92` | implicit property nodes: write and read `Visible`, read a string's `Value` | False, `hello` |
 | `t93` | control reference, This VI, Static VI Reference | True, `Clear Errors.vi` |
+| `t94` | expression nodes `2*x+1`, `n*n` | 7, 49 |
+| `t95` | feedback node in a For Loop, initializer outside | n = 5 → 10, n = 0 → 0 |
 
 ## 4. VI → AIXML, against NI's own exports
 
