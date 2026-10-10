@@ -1,0 +1,615 @@
+class	kind	name	files
+{ActiveX}	method	Add	1
+{ActiveX}	method	Item	1
+{ActiveX}	method	Open	1
+{ActiveX}	method	Range	1
+{ActiveX}	method	Run	1
+{ActiveX}	property	ColorMapStyle	1
+{ActiveX}	property	Plots	1
+{ActiveX}	property	Sheets	1
+{ActiveX}	property	Value2	1
+{ActiveX}	property	Visible	3
+{ActiveX}	property	Workbooks	2
+{DotNetCore}	method	ComputeHashFromStaticInput	1
+{DotNetCore}	method	ComputeHashes	1
+{DotNetCore}	property	AlgorithmType	1
+{DotNetCore}	property	val	1
+{DotNet}	method	NextValue	1
+{DotNet}	method	add	1
+{DotNet}	method	divide	1
+{DotNet}	method	multiply	1
+{DotNet}	method	subtract	1
+{DotNet}	property	DoubleValue	1
+{GenClass.XML_Document.DOMUserDefRef}	method	DUXAppendChild	1
+{GenClass.XML_Document.DOMUserDefRef}	method	DUXCreateElement	1
+{GenClass.XML_Document.DOMUserDefRef}	method	DUXGetXML	1
+{GenClass.XML_Document.DOMUserDefRef}	property	Document Element	1
+{GenClass.XML_Element.DOMUserDefRef}	method	DUXElementGetElementsByTagName	1
+{GenClass.XML_Node.DOMUserDefRef}	method	DUXGetXML	1
+{GenClass.XML_NodeList.DOMUserDefRef}	property	Array Of Nodes	1
+{GenClass.nisysapiFilter.nisysapi}	property	Devices & Chassis:Is Present	1
+{GenClass.nisysapiFilter.nisysapi}	property	Devices & Chassis:Is Simulated	2
+{GenClass.nisysapiFilter.nisysapi}	property	Devices & Chassis:Provides Bus Type	1
+{GenClass.nisysapiFilter.nisysapi}	property	Devices & Chassis:Supports Calibration	3
+{GenClass.nisysapiFilter.nisysapi}	property	Is Chassis	2
+{GenClass.nisysapiFilter.nisysapi}	property	Is Device	7
+{GenClass.nisysapiFilter.nisysapi}	property	Service Type	1
+{GenClass.nisysapiHardware.nisysapi}	property	Devices & Chassis:Current Temp	2
+{GenClass.nisysapiHardware.nisysapi}	property	Devices & Chassis:External Calibration:External Calibration Date	1
+{GenClass.nisysapiHardware.nisysapi}	property	Devices & Chassis:External Calibration:External Calibration Temperature	1
+{GenClass.nisysapiHardware.nisysapi}	property	Devices & Chassis:External Calibration:Recommended Calibration Interval	1
+{GenClass.nisysapiHardware.nisysapi}	property	Devices & Chassis:Internal Calibration:Internal Calibration Dates	1
+{GenClass.nisysapiHardware.nisysapi}	property	Devices & Chassis:Internal Calibration:Internal Calibration Temperatures	1
+{GenClass.nisysapiHardware.nisysapi}	property	Devices & Chassis:Internal Calibration:Supports Internal Calibration	1
+{GenClass.nisysapiHardware.nisysapi}	property	Devices & Chassis:Product Name	7
+{GenClass.nisysapiHardware.nisysapi}	property	Devices & Chassis:Serial Number	2
+{GenClass.nisysapiHardware.nisysapi}	property	Expert Info:Expert Name	1
+{GenClass.nisysapiHardware.nisysapi}	property	Expert Info:Resource Name	6
+{GenClass.nisysapiHardware.nisysapi}	property	Expert Info:User Alias	7
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Adapter Mode	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Adapter Type	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:EtherCAT:Master ID	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Is Primary Adapter	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:MAC Address	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:TCP/IP:DNS Server	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:TCP/IP:Gateway	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:TCP/IP:IP Address	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:TCP/IP:IP Address Request Mode	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:TCP/IP:Packet Detection	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:TCP/IP:Polling Interval	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:TCP/IP:Subnet Mask	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Wireless:Authentication Type	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Wireless:BSSID	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Wireless:Channel Number	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Wireless:Connection Type	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Wireless:Country Code	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Wireless:Discovered Access Points	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Wireless:Link Quality	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Wireless:SSID	1
+{GenClass.nisysapiHardware.nisysapi}	property	Network Adapters:Wireless:Security Type	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:CPUs:CPU Logical Processor Count	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:CPUs:Interrupt Load	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:CPUs:Total Load	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:Fans:Names	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:Fans:Readings	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:Temperature Sensors:Lower Critical	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:Temperature Sensors:Readings	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:Temperature Sensors:Upper Critical	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:Voltage Sensors:Lower Critical	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:Voltage Sensors:Readings	1
+{GenClass.nisysapiHardware.nisysapi}	property	System Resources:Voltage Sensors:Upper Critical	1
+{GenClass.nisysapiHardware.nisysapi}	property	Time:Current Time	1
+{GenClass.nisysapiHardware.nisysapi}	property	Time:Time Zone	1
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Analog Input:General Properties:Filter:Enable	1
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Analog Input:General Properties:Filter:Frequency	1
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Analog Input:General Properties:Filter:Order	1
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Analog Input:General Properties:Filter:Remove Filter Delay	1
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Analog Input:General Properties:Filter:Response	1
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Power Supply:Current:Advanced:Device Scaling Coefficients	1
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Power Supply:Current:Setpoint	1
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Power Supply:Idle Output Behavior	3
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Power Supply:Output Enable	1
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Power Supply:Output State	2
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Power Supply:Remote Sense:Remote Sense	3
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Power Supply:Voltage:Advanced:Device Scaling Coefficients	1
+{GenClassTag.DAQmx Channel.NIDAQ}	property	Power Supply:Voltage:Setpoint	1
+{GenClassTag.DAQmx Read.NIDAQ}	property	Status:Overtemperature:Overtemperature Channels	1
+{GenClassTag.DAQmx Read.NIDAQ}	property	Status:Overtemperature:Overtemperature Channels Exist	1
+{GenClassTag.DAQmx Task.NIDAQ}	property	Channels	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	More:Master Timebase:Rate	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	More:Master Timebase:Source	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	More:Reference Clock:Rate	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	More:Reference Clock:Source	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	More:Synchronization Pulse:Digital Edge:Source	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	More:Synchronization Pulse:Minimum Delay To Start	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	More:Synchronization Pulse:Reset Delay	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	More:Synchronization Pulse:Reset Time	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	More:Synchronization Pulse:Synchronization Time	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	More:Synchronization Pulse:Terminal	1
+{GenClassTag.DAQmx Timing.NIDAQ}	property	Sample Clock:Rate	14
+{GenClassTag.DAQmx Timing.NIDAQ}	property	Sample Clock:Timebase:Source	1
+{GenClassTag.DAQmx Trigger.NIDAQ}	property	Advanced:Synchronization Type	1
+{GenClassTag.DAQmx Trigger.NIDAQ}	property	More:Pause:Analog Level:Level	8
+{GenClassTag.DAQmx Trigger.NIDAQ}	property	More:Pause:Analog Level:Pause When	8
+{GenClassTag.DAQmx Trigger.NIDAQ}	property	More:Pause:Analog Level:Source	8
+{GenClassTag.DAQmx Trigger.NIDAQ}	property	More:Pause:Digital Level:Pause When	11
+{GenClassTag.DAQmx Trigger.NIDAQ}	property	More:Pause:Digital Level:Source	11
+{GenClassTag.DAQmx Trigger.NIDAQ}	property	More:Pause:Trigger Type	11
+{GenClassTag.DAQmx Trigger.NIDAQ}	property	Start:Analog Edge:Hysteresis	8
+{GenClassTag.DAQmx Trigger.NIDAQ}	property	Start:Terminal	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	Advanced:System Resource	2
+{GenClassTag.nisyscfgSession.nisyscfg}	property	Hostname	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	Primary NIC:IP Address	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	Primary NIC:IP Address Request Mode	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	Primary NIC:Subnet Mask	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	System Resources:Free Physical Memory	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	System Resources:Free Virtual Memory	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	System Resources:Largest Available Memory Block	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	System Resources:Primary Disk Capacity	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	System Resources:Primary Disk Free	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	System Resources:Total Physical Memory	1
+{GenClassTag.nisyscfgSession.nisyscfg}	property	System Resources:Total Virtual Memory	1
+{LV.Application}	method	FeatureToggleEnabled	1
+{LV.Application}	method	Get VI Tag	1
+{LV.Application}	method	LVClass.Create	2
+{LV.Application}	method	LVClass.Create Interface	1
+{LV.Application}	method	LVClass.Open	19
+{LV.Application}	method	Library.Create	2
+{LV.Application}	method	Library.Open	7
+{LV.Application}	method	Open.LV Document	1
+{LV.Application}	method	OpenErrWdw	1
+{LV.Application}	method	Project.New	1
+{LV.Application}	method	Project.Open	2
+{LV.Application}	method	Refresh Palettes	5
+{LV.Application}	property	Application:All Contexts	1
+{LV.Application}	property	Application:All VIs In Memory	4
+{LV.Application}	property	Application:Command Line Arguments	1
+{LV.Application}	property	Application:Context Name	1
+{LV.Application}	property	Application:Default:Application	1
+{LV.Application}	property	Application:Directory Path	11
+{LV.Application}	property	Application:Kind	1
+{LV.Application}	property	Application:Menu Launch:App	1
+{LV.Application}	property	Application:Name	2
+{LV.Application}	property	Application:Unattended Mode	2
+{LV.Application}	property	Application:User Name	1
+{LV.Application}	property	Project:Active Project	43
+{LV.Application}	property	Project:Target Item	1
+{LV.Array}	property	Array Element	3
+{LV.Array}	property	Disabled	1
+{LV.Array}	property	Index Values	2
+{LV.Array}	property	Terminal	1
+{LV.Array}	property	Visible	2
+{LV.Boolean}	property	Disabled	8
+{LV.Boolean}	property	Label.Text	1
+{LV.Boolean}	property	Mechanical Action	1
+{LV.Boolean}	property	Terminal	1
+{LV.Boolean}	property	Visible	6
+{LV.CaseStructure}	method	Add Frame	1
+{LV.CaseStructure}	method	GetFrameIndex	1
+{LV.CaseStructure}	method	Remove Frame	2
+{LV.CaseStructure}	property	Frame Names	4
+{LV.CaseStructure}	property	Frames[]	2
+{LV.CaseStructure}	property	Selector	2
+{LV.ClassSpecifierConstant}	property	All Types[]	2
+{LV.Cluster}	method	Set Cluster Order	1
+{LV.Cluster}	property	All Objects[]	1
+{LV.Cluster}	property	Auto Sizing	1
+{LV.Cluster}	property	Controls[]	8
+{LV.Cluster}	property	Disabled	2
+{LV.Cluster}	property	Label.Text	2
+{LV.Cluster}	property	Position:Top	1
+{LV.Cluster}	property	Value	1
+{LV.ComboBox}	property	Disabled	1
+{LV.ComboBox}	property	Strings []	3
+{LV.ComboBox}	property	Value	1
+{LV.ConnectorPane}	method	AssignCtrlToTerm	1
+{LV.ConnectorPane}	method	SetWireRule	1
+{LV.ConnectorPane}	property	Controls[]	2
+{LV.ConnectorPane}	property	Number of Connection Terminals	1
+{LV.ConnectorPane}	property	Pattern	3
+{LV.ConnectorPane}	property	Terminal Bounds[]	3
+{LV.ConnectorPane}	property	WiringRules[]	1
+{LV.Constant}	method	Delete	2
+{LV.Constant}	method	Replace	2
+{LV.Constant}	property	Class Name	1
+{LV.Constant}	property	Is Typedef?	1
+{LV.Constant}	property	Label	3
+{LV.Constant}	property	Terminal.Connected Wire.Terminals[]	1
+{LV.Constant}	property	Typedef:Path	1
+{LV.Constant}	property	Value	1
+{LV.ControlTerminal}	method	Connect Wire	2
+{LV.ControlTerminal}	method	Move	1
+{LV.ControlTerminal}	property	Label.Visible	1
+{LV.Control}	method	Create Control Ref	1
+{LV.Control}	method	Delete	4
+{LV.Control}	method	Discon Typedef	1
+{LV.Control}	method	Move	9
+{LV.Control}	method	Replace	7
+{LV.Control}	property	Class Name	7
+{LV.Control}	property	Description	1
+{LV.Control}	property	Disabled	1
+{LV.Control}	property	Grouped	1
+{LV.Control}	property	Is Typedef?	6
+{LV.Control}	property	Label	4
+{LV.Control}	property	Label.Text	11
+{LV.Control}	property	Locked	1
+{LV.Control}	property	Plot Specific:Active Plot	1
+{LV.Control}	property	Plot Specific:General:Plot Opacity	1
+{LV.Control}	property	Plot Specific:Surface:Surface Color Ramp	1
+{LV.Control}	property	Terminal	6
+{LV.Control}	property	Typedef:Path	3
+{LV.Control}	property	Value (Signaling)	1
+{LV.Control}	property	Visible	1
+{LV.Diagram}	property	All Objects[]	5
+{LV.Diagram}	property	Decorations[]	1
+{LV.Diagram}	property	Nodes[]	1
+{LV.Diagram}	property	SubVIs[]	1
+{LV.DigitalGraph}	property	Active Cursor	1
+{LV.DigitalGraph}	property	Cursor.Cursor Color	1
+{LV.DigitalGraph}	property	Cursor.Cursor Point Style	1
+{LV.DigitalGraph}	property	Cursor.Cursor Position:Cursor X	1
+{LV.DigitalGraph}	property	Cursor.Cursor Style	1
+{LV.DigitalGraph}	property	Cursor.Line Style	1
+{LV.DigitalGraph}	property	Cursor.Line Width	1
+{LV.DigitalGraph}	property	Cursor.Visible	1
+{LV.Digital}	method	Reinit To Default	1
+{LV.Digital}	property	Caption.Text	1
+{LV.Digital}	property	Disabled	2
+{LV.Digital}	property	Unit Label.Text	1
+{LV.Digital}	property	Visible	1
+{LV.DisableStructure}	method	Add Frame	1
+{LV.DisableStructure}	method	Change Disable Style	1
+{LV.DisableStructure}	method	Remove Frame	1
+{LV.DisableStructure}	property	Active Frame	1
+{LV.DisableStructure}	property	Conditions	1
+{LV.DisableStructure}	property	Frames[]	1
+{LV.Enum}	property	Strings []	1
+{LV.EventStructure}	method	Add Frame	1
+{LV.EventStructure}	method	GetHandledEvents	1
+{LV.EventStructure}	method	Remove Frame	2
+{LV.EventStructure}	method	SetHandledEvents	1
+{LV.EventStructure}	property	Dynamic Terminal (Left)	1
+{LV.EventStructure}	property	Dynamic Terminal (Right)	1
+{LV.EventStructure}	property	Dynamic Terminals Visible?	1
+{LV.EventStructure}	property	Event Selectors	3
+{LV.EventStructure}	property	Frames[]	1
+{LV.EventStructure}	property	Number of Event Frames	1
+{LV.EventStructure}	property	Terminals[]	1
+{LV.EventStructure}	property	Timeout Terminal	1
+{LV.EventStructure}	property	Tunnels[]	1
+{LV.FlatSequenceFrame}	property	Diagram	2
+{LV.FlatSequence}	method	Add Frame	1
+{LV.FlatSequence}	property	Frames[]	1
+{LV.ForLoop}	property	Diagram	2
+{LV.ForLoop}	property	Has Conditional Terminal?	1
+{LV.ForLoop}	property	Loop Count	1
+{LV.ForLoop}	property	Loop Counter	1
+{LV.ForLoop}	property	Loop End Ref	1
+{LV.Function}	method	Replace	2
+{LV.Function}	method	Tag.Get Tag	1
+{LV.Function}	property	Label.Visible	1
+{LV.Function}	property	Style	3
+{LV.Function}	property	Terminals[]	3
+{LV.GObject}	method	Delete	6
+{LV.GObject}	method	Tag.Set Tag	1
+{LV.GObject}	property	Class Name	6
+{LV.GObject}	property	Position	1
+{LV.GObject}	property	Position:Top	1
+{LV.GObject}	property	Selected	1
+{LV.GrowableFunction}	property	Style	1
+{LV.IntensityGraph}	property	Active Cursor	1
+{LV.IntensityGraph}	property	Color Table	1
+{LV.IntensityGraph}	property	Cursor.Cursor Position	1
+{LV.IntensityGraph}	property	Cursor.Cursor Position:Cursor X	1
+{LV.IntensityGraph}	property	Cursor.Cursor Position:Cursor Y	1
+{LV.IntensityGraph}	property	X Scale.Offset and Multiplier	2
+{LV.IntensityGraph}	property	X Scale.Offset and Multiplier:Multiplier	2
+{LV.IntensityGraph}	property	X Scale.Offset and Multiplier:Offset	1
+{LV.IntensityGraph}	property	Y Scale.Offset and Multiplier	2
+{LV.IntensityGraph}	property	Y Scale.Offset and Multiplier:Multiplier	3
+{LV.IntensityGraph}	property	Y Scale.Offset and Multiplier:Offset	2
+{LV.IntensityGraph}	property	Z Scale.Marker Values[]	1
+{LV.Knob}	property	Housing Colors:BG Color	1
+{LV.Knob}	property	Scale.Range:Minimum	1
+{LV.LVClassLibrary}	method	AddItemFromMemory	2
+{LV.LVClassLibrary}	method	Get All Descendents	1
+{LV.LVClassLibrary}	method	HiliteInProjectWindow	3
+{LV.LVClassLibrary}	method	Save	9
+{LV.LVClassLibrary}	method	Save a Copy	1
+{LV.LVClassLibrary}	method	Write Parent Interfaces	2
+{LV.LVClassLibrary}	property	Is Interface	1
+{LV.LVClassLibrary}	property	Localized Name	1
+{LV.LVClassLibrary}	property	Name	1
+{LV.LVClassLibrary}	property	Parent Class	3
+{LV.LVClassLibrary}	property	Path	2
+{LV.LVClassLibrary}	property	Private Data Control	5
+{LV.LVClassLibrary}	property	Project	2
+{LV.LVClassLibrary}	property	Type String	1
+{LV.LabVIEWClassConstant}	property	Terminal	1
+{LV.LabVIEWClassControl}	property	Terminal	1
+{LV.LeftShiftRegister}	property	Right Shift Register	1
+{LV.Library}	method	AddFile	1
+{LV.Library}	method	AddItem	3
+{LV.Library}	method	ApplyIconToVIs	1
+{LV.Library}	method	Get All Descendents	5
+{LV.Library}	method	Save	4
+{LV.Library}	method	Save a Copy	3
+{LV.Library}	property	Name	2
+{LV.Library}	property	Owning Application	3
+{LV.Library}	property	Path	10
+{LV.Library}	property	Project	3
+{LV.Library}	property	Qualified Name	1
+{LV.ListBox}	method	Point To Row	1
+{LV.ListBox}	property	Item Names	8
+{LV.ListBox}	property	Value	3
+{LV.ListBox}	property	Value (Signaling)	3
+{LV.MixedSignalGraph}	property	Cursor List	1
+{LV.MulticolumnListbox}	property	Item Names	7
+{LV.Node}	method	Move	3
+{LV.Node}	property	Class Name	1
+{LV.Node}	property	Position	1
+{LV.Node}	property	Terminals[]	5
+{LV.Numeric}	method	Move	1
+{LV.Numeric}	property	Representation	1
+{LV.Numeric}	property	Terminal	1
+{LV.OuterTerminal}	property	Connected Wire	1
+{LV.Page}	property	Colors:FG Color	1
+{LV.Page}	property	Page Enabled State	1
+{LV.Page}	property	Page Visible	1
+{LV.Page}	property	Tab Caption	1
+{LV.Panel}	method	Clear Selection	1
+{LV.Panel}	method	Copy Selection	1
+{LV.Panel}	property	Controls[]	29
+{LV.Panel}	property	Panes[]	1
+{LV.Panel}	property	Selection List[]	2
+{LV.Pane}	property	Z-Order:Controls[]	1
+{LV.Path}	property	Browse Options:Start Path	1
+{LV.Path}	property	Disabled	1
+{LV.Path}	property	Value	1
+{LV.Path}	property	Value (Signaling)	1
+{LV.Path}	property	Visible	1
+{LV.Picture}	property	Position	1
+{LV.Picture}	property	Position:Left	1
+{LV.Picture}	property	Position:Top	1
+{LV.Picture}	property	Zoom Factor	1
+{LV.ProjectItem}	method	AddFile	3
+{LV.ProjectItem}	method	AddItem	4
+{LV.ProjectItem}	method	Delete	2
+{LV.ProjectItem}	method	Expand	1
+{LV.ProjectItem}	method	Get All Descendents	5
+{LV.ProjectItem}	method	SelectItem	1
+{LV.ProjectItem}	property	Item ID	1
+{LV.ProjectItem}	property	Name	11
+{LV.ProjectItem}	property	Owned Items[]	1
+{LV.ProjectItem}	property	Owner	2
+{LV.ProjectItem}	property	Path	8
+{LV.ProjectItem}	property	Target	1
+{LV.ProjectItem}	property	Type String	4
+{LV.ProjectItem}	property	VI Reference	6
+{LV.ProjectItem}	property	VI Reference No Load	1
+{LV.Project}	method	Close	1
+{LV.Project}	method	Open Window	3
+{LV.Project}	method	Save	5
+{LV.Project}	property	Application	32
+{LV.Project}	property	My Computer	6
+{LV.Project}	property	Name	2
+{LV.Project}	property	Path	8
+{LV.Project}	property	Root	4
+{LV.RadioButtonsControl}	property	Value (Signaling)	1
+{LV.RadioButtonsControl}	property	Visible	1
+{LV.RightShiftRegister}	method	Delete	1
+{LV.Ring}	property	Disabled	1
+{LV.Ring}	property	Hide Last Value	7
+{LV.Ring}	property	Ring Text.Text	4
+{LV.Ring}	property	Strings And Values []	1
+{LV.Ring}	property	Strings []	12
+{LV.Ring}	property	Value	8
+{LV.Ring}	property	Value (Signaling)	8
+{LV.Ring}	property	Visible	2
+{LV.SceneGraphDisplay}	method	Redraw	1
+{LV.SceneMesh}	method	SetMeshParms	1
+{LV.SceneObject}	method	Set Drawable	1
+{LV.SceneSphere}	property	Color	1
+{LV.Scrollbar}	property	Doc Max	1
+{LV.Sequence}	method	Add Frame	1
+{LV.Sequence}	method	Convert To FlatSeq	1
+{LV.Sequence}	method	Remove Frame	1
+{LV.Sequence}	property	Frames[]	1
+{LV.Slide}	property	Active Slider	1
+{LV.Slide}	property	Blinking	1
+{LV.Slide}	property	Disabled	1
+{LV.Slide}	property	Fill Color	1
+{LV.Slide}	property	Label.Text	1
+{LV.Slide}	property	Scale.Range:Maximum	4
+{LV.Slide}	property	Scale.Range:Minimum	3
+{LV.StringConstant}	property	Value	2
+{LV.String}	method	Get Nth Line	1
+{LV.String}	property	Disabled	2
+{LV.String}	property	Key Focus	2
+{LV.String}	property	Label.Text	1
+{LV.String}	property	Size:Width	1
+{LV.String}	property	Text.Font:Bold	2
+{LV.String}	property	Text.Scroll Position	1
+{LV.String}	property	Text.Selection:End	2
+{LV.String}	property	Text.Selection:Start	2
+{LV.String}	property	Text.Text	1
+{LV.String}	property	Value	5
+{LV.String}	property	Value (Signaling)	1
+{LV.String}	property	Visible	5
+{LV.Structure}	method	Move	1
+{LV.Structure}	property	Diagrams[]	1
+{LV.SubPanel}	method	Insert VI	1
+{LV.SubPanel}	method	Remove VI	1
+{LV.SubVI}	method	Delete	1
+{LV.SubVI}	method	Replace	2
+{LV.SubVI}	property	Bounds	1
+{LV.SubVI}	property	Owner	1
+{LV.SubVI}	property	Position	1
+{LV.SubVI}	property	Terminals[]	4
+{LV.SubVI}	property	VI Name	4
+{LV.TabControl}	property	Pages	1
+{LV.Table}	property	Active Cell:Active Cell	1
+{LV.Table}	property	Active Cell:Cell Font:Color	1
+{LV.Table}	property	Column Header Strings[]	2
+{LV.Table}	property	Edit Position	1
+{LV.Table}	property	Row Header Strings[]	1
+{LV.Table}	property	Selection Size	1
+{LV.Table}	property	Selection Start	1
+{LV.Table}	property	Value	1
+{LV.TargetItem}	method	AddFile	4
+{LV.TargetItem}	method	AddItem	3
+{LV.TargetItem}	method	Get All Descendents	2
+{LV.TargetItem}	property	Application	3
+{LV.Terminal}	method	Connect Wire	10
+{LV.Terminal}	method	Create Constant	3
+{LV.Terminal}	method	Create Control	1
+{LV.Terminal}	method	Move	2
+{LV.Terminal}	property	Coercion Dot?	1
+{LV.Terminal}	property	Connected Wire	9
+{LV.Terminal}	property	Diagram	2
+{LV.Terminal}	property	Is Source?	4
+{LV.Terminal}	property	Name	10
+{LV.Terminal}	property	Owner	4
+{LV.Terminal}	property	Owning VI	1
+{LV.Terminal}	property	Position	3
+{LV.Terminal}	property	Position:Left	1
+{LV.Terminal}	property	Position:Top	1
+{LV.Terminal}	property	Type Descriptor	1
+{LV.Text}	property	Text	9
+{LV.TimeFlatSequence}	property	Frames[]	1
+{LV.TimedLoop}	method	Replace With TimedSeq	1
+{LV.TimedLoop}	method	Replace With WhileLoop	1
+{LV.TimedSequence}	method	Convert T oTimedLoop	1
+{LV.TimedSequence}	method	Convert To FlatSeq	1
+{LV.TimedSequence}	property	Embedded Flat Sequence	1
+{LV.TopLevelDiagram}	method	Clear Selection	1
+{LV.TopLevelDiagram}	method	Copy Selection	1
+{LV.TopLevelDiagram}	method	CutSelection	1
+{LV.TopLevelDiagram}	method	EncloseSelection2	2
+{LV.TopLevelDiagram}	method	Make Selection	1
+{LV.TopLevelDiagram}	method	Move Selected Objects	1
+{LV.TopLevelDiagram}	method	Paste	2
+{LV.TopLevelDiagram}	method	RemoveFromSelection	1
+{LV.TopLevelDiagram}	method	Select All	1
+{LV.TopLevelDiagram}	property	All Objects[]	3
+{LV.TopLevelDiagram}	property	Decorations[]	1
+{LV.TopLevelDiagram}	property	Selection List[]	3
+{LV.TopLevelDiagram}	property	Wires[]	1
+{LV.TreeControl}	method	Custom Item Symbols.Set Symbol	1
+{LV.TreeControl}	method	Edit Tree Items.Add Item	1
+{LV.TreeControl}	method	Edit Tree Items.Add Item to End	1
+{LV.TreeControl}	method	Edit Tree Items.Delete	2
+{LV.TreeControl}	property	Active Cell:Active Column Number	1
+{LV.TreeControl}	property	Active Cell:String	1
+{LV.TreeControl}	property	Active Item:Tag	2
+{LV.TreeControl}	property	All Tags	1
+{LV.Tunnel}	property	Outside Terminal	2
+{LV.TypedRefNum}	property	Element	1
+{LV.VI}	method	Abort VI	2
+{LV.VI}	method	BD.CleanUp	6
+{LV.VI}	method	BD.Remove Bad Wires	6
+{LV.VI}	method	Create from Reference	1
+{LV.VI}	method	CtlVIApplyChanges	2
+{LV.VI}	method	Ctrl Val.Get	1
+{LV.VI}	method	Ctrl Val.Get All	4
+{LV.VI}	method	Ctrl Val.Set	6
+{LV.VI}	method	Default Vals.Reinit All	1
+{LV.VI}	method	FP.Center	1
+{LV.VI}	method	FP.Close	24
+{LV.VI}	method	FP.Open	20
+{LV.VI}	method	GetControlIndexByName	1
+{LV.VI}	method	Populate Async Call Pool	3
+{LV.VI}	method	Print.VI To HTML	1
+{LV.VI}	method	Revert VI	3
+{LV.VI}	method	Run VI	10
+{LV.VI}	method	Save VI Icon to File	2
+{LV.VI}	method	Save.Instrument	41
+{LV.VI}	method	Save:Instrument	1
+{LV.VI}	method	Set VI Icon from File	1
+{LV.VI}	method	Transaction.Begin Undo	1
+{LV.VI}	method	Transaction.End Undo	1
+{LV.VI}	method	Transaction.Fail	1
+{LV.VI}	method	VI Strings.Import XLIFF	1
+{LV.VI}	property	Block Diagram	23
+{LV.VI}	property	Block Diagram Window:Open	9
+{LV.VI}	property	Block Diagram Window:Origin	1
+{LV.VI}	property	Block Diagram Window:Window Bounds	3
+{LV.VI}	property	Connector Pane:Reference	8
+{LV.VI}	property	Control VI Type	3
+{LV.VI}	property	Execution:State	1
+{LV.VI}	property	Front Panel	38
+{LV.VI}	property	Front Panel Window:Closeable	2
+{LV.VI}	property	Front Panel Window:Custom Title	1
+{LV.VI}	property	Front Panel Window:Is Frontmost	1
+{LV.VI}	property	Front Panel Window:Open	2
+{LV.VI}	property	Front Panel Window:State	3
+{LV.VI}	property	Front Panel Window:Title	2
+{LV.VI}	property	Front Panel Window:Window Bounds	6
+{LV.VI}	property	Library	2
+{LV.VI}	property	Modifications:Block Diagram Mods Bitset	2
+{LV.VI}	property	Modifications:Front Panel Mods Bitset	2
+{LV.VI}	property	VI Description	1
+{LV.VI}	property	VI Linker Errors	1
+{LV.VI}	property	VI Name	11
+{LV.VI}	property	VI Path	5
+{LV.WaveformChart}	property	Active Plot	1
+{LV.WaveformChart}	property	Disabled	1
+{LV.WaveformChart}	property	History Data	5
+{LV.WaveformChart}	property	Legend:Number of Rows	1
+{LV.WaveformChart}	property	Legend:Plot Minimum	1
+{LV.WaveformChart}	property	Plot.Plot Name	1
+{LV.WaveformChart}	property	Terminal	1
+{LV.WaveformChart}	property	Value	2
+{LV.WaveformChart}	property	X Scale.Offset and Multiplier:Multiplier	2
+{LV.WaveformChart}	property	X Scale.Range:Maximum	2
+{LV.WaveformChart}	property	Y Scale.Name Label.Text	1
+{LV.WaveformChart}	property	Y Scale.Range:Minimum	1
+{LV.WaveformGraph}	method	Reinit To Default	1
+{LV.WaveformGraph}	method	Start Drag	1
+{LV.WaveformGraph}	property	Active Cursor	2
+{LV.WaveformGraph}	property	Active Plot	3
+{LV.WaveformGraph}	property	Annotation List	1
+{LV.WaveformGraph}	property	Cursor.Cursor Index	1
+{LV.WaveformGraph}	property	Cursor.Cursor Position:Cursor X	3
+{LV.WaveformGraph}	property	Cursor.Cursor Position:Cursor Y	2
+{LV.WaveformGraph}	property	Cursor.Visible	1
+{LV.WaveformGraph}	property	Legend:Number of Rows	1
+{LV.WaveformGraph}	property	Legend:Visible	1
+{LV.WaveformGraph}	property	Plot Images:Back	1
+{LV.WaveformGraph}	property	Plot Images:Front	1
+{LV.WaveformGraph}	property	Plot Images:Middle	1
+{LV.WaveformGraph}	property	Plot.Plot Color	2
+{LV.WaveformGraph}	property	Plot.Plot Name	1
+{LV.WaveformGraph}	property	Value	2
+{LV.WaveformGraph}	property	X Scale.Name Label.Text	1
+{LV.WaveformGraph}	property	X Scale.Range:Maximum	2
+{LV.WaveformGraph}	property	X Scale.Range:Minimum	2
+{LV.WaveformGraph}	property	X Scale.Scale Fit	1
+{LV.WaveformGraph}	property	Y Scale.Name Label.Text	3
+{LV.WaveformGraph}	property	Y Scale.Scale Fit	2
+{LV.WebBrowser}	method	ExecuteJavaScript	3
+{LV.WebBrowser}	method	NavigateBackward	1
+{LV.WebBrowser}	method	NavigateForward	1
+{LV.WebBrowser}	method	ReloadPage	2
+{LV.WebBrowser}	method	StopLoadingPage	1
+{LV.WhileLoop}	property	Diagram	1
+{LV.WhileLoop}	property	Loop Counter	1
+{LV.WhileLoop}	property	Loop End Ref	2
+{LV.Wire}	method	Delete	2
+{LV.Wire}	method	DisconnectTerminal	1
+{LV.Wire}	method	Insert Node	1
+{LV.Wire}	method	RemoveLooseEnds	1
+{LV.Wire}	property	Is Broken?	2
+{LV.Wire}	property	Terminals[]	8
+{LV.XYGraph}	property	Active Cursor	2
+{LV.XYGraph}	property	Active Plot	1
+{LV.XYGraph}	property	Cursor List	1
+{LV.XYGraph}	property	Cursor.Cursor Index	1
+{LV.XYGraph}	property	Cursor.Cursor Position:Cursor X	2
+{LV.XYGraph}	property	Cursor.Cursor Position:Cursor Y	5
+{LV.XYGraph}	property	Plot.Plot Color	1
+{UDClassInst}	property	Actor Label	1
+{UDClassInst}	property	Drink Type	1
+{UDClassInst}	property	Long Listing	1
+{UDClassInst}	property	Name	1
+{UDClassInst}	property	Options	1
+{Visa.Instr}	property	General Settings:Timeout Value	1
+{Visa.Instr}	property	Message Based Settings:Send End Enable	3
+{Visa.Instr}	property	Message Based Settings:Termination Character	3
+{Visa.Instr}	property	Serial Settings:Break Length	1
+{Visa.Instr}	property	Serial Settings:End Mode for Writes	3
+{Visa.Instr}	property	Serial Settings:Flow Control XOFF Character	1
+{Visa.Instr}	property	Serial Settings:Flow Control XON Character	1
+{Visa.Instr}	property	Serial Settings:Modem Line Settings:Line CTS State	1
+{Visa.Instr}	property	Serial Settings:Modem Line Settings:Line DCD State	1
+{Visa.Instr}	property	Serial Settings:Modem Line Settings:Line DSR State	1
+{Visa.Instr}	property	Serial Settings:Modem Line Settings:Line DTR State	2
+{Visa.Instr}	property	Serial Settings:Modem Line Settings:Line RI State	1
+{Visa.Instr}	property	Serial Settings:Modem Line Settings:Line RTS State	1
+{Visa.Instr}	property	Serial Settings:Number of Bytes at Serial Port	1
+{Visa.Instr}	property	Serial Settings:Wire Mode	1
+{Visa.PXI Backplane}	property	General Settings:Trigger Identifier	1
+{Visa.PXI Backplane}	property	PXI/PCI Settings:Destination Trigger Bus Number	1
+{Visa.PXI Backplane}	property	PXI/PCI Settings:Source Trigger Bus Number	1
+{Visa.PXI Backplane}	property	PXI/PCI Settings:Trigger Bus Number	1
+{Visa.USB Raw}	property	Interface Information:Interface Type	3

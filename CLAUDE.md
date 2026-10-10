@@ -2500,6 +2500,23 @@ seconds, same two `OMAutoClasses` entries, zero new archives. The archives are w
 *starts* and finds leftovers from an abnormal end, so a pile of them counts past crashes rather than
 causing the next one - eight in one day looked exactly like a cause and was not.
 
+**A PROPERTY NAME WITH ITS CATEGORY DROPPED KILLS LabVIEW IN `ConvertAIXMLToVI` - measured
+2026-10-10, 4 of 4.** `fields="read+Version Number"` on `{LV.Application}`, where the name is
+`Application\3AVersion Number`: no error comes back, LabVIEW is gone, and its log reads `Insanity
+detected in heap BDHP ... {id } (0x4)` then `DAbort ... Fatal insanities(0x00000004) exist in
+ReportInsanities` (`fpsane.cpp`). The one-word correction converted, `errorCode 0`, `execState 1`.
+**Only that class and that shape were measured** - not another class, not an invented name with
+no category match, not `ValidateAIXML` on the same document. So `lvai_check_aixml` answers
+`propertyNameUnknown` as an ERROR exactly for that shape (unknown in the catalogue AND in
+`docs/vi-server-aixml-names.tsv`, the names NI's exports and our helpers really use, while a known
+name of the class is `Category:` + it), and `fix` writes the full name when only one fits - the
+crashing name fits TWO, `Operating System:Version Number` being the other; any other unknown Property
+or Invoke name is a WARNING with the nearest known one, because both lists are incomplete.
+**`lvai_convert_aixml_to_vi` and `lvai_validate_aixml` refuse such a document BEFORE the RPC**
+(`propertyNameWouldCrashLabview`; `allowUnknownPropertyNames` overrides) - a check that only
+reports after the call is a post-mortem. `scripts/aixml_lint.py` reads the same four tables.
+`docs/aixml-reference.md`, "A wrong PROPERTY name can kill LabVIEW".
+
 **THE UID BASE IS 4200, AND TWO IMPLEMENTATIONS OF THAT RULE DISAGREED FOR DAYS.**
 `AixmlCheck.SafeUidBase` is 4200 and `scripts/aixml_lint.py`'s `LOW_UID_CEILING` was 5000, so the
 lint flagged `uid-low` on every file the generators themselves emit — and its own comment argued

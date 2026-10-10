@@ -115,8 +115,199 @@ internal static class AixmlCheck
         CheckWebBrowserReference(root, findings);
         CheckReservedRange(elements, findings);
         CheckMalleableName(root, findings);
+        CheckViServerNames(root, findings);
 
         return findings;
+    }
+
+    /// <summary>The finding that KILLS LabVIEW inside ConvertAIXMLToVI; the RPC tools refuse it.</summary>
+    internal const string CrashingPropertyName = "propertyNameUnknown";
+
+    /// <summary>
+    /// Property Node fields and Invoke Node targets whose names no source knows.
+    ///
+    /// MEASURED 2026-10-10 on LabVIEW 2026 32-bit: <c>fields="read+Version Number"</c> on
+    /// <c>{LV.Application}</c> KILLED LabVIEW inside ConvertAIXMLToVI, 4 of 4 runs - reference wired
+    /// and unwired, uids spaced or not, net names with and without spaces. The log said
+    /// <c>Insanity detected in heap BDHP ... {id } (0x4)</c>, then <c>DAbort ... Fatal insanities
+    /// (0x00000004) exist in ReportInsanities</c> (fpsane.cpp). The real name is
+    /// <c>Application:Version Number</c>, and with it the same document converted, errorCode 0,
+    /// execState 1. So a property name with its CATEGORY dropped is not an error message waiting to
+    /// happen - it is a lost LabVIEW session. Only that one class and that one shape were measured.
+    ///
+    /// SEVERITY FOLLOWS THE EVIDENCE. A name is known when the catalogue OR the names working AIXML
+    /// uses (NI's exports, our helpers) contain it - see <see cref="ViServerVocabulary"/>, and the
+    /// 2026-09-09 measurement there of what a catalogue-only check would have accused.
+    /// - ERROR <c>propertyNameUnknown</c>: unknown, and a known name of the class is exactly
+    ///   <c>Category:</c> + this name - the measured crash shape, and a fix that is certain.
+    /// - WARNING <c>propertyNameNotKnown</c> / <c>methodNameNotKnown</c>: unknown and no such
+    ///   match. Both lists are incomplete, so this is "verify by exporting a VI that uses it",
+    ///   not a verdict; the nearest known name is offered when one is close.
+    /// - WARNING <c>viServerClassUnknown</c>: an <c>{LV.*}</c> type that is not one of LabVIEW's
+    ///   296 classes. A class with no known names at all is not judged.
+    /// A nested property written with a dot (<c>Label.Text</c>) is accepted when its head is a
+    /// known property: measured 2026-09-09, that is the working form (scripts/aixml_lint.py).
+    /// </summary>
+    private static void CheckViServerNames(XElement root, List<Finding> findings)
+    {
+        if (!ViServerVocabulary.Loaded) return;
+        foreach (var node in root.Descendants("Node"))
+        {
+            var kind = (string?)node.Attribute("_name");
+            if (kind is not ("Property Node" or "Invoke Node")) continue;
+            if ((string?)node.Attribute("type") is not { Length: > 2 } cls || !cls.StartsWith('{')) continue;
+            var uid = (string?)node.Attribute("uid");
+
+            if (!ViServerVocabulary.IsKnownClass(cls))
+            {
+                findings.Add(new Finding(Severity.Warning, "viServerClassUnknown",
+                    $"{kind} type {cls} is not one of LabVIEW's VI Server classes "
+                    + "(docs/vi-server-classes.tsv lists all 296). Check the spelling against "
+                    + "lvai_vi_server_reference; an invented class makes ValidateAIXML answer "
+                    + "`Invalid property ... the type of the source is void`.", uid));
+                continue;
+            }
+
+            if (kind == "Property Node")
+            {
+                if (ViServerVocabulary.PropertiesOf(cls) is not { } known) continue;
+                foreach (var field in ((string?)node.Attribute("fields") ?? "").Split(','))
+                {
+                    var plus = field.IndexOf('+');
+                    if (plus < 0) continue;
+                    var name = UnescapeAixml(field[(plus + 1)..]);
+                    if (name.Length == 0 || known.Contains(name)) continue;
+                    var dot = name.IndexOf('.');
+                    if (dot > 0 && known.Contains(name[..dot])) continue;
+
+                    var full = known.Where(k => k.EndsWith(":" + name, StringComparison.OrdinalIgnoreCase))
+                                    .OrderBy(k => k.Length).ToList();
+                    if (full.Count > 0)
+                    {
+                        // Several matches are several DIFFERENT properties - Version Number on
+                        // {LV.Application} is both Application:… and Operating System:… - so all
+                        // are named and none is chosen; Fix repairs only a single match.
+                        var candidates = string.Join(" or ",
+                            full.Select(k => $"\"{k}\" (written {EscapeColons(k)})"));
+                        findings.Add(new Finding(Severity.Error, CrashingPropertyName,
+                            $"Property \"{name}\" on {cls} is not a property name; "
+                            + (full.Count == 1 ? $"{candidates} is" : $"{candidates} are")
+                            + ". The short form was measured KILLING LabVIEW inside "
+                            + "ConvertAIXMLToVI - `Fatal insanities ... in ReportInsanities`, 4 of "
+                            + "4 runs for \"Version Number\" on {LV.Application} - so the "
+                            + "conversion tools refuse this document. Write the full name"
+                            + (full.Count == 1 ? "." : " of the one you mean."), uid));
+                        continue;
+                    }
+                    var near = Nearest(name, known);
+                    findings.Add(new Finding(Severity.Warning, "propertyNameNotKnown",
+                        $"Property \"{name}\" on {cls} is in neither LabVIEW's catalogue nor any "
+                        + "AIXML known to work"
+                        + (near is null ? "" : $"; the nearest known name is \"{near}\"")
+                        + ". Both lists are incomplete, so verify it: export a VI that uses the "
+                        + "property and copy NI's spelling. An unknown property name was measured "
+                        + "killing LabVIEW inside ConvertAIXMLToVI.", uid));
+                }
+            }
+            else if ((string?)node.Attribute("target") is { Length: > 0 } target
+                     && ViServerVocabulary.MethodsOf(cls) is { } methods)
+            {
+                var name = UnescapeAixml(target);
+                if (methods.Contains(ViServerVocabulary.FoldMethod(name))) continue;
+                var near = Nearest(ViServerVocabulary.FoldMethod(name), methods);
+                findings.Add(new Finding(Severity.Warning, "methodNameNotKnown",
+                    $"Method \"{name}\" on {cls} is in neither LabVIEW's catalogue nor any AIXML "
+                    + "known to work"
+                    + (near is null ? "" : $"; the nearest known name is \"{near}\"")
+                    + ". ValidateAIXML answers `Invalid method` for an invented one; what "
+                    + "ConvertAIXMLToVI does with it is not measured.", uid));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The repair for <see cref="CrashingPropertyName"/>: a short property name whose ONE known
+    /// <c>Category:Name</c> match leaves nothing to guess gets that name - in <c>fields</c> and in
+    /// the node's own terminal list, where the property's terminal carries the same name. Two or
+    /// more matches stay a reported error: picking one would be a guess.
+    /// </summary>
+    private static void RepairShortPropertyNames(XElement root, List<Repair> repairs)
+    {
+        if (!ViServerVocabulary.Loaded) return;
+        foreach (var node in root.Descendants("Node"))
+        {
+            if ((string?)node.Attribute("_name") != "Property Node") continue;
+            if ((string?)node.Attribute("type") is not { } cls
+                || ViServerVocabulary.PropertiesOf(cls) is not { } known) continue;
+            var fields = ((string?)node.Attribute("fields") ?? "").Split(',');
+            var changed = false;
+            for (var i = 0; i < fields.Length; i++)
+            {
+                var plus = fields[i].IndexOf('+');
+                if (plus < 0) continue;
+                var written = fields[i][(plus + 1)..];
+                var name = UnescapeAixml(written);
+                if (name.Length == 0 || known.Contains(name)) continue;
+                var dot = name.IndexOf('.');
+                if (dot > 0 && known.Contains(name[..dot])) continue;
+                var full = known.Where(k => k.EndsWith(":" + name, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (full.Count != 1) continue;
+
+                var replacement = EscapeColons(full[0]);
+                fields[i] = fields[i][..(plus + 1)] + replacement;
+                foreach (var attribute in new[] { "inputs", "outputs" })
+                {
+                    if ((string?)node.Attribute(attribute) is not { Length: > 0 } list) continue;
+                    node.SetAttributeValue(attribute, string.Join(",", list.Split(',').Select(entry =>
+                        entry.StartsWith(written + ":", StringComparison.Ordinal)
+                            ? replacement + entry[written.Length..]
+                            : entry)));
+                }
+                changed = true;
+                repairs.Add(new Repair(CrashingPropertyName,
+                    $"Property \"{name}\" on {cls} renamed to \"{full[0]}\" (in fields and in its "
+                    + "terminal name). The short form was measured killing LabVIEW inside "
+                    + "ConvertAIXMLToVI.",
+                    (string?)node.Attribute("uid")));
+            }
+            if (changed) node.SetAttributeValue("fields", string.Join(",", fields));
+        }
+    }
+
+    private static string UnescapeAixml(string text) =>
+        System.Text.RegularExpressions.Regex.Replace(text, @"\\([0-9A-Fa-f]{2})",
+            m => ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString());
+
+    private static string EscapeColons(string name) => name.Replace(":", "\\3A", StringComparison.Ordinal);
+
+    /// <summary>The closest known name by edit distance, when it is close enough to be a typo.</summary>
+    private static string? Nearest(string name, IEnumerable<string> known)
+    {
+        string? best = null;
+        var bestDistance = int.MaxValue;
+        foreach (var candidate in known)
+        {
+            if (Math.Abs(candidate.Length - name.Length) > bestDistance) continue;
+            var d = EditDistance(name.ToLowerInvariant(), candidate.ToLowerInvariant());
+            if (d < bestDistance) (best, bestDistance) = (candidate, d);
+        }
+        return best is not null && bestDistance <= Math.Max(2, name.Length / 3) ? best : null;
+    }
+
+    private static int EditDistance(string a, string b)
+    {
+        var previous = new int[b.Length + 1];
+        var current = new int[b.Length + 1];
+        for (var j = 0; j <= b.Length; j++) previous[j] = j;
+        for (var i = 1; i <= a.Length; i++)
+        {
+            current[0] = i;
+            for (var j = 1; j <= b.Length; j++)
+                current[j] = Math.Min(Math.Min(current[j - 1] + 1, previous[j] + 1),
+                                      previous[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1));
+            (previous, current) = (current, previous);
+        }
+        return previous[b.Length];
     }
 
     /// <summary>
@@ -1057,6 +1248,8 @@ internal static class AixmlCheck
                 uid));
         }
 
+        RepairShortPropertyNames(root, repairs);
+
         // NOTHING REPAIRED MEANS NOTHING RESERIALISED. Handing back a re-rendered document would
         // reformat a file that had no fault, and a caller comparing the two could not tell "clean"
         // from "rewritten". Caught by its own test rather than reasoned about.
@@ -1081,9 +1274,10 @@ internal static class AixmlCheck
             ["note"] = errors == 0 && warnings == 0
                 ? "Nothing found. This checks ONLY what ValidateAIXML was measured not to check - "
                   + "duplicate uids, a uid_parent naming no element, a Ring default outside its "
-                  + "values, an enum value that is a label or out of range, and a connector-pane "
+                  + "values, an enum value that is a label or out of range, a connector-pane "
                   + "terminal with no `connection` (which LabVIEW "
-                  + "reads as required). Wiring, terminal names, types, cycles and case "
+                  + "reads as required), and Property/Invoke names no source knows. Wiring, "
+                  + "terminal names, types, cycles and case "
                   + "completeness are LabVIEW's job and still need lvai_validate_aixml."
                 : "These are the gaps ValidateAIXML does not cover; it still has to run for "
                   + "wiring, terminal names, types and structure completeness.",

@@ -18,6 +18,15 @@ These two files remove that step for 3 078 methods and 6 410 properties across 1
 | [`vi-server-methods.tsv`](vi-server-methods.tsv) | 3 078 | `class`, `method`, `parameters`, `returns` |
 | [`vi-server-properties.tsv`](vi-server-properties.tsv) | 6 410 | `class`, `property`, `access` |
 | [`vi-server-classes.tsv`](vi-server-classes.tsv) | 296 | `class`, `parentId` — the class list, authoritative |
+| [`vi-server-aixml-names.tsv`](vi-server-aixml-names.tsv) | 614 | `class`, `kind`, `name`, `files` — the names WORKING AIXML uses, harvested from NI's cached exports and our helpers by `scripts/harvest_aixml_vi_server_names.py` |
+
+The fourth file exists because the first two miss names that work — whole classes such as
+`{LV.Project}`, methods such as `{LV.VI}` `GetControlIndexByName` — so a check against the
+catalogue alone accuses working code. Write the property's FULL name: the catalogue lists
+`Application:Version Number`, and the short `Version Number` killed LabVIEW 4 of 4 inside
+`ConvertAIXMLToVI` (2026-10-10). `lvai_check_aixml` judges every Property and Invoke name against
+all four files; `aixml-reference.md`, "A wrong PROPERTY name can kill LabVIEW", has the measurement
+and the severities.
 
 **THOSE 153 CLASSES ARE NOT ALL OF THEM, and the third file is why.** Both catalogues were harvested
 by placing nodes and exporting, so they contain what somebody happened to call — nothing more.

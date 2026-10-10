@@ -318,6 +318,16 @@ internal sealed class AixmlTools(LvaiConnection connection)
         declaration passes its class wire through and leaves the payload alone, so its own payload
         terminals are deliberately unwired and this is their normal shape; the spelling is the
         attribute present with an EMPTY net, `outputs="value:"`.
+        AND PROPERTY/INVOKE NAMES, measured 2026-10-10: `fields="read+Version Number"` on
+        {LV.Application} KILLED LabVIEW inside ConvertAIXMLToVI, 4 of 4 runs; the name is
+        `Application:Version Number`. An ERROR (`propertyNameUnknown`) when a property name is
+        unknown and a known name of the class is `Category:` plus it - lvai_convert_aixml_to_vi
+        and lvai_validate_aixml REFUSE such a document before any RPC, and `fix` writes the full
+        name when only ONE fits (`Version Number` fits two - `Operating System:Version Number` is
+        the other - so it stays an error naming both). A WARNING (`propertyNameNotKnown`, `methodNameNotKnown`, `viServerClassUnknown`) for
+        any other unknown name, with the nearest known one. Known means in LabVIEW's catalogue OR
+        in AIXML known to work (NI's exports, our helpers): the catalogue alone misses half of
+        our own working helpers' names, so a warning is a prompt to verify, not a verdict.
         WHAT THIS DOES NOT CHECK, and will not: an attribute the schema does not DECLARE at all -
         `text` on a FreeLabel where the name is `comment`. Same -2628, but catching it cheaply
         needs a copy of NI's attribute list per element, and a list one entry short would refuse a
@@ -340,7 +350,9 @@ internal sealed class AixmlTools(LvaiConnection connection)
         [Description("Also REPAIR what can be repaired unambiguously - a duplicate uid nothing is "
                    + "nested inside, a uid in LabVIEW's reserved range, an enum value given as a "
                    + "LABEL (set to that label's index), and an output terminal with no "
-                   + "`connection` (set to recommended, because a required output is never right). "
+                   + "`connection` (set to recommended, because a required output is never right), "
+                   + "and a property name with its category dropped when exactly one full name "
+                   + "fits (`Version Number` -> `Application:Version Number`, in fields and terminals). "
                    + "A dangling uid_parent, a bad Ring default, an enum index out of range and a "
                    + "required INPUT are never repaired: the author's intent is unknown, and for "
                    + "the parent, putting it on root IS the damage LabVIEW already does")]
@@ -494,6 +506,40 @@ internal sealed class AixmlTools(LvaiConnection connection)
     }
 
     /// <summary>
+    /// The one pre-check finding that BLOCKS an RPC: a Property Node field with its category
+    /// dropped (<see cref="AixmlCheck.CrashingPropertyName"/>). Every other finding is reported and
+    /// left to LabVIEW, because LabVIEW accepts those documents; this one was measured killing
+    /// LabVIEW inside ConvertAIXMLToVI (4 of 4 runs, `Fatal insanities ... in ReportInsanities`),
+    /// and a crash takes the whole session with it - every later call answers `Unavailable` until
+    /// a restart. ValidateAIXML is guarded too: it hands the document to the same generator, and
+    /// whether it survives the name is NOT measured, which is no reason to find out on a live
+    /// session. Returns the refusal, or null to go ahead (also when the file cannot be read - the
+    /// RPC reports that in the vocabulary the caller knows).
+    /// </summary>
+    internal static string? CrashGuard(string aixmlPath, bool allow)
+    {
+        if (allow) return null;
+        string text;
+        try { text = File.ReadAllText(aixmlPath); }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException
+                                        or ArgumentException or NotSupportedException) { return null; }
+
+        var fatal = AixmlCheck.Check(text).Where(f => f.Code == AixmlCheck.CrashingPropertyName).ToList();
+        if (fatal.Count == 0) return null;
+        return Json.Error("propertyNameWouldCrashLabview",
+            "Nothing was sent to LabVIEW: this document uses a property name with its category "
+            + "dropped, and that was measured KILLING LabVIEW inside ConvertAIXMLToVI. Each finding "
+            + "names the full property. lvai_check_aixml with fix: true writes the full names into "
+            + "the file (fields and terminal names), and lvai_generate_vi repairs it by itself; "
+            + "allowUnknownPropertyNames: true sends the document anyway.",
+            new
+            {
+                aiXmlFilePath = Path.GetFullPath(aixmlPath),
+                findings = fatal.Select(f => new { f.Code, f.Uid, f.Message }).ToArray(),
+            });
+    }
+
+    /// <summary>
     /// The pre-check as a sub-answer for the RPC tools. Returns null when the file cannot be read,
     /// which is deliberately NOT an error here: the RPC below will report a missing or unreadable
     /// file in the vocabulary the caller already knows.
@@ -587,9 +633,18 @@ internal sealed class AixmlTools(LvaiConnection connection)
             ConvertAIXMLToVI until a restart. Turn it on only to check the name itself.
             """)]
         bool preserveName = false,
+        [Description("""
+            Hand LabVIEW a document whose Property Node uses a SHORT property name the check knows
+            the full form of (`Version Number` for `Application:Version Number`). Off by default:
+            the short form was measured killing LabVIEW inside ConvertAIXMLToVI, so the document is
+            refused before any RPC. Turn it on only to measure that.
+            """)]
+        bool allowUnknownPropertyNames = false,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
+            if (CrashGuard(aiXmlFilePath, allowUnknownPropertyNames) is { } refusal) return refusal;
+
             // Timed for the same reason the batch export is: without it the only way to find out
             // what a step costs is to bracket the call from outside, which in an agent loop
             // measures model latency - about 7 s per turn - rather than LabVIEW. Measured that
@@ -662,9 +717,20 @@ internal sealed class AixmlTools(LvaiConnection connection)
         [Description("Local budget in seconds")] int timeoutSeconds = 240,
         [Description("Read the written VI's execution state and answer `executable`; a broken VI then answers ok false")]
         bool checkExecutable = true,
+        [Description("""
+            Convert a document whose Property Node uses a SHORT property name the check knows the
+            full form of (`Version Number` for `Application:Version Number`). Off by default: that
+            was measured KILLING LabVIEW in this RPC, 4 of 4 runs, so the document is refused
+            before anything reaches LabVIEW. lvai_check_aixml with fix repairs it.
+            """)]
+        bool allowUnknownPropertyNames = false,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
+            // BEFORE THE RPC, because after it there may be no LabVIEW left to answer: the preCheck
+            // further down is reported in the answer, which a crashed LabVIEW never produces.
+            if (CrashGuard(aiXmlFilePath, allowUnknownPropertyNames) is { } refusal) return refusal;
+
             // THE SAME GUARD AS lvai_generate_vi's, one layer down. This RPC is what a caller
             // reaches for when they want LabVIEW's own tolerance - and here there is none worth
             // having: a .vim target is accepted, answers errorCode 0, and writes a VI that is
