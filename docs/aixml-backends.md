@@ -268,7 +268,8 @@ NI's, and rebuilt when their AIXML or the parts in use change.
 
 ## A class, an interface and Caraya tests with NI's service unreachable (measured 2026-10-11)
 
-One script builds the same project on each backend through the built server: interface `Shape`
+`experiments/aixml-without-grpc/build_newway.py <root> <backend> [--dead-grpc] [--negative-control]`
+builds the same project on each backend through the built server: interface `Shape`
 with `Area` and `Perimeter`, class `Rectangle` (Width, Height) implementing it with both overrides
 (an `Unbundle By Name` on a cluster stand-in, retyped to the class), its four accessors, an accessor
 test, a method test (Area 3 x 4, Area 2.5 x 2, Perimeter 3 x 4), a Caraya runner, the run. The
