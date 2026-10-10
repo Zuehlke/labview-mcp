@@ -254,6 +254,14 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         needs projectPath: editing the class file while LabVIEW holds the project open is undone by
         LabVIEW's own save. Without it, a re-run is REFUSED (`memberAlreadyListedWithoutProject`)
         rather than allowed to proceed with a green answer.
+        A LOADED CALLER STILL BREAKS A RE-RUN: when a loaded VI (an override hook, any caller)
+        calls the member, the re-add answers Error 56003 AFTER the entry was dropped (measured
+        1.7.2-1.8.5). So before anything changes, a re-run asks the project's instance for the
+        member's callers in memory and refuses with `memberHasLoadedCallers`, naming them (this
+        check is NOT yet measured; `checkLoadedCallers: false` skips it). And a re-add puts the
+        member at the class root as public; `keepPlacement` (default) writes its old scope and
+        virtual folder back in a project-closed window afterwards (`restorePlacement` step; the
+        scope lines follow a measured route, the folder move is UNMEASURED).
         AddItemFromMemory's 56002 (already a loose project item) and 1004 (already a member) are
         still tolerated and still reported as `memberAlreadyExisted`, gated on the .lvclass itself
         listing the VI, because 1004 is also what a wrong `Name` input produces.
@@ -345,7 +353,20 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             method's `badWireCleanup`. Default true. A lost connection fails `ok`. Runs before the
             layout, so the layout sees the cleaned diagram.
             """)]
-        bool removeBadWires = true)
+        bool removeBadWires = true,
+        [Description("""
+            On a re-run, ask the project's instance first whether any LOADED VI calls a member
+            about to be dropped, and refuse (`memberHasLoadedCallers`) before anything changes.
+            Default true; turn it off only when the check itself cannot run and you have unhooked
+            every caller by hand.
+            """)]
+        bool checkLoadedCallers = true,
+        [Description("""
+            On a re-run, put each re-added member's access scope and virtual folder back - the add
+            puts it at the class root as public. Default true; a project close/open cycle is added
+            only when a member was non-public or in a folder.
+            """)]
+        bool keepPlacement = true)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_add_class_method", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
@@ -530,6 +551,27 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             // were simultaneous. The drop is conditional, so the number cannot be a literal either:
             // without it, openProject really is the second step.
             var order = 0;
+
+            // A LOADED CALLER TURNS A RE-RUN INTO 56003 AFTER THE ENTRY IS GONE. Measured with
+            // 1.7.2-1.8.5: re-running over a method an override hook (or any loaded VI) calls
+            // dropped the member entry and then failed the re-add with Error 56003, leaving the
+            // method outside its class. Closing the project does not unload such a caller, so the
+            // only safe moment to ask is now, before anything changes - in the project's instance.
+            if (alreadyListed.Count > 0 && projectPath is { Length: > 0 } && checkLoadedCallers)
+            {
+                var (step, refusal) = await LoadedCallersAsync(classPath, alreadyListed,
+                    Path.GetFullPath(projectPath), timeoutSeconds, ct);
+                step["order"] = ++order;
+                prologue.Add(step);
+                if (refusal is not null) return refusal;
+            }
+
+            // WHERE THE MEMBERS SAT, read before the drop: the re-add puts each one back at the
+            // class root as PUBLIC, and this is what puts scope and folder back afterwards.
+            var placements = alreadyListed.Count > 0 && keepPlacement
+                ? ClassMemberPlacement.Read(File.ReadAllText(classPath), alreadyListed)
+                    .Where(p => p.NeedsRestore).ToList()
+                : [];
 
             if (projectPath is { Length: > 0 } && (needsConvert || alreadyListed.Count > 0))
             {
@@ -941,6 +983,23 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 results.Add(methodResult);
             }
 
+            // ---- PHASE THREE, only for a re-run that moved a non-public or foldered member: close,
+            //      put scope and folder back in the class file, open again. The edit has to sit in
+            //      a project-closed window for the same reason the drop does.
+            JsonObject? placementStep = null;
+            var addedNames = results.OfType<JsonObject>()
+                .Where(r => r["ok"]?.GetValue<bool>() == true)
+                .Select(r => Path.GetFileName(r["vi"]?.GetValue<string>() ?? ""))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var toRestore = placements.Where(p => addedNames.Contains(p.Member)).ToList();
+            if (projectPath is { Length: > 0 } && toRestore.Count > 0)
+            {
+                placementStep = await RestorePlacementAsync(classPath, Path.GetFullPath(projectPath),
+                    toRestore, timeoutSeconds, ct);
+                placementStep["order"] = ++order;
+                prologue.Add(placementStep);
+            }
+
             return Json.Document(new JsonObject
             {
                 // A LOST CONNECTION IS NOT OK, although the member WAS added: the method's diagram
@@ -949,6 +1008,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 ["errorKind"] = lostConnections.Count > 0 ? BadWireCleanup.LostConnectionKind : null,
                 ["methodsWithLostConnections"] = lostConnections.Count == 0 ? null
                     : new JsonArray([.. lostConnections.Select(v => (JsonNode)v!)]),
+                ["placementRestored"] = placementStep?["restored"]?.DeepClone(),
                 ["lvclassPath"] = classPath,
                 ["methodsAsked"] = methods.Count,
                 ["methodsAdded"] = added,
@@ -971,6 +1031,162 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                       "one that failed at `convert` or `conpane` never reached the class at all.",
             });
         }), choice);
+    }
+
+    // ------------------------------------------------------------------ re-run guards
+
+    internal const string CallersHelper = "lvai_member_callers";
+
+    /// <summary>
+    /// The A3 guard: which LOADED VIs in the project's application instance call the members a
+    /// re-run is about to drop. The project is opened first when it is not the active one -
+    /// opening it loads the class, and with it every member that calls the method, which is
+    /// exactly the set that answers 56003 when the re-add reopens it.
+    /// Returns the step to report and, when callers exist or the check could not run, the refusal.
+    /// </summary>
+    private async Task<(JsonObject Step, string? Refusal)> LoadedCallersAsync(
+        string classPath, IReadOnlyList<string> members, string projectPath,
+        int timeoutSeconds, CancellationToken ct)
+    {
+        var step = new JsonObject { ["step"] = "checkLoadedCallers" };
+        var names = QualifiedMemberNames(classPath, members);
+        step["members"] = new JsonArray([.. names.Select(n => (JsonNode)n)]);
+        string Unchecked(string why) => Json.Error("loadedCallersUnchecked",
+            why + " A loaded caller makes the re-add fail with Error 56003 AFTER the member entry " +
+            "was dropped, so the re-run was stopped before anything changed.",
+            new JsonObject
+            {
+                ["lvclassPath"] = classPath,
+                ["members"] = step["members"]!.DeepClone(),
+                ["hint"] = "Pass checkLoadedCallers: false only when every caller has been unhooked.",
+            });
+
+        if (StatusTools.ScriptsDirectory() is not { } scripts)
+            return (step, Unchecked("The scripts folder is missing, so the check could not run."));
+
+        var actions = new ActionTools(connection);
+        var (active, _, activePath) = await actions.ProjectIsActiveAsync(timeoutSeconds, ct);
+        if (active is not true || !string.Equals(activePath is null ? null : Path.GetFullPath(activePath),
+                projectPath, StringComparison.OrdinalIgnoreCase))
+        {
+            var opened = JsonNode.Parse(await actions.OpenFileAsync(viPath: null, viName: null,
+                projectPath: projectPath, projectName: Path.GetFileName(projectPath), checkActive: true,
+                timeoutSeconds, ct: ct));
+            step["openedProject"] = opened?["projectBecameActive"]?.DeepClone();
+            if (opened?["projectBecameActive"]?.GetValue<bool>() is not true)
+                return (step, Unchecked("The project could not be made active to look for callers."));
+        }
+
+        var steps = new JsonArray();
+        var headless = new DqmhHeadless(connection);
+        if (await headless.EnsureWrapperAsync(scripts, CallersHelper, [], projectPath, steps, timeoutSeconds, ct)
+            is { } wrapperError)
+            return (step, Unchecked($"The callers helper could not be built: {wrapperError}"));
+        var (values, helperError) = await new DqmhTools(connection).RunDetailedAsync(scripts, CallersHelper,
+            new() { ["Member Names"] = DqmhFrameTools.StringArrayXml("Member Names", names) }, timeoutSeconds, ct);
+        if (values is null || helperError is not null || DqmhTools.Failed(values) is { Length: > 0 })
+            return (step, Unchecked("The callers helper failed: " + (helperError ?? DqmhTools.Failed(values ?? []))));
+
+        var loaded = DqmhHeadless.Listed(values, "Loaded Members");
+        var callers = GroupCallers(DqmhHeadless.Listed(values, "Callers"));
+        step["loadedMembers"] = DqmhHeadless.Array(loaded);
+        step["callers"] = CallersJson(callers);
+        if (callers.Count == 0) return (step, null);
+
+        return (step, Json.Error("memberHasLoadedCallers",
+            "Loaded VIs call " + string.Join(", ", callers.Keys) + ". Re-adding a member a loaded VI " +
+            "calls fails with Error 56003 AFTER its entry was dropped from the class, so nothing was " +
+            "changed.",
+            new JsonObject
+            {
+                ["lvclassPath"] = classPath,
+                ["callers"] = CallersJson(callers),
+                ["hint"] = "Unhook each caller first - lvai_af_remove_hook for an override hook, or " +
+                           "lvai_swap_subvis onto a placeholder (lvai_placeholder_subvi) for any caller - " +
+                           "then re-run, then hook or swap back. A caller of the same pane can also simply " +
+                           "be swapped onto a NEW member that carries the new behaviour.",
+            }));
+    }
+
+    /// <summary>The library-qualified in-memory name of each member, from the class file.</summary>
+    internal static List<string> QualifiedMemberNames(string classPath, IEnumerable<string> members)
+    {
+        string qualified;
+        try { qualified = LvClass.Read(classPath).QualifiedName; }
+        catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException or IOException)
+        {
+            qualified = Path.GetFileName(classPath);
+        }
+        return [.. members.Select(m => $"{qualified}:{Path.GetFileName(m)}")];
+    }
+
+    /// <summary>`member|caller` pairs from the helper, grouped by member, callers de-duplicated.</summary>
+    internal static SortedDictionary<string, List<string>> GroupCallers(IEnumerable<string> pairs)
+    {
+        var grouped = new SortedDictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var pair in pairs)
+        {
+            var bar = pair.IndexOf('|');
+            if (bar <= 0 || bar == pair.Length - 1) continue;
+            var (member, caller) = (pair[..bar], pair[(bar + 1)..]);
+            if (!grouped.TryGetValue(member, out var list)) grouped[member] = list = [];
+            if (!list.Contains(caller, StringComparer.Ordinal)) list.Add(caller);
+        }
+        return grouped;
+    }
+
+    private static JsonObject CallersJson(SortedDictionary<string, List<string>> callers)
+    {
+        var json = new JsonObject();
+        foreach (var (member, list) in callers) json[member] = new JsonArray([.. list.Select(c => (JsonNode)c)]);
+        return json;
+    }
+
+    /// <summary>
+    /// Close, put each member's scope lines and folder back in the class file, open again. The
+    /// edit itself is ClassMemberPlacement.Restore; this is only the project-closed window around it.
+    /// </summary>
+    private async Task<JsonObject> RestorePlacementAsync(string classPath, string projectPath,
+        IReadOnlyList<ClassMemberPlacement.Placement> placements, int timeoutSeconds, CancellationToken ct)
+    {
+        var step = new JsonObject
+        {
+            ["step"] = "restorePlacement",
+            ["wanted"] = new JsonArray([.. placements.Select(p => (JsonNode)p.Describe())]),
+            ["measured"] = "scope lines: the set_scope route (both properties, project closed); " +
+                           "moving a member into a folder by a file edit: UNMEASURED",
+        };
+        var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+            helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+            timeoutSeconds: timeoutSeconds, ct: ct);
+        step["closeProject"] = Read(closed);
+
+        var (text, notes) = ClassMemberPlacement.Restore(File.ReadAllText(classPath), placements);
+        step["notes"] = new JsonArray([.. notes.Select(n => (JsonNode)n)]);
+        var restored = false;
+        if (text is not null)
+        {
+            try
+            {
+                File.WriteAllText(classPath, text);
+                restored = true;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                step["writeError"] = e.Message;
+            }
+        }
+        step["restored"] = restored;
+
+        var opened = await new ActionTools(connection).OpenFileAsync(viPath: null, viName: null,
+            projectPath: projectPath, projectName: Path.GetFileName(projectPath), checkActive: true,
+            timeoutSeconds, ct: ct);
+        step["openProject"] = Read(opened);
+        step["thenWhat"] = restored
+            ? "Read the members back with lvai_describe_class (scope) and check them cold with " +
+              "lvai_exec_state after the next project close."
+            : "The class file was left as the re-add wrote it: set scope and folder by hand.";
+        return step;
     }
 
     // ------------------------------------------------------------------ verification

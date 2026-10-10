@@ -1,0 +1,65 @@
+<VI _name="lvai_member_callers.vi" description="READ-ONLY\3A for each qualified VI name in Member Names (e.g. Lib.lvlib\3ACls.lvclass\3AStart.vi)\2C says whether the ACTIVE PROJECT's application instance holds it in memory and\2C if it does\2C which VIs in memory call it (Callers' Names). A member that is not in memory cannot have a loaded caller\2C so it is never opened - opening it would load it. lvai_add_class_method asks this before it drops a member entry for a re-run\3A a loaded caller makes the re-add answer Error 56003 AFTER the entry is gone. The name test and the open by name are lvdqmh_dirty_members' (Application\3AAll VIs In Memory\2C Open VI Reference with the in-memory name)\3B Callers' Names itself is UNMEASURED here. Callers lists one entry per caller as member|caller.">
+  <Control _name="Member Names" conIdx="0" connection="recommended" outputs="value:5000.value" type="array{string}" uid="5000" uid_parent="root" value="[]"/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:5001.value" type="cluster{bool.status,int32.code,string.source}" uid="5001" uid_parent="root" value="[false,0,]"/>
+
+  <FreeLabel comment="Reads only - nothing is changed" uid="5002" uid_parent="root"/>
+
+  <Constant _name="bar" outputs="value:5003.value" type="string" uid="5003" uid_parent="root" value="|"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):5001.value" outputs="Project\3AActive Project:5010.proj,reference out:,error out:5010.error out" uid="5010" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:5010.proj,error in (no error):5010.error out" outputs="Application:5011.app,reference out:,error out:5011.error out" uid="5011" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application\3AAll VIs In Memory" type="{LV.Application}" inputs="reference:5011.app,error in (no error):5011.error out" outputs="Application\3AAll VIs In Memory:5012.names,reference out:,error out:5012.error out" uid="5012" uid_parent="root"/>
+  <Indicator _name="project error" inputs="value:5012.error out" type="cluster{bool.status,int32.code,string.source}" uid="5013" uid_parent="root" value="[false,0,]"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="5100" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5000.value" mode="index" outputs="value:5101.member" uid="5101" uid_parent="5100"/>
+    <Tunnel _id="In2" inputs="value:5012.names" outputs="value:5102.inmemory" uid="5102" uid_parent="5100"/>
+    <Tunnel _id="In3" inputs="value:5011.app" outputs="value:5103.app" uid="5103" uid_parent="5100"/>
+    <Tunnel _id="In4" inputs="value:5003.value" outputs="value:5104.bar" uid="5104" uid_parent="5100"/>
+    <ShiftReg uid="5105" uid_parent="5100">
+      <Left inputs="value:5012.error out" outputs="value:5106.err" uid="5106" uid_parent="5105"/>
+      <Right inputs="value:5150.err" outputs="value:5107.err" uid="5107" uid_parent="5105"/>
+    </ShiftReg>
+    <Node _name="Search 1D Array" inputs="1D array:5102.inmemory,element:5101.member,start index (0):" outputs="index of element:5110.idx" uid="5110" uid_parent="5100"/>
+    <Node _name="Greater Or Equal To 0?" inputs="x:5110.idx" outputs="x &gt;= 0?:5111.loaded" uid="5111" uid_parent="5100"/>
+    <Structure _name="Case Structure" selectin="5111.loaded" uid="5120" uid_parent="5100">
+      <Tunnel _id="In1" inputs="value:5101.member" uid="5121" uid_parent="5120"/>
+      <Tunnel _id="In2" inputs="value:5103.app" uid="5122" uid_parent="5120"/>
+      <Tunnel _id="In3" inputs="value:5106.err" uid="5123" uid_parent="5120"/>
+      <CaseFrame selector="True" selectout="" uid="5130" uid_parent="5120">
+        <Tunnel _id="In1" outputs="value:5131.member" uid="5131" uid_parent="5130"/>
+        <Tunnel _id="In2" outputs="value:5132.app" uid="5132" uid_parent="5130"/>
+        <Tunnel _id="In3" outputs="value:5133.err" uid="5133" uid_parent="5130"/>
+        <Node _name="Open VI Reference" inputs="application reference (local):5132.app,vi path:5131.member,error in (no error):5133.err" outputs="vi reference:5134.vi,error out:5134.error out" uid="5134" uid_parent="5130"/>
+        <Node _name="Property Node" fields="read+Callers' Names" type="{LV.VI}" inputs="reference:5134.vi,error in (no error):5134.error out" outputs="Callers' Names:5135.callers,reference out:,error out:5135.error out" uid="5135" uid_parent="5130"/>
+        <Node _name="Close Reference" inputs="reference:5134.vi,error in (no error):5135.error out" outputs="error out:5136.error out" uid="5136" uid_parent="5130"/>
+        <Tunnel _id="Out1" inputs="value:5135.callers" uid="5137" uid_parent="5130"/>
+        <Tunnel _id="Out2" inputs="value:5136.error out" uid="5138" uid_parent="5130"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="5140" uid_parent="5120">
+        <Tunnel _id="In1" outputs="value:" uid="5141" uid_parent="5140"/>
+        <Tunnel _id="In2" outputs="value:" uid="5142" uid_parent="5140"/>
+        <Tunnel _id="In3" outputs="value:5143.err" uid="5143" uid_parent="5140"/>
+        <Constant outputs="value:5144.none" type="array{string}" uid="5144" uid_parent="5140" value="[]"/>
+        <Tunnel _id="Out1" inputs="value:5144.none" uid="5145" uid_parent="5140"/>
+        <Tunnel _id="Out2" inputs="value:5143.err" uid="5146" uid_parent="5140"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:5149.callers" uid="5149" uid_parent="5120"/>
+      <Tunnel _id="Out2" outputs="value:5150.err" uid="5150" uid_parent="5120"/>
+    </Structure>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="5160" uid_parent="5100">
+      <Tunnel _id="In1" inputs="value:5149.callers" mode="index" outputs="value:5161.caller" uid="5161" uid_parent="5160"/>
+      <Tunnel _id="In2" inputs="value:5101.member" outputs="value:5162.member" uid="5162" uid_parent="5160"/>
+      <Tunnel _id="In3" inputs="value:5104.bar" outputs="value:5163.bar" uid="5163" uid_parent="5160"/>
+      <Node _name="Concatenate Strings" inputs="string:5162.member,string:5163.bar,string:5161.caller" outputs="concatenated string:5164.pair" uid="5164" uid_parent="5160"/>
+      <Tunnel _id="Out1" inputs="value:5164.pair" mode="index" outputs="value:5165.pairs" uid="5165" uid_parent="5160"/>
+    </Structure>
+    <Tunnel _id="Out1" cond="5111.loaded" inputs="value:5101.member" mode="index" outputs="value:5170.loaded" uid="5170" uid_parent="5100"/>
+    <Tunnel _id="Out2" inputs="value:5165.pairs" mode="concat" outputs="value:5171.callers" uid="5171" uid_parent="5100"/>
+  </Structure>
+  <Indicator _name="Loaded Members" inputs="value:5170.loaded" type="array{string}" uid="5180" uid_parent="root" value="[]"/>
+  <Indicator _name="Callers" inputs="value:5171.callers" type="array{string}" uid="5181" uid_parent="root" value="[]"/>
+
+  <Node _name="Close Reference" inputs="reference:5011.app,error in (no error):5107.err" outputs="error out:5190.error out" uid="5190" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:5190.error out" type="cluster{bool.status,int32.code,string.source}" uid="5191" uid_parent="root" value="[false,0,]"/>
+</VI>
