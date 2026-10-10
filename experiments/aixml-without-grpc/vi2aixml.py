@@ -135,6 +135,25 @@ def decode_value(tree, hexstr):
         return None   # an encoding this reader does not know; the caller notes it
 
 
+def _unquad(b):
+    """IEEE binary128, big-endian -> float (the inverse of the composer's _quad)."""
+    if len(b) < 16 or not any(b):
+        return 0.0
+    hi = int.from_bytes(b[:2], "big")
+    sign, exp = hi >> 15, hi & 0x7FFF
+    frac = int.from_bytes(b[2:16], "big")
+    if exp == 0x7FFF:
+        return float("-inf") if sign else float("inf")
+    v = (1 + frac / float(1 << 112)) * 2.0 ** (exp - 16383)
+    return -v if sign else v
+
+
+def _fmt_complex(re_, im):
+    if im == 0:
+        return fmt_float(re_)
+    return "%s%s%si" % (fmt_float(re_), "+" if im >= 0 else "", fmt_float(im))
+
+
 def _flat_decode(tree, b, pos):
     """One flattened value -> (AIXML text, next position): the inverse of the composer's
     _flat - an array is an int32 size per dimension then its elements, a cluster its fields one
@@ -175,6 +194,13 @@ def _flat_decode(tree, b, pos):
         return fmt_float(struct.unpack(">d", b[pos:pos + 8])[0]), pos + 8
     if t == "NumFloat32":
         return fmt_float(struct.unpack(">f", b[pos:pos + 4])[0]), pos + 4
+    if t == "NumFloatExt":
+        return fmt_float(_unquad(b[pos:pos + 16])), pos + 16
+    if t in ("NumComplex128", "NumComplex64"):
+        n = 8 if t == "NumComplex128" else 4
+        f = ">d" if n == 8 else ">f"
+        re_, im = struct.unpack(f, b[pos:pos + n])[0], struct.unpack(f, b[pos + n:pos + 2 * n])[0]
+        return _fmt_complex(re_, im), pos + 2 * n
     if t in INT_FMT:
         n = struct.calcsize(INT_FMT[t])
         return str(struct.unpack(INT_FMT[t], b[pos:pos + n])[0]), pos + n
@@ -190,7 +216,7 @@ def _flat_decode(tree, b, pos):
 def _decode_value(tree, hexstr):
     if tree.get("Type") == "TypeDef" and tree.find("TypeDesc") is not None:
         return _decode_value(tree.find("TypeDesc"), hexstr)
-    if tree.get("Type") in ("Array", "Cluster"):
+    if tree.get("Type") in ("Array", "Cluster", "NumFloatExt", "NumComplex128", "NumComplex64"):
         return _flat_decode(tree, bytes.fromhex(hexstr) if hexstr else b"", 0)[0]
     t = tree.get("Type")
     if t and t.startswith("Unit"):
@@ -302,6 +328,19 @@ def names_for(cls, n):
     return t[:n]
 
 
+class _Owners(dict):
+    """term uid -> (element, terminal name, is sink), remembering the order terminals were
+    registered in - which is their termList order, the order a node's repeated terminal names
+    (element, value, string) are matched in by the composer."""
+    def __init__(self):
+        super().__init__()
+        self.order = []
+
+    def __setitem__(self, k, v):
+        super().__setitem__(k, v)
+        self.order.append(k)
+
+
 class Reader:
     """Heap -> AIXML. uids follow LabVIEW's own export (uid_survey.py over 200 exports): a
     control/constant is its ddo, a node its own uid, a Structure the structure node, a CaseFrame
@@ -323,11 +362,12 @@ class Reader:
             for row in aixml2vi._tsv(extra):
                 self.prim_name.setdefault(row[0], aixml2vi.unescape(html.unescape(row[1])))
         self.out = ET.Element("VI")
-        self.term_owner = {}    # heap term uid -> (aixml element, terminal name, is_sink)
+        self.term_owner = _Owners()    # heap term uid -> (aixml element, terminal name, is_sink)
         self.notes = []
         self.call_targets = self._call_targets()
         self.diags = []         # every diagram walked, for wiring
         self.ordered_inputs = {}   # element -> its inputs in TERMINAL order, unwired ones listed
+        self.ordered_ports = []    # (element, attr, [(term uid, name)]) rewritten after wiring
         self.term_net = {}
 
     # ---- helpers ---------------------------------------------------------------------------
@@ -373,6 +413,12 @@ class Reader:
             n = ref if ref.get("class") else defs.get(ref.get("uid"))
             if n is not None:
                 out.append(n)
+        # a Flat Sequence is defined in the z list only - the nodeList names its FRAMES, which
+        # are defined inside it - so it is picked up from the z list
+        seen = {id(n) for n in out}
+        for e in (diag.find("zPlaneList") if diag.find("zPlaneList") is not None else []):
+            if e.get("class") == "flatSequence" and id(e) not in seen:
+                out.append(e)
         return out
 
     # ---- the whole VI ------------------------------------------------------------------------
@@ -424,8 +470,32 @@ class Reader:
                 self.notes.append("%s %r: its terminal was not found on a walked diagram" % (el.tag, el.get("_name")))
         for d in self.diags:
             self.wire(d)
+        # a node's inputs and outputs in TERMINAL order: signal order put Build Array's two
+        # `element`s the wrong way round (a round trip of t66 built [2.5,7] for [7,2.5])
+        per_el = {}
+        seen = set()
+        for tu in self.term_owner.order:
+            if tu in seen:
+                continue
+            seen.add(tu)
+            el, nm, sink = self.term_owner[tu]
+            if el.tag in ("Node", "Call") and not nm.startswith("#"):
+                per_el.setdefault(id(el), (el, []))[1].append((tu, nm, sink))
+        for el, terms in per_el.values():
+            ins = ["%s:%s" % (escape(nm), self.term_net[tu]) for tu, nm, sink in terms if sink and tu in self.term_net]
+            outs = ["%s:%s" % (escape(nm), self.term_net[tu]) for tu, nm, sink in terms if not sink and tu in self.term_net]
+            for attr, items in (("inputs", ins), ("outputs", outs)):
+                if items:
+                    el.set(attr, ",".join(items))
+                elif attr in el.attrib:
+                    del el.attrib[attr]
         for el, order in self.ordered_inputs.values():
             el.set("inputs", ",".join("%s:%s" % (escape(nm), self.term_net.get(u, "")) for u, nm in order))
+        for el, attr, order in self.ordered_ports:
+            if any(self.term_net.get(u) for u, _ in order):
+                el.set(attr, ",".join("%s:%s" % (escape(nm), self.term_net.get(u, "")) for u, nm in order))
+            elif attr in el.attrib:
+                del el.attrib[attr]
         for n in self.notes:
             self.out.append(ET.Comment(" vi2aixml: " + n + " "))
         return self.out
@@ -624,13 +694,21 @@ class Reader:
         for term, d in sr:
             reg = ET.Element("ShiftReg", {"uid": d.get("uid"), "uid_parent": node.get("uid")})
             lefts = [x.get("uid") for x in d.findall("lsrDCOList/SL__arrayElement")]
+            # ONE Left for all elements of a stacked register (NI: inputs value,value,value -
+            # the initializers - and outputs value,value,value - element 0 first, as the rSR's
+            # lsrDCOList lists them), each position kept even when unwired
+            left = ET.SubElement(reg, "Left", {"uid": lefts[0] if lefts else d.get("uid"), "uid_parent": d.get("uid")})
+            l_ins, l_outs = [], []
             for k, lu in enumerate(lefts):
                 lterm = by_dco.get(lu)
-                left = ET.SubElement(reg, "Left", {"uid": lu, "uid_parent": d.get("uid")})
                 if lterm is not None:
                     self.term_owner[lterm.get("uid")] = (left, "value", True)
-                for t in inner_terms.get(lu, []):
-                    self.term_owner[t.get("uid")] = (left, "value" if k == 0 else "value%d" % (k + 1), False)
+                    l_ins.append((lterm.get("uid"), "value"))
+                for t in inner_terms.get(lu, [])[:1]:
+                    self.term_owner[t.get("uid")] = (left, "value", False)
+                    l_outs.append((t.get("uid"), "value"))
+            self.ordered_ports.append((left, "inputs", l_ins))
+            self.ordered_ports.append((left, "outputs", l_outs))
             rin = inner_terms.get(d.get("uid"), [])
             right = ET.SubElement(reg, "Right", {"uid": rin[0].get("uid") if rin else d.get("uid"),
                                                  "uid_parent": d.get("uid")})
@@ -814,8 +892,13 @@ class Reader:
             active = None
         conds = []
         for info in node.findall("commentSelInfoArray/SL__arrayElement"):
-            strs = [bytes.fromhex(x.text).decode("mac_roman") if x.text else "" for x in info.findall("Tag0000/SL__arrayElement")]
-            op = "!=" if (info.findtext("activeDiag/activeDiag/SL__arrayElement/activePlot") or "").upper() == "FE" else "=="
+            # SelectorInfoElement > activeDiag (ExpressionInfo) > Tag0000 (the strings) and
+            # activeDiag (the tree, its root's activePlot the operator)
+            expr = info.find("activeDiag")
+            strs = [bytes.fromhex(x.text).decode("mac_roman") if x.text else ""
+                    for x in (expr.findall("Tag0000/SL__arrayElement") if expr is not None else [])]
+            root_plot = (expr.findtext("activeDiag/SL__arrayElement/activePlot") if expr is not None else None) or ""
+            op = "!=" if root_plot.upper() == "FE" else "=="
             conds.append("%s%s%s" % (strs[0], op, strs[1]) if len(strs) == 2 else "Default")
         d_els = []
         for i, fr in enumerate(frames):
@@ -876,9 +959,16 @@ class Reader:
             self.notes.append("node %s: no template names its terminals" % TEMPLATE_CLASSES[cls])
             names = ["?"] * len(terms)
         for t, nm in zip(terms, names):
-            self.term_owner[t.get("uid")] = (el, nm, not self._is_out(t))
+            # a template names a repeated terminal value, value#1 ... - the #n is the composer's
+            # own key, AIXML repeats the plain name
+            # direction from the TERMINAL's sink bit (0x8000), which every WIRED input carries:
+            # Scan From String's outputs do not set bit 0 on their DCO
+            sink = bool(int(t.findtext("objFlags") or 0) & SINK)
+            self.term_owner[t.get("uid")] = (el, nm.split("#")[0], sink)
         if cls == "cpdArith":
-            op = (int(node.findtext("objFlags") or 0) >> 16) & 0xF
+            # the operation is objFlags 0x70000 only - 0x80000 is set beside it (0x90000 is a
+            # Multiply), exactly the mask the composer writes
+            op = (int(node.findtext("objFlags") or 0) >> 16) & 0x7
             el.set("operation", CA_OPS.get(op, "Add"))
             inv = []
             outs = [t for t in terms if self._is_out(t)]
@@ -979,6 +1069,9 @@ class Reader:
         terms = list(node.find("termList"))
         out = next((t for t in terms if self._is_out(t)), None)
         ot = self.tid_tree(out) if out is not None else None
+        # the heap holds Build Array's inputs BOTTOM first: a composed [7, 2.5] had 2.5's
+        # terminal first in termList, and LabVIEW built [7, 2.5] from it
+        terms = [t for t in terms if t is out] + list(reversed([t for t in terms if t is not out]))
         for t in terms:
             if t is out:
                 self.term_owner[t.get("uid")] = (el, "appended array", False)
@@ -1141,6 +1234,14 @@ class Reader:
                     src_el.set("selectout", net)
             else:
                 net = "%s.%s" % (src_el.get("uid"), escape(src_term))
+                # two outputs of one name (Index Array's element, element) must not share a net
+                # name - the second wire then read the first one (round trip of t78)
+                self.used_nets = getattr(self, "used_nets", set())
+                base, k = net, 2
+                while net in self.used_nets:
+                    net = "%s%d" % (base, k)
+                    k += 1
+                self.used_nets.add(net)
                 self._add(src_el, "outputs", src_term, net)
             for tu in sig.find("termList"):
                 self.term_net[tu.get("uid")] = net

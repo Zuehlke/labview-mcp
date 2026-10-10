@@ -420,10 +420,12 @@ as the text of its `textNodeLabel`, `errOfst` = the formula's length.
 
 **Three composed VIs KILLED LabVIEW in the load check of 152 composed NI VIs**, all three on a
 fatal `Insane Wire {sub}` / `Insane List {dupe}` (`cov_load.py` now records such a VI as
-`CRASH` and restarts LabVIEW). The causes, each now REFUSED rather than composed:
-a **stacked shift register** (one `Left` with `value,value2,value3`) mapped onto one left
-terminal, which put that terminal into three signals; a wire carrying a **typedef** whose `.ctl`
-the caller does not link; and a wire carrying a **DataLog refnum** handed out by a subVI's pane.
+`CRASH` and restarts LabVIEW). The causes: a **stacked shift register** (one `Left` with
+`value,value2,value3`) mapped onto one left terminal, which put that terminal into three
+signals - now composed as LabVIEW writes it, one `lSR` per element, all named in the `rSR`'s
+`lsrDCOList` top to bottom (`t96`: the last three values of `i` sum to 6); and, still REFUSED,
+a wire carrying a **typedef** whose `.ctl` the caller does not link and a wire carrying a
+**DataLog refnum** handed out by a subVI's pane.
 The rule since then: a wire may only carry a type a composed wire has carried in a test that
 loads clean (`unverified_wire_type`); anything else is refused by name.
 
@@ -451,8 +453,46 @@ The probes here use only names NI's own exports use. Flagged as a separate task 
 | `t93` | control reference, This VI, Static VI Reference | True, `Clear Errors.vi` |
 | `t94` | expression nodes `2*x+1`, `n*n` | 7, 49 |
 | `t95` | feedback node in a For Loop, initializer outside | n = 5 → 10, n = 0 → 0 |
+| `t96` | stacked shift register, three elements | n = 5 → 6, n = 3 → 1 |
+
+A Conditional Disable's `!=` is the root `TreeElt`'s `activePlot` `FE` (`==` is `FD`), read off
+NI's *Scale TDMS Data.vi* (` TARGET_TYPE!=RT `); NI's export writes the error case's error
+frame `Error ..`, which the composer now accepts beside `Error`.
 
 ## 4. VI → AIXML, against NI's own exports
+
+**Since 2026-10-10 the reader walks the WHOLE VI**, and `compare_full.py` measures it on every
+fact of every cached export rather than on the top-level subset: elements with their
+`uid_parent`, the attributes that carry meaning (`selector`, `fields`, `target`, `text`,
+`element`, `link`, `cond`, `mode`, `selectin`), constant values and wires.
+
+| | the old reader | now |
+|---|---|---|
+| VIs identical in every fact (all 760 cached exports) | - | **81** |
+| elements | 24 % (150-VI sample) | **84.9 %** (34 870 of 41 085) |
+| attributes | 0 % | **66.9 %** |
+| constant values | 62 % | **77.1 %** |
+| wires | 10 % | **77.1 %** (24 050 of 31 181) |
+
+What it reads: loops (tunnels with `mode="index"`, shift registers including stacked ones,
+`count`/`maxin`/`maxout`, `Condition`), Case Structures (selectors as NI writes them: `0..`,
+`..-1`, `"a"..."b"`, `No Error`/`Error ..`, items joined by `\2C `, `cond="true"`), Event
+Structures (` "Stop": Value Change `, ` Timeout `, ` Panel Close? `), Flat Sequences, Diagram and
+Conditional Disable structures (`==`, `!=`), subVI calls (`target` from the diagram's link
+records; a polymorphic call `adapt="true"` with `instance`), Bundle/Unbundle (By Name), Index
+and Build Array, the fixed-shape nodes through the composer's template parts, Property and
+Invoke Nodes (implicit ones with `link`), VI Server and Static VI References, Local Variables,
+Feedback and Expression Nodes, fixed constants, and compound types and constant values. uids
+follow NI's export convention, settled by `uid_survey.py` over 200 exports (a Tunnel is the
+outer terminal, a case frame's half the frame's inner terminal, a Condition the `lTst` DCO, a
+ShiftReg the `rSR` DCO, its Left the `lSR` DCO, its Right the `rSR`'s inner terminal).
+
+Open, by size: call targets whose link block pylabview stores as an unparsed binary (class
+VIs), malleable and Express VI instances (NI names the `.vim` / the Express VI, the link names
+the instance), In Place Element structures, Timed Loops, and class (`UDClassInst`) property
+nodes.
+
+**The earlier subset measurement**, kept for the record:
 
 `compare_with_nigel.py` compares `vi2aixml.py` with LabVIEW's cached exports of the same VIs
 (written in earlier sessions through gRPC; nothing is asked of LabVIEW now), on the root-level
@@ -588,9 +628,14 @@ sequences — and, for calls, dynamic-dispatch methods and Express VIs.
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 35 composition tests with expected outputs, LabVIEW-log sanity gate |
-| `compare_with_nigel.py`, `coverage.py`, `call_coverage.py` | the measurements of sections 4, 4b and 6 |
-| `lv-com.ps1`, `lv-keeper.ps1`, `lv-windows.ps1` | LabVIEW over COM |
+| `selftest.py`, `tests/` | 71 composition tests with expected outputs, LabVIEW-log sanity gate, LabVIEW restarted when its log fills |
+| `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI run against the same expectations |
+| `compare_with_nigel.py`, `compare_full.py`, `uid_survey.py` | the reader against NI's exports: top-level subset, whole VI, uid conventions |
+| `coverage.py`, `cov_load.py`, `call_coverage.py` | compose NI's exports; load them (a crash is recorded and LabVIEW restarted); call resolution |
+| `harvest_templates.py`, `merge_props.py`, `event_specs.py` | template nodes named by wire joins; parallel property sweeps; EventSpec rows |
+| `try_vi.py`, `bisect_vi.py`, `dwarn_delta.py` | compose + load one VI with its log lines; split a broken VI; DWarns per VI |
+| `lv-com.ps1`, `lv-keeper.ps1`, `lv-restart.ps1`, `lv-save.ps1`, `lv-windows.ps1` | LabVIEW over COM; restart without the gRPC service; save a VI through LabVIEW |
+| `parts/refnum-classes.tsv`, `parts/vi-server-props.json` | the 166 VI Server class IDs; 1 052 properties and 496 methods with their codes |
 | `outline.py`, `normdiff.py` | read a heap object; diff two bundles uid-insensitively |
 | `parts/` | skeleton, parts, `wiretables.json`, `denylist.json` |
 | `terminal-names-learned.tsv` | terminal names learned from NI's exports |

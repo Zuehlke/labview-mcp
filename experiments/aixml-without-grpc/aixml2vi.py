@@ -2745,6 +2745,11 @@ class Composer:
                                 r.find("diagramIdx").text = str(i)
                                 ranges.append((int(r.findtext("start")), r))
             else:
+                if kind == "string" and is_enum(st):
+                    # NI's export QUOTES an enum case's items ("Off", "Auto".."Manual") - the
+                    # wire, not the quotes, says it is an enum (11 NI VIs refused as a string case)
+                    kind = "enum"
+                    items = [[x.replace('"', "") for x in its] for its in items]
                 if kind == "string":
                     if st.get("Type") != "String":
                         raise Unsupported("Case Structure %s: string selectors on a %s wire" % (el.get("uid"), st.get("Type")))

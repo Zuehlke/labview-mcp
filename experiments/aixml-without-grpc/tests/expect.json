@@ -902,5 +902,27 @@
     }
    }
   ]
+ },
+ "t97_case_enum_quoted": {
+  "cases": [
+   {
+    "inputs": "mode=0;x=8",
+    "outputs": {
+     "level": 0
+    }
+   },
+   {
+    "inputs": "mode=1;x=8",
+    "outputs": {
+     "level": 8
+    }
+   },
+   {
+    "inputs": "mode=2;x=8",
+    "outputs": {
+     "level": 4
+    }
+   }
+  ]
  }
 }
