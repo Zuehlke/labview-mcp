@@ -180,6 +180,46 @@ public class ActorFrameworkToolsTests
             answer["detail"]!["newClassPath"]!.GetValue<string>());
     }
 
+    [Theory]
+    [InlineData("2", "private")]
+    [InlineData("3", "protected")]
+    [InlineData("4", "not public")]
+    public void AMethodThatIsNotPublicIsRefusedBeforeCopyClassRuns(string scope, string named)
+    {
+        using var tree = new Tree(descendsFromActor: true, "Increment.vi");
+        WithScope(tree, scope);
+
+        var answer = Create(tree, "Increment");
+
+        // The message's Do.vi sits outside the actor's scope, so only a public method is callable
+        // from it - and the connection is null!, so this proves nothing reached LabVIEW.
+        Assert.Equal("methodNotPublic", Kind(answer));
+        Assert.Contains(named, answer["detail"]!["scope"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void APublicMethodWithAnExplicitScopePassesTheScopeCheck()
+    {
+        using var tree = new Tree(descendsFromActor: true, "Increment.vi");
+        WithScope(tree, "1");
+        File.Delete(Path.Combine(Path.GetDirectoryName(tree.ActorClassPath)!, "Increment.vi"));
+
+        // The next check down answers, so the scope check let it through.
+        Assert.Equal("methodFileMissing", Kind(Create(tree, "Increment")));
+    }
+
+    /// <summary>Rewrites the one member item with an explicit MethodScope, as LabVIEW writes it.</summary>
+    private static void WithScope(Tree tree, string scope)
+    {
+        var text = File.ReadAllText(tree.ActorClassPath);
+        var item = "\t<Item Name=\"Increment.vi\" Type=\"VI\" URL=\"../Increment.vi\"/>";
+        Assert.Contains(item, text);
+        File.WriteAllText(tree.ActorClassPath, text.Replace(item,
+            "\t<Item Name=\"Increment.vi\" Type=\"VI\" URL=\"../Increment.vi\">\n" +
+            $"\t\t<Property Name=\"NI.ClassItem.MethodScope\" Type=\"UInt\">{scope}</Property>\n" +
+            "\t</Item>"));
+    }
+
     [Fact]
     public void AnEmptyMethodNameIsRefused()
     {

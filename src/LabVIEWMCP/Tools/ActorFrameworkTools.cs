@@ -80,7 +80,8 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
         string actorClassPath,
         [Description("""
             The actor method the message should call, e.g. "Increment" or "Increment.vi". It must
-            be a PUBLIC member of the actor class and live beside it on disk. Its non-class,
+            be a PUBLIC member of the actor class (refused as `methodNotPublic` otherwise,
+            before anything is written) and live beside it on disk. Its non-class,
             non-error inputs become the message's payload, one private data field each.
             """)]
         string actorMethodName,
@@ -140,8 +141,9 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
             var methodPath = Path.Combine(actorFolder, methodFile);
 
             var actorInfo = LvClass.Read(actorFull);
-            if (!actorInfo.Members.Any(m =>
-                    string.Equals(m.Name, methodFile, StringComparison.OrdinalIgnoreCase)))
+            var member = actorInfo.Members.FirstOrDefault(m =>
+                string.Equals(m.Name, methodFile, StringComparison.OrdinalIgnoreCase));
+            if (member is null)
                 return Json.Error("notAClassMember",
                     $"'{methodFile}' is not a member of '{actorInfo.ClassName}'. A message is " +
                     "built from the actor's own public method, so the method has to be one.",
@@ -151,6 +153,20 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                         ["members"] = new JsonArray(
                             [.. actorInfo.Members.Select(m => (JsonNode)m.Name!)]),
                     });
+
+            // THE MESSAGE IS NOT IN THE ACTOR'S SCOPE. Its Do.vi is a member of the MESSAGE class,
+            // which neither descends from the actor nor exists yet to be named a friend, so a
+            // protected, private or community method is one Do.vi cannot call - and Copy Class.vi
+            // has already written the half-built class by the time that shows. The description
+            // always said "a PUBLIC member"; this is the check it promised. Reasoned from the
+            // scope rules, not measured on a run.
+            if (!IsPublicScope(member.Scope))
+                return Json.Error("methodNotPublic",
+                    $"'{methodFile}' is {member.Scope} in '{actorInfo.ClassName}'. A message's " +
+                    "Do.vi lives in the message class, outside the actor's scope, so it can only " +
+                    "call a PUBLIC method. Make the method public, or give the actor a public " +
+                    "method that calls it, and build the message for that one.",
+                    new { methodPath, scope = member.Scope });
 
             if (!File.Exists(methodPath))
                 return Json.Error("methodFileMissing",
@@ -349,6 +365,13 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
         ("build send error", "buildSend"),
         ("save class error", "saveClass"),
     ];
+
+    /// <summary>
+    /// True for a member <see cref="LvClass"/> reads as public - with or without a recorded
+    /// scope, because LabVIEW writes no scope property at all for many public members.
+    /// </summary>
+    internal static bool IsPublicScope(string scope) =>
+        scope.StartsWith("public", StringComparison.Ordinal);
 
     /// <summary>
     /// The LabVIEW installation the actor's own ancestry lands in, by walking parent links up to
