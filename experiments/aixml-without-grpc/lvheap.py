@@ -228,17 +228,30 @@ def renumber(el, alloc, keep_external=()):
 
 
 def set_typeids(el, tids):
-    """Replace each <typeDesc>TypeID(n)</typeDesc> in document order with tids[i]."""
-    i = 0
-    for e in el.iter("typeDesc"):
-        if e.text and TYPEID_RE.fullmatch(e.text.strip()):
-            e.text = "TypeID(%d)" % tids[i]
-            i += 1
-    return i
+    """Replace each type reference typeid_elements() finds - a <typeDesc>, a chart's <histTD> -
+    in document order with tids[i]. It walked <typeDesc> alone until 2026-10-11, so a histTD kept
+    the donor's number whatever the harvest carried."""
+    els = typeid_elements(el)
+    if len(tids) < len(els):
+        # as strict as the loop it replaces, which indexed tids[i]: a part whose type list is
+        # shorter than its references was harvested before the reference kind was known
+        raise IndexError("%d type references, %d types" % (len(els), len(tids)))
+    for e, tid in zip(els, tids):
+        e.text = "TypeID(%d)" % tid
+    return len(els)
+
+
+# Heap tags that name a type the object's own data does not decide, and that harvest and compose
+# must carry like a typeDesc. A CHART's histTD (its history buffer: a cluster around a 1024-element
+# array of the data type) was missing until 2026-10-11: harvested parts lacked its type, the
+# composer left the donor's number in place, it named whatever that number was in the new VI (a
+# Boolean in the probe), and loading the VI logged "bad mutex verifier in ThMutexDestroy" and hung
+# every later COM call. connectorTM, omidTypeDesc and dataTypeDesc are set explicitly where used.
+TYPEID_TAGS = ("typeDesc", "histTD")
 
 
 def typeid_elements(el):
-    return [e for e in el.iter("typeDesc") if e.text and TYPEID_RE.fullmatch(e.text.strip())]
+    return [e for e in el.iter() if e.tag in TYPEID_TAGS and e.text and TYPEID_RE.fullmatch(e.text.strip())]
 
 
 def set_count(el):

@@ -609,11 +609,17 @@ pane connection (NI omits it) was measured irrelevant first.
 `rsrcID` of the annex in its parts list, which is also NI's `style="graphNNNNN"`. A graph's
 plot pictures live in the VI's `PICC` block, one binary section per picture named by
 `<ImageInternalsResID>` (42 ids, 42 sections in the probe); without them every graph VI was
-broken, with them it is executable. **It is nevertheless OFF by default**
-(`AIXML2VI_GRAPHS=1` turns it on): loading the composed graph VI logged `bad mutex verifier
-in ThMutexDestroy`, and every later COM call timed out until LabVIEW was restarted - twice,
-while NI's own graph VI of the same objects logged nothing. A graph is composed as the plain
-control of its type and the report says so; the data is the same.
+broken, with them it is executable. **It was nevertheless OFF by default until 2026-10-11**:
+loading the composed graph VI logged `bad mutex verifier in ThMutexDestroy`, and every later COM
+call timed out until LabVIEW was restarted - twice, while NI's own graph VI of the same objects
+logged nothing. **Settled and ON since** (`AIXML2VI_GRAPHS=0` composes the plain controls instead):
+a bisect over the ten objects (`graph_bisect.py`) showed only the two CHARTS hanging, and their
+`histTD` - the history buffer's type, a cluster around a 1024-element array of the data type -
+was a type reference `lvheap.typeid_elements()` did not know, so no part carried its type and the
+composer left the donor's number in place: it named a Boolean in the probe. With `histTD` among
+`lvheap.TYPEID_TAGS` and the chart parts re-harvested, all ten load and COM keeps answering.
+The PICC pictures are also numbered as NI does now (heap order from 2, one section per
+reference) - it was not the cause, and it is what NI writes. §7a, "Graphs and their events".
 
 **NI's ODE examples compose and load now** - *ODE-PredatorPrey.vi* and *ODE-Circuit.vi*,
 their strict VI reference feeding the polymorphic solver - once an indexing tunnel fed by a
@@ -1210,8 +1216,8 @@ multi-event frames now compose with every frame matching LabVIEW's save: `Set Bu
 frame cut to one source, against NI's original loading clean, so the frame is not the cause; not
 chased. The other eleven stop on things unrelated to this (classes, a Stacked Sequence, UTF-8
 strings, a ring item with a quote) or on SINGLE events whose data is not composed yet: a static Mouse
-Down, Graph events. Reading `CtlRef` stays refused off an enum, a cluster or an array - not
-measured.
+Down, Graph events (both composed since - "Static events" and "Graphs and their events" below).
+Reading `CtlRef` stays refused off an enum, a cluster or an array - not measured.
 
 ### Static events beyond Value Change - and a loop that proves an event without running it
 
@@ -1311,6 +1317,80 @@ with nothing opened: NewWay builds in 120 s against 111 s over grpc, where the s
 class's static member - Caraya's - links through `IUVI` as before), and class controls on a front
 panel (`LIfp`).
 
+### Graphs and their events (2026-10-11)
+
+**Graphs compose by default** (§3, "Graphs and charts"), and their events with them. A static
+event on a graph is registered like any other control's; what differs is the reference. A
+graph's `CtlRef` is the refnum of its VI Server CLASS, which the data type does not decide: a
+waveform graph and a waveform chart can both carry a double. `GRAPH_STYLE_CLASS` maps NI's style to
+the class id of `parts/refnum-classes.tsv` (`graph21703` Waveform Graph `0x18`, `graph21717`
+Waveform Chart `0x17`, `graph21716` XY Graph `0x53`, `graph21720` Intensity Graph `0x1A`). Mouse
+events on all four (`t129_graph_events`) are what LabVIEW writes and NI's exporter names.
+
+**The six events only a graph has** are not in the static survey, which takes frames with ONE
+event; NI's `Graph Events.vi` handles all six in one frame. Their specs were read off that frame,
+`add_graph_events.py` writes the rows, and each event's data came from LabVIEW's own save of a
+probe with one frame per event (`--fields`), confirmed by `probe_events.py`, which reported every
+frame "as LabVIEW writes and names them":
+
+| event | type | regFlags | fields after CtlRef |
+|---|---|---|---|
+| Autoscale Range Change | 1073741900 | 1 | Kind, Index, ScaleRef, NewRange |
+| Plot Attribute Change | 1073741862 | 1 | PlotIdx, PlotRef, OldAttrib, NewAttrib |
+| Scale Range Change | 1073741861 | 1 | Kind, Index, ScaleRef, NewRange |
+| Cursor Grab / Move | 1073741864 / 65 | 1 | CursIdx, CursRef, PlotIdx, PointIdx, CursLoc |
+| Cursor Release | 1073741866 | -2147483647 | as Cursor Grab |
+
+**Autoscale Range Change needs no hand on the graph**, and that makes it testable. NI's own
+`Graph Events.vi`, run with its panel open, showed `Autoscale Range Change` in `Event Captured`
+right after start, from its own write of ten random numbers. `t130_graph_specific_events` writes
+`[150,200,300]` into an autoscaling waveform graph at start; the frame formats `Kind` and `Type`
+out of its event data and stops the loop: `X-Scale`, `Autoscale Range Change`, 3 of 3 runs, 62-78
+ms. The other five are registered and checked against LabVIEW's save only. **Open**: the same
+graph written INSIDE an event frame raised no event within 10 s, with the same scales
+(`autoScale True` on both, read from the heap); not chased.
+
+**NI's `Graph Events.vi` round-trips** - read, composed, executable, and it too receives
+Autoscale Range Change at start (two events, X then Y, where NI's saved scales already fit its
+data and it gets one). Getting there fixed three things the graph events did not cause:
+
+- **The reader knew six event kinds.** `vi2aixml.event_kinds()` now adds every static event of
+  `parts/static-events.json` (one type number per name; none is shared), so mouse, key and graph
+  events no longer read back as `?`. It also joined several events of one frame with `,`, which
+  the composer reads as several SOURCES of one event (`event_items`, measured on NI's exports), so
+  NI's frame came back as one event named `Autoscale Range Change: Cursor Release`; now `;`.
+- **An Event Data Node field LabVIEW saved has NO label.** Its terminal is typed unlabelled and the
+  dco says which element of the event data it reads (`<i>1</i>` is `Type`); the reader names it
+  from that element of the node's input cluster now.
+- **A growable node SHRINKS as well as grows.** NI formats ONE input with no format string; the
+  only Format Into String template has two, and the unwired second input made the VI `eBad`
+  (variants: with the node replaced by a constant it was executable, fed a plain string still
+  broken). A repeated input the element does not have - `input 2` beside `input 1` - is removed
+  with its `dcoList` entry; a singular optional one (`initial string`) is not. The case the comment
+  beside it recorded for Concatenate Strings is the same fault from the other side.
+
+**And a layout bug that had nothing to do with graphs**: t130 loaded `Insane Tunnel {graphics}
+(0x80): owner=Event Structure`, on every fresh LabVIEW. The composer sized each kind of structure
+in turn - every loop first, then every case and event structure - so an Event Structure inside a
+While Loop was placed at the 120 x 200 default before its own size existed. Two or three output
+tunnels fit in 120 px; t130's fourth sat at 117-126 across a content rectangle ending at 114. The
+sizes are now computed round after round until none changes (`_size_structures`), and the same VI
+loads clean. Two lessons from finding it: **the insanity check needs a FRESH LabVIEW per variant** -
+in one session LabVIEW logged the insanity for the first copy and stayed silent for the identical
+next one, which first read as a non-deterministic composer (it is not: two builds differ only in
+the signature and GUID) - and the object it names, not the DWarn beside it, is the lead.
+
+**And the suite's own harness was wrong, with four expectations agreeing with it.** The one
+failure left in the full run, `t117_concat_tunnel`'s N=0 case, read `all=""` where `[]` was
+expected, and it had failed with the previous composer too. `lv-com.ps1`'s `Call-M` was a
+PowerShell function with a plain `return`, which UNROLLS an array: an empty one arrived as `$null`
+and printed as `""`, and a 2D one came back flattened to rank 1, so `Format-V`'s 2D branch had
+never run. Returned as one object (`return ,(...)`) both survive. Four tests then failed, and every
+one had pinned the artefact: `t75`, `t76` and `t80` expected their 2D arrays flattened
+(`[1,2,3,4]` for a 2 x 2) and `t82` expected `""` for an empty `array{double}`. Corrected to what
+LabVIEW returns - `[[1,2],[3,4]]`, `[[1,2,3],[4,5,6]]`, `[[1.5],[1.5]]`, `[]`. **The suite now
+stands at 104 of 104 tests, 134 of 134 cases.**
+
 ## 8. Files
 
 | file | |
@@ -1320,7 +1400,7 @@ panel (`LIfp`).
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 88 composition tests with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
+| `selftest.py`, `tests/` | 104 composition tests, 134 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
@@ -1331,6 +1411,8 @@ panel (`LIfp`).
 | `static_event_survey.py`, `build_static_events.py`, `parts/static-events.json` | every static event NI's cached VIs handle, read out of the VIs; the table static events are composed from (§7a, "Static events") |
 | `probe_events.py` | compose an event probe, load it, compare with LabVIEW's own save, and have NI's exporter name every frame's events - the check any new event kind passes before it is trusted |
 | `find_multi_event_frames.py`, `event_frame_data.py` | Event Structure frames handling several events in the export cache; each frame's event data and sources' types read out of the VI (§7a, "Frames that handle several events") |
+| `add_graph_events.py` | the six graph events of NI's `Graph Events.vi` into `parts/static-events.json`; `--fields` takes each event's data from a `probe_events.py` run (§7a, "Graphs and their events") |
+| `graph_probe.py`, `graph_bisect.py`, `graph_sample.py` | graph composition checks: load one composed graph VI and see whether COM still answers (the chart hang); the same per indicator, each in a FRESH LabVIEW; NI's exports with graph styles composed and loaded |
 | `class_link_records.py` | the class link records (`VIPI`, `DyOM`, `FPPI`, `DDPI`) of LabVIEW-saved VIs, field by field, from a raw link block (§7a, "Calling a class directly") |
 | `build_newway.py` | builds the NewWay demo - interface, class, Caraya tests - on one backend through the built server, timed per step; `--dead-grpc` makes any NI call fail |
 | `tests/fixtures/Box` | a one-field class with its accessors, built without NI's service, for `t128_dynamic_class_call` (`search` in `expect.json`) |

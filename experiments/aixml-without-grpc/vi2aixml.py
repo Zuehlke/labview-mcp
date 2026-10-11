@@ -897,6 +897,25 @@ class Reader:
 
     EVENT_KINDS = {1073741826: "Value Change", 1073741825: "Timeout", -2147483645: "Panel Close?",
                    1073741839: "Mouse Enter", 1073741838: "Mouse Leave", 1000: "User Event"}
+    _event_kinds = None
+
+    @classmethod
+    def event_kinds(cls):
+        """EventSpec type -> event name: the six above plus every STATIC event the composer knows
+        (parts/static-events.json, one type number per name - no two rows share one). Until
+        2026-10-11 the reader had only the six, so every mouse, key and graph event read back as
+        '?' - NI's Graph Events.vi as six of them in one frame."""
+        if cls._event_kinds is None:
+            kinds = dict(cls.EVENT_KINDS)
+            p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "parts", "static-events.json")
+            if os.path.exists(p):
+                with open(p, encoding="utf-8") as f:
+                    for name, row in json.load(f).items():
+                        spec = row.get("spec") if isinstance(row, dict) else None
+                        if spec and spec.get("type"):
+                            kinds.setdefault(int(spec["type"]), name)
+            cls._event_kinds = kinds
+        return cls._event_kinds
 
     def event_selectors(self, node, n):
         """Frame index -> the AIXML selector of an Event Structure frame, from its EventSpecs:
@@ -904,11 +923,14 @@ class Reader:
         items = {i: [] for i in range(n)}
         for sp in node.findall("EventNodeEvents/SL__arrayElement"):
             di = int(sp.findtext("diagramIdx") or 0)
-            kind = self.EVENT_KINDS.get(int(sp.findtext("type") or 0), "?")
+            kind = self.event_kinds().get(int(sp.findtext("type") or 0), "?")
             ddo = sp.findtext("ddoUID") or "0"
             ctl = self.ctl_by_ddo.get(ddo) if ddo != "0" else None
             items.setdefault(di, []).append('"%s": %s' % (ctl.get("_name"), kind) if ctl is not None else kind)
-        return {i: " %s " % ", ".join(v) for i, v in items.items()}
+        # events are separated by ';' as NI's exporter writes them - a ',' separates SOURCES of
+        # one event (aixml2vi.event_items), so joining with ',' made NI's Graph Events.vi frame
+        # read back as one source list ending in 'Autoscale Range Change: Cursor Release'
+        return {i: " %s " % "; ".join(v) for i, v in items.items()}
 
     def case(self, node, parent_uid, event=False):
         el = ET.Element("Structure", {"_name": "Event Structure" if event else "Case Structure",
@@ -1415,9 +1437,21 @@ class Reader:
     def eventdata(self, node, parent_uid):
         el = self._node_el(node, parent_uid, "Event Data Node")
         fields = []
-        for t in list(node.find("termList"))[1:]:
+        terms = list(node.find("termList"))
+        # LabVIEW's own save types a field terminal WITHOUT a label and selects the field by its
+        # index in the event data cluster, <i> on the dco (NI's Graph Events.vi: i=1 is Type) - so
+        # a missing label is the label of that element of the node's input cluster
+        agg = self.tid_tree(terms[0]) if terms else None
+        elems = [c for c in agg if c.tag == "TypeDesc"] if agg is not None else []
+        for t in terms[1:]:
             tree = self.tid_tree(t)
-            nm = (tree.get("Label") if tree is not None else None) or "?"
+            nm = tree.get("Label") if tree is not None else None
+            idx = t.findtext("dco/i")
+            if not nm and idx is not None and idx.strip().isdigit() and int(idx) < len(elems):
+                e = elems[int(idx)]
+                inner = e.find("TypeDesc")
+                nm = e.get("Label") or (inner.get("Label") if inner is not None else None)
+            nm = nm or "?"
             fields.append(nm)
             self.term_owner[t.get("uid")] = (el, nm, False)
         el.set("fields", ",".join(escape(x) for x in fields))

@@ -335,12 +335,25 @@ CONTROL_REF_CLASS = {"Boolean": ("0x0008", True), "String": ("0x001B", False), "
                      "Cluster": ("0x001E", True), "Array": ("0x000E", True)}
 
 
-def control_ref_type(ctl_tree, label=None):
+# A GRAPH's control refnum is of the graph's class, not of its data type's: LabVIEW's save of
+# tests/t129_graph_events.xml wrote these where the composer had written Array 0x000E, Digital
+# 0x0012 and Cluster 0x001E (2026-10-11). The first three match parts/refnum-classes.tsv; XY Graph
+# is not in it and was read off that save.
+GRAPH_STYLE_CLASS = {"graph21703": "0x0018",    # Waveform Graph
+                     "graph21717": "0x0017",    # Waveform Chart
+                     "graph21716": "0x0053",    # XY Graph
+                     "graph21720": "0x001A"}    # Intensity Graph
+
+
+def control_ref_type(ctl_tree, label=None, style=None):
     """A strictly typed control refnum for a control of type `ctl_tree`: Refnum LVObjCtl with the
     control's class (Digital 0x0012 for every numeric, Enum 0x0023, ...) and, for those that are
-    typed by their data, the data type inside."""
+    typed by their data, the data type inside. `style` is a graph style the object was COMPOSED
+    as - the class is then the graph's (GRAPH_STYLE_CLASS), with the data type inside."""
     t = ctl_tree.get("Type") or ""
-    if is_enum(ctl_tree):
+    if style in GRAPH_STYLE_CLASS:
+        flags, inner = GRAPH_STYLE_CLASS[style], True
+    elif is_enum(ctl_tree):
         flags, inner = "0x0023", True
     elif t.startswith("Num"):
         flags, inner = "0x0012", True
@@ -1450,11 +1463,13 @@ class Composer:
                 got = self.parts.get("fpdco/%s/%s/%s" % (force, d, lvheap.type_key(tree)))
                 if got is not None:
                     break
-            if os.environ.get("AIXML2VI_GRAPHS") != "1":
-                # OFF by default: with its PICC pictures a composed graph VI is executable, but
-                # loading it logged "bad mutex verifier in ThMutexDestroy" and every later COM
-                # call timed out until LabVIEW was restarted - measured twice on 2026-10-10,
-                # NI's own graph VI of the same objects logged nothing
+            if os.environ.get("AIXML2VI_GRAPHS") == "0":
+                # ON by default since 2026-10-11. It was off because loading a composed graph VI
+                # logged "bad mutex verifier in ThMutexDestroy" and hung every later COM call - a
+                # CHART's history type (histTD) was never carried by a part, so it named whatever
+                # its number meant in the new VI. A bisect over the ten objects of probes/pgraph.xml
+                # showed only the charts hanging; with histTD carried all ten load clean
+                # (lvheap.TYPEID_TAGS). AIXML2VI_GRAPHS=0 composes the plain controls instead.
                 got = None
             if got is None or type_sig(got[1][0]) != type_sig(tree):
                 self.report.append("style %r of %r not composed (no %s part for this type) - shown as a plain %s"
@@ -1465,6 +1480,10 @@ class Composer:
         elif style not in (None, "", "latched"):
             self.report.append("style %r of %r not composed - shown as a plain %s" % (style, name, tree.get("Type")))
         fpdco, src, h, _ = self.build_ddo(tree, is_ind, "fpdco", None, force_class=force)
+        if force and force.startswith("stdGraph"):
+            # composed AS a graph: its control references are of the graph's class
+            self.graph_styles = getattr(self, "graph_styles", {})
+            self.graph_styles[name] = style
         ddo = fpdco.find("ddo")
         if force == "stdRing":
             self._set_ring(ddo, tree, items or "")
@@ -3083,6 +3102,27 @@ class Composer:
                 ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
                 dl.set("elements", str(len(dl)))
             by_key[k] = t
+        # growable, the other way: a REPEATED input the element does not have (input 2 beside
+        # input 1) is removed, never a singular optional one (initial string). Left in, it was an
+        # unwired argument, and that broke the VI: NI's Graph Events.vi formats ONE input with no
+        # format string and composed eBad on the two-input template, executable with input 2
+        # removed (2026-10-11) - the Concatenate Strings case above, from the other side
+        if name in self.GROWABLE:
+            kept = {grow_base(k) for k in want_in}
+            for k in [k for k in list(by_key) if k in t_in and k not in want_in]:
+                base = grow_base(k)
+                if base == k.split("#")[0] and "#" not in k and not re.search(r" \d+$", k):
+                    continue
+                if base not in kept:
+                    continue
+                t = by_key.pop(k)
+                tl.remove(t)
+                dl = node.find("dcoList")
+                du = t.find("dco").get("uid") if t.find("dco") is not None else None
+                if dl is not None and du is not None:
+                    for e in [e for e in dl if e.get("uid") == du]:
+                        dl.remove(e)
+                    dl.set("elements", str(len(dl)))
         tl.set("elements", str(len(tl)))
 
         def donor(t):
@@ -3464,7 +3504,7 @@ class Composer:
             info = getattr(self, "fp_info", {}).get(element)
             if info is None:
                 raise Unsupported("VI Server Reference %s: no control %r" % (el.get("uid"), element))
-            tree = control_ref_type(info[1], element)
+            tree = control_ref_type(info[1], element, style=getattr(self, "graph_styles", {}).get(element))
             key, text = "node/ctlRefConst/control", element
         else:
             if (el.get("type") or "").strip() != "{LV.VI}":
@@ -3601,6 +3641,23 @@ class Composer:
                         path_ref(rec, "VILSPathRef", *link["lib_ref"])
                     else:
                         ET.SubElement(rec, "VILSPathRef", {"Ident": "PTH0", "TpVal": "0", "ZeroFill": "True"})
+
+    def renumber_piccs(self):
+        """Give the graph pictures LabVIEW's numbering: in HEAP ORDER from 2, one PICC section
+        per reference. NI's converter writes exactly that (42 references, 2..43, in document
+        order, on probes/pgraph.xml); the composer numbered them in INSTANTIATION order and let
+        identical pictures share one section, and a composed graph VI then logged "bad mutex
+        verifier in ThMutexDestroy" on load (2026-10-10)."""
+        piccs = getattr(self, "piccs", None)
+        if not piccs:
+            return
+        refs = [e for heap in (self.fp, self.bd) for e in heap.iter("ImageInternalsResID")
+                if (e.text or "").strip().isdigit() and int(e.text) in piccs]
+        fresh = {}
+        for n, e in enumerate(refs, start=2):
+            fresh[n] = piccs[int(e.text)]
+            e.text = str(n)
+        self.piccs = fresh
 
     @staticmethod
     def _class_version(lvclass):
@@ -4586,7 +4643,7 @@ class Composer:
             # a LATCHED Boolean's, which is plain 0x0008: measured as an A/B on one probe, and the
             # shape of NI's Set Busy Cursor.vi and Manage DataPlugins.vi, all latched (2026-10-10).
             # A String's and a Path's have nothing inside either way
-            ref = control_ref_type(ct)
+            ref = control_ref_type(ct, style=getattr(self, "graph_styles", {}).get(ctl))
             if (ctl_el.get("style") or "") == "latched":
                 for c in fields(ref):
                     ref.remove(c)
@@ -5457,37 +5514,18 @@ class Composer:
             level[uid] = 1 + max([lv(s, stack + (uid,)) for s in src_of.get(uid, [])] or [-1])
             return level[uid]
         sizes = {}
-        for loop, inner, parent in reversed(self.loops):
-            w, h = self._place(inner, lv, sizes, 30, 40)
-            side = {0: 0, 1: 0}
-            for c in loop.find("termList"):
-                side[int(c.find("dco").findtext("objFlags") or 0) & 1] += 1
-            border = 20 + 24 * max(side.values()) + 40     # room for the stacked terminals
-            sizes[loop.get("uid")] = (max(h + 40, border, 120), max(w + 40, 200))
-        for case, frame_diags, parent in reversed(getattr(self, "cases", [])):
-            dims = [self._place(fd, lv, sizes, 30, 30) for fd in frame_diags]
-            w = max(x for x, _ in dims)
-            h = max(y for _, y in dims)
-            n = max(1, len(case.find("tunnelList")))
-            # room for every tunnel slot plus the selector terminal below them
-            sizes[case.get("uid")] = (max(h + 40, 30 + 24 * (n + 1) + 30, 120), max(w + 40, 200))
-        for ip in reversed(getattr(self, "inplaces", [])):
-            w, h = self._place(ip["diag"], lv, sizes, 30, 30)
-            n_t = {d_: sum(1 for _, x in ip.get("tunnels", []) if x == d_) for d_ in ("in", "out")}
-            n = max(1, len(ip["pairs"]) + max(n_t.values()))
-            sizes[ip["node"].get("uid")] = (max(h + 40, 23 + 24 * n + 20, 90), max(w + 40, 100))
         frame_dims = {}       # (an Element takes no Python attributes)
-        for seq, frames, parent in reversed(getattr(self, "seqs", [])):
-            dims = []
-            for fr, fd, _ in frames:
-                w, h = self._place(fd, lv, sizes, 30, 30)
-                n_in = sum(1 for t in fr.find("termList") if not int(t.find("dco").findtext("objFlags") or 0) & 1)
-                n_out = len(fr.find("termList")) - n_in
-                dims.append((max(h + 40, 30 + 24 * max(n_in, n_out, 1) + 20, 90), max(w + 40, 112)))
-            H = max(d[0] for d in dims)
-            W = sum(d[1] for d in dims) - 5 * (len(dims) - 1)   # neighbours share 5 px of border
-            sizes[seq.get("uid")] = (H, W)
-            frame_dims[id(seq)] = dims
+        # Each kind of structure is sized around what it holds, one kind after the other - so a
+        # structure inside one of an EARLIER kind was placed at the 120 x 200 default before its
+        # own size existed: an Event Structure in a While Loop, whose fourth output tunnel then
+        # sat across its bottom border, "Insane Tunnel {graphics} (0x80): owner=Event
+        # Structure", in a fresh LabVIEW every time (2026-10-11, t130). Sizing is repeated until
+        # nothing changes, one round per level of nesting at most.
+        for _ in range(16):
+            before = dict(sizes)
+            self._size_structures(lv, sizes, frame_dims)
+            if sizes == before:
+                break
         self._place(self.root, lv, sizes, 40, 40)
         for seq, frames, parent in getattr(self, "seqs", []):
             st, sl_, _, _ = lvheap.parse_bounds(seq.find("bounds").text)
@@ -5637,6 +5675,39 @@ class Composer:
                     if tdco is c.find("dco"):
                         # the condition sits right below its tunnel, as LabVIEW draws it
                         cdco.find("termBounds").text = lvheap.fmt_bounds((y + (tbb - tt), x, y + (tbb - tt) + 9, x + (tr - tl)))
+
+    def _size_structures(self, lv, sizes, frame_dims):
+        """One round of sizing every structure around its placed contents (layout())."""
+        for loop, inner, parent in reversed(self.loops):
+            w, h = self._place(inner, lv, sizes, 30, 40)
+            side = {0: 0, 1: 0}
+            for c in loop.find("termList"):
+                side[int(c.find("dco").findtext("objFlags") or 0) & 1] += 1
+            border = 20 + 24 * max(side.values()) + 40     # room for the stacked terminals
+            sizes[loop.get("uid")] = (max(h + 40, border, 120), max(w + 40, 200))
+        for case, frame_diags, parent in reversed(getattr(self, "cases", [])):
+            dims = [self._place(fd, lv, sizes, 30, 30) for fd in frame_diags]
+            w = max(x for x, _ in dims)
+            h = max(y for _, y in dims)
+            n = max(1, len(case.find("tunnelList")))
+            # room for every tunnel slot plus the selector terminal below them
+            sizes[case.get("uid")] = (max(h + 40, 30 + 24 * (n + 1) + 30, 120), max(w + 40, 200))
+        for ip in reversed(getattr(self, "inplaces", [])):
+            w, h = self._place(ip["diag"], lv, sizes, 30, 30)
+            n_t = {d_: sum(1 for _, x in ip.get("tunnels", []) if x == d_) for d_ in ("in", "out")}
+            n = max(1, len(ip["pairs"]) + max(n_t.values()))
+            sizes[ip["node"].get("uid")] = (max(h + 40, 23 + 24 * n + 20, 90), max(w + 40, 100))
+        for seq, frames, parent in reversed(getattr(self, "seqs", [])):
+            dims = []
+            for fr, fd, _ in frames:
+                w, h = self._place(fd, lv, sizes, 30, 30)
+                n_in = sum(1 for t in fr.find("termList") if not int(t.find("dco").findtext("objFlags") or 0) & 1)
+                n_out = len(fr.find("termList")) - n_in
+                dims.append((max(h + 40, 30 + 24 * max(n_in, n_out, 1) + 20, 90), max(w + 40, 112)))
+            H = max(d[0] for d in dims)
+            W = sum(d[1] for d in dims) - 5 * (len(dims) - 1)   # neighbours share 5 px of border
+            sizes[seq.get("uid")] = (H, W)
+            frame_dims[id(seq)] = dims
 
     def _place(self, diag, lv, sizes, top0, left0):
         rows, right, bottom = {}, 0, 0
@@ -5923,6 +5994,7 @@ class Composer:
             self.cons.remove(c)
         for c in conns:
             self.cons.append(c)
+        self.renumber_piccs()
         ET.ElementTree(self.fp).write(os.path.join(out_dir, base + "_FPHb.xml"),
                                       encoding="utf-8", xml_declaration=True)
         ET.ElementTree(self.bd).write(os.path.join(out_dir, base + "_BDHb.xml"),

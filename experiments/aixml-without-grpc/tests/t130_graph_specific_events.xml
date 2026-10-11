@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="T130 Graph Specific Events.vi" description="The events only a graph has, one frame each on a waveform graph: Autoscale Range Change, Plot Attribute Change, Scale Range Change, Cursor Grab, Cursor Move, Cursor Release - the six NI's Graph Events.vi handles in one frame. Data written into the autoscaling graph at start raises Autoscale Range Change with no hand on the graph; that frame formats Kind and Type out of its event data and stops the loop. The other five need a hand and stay registered only. The VI opens its own front panel first and closes it at the end.">
+  <Constant _name="Data" outputs="value:4273.value" type="array{double}" uid="4273" uid_parent="root" value="[150,200,300]"/>
+  <Indicator _name="Graph" inputs="value:4273.value" style="graph21703" type="array{double}" uid="4201" uid_parent="root" value="[]" />
+  <Constant _name="Open" outputs="value:4206.value" type="bool" uid="4206" uid_parent="root" value="true"/>
+  <Constant _name="Shut" outputs="value:4207.value" type="bool" uid="4207" uid_parent="root" value="false"/>
+  <Node _name="VI Server Reference" outputs="This VI:4210.This VI" type="{LV.VI}" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4210.This VI,error in (no error):,Front Panel Window\3AOpen:4206.value" outputs="reference out:,error out:4212.error out" type="{LV.VI}" uid="4212" uid_parent="root"/>
+  <Structure _name="While Loop" count="4220.value" uid="4220" uid_parent="root">
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <CaseFrame selector=" &quot;Graph&quot;\3A Autoscale Range Change " uid="4300" uid_parent="4230">
+        <Node _name="Event Data Node" fields="Kind,Type" outputs="Kind:4305.Kind,Type:4305.Type" uid="4305" uid_parent="4300"/>
+        <Node _name="Format Into String" inputs="initial string:,error in:,input 1:4305.Kind,format string:" outputs="resulting string:4306.resulting string,error out:" uid="4306" uid_parent="4300"/>
+        <Node _name="Format Into String" inputs="initial string:,error in:,input 1:4305.Type,format string:" outputs="resulting string:4307.resulting string,error out:" uid="4307" uid_parent="4300"/>
+        <Constant outputs="value:4301.value" type="int32" uid="4301" uid_parent="4300" value="1"/>
+        <Constant outputs="value:4302.value" type="bool" uid="4302" uid_parent="4300" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4302.value" uid="4303" uid_parent="4300"/>
+        <Tunnel _id="Out2" inputs="value:4301.value" uid="4304" uid_parent="4300"/>
+        <Tunnel _id="Out3" inputs="value:4306.resulting string" uid="4308" uid_parent="4300"/>
+        <Tunnel _id="Out4" inputs="value:4307.resulting string" uid="4309" uid_parent="4300"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Graph&quot;\3A Plot Attribute Change " uid="4310" uid_parent="4230">
+        <Constant outputs="value:4311.value" type="int32" uid="4311" uid_parent="4310" value="2"/>
+        <Constant outputs="value:4312.value" type="bool" uid="4312" uid_parent="4310" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4312.value" uid="4313" uid_parent="4310"/>
+        <Tunnel _id="Out2" inputs="value:4311.value" uid="4314" uid_parent="4310"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Graph&quot;\3A Scale Range Change " uid="4320" uid_parent="4230">
+        <Constant outputs="value:4321.value" type="int32" uid="4321" uid_parent="4320" value="3"/>
+        <Constant outputs="value:4322.value" type="bool" uid="4322" uid_parent="4320" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4322.value" uid="4323" uid_parent="4320"/>
+        <Tunnel _id="Out2" inputs="value:4321.value" uid="4324" uid_parent="4320"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Graph&quot;\3A Cursor Grab " uid="4330" uid_parent="4230">
+        <Constant outputs="value:4331.value" type="int32" uid="4331" uid_parent="4330" value="5"/>
+        <Constant outputs="value:4332.value" type="bool" uid="4332" uid_parent="4330" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4332.value" uid="4333" uid_parent="4330"/>
+        <Tunnel _id="Out2" inputs="value:4331.value" uid="4334" uid_parent="4330"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Graph&quot;\3A Cursor Move " uid="4340" uid_parent="4230">
+        <Constant outputs="value:4341.value" type="int32" uid="4341" uid_parent="4340" value="6"/>
+        <Constant outputs="value:4342.value" type="bool" uid="4342" uid_parent="4340" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4342.value" uid="4343" uid_parent="4340"/>
+        <Tunnel _id="Out2" inputs="value:4341.value" uid="4344" uid_parent="4340"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Graph&quot;\3A Cursor Release " uid="4350" uid_parent="4230">
+        <Constant outputs="value:4351.value" type="int32" uid="4351" uid_parent="4350" value="7"/>
+        <Constant outputs="value:4352.value" type="bool" uid="4352" uid_parent="4350" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4352.value" uid="4353" uid_parent="4350"/>
+        <Tunnel _id="Out2" inputs="value:4351.value" uid="4354" uid_parent="4350"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4280.value" uid="4280" uid_parent="4230"/>
+      <Tunnel _id="Out2" outputs="value:4281.value" uid="4281" uid_parent="4230"/>
+      <Tunnel _id="Out3" cond="true" outputs="value:4284.value" uid="4284" uid_parent="4230"/>
+      <Tunnel _id="Out4" cond="true" outputs="value:4285.value" uid="4285" uid_parent="4230"/>
+    </Structure>
+    <Condition inputs="value:4280.value" uid="4282" uid_parent="4220" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4281.value" outputs="value:4283.value" uid="4283" uid_parent="4220"/>
+    <Tunnel _id="Out2" inputs="value:4284.value" outputs="value:4286.value" uid="4286" uid_parent="4220"/>
+    <Tunnel _id="Out3" inputs="value:4285.value" outputs="value:4287.value" uid="4287" uid_parent="4220"/>
+  </Structure>
+  <Indicator _name="Last Frame" inputs="value:4283.value" type="int32" uid="4290" uid_parent="root" value="0"/>
+  <Indicator _name="Scale Kind" inputs="value:4286.value" type="string" uid="4293" uid_parent="root" value=""/>
+  <Indicator _name="Event Type" inputs="value:4287.value" type="string" uid="4294" uid_parent="root" value=""/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4210.This VI,error in (no error):4212.error out,Front Panel Window\3AOpen:4207.value" outputs="reference out:,error out:4291.error out" type="{LV.VI}" uid="4291" uid_parent="root"/>
+  <Indicator _name="Error Out" inputs="value:4291.error out" type="cluster{bool.status,int32.code,string.source}" uid="4292" uid_parent="root" value="[false,0,]" />
+</VI>

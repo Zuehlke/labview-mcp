@@ -255,6 +255,32 @@ save - a wrong type number comes back as another event's name, shown with a nega
 Filter events (`Panel Close?`), VI and application events are still refused by name. FINDINGS §7a,
 "Static events".
 
+**GRAPHS compose by default since 2026-10-11, and their events with them** - waveform graph, chart,
+XY graph and intensity graph, each for the data types a part exists for (otherwise the plain control
+and a report line). They were off for a day because a composed CHART hung LabVIEW's COM server after
+loading (`bad mutex verifier in ThMutexDestroy`): its history buffer's type (`histTD`) was a type
+reference the harvester never carried. Events on a graph are the static mouse events of any control
+- Mouse Down, Up, Move, Wheel, Enter, Leave - with one difference measured in LabVIEW's save: the
+`CtlRef` is of the GRAPH's class (Waveform Graph `0x18`, Chart `0x17`, XY Graph `0x53`, Intensity
+Graph `0x1A`), not of the data type's. `t129_graph_events` passes `probe_events.py` (LabVIEW's save
+identical, NI's exporter names every frame's events) and runs with data in the graph. **The six
+events only a graph has compose as well** - Autoscale Range Change, Plot Attribute Change, Scale
+Range Change, Cursor Grab, Cursor Move, Cursor Release, read off NI's `Graph Events.vi` with their
+data from LabVIEW's own save. Autoscale Range Change fires on a PROGRAMMATIC write into an
+autoscaling graph, so `t130_graph_specific_events` runs it: the frame reads `Kind` and `Type` and
+gets `X-Scale`, `Autoscale Range Change`; the other five need a hand on the graph and are checked
+against LabVIEW's save only. NI's `Graph Events.vi` itself round-trips through reader and composer
+and receives the event at start like the original. Drag Enter and Drop, which NI's VIs also handle
+on graphs, are FILTER events and still refused - they need the Event Filter Node.
+
+**Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
+grows: a one-input Format Into String used to keep the template's unwired second input and broke
+the VI. And structures are sized round after round until nothing changes: a case or event
+structure inside a LOOP used to be placed before its own size existed, at the 120 px default, so a
+fourth output tunnel sat across its border - `Insane Tunnel {graphics}`, visible only in a FRESH
+LabVIEW, because one session logs a repeated insanity once. `experiments/aixml-without-grpc/FINDINGS.md`
+§7a, "Graphs and their events".
+
 **The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
 where a release gets its parts is the user's open decision. `lvai_create_class` was the first tool
 to run its helpers over ActiveX (2026-10-10), and it answered the instance question: in LabVIEW's

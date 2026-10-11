@@ -529,5 +529,176 @@
    "type": "1073741857"
   },
   "vi": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Using the VI Activation Event for VI Scripting.vi"
+ },
+ "Autoscale Range Change": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Kind\"><EnumLabel>X-Scale</EnumLabel>\n        <EnumLabel>Y-Scale</EnumLabel>\n        <EnumLabel>Z-Scale</EnumLabel>\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Index\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x002A\" HasItem=\"0\" Format=\"inline\" Label=\"ScaleRef\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"NewRange\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Minimum\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Maximum\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Increment\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Minor Increment\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Start\" /></TypeDesc><Label Text=\"LVRangeTypeDef.ctl\" />\n        </TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741900"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Plot Attribute Change": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PlotIdx\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0025\" HasItem=\"0\" Format=\"inline\" Label=\"PlotRef\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"OldAttrib\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Color\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"PointStyle\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LineStyle\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Interp\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LineWidth\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"BarPlotStyle\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"FillTo\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"XScaleIdx\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"YScaleIdx\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Anti-Aliased\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LabelFormat\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"TransitionType\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"TransitionLocation\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"DigitalLineStyle\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"NewAttrib\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Color\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"PointStyle\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LineStyle\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Interp\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LineWidth\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"BarPlotStyle\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"FillTo\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"XScaleIdx\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"YScaleIdx\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Anti-Aliased\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LabelFormat\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"TransitionType\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"TransitionLocation\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"DigitalLineStyle\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741862"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Scale Range Change": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Kind\"><EnumLabel>X-Scale</EnumLabel>\n        <EnumLabel>Y-Scale</EnumLabel>\n        <EnumLabel>Z-Scale</EnumLabel>\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Index\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x002A\" HasItem=\"0\" Format=\"inline\" Label=\"ScaleRef\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"NewRange\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Minimum\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Maximum\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Increment\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Minor Increment\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Start\" /></TypeDesc><Label Text=\"LVRangeTypeDef.ctl\" />\n        </TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741861"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Cursor Grab": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"CursIdx\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0026\" HasItem=\"0\" Format=\"inline\" Label=\"CursRef\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PlotIdx\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PointIdx\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"CursLoc\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741864"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Cursor Move": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"CursIdx\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0026\" HasItem=\"0\" Format=\"inline\" Label=\"CursRef\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PlotIdx\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PointIdx\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"CursLoc\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741865"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Cursor Release": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"CursIdx\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0026\" HasItem=\"0\" Format=\"inline\" Label=\"CursRef\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PlotIdx\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PointIdx\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"CursLoc\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483647": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "-2147483647",
+   "source": "3",
+   "type": "1073741866"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
  }
 }

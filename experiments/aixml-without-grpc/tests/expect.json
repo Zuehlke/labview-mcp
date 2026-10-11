@@ -616,7 +616,7 @@
    {
     "inputs": "",
     "outputs": {
-     "g out": "[1,2,3,4]",
+     "g out": "[[1,2],[3,4]]",
      "sizes": "[0,0]",
      "name": "probe",
      "pos": "[1,2]",
@@ -631,7 +631,7 @@
     "inputs": "",
     "outputs": {
      "row sums": "[6,15]",
-     "rows": "[1,2,3,4,5,6]"
+     "rows": "[[1,2,3],[4,5,6]]"
     }
    }
   ]
@@ -686,7 +686,7 @@
      "remaining": " rest",
      "offset": 2,
      "scanned": 42,
-     "grid": "[1.5,1.5]",
+     "grid": "[[1.5],[1.5]]",
      "ab": "ab",
      "abcd": "abcd",
      "merged": "[False,0,]",
@@ -720,7 +720,7 @@
    {
     "inputs": "",
     "outputs": {
-     "Y": "",
+     "Y": "[]",
      "big out": 100,
      "back": 2.5,
      "c out": "[3,0]"
@@ -1316,6 +1316,41 @@
     "inputs": "w=-2",
     "outputs": {
      "r": -2
+    }
+   }
+  ]
+ },
+ "t129_graph_events": {
+  "cases": [
+   {
+    "inputs": "Values=[1.5,2,3]",
+    "outputs": {
+     "wg": [
+      1.5,
+      2,
+      3
+     ],
+     "Last Frame": 4,
+     "Received": "C:\\probe\\graph.txt",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t130_graph_specific_events": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Last Frame": 1,
+     "Scale Kind": "X-Scale",
+     "Event Type": "Autoscale Range Change",
+     "Graph": [
+      150,
+      200,
+      300
+     ],
+     "Error Out": "[False,0,]"
     }
    }
   ]

@@ -27,7 +27,10 @@ function Get-P($o, $n) {
     catch { return ('<ERR: ' + (Inner $_.Exception) + '>') }
 }
 function Call-M($o, $n, [object[]]$a) {
-    return [Microsoft.VisualBasic.Interaction]::CallByName($o, $n, [Microsoft.VisualBasic.CallType]::Method, $a)
+    # returned as ONE object (the comma): a plain return unrolls an array, so an EMPTY one arrived
+    # as $null and printed as "" (t117's N=0 case, expected []) and a 2D one came back flattened
+    # to rank 1, so the 2D branch of Format-V was never reached (measured 2026-10-11)
+    return ,([Microsoft.VisualBasic.Interaction]::CallByName($o, $n, [Microsoft.VisualBasic.CallType]::Method, $a))
 }
 # An array or a cluster comes back over COM as a SAFEARRAY of variants; print it as AIXML writes
 # a literal, [a,b,[c,d]], so a test can compare it as text.
