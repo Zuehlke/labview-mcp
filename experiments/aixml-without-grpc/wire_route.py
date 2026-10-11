@@ -46,6 +46,39 @@ def table(src, snk):
     return "0408%02X00%s%s" % (1 if dy < 0 else 0, _len(first), _len(abs(dy)))
 
 
+# terminals a wire does not leave or enter eastwards - read off LabVIEW's own routes for the
+# composer's Feedback Nodes (suite_corpus.py, 2026-10-11): the hidden node's output on its LEFT edge
+# starts west (byte 1 of the table is 02, not 08: "04 02 01 00 08 0C" is west 8, up 12, east into
+# the sink), its initializer at the BOTTOM is entered from below ("05 08 00 00 01 0D 16 46": east,
+# down past it, east, up into it)
+EXIT_WEST = ("node:hiddenFBNode/leftFeedback",)
+ENTER_FROM_BELOW = ("node:hiddenFBNode/initFeedback",)
+
+
+def table_west(src, snk):
+    """From a terminal that is left WESTWARDS: west, up or down, east into the sink - past the sink
+    first where it lies west too. None where both share a row (that needs a detour)."""
+    (sy, sx), (ky, kx) = src, snk
+    dx, dy = kx - sx, ky - sy
+    if dy == 0:
+        return None
+    first = 8 if dx >= 0 else 8 - dx            # end 8 px west of the sink either way
+    return "0402%02X00%s%s" % (1 if dy < 0 else 0, _len(first), _len(abs(dy)))
+
+
+def table_from_below(src, snk):
+    """Into a terminal entered from BELOW: east then up into it, or - where it is not above the
+    source - east, down past it, east, and up 10 px into it."""
+    (sy, sx), (ky, kx) = src, snk
+    dx, dy = kx - sx, ky - sy
+    if dx <= 0:
+        return None
+    if dy < 0:
+        return "030801%s" % _len(dx)
+    first = max(1, dx // 2)
+    return "05080000%s%s%s" % ("01", _len(first), _len(dy + 10) + _len(dx - first)) if dx - first > 0 else None
+
+
 def _bounds(s):
     return tuple(int(v) for v in s.strip("()").split(","))
 
@@ -82,40 +115,65 @@ class Geometry:
         return x
 
     def rect(self, uid):
-        """(rect, primResID or None, position in the owner's termList or None, kind) - kind names
-        what the hotpoint rule and its exactness depend on: fPTerm, const:<ddo class>,
-        inner:<tunnel DCO class>, node:<owner class>/<DCO class>"""
+        """(rect, primResID or None, position in the owner's termList or None, kind, hot) - kind
+        names what the hotpoint rule and its exactness depend on: fPTerm, const:<ddo class>,
+        inner:<tunnel DCO class>, pair:<DCO class>, node:<owner class>/<DCO class>; hot is the
+        DCO's own <termHotPoint> (dx, dy), or None."""
         t = self.terms.get(uid)
         if t is None:
             return None
         if t.get("class") == "fPTerm":
             b = t.findtext("bounds")
-            return (_bounds(b), None, None, "fPTerm") if b else None
+            return (_bounds(b), None, None, "fPTerm", None) if b else None
         dco = t.find("dco")
         if dco is None:
             return None
         if dco.get("class") == "bDConstDCO":
             ddo = dco.find("ddo")
             b = ddo.findtext("bounds") if ddo is not None else None
-            return (_bounds(b), None, None, "const:%s" % ddo.get("class")) if b else None
-        if dco.get("class") is None:
-            # a tunnel's INNER side - only in a frame's own diagram (sRN); an In Place element
-            # pair's terminals refer to a DCO too, on the structure's border, and are not this
-            o = self.owner(t)
-            ref = self.tunnel.get(dco.get("uid"))
-            if ref is None or o is None or o.get("class") != "sRN":
-                return None
-            return _bounds(ref.findtext("termBounds")), None, None, "inner:%s" % ref.get("class")
-        tb = dco.findtext("termBounds")
+            return (_bounds(b), None, None, "const:%s" % ddo.get("class"), None) if b else None
         o = self.owner(t)
+        if dco.get("class") is None:
+            ref = self.tunnel.get(dco.get("uid"))
+            if ref is None or o is None:
+                return None
+            if o.get("class") == "sRN":
+                # a tunnel's INNER side, in the frame's own diagram: the tunnel's termBounds
+                return _bounds(ref.findtext("termBounds")), None, None, "inner:%s" % ref.get("class"), _hot(ref)
+            pn = self.owner(ref)
+            if pn is o:
+                # a second terminal on its own node's DCO (Build Waveform's): an ordinary one
+                dco = ref
+            elif pn is not None:
+                # a structure's own terminal naming a DCO of a node in its frame - an In Place
+                # element pair, its node straddling the border: the structure's top-left, the
+                # node's (frame coordinates) and the DCO's termBounds
+                st, sl, _, _ = _bounds(o.findtext("bounds"))
+                nt, nl, _, _ = _bounds(pn.findtext("bounds"))
+                a, b, c, d = _bounds(ref.findtext("termBounds"))
+                return ((st + nt + a, sl + nl + b, st + nt + c, sl + nl + d), None, None,
+                        "pair:%s" % ref.get("class"), _hot(ref))
+            else:
+                return None
+        tb = dco.findtext("termBounds")
         if not tb or o is None or o.get("class") == "sRN":
             return None
-        ot, ol, _, _ = _bounds(o.findtext("bounds")) if o.get("uid") not in self.absolute else (0, 0, 0, 0)
+        # a Feedback Node's hidden half keeps its terminals in DIAGRAM coordinates
+        absolute = o.get("uid") in self.absolute or o.get("class") == "hiddenFBNode"
+        ot, ol, _, _ = _bounds(o.findtext("bounds")) if not absolute else (0, 0, 0, 0)
         a, b, c, d = _bounds(tb)
         prim = o.findtext("primResID") if o.get("class") == "prim" else None
         tl = o.find("termList")
         pos = list(tl).index(t) if tl is not None and t in list(tl) else None
-        return (ot + a, ol + b, ot + c, ol + d), prim, pos, "node:%s/%s" % (o.get("class"), dco.get("class"))
+        return (ot + a, ol + b, ot + c, ol + d), prim, pos, "node:%s/%s" % (o.get("class"), dco.get("class")), _hot(dco)
+
+
+def _hot(dco):
+    """LabVIEW's own offset of a terminal's hotpoint from the centre of its rectangle, (dx, dy):
+    <termHotPoint> on the DCO, which LabVIEW writes for shift registers, Feedback Nodes and some
+    array nodes - and which the offsets learned for those kinds turned out to be."""
+    h = dco.findtext("termHotPoint")
+    return _bounds(h) if h else None
 
 
 def junction_for(min_dx):
@@ -144,7 +202,14 @@ def route_heap(bd, hotpoints, source_first=True, absolute_owners=()):
             continue
         hp = [hotpoints.of(*e) for e in ends]
         if len(tl) == 2:
-            tab = table(hp[0], hp[1])
+            if ends[0][3] in EXIT_WEST:
+                tab = table_west(hp[0], hp[1])
+            elif ends[1][3] in ENTER_FROM_BELOW:
+                tab = table_from_below(hp[0], hp[1])
+            else:
+                tab = table(hp[0], hp[1])
+        elif any(e[3] in EXIT_WEST + ENTER_FROM_BELOW for e in ends):
+            tab = None                  # a comb leaves and enters eastwards only
         elif all(hotpoints.exact(*e) for e in ends):
             sy, sx = hp[0]
             sinks = [(ky - sy, kx - sx) for ky, kx in hp[1:]]
@@ -197,20 +262,22 @@ class Hotpoints:
             return ["%s/%s" % (kind[5:], pos), kind[5:]]
         return [kind]
 
-    def of(self, rect, prim=None, pos=None, kind=None):
+    def of(self, rect, prim=None, pos=None, kind=None, hot=None):
         t, l, b, r = rect
         y, x = (t + b) // 2, (l + r) // 2
         if kind and kind.startswith("const:"):
             if kind[6:] in self.CONST_FROM_RIGHT:
                 x = r - self.CONST_FROM_RIGHT[kind[6:]]
             return y, x
+        if hot:
+            x, y = x + hot[0], y + hot[1]
         for k in self.keys(prim, pos, kind):
             if k in self.corr:
                 dy, dx = self.corr[k]
                 return y + dy, x + dx
         return y, x
 
-    def exact(self, rect, prim=None, pos=None, kind=None):
+    def exact(self, rect, prim=None, pos=None, kind=None, hot=None):
         """True where the learned model put this kind's ends exactly where LabVIEW's own fan-out
         tables do (learn_hotpoints_fanout.py) - decided by the finest key the model knows; a
         constant by the calibration above."""

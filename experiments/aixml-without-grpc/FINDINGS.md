@@ -1869,10 +1869,50 @@ two below) 12 to 0. `validate_routes.py` shows LabVIEW's save KEEPING every rout
 cases - the one left, `t136`'s VI Activation, failed 3 of 3 that evening on the PREVIOUS commit
 too, generic tables or not: it fires only when the desktop hands LabVIEW the focus.
 
-Still generic, each its own step: **In Place structures' element pairs** and the **Feedback Node**
-(t100 8, t95 8 - their geometry is not modelled), fan-outs with an end the corpora show too rarely
-(`Insert Into Array`, 2074's output, a cluster or array constant), two sinks on one row (a detour),
-and primitives with too few wires (1188's output sits 11 px below its centre, seen on t83).
+### In Place element pairs, the Feedback Node - and LabVIEW's own `termHotPoint` (2026-10-11)
+
+**A DCO can carry its hotpoint offset itself: `<termHotPoint>(dx, dy)</termHotPoint>`** - x
+first, in px from the centre of the terminal's rectangle. LabVIEW writes it for shift registers
+(`(4, 0)` on the left one, `(-4, 0)` on the right), the Feedback Node (`rightFeedback` `(4, 0)`,
+`leftFeedback` `(-4, 0)`, `initFeedback` `(0, 2)`) and some array nodes (`Index Array`'s index
+`(0, 9)`). It is the base rule now, before any learned offset - and with it in the base the
+learner's offsets for every one of those kinds came out `(0, 0)`: what it had learned was exactly
+this field. Read off the composer's own Feedback Node in LabVIEW's save of `t95` while the router
+was 4 px out on `rightFeedback` and 2 px on `initFeedback`.
+
+**An In Place structure's element pair is ONE node straddling the border**, in the frame's
+diagram (`decomposeMatchNode`, bounds in frame coordinates), and the structure's own terminal for
+the outer side is a class-less `<dco uid=.../>` naming one of that node's DCOs. So its rectangle is
+the structure's top-left plus the node's plus the DCO's `termBounds` - kind `pair:<DCO class>`.
+The corpus collector had recorded those as inner tunnel sides (wrong origin) and the router
+refused them; LabVIEW's `t100` save then agreed with the new rule on all four outer wires. The
+same class-less reference also names a DCO of the SAME node (`Build Waveform` has two terminals on
+one DCO) - an ordinary terminal of that node, which both had mistaken for a tunnel too.
+
+**A Feedback Node's hidden half keeps its terminals in DIAGRAM coordinates** (`hiddenFBNode`,
+whose `termBounds` equal its own bounds), and two of its terminals are not left and entered
+eastwards. LabVIEW's routes for the composer's own nodes say how:
+
+- **the output `leftFeedback` is left WEST** - byte 1 of a two-ended table is `02`, not `08`:
+  `04 02 01 00 08 0C` is west 8, up 12, east into the sink. The router writes that shape (8 px
+  past the sink where it lies west too); a fan-out from it stays generic.
+- **the initializer on the hidden node is entered from BELOW**: `05 08 00 00 01 0D 16 46` is east,
+  down past it, east, up into it - or `03 08 01 <dx>` where it lies above the source.
+
+Two corpus faults surfaced on the way, both one-sided: a Feedback Node's input DCO carries the
+output flag, so every wire into one read as having two sources and was skipped (58 of NI's
+fan-outs); and a fan-out's first segment is not always east - byte 2 is the start direction as in
+a two-ended table (`02` west, `01` north). With both fixed the usable fan-outs went from 4 296 to
+4 519 and `rightFeedback` is EXACT.
+
+Measured with `measure_routes.py`: over the same 20 VIs **28 repairs became 12** (`t95` 8 and
+`t100` 8 to 0); with `t143` and the other In Place and Feedback tests, 24 VIs, **406 generic
+against 20 routed**, every VI executable. Over the whole suite 65 of 86 fan-outs are routed.
+
+Still generic, each its own step: a fan-out whose sink lies WEST of its source (`t85`, a root-level
+Feedback Node), fan-outs with an end the corpora show too rarely (`Insert Into Array`, 2074's
+output, an In Place pair's inner side, a cluster or array constant), two sinks on one row (a
+detour), and primitives with too few wires (1188's output sits 11 px below its centre, `t83`).
 
 ## 8. Files
 

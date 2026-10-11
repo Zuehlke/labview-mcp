@@ -361,6 +361,12 @@ follow a calibration instead: LabVIEW sizes its own constants to their text, the
 Over the same 20 VIs the load-time repairs went from 96 to 28 (364 with the generic tables), 15 of
 them load with none, and LabVIEW's save keeps every routed fan-out table. FINDINGS §7a, "Fan-outs".
 
+**And to 12 with LabVIEW's own hotpoint offsets.** A DCO may carry `<termHotPoint>(dx, dy)`
+(shift registers, the Feedback Node, some array nodes); with it in the base rule the offsets learned
+for those kinds all came out zero. An In Place structure's element pair is one node straddling the
+border, and a Feedback Node's hidden half keeps diagram coordinates, leaves its output WEST and takes
+its initializer from BELOW. FINDINGS §7a, "In Place element pairs, the Feedback Node".
+
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke
 the VI. And structures are sized round after round until nothing changes: a case or event

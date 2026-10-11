@@ -1142,7 +1142,7 @@ comes from its compiled-object cache. **The composer writes REAL wire geometry**
 attaches at the centre of its rectangle (27 232 wires of LabVIEW's own examples, per-primitive
 offsets learned), and its layout no longer puts a node behind its source, so LabVIEW's load-time
 wire repairs fell from 362 to 96 over 20 VIs - the noise that used to fill its log and blind the
-insanity check. **Fan-outs too, down to 28**: a wire of three or more ends is a depth-first TREE in
+insanity check. **Fan-outs too, down to 28, and to 12 with LabVIEW's own `termHotPoint` per DCO**: a wire of three or more ends is a depth-first TREE in
 the heap, written as a comb only where every end's hotpoint is EXACT - learned from LabVIEW's own
 fan-outs, NI's examples plus the suite composed with generic tables and saved by LabVIEW, the only
 corpus with a loop's `i` or a dynamic event terminal in one; constants follow a calibration, since

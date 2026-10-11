@@ -39,11 +39,18 @@ def bounds(s):
     return [int(v) for v in s.strip("()").split(",")]
 
 
+# DCO classes whose output flag says nothing about the wire: a Feedback Node's input carries
+# bit 0 like an output, so every wire into one read as having two sources
+SINK_CLASSES = ("rightFeedback",)
+
+
 def is_source(e):
     if e["kind"] == "const":
         return True
     if e["kind"] == "fPTerm":
         return not (e["tflags"] & 0x8000)          # an indicator's terminal is a sink
+    if e.get("dclass") in SINK_CLASSES:
+        return False
     return bool(e["dflags"] & 1)
 
 

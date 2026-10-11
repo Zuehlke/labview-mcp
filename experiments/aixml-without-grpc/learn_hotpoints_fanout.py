@@ -47,6 +47,8 @@ def kind(e):
         return "const:%s" % e.get("ddo")
     if e["kind"] == "inner":
         return "inner:%s" % e.get("dclass")
+    if e["kind"] == "pair":
+        return "pair:%s" % e.get("dclass")
     return "node:%s/%s" % (e["owner"], e.get("dclass"))
 
 
@@ -59,7 +61,8 @@ def main(argv):
     base.corr, base.exact_keys = {}, set()            # the base rule alone
 
     def hot(e):
-        return base.of(wf.rect(e), None, None, kind(e))
+        # the base rule: the centre, LabVIEW's own <termHotPoint> where the DCO has one
+        return base.of(wf.rect(e), None, None, kind(e), tuple(e["hot"]) if e.get("hot") else None)
 
     wires = []
     lines = (l for f in argv if not f.startswith("--") for l in open(f, encoding="utf-8"))

@@ -15,12 +15,15 @@ segments in walk order, >= 255 written FF + 16 bit; the last joint is the last t
 E, S, W, N = (0, 1), (1, 0), (0, -1), (-1, 0)      # (dy, dx)
 BRANCH = {0x04: [N, S, E], 0x05: [S, E], 0x06: [N, E], 0x07: [N, S]}
 CODE_OF = {tuple(v): k for k, v in BRANCH.items()}
+# the direction of the FIRST segment: east almost always; a Feedback Node's output leaves west
+# (02, as in a two-ended table) or north (01)
+START = {0x08: E, 0x02: W, 0x01: N, 0x04: S}
 
 
 def parse(hexs):
     b = bytes.fromhex(hexs)
     n = b[0]
-    if n < 3 or b[1] != 0x00 or b[2] != 0x08:
+    if n < 3 or b[1] != 0x00 or b[2] not in START:
         return None
     codes = list(b[3:3 + n - 2])
     rest = b[3 + n - 2:]
@@ -41,7 +44,7 @@ def walk(hexs):
     if not p or p[2] is None:
         return None
     n, codes, lens = p
-    pos, d = (0, 0), E
+    pos, d = (0, 0), START[bytes.fromhex(hexs)[2]]
     stack = []          # (position, remaining directions) of branch points
     ends = []
     li = 0

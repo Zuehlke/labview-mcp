@@ -6257,7 +6257,8 @@ class Composer:
             # 90 repairs down to 30 over seven suite VIs, every table LabVIEW kept on its save
             # being one it did not have to repair (validate_routes.py, 2026-10-11). A FAN-OUT is
             # routed as a comb where every end's hotpoint is known exactly (wire_tree.py,
-            # parts/hotpoints_exact.json) - 96 repairs down to 28 over 20. Wires whose sink lies
+            # parts/hotpoints_exact.json) - 96 repairs down to 28 over 20, and to 12 with each
+            # DCO's own <termHotPoint>, In Place pairs and the Feedback Node. Wires whose sink lies
             # LEFT of their source, and fan-outs with an inexact end, keep the generic table.
             routed, left = wire_route.route_heap(
                 self.bd, self.hotpoints,
