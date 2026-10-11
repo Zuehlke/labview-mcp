@@ -67,6 +67,10 @@ internal static class LabViewCom
 
         var work = Task.Factory.StartNew(() =>
         {
+            // ActiveX is a Windows facility - the guard sits here, in the lambda, because that is
+            // where the platform analyzer looks (CA1416), and NotReady above cannot vouch for it
+            if (!OperatingSystem.IsWindows())
+                throw new ComException("notWindows", "LabVIEW's ActiveX server is reachable on Windows only.");
             var type = Type.GetTypeFromProgID(ProgId)
                 ?? throw new ComException("activeXNotRegistered",
                     $"{ProgId} is not registered, so LabVIEW's ActiveX server cannot be reached. " +
@@ -227,6 +231,7 @@ internal static class LabViewCom
 
     private static void Release(object comObject)
     {
+        if (!OperatingSystem.IsWindows()) return;   // no COM object exists anywhere else
         try { Marshal.FinalReleaseComObject(comObject); }
         catch (ArgumentException) { }
     }
