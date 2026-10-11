@@ -1,0 +1,43 @@
+<VI _name="Simple Dual Mode Thermometer XControl.xctl:Simple Dual Mode Thermometer Facade.vi" description="A facade for NI's Dual Mode Thermometer XControl: one frame per XControl event (Data Change, Display State Change, Direction Change, Exec State Change) plus Timeout, each ending the loop so the facade returns after every event - AIXML cannot wire the Event Structure's timeout to 0. Data Change shows the new data in Reading.">
+  <Control _name="Data In" type="double" uid="4201" uid_parent="root" value="0" conIdx="11" connection="recommended" outputs="value:4201.value" />
+  <Control _name="Display State In" type="cluster{bool.Fahrenheit}" uid="4202" uid_parent="root" value="[false]" conIdx="10" connection="recommended" outputs="value:4202.value" />
+  <Control _name="Container State" type="cluster{bool.Indicator?,bool.Run Mode?,ref{LV.Control}. Refnum}" uid="4203" uid_parent="root" value="[false,false,]" conIdx="9" connection="recommended" outputs="value:" />
+  <Indicator _name="Data Out" type="double" uid="4204" uid_parent="root" value="0" conIdx="3" connection="recommended" inputs="value:4201.value" />
+  <Indicator _name="Display State Out" type="cluster{bool.Fahrenheit}" uid="4205" uid_parent="root" value="[false]" conIdx="1" connection="recommended" inputs="value:4202.value" />
+  <Indicator _name="Action" type="cluster{bool.Data Changed?,bool.State Changed?,string.Action Name}" uid="4206" uid_parent="root" value="[false,false,]" conIdx="0" connection="recommended" inputs="value:4207.value" />
+  <Constant _name="No Action" type="cluster{bool.Data Changed?,bool.State Changed?,string.Action Name}" uid="4207" uid_parent="root" value="[false,false,]" outputs="value:4207.value" />
+  <Structure _name="While Loop" uid="4300" uid_parent="root" count="">
+    <Tunnel _id="In1" uid="4301" uid_parent="4300" inputs="value:4201.value" outputs="value:4301.value" />
+    <Structure _name="Event Structure" uid="4400" uid_parent="4300">
+      <Tunnel _id="In1" uid="4401" uid_parent="4400" inputs="value:4301.value" />
+      <CaseFrame selector=" Timeout " uid="4410" uid_parent="4400">
+        <Tunnel _id="In1" uid="4411" uid_parent="4410" />
+        <Constant _name="return" type="bool" uid="4412" uid_parent="4410" value="true" outputs="value:4412.value" />
+        <Tunnel _id="Out1" uid="4413" uid_parent="4410" inputs="value:4412.value" />
+      </CaseFrame>
+      <CaseFrame selector=" Data Change " uid="4420" uid_parent="4400">
+        <Tunnel _id="In1" uid="4421" uid_parent="4420" outputs="value:4421.value" />
+        <Indicator _name="Reading" type="double" uid="4422" uid_parent="4420" value="0" inputs="value:4421.value" />
+        <Constant _name="return" type="bool" uid="4423" uid_parent="4420" value="true" outputs="value:4423.value" />
+        <Tunnel _id="Out1" uid="4424" uid_parent="4420" inputs="value:4423.value" />
+      </CaseFrame>
+      <CaseFrame selector=" Display State Change " uid="4430" uid_parent="4400">
+        <Tunnel _id="In1" uid="4431" uid_parent="4430" />
+        <Constant _name="return" type="bool" uid="4432" uid_parent="4430" value="true" outputs="value:4432.value" />
+        <Tunnel _id="Out1" uid="4433" uid_parent="4430" inputs="value:4432.value" />
+      </CaseFrame>
+      <CaseFrame selector=" Direction Change " uid="4440" uid_parent="4400">
+        <Tunnel _id="In1" uid="4441" uid_parent="4440" />
+        <Constant _name="return" type="bool" uid="4442" uid_parent="4440" value="true" outputs="value:4442.value" />
+        <Tunnel _id="Out1" uid="4443" uid_parent="4440" inputs="value:4442.value" />
+      </CaseFrame>
+      <CaseFrame selector=" Exec State Change " uid="4450" uid_parent="4400">
+        <Tunnel _id="In1" uid="4451" uid_parent="4450" />
+        <Constant _name="return" type="bool" uid="4452" uid_parent="4450" value="true" outputs="value:4452.value" />
+        <Tunnel _id="Out1" uid="4453" uid_parent="4450" inputs="value:4452.value" />
+      </CaseFrame>
+      <Tunnel _id="Out1" uid="4460" uid_parent="4400" outputs="value:4460.value" />
+    </Structure>
+    <Condition uid="4470" uid_parent="4300" value="stop" inputs="value:4460.value" />
+  </Structure>
+</VI>

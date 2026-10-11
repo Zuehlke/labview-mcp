@@ -17,6 +17,7 @@ the pseudo-output "#panel open", which is what Panel Close?'s Discard? decides (
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -121,6 +122,13 @@ def dwarn_events():
     return n
 
 
+def lv_exe():
+    """The running LabVIEW's own exe - its installation holds what a test copies (an XControl)."""
+    r = subprocess.run(["powershell", "-NoProfile", "-Command", "(Get-Process LabVIEW | Select-Object -First 1).Path"],
+                       capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
+    return r.stdout.strip()
+
+
 def restart_labview():
     r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                         os.path.join(HERE, "lv-restart.ps1")], capture_output=True, text=True,
@@ -203,6 +211,17 @@ def run_test(name, expect, out_dir, stamp):
         src = os.path.join(out_dir, "%s_%s.xml" % (name, stamp))
         open(src, "w", encoding="utf-8").write(text.replace("{stamp}", stamp))
     vi = os.path.join(out_dir, "%s_%s.vi" % (name, stamp))
+    xc = expect[name].get("xcontrol")
+    if xc:
+        # an XControl's FACADE: composed over the facade of a copy of NI's own XControl, where its
+        # .xctl lists it - and on a fresh LabVIEW, which otherwise serves the previous run's copy
+        # of the same library from memory, whatever path is asked for (2026-10-11)
+        if "--no-restart" not in sys.argv:
+            restart_labview()
+        root = os.path.dirname(lv_exe())
+        dst = os.path.join(out_dir, "%s_%s" % (name, stamp))
+        shutil.copytree(os.path.join(root, xc["from"]), dst)
+        vi = os.path.join(dst, xc["facade"])
     log_before = len(dwarn_lines())
     code, log = compose(src, vi, expect[name].get("search", ()))
     if code != 0:
@@ -210,14 +229,34 @@ def run_test(name, expect, out_dir, stamp):
         return results
     cases = expect[name].get("cases", [])
     state, got, raw = lvcom(vi, "", [], run=False)
+    stale = re.search(r"SERVED FROM (.+)", raw)
+    if stale:
+        results.append((name, "STALE", "LabVIEW served %s for %s" % (stale.group(1).strip(), vi)))
+        return results
     if state != "1":
         results.append((name, "BROKEN (ExecState %s)" % state, vi))
         return results
+    if xc and xc.get("host"):
+        # the VI that USES the XControl: broken when its facade is
+        hvi = os.path.join(os.path.dirname(vi), xc["host"])
+        hstate, _, hraw = lvcom(hvi, "", [], run=False)
+        if hstate != "1" or "SERVED FROM" in hraw:
+            results.append((name, "HOST BROKEN (ExecState %s)" % hstate, hvi))
+            return results
+    run_vi = vi
+    if xc and xc.get("hostCases"):
+        # an XControl lives only on an OPEN panel: the host runs with its panel open, and its
+        # XControl method answers only once the facade has returned from its event - 0 against
+        # NI's 212 while a composed facade waited for ever (2026-10-11)
+        run_vi, cases = hvi, xc["hostCases"]
+        subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                        os.path.join(HERE, "lv-fp.ps1"), "-ViPath", hvi],
+                       capture_output=True, text=True, timeout=120, stdin=subprocess.DEVNULL)
     verdicts = []
     for case in cases:
-        state, got, raw = lvcom(vi, case.get("inputs", ""), list(case["outputs"]),
+        state, got, raw = lvcom(run_vi, case.get("inputs", ""), list(case["outputs"]),
                                 post=case.get("post"), post_after_ms=case.get("postAfterMs"))
-        ok = all(same(v, got.get(k)) for k, v in case["outputs"].items())
+        ok = all(same(v, got.get(k)) for k, v in case["outputs"].items()) and "SERVED FROM" not in raw
         verdicts.append("%s %s -> %s" % ("ok" if ok else "FAIL", case.get("inputs", ""),
                                          ", ".join("%s=%s" % (k, got.get(k)) for k in case["outputs"])))
         if "<TIMEOUT>" in raw:

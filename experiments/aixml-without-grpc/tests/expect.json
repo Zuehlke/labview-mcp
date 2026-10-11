@@ -1481,5 +1481,21 @@
     }
    }
   ]
+ },
+ "t140_xcontrol_facade": {
+  "xcontrol": {
+   "from": "examples\\Controls and Indicators\\XControls\\Dual Mode Thermometer",
+   "facade": "Simple Dual Mode Thermometer Facade.vi",
+   "host": "Run Dual Mode Thermometer XControl.vi",
+   "hostCases": [
+    {
+     "inputs": "Dual Mode Thermometer Control (DMTC)=40;Degrees Celsius=100",
+     "outputs": {
+      "Dual Mode Thermometer Indicator (DMTI)": 40,
+      "Degrees Fahrenheit": 212
+     }
+    }
+   ]
+  }
  }
 }

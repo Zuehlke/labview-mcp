@@ -98,6 +98,14 @@ foreach ($p in $ViPath) {
     $vi = $null
     try { $vi = Call-M $lv 'GetVIReference' ([object[]]@($p)) }
     catch { Write-Output ('  GetVIReference FAILED: ' + (Inner $_.Exception)); continue }
+    # LabVIEW serves a VI already in memory under the same QUALIFIED name from where it was loaded,
+    # whatever path was asked for - an XControl's members stayed loaded after this script ended,
+    # and asking for NI's facade then answered with a composed one from another folder
+    # (2026-10-11). So say when the file is not the one asked for: a verdict on it is not ours.
+    $served = [string](Get-P $vi 'Path')
+    if ($served -and ([IO.Path]::GetFullPath($served) -ne [IO.Path]::GetFullPath($p))) {
+        Write-Output ('  SERVED FROM ' + $served)
+    }
     $state = Get-P $vi 'ExecState'
     Write-Output ('  ExecState = ' + $state)
     # A broken VI must never be run: LabVIEW answers with its error-list window, a modal for COM.

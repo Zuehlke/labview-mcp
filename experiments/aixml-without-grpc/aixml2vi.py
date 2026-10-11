@@ -1553,8 +1553,15 @@ class Composer:
                 fpdco.insert(0, f)
             f.text = str(int(f.text or 0) | 0x10000 | {"recommended": 0x200, "required": 0x80}.get(need, 0))
         col = 1 if is_ind else 0
+        if con is not None and getattr(self, "facade_lib", None):
+            # an XControl IS its facade's front panel, shown from the origin on: the terminals
+            # LabVIEW passes the facade (Data In, Container State, Action, ...) go right of the
+            # display, out of view, as in NI's own facades - at the origin they were what the
+            # XControl showed (2026-10-11, rendered on a host VI)
+            col += 4
         # stacked per column by real height: a cluster or array is taller than a numeric
         self.fp_y = getattr(self, "fp_y", {0: 16, 1: 16})
+        self.fp_y.setdefault(col, 16)
         place_obj(ddo, self.fp_y[col], 16 + 300 * col)
         self.fp_y[col] += max(lvheap.size_of(ddo)[0], 24) + 32
         # z-order lists run NEWEST FIRST in LabVIEW's own files (ddoList and termList run
@@ -4275,6 +4282,9 @@ class Composer:
         # on any other class (Operate Menu Dismissed on a string, Edit Cell? on a table) break the VI
         if r.get("refused"):
             raise Unsupported("Event Structure %s: %r is %s" % (uid, kind, r["refused"]))
+        if r.get("onlyInFacade") and not getattr(self, "facade_lib", None):
+            raise Unsupported("Event Structure %s: %r is an event of an XControl's facade VI - in a plain VI LabVIEW "
+                              "breaks it (measured); name the VI as the facade, \"<X>.xctl:<Facade>.vi\"" % (uid, kind))
         only = r.get("onlyClasses")
         if only and ctl is not None:
             info = getattr(self, "fp_info", {}).get(ctl)
@@ -4701,13 +4711,17 @@ class Composer:
             return fs
         static = None
         if kind not in ("Value Change", "Mouse Enter", "Mouse Leave", "Timeout", "User Event"):
-            static = self._static_row(el.get("uid"), ctl, kind)
+            # the FRAME's uid in a refusal: the Event Data Node may be one the composer added (uid 0)
+            static = self._static_row(frame.get("uid") or el.get("uid"), ctl, kind)
         if static is not None and static["sourceKind"] in ("vi", "application"):
             # the VI's own event: VIRef, a PLAIN VI refnum (LVObjCtl 0x0002), then the event's
             # fields - as LabVIEW wrote it in NI's NewProjectDialog.vi for Key Down? and Panel Close?;
             # the application's: AppRef, a plain Application refnum (0x0001) - NI's VI Activation
+            # - and an XControl's event, in its facade: VIRef of class 0x004F, as in NI's Simple Dual
+            # Mode Thermometer Facade.vi and LabVIEW's own save of the composed one (2026-10-11)
             vi_ev = static["sourceKind"] == "vi"
-            ref = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl", "CtlFlags": "0x0002" if vi_ev else "0x0001",
+            ref = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl",
+                                          "CtlFlags": static.get("refClass") or ("0x0002" if vi_ev else "0x0001"),
                                           "HasItem": "0", "Format": "inline",
                                           "Label": static.get("refLabel") or ("VIRef" if vi_ev else "AppRef")})
             return fs[:3] + [ref] + [ET.fromstring(x) for x in static["fields"]]
@@ -5974,6 +5988,12 @@ class Composer:
     def compose(self, aixml_path):
         vi = ET.parse(aixml_path).getroot()
         self.vi_name = unescape(vi.get("_name") or "Composed.vi")
+        # an XControl's FACADE is named as NI's exporter writes a library member,
+        # "NISAST Include Paths.xctl:Facade.vi"; it is written as a member of that library (LIBN)
+        # with the instrument type Facade, as LabVIEW saves NI's facades, and only there are the
+        # XControl events (Data Change, Display State Change, ...) valid (2026-10-11)
+        quals = self.vi_name.split(":")
+        self.facade_lib = quals[-2] if len(quals) > 1 and quals[-2].lower().endswith(".xctl") else None
         self.pane_terms = []
         self.con_taken = {}
         self.term_label = {}
@@ -6192,6 +6212,16 @@ class Composer:
         for c in conns:
             self.cons.append(c)
         self.renumber_piccs()
+        pane = next((e for e in self.fp.iter() if e.get("class") == "pane"), None)
+        if getattr(self, "facade_lib", None) and pane is not None and pane.find("paneFlags") is not None:
+            # a facade's panel pane as LabVIEW's template for a new facade has it - paneFlags
+            # 0x40D5D against a plain VI's 0x50D51, pane objFlags without 0x4 - or every XControl
+            # instance showed the pane's scroll bars (2026-10-11)
+            pf = pane.find("paneFlags")
+            pf.text = str((int(pf.text) & ~0x10000) | 0xC)
+            of = pane.find("objFlags")
+            if of is not None:
+                of.text = str(int(of.text) & ~0x4)
         ET.ElementTree(self.fp).write(os.path.join(out_dir, base + "_FPHb.xml"),
                                       encoding="utf-8", xml_declaration=True)
         ET.ElementTree(self.bd).write(os.path.join(out_dir, base + "_BDHb.xml"),
@@ -6203,6 +6233,45 @@ class Composer:
         m.find("LVSR/Section").set("Name", self.vi_name)
         m.find("RTSG/Section/Guid").text = "%032x" % random.getrandbits(128)
         m.find("LVSR/Section/Instrument").set("Signature", "%032x" % random.getrandbits(128))
+        if getattr(self, "facade_lib", None):
+            # the file name bare, the library in LIBN - NI's Simple Dual Mode Thermometer Facade.vi
+            quals = self.vi_name.split(":")
+            m.find("LVSR/Section").set("Name", quals[-1])
+            libn = ET.Element("LIBN")
+            sec = ET.SubElement(libn, "Section", {"Index": "0", "Format": "inline"})
+            for q in quals[:-1]:
+                ET.SubElement(sec, "Library").text = q
+            m.insert(0, libn)
+            lvsr = m.find("LVSR/Section")
+            lvsr.find("Instrument").set("Type", "Facade")
+            # and the WINDOW of a facade, which the XControl shows: no title bar, menu bar or
+            # scroll bars, transparent - the flags on which LabVIEW's own template for a new facade
+            # (resource\Framework\Providers\xi\xctl.llb\Facade.vit) and NI's Simple Dual Mode
+            # Thermometer Facade.vi agree; a plain VI's showed its scroll bar inside every
+            # XControl instance on a host's panel (2026-10-11). NOT LoadFP, on which both agree too:
+            # set alone it made LabVIEW refuse the file, "Another user tampered with the VI
+            # password" (0x59), measured flag by flag on fresh LabVIEWs - LabVIEW sets it itself
+            for path, at, v in (("Instrument", "InStBit4", "1"), ("Execution2", "InlinableDiagram", "0"),
+                                ("Flags0C", "AutoHndlMenus", "0"), ("Flags12", "WndTransparent", "1"),
+                                ("FrontPanel", "ShowMenuBar", "0"), ("FrontPanel", "ShowScrollBar", "0"),
+                                ("FrontPanel", "ShowTitleBar", "0"),
+                                # REENTRANT, as LabVIEW's template has it (NI's example reads 0):
+                                # without it the instances on one host shared ONE facade - the
+                                # indicator showed the control's slide and Fahrenheit mode and the
+                                # control stayed blank; with it each showed its own, as NI's does
+                                # (2026-10-11, an A/B on the host's rendered panel)
+                                ("Execution", "IsReentrant", "1")):
+                e = lvsr.find(path)
+                if e is not None:
+                    e.set(at, v)
+            if any(e.tag == "Structure" and e.get("_name") == "Event Structure" for e in self._by_uid.values()):
+                # NI's facades return through a Timeout frame with the timeout wired to 0, which
+                # AIXML cannot express - its export of one keeps the 0 as a loose constant. Composed
+                # as written, the facade waited for ever and the XControl's method answered 0
+                # where NI's answers 212 (t140's control arm, 2026-10-11)
+                print("NOTE: a facade's Event Structure keeps its timeout at -1 (AIXML has no terminal "
+                      "for it): end the loop in every XControl event's frame, or the facade never "
+                      "returns", file=sys.stderr)
         m.find("STRG/Section/String").text = self.description
         # The heap slice is fixed BEFORE the link types are added: a callee's pane type is a
         # consolidated type of the VI, not a heap type - LabVIEW's own callers keep it outside

@@ -552,7 +552,11 @@ class Reader:
     # ---- the whole VI ------------------------------------------------------------------------
     def read(self):
         b = self.b
-        self.out.set("_name", b.main.find("LVSR/Section").get("Name"))
+        name = b.main.find("LVSR/Section").get("Name")
+        # a library member's name is QUALIFIED, as NI's exporter writes it - "X.xctl:Facade.vi",
+        # "Special Monitor.lvclass:Monitor Data Changed.vi" - the owning library from LIBN
+        libs = [l.text.strip() for l in b.main.findall("LIBN/Section/Library") if (l.text or "").strip()]
+        self.out.set("_name", ":".join(libs + [name]))
         self.out.set("description", b.main.findtext("STRG/Section/String") or "")
         pane = self.pane_flags()
         self.fp_by_uid = {}

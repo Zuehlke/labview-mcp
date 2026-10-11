@@ -316,6 +316,18 @@ close box raises Panel Close in the suite. Where LabVIEW breaks the VI the compo
 name: an event bound to a class on another class (Operate Menu Dismissed on a string, the listbox
 and tree events, which AIXML cannot write), the XControl facade events in a plain VI, Pane Size.
 
+**An XControl's FACADE composes on the `pylabview` backend** when the document names it as NI's
+exporter does, `_name="<X>.xctl:<Facade>.vi"`: the composer writes it as a member of that library
+(`LIBN`, instrument type `Facade`), with the window and pane of LabVIEW's own facade template and
+reentrant, and composes Data Change, Display State Change, Direction Change and Exec State Change
+there only - identical to LabVIEW's save. Two things the FORMAT decides, both measured on NI's Dual
+Mode Thermometer with the host's panel open: **AIXML has no terminal for an Event Structure's
+timeout**, so a facade must end its loop in every XControl event's frame or it never returns (NI's
+facade, exported and composed, left the XControl's method answering 0 where NI's answers 212); and
+it carries no control STYLE, so the XControl looks like digital numerics and LEDs, not a slide and a
+thermometer. A loaded XControl stays in LabVIEW's memory and is served for any path with the same
+qualified name. `experiments/aixml-without-grpc/FINDINGS.md` §7a, "XControl facades".
+
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke
 the VI. And structures are sized round after round until nothing changes: a case or event

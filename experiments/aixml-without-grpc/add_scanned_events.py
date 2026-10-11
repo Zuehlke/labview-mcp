@@ -42,8 +42,10 @@ def main(argv):
     hits = [json.loads(l) for l in open(argv[0], encoding="utf-8")]
     table = json.load(open(TABLE, encoding="utf-8"))
     names = json.load(open(NAMES, encoding="utf-8"))
-    # a row this script wrote before is written again; any other row's number is taken
-    known = {int(r["spec"]["type"]) for r in table.values() if r.get("spec") and r.get("by") != "add_scanned_events"}
+    # a row this script wrote before is written again - dropped first, so a rerun keys it as the
+    # first run did; any other row's number is taken
+    table = {k: r for k, r in table.items() if r.get("by") != "add_scanned_events"}
+    known = {int(r["spec"]["type"]) for r in table.values() if r.get("spec")}
     by_type = collections.defaultdict(list)
     for h in hits:
         by_type[h["spec"]["type"]].append(h)
@@ -109,7 +111,6 @@ def main(argv):
     # what LabVIEW's own load said of each, one probe VI apiece (probe_scanned_events.py,
     # 2026-10-11): an event bound to a class is refused on any other, an event no plain VI or
     # AIXML-expressible source can carry is refused outright - LabVIEW breaks the VI otherwise
-    xcontrol = "an event of an XControl's facade VI - in a plain VI LabVIEW breaks it (measured)"
     guards = {
         "Operate Menu Dismissed": {"onlyClasses": ["stdRing"]},     # ring 1, string 0
         "Edit Cell?": {"onlyClasses": ["listbox"]},                 # table 0; AIXML has no listbox
@@ -117,8 +118,12 @@ def main(argv):
         "Item Open?": {"onlyClasses": ["treeControl"]},
         "Item Close?": {"onlyClasses": ["treeControl"]},
         "Pane Size": {"refused": "its source is a PANE, which an AIXML selector cannot name"},
-        "Data Change": {"refused": xcontrol}, "Direction Change": {"refused": xcontrol},
-        "Display State Change": {"refused": xcontrol}, "Exec State Change": {"refused": xcontrol},
+        # the XControl events: valid in a FACADE only - the composer writes one when the VI is
+        # named "<X>.xctl:<Facade>.vi" - and their VIRef is of class 0x004F there, not the plain
+        # VI's 0x0002 (NI's Simple Dual Mode Thermometer Facade.vi, LabVIEW's own save of the
+        # composed one)
+        **{k: {"onlyInFacade": True, "refClass": "0x004F"}
+           for k in ("Data Change", "Direction Change", "Display State Change", "Exec State Change")},
     }
     confirmed = {"Drag Over": "Drag Enter's fields, confirmed identical on LabVIEW's own save of a probe on a waveform graph",
                  "Application Activation": "no fields of its own, confirmed identical on LabVIEW's own save of a probe"}

@@ -1594,13 +1594,14 @@ AIXML document can name:
 | Application Activation (no fields of its own, confirmed) | the application | 1, identical |
 | Operate Menu Dismissed | a string | **0** |
 | Edit Cell?, Double Click (0x0D) | a table | **0** - listbox events; AIXML has no listbox |
-| Data Change, Direction Change, Display State Change, Exec State Change | a plain VI | **0** - an XControl facade's |
+| Data Change, Direction Change, Display State Change, Exec State Change | a plain VI | **0** - an XControl facade's; in a FACADE 1, identical ("XControl facades" below) |
 
 The broken rows are not the composer's: its clusters were LabVIEW's there too, and NI's exporter
 named no event - LabVIEW does not register them on that source. So the rows carry what LabVIEW
 said: `onlyClasses` (Operate Menu Dismissed on a ring; Edit Cell? and the 0x0D Double Click on a
-listbox; Item Open?, Item Close? and Item Close on a tree, which AIXML cannot write either) and
-`refused` (the XControl events; Pane Size, whose source is a pane). The composer refuses each by
+listbox; Item Open?, Item Close? and Item Close on a tree, which AIXML cannot write either),
+`onlyInFacade` (the XControl events, valid in a facade only) and `refused` (Pane Size, whose source
+is a pane). The composer refuses each by
 name with the measured reason. **And a RING's control reference is the Ring class (0x0022)** - the
 composer took it from the data type (Digital 0x0012), which only the Operate Menu Dismissed probe
 showed, since a frame reading `CtlRef` off a ring had never been composed.
@@ -1615,6 +1616,62 @@ character. Round-tripping NI's two drag examples stops elsewhere: a call to a VI
 (`Instance:0`) and `Drag Ended`, a notify event the table does not have, with a pane source the
 reader cannot name.
 
+### XControl facades (2026-10-11)
+
+**A facade is a library member with its own instrument type.** NI's `Simple Dual Mode Thermometer
+Facade.vi` carries a `LIBN` block naming `Simple Dual Mode Thermometer XControl.xctl`, its LVSR name
+bare, and `Instrument Type="Facade"`; NI's exporter writes it as
+`_name="Simple Dual Mode Thermometer XControl.xctl:Simple Dual Mode Thermometer Facade.vi"`. The
+reader writes every library member's name that way now (`Special Monitor.lvclass:Monitor Data
+Changed.vi` too), and the composer turns a `_name` whose last qualifier is an `.xctl` into a facade:
+the `LIBN`, the bare name, the type. Only there does it compose the four XControl events -
+`onlyInFacade` in the table, refused in any other VI by name and frame - and their `VIRef` is class
+**0x004F**, not the plain VI's 0x0002: NI's facade has it and LabVIEW's save of the composed one
+wrote it (with 0x0002 the VI loaded, executable, and LabVIEW's save rewrote all four).
+
+Measured on a copy of NI's XControl, with NI's facade read by the reader and composed IN PLACE -
+where the `.xctl` lists it - minus its two shortcut-menu frames, because a `Refnum.Menu` wire is not
+composable yet: ExecState 1, `Run Dual Mode Thermometer XControl.vi` ExecState 1, all 8 frames
+identical to LabVIEW's own save and named back by NI's exporter.
+
+**And then it did not work, which only a run with the HOST's panel open showed.** An XControl lives
+on an open panel; there NI's facade gave `Degrees Fahrenheit = 212` from the XControl's method and
+ours `0`. The cause is the format: NI's facades return through a Timeout frame with the Event
+Structure's timeout wired to 0, and AIXML has no terminal for that timeout
+(`docs/cold-build-atm-cld.md` §4) - NI's export keeps the 0 as a loose constant. Composed as
+written, the facade waits for ever after its first event, and the method behind it answers 0. **A/B:**
+the same facade with TRUE wired to the loop's stop in every frame - expressible - answered 212. What
+a facade must do in AIXML is therefore end its loop in every XControl event's frame; ONE frame that
+does not still passed (the next event's frame returns), all four not returning gave 0 - `t140`'s
+control arms. The composer prints a NOTE for every facade with an Event Structure.
+
+**The XControl IS the facade's front panel, shown from the origin.** Rendered on the host (a
+`PrintWindow` capture), the composed facade showed the terminals LabVIEW passes it - `Display State
+In`, `Container State` - inside every instance. Three repairs, each seen on the render:
+
+- the connector-pane terminals go 1200 px right of the display, out of view, as in NI's facade;
+- the window and pane as LabVIEW's own template for a new facade
+  (`resource\Framework\Providers\xi\xctl.llb\Facade.vit`, saved out by LabVIEW over COM) and NI's
+  example agree: `InStBit4` 1, no title bar, menu bar or scroll bars, transparent, `AutoHndlMenus` 0,
+  `InlinableDiagram` 0, `paneFlags` 0x40D5D against a plain VI's 0x50D51 (the instances showed the
+  pane's scroll bars). **NOT `LoadFP`**, on which both agree too: set alone it made LabVIEW refuse the
+  file with "Another user tampered with the VI password" (0x59), measured flag by flag, each on a
+  fresh LabVIEW - LabVIEW sets it on its own save;
+- **`IsReentrant` 1**, as the template has it (NI's example reads 0). Without it the two instances on
+  the host shared ONE facade: the indicator showed the control's slide and Fahrenheit mode and the
+  control stayed blank; with it each showed its own, as NI's do - an A/B on the render.
+
+What stays different is only the controls' LOOK: AIXML carries no slide, thermometer or checkbox
+style, so the instances show digital numerics and LEDs. `t140_xcontrol_facade` is a facade of our
+own for NI's Dual Mode Thermometer, copied from the installation at test time: facade and host
+executable, the host run with its panel open answers DMTI 40 and `Degrees Fahrenheit` 212.
+
+**A loaded XControl stays in LabVIEW's memory after the COM client ends, and LabVIEW then serves it
+for ANY path with the same qualified name** - asking for NI's facade in one folder answered with the
+composed one from another, ExecState 1 for the wrong file. `lv-com.ps1` reads the served VI's `Path`
+now and prints `SERVED FROM` when it is not the file asked for; the selftest calls that `STALE`, and
+an XControl test restarts LabVIEW first. The earlier "NI arm" of this very measurement had been ours.
+
 ## 8. Files
 
 | file | |
@@ -1624,7 +1681,7 @@ reader cannot name.
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 113 composition tests, 144 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
+| `selftest.py`, `tests/` | 114 composition tests, 145 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills; `STALE` when LabVIEW served another file; `xcontrol` composes a facade into a copy of an installed XControl and runs its host with the panel open |
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
@@ -1636,7 +1693,7 @@ reader cannot name.
 | `probe_events.py` | compose an event probe, load it, compare with LabVIEW's own save, and have NI's exporter name every frame's events - the check any new event kind passes before it is trusted |
 | `find_multi_event_frames.py`, `event_frame_data.py` | Event Structure frames handling several events in the export cache; each frame's event data and sources' types read out of the VI (§7a, "Frames that handle several events") |
 | `scan_static_specs.py`, `name_static_specs.py`, `parts/event-type-names.json` | every static event spec in a tree of VIs that the table does not know (pylabview only), named by NI's exporter from one VI each - 29 types found in LabVIEW's own VIs (§7a, "Events found in LabVIEW's own VIs") |
-| `add_scanned_events.py`, `probe_scanned_events.py` | the scan's other events into the table, with the guards LabVIEW's load set (`onlyClasses`, `refused`); one probe VI per event and source, each through probe_events.py |
+| `add_scanned_events.py`, `probe_scanned_events.py` | the scan's other events into the table, with the guards LabVIEW's load set (`onlyClasses`, `onlyInFacade` with the facade's `refClass`, `refused`); one probe VI per event and source, each through probe_events.py |
 | `add_app_events.py`, `add_key_notify.py` | the application's events and the notify key events into `parts/static-events.json`, each from a frame handling that one event or measured on LabVIEW's own save |
 | `add_key_events.py` | Key Down?'s CONTROL variant in `parts/static-events.json` (`controlVariant`), measured on LabVIEW's own save of a probe (§7a, "Filter events") |
 | `add_filter_fields.py` | every filter event's Event Filter Node cluster, read off NI's own VI, into `parts/static-events.json` as `filterFields` (§7a, "Filter events") |
@@ -1652,7 +1709,7 @@ reader cannot name.
 | `coverage.py`, `cov_load.py`, `call_coverage.py` | compose NI's exports; load them (a crash is recorded and LabVIEW restarted); call resolution |
 | `harvest_templates.py`, `merge_props.py`, `event_specs.py` | template nodes named by wire joins; parallel property sweeps; EventSpec rows |
 | `try_vi.py`, `bisect_vi.py`, `dwarn_delta.py` | compose + load one VI with its log lines; split a broken VI; DWarns per VI |
-| `lv-com.ps1`, `lv-keeper.ps1`, `lv-restart.ps1`, `lv-save.ps1`, `lv-windows.ps1` | LabVIEW over COM - `-Post` sends window messages to the VI's own panel during a run (the close box, a key) and reports whether the panel is still open, a selftest case's `post`; restart without the gRPC service; save a VI through LabVIEW |
+| `lv-com.ps1`, `lv-keeper.ps1`, `lv-restart.ps1`, `lv-save.ps1`, `lv-windows.ps1` | LabVIEW over COM - `-Post` sends window messages to the VI's own panel during a run (the close box, a key) and reports whether the panel is still open, a selftest case's `post`, and `SERVED FROM` when LabVIEW answers with another file than the one asked for; restart without the gRPC service; save a VI through LabVIEW |
 | `parts/refnum-classes.tsv`, `parts/vi-server-props.json` | the 166 VI Server class IDs; 1 052 properties and 496 methods with their codes |
 | `outline.py`, `normdiff.py` | read a heap object; diff two bundles uid-insensitively |
 | `parts/` | skeleton, parts, `wiretables.json`, `denylist.json` |
