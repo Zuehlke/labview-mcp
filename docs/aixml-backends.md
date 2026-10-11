@@ -344,6 +344,13 @@ caller's, and LabVIEW died loading an ordinary call that way. What remains is th
 insanity found and fixed` per composed wire, which still saturates LabVIEW's log on a large VI.
 FINDINGS §7a, "Bad edge and Cannot find terminal hotpoint".
 
+**And most of that noise is gone: the composer writes REAL wire geometry since the same day.** A
+terminal attaches at the centre of its rectangle - measured over 27 232 wires of LabVIEW's own
+shipping examples, with 105 learned per-primitive offsets - so every two-ended wire it can locate gets
+the route between its two hotpoints instead of the generic table LabVIEW repaired on load: 362
+repairs became 112 over 20 suite VIs, and LabVIEW's save keeps the routed tables. Fan-outs and wires
+running backwards stay generic. FINDINGS §7a, "Real wire geometry".
+
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke
 the VI. And structures are sized round after round until nothing changes: a case or event

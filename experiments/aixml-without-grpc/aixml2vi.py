@@ -34,6 +34,7 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # the bundle's ._pth leaves it off
 import lvheap  # noqa: E402
 import resolve  # noqa: E402
+import wire_route  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TABLES = os.path.join(lvheap.REPO, "experiments", "pylabview")
@@ -989,6 +990,8 @@ class Composer:
         wt = os.path.join(parts_dir, "wiretables.json")
         self.wiretables = json.load(open(wt)) if os.path.exists(wt) else {}
         self.wiretables["2"] = "0208"   # measured on every two-ended wire; the harvest's "01" is not
+        # the hotpoint corrections the real wire geometry needs per primitive (learn_hotpoints.py)
+        self.hotpoints = wire_route.Hotpoints(parts_dir)
         self.fp = ET.parse(os.path.join(self.skel, "skeleton_FPHb.xml")).getroot()
         self.bd = ET.parse(os.path.join(self.skel, "skeleton_BDHb.xml")).getroot()
         self.main = ET.parse(os.path.join(self.skel, "skeleton.xml")).getroot()
@@ -6196,6 +6199,17 @@ class Composer:
             t1, l1 = lvheap.parse_bounds(hidden.find("bounds").text)[:2]
             for t in hidden.find("termList"):
                 _shift_bounds(t.find("dco/termBounds"), t1 - t0, l1 - l0)
+        if os.environ.get("AIXML2VI_GENERIC_WIRES") != "1":
+            # REAL wire geometry, now every position is final: each two-ended wire whose ends the
+            # heap locates gets the route between their hotpoints, where it used to get the
+            # generic table LabVIEW then repaired on load ("Wiring insanity found and fixed") -
+            # 90 repairs down to 30 over seven suite VIs, every table LabVIEW kept on its save
+            # being one it did not have to repair (validate_routes.py, 2026-10-11). Fan-outs and
+            # wires whose sink lies LEFT of their source keep the generic table.
+            routed, left = wire_route.route_heap(
+                self.bd, self.hotpoints,
+                absolute_owners=[h.get("uid") for h, _ in getattr(self, "fb_pairs", [])])
+            self.report.append("wires routed: %d, left generic: %d" % (routed, left))
         self.connector_pane()
         self.description = vi.get("description") or ""
 

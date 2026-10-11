@@ -1138,7 +1138,10 @@ FULL qualified name** (the callee's `LIBN`): bare, LabVIEW relinked the call on 
 of OTHER wires failed (`Bad edge`, `Cannot find terminal hotpoint`). `LinkSaveFlag 2` hid that on
 one fixture and KILLED LabVIEW on an ordinary call - a fix tried on one fixture is not a fix until
 the suite ran. And a DWarn check on a file LabVIEW already loaded once sees nothing: the second load
-comes from its compiled-object cache. **No `.ctl` link
+comes from its compiled-object cache. **The composer writes REAL wire geometry**: a terminal
+attaches at the centre of its rectangle (27 232 wires of LabVIEW's own examples, per-primitive
+offsets learned), so LabVIEW's load-time wire repairs fell from 362 to 112 over 20 VIs - the noise
+that used to fill its log and blind the insanity check. **No `.ctl` link
 is needed for a typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs
 were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **A CLASS,

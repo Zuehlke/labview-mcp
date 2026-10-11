@@ -793,10 +793,11 @@ joints: first segment 20 px right, then the vertical — `04 08 00 00 14 0A` is 
 `04 08 01 00 14 0A` 10 up. The direction bytes belong to segments 2…n−1 (`01` = left/up), the
 lengths to segments 1…n−2 (the last is implied by the end terminal), and a length of 255 or more
 is `FF` plus a big-endian 16-bit value (`FF 01 2C` = 300). A wire into a terminal 1–3 px off
-gets three joints (`03 08 00 82`); a backwards wire six. **What is NOT decoded is where a
+gets three joints (`03 08 00 82`); a backwards wire six. **What WAS NOT decoded is where a
 primitive's terminal attaches**: on `Add` it is not the centre of the DCO's `termBounds`, so
 computing exact tables needs a per-primitive calibration of hot points. Until then each wire is
-`0208` and LabVIEW repairs it, at the cost of the log.
+`0208` and LabVIEW repairs it, at the cost of the log. (Decoded since: the centre of the terminal's
+rectangle, with learned per-primitive offsets - section 7a, "Real wire geometry".)
 
 ## 6. How far it reaches on real code
 
@@ -1773,7 +1774,42 @@ wire (the generic `0208` and `04000806032B2E75` tables NI's converter writes too
 two-ended and 826 of 926 three-ended wires in the corpus carry exactly those). It is 94 events for
 four frames of NI's facade, so LabVIEW's 100-event log saturates on any larger VI and the insanity
 check goes blind there. Composing the real wire geometry would end it; the table format is decoded
-only for two-ended wires (section 4).
+only for two-ended wires (section 4) - which is where the next section starts.
+
+### Real wire geometry - where a terminal attaches (2026-10-11)
+
+**The hotpoint is the CENTRE of the terminal's rectangle in its diagram**, `((t + b) // 2, (l + r) // 2)`
+- measured over the two-ended wires of every VI LabVIEW itself saved among its shipping examples
+(`wire_corpus.py`: 27 232 wires from 1 778 VIs, read with pylabview, no LabVIEW): a wire whose
+table ends horizontally fixes the vertical offset between its ends exactly, one that ends vertically
+the horizontal one, and **4 421 of 4 644** wires between constants, front-panel terminals, subVI
+calls and property or invoke items agree with the centre rule. The rectangle is the node's bounds'
+top-left plus the DCO's `termBounds`; a constant's ddo bounds; a front-panel terminal's own bounds;
+a tunnel's OUTER side like any node's terminal, the structure being the node - and its **INNER**
+side the tunnel's `termBounds` as they are, the frame's diagram counting from the structure's
+top-left (27 of 27 inner case-tunnel to property-node wires, 21 of 21 tunnel to tunnel).
+
+**Primitives are where section 4's "not the centre of termBounds" lives, and it is learnable**: the
+same corpus fixes 105 (primResID, terminal position) offsets with one value in at least 80 % of
+their wires - `Add` and its family `+6` in y - kept in `parts/hotpoints.json` by
+`learn_hotpoints.py`. The misses among the anchors are tall array and cluster constants, whose
+output does not sit at their vertical centre.
+
+**`wire_route.py` routes every two-ended wire it can locate**, after the layout: straight `0208`
+where both hotpoints share a y, otherwise four joints - right half the distance, up or down, right
+into the sink. Measured with `measure_routes.py` (each test composed twice, generic and routed, on
+one fresh LabVIEW): over 20 suite VIs LabVIEW's repairs went from **362 to 112**, every VI
+executable, no insanity and no DWarn of any other kind; `validate_routes.py` shows LabVIEW's own
+save KEEPING the routed tables (3 of 3 on t01, 4 of 4 on t63). The suite runs 116 of 116 with it,
+and `t125_multi_event_frames`, which filled LabVIEW's log on its own, is checked for insanity again.
+`AIXML2VI_GENERIC_WIRES=1` writes the generic tables as before.
+
+Still generic, each its own step: **fan-outs** (the three-ended table is a tree: n codes and n-1
+lengths, not decoded), a wire whose **sink lies left of its source** - mostly the layout's doing: a
+structure takes the column of its first node regardless of what feeds its tunnels, and columns are a
+fixed 160 px apart, so nodes after a wide loop land inside it - **inner terminals** whose DCO the
+heap does not give, and primitives the corpus has too few wires for (1188's output sits 11 px below
+its centre, seen on t83).
 
 ## 8. Files
 
@@ -1784,6 +1820,8 @@ only for two-ended wires (section 4).
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
+| `wire_corpus.py`, `wire_decode.py`, `wire_fit.py`, `learn_hotpoints.py` | the two-ended wires of LabVIEW's own saves with their geometry; the table decoder; the hotpoint models per terminal kind; the per-primitive offsets into `parts/hotpoints.json` |
+| `wire_route.py`, `measure_routes.py`, `validate_routes.py` | the real routes the composer writes after its layout; LabVIEW's repairs generic against routed on one fresh LabVIEW; whether LabVIEW's save keeps the routed tables |
 | `selftest.py`, `tests/` | 116 composition tests, 147 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills; `STALE` when LabVIEW served another file; `xcontrol` composes a facade into a copy of an installed XControl and runs its host with the panel open |
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
