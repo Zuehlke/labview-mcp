@@ -11,7 +11,7 @@ Every build gets a fresh file name: a LabVIEW instance keeps a VI in memory once
 second VI under the same name would be the first one again.
 
 A case may carry `post` (and `postAfterMs`): window messages lv-com.ps1 sends to the VI's own
-panel during the run - "char:97;sysclose" types an `a` and clicks the close box - and then expect
+panel during the run - "char:97;sysclose" sends the key a and clicks the close box - and then expect
 the pseudo-output "#panel open", which is what Panel Close?'s Discard? decides (t133).
 """
 import json

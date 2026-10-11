@@ -151,9 +151,12 @@ foreach ($p in $ViPath) {
                         # WM_SYSCOMMAND SC_CLOSE - what the X sends, and what raises Panel Close?:
                         # a plain WM_CLOSE closed the panel and raised NO event (2026-10-11)
                         elseif ($one -eq 'sysclose') { [void][LvWin]::PostMessage($h, 0x0112, [IntPtr]0xF060, [IntPtr]::Zero) }
-                        # ONE key is EITHER message: LabVIEW raises Key Down? from each and types
-                        # from each, so both together typed `aa` (measured 2026-10-11). char: gives
-                        # Key Down?'s Char, down: its VKey with Char 0
+                        # ONE key is EITHER message: LabVIEW raises the VI's Key Down? from each,
+                        # every time (Char 97 for char:97 and down:65). Whatever needs a CONTROL's
+                        # key focus - the key landing in a string, the control's own Key Down? -
+                        # depends on which window is active on the desktop and is NOT reproducible
+                        # (2026-10-11). Neither WM_ACTIVATE + WM_SETFOCUS nor SetForegroundWindow
+                        # made it so: the first changed nothing, the second lost the key focus.
                         elseif ($one -match '^char:(\d+)$') { [void][LvWin]::PostMessage($h, 0x0102, [IntPtr][int]$Matches[1], [IntPtr]1) }
                         elseif ($one -match '^down:(\d+)$') {
                             [void][LvWin]::PostMessage($h, 0x0100, [IntPtr][int]$Matches[1], [IntPtr]1)

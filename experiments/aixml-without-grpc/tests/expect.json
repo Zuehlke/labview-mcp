@@ -1376,7 +1376,6 @@
     "outputs": {
      "Last Frame": 1,
      "Char": 97,
-     "Typed": "",
      "#panel open": "True",
      "Error Out": "[False,0,]"
     }
@@ -1388,7 +1387,6 @@
     "outputs": {
      "Last Frame": 1,
      "Char": 97,
-     "Typed": "a",
      "#panel open": "False",
      "Error Out": "[False,0,]"
     }
@@ -1402,6 +1400,18 @@
     "outputs": {
      "Last Frame": 4,
      "Received": "C:\\probe\\panel.txt",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t134_control_key_down": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Last Frame": 4,
+     "Received": "C:\\probe\\keys.txt",
      "Error Out": "[False,0,]"
     }
    }

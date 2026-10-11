@@ -1468,13 +1468,32 @@ NI's exporter.
 | `WM_KEYDOWN` 65 | raises Key Down? with `Char` 0 (the virtual key only), and types `a` as well |
 
 So ONE key is either message - both together typed `aa`. **`t133_vi_filter_live` is an A/B on
-the filter node's answer, run in the suite**: a string control takes key focus at start, Key
-Down? and Panel Close? both answer `Discard?` from a `Discard` control, and the run types `a` and
-clicks the close box. Discard TRUE: `Char` 97, the string EMPTY, the panel still OPEN after the
-run; Discard FALSE: `Char` 97, the string `a`, the panel CLOSED. Same event both times, only the
-filter node's value differs - so the value reaches LabVIEW. **Not covered**: Key Down? on a
-CONTROL (the survey saw only the VI's), changing `Char` rather than discarding it, and the
-application's filter events.
+the filter node's answer, run in the suite**: Key Down? and Panel Close? both answer `Discard?`
+from a `Discard` control, and the run sends a key and clicks the close box. Discard TRUE: `Char`
+97, the panel still OPEN after the run; Discard FALSE: `Char` 97, the panel CLOSED. Same event
+both times, only the filter node's value differs - so the value reaches LabVIEW.
+
+**What a window message CANNOT make reproducible: anything that needs a CONTROL's key focus.**
+The VI's Key Down? and Panel Close? came every time (`Char` 97 in 7 of 7 key runs, the panel
+exactly as `Discard?` answered in every close run). The key landing in a focused string did not:
+the first t133 runs showed it (Discard TRUE the string empty, FALSE `a`), later runs of the same
+VI left it empty in 1 of 2 pass runs - it follows which window is active on the desktop, which a
+test does not control. Neither fixed it: `WM_ACTIVATE` + `WM_SETFOCUS` changed nothing, and
+`SetForegroundWindow` (confirmed in front) LOST the key focus - the key arrived only after two
+Tabs moved it back. So t133 asserts `Char` and the panel, not the string, and lv-com.ps1 offers no
+`front` - it would take the desktop away from whoever is working there for a result it does not
+deliver.
+
+**Key Down? on a CONTROL** shares its name with the VI's, so the table row carries a
+`controlVariant` the composer takes when the selector names a source (`static_event(kind, ctl)`).
+NI's cached exports handle it statically on no control and the dynamic table has no key event, so
+it was MEASURED: composed with the VI's fields and a control's spec (source 3, eFlags 4), it is
+exactly what LabVIEW writes on load - data and filter cluster, `FocusObj` included - and NI's
+exporter names the frame `"Typed": Key Down?` (`add_key_events.py`, `t134_control_key_down`). It
+fires at run time - twice observed, `Char` 9 for a Tab and `Char` 97 with the `a` typed - and is
+subject to the key-focus lottery above, so t134 runs through its File frame. **Not covered**:
+changing `Char` rather than discarding it, the notify `Key Down`/`Key Repeat`/`Key Up` on a
+control, and the application's filter events.
 
 **The reader reads both nodes now**: an eventDataNode without 0x10000 is an `Event Filter Node`
 whose fields are inputs. NI's Drag and Drop example reads back with
@@ -1492,7 +1511,7 @@ reader cannot name.
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 107 composition tests, 138 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
+| `selftest.py`, `tests/` | 108 composition tests, 139 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
@@ -1503,6 +1522,7 @@ reader cannot name.
 | `static_event_survey.py`, `build_static_events.py`, `parts/static-events.json` | every static event NI's cached VIs handle, read out of the VIs; the table static events are composed from (§7a, "Static events") |
 | `probe_events.py` | compose an event probe, load it, compare with LabVIEW's own save, and have NI's exporter name every frame's events - the check any new event kind passes before it is trusted |
 | `find_multi_event_frames.py`, `event_frame_data.py` | Event Structure frames handling several events in the export cache; each frame's event data and sources' types read out of the VI (§7a, "Frames that handle several events") |
+| `add_key_events.py` | Key Down?'s CONTROL variant in `parts/static-events.json` (`controlVariant`), measured on LabVIEW's own save of a probe (§7a, "Filter events") |
 | `add_filter_fields.py` | every filter event's Event Filter Node cluster, read off NI's own VI, into `parts/static-events.json` as `filterFields` (§7a, "Filter events") |
 | `add_graph_events.py` | the six graph events of NI's `Graph Events.vi` into `parts/static-events.json`; `--fields` takes each event's data from a `probe_events.py` run (§7a, "Graphs and their events") |
 | `graph_probe.py`, `graph_bisect.py`, `graph_sample.py` | graph composition checks: load one composed graph VI and see whether COM still answers (the chart hang); the same per indicator, each in a FRESH LabVIEW; NI's exports with graph styles composed and loaded |

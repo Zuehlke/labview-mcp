@@ -289,9 +289,13 @@ written as NI writes them, with no source: `<CaseFrame selector=" Panel Close? "
 carries `VIRef` (a plain VI refnum) where a control's carries `CtlRef`. **And the two filter events
 RUN, fired for real**: a window message to the VI's own panel - the close box (`WM_SYSCOMMAND`
 `SC_CLOSE`; a plain `WM_CLOSE` closes the panel WITHOUT the event) and a `WM_CHAR` - raises them.
-`t133_vi_filter_live` is the A/B in the suite: with `Discard?` TRUE the typed key never reaches the
-focused string and the panel stays open, with FALSE both get through. Still refused: a frame
-handling a filter event among others, Key Down? on a control, and the application's events.
+`t133_vi_filter_live` is the A/B in the suite: Panel Close? answered `Discard?` TRUE keeps the
+panel open, FALSE lets it close, and Key Down? reads the key every time. **Key Down? on a CONTROL
+composes as well**, measured on LabVIEW's own save (its row's `controlVariant`), and fires at run
+time - but a key reaches a control only through its key focus, which follows the window active on
+the desktop, so no test asserts it: a message cannot make that reproducible, and bringing the panel
+to the front lost the focus. Still refused: a frame handling a filter event among others, and the
+application's events.
 
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke

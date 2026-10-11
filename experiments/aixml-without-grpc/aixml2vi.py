@@ -248,15 +248,21 @@ def control_events():
 _STATIC_EVENTS = None
 
 
-def static_event(event):
+def static_event(event, ctl=None):
     """parts/static-events.json's row for a STATIC event beyond EVENT_SPECS - its EventSpec and the
     data fields after the reference, read off NI's own VIs by static_event_survey.py
-    (build_static_events.py). None when the survey never saw it."""
+    (build_static_events.py). None when the survey never saw it. An event of the VI that a CONTROL
+    has too under the same name (Key Down?) carries `controlVariant`, used when the selector names
+    a source `ctl` (add_key_events.py, measured on LabVIEW's own save)."""
     global _STATIC_EVENTS
     if _STATIC_EVENTS is None:
         p = os.path.join(HERE, "parts", "static-events.json")
         _STATIC_EVENTS = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
-    return _STATIC_EVENTS.get(event)
+    r = _STATIC_EVENTS.get(event)
+    if r is not None and ctl is not None and r.get("sourceKind") != "control" and r.get("controlVariant"):
+        r = dict(r, **r["controlVariant"])
+        r.pop("controlVariant", None)
+    return r
 
 
 def control_event_row(cls, event):
@@ -4159,7 +4165,7 @@ class Composer:
         self._synth_event_filter = getattr(self, "_synth_event_filter", [])
         for f in frames_el:
             its = event_items(unescape(f.get("selector") or ""))
-            rows = [static_event(self._event_of(it)[1]) for it in its if self._dyn_source(it) is None]
+            rows = [static_event(self._event_of(it)[1], self._event_of(it)[0]) for it in its if self._dyn_source(it) is None]
             if not any(r is not None and int(r["spec"]["type"]) < 0 for r in rows):
                 continue
             if len(its) != 1:
@@ -4228,7 +4234,7 @@ class Composer:
         """The static-events.json row for a control's NOTIFY event, or a refusal naming why not:
         a filter event (`Mouse Down?`, type with the 0x80000000 bit) needs an Event Filter Node, a
         VI or application event has no control, and a class-dependent one was not generalised."""
-        r = static_event(kind)
+        r = static_event(kind, ctl)
         if r is None:
             raise Unsupported("Event Structure %s: event %r is not composable yet" % (uid, kind))
         if int(r["spec"]["type"]) < 0 and not r.get("filterFields"):
@@ -4871,7 +4877,7 @@ class Composer:
             raise Unsupported("Event Filter Node %s: only a frame handling ONE static filter event is measured"
                               % el.get("uid"))
         ctl, kind = self._event_of(items[0])
-        row = static_event(kind)
+        row = static_event(kind, ctl)
         if row is None or int(row["spec"]["type"]) >= 0 or not row.get("filterFields"):
             raise Unsupported("Event Filter Node %s: %r is not a filter event with a measured filter cluster"
                               % (el.get("uid"), kind))
