@@ -1,0 +1,11 @@
+<VI _name="T151 Queue Terminal.vi" description="Creates a string queue, enqueues a message and passes the queue to a subVI on its connector pane, which takes the element and passes the queue back to be released.">
+  <Control _name="message" outputs="value:4205.value" type="string" uid="4205" uid_parent="root" value=""/>
+  <Constant _name="queue type" outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value=""/>
+  <Node _name="Obtain Queue" inputs="element data type:4200.value" outputs="queue out:4210.queue out,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Enqueue Element" inputs="queue:4210.queue out,element:4205.value,error in (no error):4210.error out" outputs="queue out:4230.queue out,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Call inputs="queue:4230.queue out,error in:4230.error out" outputs="queue out:4240.queue out,element:4240.element,timed out:4240.timed out,error out:4240.error out" target="Queue Take {stamp}.vi" uid="4240" uid_parent="root"/>
+  <Node _name="Release Queue" inputs="queue:4240.queue out,error in (no error):4240.error out" outputs="error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Indicator _name="element" inputs="value:4240.element" type="string" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="timed out" inputs="value:4240.timed out" type="bool" uid="4310" uid_parent="root" value="false"/>
+  <Indicator _name="error out" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4320" uid_parent="root" value="[false,0,]"/>
+</VI>

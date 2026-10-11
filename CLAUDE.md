@@ -1151,8 +1151,9 @@ LabVIEW sizes its own to their text. **THE WHOLE CLD ATM EXAM WENT THROUGH THE C
 ActiveX, 83 assertions green, in about an hour with agents, `C:\Temp\ATM_Pylab`. The gaps it
 found were closed that night - comments, descriptions, a bare name resolving NI's namesake first,
 `Label.Text` on a control, queue and file refnum wires, a property tabled under its short name,
-wide fan-outs, constants stacked into one tall column, five unnamed terminals - except a queue
-refnum as a subVI terminal, typed control refnums and `Update While Typing?`; FINDINGS §7a.
+wide fan-outs, constants stacked into one tall column, five unnamed terminals - and a queue
+refnum as a subVI terminal the next night (`ref{Queue}{string}`, a container like an array);
+still open: typed control refnums and `Update While Typing?`; FINDINGS §7a.
 **No `.ctl` link
 is needed for a typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs

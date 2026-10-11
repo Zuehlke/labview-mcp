@@ -1,0 +1,11 @@
+<VI _name="T150 Queue Take.vi" description="A subVI that takes a string queue on its connector pane, dequeues one element and hands the queue back - a queue refnum as a control and as an indicator.">
+  <Control _name="queue" conIdx="0" connection="required" description="The queue to take an element from." outputs="value:4200.value" type="ref{Queue}{string}" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Error in." outputs="value:4205.value" type="cluster{bool.status,int32.code,string.source}" uid="4205" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="timeout" outputs="value:4210.value" type="int32" uid="4210" uid_parent="root" value="100"/>
+  <Node _name="Dequeue Element" inputs="queue:4200.value,timeout in ms (-1):4210.value,error in (no error):4205.value" outputs="queue out:4220.queue out,element:4220.element,timed out?:4220.timed out?,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Indicator _name="queue out" conIdx="4" connection="recommended" description="The same queue." inputs="value:4220.queue out" type="ref{Queue}{string}" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="element" conIdx="6" connection="recommended" description="The element taken." inputs="value:4220.element" type="string" uid="4310" uid_parent="root" value=""/>
+  <Indicator _name="timed out" conIdx="8" connection="recommended" description="True when the queue was empty." inputs="value:4220.timed out?" type="bool" uid="4320" uid_parent="root" value="false"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Error out." inputs="value:4220.error out" type="cluster{bool.status,int32.code,string.source}" uid="4330" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="One element out of the caller's queue" uid="0" uid_parent="root"/>
+</VI>

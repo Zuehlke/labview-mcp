@@ -1964,8 +1964,15 @@ Fixed after it:
 - **Three more unnamed terminals**, each read off the part's type labels and confirmed by
   behaviour in the build: `Obtain Queue`'s `create if not found? (T)` (2) and `created new?` (10),
   `Release Queue`'s `force destroy? (F)` (2).
-- Not fixed: a queue refnum as a subVI TERMINAL (`ref{Queue}{string}` - the agent used a named
-  queue), and `{LV.String}` `Update While Typing?`, which none of the cached NI exports writes.
+- Not fixed that night: a queue refnum as a subVI TERMINAL (`ref{Queue}{string}` - the agent used
+  a named queue), and `{LV.String}` `Update While Typing?`, which none of the cached NI exports
+  writes. **The queue terminal composes now (2026-10-12).** NI's exporter spells the type
+  `ref{Queue}{<element>.<label>}`, which the type grammar read as one `ref{...}` and refused.
+  And a queue refnum CONTROL is a container like an array: its `stdRefNum` object holds a data
+  object of the element's type (in the harvested part a typedef'd cluster of two int32), so
+  re-typing the refnum alone gave "Going from good to bad after compiling". It takes the array's
+  route now, the element object rebuilt from parts. `t150` takes a queue on its pane and hands it
+  back, `t151` passes one in and gets its element.
 
 **Wave 3 - the Caraya tests and their runners, COMPOSED too**: 18 test VIs (`Define Test`, the
 subject as a static subVI, `Assert Equal Value_Variant`), two runners (`Run Tests.vi`, Array Path

@@ -1630,5 +1630,23 @@
     }
    }
   ]
+ },
+ "t150_queue_take": {
+  "cases": []
+ },
+ "t151_queue_terminal": {
+  "callees": {
+   "Queue Take {stamp}.vi": "t150_queue_take"
+  },
+  "cases": [
+   {
+    "inputs": "message=Enter=23456",
+    "outputs": {
+     "element": "Enter=23456",
+     "timed out": "False",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

@@ -60,6 +60,7 @@ SCALARS = {
 # type key (lvheap.type_key) -> the front-panel class of its object
 DDO_OF_KEY = {v[0]: v[1] for v in SCALARS.values()}
 DDO_OF_KEY.update({"Refnum.LVObjCtl": "stdRefNum", "Refnum.VisaRef": "stdRefNum", "Refnum.UsrDefndTag": "stdRefNum",
+                   "Refnum.Queue": "stdRefNum",
                    "Picture": "stdPict", "MeasureData.Dynamicdata": "stdMeasureData"})
 # LabVIEW's type codes; a signal's lastSignalKind is 0x100 | code for a scalar - measured
 # 266 on double wires, 259 on int32, 289 on boolean in NI's own VIs.
@@ -158,6 +159,17 @@ def type_tree(aixml_type, label=None, constant=False):
     """AIXML's type grammar -> an inlined TypeDesc tree as VCTP writes it:
     scalars, cluster{T.name,...}, array{T} / array.N{T}, enums uintN{a,b,c}."""
     aixml_type = aixml_type.strip()
+    mq = re.fullmatch(r"ref\{Queue\}\{(.*)\}", aixml_type, re.S)
+    if mq:
+        # a QUEUE refnum, as NI's exporter writes one - ref{Queue}{<element type>.<label>} - and
+        # VCTP holds it: Refnum Queue around the element's type (the ATM build's producer and
+        # consumer could only share a NAMED queue without it, 2026-10-12)
+        t, lab = split_field(mq.group(1))
+        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "Queue", "Format": "inline"})
+        el.append(type_tree(t, lab))
+        if label:
+            el.set("Label", label)
+        return el
     m = re.match(r"([A-Za-z0-9_]+)(?:\.(\d+))?\{(.*)\}$", aixml_type, re.S)
     if m and m.group(1) == "cluster":
         el = ET.Element("TypeDesc", {"Type": "Cluster", "Format": "inline"})
@@ -1211,10 +1223,23 @@ class Composer:
         want, other = ("ind", "ctl") if is_ind else ("ctl", "ind")
         if prefix == "const":
             want = other = None
-        if t in self.DDO_CLASS and not force_class:
-            cls = self.DDO_CLASS[t]
+        # A QUEUE refnum control is a CONTAINER like an array: the refnum object holds a data
+        # object of the element's type (the donor's: a typedef'd cluster of two int32), and
+        # re-typing the refnum alone left the two disagreeing - "Going from good to bad after
+        # compiling" (2026-10-12). So it takes the array's route, its element rebuilt from parts.
+        queue = t == "Refnum" and tree.get("RefType") == "Queue" and not force_class
+        if (t in self.DDO_CLASS and not force_class) or queue:
+            cls = "stdRefNum" if queue else self.DDO_CLASS[t]
             key = None
-            if in_array and self.parts.get("arrelem/%s/%s" % (prefix, cls)) is not None:
+            if queue:
+                for d in (want, other):
+                    k = "%s/stdRefNum/%s/Refnum.Queue" % (prefix, d)
+                    if d and self.parts.get(k) is not None:
+                        key = k
+                        break
+                if key is None:
+                    raise Unsupported("no %s part for a queue refnum" % prefix)
+            if key is None and in_array and self.parts.get("arrelem/%s/%s" % (prefix, cls)) is not None:
                 key = "arrelem/%s/%s" % (prefix, cls)
             if key is None:
                 # best part: same element kind and direction, then same element kind, then any
@@ -1282,7 +1307,7 @@ class Composer:
                 dims = len(tree.findall("Dimension"))
                 ai = ddo.find("arrayIndices")
                 donor_dims = len(ai) if ai is not None else 1
-                if dims != donor_dims:
+                if not queue and dims != donor_dims:
                     raise Unsupported("no %d-dimensional array part (the donor has %d)" % (dims, donor_dims))
                 want_cls = "stdRing" if is_enum(elem) else self.DDO_CLASS.get(elem.get("Type")) or \
                     SCALARS.get(next((k for k, v in SCALARS.items() if v[0] == elem.get("Type")), ""), (None, None))[1]
