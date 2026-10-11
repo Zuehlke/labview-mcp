@@ -1428,5 +1428,44 @@
     }
    }
   ]
+ },
+ "t136_application_events": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Last Frame": 1,
+     "Self": "True",
+     "Window": 0,
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t138_key_notify_live": {
+  "cases": [
+   {
+    "inputs": "",
+    "post": "down:65",
+    "postAfterMs": 700,
+    "outputs": {
+     "Last Frame": 6,
+     "VI Up": 30,
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t137_key_notify_events": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Last Frame": 9,
+     "Received": "C:\\probe\\keynotify.txt",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

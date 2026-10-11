@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="T138 Key Notify Live.vi" description="The NOTIFY key events - Key Down, Key Repeat, Key Up - on the string Typed and on the VI itself, one frame each, every frame reading Char (Key Up: ScanCode, it has no Char) into its own indicator and keeping the loop running. Fired for real: the run presses and releases a key in the panel, and the VI's Key Up stops the loop with the key's ScanCode.">
+  <Control _name="Typed" outputs="value:" type="string" uid="4201" uid_parent="root" value="" />
+  <Control _name="File" outputs="value:" type="path" uid="4204" uid_parent="root" value="" />
+  <Constant _name="Signal" outputs="value:4205.value" type="path" uid="4205" uid_parent="root" value="C:\5Cprobe\5Ckeynotify.txt"/>
+  <Constant _name="Open" outputs="value:4206.value" type="bool" uid="4206" uid_parent="root" value="true"/>
+  <Node _name="VI Server Reference" outputs="This VI:4210.This VI" type="{LV.VI}" uid="4210" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="File" outputs="File:4211.File" uid="4211" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4210.This VI,error in (no error):,Front Panel Window\3AOpen:4206.value" outputs="reference out:,error out:4212.error out" type="{LV.VI}" uid="4212" uid_parent="root"/>
+  <Structure _name="While Loop" count="4220.value" uid="4220" uid_parent="root">
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <CaseFrame selector=" &quot;Typed&quot;\3A Key Down " uid="4300" uid_parent="4230">
+        <Node _name="Event Data Node" fields="Char" outputs="Char:4305.Char" uid="4305" uid_parent="4300"/>
+        <Indicator _name="Typed Down" inputs="value:4305.Char" type="int16" uid="4306" uid_parent="4300" value="0"/>
+        <Constant outputs="value:4301.value" type="int32" uid="4301" uid_parent="4300" value="1"/>
+        <Constant outputs="value:4302.value" type="bool" uid="4302" uid_parent="4300" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4302.value" uid="4303" uid_parent="4300"/>
+        <Tunnel _id="Out2" inputs="value:4301.value" uid="4304" uid_parent="4300"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Typed&quot;\3A Key Repeat " uid="4310" uid_parent="4230">
+        <Node _name="Event Data Node" fields="Char" outputs="Char:4315.Char" uid="4315" uid_parent="4310"/>
+        <Indicator _name="Typed Repeat" inputs="value:4315.Char" type="int16" uid="4316" uid_parent="4310" value="0"/>
+        <Constant outputs="value:4311.value" type="int32" uid="4311" uid_parent="4310" value="2"/>
+        <Constant outputs="value:4312.value" type="bool" uid="4312" uid_parent="4310" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4312.value" uid="4313" uid_parent="4310"/>
+        <Tunnel _id="Out2" inputs="value:4311.value" uid="4314" uid_parent="4310"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Typed&quot;\3A Key Up " uid="4320" uid_parent="4230">
+        <Node _name="Event Data Node" fields="ScanCode" outputs="ScanCode:4325.ScanCode" uid="4325" uid_parent="4320"/>
+        <Indicator _name="Typed Up" inputs="value:4325.ScanCode" type="int16" uid="4326" uid_parent="4320" value="0"/>
+        <Constant outputs="value:4321.value" type="int32" uid="4321" uid_parent="4320" value="3"/>
+        <Constant outputs="value:4322.value" type="bool" uid="4322" uid_parent="4320" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4322.value" uid="4323" uid_parent="4320"/>
+        <Tunnel _id="Out2" inputs="value:4321.value" uid="4324" uid_parent="4320"/>
+      </CaseFrame>
+      <CaseFrame selector=" Key Down " uid="4330" uid_parent="4230">
+        <Node _name="Event Data Node" fields="Char" outputs="Char:4335.Char" uid="4335" uid_parent="4330"/>
+        <Indicator _name="VI Down" inputs="value:4335.Char" type="int16" uid="4336" uid_parent="4330" value="0"/>
+        <Constant outputs="value:4331.value" type="int32" uid="4331" uid_parent="4330" value="4"/>
+        <Constant outputs="value:4332.value" type="bool" uid="4332" uid_parent="4330" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4332.value" uid="4333" uid_parent="4330"/>
+        <Tunnel _id="Out2" inputs="value:4331.value" uid="4334" uid_parent="4330"/>
+      </CaseFrame>
+      <CaseFrame selector=" Key Repeat " uid="4340" uid_parent="4230">
+        <Node _name="Event Data Node" fields="Char" outputs="Char:4345.Char" uid="4345" uid_parent="4340"/>
+        <Indicator _name="VI Repeat" inputs="value:4345.Char" type="int16" uid="4346" uid_parent="4340" value="0"/>
+        <Constant outputs="value:4341.value" type="int32" uid="4341" uid_parent="4340" value="5"/>
+        <Constant outputs="value:4342.value" type="bool" uid="4342" uid_parent="4340" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4342.value" uid="4343" uid_parent="4340"/>
+        <Tunnel _id="Out2" inputs="value:4341.value" uid="4344" uid_parent="4340"/>
+      </CaseFrame>
+      <CaseFrame selector=" Key Up " uid="4350" uid_parent="4230">
+        <Node _name="Event Data Node" fields="ScanCode" outputs="ScanCode:4355.ScanCode" uid="4355" uid_parent="4350"/>
+        <Indicator _name="VI Up" inputs="value:4355.ScanCode" type="int16" uid="4356" uid_parent="4350" value="0"/>
+        <Constant outputs="value:4351.value" type="int32" uid="4351" uid_parent="4350" value="6"/>
+        <Constant outputs="value:4352.value" type="bool" uid="4352" uid_parent="4350" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4352.value" uid="4353" uid_parent="4350"/>
+        <Tunnel _id="Out2" inputs="value:4351.value" uid="4354" uid_parent="4350"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;File&quot;\3A Value Change " uid="4270" uid_parent="4230">
+        <Node _name="Event Data Node" fields="NewVal" outputs="NewVal:4271.NewVal" uid="4271" uid_parent="4270"/>
+        <Indicator _name="Received" inputs="value:4271.NewVal" type="path" uid="4272" uid_parent="4270" value=""/>
+        <Constant outputs="value:4274.value" type="int32" uid="4274" uid_parent="4270" value="9"/>
+        <Constant outputs="value:4275.value" type="bool" uid="4275" uid_parent="4270" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4275.value" uid="4276" uid_parent="4270"/>
+        <Tunnel _id="Out2" inputs="value:4274.value" uid="4277" uid_parent="4270"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4280.value" uid="4280" uid_parent="4230"/>
+      <Tunnel _id="Out2" outputs="value:4281.value" uid="4281" uid_parent="4230"/>
+    </Structure>
+    <Condition inputs="value:4280.value" uid="4282" uid_parent="4220" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4281.value" outputs="value:4283.value" uid="4283" uid_parent="4220"/>
+  </Structure>
+  <Indicator _name="Last Frame" inputs="value:4283.value" type="int32" uid="4290" uid_parent="root" value="0"/>
+  <Indicator _name="Error Out" inputs="value:4212.error out" type="cluster{bool.status,int32.code,string.source}" uid="4292" uid_parent="root" value="[false,0,]" />
+</VI>

@@ -1,0 +1,118 @@
+{
+ "1073741825": {
+  "name": "Timeout",
+  "vi": "Channel Probe_Background Updater.vi"
+ },
+ "1073741836": {
+  "name": "Key Up",
+  "vi": "picktime.vi"
+ },
+ "1073741846": {
+  "name": "Double Click",
+  "vi": "BMark_MainWindow.vi"
+ },
+ "1073741847": {
+  "name": "Key Down",
+  "vi": "SearchPage.vi"
+ },
+ "1073741848": {
+  "name": "Key Repeat",
+  "vi": "SearchPage.vi"
+ },
+ "1073741849": {
+  "name": "Panel Close",
+  "vi": "Channel Probe.vi"
+ },
+ "1073741850": {
+  "name": "Application Instance Close",
+  "vi": "BMark_MainWindow.vi"
+ },
+ "1073741855": {
+  "name": "Item Close",
+  "vi": "Page.vi"
+ },
+ "1073741857": {
+  "name": "VI Activation",
+  "vi": "SearchPage.vi"
+ },
+ "1073741867": {
+  "name": "Drag Starting",
+  "vi": "Execute Rearrange Cases.vi"
+ },
+ "1073741869": {
+  "name": "Drag Ended",
+  "vi": "Execute Rearrange Cases.vi"
+ },
+ "1073741871": {
+  "name": "Data Change",
+  "vi": "Facade.vit"
+ },
+ "1073741872": {
+  "name": "Direction Change",
+  "vi": "Facade.vit"
+ },
+ "1073741873": {
+  "name": "Display State Change",
+  "vi": "Facade.vit"
+ },
+ "1073741874": {
+  "name": "Exec State Change",
+  "vi": "Facade.vit"
+ },
+ "1073741878": {
+  "name": "Shortcut Menu Selection (App)",
+  "vi": "AB_UI_Page_Source_Settings.vi"
+ },
+ "1073741884": {
+  "name": "Pane Size",
+  "vi": "BMark_MainWindow.vi"
+ },
+ "1073741885": {
+  "name": "Drag Leave",
+  "vi": "LLBMgr User Interface.vit"
+ },
+ "1073741888": {
+  "name": "Application Activation",
+  "vi": "SearchPage.vi"
+ },
+ "1073741891": {
+  "name": "Operate Menu Dismissed",
+  "vi": "IB_UI_Page_Registry.vi"
+ },
+ "1073741892": {
+  "name": "Shortcut Menu Dismissed",
+  "vi": "Page.vi"
+ },
+ "1073741906": {
+  "name": "Bookmark Info Change",
+  "vi": "BMark_MainWindow.vi"
+ },
+ "-2147483644": {
+  "name": "Application Instance Close?",
+  "vi": "_Profile Buffer Allocation.vi"
+ },
+ "-2147483642": {
+  "name": "Menu Selection? (App)",
+  "vi": "StateDiagramEditor.vit"
+ },
+ "-2147483641": {
+  "name": "Mouse Down?",
+  "vi": "Page.vi"
+ },
+ "-2147483632": {
+  "name": "Item Open?",
+  "vi": "IB_UI_Page_Source.vi"
+ },
+ "-2147483631": {
+  "name": "Item Close?",
+  "vi": "AB_UI_Page_Source_Settings.vi"
+ },
+ "-2147483593": {
+  "name": "Edit Cell?",
+  "vi": "AB_UI_Page_Routing_Templates.vi"
+ },
+ "-1610612678": {
+  "name": "Drag Over",
+  "vi": "LLBMgr User Interface.vit"
+ }
+}

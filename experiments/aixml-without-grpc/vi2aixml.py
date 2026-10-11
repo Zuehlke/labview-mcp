@@ -907,13 +907,22 @@ class Reader:
         '?' - NI's Graph Events.vi as six of them in one frame."""
         if cls._event_kinds is None:
             kinds = dict(cls.EVENT_KINDS)
-            p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "parts", "static-events.json")
+            here = os.path.dirname(os.path.abspath(__file__))
+            p = os.path.join(here, "parts", "static-events.json")
             if os.path.exists(p):
                 with open(p, encoding="utf-8") as f:
                     for name, row in json.load(f).items():
                         spec = row.get("spec") if isinstance(row, dict) else None
                         if spec and spec.get("type"):
                             kinds.setdefault(int(spec["type"]), name)
+            # and the numbers the installation scan found in LabVIEW's own VIs, named by NI's
+            # exporter (scan_static_specs.py, name_static_specs.py) - events the composer cannot
+            # write yet (Mouse Down?, Drag Over, Pane Size, ...) but the reader can name
+            p = os.path.join(here, "parts", "event-type-names.json")
+            if os.path.exists(p):
+                with open(p, encoding="utf-8") as f:
+                    for typ, row in json.load(f).items():
+                        kinds.setdefault(int(typ), row["name"])
             cls._event_kinds = kinds
         return cls._event_kinds
 

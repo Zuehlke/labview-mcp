@@ -298,8 +298,18 @@ to the front lost the focus. **A frame may handle SEVERAL filter events** exactl
 accepts it, measured on its own load: the same event on several sources (even across classes), or
 different events with identical data and the same reference class (Drag Enter and Drop on graphs).
 Different data, different reference classes with different events, or a filter event beside a
-notify event break the VI in LabVIEW itself - those are refused by name. Still refused: the
-application's events.
+notify event break the VI in LabVIEW itself - those are refused by name.
+
+**The APPLICATION's events and the NOTIFY key events compose too**, found where NI's cached exports
+could not help: a pylabview scan of LabVIEW's own VIs (`resource\`, `project\`, 7 668 of them) found
+29 event types the table did not know, and NI's exporter named each - the reader knows them all
+now. The composer writes VI Activation, Application Instance Close, Application Instance Close?
+and Bookmark Info Change (`" VI Activation "`, no source, an `AppRef`), and Key Down, Key Repeat
+and Key Up on a control or on the VI - every one identical to LabVIEW's save. **VI Activation and
+the VI's Key Up RUN in the suite**: a VI opening its own panel raises VI Activation every time, and
+a key pressed into the panel raises Key Up with its scan code. Key Repeat fired once in three held
+keys and is not asserted. Still refused: Application Activation (only ever met beside other events),
+and the other scanned events whose data has not been measured.
 
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke

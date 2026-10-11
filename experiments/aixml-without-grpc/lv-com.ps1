@@ -41,6 +41,7 @@ public static class LvWin {
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
     [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+    [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code, uint mapType);
     public static List<IntPtr> Find(uint pid, string title) {
         var hits = new List<IntPtr>();
         EnumWindows((h, l) => {
@@ -158,9 +159,16 @@ foreach ($p in $ViPath) {
                         # (2026-10-11). Neither WM_ACTIVATE + WM_SETFOCUS nor SetForegroundWindow
                         # made it so: the first changed nothing, the second lost the key focus.
                         elseif ($one -match '^char:(\d+)$') { [void][LvWin]::PostMessage($h, 0x0102, [IntPtr][int]$Matches[1], [IntPtr]1) }
-                        elseif ($one -match '^down:(\d+)$') {
-                            [void][LvWin]::PostMessage($h, 0x0100, [IntPtr][int]$Matches[1], [IntPtr]1)
-                            [void][LvWin]::PostMessage($h, 0x0101, [IntPtr][int]$Matches[1], [IntPtr]0xC0000001)
+                        # down: a key pressed and released; repeat: a key HELD - pressed, pressed again
+                        # with lParam bit 30 (already down), as Windows auto-repeats, released. Both
+                        # carry the key's scan code in lParam bits 16-23, which LabVIEW reports as
+                        # ScanCode
+                        elseif ($one -match '^(down|repeat):(\d+)$') {
+                            $vk = [int]$Matches[2]
+                            $sc = [long][LvWin]::MapVirtualKey([uint32]$vk, 0) -shl 16
+                            [void][LvWin]::PostMessage($h, 0x0100, [IntPtr]$vk, [IntPtr](1 + $sc))
+                            if ($Matches[1] -eq 'repeat') { [void][LvWin]::PostMessage($h, 0x0100, [IntPtr]$vk, [IntPtr](0x40000001 + $sc)) }
+                            [void][LvWin]::PostMessage($h, 0x0101, [IntPtr]$vk, [IntPtr](0xC0000001 + $sc))
                         }
                     }
                 }

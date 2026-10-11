@@ -262,6 +262,11 @@ def static_event(event, ctl=None):
     if r is not None and ctl is not None and r.get("sourceKind") != "control" and r.get("controlVariant"):
         r = dict(r, **r["controlVariant"])
         r.pop("controlVariant", None)
+    elif r is not None and ctl is None and r.get("sourceKind") == "control" and r.get("viVariant"):
+        # the other way round: a control's event the VI has too (the notify Key Down, Key Repeat,
+        # Key Up - add_key_notify.py), used when the selector names no source
+        r = dict(r, **r["viVariant"])
+        r.pop("viVariant", None)
     return r
 
 
@@ -4247,13 +4252,15 @@ class Composer:
         if int(r["spec"]["type"]) < 0 and not r.get("filterFields"):
             raise Unsupported("Event Structure %s: the filter event %r has no measured Event Filter Node "
                               "cluster (add_filter_fields.py)" % (uid, kind))
-        if r["sourceKind"] == "vi":
-            # an event of the VI itself (Panel Close?, Key Down?): NI writes the selector with NO
-            # source - " Panel Close? " - and the spec as source 5, eFlags 2, ddoUID 0 (NI's
-            # NewProjectDialog.vi and the MGI Panel Manager actors, 2026-10-11)
+        if r["sourceKind"] in ("vi", "application"):
+            # an event of the VI itself (Panel Close?, Key Down?) or of the APPLICATION (VI
+            # Activation): NI writes the selector with NO source - " Panel Close? ", " VI
+            # Activation " - and the spec as source 5, eFlags 2 for the VI, source 4, eFlags 1,
+            # regFlags 0 for the application, ddoUID 0 both (NI's NewProjectDialog.vi, the MGI
+            # Panel Manager actors, Using the VI Activation Event for VI Scripting.vi; 2026-10-11)
             if ctl is not None:
-                raise Unsupported("Event Structure %s: %r is an event of the VI - its selector names no source, "
-                                  "not %r" % (uid, kind, ctl))
+                raise Unsupported("Event Structure %s: %r is an event of the %s - its selector names no source, "
+                                  "not %r" % (uid, kind, "VI" if r["sourceKind"] == "vi" else "application", ctl))
         elif r["sourceKind"] != "control" or ctl is None:
             raise Unsupported("Event Structure %s: the %s event %r is not composable yet" % (uid, r["sourceKind"], kind))
         if r.get("classDependent"):
@@ -4677,11 +4684,14 @@ class Composer:
         static = None
         if kind not in ("Value Change", "Mouse Enter", "Mouse Leave", "Timeout", "User Event"):
             static = self._static_row(el.get("uid"), ctl, kind)
-        if static is not None and static["sourceKind"] == "vi":
+        if static is not None and static["sourceKind"] in ("vi", "application"):
             # the VI's own event: VIRef, a PLAIN VI refnum (LVObjCtl 0x0002), then the event's
-            # fields - as LabVIEW wrote it in NI's NewProjectDialog.vi for Key Down? and Panel Close?
-            ref = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl", "CtlFlags": "0x0002",
-                                          "HasItem": "0", "Format": "inline", "Label": static.get("refLabel") or "VIRef"})
+            # fields - as LabVIEW wrote it in NI's NewProjectDialog.vi for Key Down? and Panel Close?;
+            # the application's: AppRef, a plain Application refnum (0x0001) - NI's VI Activation
+            vi_ev = static["sourceKind"] == "vi"
+            ref = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl", "CtlFlags": "0x0002" if vi_ev else "0x0001",
+                                          "HasItem": "0", "Format": "inline",
+                                          "Label": static.get("refLabel") or ("VIRef" if vi_ev else "AppRef")})
             return fs[:3] + [ref] + [ET.fromstring(x) for x in static["fields"]]
         if kind in ("Value Change", "Mouse Enter", "Mouse Leave") or static is not None:
             ctl_el = next((e for e in self._by_uid.values() if e.tag in ("Control", "Indicator")
@@ -4916,7 +4926,7 @@ class Composer:
         fs = clusters[0] if len(clusters) == 1 else self._merge_event_fields(el.get("uid"), clusters)
         fs = [copy.deepcopy(f) for f in fs]
         for f in fs:
-            if self._field_label(f) in ("Source", "Type", "Time", "CtlRef", "VIRef"):
+            if self._field_label(f) in ("Source", "Type", "Time", "CtlRef", "VIRef", "AppRef"):
                 (fields(f)[0] if f.get("Type") == "TypeDef" and fields(f) else f).set("Bit7", "1")
         cl = ET.Element("TypeDesc", dict(donor.attrib))
         for f in fs:

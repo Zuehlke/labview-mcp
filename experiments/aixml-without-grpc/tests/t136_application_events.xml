@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="T136 Application Events.vi" description="Events of the APPLICATION - Application Instance Close, Application Instance Close? (reading SilentShutdown, its filter node added by the composer) and Bookmark Info Change keep the loop running; VI Activation is fired for real: the VI opens its own front panel, which LabVIEW reports as VI Activation; the frame compares the event's VIName with this VI's own name, reads VIWindow and stops the loop. The VI closes its panel at the end.">
+  <Constant _name="Open" outputs="value:4206.value" type="bool" uid="4206" uid_parent="root" value="true"/>
+  <Constant _name="Shut" outputs="value:4207.value" type="bool" uid="4207" uid_parent="root" value="false"/>
+  <Node _name="VI Server Reference" outputs="This VI:4210.This VI" type="{LV.VI}" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4210.This VI,error in (no error):,Front Panel Window\3AOpen:4206.value" outputs="reference out:,error out:4212.error out" type="{LV.VI}" uid="4212" uid_parent="root"/>
+  <Structure _name="While Loop" count="4220.value" uid="4220" uid_parent="root">
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <CaseFrame selector=" VI Activation " uid="4300" uid_parent="4230">
+        <Node _name="Event Data Node" fields="VIName,VIWindow" outputs="VIName:4305.VIName,VIWindow:4305.VIWindow" uid="4305" uid_parent="4300"/>
+        <Node _name="Property Node" fields="read+VI Name" inputs="error in (no error):" outputs="VI Name:4308.name,reference out:,error out:" type="{LV.VI}" uid="4308" uid_parent="4300"/>
+        <Node _name="Equal?" inputs="x:4305.VIName,y:4308.name" outputs="x = y?:4309.eq" uid="4309" uid_parent="4300"/>
+        <Indicator _name="Self" inputs="value:4309.eq" type="bool" uid="4306" uid_parent="4300" value="false"/>
+        <Indicator _name="Window" inputs="value:4305.VIWindow" type="int32" uid="4307" uid_parent="4300" value="-1"/>
+        <Constant outputs="value:4301.value" type="int32" uid="4301" uid_parent="4300" value="1"/>
+        <Constant outputs="value:4302.value" type="bool" uid="4302" uid_parent="4300" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4302.value" uid="4303" uid_parent="4300"/>
+        <Tunnel _id="Out2" inputs="value:4301.value" uid="4304" uid_parent="4300"/>
+      </CaseFrame>
+      <CaseFrame selector=" Application Instance Close " uid="4310" uid_parent="4230">
+        <Constant outputs="value:4311.value" type="int32" uid="4311" uid_parent="4310" value="2"/>
+        <Constant outputs="value:4312.value" type="bool" uid="4312" uid_parent="4310" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4312.value" uid="4313" uid_parent="4310"/>
+        <Tunnel _id="Out2" inputs="value:4311.value" uid="4314" uid_parent="4310"/>
+      </CaseFrame>
+      <CaseFrame selector=" Application Instance Close? " uid="4320" uid_parent="4230">
+        <Node _name="Event Data Node" fields="SilentShutdown" outputs="SilentShutdown:4325.SilentShutdown" uid="4325" uid_parent="4320"/>
+        <Indicator _name="Silent" inputs="value:4325.SilentShutdown" type="bool" uid="4326" uid_parent="4320" value="false"/>
+        <Constant outputs="value:4321.value" type="int32" uid="4321" uid_parent="4320" value="3"/>
+        <Constant outputs="value:4322.value" type="bool" uid="4322" uid_parent="4320" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4322.value" uid="4323" uid_parent="4320"/>
+        <Tunnel _id="Out2" inputs="value:4321.value" uid="4324" uid_parent="4320"/>
+      </CaseFrame>
+      <CaseFrame selector=" Bookmark Info Change " uid="4330" uid_parent="4230">
+        <Constant outputs="value:4331.value" type="int32" uid="4331" uid_parent="4330" value="4"/>
+        <Constant outputs="value:4332.value" type="bool" uid="4332" uid_parent="4330" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4332.value" uid="4333" uid_parent="4330"/>
+        <Tunnel _id="Out2" inputs="value:4331.value" uid="4334" uid_parent="4330"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4280.value" uid="4280" uid_parent="4230"/>
+      <Tunnel _id="Out2" outputs="value:4281.value" uid="4281" uid_parent="4230"/>
+    </Structure>
+    <Condition inputs="value:4280.value" uid="4282" uid_parent="4220" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4281.value" outputs="value:4283.value" uid="4283" uid_parent="4220"/>
+  </Structure>
+  <Indicator _name="Last Frame" inputs="value:4283.value" type="int32" uid="4290" uid_parent="root" value="0"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4210.This VI,error in (no error):4212.error out,Front Panel Window\3AOpen:4207.value" outputs="reference out:,error out:4291.error out" type="{LV.VI}" uid="4291" uid_parent="root"/>
+  <Indicator _name="Error Out" inputs="value:4291.error out" type="cluster{bool.status,int32.code,string.source}" uid="4292" uid_parent="root" value="[false,0,]" />
+</VI>
