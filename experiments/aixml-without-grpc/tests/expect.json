@@ -1366,5 +1366,45 @@
     }
    }
   ]
+ },
+ "t133_vi_filter_live": {
+  "cases": [
+   {
+    "inputs": "Discard=true",
+    "post": "char:97;sysclose",
+    "postAfterMs": 1200,
+    "outputs": {
+     "Last Frame": 1,
+     "Char": 97,
+     "Typed": "",
+     "#panel open": "True",
+     "Error Out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "Discard=false",
+    "post": "char:97;sysclose",
+    "postAfterMs": 1200,
+    "outputs": {
+     "Last Frame": 1,
+     "Char": 97,
+     "Typed": "a",
+     "#panel open": "False",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t132_vi_filter_events": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Last Frame": 4,
+     "Received": "C:\\probe\\panel.txt",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

@@ -1250,11 +1250,11 @@ frames - nine frames, every one executable, identical to LabVIEW's save and name
 Mouse Move included. `t126_static_mouse_events` builds them with their data wired and RUNS: a mouse
 event needs a hand on the mouse, so the run fires a Value Change instead, and that frame ran.
 
-**Not composed yet, refused by name**: a filter event the survey never saw static (`Mouse Down?`) -
-the ones it saw on a CONTROL compose since the same evening with their Event Filter Node ("Filter
-events" below), and this line refused all of them until then; VI and application events
-(`Panel Close`, `Panel Close?`, `VI Activation`); and an event whose data the survey found
-class-dependent.
+**Not composed yet, refused by name**: an event the survey never saw static (`Mouse Down?`,
+`Panel Close`); the APPLICATION's events (`VI Activation`); and an event whose data the survey
+found class-dependent. This line refused every filter event and every event of the VI until the
+evening of 2026-10-11 - the filter events on a control and the VI's own (`Panel Close?`,
+`Key Down?`, `Menu Selection (User)`, `Menu Selection (App)`) compose since ("Filter events" below).
 
 **Not tested, and worth knowing**: the wire gate's other FATAL case - a DataLog refnum from a
 subVI's pane, NI's `Monitoring Keyboard and Mouse Activity.vi` - was recorded before `out_key`
@@ -1443,9 +1443,38 @@ too: all four frames as LabVIEW writes them, every event named back by NI's expo
 export of LabVIEW's save reads all three filter nodes back with their fields and wiring. Executable
 and run (a drag needs a hand on the mouse, so the run fires the File frame), no insanity in a fresh
 LabVIEW. Every composer test with an Event Structure - 13 - passes. **Not covered**: a frame
-handling a filter event among others (refused by name - not measured), the VI and application
-filter events (`Panel Close?`, `Key Down?` - refused as before, their source is no control), and a
-RUN through a real drag.
+handling a filter event among others (refused by name - not measured), the application's filter
+events, and a RUN through a real drag. (The VI's own, `Panel Close?` and `Key Down?`, were added
+the same evening - below.)
+
+**The VI's own filter events compose too - Panel Close? and Key Down? - and they RUN, fired for
+real.** NI writes their selector with no source (`" Panel Close? "`, 19 exports; `" Key Down? "`,
+NewProjectDialog.vi), and LabVIEW their spec as source 5, eFlags 2, `ddoUID` 0, their data with
+`VIRef` - a plain VI refnum, `LVObjCtl` `0x0002` - where a control's has `CtlRef`. Key Down?'s
+filter node may set `Char`, `VKey`, `Mods`, `PlatMods`, `FocusObj` and `Discard?`, and hides only
+`ScanCode`. The VI's two notify events in the table came along - `Menu Selection (User)` and
+`(App)`, VIRef then `MenuRef`, `ItemTag`, `ItemPath` - and were probed rather than let through:
+`t132_vi_filter_events` carries all four, each frame identical to LabVIEW's save and named back by
+NI's exporter.
+
+**Unlike a drag, both can be fired without a hand: by a window message to the VI's own panel.**
+`lv-com.ps1 -Post` sends them during the run, and the selftest takes them as a case's `post`:
+
+| message | what LabVIEW does |
+|---|---|
+| `WM_CLOSE` | closes the panel and raises **no** event - the run timed out |
+| `WM_SYSCOMMAND` `SC_CLOSE` (the close box) | raises **Panel Close?** |
+| `WM_CHAR` 97 | raises **Key Down?** with `Char` 97, and types `a` into the focused control |
+| `WM_KEYDOWN` 65 | raises Key Down? with `Char` 0 (the virtual key only), and types `a` as well |
+
+So ONE key is either message - both together typed `aa`. **`t133_vi_filter_live` is an A/B on
+the filter node's answer, run in the suite**: a string control takes key focus at start, Key
+Down? and Panel Close? both answer `Discard?` from a `Discard` control, and the run types `a` and
+clicks the close box. Discard TRUE: `Char` 97, the string EMPTY, the panel still OPEN after the
+run; Discard FALSE: `Char` 97, the string `a`, the panel CLOSED. Same event both times, only the
+filter node's value differs - so the value reaches LabVIEW. **Not covered**: Key Down? on a
+CONTROL (the survey saw only the VI's), changing `Char` rather than discarding it, and the
+application's filter events.
 
 **The reader reads both nodes now**: an eventDataNode without 0x10000 is an `Event Filter Node`
 whose fields are inputs. NI's Drag and Drop example reads back with
@@ -1463,7 +1492,7 @@ reader cannot name.
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 105 composition tests, 135 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
+| `selftest.py`, `tests/` | 107 composition tests, 138 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
@@ -1487,7 +1516,7 @@ reader cannot name.
 | `coverage.py`, `cov_load.py`, `call_coverage.py` | compose NI's exports; load them (a crash is recorded and LabVIEW restarted); call resolution |
 | `harvest_templates.py`, `merge_props.py`, `event_specs.py` | template nodes named by wire joins; parallel property sweeps; EventSpec rows |
 | `try_vi.py`, `bisect_vi.py`, `dwarn_delta.py` | compose + load one VI with its log lines; split a broken VI; DWarns per VI |
-| `lv-com.ps1`, `lv-keeper.ps1`, `lv-restart.ps1`, `lv-save.ps1`, `lv-windows.ps1` | LabVIEW over COM; restart without the gRPC service; save a VI through LabVIEW |
+| `lv-com.ps1`, `lv-keeper.ps1`, `lv-restart.ps1`, `lv-save.ps1`, `lv-windows.ps1` | LabVIEW over COM - `-Post` sends window messages to the VI's own panel during a run (the close box, a key) and reports whether the panel is still open, a selftest case's `post`; restart without the gRPC service; save a VI through LabVIEW |
 | `parts/refnum-classes.tsv`, `parts/vi-server-props.json` | the 166 VI Server class IDs; 1 052 properties and 496 methods with their codes |
 | `outline.py`, `normdiff.py` | read a heap object; diff two bundles uid-insensitively |
 | `parts/` | skeleton, parts, `wiretables.json`, `denylist.json` |

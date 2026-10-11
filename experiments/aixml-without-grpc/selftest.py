@@ -9,6 +9,10 @@ it stops writing, unless --no-restart is given.
 
 Every build gets a fresh file name: a LabVIEW instance keeps a VI in memory once loaded, and a
 second VI under the same name would be the first one again.
+
+A case may carry `post` (and `postAfterMs`): window messages lv-com.ps1 sends to the VI's own
+panel during the run - "char:97;sysclose" types an `a` and clicks the close box - and then expect
+the pseudo-output "#panel open", which is what Panel Close?'s Discard? decides (t133).
 """
 import json
 import os
@@ -31,11 +35,17 @@ def compose(src, vi, search=()):
     return r.returncode, (r.stdout + r.stderr).strip()
 
 
-def lvcom(vi, inputs, outputs, run=True, timeout=60):
+def lvcom(vi, inputs, outputs, run=True, timeout=60, post=None, post_after_ms=None):
+    """`post`: window messages lv-com.ps1 sends to the VI's own panel during the run (a case's
+    `post`, e.g. "char:97;sysclose") - Panel Close? and Key Down? as a person fires them. The
+    panel's state after the run is then the pseudo-output "#panel open"."""
     cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
            os.path.join(HERE, "lv-com.ps1"), "-ViPath", vi]
+    outputs = [o for o in outputs if not o.startswith("#")]
     if run:
         cmd += ["-Run", "-Inputs", inputs, "-Outputs", ";".join(outputs)]
+        if post:
+            cmd += ["-Post", post] + (["-PostAfterMs", str(post_after_ms)] if post_after_ms else [])
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
         out = r.stdout + r.stderr
@@ -44,6 +54,9 @@ def lvcom(vi, inputs, outputs, run=True, timeout=60):
         out = (so.decode(errors="replace") if isinstance(so, bytes) else so) + "\n<TIMEOUT>"
     state = re.search(r"ExecState = (\S+)", out)
     got = dict(re.findall(r"  get (.+?) = (.*)", out))
+    panel = re.search(r"panel open after run = (\S+)", out)
+    if panel:
+        got["#panel open"] = panel.group(1)
     return (state.group(1) if state else None), got, out
 
 
@@ -202,7 +215,8 @@ def run_test(name, expect, out_dir, stamp):
         return results
     verdicts = []
     for case in cases:
-        state, got, raw = lvcom(vi, case.get("inputs", ""), list(case["outputs"]))
+        state, got, raw = lvcom(vi, case.get("inputs", ""), list(case["outputs"]),
+                                post=case.get("post"), post_after_ms=case.get("postAfterMs"))
         ok = all(same(v, got.get(k)) for k, v in case["outputs"].items())
         verdicts.append("%s %s -> %s" % ("ok" if ok else "FAIL", case.get("inputs", ""),
                                          ", ".join("%s=%s" % (k, got.get(k)) for k in case["outputs"])))

@@ -1115,9 +1115,10 @@ route**: measured over the `scripts` documents, the composer builds 9 with the p
 blocked 28 - 39 of 82 after the repairs, 70 after the typedef and control-reference work, and
 **78 of 82 - all executable, 12 of 12 output-identical to NI's, every helper a tool runs and the
 user-event skeleton - after the remaining blockers**, recorded in FINDINGS §7a, with the composer's
-own suite at 135 of 135 cases - control references as event sources, frames handling several events,
+own suite at 138 of 138 cases - control references as event sources, frames handling several events,
 static mouse events, the events only a graph has and filter events with their Event Filter Node
-included (a filter frame WITHOUT that node is broken, so the composer adds one). **No `.ctl` link
+included (a filter frame WITHOUT that node is broken, so the composer adds one), the VI's own
+Panel Close? and Key Down? FIRED FOR REAL by a window message to the panel. **No `.ctl` link
 is needed for a typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs
 were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **A CLASS,

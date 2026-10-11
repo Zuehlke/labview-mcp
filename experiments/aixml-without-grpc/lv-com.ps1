@@ -18,9 +18,49 @@ param(
     [string]$Inputs = '',
     [string]$Outputs = '',
     [switch]$Run,
-    [int]$TimeoutMs = 10000
+    [int]$TimeoutMs = 10000,
+    # -Post 'close', 'sysclose', 'char:<code>' or 'down:<virtual key>', several separated by ';',
+    # each sent -PostAfterMs after the last (the first after the run starts) to the VI's own FRONT
+    # PANEL window - LabVIEW's window titled with the VI's file name, its block diagram excluded -
+    # to fire the VI's Panel Close? and Key Down? as a person would. Prints whether the panel is
+    # still open after the run, which is what Panel Close?'s Discard? decides
+    [string]$Post = '',
+    [int]$PostAfterMs = 1000
 )
 Add-Type -AssemblyName Microsoft.VisualBasic
+if ($Post) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class LvWin {
+    delegate bool EnumProc(IntPtr h, IntPtr l);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+    public static List<IntPtr> Find(uint pid, string title) {
+        var hits = new List<IntPtr>();
+        EnumWindows((h, l) => {
+            uint p; GetWindowThreadProcessId(h, out p);
+            if (p != pid) return true;
+            var sb = new StringBuilder(512); GetWindowText(h, sb, 512);
+            string t = sb.ToString();
+            if (t.StartsWith(title, StringComparison.OrdinalIgnoreCase) && t.IndexOf("Block Diagram", StringComparison.OrdinalIgnoreCase) < 0) hits.Add(h);
+            return true;
+        }, IntPtr.Zero);
+        return hits;
+    }
+}
+'@
+}
+function Panel-Windows($path) {
+    $lvp = Get-Process LabVIEW -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $lvp) { return @() }
+    return @([LvWin]::Find([uint32]$lvp.Id, [IO.Path]::GetFileName($path)))
+}
 function Inner($e) { while ($e.InnerException) { $e = $e.InnerException }; return $e.Message }
 function Get-P($o, $n) {
     try { return [Microsoft.VisualBasic.Interaction]::CallByName($o, $n, [Microsoft.VisualBasic.CallType]::Get, [object[]]@()) }
@@ -100,6 +140,28 @@ foreach ($p in $ViPath) {
         try {
             [void](Call-M $vi 'Run' ([object[]]@($true)))
             $sw = [Diagnostics.Stopwatch]::StartNew()
+            if ($Post) {
+                # several messages are separated by ';', each sent -PostAfterMs after the one before
+                foreach ($one in ($Post -split ';' | Where-Object { $_ })) {
+                    Start-Sleep -Milliseconds $PostAfterMs
+                    $wins = Panel-Windows $p
+                    Write-Output ('  post ' + $one + ' to ' + $wins.Count + ' panel window(s)')
+                    foreach ($h in $wins) {
+                        if ($one -eq 'close') { [void][LvWin]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }
+                        # WM_SYSCOMMAND SC_CLOSE - what the X sends, and what raises Panel Close?:
+                        # a plain WM_CLOSE closed the panel and raised NO event (2026-10-11)
+                        elseif ($one -eq 'sysclose') { [void][LvWin]::PostMessage($h, 0x0112, [IntPtr]0xF060, [IntPtr]::Zero) }
+                        # ONE key is EITHER message: LabVIEW raises Key Down? from each and types
+                        # from each, so both together typed `aa` (measured 2026-10-11). char: gives
+                        # Key Down?'s Char, down: its VKey with Char 0
+                        elseif ($one -match '^char:(\d+)$') { [void][LvWin]::PostMessage($h, 0x0102, [IntPtr][int]$Matches[1], [IntPtr]1) }
+                        elseif ($one -match '^down:(\d+)$') {
+                            [void][LvWin]::PostMessage($h, 0x0100, [IntPtr][int]$Matches[1], [IntPtr]1)
+                            [void][LvWin]::PostMessage($h, 0x0101, [IntPtr][int]$Matches[1], [IntPtr]0xC0000001)
+                        }
+                    }
+                }
+            }
             while ($sw.ElapsedMilliseconds -lt $TimeoutMs) {
                 $st = Get-P $vi 'ExecState'
                 if ($st -ne 2 -and $st -ne 3) { break }
@@ -107,10 +169,19 @@ foreach ($p in $ViPath) {
             }
             if ($sw.ElapsedMilliseconds -ge $TimeoutMs) { [void](Call-M $vi 'Abort' ([object[]]@())); Write-Output '  run: TIMEOUT, aborted' }
             else { Write-Output ('  run: done in ' + $sw.ElapsedMilliseconds + ' ms') }
+            if ($Post) {
+                # what a Discard? keeps: the panel window, still there and visible after the run
+                $left = @(Panel-Windows $p | Where-Object { [LvWin]::IsWindowVisible($_) })
+                Write-Output ('  panel open after run = ' + ($left.Count -gt 0))
+            }
         } catch { Write-Output ('  run FAILED: ' + (Inner $_.Exception)) }
         foreach ($k in ($Outputs -split ';' | Where-Object { $_ })) {
             try { $r = Call-M $vi 'GetControlValue' ([object[]]@([string]$k)); Write-Output ('  get ' + $k + ' = ' + (Format-V $r)) }
             catch { Write-Output ('  get ' + $k + ' FAILED: ' + (Inner $_.Exception)) }
+        }
+        if ($Post) {
+            # a panel Panel Close? kept open stays open after the run: closed once it is measured
+            try { [void](Call-M $vi 'CloseFrontPanel' ([object[]]@())) } catch { }
         }
     }
     [void][Runtime.InteropServices.Marshal]::ReleaseComObject($vi)

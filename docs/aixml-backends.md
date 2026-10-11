@@ -282,8 +282,16 @@ placeholder node whose field is no field, and its own save of that stays broken.
 filter cluster was read off NI's own VI (`add_filter_fields.py`), since it cannot be derived from
 the data cluster. `t131_drag_filter_events` is identical to LabVIEW's save, frame for frame,
 filter clusters included, and NI's exporter reads every filter node back with its fields and
-wiring; it runs, though no test drags with a real mouse. Still refused: a frame handling a filter
-event among others, and the VI and application filter events (Panel Close?, Key Down?).
+wiring; it runs, though no test drags with a real mouse.
+
+**THE VI's OWN EVENTS compose too - Panel Close?, Key Down?, Menu Selection (User) and (App)** -
+written as NI writes them, with no source: `<CaseFrame selector=" Panel Close? ">`. Their data
+carries `VIRef` (a plain VI refnum) where a control's carries `CtlRef`. **And the two filter events
+RUN, fired for real**: a window message to the VI's own panel - the close box (`WM_SYSCOMMAND`
+`SC_CLOSE`; a plain `WM_CLOSE` closes the panel WITHOUT the event) and a `WM_CHAR` - raises them.
+`t133_vi_filter_live` is the A/B in the suite: with `Discard?` TRUE the typed key never reaches the
+focused string and the panel stays open, with FALSE both get through. Still refused: a frame
+handling a filter event among others, Key Down? on a control, and the application's events.
 
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke

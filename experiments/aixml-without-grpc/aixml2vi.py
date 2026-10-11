@@ -4234,15 +4234,24 @@ class Composer:
         if int(r["spec"]["type"]) < 0 and not r.get("filterFields"):
             raise Unsupported("Event Structure %s: the filter event %r has no measured Event Filter Node "
                               "cluster (add_filter_fields.py)" % (uid, kind))
-        if r["sourceKind"] != "control" or ctl is None:
+        if r["sourceKind"] == "vi":
+            # an event of the VI itself (Panel Close?, Key Down?): NI writes the selector with NO
+            # source - " Panel Close? " - and the spec as source 5, eFlags 2, ddoUID 0 (NI's
+            # NewProjectDialog.vi and the MGI Panel Manager actors, 2026-10-11)
+            if ctl is not None:
+                raise Unsupported("Event Structure %s: %r is an event of the VI - its selector names no source, "
+                                  "not %r" % (uid, kind, ctl))
+        elif r["sourceKind"] != "control" or ctl is None:
             raise Unsupported("Event Structure %s: the %s event %r is not composable yet" % (uid, r["sourceKind"], kind))
         if r.get("classDependent"):
             raise Unsupported("Event Structure %s: %r carries class-dependent data - not composable yet" % (uid, kind))
         return r
 
     def _static_spec(self, uid, ctl, kind):
-        s = self._static_row(uid, ctl, kind)["spec"]
-        return (s["source"], s["regFlags"], s["eSource"], s["type"], s["eFlags"], True)
+        r = self._static_row(uid, ctl, kind)
+        s = r["spec"]
+        # bound to a control (its ddoUID) unless it is the VI's own event
+        return (s["source"], s["regFlags"], s["eSource"], s["type"], s["eFlags"], r["sourceKind"] == "control")
 
     def _is_dyn_frame(self, frame):
         return any(self._dyn_source(p) for p in event_items(unescape(frame.get("selector") or "")))
@@ -4655,6 +4664,12 @@ class Composer:
         static = None
         if kind not in ("Value Change", "Mouse Enter", "Mouse Leave", "Timeout", "User Event"):
             static = self._static_row(el.get("uid"), ctl, kind)
+        if static is not None and static["sourceKind"] == "vi":
+            # the VI's own event: VIRef, a PLAIN VI refnum (LVObjCtl 0x0002), then the event's
+            # fields - as LabVIEW wrote it in NI's NewProjectDialog.vi for Key Down? and Panel Close?
+            ref = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl", "CtlFlags": "0x0002",
+                                          "HasItem": "0", "Format": "inline", "Label": static.get("refLabel") or "VIRef"})
+            return fs[:3] + [ref] + [ET.fromstring(x) for x in static["fields"]]
         if kind in ("Value Change", "Mouse Enter", "Mouse Leave") or static is not None:
             ctl_el = next((e for e in self._by_uid.values() if e.tag in ("Control", "Indicator")
                            and unescape(e.get("_name") or "") == ctl), None)
