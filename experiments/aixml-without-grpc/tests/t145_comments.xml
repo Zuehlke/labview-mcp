@@ -1,0 +1,28 @@
+<VI _name="T145 Comments.vi" description="Diagram comments on the root diagram, inside a For Loop and inside a case frame, and descriptions on a control and an indicator.">
+  <Control _name="n" conIdx="0" connection="required" description="How many times the loop adds one." outputs="value:4200.value" type="int32" uid="4200" uid_parent="root" value="0"/>
+  <FreeLabel comment="Counts up n times" uid="0" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="4200.value" maxout="" uid="4300" uid_parent="root">
+    <ShiftReg uid="4310" uid_parent="4300">
+      <Left inputs="value:4305.value" outputs="value:4311.value" uid="4311" uid_parent="4310"/>
+      <Right inputs="value:4320.x+1" outputs="value:4312.value" uid="4312" uid_parent="4310"/>
+    </ShiftReg>
+    <Node _name="Increment" inputs="x:4311.value" outputs="x+1:4320.x+1" uid="4320" uid_parent="4300"/>
+    <FreeLabel comment="One per iteration" uid="0" uid_parent="4300"/>
+  </Structure>
+  <Constant _name="start" outputs="value:4305.value" type="int32" uid="4305" uid_parent="root" value="0"/>
+  <Node _name="Greater Than 0?" inputs="x:4312.value" outputs="x &gt; 0?:4400.x &gt; 0?" uid="4400" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4400.x &gt; 0?" uid="4500" uid_parent="root">
+    <CaseFrame selector="True" selectout="" uid="4510" uid_parent="4500">
+      <Constant _name="some" outputs="value:4511.value" type="string" uid="4511" uid_parent="4510" value="counted"/>
+      <Tunnel _id="Out1" inputs="value:4511.value" uid="4512" uid_parent="4510"/>
+      <FreeLabel comment="At least one iteration ran" uid="0" uid_parent="4510"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="4520" uid_parent="4500">
+      <Constant _name="none" outputs="value:4521.value" type="string" uid="4521" uid_parent="4520" value="nothing"/>
+      <Tunnel _id="Out1" inputs="value:4521.value" uid="4522" uid_parent="4520"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4530.value" uid="4530" uid_parent="4500"/>
+  </Structure>
+  <Indicator _name="count" conIdx="4" connection="recommended" description="The sum after the loop." inputs="value:4312.value" type="int32" uid="4600" uid_parent="root" value="0"/>
+  <Indicator _name="verdict" conIdx="6" connection="recommended" description="Whether the loop ran: &quot;counted&quot; or nothing." inputs="value:4530.value" type="string" uid="4610" uid_parent="root" value=""/>
+</VI>

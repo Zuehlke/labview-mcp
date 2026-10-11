@@ -1,0 +1,11 @@
+<VI _name="T147 File Refnum.vi" description="A text file written through a file refnum - Open/Create/Replace File with replace or create, Write to Text File, Close File - and read back by path.">
+  <Control _name="file" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="text" outputs="value:4205.value" type="string" uid="4205" uid_parent="root" value=""/>
+  <Constant _name="operation" outputs="value:4210.value" type="uint16{open,replace,create,open or create,replace or create,replace or create with confirmation}" uid="4210" uid_parent="root" value="4"/>
+  <Node _name="Open/Create/Replace File" inputs="file path (use dialog):4200.value,operation (0\3Aopen):4210.value" outputs="refnum out:4220.refnum out,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Node _name="Write to Text File" inputs="file (use dialog):4220.refnum out,text:4205.value,error in:4220.error out" outputs="refnum out:4230.refnum out,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Node _name="Close File" inputs="refnum:4230.refnum out,error in:4230.error out" outputs="error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Node _name="Read from Text File" inputs="file (use dialog):4200.value,error in:4240.error out" outputs="text:4250.text,error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Indicator _name="read back" inputs="value:4250.text" type="string" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4310" uid_parent="root" value="[false,0,]"/>
+</VI>

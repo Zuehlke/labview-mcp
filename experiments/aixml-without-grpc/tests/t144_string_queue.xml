@@ -1,0 +1,15 @@
+<VI _name="T144 String Queue.vi" description="A string queue carries one command message through: Obtain, Enqueue, Dequeue with a timeout, Release; Match Pattern splits the command from its data at the equals sign.">
+  <Control _name="message" outputs="value:4205.value" type="string" uid="4205" uid_parent="root" value=""/>
+  <Constant _name="queue type" outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value=""/>
+  <Node _name="Obtain Queue" inputs="element data type:4200.value" outputs="queue out:4210.queue out,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Enqueue Element" inputs="queue:4210.queue out,element:4205.value,error in (no error):4210.error out" outputs="queue out:4230.queue out,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Constant _name="timeout" outputs="value:4235.value" type="int32" uid="4235" uid_parent="root" value="100"/>
+  <Node _name="Dequeue Element" inputs="queue:4230.queue out,timeout in ms (-1):4235.value,error in (no error):4230.error out" outputs="queue out:4240.queue out,element:4240.element,timed out?:4240.timed out?,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Node _name="Release Queue" inputs="queue:4240.queue out,error in (no error):4240.error out" outputs="error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Constant _name="equals" outputs="value:4255.value" type="string" uid="4255" uid_parent="root" value="="/>
+  <Node _name="Match Pattern" inputs="string:4240.element,regular expression:4255.value" outputs="before substring:4260.before substring,after substring:4260.after substring" uid="4260" uid_parent="root"/>
+  <Indicator _name="command" inputs="value:4260.before substring" type="string" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="data" inputs="value:4260.after substring" type="string" uid="4310" uid_parent="root" value=""/>
+  <Indicator _name="timed out" inputs="value:4240.timed out?" type="bool" uid="4320" uid_parent="root" value="false"/>
+  <Indicator _name="error out" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4350" uid_parent="root" value="[false,0,]"/>
+</VI>

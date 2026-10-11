@@ -1,0 +1,17 @@
+<VI _name="T146 Control Labels.vi" description="The VI reads its own front panel's control references and each control's Label.Text through a property node on LV.Control.">
+  <Control _name="alpha" outputs="value:" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="beta" outputs="value:" type="string" uid="4210" uid_parent="root" value=""/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:,error in (no error):" outputs="Front Panel:4300.panel,reference out:,error out:4300.err" type="{LV.VI}" uid="4300" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:4300.panel,error in (no error):4300.err" outputs="Controls[]:4310.controls,reference out:,error out:4310.err" type="{LV.Panel}" uid="4310" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4400" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4310.controls" mode="index" outputs="value:4410.ref" uid="4410" uid_parent="4400"/>
+    <ShiftReg uid="4420" uid_parent="4400">
+      <Left inputs="value:4310.err" outputs="value:4421.err" uid="4421" uid_parent="4420"/>
+      <Right inputs="value:4430.err" outputs="value:4422.err" uid="4422" uid_parent="4420"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="read+Label.Text" inputs="reference:4410.ref,error in (no error):4421.err" outputs="Label.Text:4430.text,reference out:,error out:4430.err" type="{LV.Control}" uid="4430" uid_parent="4400"/>
+    <Tunnel _id="Out1" inputs="value:4430.text" mode="index" outputs="value:4440.labels" uid="4440" uid_parent="4400"/>
+  </Structure>
+  <Indicator _name="labels" inputs="value:4440.labels" type="array{string}" uid="4500" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" inputs="value:4422.err" type="cluster{bool.status,int32.code,string.source}" uid="4510" uid_parent="root" value="[false,0,]"/>
+</VI>

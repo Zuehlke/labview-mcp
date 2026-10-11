@@ -611,3 +611,9 @@ primResID	node	parmIndex	terminal	seen	competing
 9005	Get Menu Item Info	7	item tag	1	
 9005	Get Menu Item Info	8	error in (no error)	1	
 9005	Get Menu Item Info	11	menu reference	1	
+9113	Dequeue Element	10	timed out?	1	
+1506	Number To Fractional String	1	use system decimal point (T)	1	
+1506	Number To Fractional String	3	width (-)	1	
+9108	Obtain Queue	2	create if not found? (T)	1	
+9108	Obtain Queue	10	created new?	1	
+9109	Release Queue	2	force destroy? (F)	1	

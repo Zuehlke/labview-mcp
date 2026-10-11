@@ -222,12 +222,35 @@ def parse_terminal_list(value: str) -> list[tuple[str, str]]:
     for entry in split_unescaped(value, ","):
         if not entry.strip():
             continue
-        halves = split_unescaped(entry, ":", maxsplit=1)
+        halves = split_unescaped(entry, ":")
         if len(halves) == 1:
             pairs.append((unescape(halves[0]), ""))
         else:
-            pairs.append((unescape(halves[0]), unescape(halves[1])))
+            # a RAW colon inside the terminal name (`s? t:f:4220.out`, Select's output written
+            # without its \\3A): the net is after the LAST colon, or the net comes out as
+            # `t:f:4220.out` and is reported as a typo of the real one. check_raw_colons
+            # names the spelling itself.
+            pairs.append((unescape(":".join(halves[:-1])), unescape(halves[-1])))
     return pairs
+
+
+def check_raw_colons(elements) -> list:
+    """A terminal name with an UNESCAPED colon - NI writes Select's output as `s? t\\3Af`. The
+    composer happens to accept `s? t:f`; a stricter reader splits it at the wrong colon."""
+    findings = []
+    for e in elements:
+        for attr in ("inputs", "outputs"):
+            raw = e.el.get(attr)
+            if not raw:
+                continue
+            for entry in split_unescaped(raw, ","):
+                if len(split_unescaped(entry, ":")) > 2:
+                    term = ":".join(split_unescaped(entry, ":")[:-1])
+                    findings.append(Finding(
+                        "warning", "terminal-raw-colon", e.uid, e.label(), e.path,
+                        f'{attr} names the terminal "{term}" with a raw colon - write it as '
+                        f'NI exports it, with \\3A for the colon (`s? t\\3Af` for Select).'))
+    return findings
 
 
 # --------------------------------------------------------------------------
@@ -737,8 +760,9 @@ def check_case_tunnels(elements: list[_El]) -> list[Finding]:
     written elsewhere is "every frame must declare every tunnel", and measured over 52 proven
     documents that is too strong: `scripts/lvai_add_class_method.xml` and
     `scripts/lvlu_add_test_method.xml` both have a frame that declares only `Out1` and omits
-    `In1`-`In3`, and both are shipped helpers that run. Not one document anywhere omits an
-    `Out` tunnel. So an unused IN tunnel may be left out of a frame; an OUT one may not.
+    `In1`-`In3`, and both are shipped helpers that run. So an unused IN tunnel may be left out
+    of a frame; an OUT one may not - UNLESS the structure's tunnel carries cond="true", "use
+    default if unwired", which NI's own exports omit from frames routinely.
 
     THE DEFAULT FRAME IS NOT CHECKED EITHER, for the same reason. "Always add a Default frame"
     would fire on all 8 case structures in those documents - none has one, including two whose
@@ -754,7 +778,12 @@ def check_case_tunnels(elements: list[_El]) -> list[Finding]:
             continue
 
         declared = {c.get("_id") for c in e.el if c.tag == "Tunnel" and c.get("_id")}
-        required_out = {i for i in declared if i.startswith("Out")}
+        # an output tunnel with cond="true" ("use default if unwired") MAY be left out of a
+        # frame - that frame then gives the type's default. 143 of 600 of NI's cached exports
+        # carry one; the composer builds it (t89), and the ATM build's agent was told it was an
+        # error and rewired its frames with FALSE constants (2026-10-11)
+        defaulted = {c.get("_id") for c in e.el if c.tag == "Tunnel" and c.get("cond") == "true"}
+        required_out = {i for i in declared if i.startswith("Out") and i not in defaulted}
 
         for frame in frames:
             inner = {c.get("_id") for c in frame if c.tag == "Tunnel" and c.get("_id")}
@@ -1705,6 +1734,7 @@ def lint_file(path: str) -> list[Finding]:
     findings += check_web_browser_reference(elements)
     findings += check_value_escapes(elements)
     findings += check_case_tunnels(elements)
+    findings += check_raw_colons(elements)
     findings += check_type_grammar(elements)
     findings += check_property_nodes(elements)
     findings += check_vi_server_names(elements)

@@ -1,0 +1,14 @@
+<VI _name="T149 Wide Fanout.vi" description="One control feeding eleven indicators - a twelve-ended wire, a width no harvested wire table had.">
+  <Control _name="a" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Indicator _name="out 1" inputs="value:4200.value" type="double" uid="4300" uid_parent="root" value="0"/>
+  <Indicator _name="out 2" inputs="value:4200.value" type="double" uid="4310" uid_parent="root" value="0"/>
+  <Indicator _name="out 3" inputs="value:4200.value" type="double" uid="4320" uid_parent="root" value="0"/>
+  <Indicator _name="out 4" inputs="value:4200.value" type="double" uid="4330" uid_parent="root" value="0"/>
+  <Indicator _name="out 5" inputs="value:4200.value" type="double" uid="4340" uid_parent="root" value="0"/>
+  <Indicator _name="out 6" inputs="value:4200.value" type="double" uid="4350" uid_parent="root" value="0"/>
+  <Indicator _name="out 7" inputs="value:4200.value" type="double" uid="4360" uid_parent="root" value="0"/>
+  <Indicator _name="out 8" inputs="value:4200.value" type="double" uid="4370" uid_parent="root" value="0"/>
+  <Indicator _name="out 9" inputs="value:4200.value" type="double" uid="4380" uid_parent="root" value="0"/>
+  <Indicator _name="out 10" inputs="value:4200.value" type="double" uid="4390" uid_parent="root" value="0"/>
+  <Indicator _name="out 11" inputs="value:4200.value" type="double" uid="4400" uid_parent="root" value="0"/>
+</VI>

@@ -1030,6 +1030,10 @@
    "Replace": {
     "code": 103982082,
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Script Request and Wait Argument Cluster.vi"
+   },
+   "Sort.vi": {
+    "code": -1,
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\_Profile Buffer Allocation.vi"
    }
   },
   "LV.ControlTerminal": {
@@ -3614,6 +3618,14 @@
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\express\\express shared\\XNodes\\subVIs\\exnSharedSub remove unneeded ctlrefs.vi",
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
+   "OwningVI": {
+    "access": "r",
+    "code": 103970818,
+    "declaredBy": "LV.Boolean",
+    "label": "OwningVI",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\dialog\\NewProjectWizard\\SearchPage.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0002\" HasItem=\"0\" Format=\"inline\" />"
+   },
    "Position": {
     "access": "rw",
     "code": 103983104,
@@ -4442,6 +4454,30 @@
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH New Event\\Check if OK to Proceed.vi",
     "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
    },
+   "Clicks": {
+    "access": "r",
+    "code": -1,
+    "declaredBy": "LV.Control",
+    "label": "Clicks",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\_Profile Buffer Allocation.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Col Width": {
+    "access": "w",
+    "code": -1,
+    "declaredBy": "LV.Control",
+    "label": "Col Width",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\_Profile Buffer Allocation.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Numeric\" /></TypeDesc>"
+   },
+   "ColHdrs": {
+    "access": "rw",
+    "code": -1,
+    "declaredBy": "LV.Control",
+    "label": "ColHdrs",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\_Profile Buffer Allocation.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
    "Container Bounds": {
     "access": "rw",
     "code": 104013879,
@@ -4481,6 +4517,14 @@
     "label": "Cursors:Cursor Z Position",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Optimization\\Optimize Extended Rosenbrock.vi",
     "type": "<TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Data": {
+    "access": "rw",
+    "code": -1,
+    "declaredBy": "LV.Control",
+    "label": "Data",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\_Profile Buffer Allocation.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"String\" /></TypeDesc>"
    },
    "DefVal": {
     "access": "r",
@@ -4619,6 +4663,14 @@
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\functionblocks\\FB Property\\FB Overlay Show.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
+   "Label": {
+    "access": "r",
+    "code": 104013829,
+    "declaredBy": "LV.Control",
+    "label": "Label",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Structures\\Event Structure\\Handling Mouse Events.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0005\" HasItem=\"0\" Format=\"inline\" />"
+   },
    "Left": {
     "access": "rw",
     "code": 103983105,
@@ -4650,6 +4702,14 @@
     "label": "Modes.Visible",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\variable\\ConfigureFXP.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "NumCols?": {
+    "access": "w",
+    "code": -1,
+    "declaredBy": "LV.Control",
+    "label": "NumCols?",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\_Profile Buffer Allocation.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Boolean\" /></TypeDesc>"
    },
    "Overflow Mode.Enabled": {
     "access": "w",
@@ -4765,6 +4825,14 @@
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\_probes\\VIRefProbePanelImage.vi",
     "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
+   "SelRow": {
+    "access": "r",
+    "code": -1,
+    "declaredBy": "LV.Control",
+    "label": "SelRow",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\_Profile Buffer Allocation.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
    "Set Caller Type": {
     "access": "w",
     "code": -1,
@@ -4772,6 +4840,14 @@
     "label": "Set Caller Type",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\Platform\\express\\ex_EditUserDefinedProperties\\ex_userDefPropDialog.vi",
     "type": "<TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"CallerInfo\"><TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Caller Type\"><EnumLabel>default</EnumLabel>\n        <EnumLabel>storage write</EnumLabel>\n        <EnumLabel>storage read</EnumLabel>\n        <EnumLabel>measurement write</EnumLabel>\n        </TypeDesc><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Object Type\" /></TypeDesc></TypeDesc>"
+   },
+   "Symbols": {
+    "access": "rw",
+    "code": -1,
+    "declaredBy": "LV.Control",
+    "label": "Symbols",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\_Profile Buffer Allocation.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
    },
    "Terminal": {
     "access": "r",
@@ -6241,6 +6317,14 @@
     "label": "Terminal",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Wire Class to Enqueue.vi",
     "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x400B\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Val(Sgnl)": {
+    "access": "w",
+    "code": 104013860,
+    "declaredBy": "LV.LabVIEWClassControl",
+    "label": "Val(Sgnl)",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\dialog\\NewProjectWizard\\SearchPage.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"UDClassInst\" Field0=\"0x0000\" MultiItem=\"1\" Format=\"inline\"><Item Text=\"MetaDataObj.lvclass\" />\n        </TypeDesc>"
    }
   },
   "LV.LeftShiftRegister": {
@@ -7802,6 +7886,14 @@
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\variable\\SetDataTypePicCtl.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
+   "Key Focus": {
+    "access": "w",
+    "code": 104013826,
+    "declaredBy": "LV.Picture",
+    "label": "Key Focus",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\dialog\\NewProjectWizard\\SearchPage.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
    "Left": {
     "access": "r",
     "code": 103983105,
@@ -9221,6 +9313,14 @@
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\_probes\\VIRefProbePanelImage.vi",
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
+   "Text": {
+    "access": "r",
+    "code": 104093700,
+    "declaredBy": "LV.String",
+    "label": "Text",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\dialog\\NewProjectWizard\\SearchPage.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0005\" HasItem=\"0\" Format=\"inline\" />"
+   },
    "Top": {
     "access": "rw",
     "code": 103983106,
@@ -10012,12 +10112,36 @@
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\VILibrary\\LIBUIP_FitBooleanTextToWidth.vi",
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Doc Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
+   "FontBold": {
+    "access": "w",
+    "code": 103995401,
+    "declaredBy": "LV.Text",
+    "label": "FontBold",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Create New DQMH Event.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
    "FontSize": {
     "access": "r",
     "code": 103995400,
     "declaredBy": "LV.Text",
     "label": "FontSize",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\VILibrary\\LIBUIP_FitBooleanTextToWidth.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Selection End": {
+    "access": "w",
+    "code": 103995396,
+    "declaredBy": "LV.Text",
+    "label": "Selection End",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Create New DQMH Event.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Selection Start": {
+    "access": "w",
+    "code": 103995395,
+    "declaredBy": "LV.Text",
+    "label": "Selection Start",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\Event\\Create New DQMH Event.vi",
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Size": {
@@ -10035,6 +10159,14 @@
     "label": "Text",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\project\\Delacor\\DQMH\\_DQMH Remove Do Something\\Script Main (Module).vi",
     "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "TextColor": {
+    "access": "rw",
+    "code": 103995407,
+    "declaredBy": "LV.Text",
+    "label": "TextColor",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\dialog\\NewProjectWizard\\SearchPage.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    }
   },
   "LV.TimedLoop": {
@@ -10510,7 +10642,7 @@
     "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Key Focus": {
-    "access": "w",
+    "access": "rw",
     "code": 104013826,
     "declaredBy": "LV.TreeControl",
     "label": "Key Focus",
@@ -10558,7 +10690,7 @@
     "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0002\" HasItem=\"0\" Format=\"inline\" />"
    },
    "SelColor": {
-    "access": "w",
+    "access": "rw",
     "code": 1969896456,
     "declaredBy": "LV.TreeControl",
     "label": "SelColor",

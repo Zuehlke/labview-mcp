@@ -329,6 +329,36 @@ class Harvester:
                     self.save("arrelem", "arrelem/%s/%s" % (where, f.get("class")), source, f,
                               resolve_types(b, f))
 
+    def nested_levels(self, b, cname, plist, dco, source):
+        """A multi-level item (`Label.Text`): every level is a row of its own, under the class
+        that level is read on - the node's class first, then the class the previous level's
+        refnum names. Each level carries its own code and data type (propItemInfo's
+        dataTypeDesc): Label on a Control is 104013829 and returns a Text refnum, where the
+        only Label row there was - the Constant's, 104115202 - borrowed onto a Control gave a
+        VI LabVIEW called bad (the ATM build, 2026-10-11). Inner levels are read; the last
+        one is read or written as the item is."""
+        owner = cname
+        for i, info in enumerate(plist):
+            m = lvheap.TYPEID_RE.fullmatch((info.findtext("dataTypeDesc") or "").strip())
+            dt = b.heap_type_tree(int(m.group(1))) if m else None
+            name = (info.findtext("PropItemName") or "").strip('"')
+            if dt is None or not name or owner is None:
+                return
+            om = lvheap.TYPEID_RE.fullmatch((info.findtext("omidTypeDesc") or "").strip())
+            omid = b.heap_type_tree(int(om.group(1))) if om else None
+            decl = ref_class(fields_of(omid)[0]) if omid is not None and fields_of(omid) else None
+            last = i == len(plist) - 1
+            access = ("r" if int(dco.findtext("objFlags") or 0) & 1 else "w") if last else "r"
+            table = self.props["props"].setdefault(owner, {})
+            row = table.get(name)
+            if row is None:
+                table[name] = row = {"code": int(info.findtext("PropItemCode") or 0), "label": dt.get("Label") or name,
+                                     "type": type_xml(dt), "declaredBy": decl, "access": "", "source": source}
+                self.props_new += 1
+            if access not in row["access"]:
+                row["access"] = "".join(sorted(row["access"] + access))
+            owner = ref_class(dt) if not last else None
+
     def vi_server_node(self, b, node, source):
         """A Property Node or an Invoke Node on a VI Server class. A property node is composed
         item by item, so what is kept is a TABLE: per class its oMId and nodeName, per property
@@ -362,8 +392,11 @@ class Harvester:
                 if dco is None or dco.get("class") != "propItem":
                     continue
                 plist = dco.find("propList")
-                if plist is None or len(plist) != 1:
-                    continue        # a multi-level item - not tabled yet
+                if plist is None or not len(plist):
+                    continue
+                if len(plist) > 1:
+                    self.nested_levels(b, cname, plist, dco, source)
+                    continue
                 info = plist[0]
                 name = (info.findtext("PropItemName") or "").strip('"')
                 dt = resolve_types(b, dco)[0]

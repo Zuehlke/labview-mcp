@@ -367,6 +367,16 @@ for those kinds all came out zero. An In Place structure's element pair is one n
 border, and a Feedback Node's hidden half keeps diagram coordinates, leaves its output WEST and takes
 its initializer from BELOW. FINDINGS §7a, "In Place element pairs, the Feedback Node".
 
+**A WHOLE CLD EXAM WENT THROUGH THE COMPOSER the same night** - the ATM: 21 application VIs (an
+Event Structure producer, a queue consumer, a state machine, file I/O, panel helpers driving
+control references), 18 Caraya test VIs and two runners, every one composed and run over ActiveX,
+83 assertions green with a failing negative control per suite, in about an hour with agents. What
+it found was closed before the next wave: comments and descriptions are composed, a bare-name call
+finds the caller's own VI before NI's namesake, `Label.Text` reads on a control, queue and file
+refnums travel on wires, `Value (Signaling)` resolves under its short name, any fan-out width has a
+table, and a constant goes beside its consumer with tall columns wrapping, which brought every
+test VI inside 1920 x 1080. FINDINGS §7a, "What a whole CLD exam found".
+
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke
 the VI. And structures are sized round after round until nothing changes: a case or event

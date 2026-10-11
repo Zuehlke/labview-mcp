@@ -1538,5 +1538,97 @@
     }
    }
   ]
+ },
+ "t144_string_queue": {
+  "cases": [
+   {
+    "inputs": "message=Enter=23456",
+    "outputs": {
+     "command": "Enter",
+     "data": "23456",
+     "timed out": "False",
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "message=Card Inserted",
+    "outputs": {
+     "command": "Card Inserted",
+     "data": "",
+     "timed out": "False"
+    }
+   }
+  ]
+ },
+ "t145_comments": {
+  "cases": [
+   {
+    "inputs": "n=3",
+    "outputs": {
+     "count": 3,
+     "verdict": "counted"
+    }
+   },
+   {
+    "inputs": "n=0",
+    "outputs": {
+     "count": 0,
+     "verdict": "nothing"
+    }
+   }
+  ]
+ },
+ "t146_control_labels": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "labels": "[alpha,beta,labels,error out]",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t147_file_refnum": {
+  "cases": [
+   {
+    "inputs": "file=C:\\temp\\aixml-no-grpc\\out\\t147_file.txt;text=first write, longer than the second",
+    "outputs": {
+     "read back": "first write, longer than the second",
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "file=C:\\temp\\aixml-no-grpc\\out\\t147_file.txt;text=second",
+    "outputs": {
+     "read back": "second",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t148_value_signaling": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "flag now": "True",
+     "text now": "signalled",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t149_wide_fanout": {
+  "cases": [
+   {
+    "inputs": "a=2.5",
+    "outputs": {
+     "out 1": 2.5,
+     "out 6": 2.5,
+     "out 11": 2.5
+    }
+   }
+  ]
  }
 }

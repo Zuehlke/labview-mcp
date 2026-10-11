@@ -1911,8 +1911,86 @@ against 20 routed**, every VI executable. Over the whole suite 65 of 86 fan-outs
 
 Still generic, each its own step: a fan-out whose sink lies WEST of its source (`t85`, a root-level
 Feedback Node), fan-outs with an end the corpora show too rarely (`Insert Into Array`, 2074's
-output, an In Place pair's inner side, a cluster or array constant), two sinks on one row (a
-detour), and primitives with too few wires (1188's output sits 11 px below its centre, `t83`).
+output, an In Place pair's inner side, a cluster or array constant), and primitives with too few
+wires (1188's output sits 11 px below its centre, `t83`). **Two sinks on one row are routed now**:
+the nearer is reached straight, every farther one over a detour track 12 px further out (above for
+rows at or above the source, below otherwise), east to 8 px before it, back to its row and in -
+`wire_tree.encode`, walked back by the decoder over 29 752 random sink sets (7 553 with shared
+rows), 0 mismatches.
+
+### What a whole CLD exam found - the ATM on the composer alone (2026-10-11, night)
+
+The CLD ATM exam built by agents with THIS composer and `lv-com.ps1` only - no NI service (the
+session's MCP roster predated the `backend` parameter, so the agents drove the scripts directly;
+`C:\Temp\ATM_Pylab`, DESIGN.md and TIMELINE.txt there). Wave 1, ten leaf VIs in three parallel
+agents, took 12 minutes, every VI executable and verified with real values. What the build found,
+each fixed and measured (composed, loaded, run, no insanity, no unexpected DWarn) before wave 2:
+
+- **Diagram comments.** `<FreeLabel comment=...>` was skipped ("comments are not composed yet").
+  It is a `label` object in the diagram's `zPlaneList` as LabVIEW writes one (State Machine
+  Fundamentals.vi): `objFlags` 1114114, the yellow `00FFFFD7`, a `textHair` record with the quoted
+  text, no attachment. The layout puts it BELOW what its diagram holds, so a loop or case frame
+  grows around its own comment; it is sized from the text (6 px a character, 16 a line), because
+  LabVIEW does not grow a label box. LabVIEW's save keeps all three of `t145`'s comments.
+- **Descriptions** on controls and indicators were dropped in silence. They are a `cLStrObj` on
+  the ddo before its `typeDesc`, the text quoted; the parts carry an empty one (`[NULL]`) from
+  their donors. `t145`, kept through LabVIEW's save.
+- **A bare-name `<Call>` resolved the INSTALLATION before the caller's folder**, so a project's
+  own `Set Control Value.vi` lost to NI's namesake under `resource\importtools` (whose pane has no
+  `controls`). The near-the-caller index comes first now.
+- **`{LV.Control}` `read+Label.Text` gave an eBad VI.** The property table knew `Label` only from
+  `LV.Constant` (104115202) and borrowed it; on a control it is 104013829. The harvester skipped
+  every multi-level item ("not tabled yet") - it tables each level now, under the class that level
+  is read on, from `propItemInfo`'s own `dataTypeDesc` and code (`harvest_parts.py
+  nested_levels`); harvested off NI's Handling Mouse Events.vi. `t146` reads its own panel's labels.
+- **Queue and file refnum wires** were not in the measured set: `Refnum.Queue` (`t144`, a command
+  through Obtain/Enqueue/Dequeue/Release) and `Refnum.ByteStream` (`t147`, Open/Create/Replace with
+  replace or create, Write, Close - a longer file replaced whole).
+- **Unnamed terminals**: `Dequeue Element`'s `timed out?` (parmIndex 10) and `Number To Fractional
+  String`'s `use system decimal point (T)` / `width (-)` - read off the parts' own type labels.
+
+Still open: a typed control refnum other than `ref{LV.Control}` (`ref{LV.String}` is refused).
+
+**Wave 2 - the state machine, the panel helpers and `ATM Main.vi` - composed in 25 minutes, every
+VI executable**, the main VI with its Event Structure (five front-panel frames, one handling two
+events), a latched `Enter`, two loops, four shift registers and the queue. Driven with
+`signalsJson` (Card Simulator, User Input), the panel moved to the Account phase as specified.
+Fixed after it:
+
+- **One property, two names.** `LV.Boolean`'s `Value (Signaling)` was tabled only under the short
+  name its node shows, `Val(Sgnl)`, so the producer could not wake itself. A class's row is now
+  also found under any name some class tables with the same code and label
+  (`Composer._property_aliases`); `t148` signals a boolean and a string.
+- **Three more unnamed terminals**, each read off the part's type labels and confirmed by
+  behaviour in the build: `Obtain Queue`'s `create if not found? (T)` (2) and `created new?` (10),
+  `Release Queue`'s `force destroy? (F)` (2).
+- Not fixed: a queue refnum as a subVI TERMINAL (`ref{Queue}{string}` - the agent used a named
+  queue), and `{LV.String}` `Update While Typing?`, which none of the cached NI exports writes.
+
+**Wave 3 - the Caraya tests and their runners, COMPOSED too**: 18 test VIs (`Define Test`, the
+subject as a static subVI, `Assert Equal Value_Variant`), two runners (`Run Tests.vi`, Array Path
+instance, `Interactive` FALSE), run over ActiveX - **83 assertions green, each suite failing on a
+broken expectation**, in 11 minutes. So the whole exam, application and tests, went through this
+composer: 22:54 to 23:55. Two layout findings, both fixed after it:
+
+- **A fan-out wider than any harvested table was refused** (a runner feeding ten `Build Path`s
+  from one `Strip Path`: "fans out to 10 ends; no wire table of that shape harvested" - the
+  harvest has 2 to 9 and 13). With the tree format decoded, a generic table for any end count is a
+  comb from `wire_tree.encode`; the router or LabVIEW replaces its geometry as with a harvested
+  one. `t149`, twelve ends.
+- **Every constant went into column 0**, as a source with nothing before it, so a test VI with 25
+  constants came out about 1700 px tall with a dependency chain of 6. A constant now goes one
+  column before its earliest consumer: the same document 1091 px.
+- **And a level taller than 860 px wraps into a further column.** Nothing in one level feeds
+  anything else in it, so its objects may stand side by side with every wire still running
+  forward. Measured off the heaps of all 18 test VIs, recomposed from their own AIXML: 8 were
+  taller than 1080 px as delivered (up to 3012), none is now (at most 1314 x 916); none of the 21
+  application VIs is either (`ATM Main` 1591 x 664). The wires after both layout changes, 25 VIs
+  measured with `measure_routes.py`: **422 repairs generic, 22 routed** (`t149`'s twelve-ended
+  wire 0); `t95` went from 0 to 2, its initializer constant now beside the loop.
+- **A placeholder terminal name stays valid once the real one is known.** Naming Obtain Queue's
+  `?parm2` broke the three queue helpers whose AIXML had been written with `?parm2` - a regression
+  the recomposition caught. `?parmN` now names the same terminal as the real name.
 
 ## 8. Files
 

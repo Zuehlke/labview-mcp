@@ -79,19 +79,40 @@ def walk(hexs):
     return ends if li == len(lens) else None
 
 
+# a sink that shares its row with a NEARER sink is reached over a detour track this far out
+# (above for rows above or at the source, below for rows below), and enters from JOG_IN px west
+JOG, JOG_IN = 12, 8
+
+
 def encode(sinks, junction_x):
     """A comb from the source hotpoint (0, 0): east to junction_x, a vertical spine through every
-    sink's y, and from the spine east into each sink - (dy, dx) offsets, each sink right of the
-    spine. Written in walk order: up, then down, then straight on; along a spine the walk goes on
-    to the farthest level first and takes each level's arm on its way back.
-    -> the table's hex, or None where that shape does not fit (a sink left of the spine, two sinks
-    on one row)."""
+    sink's row, and from the spine east into each sink - (dy, dx) offsets, each sink right of the
+    spine. Two sinks on ONE row: the nearer is reached straight, every farther one over a detour
+    track JOG px further out, east to JOG_IN px before it, back to its row and in.
+    Written in walk order: up, then down, then straight on; along a spine the walk goes on to the
+    farthest track first and takes each track's arm on its way back.
+    -> the table's hex, or None where that shape does not fit (a sink left of the spine)."""
     if junction_x <= 0 or any(dx <= junction_x for _, dx in sinks):
         return None
-    ys = sorted({dy for dy, _ in sinks})
-    if len(ys) != len(sinks):
-        return None        # two sinks on one row: they need a detour, not composed
-    by_y = {dy: dx for dy, dx in sinks}
+    rows = {}
+    for dy, dx in sinks:
+        rows.setdefault(dy, []).append(dx)
+    used = set(rows)
+    tracks = {}                                 # track y -> (sink y, sink x)
+    for y in sorted(rows):
+        xs = sorted(rows[y])
+        tracks[y] = (y, xs[0])
+        step = -JOG if y <= 0 else JOG
+        t = y
+        for prev, x in zip(xs, xs[1:]):
+            if x - JOG_IN <= max(prev, junction_x):
+                return None                     # the jog would come down on the nearer sink
+            t += step
+            while t in used:
+                t += step
+            used.add(t)
+            tracks[t] = (y, x)
+    ys = sorted(tracks)
     up = [y for y in ys if y < 0][::-1]       # nearest first
     down = [y for y in ys if y > 0]
     at0 = 0 in ys
@@ -104,6 +125,16 @@ def encode(sinks, junction_x):
         trunk = CODE_OF[tuple(dirs)]
     joints = [(junction_x, trunk)]             # (length of the segment into it, its code)
 
+    def arm(t):
+        """east from the spine at track t into its sink, over the detour where t is one"""
+        ky, kx = tracks[t]
+        if ky == t:
+            joints.append((kx - junction_x, 0x03))
+        else:
+            joints.append((kx - JOG_IN - junction_x, 0x00 if ky > t else 0x01))   # turn to the row
+            joints.append((abs(ky - t), 0x00))                                   # turn east
+            joints.append((JOG_IN, 0x03))
+
     def spine(levels, direction, prev):
         y = levels[0]
         if len(levels) == 1:
@@ -111,14 +142,14 @@ def encode(sinks, junction_x):
         else:
             joints.append((abs(y - prev), 0x05 if direction == S else 0x06))   # on + east
             spine(levels[1:], direction, y)
-        joints.append((by_y[y] - junction_x, 0x03))           # the arm, taken on the way back
+        arm(y)                                                  # taken on the way back
 
     if up:
         spine(up, N, 0)
     if down:
         spine(down, S, 0)
     if at0:
-        joints.append((by_y[0] - junction_x, 0x03))
+        arm(0)
     joints[-1] = (joints[-1][0], None)          # the last terminal's end is implied
     lens = [L for L, _ in joints]
     codes = [c for _, c in joints[:-1]]

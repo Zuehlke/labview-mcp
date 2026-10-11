@@ -487,8 +487,13 @@ def unverified_wire_type(tree):
         # item back by tag (t141), and a Shortcut Menu Activation? frame's MenuRef took two items
         # LabVIEW then showed in the control's menu (t142, a real right-click) - no insanity, no
         # unexpected DWarn, identical to LabVIEW's own save (2026-10-11)
+        # Queue: Obtain Queue (string) -> Enqueue -> Dequeue -> Release ran with the element and
+        # `timed out?` read back, no insanity, no unexpected DWarn (t144, 2026-10-11) - the
+        # producer/consumer of the CLD ATM exam
+        # ByteStream: Open/Create/Replace File (replace or create) -> Write to Text File -> Close
+        # File replaced a longer file's content whole, read back by path (t147, 2026-10-11)
         if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag", "TDMSFile", "UDClassInst",
-                                       "UserEvent", "EventReg", "Menu"):
+                                       "UserEvent", "EventReg", "Menu", "Queue", "ByteStream"):
             return "Refnum." + (tree.get("RefType") or "?")
         if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
             # a strictly typed VI reference: its pane is the callee's own (t103)
@@ -1431,6 +1436,24 @@ class Composer:
                 part.find("buf").text = "(%d)%s" % (len(labels), "".join('"%s"' % x for x in labels))
 
     # ---- elements ------------------------------------------------------------------------
+    def _set_description(self, ddo, text):
+        """A control's or indicator's description (its tip strip and Context Help text): a
+        cLStrObj on the ddo, before its typeDesc, the text quoted as pylabview writes it - read
+        off vi.lib's Trim Whitespace (string).vi. The parts carry an EMPTY one ([NULL]) from
+        their donors; the text replaces that."""
+        if not text:
+            return
+        text = unescape(text)
+        d = ddo.find("description")
+        if d is None:
+            d = ET.Element("description", {"class": "cLStrObj", "uid": str(self.alloc())})
+            td = ddo.find("typeDesc")
+            ddo.insert(list(ddo).index(td) if td is not None else len(ddo), d)
+        for c in list(d):
+            d.remove(c)
+        strings = ET.SubElement(d, "strings", {"elements": "1"})
+        ET.SubElement(strings, "SL__arrayElement").text = '"%s"' % text.replace('"', "&#x22;")
+
     def _set_default(self, fpdco, tree, value, name):
         """A control's DEFAULT VALUE: the fPDCO's last child <DefaultData>, the flattened data
         as pylabview writes a heap string - MacRoman text in quotes, control characters other
@@ -1525,6 +1548,7 @@ class Composer:
         self._direction(fpdco, is_ind)
         self._direction(ddo, is_ind)
         self._set_default(fpdco, tree, el.get("value"), name)
+        self._set_description(ddo, el.get("description"))
         con = el.get("conIdx")
         # A conIdx a terminal EARLIER in the document already took leaves this one OFF the pane:
         # lvpane_probe.xml gives `VI Path` and `terminals` both conIdx 1, NI's converter's build
@@ -1807,6 +1831,10 @@ class Composer:
                 # is refused below with the list of known names
                 tname = "?parm%s" % pidx
             by_name[tname] = t
+            # the placeholder stays a name of the terminal once the tables know its real one: a
+            # document written while `create if not found? (T)` was still `?parm2` composes as
+            # before (the ATM build's queue helpers, 2026-10-11)
+            by_name.setdefault("?parm%s" % pidx, t)
         ins, outs = pairs(el.get("inputs")), pairs(el.get("outputs"))
         for tname, net in ins + outs:
             if tname not in by_name and net is None:
@@ -2071,12 +2099,38 @@ class Composer:
         row = table.get(cls, {}).get(name)
         if row is not None:
             return row
+        # the SAME property under its other name: a class's row may be tabled under the short
+        # name its node shows (`Val(Sgnl)`) where AIXML writes the long one (`Value (Signaling)`)
+        # - LV.Boolean had only the short one, and the ATM build's producer could not wake itself
+        # (2026-10-11). Two names are one property where some class tables both with one code.
+        for alias in self._property_aliases().get(name, ()):
+            row = table.get(cls, {}).get(alias)
+            if row is not None:
+                return row
         seen = [other[name] for other in table.values() if name in other]
         if not seen or len({r["code"] for r in seen}) != 1 or len({r["type"] for r in seen}) != 1:
             return None
         if (cls, name) not in self._catalogue():
             return None
         return dict(seen[0], declaredBy=cls)
+
+    def _property_aliases(self):
+        """name -> the other names one class tables the same property under (same code, same
+        label): `Value (Signaling)` <-> `Val(Sgnl)`, read off the classes that carry both."""
+        al = getattr(self, "_prop_aliases", None)
+        if al is None:
+            al = {}
+            for props in self._vi_server_table()["props"].values():
+                by = {}
+                for n, r in props.items():
+                    by.setdefault((r.get("code"), r.get("label")), []).append(n)
+                for names in by.values():
+                    for a in names:
+                        for b in names:
+                            if a != b:
+                                al.setdefault(a, set()).add(b)
+            self._prop_aliases = al
+        return al
 
     def _method_by_row_label(self, cls, label):
         """The harvested method of `cls` whose part labels its FIRST row `label`, when exactly one
@@ -5728,6 +5782,12 @@ class Composer:
             # The table's SHAPE must match the end count - LabVIEW repairs foreign geometry
             # but a two-ended table on a fan-out is a broken VI, and no table crashes LabVIEW.
             table = self.wiretables.get(str(len(uids)))
+            if table is None and len(uids) > 2:
+                # any end count: a comb in the decoded tree format (wire_tree.py) - its geometry
+                # is replaced by the router's or repaired by LabVIEW like a harvested table's.
+                # Only these shapes had been harvested, so a runner listing ten tests flat was
+                # refused (the ATM build, 2026-10-11)
+                table = wire_route.wire_tree.encode([(16 * i, 100) for i in range(1, len(uids))], 50)
             if table is None:
                 raise Unsupported("net %r fans out to %d ends; no wire table of that shape harvested"
                                   % (net, len(uids)))
@@ -5790,13 +5850,29 @@ class Composer:
                     src_of.setdefault(sink_rep, []).append(src_rep)
         level = {}
 
-        def lv(uid, stack=()):
+        def dep_lv(uid, stack=()):
             if uid in level:
                 return level[uid]
             if uid in stack:
                 return 0
-            level[uid] = 1 + max([lv(s, stack + (uid,)) for s in src_of.get(uid, [])] or [-1])
+            level[uid] = 1 + max([dep_lv(s, stack + (uid,)) for s in src_of.get(uid, [])] or [-1])
             return level[uid]
+
+        # A CONSTANT goes one column before its earliest consumer, not into column 0 with every
+        # other source: a test VI of 25 constants stacked them all at the left, 62 px each, and
+        # came out 2994 px tall with a chain of 6 (the ATM build, 2026-10-11). A wire from it
+        # still runs forward, and the columns it joins are there anyway.
+        consumers = {}
+        for sink, srcs in src_of.items():
+            for s_ in srcs:
+                consumers.setdefault(s_, []).append(sink)
+        constants = {e.get("uid") for e in self._elements if e.tag == "Constant"}
+
+        def place_lv(uid, stack=()):
+            if uid in constants and consumers.get(uid):
+                return max(dep_lv(uid), min(dep_lv(k) for k in consumers[uid]) - 1)
+            return dep_lv(uid, stack)
+        lv = place_lv
         sizes = {}
         frame_dims = {}       # (an Element takes no Python attributes)
         # Each kind of structure is sized around what it holds, one kind after the other - so a
@@ -5994,33 +6070,85 @@ class Composer:
             frame_dims[id(seq)] = dims
 
     COLUMN_GAP = 60
+    COLUMN_MAX = 860      # px a column of one level may grow before it wraps
 
     def _place(self, diag, lv, sizes, top0, left0):
         # Columns by dependency level, each as wide as its widest object - a fixed 160 px put
         # what follows a wide loop INSIDE the loop's width, and its wires ran backwards (the
         # generic table LabVIEW repaired). Only the levels this diagram holds get a column.
         items = []
+        notes = [obj for obj, el in diag.placed if el.tag == "FreeLabel"]
         for obj, el in diag.placed:
+            if el.tag == "FreeLabel":
+                continue
             if el.tag == "Structure":
                 h, w = sizes.get(obj.get("uid"), (120, 200))
             else:
                 h, w = lvheap.size_of(obj)
             items.append((obj, el, lv(el.get("uid")), h, w))
-        col_x, x = {}, left0
-        for L in sorted({it[2] for it in items}):
-            col_x[L] = x
-            x += max(it[4] for it in items if it[2] == L) + self.COLUMN_GAP
-        rows, right, bottom = {}, 0, 0
-        for obj, el, L, h, w in items:
-            y = top0 + rows.get(L, 0)
-            x = col_x[L]
-            if el.tag == "Structure":
-                obj.find("bounds").text = lvheap.fmt_bounds((y, x, y + h, x + w))
-            else:
-                place_obj(obj, y, x)
-            rows[L] = rows.get(L, 0) + max(h, 32) + 30
-            right, bottom = max(right, x + w), max(bottom, y + h)
+        # A LEVEL TALLER THAN COLUMN_MAX WRAPS into a further column of its own: nothing in one
+        # level feeds anything else in it, so its objects may stand side by side and every wire
+        # still runs forward. A test VI asserting eleven values stacked 22 constants in one column
+        # and came out 1598 px tall with 604 px of width (the ATM build, 2026-10-11).
+        by_level = {}
+        for it in items:
+            by_level.setdefault(it[2], []).append(it)
+        x, right, bottom = left0, 0, 0
+        for L in sorted(by_level):
+            cols, col, y = [], [], 0
+            for it in by_level[L]:
+                if col and y + it[3] > self.COLUMN_MAX:
+                    cols.append(col)
+                    col, y = [], 0
+                col.append((it, y))
+                y += max(it[3], 32) + 30
+            cols.append(col)
+            for col in cols:
+                for (obj, el, _, h, w), dy in col:
+                    yy = top0 + dy
+                    if el.tag == "Structure":
+                        obj.find("bounds").text = lvheap.fmt_bounds((yy, x, yy + h, x + w))
+                    else:
+                        place_obj(obj, yy, x)
+                    right, bottom = max(right, x + w), max(bottom, yy + h)
+                x += max(it[4] for it, _ in col) + self.COLUMN_GAP
+        y = (bottom + 20) if items else top0
+        for obj in notes:
+            h, w = lvheap.size_of(obj)
+            place_obj(obj, y, left0)
+            y += h + 10
+            right, bottom = max(right, left0 + w), max(bottom, y - 10)
         return right, bottom
+
+    # a diagram comment as LabVIEW's own free labels are written (State Machine Fundamentals.vi):
+    # class label, the yellow comment colour, a textHair record holding the quoted text
+    LABEL_FLAGS, LABEL_MODE, LABEL_COLOUR = "1114114", "8471556", "00FFFFD7"
+
+    def add_label(self, el):
+        """A <FreeLabel> as a free label in the diagram it names - placed by the layout BELOW
+        what that diagram holds, so a loop or case frame grows around its own comment. Sized
+        from the text (6 px a character, 16 a line): LabVIEW does not grow a label box, and a
+        box too small for its caption is clipped in silence."""
+        text = unescape(el.get("comment") or "")
+        if not text.strip():
+            return
+        diag = self.diag_of(el)
+        lines = text.split("\n")
+        h = 16 * len(lines) + 2
+        w = 6 * max(len(l) for l in lines) + 10
+        lab = ET.Element("SL__arrayElement", {"class": "label", "uid": str(self.alloc())})
+        ET.SubElement(lab, "objFlags").text = self.LABEL_FLAGS
+        ET.SubElement(lab, "howGrow").text = "240"
+        ET.SubElement(lab, "bounds").text = lvheap.fmt_bounds((0, 0, h, w))
+        img = ET.SubElement(lab, "image", {"class": "Image"})
+        ET.SubElement(img, "ImageResID").text = "-619"
+        ET.SubElement(lab, "bgColor").text = self.LABEL_COLOUR
+        rec = ET.SubElement(lab, "textRec", {"class": "textHair"})
+        ET.SubElement(rec, "mode").text = self.LABEL_MODE
+        ET.SubElement(rec, "text").text = '"%s"' % text
+        ET.SubElement(rec, "bgColor").text = self.LABEL_COLOUR
+        diag.z.insert(0, lab)                   # z-order runs newest first
+        diag.placed.append((lab, el))
 
     def connector_pane(self):
         top = max([con for con, _, _, _ in self.pane_terms] or [-1])
@@ -6088,12 +6216,13 @@ class Composer:
         self.con_taken = {}
         self.term_label = {}
         elements = []
+        labels = []
         for el in self.flatten(vi):
             if el.tag in ("Control", "Indicator", "Constant", "Node", "Structure", "Tunnel", "Condition",
                           "ShiftReg", "Left", "Right", "CaseFrame", "Call", "FixedConst", "Diagram"):
                 elements.append(el)
-            elif el.tag in ("FreeLabel",):
-                self.report.append("skipped %s (comments are not composed yet)" % el.tag)
+            elif el.tag == "FreeLabel":
+                labels.append(el)
             else:
                 raise Unsupported("element <%s> is not composable yet" % el.tag)
         by_uid = {e.get("uid"): e for e in elements}
@@ -6241,6 +6370,8 @@ class Composer:
         self.finish_cases()
         self.finish_events()
         nets = self.wire(elements)
+        for el in labels:
+            self.add_label(el)
         self.layout(nets)
         for hidden, slave in getattr(self, "fb_pairs", []):
             slave.find("bounds").text = hidden.find("bounds").text   # one node on the diagram

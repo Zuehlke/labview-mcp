@@ -1146,7 +1146,14 @@ insanity check. **Fan-outs too, down to 28, and to 12 with LabVIEW's own `termHo
 the heap, written as a comb only where every end's hotpoint is EXACT - learned from LabVIEW's own
 fan-outs, NI's examples plus the suite composed with generic tables and saved by LabVIEW, the only
 corpus with a loop's `i` or a dynamic event terminal in one; constants follow a calibration, since
-LabVIEW sizes its own to their text. **No `.ctl` link
+LabVIEW sizes its own to their text. **THE WHOLE CLD ATM EXAM WENT THROUGH THE COMPOSER on
+2026-10-11** - 21 application VIs, 18 Caraya test VIs and two runners, all composed and run over
+ActiveX, 83 assertions green, in about an hour with agents, `C:\Temp\ATM_Pylab`. The gaps it
+found were closed that night - comments, descriptions, a bare name resolving NI's namesake first,
+`Label.Text` on a control, queue and file refnum wires, a property tabled under its short name,
+wide fan-outs, constants stacked into one tall column, five unnamed terminals - except a queue
+refnum as a subVI terminal, typed control refnums and `Update While Typing?`; FINDINGS §7a.
+**No `.ctl` link
 is needed for a typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs
 were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **A CLASS,

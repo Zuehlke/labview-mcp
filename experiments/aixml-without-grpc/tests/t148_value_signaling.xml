@@ -1,0 +1,13 @@
+<VI _name="T148 Value Signaling.vi" description="Implicit property nodes write Value (Signaling) on a boolean and a string control and read the values back - the property a program uses to fire its own Value Change events.">
+  <Control _name="Flag" outputs="value:" type="bool" uid="4200" uid_parent="root" value="false"/>
+  <Control _name="Text" outputs="value:" type="string" uid="4210" uid_parent="root" value=""/>
+  <Constant _name="new flag" outputs="value:4300.value" type="bool" uid="4300" uid_parent="root" value="true"/>
+  <Constant _name="new text" outputs="value:4310.value" type="string" uid="4310" uid_parent="root" value="signalled"/>
+  <Node _name="Property Node" fields="write+Value (Signaling)" inputs="Value (Signaling):4300.value" link="Flag" outputs="error out:4400.err" type="{LV.Boolean}" uid="4400" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value (Signaling)" inputs="Value (Signaling):4310.value,error in (no error):4400.err" link="Text" outputs="error out:4410.err" type="{LV.String}" uid="4410" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Value" inputs="error in (no error):4410.err" link="Flag" outputs="Value:4500.value,error out:4500.err" type="{LV.Boolean}" uid="4500" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Value" inputs="error in (no error):4500.err" link="Text" outputs="Value:4510.value,error out:4510.err" type="{LV.String}" uid="4510" uid_parent="root"/>
+  <Indicator _name="flag now" inputs="value:4500.value" type="bool" uid="4600" uid_parent="root" value="false"/>
+  <Indicator _name="text now" inputs="value:4510.value" type="string" uid="4610" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4510.err" type="cluster{bool.status,int32.code,string.source}" uid="4620" uid_parent="root" value="[false,0,]"/>
+</VI>

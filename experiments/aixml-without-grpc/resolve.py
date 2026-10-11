@@ -187,13 +187,10 @@ class Resolver:
                 ref = ("1", ["", target]) if same or not caller_file else ("1", relative_ref(caller_file, p))
                 return {"path": p, "qual": [target], "path_ref": ref,
                         "lib_ref": None, "kind": "sibling"}
-        self._index()
-        hits = self._files.get(target.lower(), [])
-        for p in hits:   # the installation's own folders first, then the add-ons
-            s = self.symbolic(p)
-            if s:
-                return {"path": p, "qual": [target], "path_ref": ("0", [s[0]] + s[1]), "lib_ref": None,
-                        "kind": "bare name", "ambiguous": len(hits) > 1}
+        # NEAR THE CALLER BEFORE THE INSTALLATION: a project's own `Set Control Value.vi` in
+        # SubVIs\ was shadowed by NI's namesake under resource\importtools, whose pane has no
+        # `controls` - found by the ATM build (2026-10-11). A bare name in a project means the
+        # project's VI, as LabVIEW itself looks beside the caller first when it relinks.
         for d in (caller_dirs or []):
             # every search folder, not only the first: a VI composed elsewhere from an NI
             # export finds its callees beside the ORIGINAL (bisect_vi.py --near)
@@ -201,4 +198,11 @@ class Resolver:
             if near:
                 return {"path": near[0], "qual": [target], "path_ref": ("1", relative_ref(caller_file, near[0])),
                         "lib_ref": None, "kind": "near the caller", "ambiguous": len(near) > 1}
+        self._index()
+        hits = self._files.get(target.lower(), [])
+        for p in hits:   # the installation's own folders first, then the add-ons
+            s = self.symbolic(p)
+            if s:
+                return {"path": p, "qual": [target], "path_ref": ("0", [s[0]] + s[1]), "lib_ref": None,
+                        "kind": "bare name", "ambiguous": len(hits) > 1}
         return {"error": "%r is neither near the caller nor in the installation" % target}
