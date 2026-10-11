@@ -1715,9 +1715,65 @@ an XControl landed on the facade's helper string controls, which NI keeps HIDDEN
 visibility for - so the composed facade shows them at the origin - and NI's original at the same
 point showed a general menu without its own `Display Temperature...` item either. NI's facade also
 logged 13 `Bad edge will not be added to wire` and 5 `Cannot find terminal hotpoint` DWarns, with
-and without its menu frames - a composer gap elsewhere in that VI, not looked into yet - and its
-expected wire repairs fill LabVIEW's log, so the insanity check is blind for it; t142 is the clean
-measurement.
+and without its menu frames - see the next section - and its expected wire repairs fill LabVIEW's
+log, so the insanity check is blind for it; t142 is the clean measurement.
+
+### "Bad edge" and "Cannot find terminal hotpoint" - the LINK, not the wire (2026-10-11)
+
+The composed NI facade logged both on load, executable and computing right. Bisected by frames and
+then by nodes, each variant composed into a fresh XControl copy on a fresh LabVIEW:
+
+| variant (frames 1156 + 1469 of the facade) | bad edge / hotpoint |
+|---|---|
+| as composed | 6 / 2 |
+| without the local variables | 6 / 2 |
+| without the Bundle By Name nodes | 2 / 2 |
+| without the case structures | 0 / 0 |
+| without the two `F to C.vi` calls | 0 / 0 |
+| without ONE of the two calls | 6 / 2 |
+| each call replaced by `Negate` at the SAME bounds | 0 / 0 |
+| as composed, with `LinkSaveFlag="2"` on the subVI links | 0 / 0 - but see below |
+| as composed, the callee linked as `Simple Dual Mode Thermometer XControl.xctl:F to C.vi` | **0 / 0** |
+
+LabVIEW's log names more than the DWarn line says: `Bad Edge: ai=1, bi=2, m=3, wp[ai].p.v108,
+wp[bi].p.v166, wp[ai].p.h293, wp[bi].p.h434` is a DIAGONAL edge between two joints of a repaired wire,
+and `Cannot find terminal hotpoint in wire (... 20779)` names the SIGNAL'S uid in our heap - here two
+fan-outs from an event frame's input tunnel to its output tunnel and an Unbundle By Name, not the
+wires of the call at all. The trigger was the call node all the same: geometry identical, the same
+node as a primitive was clean. **The composer linked `F to C.vi` under its BARE name**, while the
+callee's own `LIBN` makes it `Simple Dual Mode Thermometer XControl.xctl:F to C.vi`: LabVIEW, finding
+the name wrong, relinks the call while the caller loads, and the repair of the frame's other wires
+trips over it. Linked under its full name - the library from the callee's `LIBN`, the `.xctl` as the
+link's library path, as an explicitly qualified target always was - the same document loads with
+0 / 0, an A/B on the name alone; the composer now does that for every library member found by its
+bare name.
+
+**The first fix was `LinkSaveFlag 2`, and it KILLED LabVIEW.** NI's facade carries 2 on that link,
+and with 2 the pair loaded clean too - so it went into the composer and the full suite collapsed: 35
+tests without an answer from COM. `t50_call` alone showed why: LabVIEW died on load,
+`DAbort ... ConvertRelativeLinkRefNameToAbsolute: *relativeNameEncoding > referName.NumElts()`. 2
+means the qualified name is RELATIVE to the caller's - right for NI's facade, whose caller and callee
+share a library, fatal for a caller in none - and the next COM call then started LabVIEW itself
+(`/Automation`), which hung on "Abort Running VIs" behind JKI's running SDP service. The flag stays 0;
+an A/B that removes a symptom on ONE fixture is not a fix until the suite has run.
+
+Two measurement traps, each of which produced a confident wrong bisect step first:
+
+- **A variant that does not COMPOSE leaves NI's own facade in the copy**, and its verdict is NI's
+  original. Dropping a frame dropped the control terminal another frame's local variable needs: nine
+  of the "single frame" variants never composed, and "each frame alone is clean" was a measurement of
+  NI's VI. The scratch driver refuses to load a variant that did not compose now.
+- **A second load of an UNCHANGED file logged nothing**: 72 DWarns on the first load, 0 on the next
+  after a LabVIEW restart - LabVIEW serves it from its compiled-object cache without loading the
+  diagram, so there is nothing to repair. A DWarn check is only meaningful on a file LabVIEW has not
+  loaded before (the composer's random GUIDs make every composition one).
+
+What stays is the noise LabVIEW is EXPECTED to log: `Wiring insanity found and fixed` per composed
+wire (the generic `0208` and `04000806032B2E75` tables NI's converter writes too - 15 815 of 16 284
+two-ended and 826 of 926 three-ended wires in the corpus carry exactly those). It is 94 events for
+four frames of NI's facade, so LabVIEW's 100-event log saturates on any larger VI and the insanity
+check goes blind there. Composing the real wire geometry would end it; the table format is decoded
+only for two-ended wires (section 4).
 
 ## 8. Files
 

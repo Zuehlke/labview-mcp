@@ -1133,7 +1133,12 @@ method answered 0 where NI's answers 212, which only a run with the HOST's panel
 loaded XControl is served from memory for ANY path with its qualified name - `lv-com.ps1` says
 `SERVED FROM` now. **Menu references compose too**, between primitives and out of a Shortcut Menu
 Activation? frame's event data, the latter run with a real right-click - LabVIEW's popup menu is
-its own window class `LVMenuWnd`. **No `.ctl` link
+its own window class `LVMenuWnd`. **A library member called by its bare name is linked under its
+FULL qualified name** (the callee's `LIBN`): bare, LabVIEW relinked the call on load and the repair
+of OTHER wires failed (`Bad edge`, `Cannot find terminal hotpoint`). `LinkSaveFlag 2` hid that on
+one fixture and KILLED LabVIEW on an ordinary call - a fix tried on one fixture is not a fix until
+the suite ran. And a DWarn check on a file LabVIEW already loaded once sees nothing: the second load
+comes from its compiled-object cache. **No `.ctl` link
 is needed for a typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs
 were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **A CLASS,

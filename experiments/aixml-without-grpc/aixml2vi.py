@@ -3313,6 +3313,32 @@ class Composer:
             self.net_type[count] = ET.Element("TypeDesc", {"Type": "NumInt32", "Prop1": "0", "Format": "inline"})
         self.report.append("Structure %r <- %s" % (el.get("_name"), src))
 
+    def _library_qualified(self, res, callee):
+        """A callee found by its bare name that is a LIBRARY MEMBER - its own LIBN says so - is
+        linked under its full qualified name, as an explicitly qualified target is: the bare name
+        made LabVIEW relink the call while the caller loaded, and the repair of OTHER wires in that
+        frame then failed - "Bad edge will not be added to wire", "Cannot find terminal hotpoint" -
+        on NI's Dual Mode Thermometer facade calling its library's F to C.vi (2026-10-11)."""
+        if res.get("kind") not in ("sibling", "near the caller", "bare name") or len(res.get("qual") or []) != 1:
+            return res
+        libs = [l.text.strip() for l in callee.main.findall("LIBN/Section/Library") if (l.text or "").strip()]
+        if not libs:
+            return res
+        # the library file: beside the member, or in a folder above it (a library's members may
+        # sit in its subfolders)
+        d = os.path.dirname(os.path.abspath(res["path"]))
+        owner = None
+        for _ in range(4):
+            cand = os.path.join(d, libs[-1])
+            if os.path.exists(cand):
+                owner = cand
+                break
+            d = os.path.dirname(d)
+        if owner is None:
+            return res
+        return dict(res, qual=libs + res["qual"], kind="library member", owner=owner,
+                    lib_ref=self.resolver.ref(owner, getattr(self, "caller_file", None)))
+
     def add_call(self, el):
         """A subVI call, composed from the CALLEE'S OWN FILE - no LabVIEW, no gRPC.
 
@@ -3336,6 +3362,7 @@ class Composer:
         path = res["path"]
         diag = self.diag_of(el)
         callee = lvheap.Bundle(_extract_callee(path))
+        res = self._library_qualified(res, callee)
         conp = int(callee.main.find("CONP/Section/TypeDesc").get("TypeID"))
         # dynamic dispatch is a PANE property: a terminal whose Flags carry 0x8000
         # (Infra/PaneDispatch.cs, measured against NI's IsStaticMethod) - the LVSR flag stays
@@ -3622,6 +3649,11 @@ class Composer:
         """VIVI into LIvi/LVIN and IUVI into LIbd/BDHP, one pair per callee."""
         lvin = self.main.find("LIvi/Section/LVIN")
         bdhp = self.main.find("LIbd/Section/BDHP")
+        # LinkSaveFlag stays 0: the qualified name is ABSOLUTE. 2 makes it RELATIVE to the caller's
+        # - what LabVIEW writes for a callee in the caller's own library - and on a caller outside
+        # any library LabVIEW then DIED on load, "DAbort ConvertRelativeLinkRefNameToAbsolute:
+        # *relativeNameEncoding > referName.NumElts()" (t50_call, 2026-10-11). So a library member
+        # is named in FULL instead (link_qual).
         attrs = {"LinkSaveFlag": "0", "VILinkLibVersion": "1", "VILinkFieldA": "0", "VILinkField4": "1",
                  "VILinkFieldB": "", "VILinkFieldC": "", "VILinkFieldD": "0", "TypedLinkFlags": "0"}
         def path_ref(holder, tag, tpval, comps):

@@ -335,6 +335,15 @@ frame 0 as `Default` where the heap has no `SelectDefaultCase` - LabVIEW never w
 NI's facade with its menu frames composes executable. `experiments/aixml-without-grpc/FINDINGS.md`
 §7a, "Menu references on wires".
 
+**A library member found by its bare name is linked under its FULL qualified name now** - the
+library read off the callee's own `LIBN`. Linked bare, LabVIEW relinked the call while the caller
+loaded, and the repair of OTHER wires in that frame failed: `Bad edge will not be added to wire`,
+`Cannot find terminal hotpoint`; qualified, the same document loaded without either, an A/B. NOT
+`LinkSaveFlag 2`, which removed the symptom on that fixture too: it makes the name RELATIVE to the
+caller's, and LabVIEW died loading an ordinary call that way. What remains is the EXPECTED `Wiring
+insanity found and fixed` per composed wire, which still saturates LabVIEW's log on a large VI.
+FINDINGS §7a, "Bad edge and Cannot find terminal hotpoint".
+
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke
 the VI. And structures are sized round after round until nothing changes: a case or event
