@@ -51,6 +51,7 @@ def scan(vi, multi_only):
                 continue
             specs = [{c.tag: (c.text or "").strip() for c in sp} for sp in n.find("EventNodeEvents")]
             dl = [c.get("uid") for c in n.find("dataNodeList")]
+            fl = [c.get("uid") for c in n.find("filterNodeList")] if n.find("filterNodeList") is not None else []
             frames = []
             for i, du in enumerate(dl):
                 fs = [s for s in specs if s.get("diagramIdx") == str(i)]
@@ -58,9 +59,14 @@ def scan(vi, multi_only):
                     continue
                 node = node_by_uid(b.bd, du)
                 agg = node.find("termList")[0].find("dco") if node is not None and node.find("termList") is not None else None
+                # a FILTER event's frame has a second eventDataNode, the Event Filter Node, whose
+                # cluster ("Event Filter Data") is what the frame hands back (2026-10-11)
+                fnode = node_by_uid(b.bd, fl[i]) if i < len(fl) and fl[i] not in (None, "0") else None
+                fagg = fnode.find("termList")[0].find("dco") if fnode is not None and fnode.find("termList") is not None else None
                 frames.append({"idx": i, "specs": fs,
                                "sources": {s["ddoUID"]: ddo_type(b, s["ddoUID"]) for s in fs if s.get("ddoUID") not in (None, "", "0")},
-                               "data": flat_xml(b, agg.findtext("typeDesc")) if agg is not None else None})
+                               "data": flat_xml(b, agg.findtext("typeDesc")) if agg is not None else None,
+                               "filter": flat_xml(b, fagg.findtext("typeDesc")) if fagg is not None else None})
             if frames:
                 out.append({"vi": vi, "uid": n.get("uid"), "frames": frames})
         return out

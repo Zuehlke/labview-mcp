@@ -4151,6 +4151,27 @@ class Composer:
                 fld = "NewVal" if len(its) == 1 and kind == "Value Change" and not self._dyn_source(its[0]) else "Time"
                 self._synth_event_data.append(ET.Element("Node", {"_name": "Event Data Node", "fields": fld,
                                                                   "outputs": fld + ":", "uid": "0", "uid_parent": f.get("uid")}))
+        # and a FILTER event's frame its Event Filter Node: left out, LabVIEW makes one on load
+        # whose field is no field (int32, <i>-1</i>, the node flagged 0x4) and the VI is broken -
+        # measured, executable once the node is there. A frame without one in the AIXML gets one
+        # with the event's first settable field, unwired (Drag Enter: Accepted?)
+        have_f = {c.get("uid_parent") for c in el.iter("Node") if c.get("_name") == "Event Filter Node"}
+        self._synth_event_filter = getattr(self, "_synth_event_filter", [])
+        for f in frames_el:
+            its = event_items(unescape(f.get("selector") or ""))
+            rows = [static_event(self._event_of(it)[1]) for it in its if self._dyn_source(it) is None]
+            if not any(r is not None and int(r["spec"]["type"]) < 0 for r in rows):
+                continue
+            if len(its) != 1:
+                raise Unsupported("Event Structure %s: a frame handling a filter event among others is not measured yet"
+                                  % el.get("uid"))
+            if f.get("uid") in have_f or not rows[0].get("filterFields"):
+                continue
+            settable = [self._field_label(x) for x in map(ET.fromstring, rows[0]["filterFields"]) if not self._hidden(x)]
+            if settable:
+                self._synth_event_filter.append(ET.Element("Node", {
+                    "_name": "Event Filter Node", "fields": settable[0], "inputs": settable[0] + ":",
+                    "uid": "0", "uid_parent": f.get("uid")}))
         self.report.append("Structure 'Event Structure' (%d frames) <- %s" % (len(frames_el), src))
 
     @staticmethod
@@ -4210,8 +4231,9 @@ class Composer:
         r = static_event(kind)
         if r is None:
             raise Unsupported("Event Structure %s: event %r is not composable yet" % (uid, kind))
-        if int(r["spec"]["type"]) < 0:
-            raise Unsupported("Event Structure %s: the filter event %r is not composable yet" % (uid, kind))
+        if int(r["spec"]["type"]) < 0 and not r.get("filterFields"):
+            raise Unsupported("Event Structure %s: the filter event %r has no measured Event Filter Node "
+                              "cluster (add_filter_fields.py)" % (uid, kind))
         if r["sourceKind"] != "control" or ctl is None:
             raise Unsupported("Event Structure %s: the %s event %r is not composable yet" % (uid, r["sourceKind"], kind))
         if r.get("classDependent"):
@@ -4321,8 +4343,9 @@ class Composer:
                 lst = node.find(lst_tag)
                 for c in list(lst):
                     lst.remove(c)
+                fn = getattr(self, "event_filter_nodes", {})
                 for f in frames_el:
-                    u = dn.get(f.get("uid"), "0") if lst_tag == "dataNodeList" else "0"
+                    u = (dn if lst_tag == "dataNodeList" else fn).get(f.get("uid"), "0")
                     ET.SubElement(lst, "SL__arrayElement", {"uid": u})
                 lst.set("elements", str(len(lst)))
             # the selector label caches the displayed frame's text (CLAUDE.md: written by hand,
@@ -4805,6 +4828,101 @@ class Composer:
         self.event_data_nodes = getattr(self, "event_data_nodes", {})
         self.event_data_nodes[frame.get("uid")] = node.get("uid")
         self.report.append("Event Data Node <- %s" % src)
+
+    @staticmethod
+    def _hidden(f):
+        """Bit7 on a cluster field - set on the wrapped type of a TypeDef, as LabVIEW writes it."""
+        inner = fields(f)[0] if f.get("Type") == "TypeDef" and fields(f) else f
+        return inner.get("Bit7") == "1"
+
+    def add_event_filter(self, el):
+        """An Event Filter Node - the second eventDataNode of a FILTER event's frame, through
+        which the frame hands values BACK (Drag Enter's and Drop's Accepted?, a "?" event's
+        Discard?). As LabVIEW writes it in NI's Drag and Drop - Passing Custom Drag Data.vi: the
+        node's objFlags without the data node's 0x10000; its cluster "Event Filter Data" with
+        Source, Type, Time and the reference hidden (Bit7 on each) and then the fields
+        add_filter_fields.py read off NI's own filter node for that event; the aggregate DCO
+        flagged 1 and carrying a termList of its own term and a second, DCO-less term (objFlags
+        0x820000); one INPUT terminal per field, wired 0x8040, unwired 0x40, its DCO unflagged.
+        A field Bit7 hides on this node cannot be set and is refused by name. `<i>` is written as
+        the field's position; LabVIEW rewrites it on load (8 became 17 for Available Data Names on
+        the data node, measured)."""
+        self.check_attrs(el, ("fields",))
+        frame = self._by_uid.get(el.get("uid_parent"))
+        if frame is None or frame.tag != "CaseFrame":
+            raise Unsupported("Event Filter Node %s: not in an event frame" % el.get("uid"))
+        items = event_items(unescape(frame.get("selector") or ""))
+        if len(items) != 1 or self._dyn_source(items[0]) is not None:
+            raise Unsupported("Event Filter Node %s: only a frame handling ONE static filter event is measured"
+                              % el.get("uid"))
+        ctl, kind = self._event_of(items[0])
+        row = static_event(kind)
+        if row is None or int(row["spec"]["type"]) >= 0 or not row.get("filterFields"):
+            raise Unsupported("Event Filter Node %s: %r is not a filter event with a measured filter cluster"
+                              % (el.get("uid"), kind))
+        diag = self.diag_of(el)
+        node, donor_types, src = self.instantiate("node/eventData")
+        terms = list(node.find("termList"))
+        agg, tpl = terms[0], terms[1]
+        donor = plain(lvheap.strip_label(donor_types[0]))
+        fs = []
+        for f in self._event_fields(el, frame, items[0], fields(donor))[:4]:
+            f = copy.deepcopy(f)
+            (fields(f)[0] if f.get("Type") == "TypeDef" and fields(f) else f).set("Bit7", "1")
+            fs.append(f)
+        fs += [ET.fromstring(x) for x in row["filterFields"]]
+        cl = ET.Element("TypeDesc", dict(donor.attrib))
+        for f in fs:
+            cl.append(f)
+        cl.set("Label", "Event Filter Data")
+        labels = [self._field_label(f) for f in fs]
+        nf = node.find("objFlags")
+        nf.text = str(int(nf.text or 0) & ~0x10000)
+        tl = node.find("termList")
+        for c in terms[1:]:
+            tl.remove(c)
+        dl = node.find("dcoList")
+        for c in list(dl):
+            dl.remove(c)
+        adco = agg.find("dco")
+        adco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(cl)
+        af = adco.find("objFlags")
+        if af is None:
+            af = ET.Element("objFlags")
+            adco.insert(0, af)
+        af.text = "1"
+        second = ET.Element("SL__arrayElement", {"class": "term", "uid": str(self.alloc())})
+        ET.SubElement(second, "objFlags").text = "8519680"
+        ET.SubElement(second, "dco", {"uid": adco.get("uid")})
+        tl.insert(1, second)
+        atl = ET.Element("termList", {"elements": "2"})
+        ET.SubElement(atl, "SL__arrayElement", {"uid": agg.get("uid")})
+        ET.SubElement(atl, "SL__arrayElement", {"uid": second.get("uid")})
+        adco.insert(1, atl)
+        want = [unescape(x) for x in split_top(el.get("fields") or "") if x] or [k for k, _ in pairs(el.get("inputs"))]
+        ins = dict(keyed(pairs(el.get("inputs"))))
+        for k in want:
+            if k not in labels:
+                raise Unsupported("Event Filter Node %s: no field %r for %s (it has %s)" % (
+                    el.get("uid"), k, kind, ", ".join(l for l, f in zip(labels, fs) if not self._hidden(f))))
+            idx = labels.index(k)
+            if self._hidden(fs[idx]):
+                raise Unsupported("Event Filter Node %s: %r cannot be set for %s - LabVIEW hides it on the filter node"
+                                  % (el.get("uid"), k, kind))
+            t = self._term_from(tpl, fs[idx], flags=0x8040 if ins.get(k) else 0x40, dco_flags=0, index=idx)
+            tl.append(t)
+            ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+            self.ends[(el.get("uid"), k)] = (t.get("uid"), diag)
+        tl.set("elements", str(len(tl)))
+        dl.set("elements", str(len(dl)))
+        for e in node.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.event_filter_nodes = getattr(self, "event_filter_nodes", {})
+        self.event_filter_nodes[frame.get("uid")] = node.get("uid")
+        self.report.append("Event Filter Node <- %s" % src)
 
     DISABLES = {"Diagram Disable Structure": "diagram", "Conditional Disable Structure": "conditional"}
 
@@ -5889,6 +6007,8 @@ class Composer:
                     self.add_waveform_node(e)
                 elif e.tag == "Node" and nm == "Event Data Node":
                     self.add_event_data(e)
+                elif e.tag == "Node" and nm == "Event Filter Node":
+                    self.add_event_filter(e)
                 elif e.tag == "Node" and nm == "Register For Events":
                     self.add_event_reg(e)
                 elif e.tag == "Node" and nm == "Local Variable":
@@ -5931,6 +6051,8 @@ class Composer:
                 pending.remove(e)
         for e in getattr(self, "_synth_event_data", []):
             self.add_event_data(e)
+        for e in getattr(self, "_synth_event_filter", []):
+            self.add_event_filter(e)
         self.finish_cases()
         self.finish_events()
         nets = self.wire(elements)

@@ -39,8 +39,10 @@ def frames_by_order(root):
 def heap_frames(vi):
     out = []
     for rec in event_frame_data.scan(vi, False):
+        # the FILTER cluster too (a filter event's Event Filter Node, None elsewhere) - it is a
+        # cluster LabVIEW writes on load like the data cluster (2026-10-11)
         out.append({f["idx"]: (f["data"], [(s["type"], s["source"], s["regFlags"], s["eSource"], s["eFlags"], s["dynIndex"])
-                                           for s in f["specs"]]) for f in rec["frames"]})
+                                           for s in f["specs"]], f.get("filter")) for f in rec["frames"]})
     return out
 
 
@@ -73,7 +75,7 @@ def main(argv):
         for k in sorted(set(fa) | set(fb)):
             same = fa.get(k) == fb.get(k)
             bad += not same
-            print("  structure %d frame %d: data/specs %s" % (si, k, "SAME" if same else "DIFFER"))
+            print("  structure %d frame %d: data/specs/filter %s" % (si, k, "SAME" if same else "DIFFER"))
             if not same:
                 print("     composed:", fa.get(k))
                 print("     labview :", fb.get(k))

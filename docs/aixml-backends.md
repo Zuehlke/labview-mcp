@@ -270,8 +270,20 @@ data from LabVIEW's own save. Autoscale Range Change fires on a PROGRAMMATIC wri
 autoscaling graph, so `t130_graph_specific_events` runs it: the frame reads `Kind` and `Type` and
 gets `X-Scale`, `Autoscale Range Change`; the other five need a hand on the graph and are checked
 against LabVIEW's save only. NI's `Graph Events.vi` itself round-trips through reader and composer
-and receives the event at start like the original. Drag Enter and Drop, which NI's VIs also handle
-on graphs, are FILTER events and still refused - they need the Event Filter Node.
+and receives the event at start like the original.
+
+**FILTER EVENTS on a control compose too, with their EVENT FILTER NODE** - Drag Enter and Drop,
+which NI's VIs handle on graphs, and the "?" events Drag Starting?, Shortcut Menu Activation? and
+URL Navigation?. Write the node as NI's exporter does,
+`<Node _name="Event Filter Node" fields="Accepted?" inputs="Accepted?:<net>"/>`; a field LabVIEW
+hides on that node is refused by name. **Leave it out and the composer adds one**, the event's first
+settable field unwired, because a filter frame WITHOUT one is broken - LabVIEW then makes a
+placeholder node whose field is no field, and its own save of that stays broken. Each event's
+filter cluster was read off NI's own VI (`add_filter_fields.py`), since it cannot be derived from
+the data cluster. `t131_drag_filter_events` is identical to LabVIEW's save, frame for frame,
+filter clusters included, and NI's exporter reads every filter node back with its fields and
+wiring; it runs, though no test drags with a real mouse. Still refused: a frame handling a filter
+event among others, and the VI and application filter events (Panel Close?, Key Down?).
 
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke

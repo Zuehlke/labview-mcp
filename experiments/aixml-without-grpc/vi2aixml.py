@@ -1434,26 +1434,42 @@ class Reader:
                 self.term_owner[t.get("uid")] = (el, tree.get("Label") or "?", not out)
         return el
 
+    @staticmethod
+    def _field_name(e):
+        """A cluster field's label - Source and Type are TYPEDEFS labelled on the wrapped type."""
+        inner = e.find("TypeDesc") if e.get("Type") == "TypeDef" else None
+        return e.get("Label") or (inner.get("Label") if inner is not None else None)
+
     def eventdata(self, node, parent_uid):
-        el = self._node_el(node, parent_uid, "Event Data Node")
+        # an Event Filter Node is an eventDataNode too, without the data node's 0x10000 (NI's
+        # Drag and Drop example: 0x150000 against 0x140000) - its fields are INPUTS, handed back
+        # to LabVIEW (Accepted?, Discard?), and its aggregate has a second, DCO-less terminal
+        flt = not int(node.findtext("objFlags") or 0) & 0x10000
+        el = self._node_el(node, parent_uid, "Event Filter Node" if flt else "Event Data Node")
         fields = []
         terms = list(node.find("termList"))
-        # LabVIEW's own save types a field terminal WITHOUT a label and selects the field by its
-        # index in the event data cluster, <i> on the dco (NI's Graph Events.vi: i=1 is Type) - so
-        # a missing label is the label of that element of the node's input cluster
         agg = self.tid_tree(terms[0]) if terms else None
         elems = [c for c in agg if c.tag == "TypeDesc"] if agg is not None else []
         for t in terms[1:]:
+            if t.find("dco/typeDesc") is None:
+                continue
             tree = self.tid_tree(t)
-            nm = tree.get("Label") if tree is not None else None
-            idx = t.findtext("dco/i")
-            if not nm and idx is not None and idx.strip().isdigit() and int(idx) < len(elems):
-                e = elems[int(idx)]
-                inner = e.find("TypeDesc")
-                nm = e.get("Label") or (inner.get("Label") if inner is not None else None)
+            nm = self._field_name(tree) if tree is not None else None
+            if not nm and tree is not None:
+                # LabVIEW's own save may type a field terminal WITHOUT a label (NI's Graph
+                # Events.vi: Type). Named by the one cluster field of that type; <i> is NOT the
+                # position - LabVIEW numbers drag fields 17 and 18 at positions 8 and 9 - so it
+                # is only a tie-breaker, and only where the field there has that type
+                sig = repr(aixml2vi.type_sig(tree))
+                same = [e for e in elems if repr(aixml2vi.type_sig(e)) == sig]
+                idx = t.findtext("dco/i")
+                if len(same) == 1:
+                    nm = self._field_name(same[0])
+                elif idx is not None and idx.strip().isdigit() and int(idx) < len(elems) and elems[int(idx)] in same:
+                    nm = self._field_name(elems[int(idx)])
             nm = nm or "?"
             fields.append(nm)
-            self.term_owner[t.get("uid")] = (el, nm, False)
+            self.term_owner[t.get("uid")] = (el, nm, flt)
         el.set("fields", ",".join(escape(x) for x in fields))
         return el
 

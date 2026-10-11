@@ -15,7 +15,7 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
 | AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
-| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a) |
+| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events") |
 | both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped) |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
@@ -650,13 +650,13 @@ fact of every cached export rather than on the top-level subset: elements with t
 `uid_parent`, the attributes that carry meaning (`selector`, `fields`, `target`, `text`,
 `element`, `link`, `cond`, `mode`, `selectin`), constant values and wires.
 
-| | the old reader | 2026-10-10 morning | 2026-10-10, 05:00 | 2026-10-11, same reader, 768 exports | 2026-10-11, class calls read |
-|---|---|---|---|---|---|
-| VIs identical in every fact | - | 103 | 133 (of 760) | 109 (of 768) | **143** (of 768) |
-| elements | 24 % (150-VI sample) | 91.5 % | 92.7 % (38 098 of 41 085) | 92.8 % | **93.4 %** (39 712 of 42 496) |
-| attributes | 0 % | 75.2 % | 78.6 % (8 262 of 10 516) | 79.8 % | **81.7 %** (8 807 of 10 780) |
-| constant values | 62 % | 91.3 % | 92.0 % | 94.9 % | **94.9 %** |
-| wires | 10 % | 82.7 % | 85.6 % (26 684 of 31 181) | 82.7 % | **87.3 %** (27 868 of 31 907) |
+| | the old reader | 2026-10-10 morning | 2026-10-10, 05:00 | 2026-10-11, same reader, 768 exports | 2026-10-11, class calls read | 2026-10-11 evening, events read |
+|---|---|---|---|---|---|---|
+| VIs identical in every fact | - | 103 | 133 (of 760) | 109 (of 768) | 143 (of 768) | **147** (of 768) |
+| elements | 24 % (150-VI sample) | 91.5 % | 92.7 % (38 098 of 41 085) | 92.8 % | 93.4 % (39 712 of 42 496) | **93.5 %** (39 747 of 42 496) |
+| attributes | 0 % | 75.2 % | 78.6 % (8 262 of 10 516) | 79.8 % | 81.7 % (8 807 of 10 780) | **84.0 %** (9 057 of 10 780) |
+| constant values | 62 % | 91.3 % | 92.0 % | 94.9 % | 94.9 % | **94.9 %** (4 181 of 4 405) |
+| wires | 10 % | 82.7 % | 85.6 % (26 684 of 31 181) | 82.7 % | 87.3 % (27 868 of 31 907) | **87.5 %** (27 927 of 31 907) |
 
 **The last two columns are the only valid comparison with each other.** The cache changed between
 2026-10-10 and 2026-10-11 - 768 exports instead of 760, and the UNCHANGED reader scores 109 on it
@@ -1250,11 +1250,11 @@ frames - nine frames, every one executable, identical to LabVIEW's save and name
 Mouse Move included. `t126_static_mouse_events` builds them with their data wired and RUNS: a mouse
 event needs a hand on the mouse, so the run fires a Value Change instead, and that frame ran.
 
-**Not composed yet, refused by name**: a filter event (`Panel Close?`, `Mouse Down?`, the drag
-events) - it needs the Event Filter Node, an `eventDataNode` of its own flags whose cluster ("Event
-Filter Data") carries per-field type flags (`Bit7` on the notify fields, `Bit0` on `Discard?`);
-VI and application events (`Panel Close`, `VI Activation`); and an event whose data the survey
-found class-dependent.
+**Not composed yet, refused by name**: a filter event the survey never saw static (`Mouse Down?`) -
+the ones it saw on a CONTROL compose since the same evening with their Event Filter Node ("Filter
+events" below), and this line refused all of them until then; VI and application events
+(`Panel Close`, `Panel Close?`, `VI Activation`); and an event whose data the survey found
+class-dependent.
 
 **Not tested, and worth knowing**: the wire gate's other FATAL case - a DataLog refnum from a
 subVI's pane, NI's `Monitoring Keyboard and Mouse Activity.vi` - was recorded before `out_key`
@@ -1359,9 +1359,12 @@ data and it gets one). Getting there fixed three things the graph events did not
   events no longer read back as `?`. It also joined several events of one frame with `,`, which
   the composer reads as several SOURCES of one event (`event_items`, measured on NI's exports), so
   NI's frame came back as one event named `Autoscale Range Change: Cursor Release`; now `;`.
-- **An Event Data Node field LabVIEW saved has NO label.** Its terminal is typed unlabelled and the
-  dco says which element of the event data it reads (`<i>1</i>` is `Type`); the reader names it
-  from that element of the node's input cluster now.
+- **An Event Data Node field LabVIEW saved has NO label.** Its terminal is typed unlabelled; the
+  reader names it by the one field of the node's input cluster with that type now. This line said
+  until the filter-event work the same day that the dco's `<i>` gives the field's POSITION
+  (`<i>1</i>` is `Type`) - true there and false in general: LabVIEW numbers a drag event's
+  `Available Data Names` 17 and `Accepted?` 18 at positions 8 and 9 ("Filter events" below), so
+  `<i>` is only a tie-breaker, and only where the field at that position has that type.
 - **A growable node SHRINKS as well as grows.** NI formats ONE input with no format string; the
   only Format Into String template has two, and the unwired second input made the VI `eBad`
   (variants: with the node replaced by a constant it was executable, fed a plain string still
@@ -1391,6 +1394,66 @@ one had pinned the artefact: `t75`, `t76` and `t80` expected their 2D arrays fla
 LabVIEW returns - `[[1,2],[3,4]]`, `[[1,2,3],[4,5,6]]`, `[[1.5],[1.5]]`, `[]`. **The suite now
 stands at 104 of 104 tests, 134 of 134 cases.**
 
+### Filter events - Drag Enter, Drop and the "?" events on a control (2026-10-11)
+
+**A filter event's frame has TWO eventDataNodes**: the Event Data Node, and the **Event Filter
+Node** through which the frame hands values back to LabVIEW - Drag Enter's and Drop's `Accepted?`,
+a "?" event's `Discard?`, Drag Starting?'s `Data` and `Drag Mode`. NI's exporter writes it as
+`<Node _name="Event Filter Node" fields="Accepted?" inputs="Accepted?:<net>"/>` (27 of the cached
+exports carry one), and the Event Structure lists it per frame in `filterNodeList`, where the
+composer wrote `0` for every frame until now and refused every filter event by name.
+
+**What LabVIEW writes**, read off NI's `Drag and Drop - Passing Custom Drag Data.vi`:
+
+| | Event Data Node | Event Filter Node |
+|---|---|---|
+| node `objFlags` | 0x150000 | 0x140000 - no 0x10000 |
+| cluster | "Event Data" | "Event Filter Data" |
+| aggregate DCO | unflagged | `objFlags` 1, and a `termList` of its own term and a second, DCO-less term (`objFlags` 0x820000) |
+| field terminals | outputs (`objFlags` 0x40, DCO flagged 1) | INPUTS (0x8040 wired, 0x40 not; DCO unflagged) |
+
+**Both clusters carry ALL the event's fields, with `Bit7` on those the node does not show**: the
+data node hides `Accepted?` and `Discard?` (`Bit0` too), the filter node hides Source, Type, Time,
+the reference and every notify-only field. **The filter cluster cannot be derived from the data
+cluster**: Drag Starting?'s `Data` and `Drag Mode` carry no bit on EITHER node (read and set),
+while its `Coords` is hidden on the filter one; and `Discard?` is settable on a "?" event and
+hidden on Drag Enter and Drop. So `add_filter_fields.py` reads each filter event's filter cluster
+off the VI the survey took the event from and stores it as `filterFields` in
+`parts/static-events.json` - all seven found (Drag Enter, Drop, Drag Starting?, Shortcut Menu
+Activation?, URL Navigation?, Key Down?, Panel Close?).
+
+**A missing filter node BREAKS the VI, and LabVIEW's own repair does not fix it.** A probe with
+Drag Enter and Drop frames and no filter node loaded `ExecState 0` - and LabVIEW, loading it, MADE a
+filter node per frame: flagged 0x4 beside 0x140000, with one field terminal that is no field
+(`int32`, `<i>-1</i>`); its own save of that was broken too, in a fresh LabVIEW. The same probe
+with a filter node per frame loaded `ExecState 1`. So the composer ADDS one where the document has
+none, as it adds a missing Event Data Node: the event's first settable field, unwired (Drag Enter's
+`Accepted?`) - executable, measured.
+
+**`<i>` on a field terminal is LabVIEW's own numbering, not the position.** The composer writes the
+position; LabVIEW's save of the probe rewrote 8 and 9 to **17 and 18** (`Available Data Names`,
+`Accepted?`) and the VI ran either way, so the value is repaired on load and is not reconstructed.
+Value Change's `NewVal` is 5 at position 5, which is why nothing showed it before.
+
+**Measured**: `t131_drag_filter_events` - Drag Enter on a waveform graph accepting a drag only when
+its names include `waveform` (Search 1D Array, as NI's example), Drop with NO filter node in the
+document (the composer adds it), Drag Starting? on a STRING control discarding every drag (the
+survey saw it only on a listbox) - passes `probe_events.py`, which compares the filter cluster now
+too: all four frames as LabVIEW writes them, every event named back by NI's exporter, and NI's
+export of LabVIEW's save reads all three filter nodes back with their fields and wiring. Executable
+and run (a drag needs a hand on the mouse, so the run fires the File frame), no insanity in a fresh
+LabVIEW. Every composer test with an Event Structure - 13 - passes. **Not covered**: a frame
+handling a filter event among others (refused by name - not measured), the VI and application
+filter events (`Panel Close?`, `Key Down?` - refused as before, their source is no control), and a
+RUN through a real drag.
+
+**The reader reads both nodes now**: an eventDataNode without 0x10000 is an `Event Filter Node`
+whose fields are inputs. NI's Drag and Drop example reads back with
+`fields="Data,Drag Mode" inputs="Data:541.appended array,Drag Mode:257.value"` - NI's export to the
+character. Round-tripping NI's two drag examples stops elsewhere: a call to a VIM instance
+(`Instance:0`) and `Drag Ended`, a notify event the table does not have, with a pane source the
+reader cannot name.
+
 ## 8. Files
 
 | file | |
@@ -1400,7 +1463,7 @@ stands at 104 of 104 tests, 134 of 134 cases.**
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 104 composition tests, 134 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
+| `selftest.py`, `tests/` | 105 composition tests, 135 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
@@ -1411,6 +1474,7 @@ stands at 104 of 104 tests, 134 of 134 cases.**
 | `static_event_survey.py`, `build_static_events.py`, `parts/static-events.json` | every static event NI's cached VIs handle, read out of the VIs; the table static events are composed from (§7a, "Static events") |
 | `probe_events.py` | compose an event probe, load it, compare with LabVIEW's own save, and have NI's exporter name every frame's events - the check any new event kind passes before it is trusted |
 | `find_multi_event_frames.py`, `event_frame_data.py` | Event Structure frames handling several events in the export cache; each frame's event data and sources' types read out of the VI (§7a, "Frames that handle several events") |
+| `add_filter_fields.py` | every filter event's Event Filter Node cluster, read off NI's own VI, into `parts/static-events.json` as `filterFields` (§7a, "Filter events") |
 | `add_graph_events.py` | the six graph events of NI's `Graph Events.vi` into `parts/static-events.json`; `--fields` takes each event's data from a `probe_events.py` run (§7a, "Graphs and their events") |
 | `graph_probe.py`, `graph_bisect.py`, `graph_sample.py` | graph composition checks: load one composed graph VI and see whether COM still answers (the chart hang); the same per indicator, each in a FRESH LabVIEW; NI's exports with graph styles composed and loaded |
 | `class_link_records.py` | the class link records (`VIPI`, `DyOM`, `FPPI`, `DDPI`) of LabVIEW-saved VIs, field by field, from a raw link block (§7a, "Calling a class directly") |

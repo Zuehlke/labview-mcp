@@ -1354,5 +1354,17 @@
     }
    }
   ]
+ },
+ "t131_drag_filter_events": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Last Frame": 4,
+     "Received": "C:\\probe\\drag.txt",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }
