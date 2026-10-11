@@ -799,6 +799,23 @@ computing exact tables needs a per-primitive calibration of hot points. Until th
 `0208` and LabVIEW repairs it, at the cost of the log. (Decoded since: the centre of the terminal's
 rectangle, with learned per-primitive offsets - section 7a, "Real wire geometry".)
 
+**A wire with three or more ends is a TREE, walked depth first from the source** (decoded
+2026-10-11 with `fanout_calibrate.py`, then checked on LabVIEW's own saves: `wire_tree.walk`
+reproduces every end of 1128 of 1157 corpus fan-outs whose ends it could locate):
+
+```
+[n joints] 00 08 [n-2 codes] [n-1 segment lengths]
+```
+
+The first segment runs east from the source's hotpoint. Every later joint but the last carries a
+code: a BEND `00`/`01` turns the next segment as the two-ended direction bytes do (right/down,
+left/up); a BRANCH point names the directions that leave it, absolutely - `04` up+down+right, `05`
+down+right, `06` up+right, `07` up+down - explored in the order up, down, right; `03` ends a branch
+at a terminal and the walk returns to the last branch point with a direction left. The lengths are
+the segments in walk order (>= 255 as `FF` + 16 bit), the last joint is the last terminal's and
+carries no code. So along a vertical spine the walk goes on to the FARTHEST level first and takes
+each level's arm on its way back - `wire_tree.encode` writes a comb in that order.
+
 ## 6. How far it reaches on real code
 
 **State of 2026-10-10, 05:30** (`coverage.py --build --tsv`, `parity.py`, then `cov_load.py`
@@ -1814,10 +1831,48 @@ widest object plus 60 px. Over the same 20 VIs the routed repairs went from **11
 structure's pairs and a Feedback Node, whose terminal geometry the router leaves alone. Rendered,
 `t41` and `t118` read left to right.
 
-Still generic, each its own step: **fan-outs** (the three-ended table is a tree: n codes and n-1
-lengths, not decoded) - now the bulk of what LabVIEW repairs - **inner terminals** whose DCO the
-heap does not give (a loop's `i`, an Event Structure's dynamic terminal), and primitives the corpus
-has too few wires for (1188's output sits 11 px below its centre, seen on t83).
+### Fan-outs - a wire with three or more ends (2026-10-11)
+
+**A fan-out's table is a depth-first tree** (format in section 4, `wire_tree.py`), so the router
+writes one as a COMB: east from the source to a junction 22 px before the nearest sink, a vertical
+spine through every sink's row, and from the spine east into each sink. Encoded and walked back by
+the decoder over 10 558 random sink sets, 0 mismatches. A fan-out's table spells out EVERY length, so one end a
+pixel off is a wire LabVIEW repairs: the router writes one only where every end's hotpoint is
+EXACT, and leaves two sinks on one row (they need a detour) and a sink left of the junction generic.
+
+**Exactness is learned, not assumed.** `learn_hotpoints_fanout.py` bootstraps from the front-panel
+terminal alone: a fan-out table fixes every end relative to the source, so a wire whose other ends
+are known shows the one left over exactly. Five rounds learn 267 terminal kinds - a primitive by
+(primResID, position), any other node by (owner, DCO class, position) and by (owner, DCO class), a
+tunnel's inner side by the tunnel's class - from two corpora read as one:
+
+- **NI's examples** (`wire_corpus.py --fanout`, 4 534 fan-outs of 1 778 VIs);
+- **the suite's own VIs, routed by LabVIEW** (`suite_corpus.py`: each test composed with the generic
+  tables, loaded and saved by LabVIEW, which routes every wire itself - 85 fan-outs of 113 VIs).
+  This one carries what the composer makes and the examples never wire into a fan-out: an Event
+  Structure's dynamic terminal, the registration node's items, a loop's `i` (`inner:lCnt`, 60 of 60,
+  once the corpus read the loop's DCOs under their own tags `loopIndexDCO`/`loopTestDCO`).
+
+A kind is EXACT where the learned model reproduces at least 90 % of the wires that use it: 256
+kinds, `parts/hotpoints_exact.json`; the offsets go into `parts/hotpoints.json` (shift registers'
+inner sides 4 px in, `Index Array`'s second terminal 9 px down, the arithmetic family's (6, 6)). **Constants
+are the exception, and NOT learned**: NI's examples size a constant to its text and its output sits
+7 to 14 px in from the right edge (75 of 236 numeric constants at 7), while the composer keeps its
+own size and the output sits exactly 7 in (`const_calibrate.py`; the suite's saves agree, 10 of 10
+numeric, 2 of 2 string, 1 of 1 boolean). So `Hotpoints.CONST_EXACT` is the calibration.
+
+Measured with `measure_routes.py` over the same 20 suite VIs as before: LabVIEW's load-time repairs
+went from **96 to 28** (364 generic), 15 of the 20 now load with none, every VI executable, no
+insanity, no DWarn of any other kind; the new `t143_fanout_tree` (one source, two sinks above and
+two below) 12 to 0. `validate_routes.py` shows LabVIEW's save KEEPING every routed fan-out table,
+7 of 7 over five VIs. Over the whole suite 63 of 86 fan-outs are routed, and it runs 147 of 148
+cases - the one left, `t136`'s VI Activation, failed 3 of 3 that evening on the PREVIOUS commit
+too, generic tables or not: it fires only when the desktop hands LabVIEW the focus.
+
+Still generic, each its own step: **In Place structures' element pairs** and the **Feedback Node**
+(t100 8, t95 8 - their geometry is not modelled), fan-outs with an end the corpora show too rarely
+(`Insert Into Array`, 2074's output, a cluster or array constant), two sinks on one row (a detour),
+and primitives with too few wires (1188's output sits 11 px below its centre, seen on t83).
 
 ## 8. Files
 
@@ -1830,7 +1885,9 @@ has too few wires for (1188's output sits 11 px below its centre, seen on t83).
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
 | `wire_corpus.py`, `wire_decode.py`, `wire_fit.py`, `learn_hotpoints.py` | the two-ended wires of LabVIEW's own saves with their geometry; the table decoder; the hotpoint models per terminal kind; the per-primitive offsets into `parts/hotpoints.json` |
 | `wire_route.py`, `measure_routes.py`, `validate_routes.py` | the real routes the composer writes after its layout; LabVIEW's repairs generic against routed on one fresh LabVIEW; whether LabVIEW's save keeps the routed tables |
-| `selftest.py`, `tests/` | 116 composition tests, 147 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills; `STALE` when LabVIEW served another file; `xcontrol` composes a facade into a copy of an installed XControl and runs its host with the panel open |
+| `wire_tree.py`, `fanout_calibrate.py`, `const_calibrate.py` | the fan-out table: decoder (`walk`) and comb encoder (`encode`); LabVIEW's own tables for one constant at chosen offsets from several indicators; where a composed constant's output attaches, per type |
+| `learn_hotpoints_fanout.py`, `suite_corpus.py` | per-kind hotpoint offsets in both axes and the EXACT kinds, bootstrapped over fan-out corpora into `parts/hotpoints.json` and `parts/hotpoints_exact.json`; the suite composed with generic tables and saved by LabVIEW, so the corpus carries the composer's own terminal kinds |
+| `selftest.py`, `tests/` | 117 composition tests, 148 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills; `STALE` when LabVIEW served another file; `xcontrol` composes a facade into a copy of an installed XControl and runs its host with the panel open |
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |

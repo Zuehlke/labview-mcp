@@ -6255,8 +6255,10 @@ class Composer:
             # heap locates gets the route between their hotpoints, where it used to get the
             # generic table LabVIEW then repaired on load ("Wiring insanity found and fixed") -
             # 90 repairs down to 30 over seven suite VIs, every table LabVIEW kept on its save
-            # being one it did not have to repair (validate_routes.py, 2026-10-11). Fan-outs and
-            # wires whose sink lies LEFT of their source keep the generic table.
+            # being one it did not have to repair (validate_routes.py, 2026-10-11). A FAN-OUT is
+            # routed as a comb where every end's hotpoint is known exactly (wire_tree.py,
+            # parts/hotpoints_exact.json) - 96 repairs down to 28 over 20. Wires whose sink lies
+            # LEFT of their source, and fan-outs with an inexact end, keep the generic table.
             routed, left = wire_route.route_heap(
                 self.bd, self.hotpoints,
                 absolute_owners=[h.get("uid") for h, _ in getattr(self, "fb_pairs", [])])

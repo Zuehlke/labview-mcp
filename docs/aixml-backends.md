@@ -349,7 +349,17 @@ terminal attaches at the centre of its rectangle - measured over 27 232 wires of
 shipping examples, with 105 learned per-primitive offsets - so every two-ended wire it can locate gets
 the route between its two hotpoints instead of the generic table LabVIEW repaired on load, and the
 layout gives a structure the column its tunnels' sources call for: 362 repairs became 96 over 20
-suite VIs, and LabVIEW's save keeps the routed tables. Fan-outs stay generic. FINDINGS §7a, "Real wire geometry".
+suite VIs, and LabVIEW's save keeps the routed tables. FINDINGS §7a, "Real wire geometry".
+
+**Fan-outs are routed too since the same evening.** A wire with three or more ends is a tree in
+the heap, walked depth first from the source, and the composer writes it as a comb - but only
+where every end's hotpoint is known EXACTLY, because the table spells out every length. Which
+terminal kinds those are is learned from LabVIEW's own fan-outs: NI's examples, plus the suite's
+own VIs composed with the generic tables and saved by LabVIEW, which routes them itself - the only
+corpus that carries a loop's `i` or an Event Structure's dynamic terminal in a fan-out. Constants
+follow a calibration instead: LabVIEW sizes its own constants to their text, the composer does not.
+Over the same 20 VIs the load-time repairs went from 96 to 28 (364 with the generic tables), 15 of
+them load with none, and LabVIEW's save keeps every routed fan-out table. FINDINGS §7a, "Fan-outs".
 
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke

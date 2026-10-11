@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Collect TWO-ENDED wires from VIs LabVIEW itself saved (NI's shipping examples), with their
+"""Collect TWO-ENDED wires (with --fanout: those of THREE or more ends) from VIs LabVIEW itself saved (NI's shipping examples), with their
 compressedWireTable and the geometry of both ends - the data the real wire geometry is decoded from.
 
     wire_corpus.py <out.jsonl> [--max N] [--root <examples dir>]
@@ -19,6 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import lvheap  # noqa: E402
 
+DCO_TAGS = ("dco", "loopIndexDCO", "loopTestDCO")
 SKIP_OWNERS = {"sRN", None}   # tunnels' inner terminals: a diagram of their own, decoded later
 
 
@@ -29,7 +30,8 @@ def ends_of(bd):
     # a tunnel's DCO by uid: an INNER terminal refers to it (<dco uid=.../> with no class) and sits
     # in the frame's own diagram, whose origin is the structure's top-left - so the inner rectangle
     # IS the tunnel's termBounds (to be confirmed by the corpus: kind "inner")
-    tun = {d.get("uid"): d for d in bd.iter("dco") if d.get("class") and d.find("termBounds") is not None}
+    # (a loop's `i` and stop terminals are DCOs under their own tags)
+    tun = {d.get("uid"): d for d in bd.iter() if d.tag in DCO_TAGS and d.get("class") and d.find("termBounds") is not None}
     for t in bd.iter("SL__arrayElement"):
         cls = t.get("class")
         if cls == "fPTerm":
@@ -46,6 +48,7 @@ def ends_of(bd):
             ddo = dco.find("ddo")
             out[t.get("uid")] = {"kind": "const", "owner": "const", "bounds": ddo.findtext("bounds") if ddo is not None else None,
                                  "term": None, "tflags": int(t.findtext("objFlags") or 0),
+                                 "ddo": ddo.get("class") if ddo is not None else None,
                                  "dflags": int(dco.findtext("objFlags") or 0), "diag": None}
             continue
         # the owning node: the nearest ancestor element with bounds that is not a term
@@ -72,7 +75,7 @@ def ends_of(bd):
     return out
 
 
-def collect(vi, w):
+def collect(vi, w, fanout=False):
     tmp = tempfile.mkdtemp(prefix="wc_")
     try:
         try:
@@ -86,7 +89,7 @@ def collect(vi, w):
             if s.get("class") != "signal":
                 continue
             tl = s.find("termList")
-            if tl is None or len(tl) != 2:
+            if tl is None or (len(tl) < 3 if fanout else len(tl) != 2):
                 continue
             e = [ends.get(x.get("uid")) for x in tl]
             if None in e or any(x["bounds"] is None for x in e):
@@ -108,7 +111,7 @@ def main(argv):
     total = 0
     with open(out, "w", encoding="utf-8") as w:
         for i, vi in enumerate(vis):
-            total += collect(vi, w)
+            total += collect(vi, w, "--fanout" in argv)
             if i % 25 == 0:
                 print("%d/%d VIs, %d wires" % (i, len(vis), total), flush=True)
     print("%d wires from %d VIs" % (total, len(vis)))

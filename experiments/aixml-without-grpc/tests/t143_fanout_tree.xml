@@ -1,0 +1,11 @@
+<VI _name="T143 Fanout Tree.vi" description="One control feeding four indicators, two above and two below it - a fan-out whose wire table is a tree with two levels on each side.">
+  <Control _name="z" type="double" uid="4200" uid_parent="root" value="0" outputs="value:4200.value"/>
+  <Control _name="w" type="double" uid="4205" uid_parent="root" value="0" outputs="value:4205.value"/>
+  <Control _name="a" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Indicator _name="b" type="double" uid="4230" uid_parent="root" value="0" inputs="value:4210.value"/>
+  <Indicator _name="c" type="double" uid="4240" uid_parent="root" value="0" inputs="value:4210.value"/>
+  <Indicator _name="y" type="double" uid="4220" uid_parent="root" value="0" inputs="value:4200.value"/>
+  <Indicator _name="d" type="double" uid="4250" uid_parent="root" value="0" inputs="value:4210.value"/>
+  <Indicator _name="e" type="double" uid="4260" uid_parent="root" value="0" inputs="value:4210.value"/>
+  <Indicator _name="x" type="double" uid="4225" uid_parent="root" value="0" inputs="value:4205.value"/>
+</VI>

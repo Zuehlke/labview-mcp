@@ -13,10 +13,14 @@ the same corpus (parts/hotpoints.json).
 Table format, two ends (FINDINGS section 4): [n joints] 08 [n-2 direction bytes] [n-2 lengths];
 segments alternate, the first horizontal and rightwards; a direction byte belongs to segments
 2..n-1 (01 = left/up); a length >= 255 is FF + big-endian 16 bit; the last segment's length is
-implied by the sink.
+implied by the sink. A wire with three or more ends is a depth-first tree (wire_tree.py), routed
+only where every end's hotpoint is EXACT - the kinds learn_hotpoints_fanout.py found reproduced in
+LabVIEW's own fan-outs (parts/hotpoints_exact.json), and the calibrated constants.
 """
 import json
 import os
+
+import wire_tree
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -66,7 +70,9 @@ class Geometry:
         for t in bd.iter("SL__arrayElement"):
             if t.get("class") in ("term", "fPTerm"):
                 self.terms[t.get("uid")] = t
-        self.tunnel = {d.get("uid"): d for d in bd.iter("dco") if d.get("class") and d.find("termBounds") is not None}
+        # a loop's `i` and stop terminals are DCOs under tags of their own
+        self.tunnel = {d.get("uid"): d for d in bd.iter() if d.tag in ("dco", "loopIndexDCO", "loopTestDCO")
+                       and d.get("class") and d.find("termBounds") is not None}
 
     def owner(self, t):
         x = self.parent.get(t)
@@ -76,19 +82,22 @@ class Geometry:
         return x
 
     def rect(self, uid):
-        """(rect, primResID or None, position in the owner's termList or None)"""
+        """(rect, primResID or None, position in the owner's termList or None, kind) - kind names
+        what the hotpoint rule and its exactness depend on: fPTerm, const:<ddo class>,
+        inner:<tunnel DCO class>, node:<owner class>/<DCO class>"""
         t = self.terms.get(uid)
         if t is None:
             return None
         if t.get("class") == "fPTerm":
             b = t.findtext("bounds")
-            return (_bounds(b), None, None) if b else None
+            return (_bounds(b), None, None, "fPTerm") if b else None
         dco = t.find("dco")
         if dco is None:
             return None
         if dco.get("class") == "bDConstDCO":
-            b = dco.findtext("ddo/bounds")
-            return (_bounds(b), None, None) if b else None
+            ddo = dco.find("ddo")
+            b = ddo.findtext("bounds") if ddo is not None else None
+            return (_bounds(b), None, None, "const:%s" % ddo.get("class")) if b else None
         if dco.get("class") is None:
             # a tunnel's INNER side - only in a frame's own diagram (sRN); an In Place element
             # pair's terminals refer to a DCO too, on the structure's border, and are not this
@@ -96,7 +105,7 @@ class Geometry:
             ref = self.tunnel.get(dco.get("uid"))
             if ref is None or o is None or o.get("class") != "sRN":
                 return None
-            return _bounds(ref.findtext("termBounds")), None, None
+            return _bounds(ref.findtext("termBounds")), None, None, "inner:%s" % ref.get("class")
         tb = dco.findtext("termBounds")
         o = self.owner(t)
         if not tb or o is None or o.get("class") == "sRN":
@@ -105,13 +114,21 @@ class Geometry:
         a, b, c, d = _bounds(tb)
         prim = o.findtext("primResID") if o.get("class") == "prim" else None
         tl = o.find("termList")
-        pos = list(tl).index(t) if prim is not None and tl is not None and t in list(tl) else None
-        return (ot + a, ol + b, ot + c, ol + d), prim, pos
+        pos = list(tl).index(t) if tl is not None and t in list(tl) else None
+        return (ot + a, ol + b, ot + c, ol + d), prim, pos, "node:%s/%s" % (o.get("class"), dco.get("class"))
+
+
+def junction_for(min_dx):
+    """Where a fan-out's trunk ends: 22 px before the nearest sink, as LabVIEW puts it when the
+    sinks line up (fanout_calibrate.py) - halfway on a short trunk."""
+    return min_dx - 22 if min_dx > 30 else min_dx // 2
 
 
 def route_heap(bd, hotpoints, source_first=True, absolute_owners=()):
-    """Replace the generic table of every TWO-ended signal whose ends' geometry is known with the
-    route between their hotpoints. The source is the first end of a signal the composer wrote.
+    """Replace the generic table of every signal whose ends' geometry is known with the route
+    between their hotpoints - a TWO-ended wire wherever its ends are located, a FAN-OUT only where
+    every end's hotpoint is EXACT (a fan-out's table spells out every length, so one end a pixel
+    off is a wire LabVIEW repairs). The source is the first end of a signal the composer wrote.
     -> (signals routed, signals left generic)"""
     g = Geometry(bd, absolute_owners)
     done = left = 0
@@ -119,14 +136,22 @@ def route_heap(bd, hotpoints, source_first=True, absolute_owners=()):
         if s.get("class") != "signal":
             continue
         tl = s.find("termList")
-        if tl is None or len(tl) != 2:
+        if tl is None or len(tl) < 2 or not source_first:
             continue
         ends = [g.rect(x.get("uid")) for x in tl]
         if None in ends:
             left += 1
             continue
-        hp = [hotpoints.of(r, prim, pos) for r, prim, pos in ends]
-        tab = table(hp[0], hp[1]) if source_first else None
+        hp = [hotpoints.of(*e) for e in ends]
+        if len(tl) == 2:
+            tab = table(hp[0], hp[1])
+        elif all(hotpoints.exact(*e) for e in ends):
+            sy, sx = hp[0]
+            sinks = [(ky - sy, kx - sx) for ky, kx in hp[1:]]
+            min_dx = min(dx for _, dx in sinks)
+            tab = wire_tree.encode(sinks, junction_for(min_dx)) if min_dx >= 3 else None
+        else:
+            tab = None
         if tab is None:
             left += 1
             continue
@@ -136,23 +161,64 @@ def route_heap(bd, hotpoints, source_first=True, absolute_owners=()):
 
 
 class Hotpoints:
-    """Per (primResID, terminal position) corrections to the centre rule, (dy, dx)."""
+    """Where a terminal attaches: the base rule (the rectangle's centre; a constant's distance from
+    its right edge) plus a learned (dy, dx) per terminal kind, and which kinds are known EXACTLY in
+    both axes. A kind is looked up from its finest key: a primitive's (primResID, position), another
+    node's (owner, DCO class, position) then (owner, DCO class), else the kind itself."""
+
+    # a COMPOSED constant's output: vertically centred, this many px left of its right edge -
+    # const_calibrate.py on LabVIEW's own saves, which keep a composed constant's size (2026-10-11),
+    # and the suite's LabVIEW-routed fan-outs agree (stdNum 10 of 10, stdString 2 of 2, stdBool 1
+    # of 1). NOT learned from NI's examples: there a numeric constant's output sits 7 to 14 px in
+    # from the right, 75 of 236 at 7 - LabVIEW sizes ITS constants to their text. A cluster's and a
+    # timestamp's sit elsewhere; an array's y moves with its height. None of those is exact.
+    CONST_FROM_RIGHT = {"stdNum": 7, "stdString": 7, "stdBool": 8, "stdPath": 10, "indArr": 10}
+    CONST_EXACT = ("stdNum", "stdString", "stdBool", "stdPath")
 
     def __init__(self, parts_dir):
-        # harvested parts elsewhere (LABVIEWMCP_AIXML_PARTS) carry no hotpoints.json: this
-        # folder's own then - the offsets are LabVIEW's, not a donor's
-        p = os.path.join(parts_dir, "hotpoints.json")
-        if not os.path.exists(p):
-            p = os.path.join(HERE, "parts", "hotpoints.json")
+        # harvested parts elsewhere (LABVIEWMCP_AIXML_PARTS) carry no hotpoints: this folder's own
+        # then - the offsets are LabVIEW's, not a donor's
+        def find(name):
+            p = os.path.join(parts_dir, name)
+            return p if os.path.exists(p) else os.path.join(HERE, "parts", name)
         self.corr = {}
+        p = find("hotpoints.json")
         if os.path.exists(p):
             for k, v in json.load(open(p, encoding="utf-8")).items():
                 self.corr[k] = tuple(v)
+        p = find("hotpoints_exact.json")
+        self.exact_keys = set(json.load(open(p, encoding="utf-8"))) if os.path.exists(p) else set()
 
-    def of(self, rect, prim=None, pos=None):
+    @staticmethod
+    def keys(prim, pos, kind):
+        if prim is not None:
+            return ["%s/%s" % (prim, pos)]
+        if kind and kind.startswith("node:"):
+            return ["%s/%s" % (kind[5:], pos), kind[5:]]
+        return [kind]
+
+    def of(self, rect, prim=None, pos=None, kind=None):
         t, l, b, r = rect
         y, x = (t + b) // 2, (l + r) // 2
-        if prim is not None:
-            dy, dx = self.corr.get("%s/%s" % (prim, pos), (0, 0))
-            y, x = y + dy, x + dx
+        if kind and kind.startswith("const:"):
+            if kind[6:] in self.CONST_FROM_RIGHT:
+                x = r - self.CONST_FROM_RIGHT[kind[6:]]
+            return y, x
+        for k in self.keys(prim, pos, kind):
+            if k in self.corr:
+                dy, dx = self.corr[k]
+                return y + dy, x + dx
         return y, x
+
+    def exact(self, rect, prim=None, pos=None, kind=None):
+        """True where the learned model put this kind's ends exactly where LabVIEW's own fan-out
+        tables do (learn_hotpoints_fanout.py) - decided by the finest key the model knows; a
+        constant by the calibration above."""
+        if kind and kind.startswith("const:"):
+            return kind[6:] in self.CONST_EXACT
+        for k in self.keys(prim, pos, kind):
+            if k in self.exact_keys:
+                return True
+            if k in self.corr:
+                return False
+        return False
