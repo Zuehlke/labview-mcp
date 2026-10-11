@@ -235,9 +235,15 @@ class Hotpoints:
     # const_calibrate.py on LabVIEW's own saves, which keep a composed constant's size (2026-10-11),
     # and the suite's LabVIEW-routed fan-outs agree (stdNum 10 of 10, stdString 2 of 2, stdBool 1
     # of 1). NOT learned from NI's examples: there a numeric constant's output sits 7 to 14 px in
-    # from the right, 75 of 236 at 7 - LabVIEW sizes ITS constants to their text. A cluster's and a
-    # timestamp's sit elsewhere; an array's y moves with its height. None of those is exact.
+    # from the right, 75 of 236 at 7 - LabVIEW sizes ITS constants to their text.
     CONST_FROM_RIGHT = {"stdNum": 7, "stdString": 7, "stdBool": 8, "stdPath": 10, "indArr": 10}
+    # A composed CLUSTER constant's output is 18 px below its top and 28 px in from its LEFT edge,
+    # whatever its height (69 to 132 measured) and width; an ARRAY constant's 11 px below its top
+    # (23 and 33 tall) - read off LabVIEW's repaired tables in the ATM build's saves, 46 of the 64
+    # wires it rewrote there started at one of the two (2026-10-12). Not exact: their x is two
+    # samples (cluster) or the old rule (array).
+    CONST_FROM_TOP = {"stdClust": 18, "indArr": 11}
+    CONST_FROM_LEFT = {"stdClust": 28}
     CONST_EXACT = ("stdNum", "stdString", "stdBool", "stdPath")
 
     def __init__(self, parts_dir):
@@ -266,8 +272,13 @@ class Hotpoints:
         t, l, b, r = rect
         y, x = (t + b) // 2, (l + r) // 2
         if kind and kind.startswith("const:"):
-            if kind[6:] in self.CONST_FROM_RIGHT:
-                x = r - self.CONST_FROM_RIGHT[kind[6:]]
+            cls = kind[6:]
+            if cls in self.CONST_FROM_RIGHT:
+                x = r - self.CONST_FROM_RIGHT[cls]
+            if cls in self.CONST_FROM_LEFT:
+                x = l + self.CONST_FROM_LEFT[cls]
+            if cls in self.CONST_FROM_TOP:
+                y = t + self.CONST_FROM_TOP[cls]
             return y, x
         if hot:
             x, y = x + hot[0], y + hot[1]
@@ -275,7 +286,21 @@ class Hotpoints:
             if k in self.corr:
                 dy, dx = self.corr[k]
                 return y + dy, x + dx
+        if prim is not None:
+            # a position the corpora never showed takes the offset every KNOWN position of the
+            # same primitive agrees on: Greater Or Equal?'s output had none and sat 6 px off its
+            # inputs' (6, 6) - the one wire LabVIEW rewrote in the ATM's Apply Transaction
+            fam = self._family(prim)
+            if fam is not None:
+                return y + fam[0], x + fam[1]
         return y, x
+
+    def _family(self, prim):
+        fams = self.__dict__.setdefault("_fams", {})
+        if prim not in fams:
+            seen = {v for k, v in self.corr.items() if k.split("/")[0] == prim}
+            fams[prim] = seen.pop() if len(seen) == 1 else None
+        return fams[prim]
 
     def exact(self, rect, prim=None, pos=None, kind=None, hot=None):
         """True where the learned model put this kind's ends exactly where LabVIEW's own fan-out

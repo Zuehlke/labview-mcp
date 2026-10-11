@@ -1988,6 +1988,17 @@ composer: 22:54 to 23:55. Two layout findings, both fixed after it:
   application VIs is either (`ATM Main` 1591 x 664). The wires after both layout changes, 25 VIs
   measured with `measure_routes.py`: **422 repairs generic, 22 routed** (`t149`'s twelve-ended
   wire 0); `t95` went from 0 to 2, its initializer constant now beside the loop.
+- **What LabVIEW still repaired in the ATM, read off its own saves.** Every one of the 41 VIs
+  composed fresh, loaded and saved once by LabVIEW, every wire table compared
+  (`diff`-ing our bundle against the save): **64 of about 1 300 wires rewritten**, and 46 of them
+  started at a CLUSTER or ARRAY constant. LabVIEW's repaired tables put a composed cluster
+  constant's output 18 px below its top and 28 px in from its left whatever its size, an array
+  constant's 11 px below its top; the router had the vertical centre. With that, **22 rewritten**.
+  Of those, one had a primitive output the corpora never showed (`Greater Or Equal?`'s, 6 px off
+  its inputs' common (6, 6)): an unlearned position now takes the offset all known positions of
+  the same primitive agree on, true of 95 of the 102 primitives with offsets. The rest are
+  property-node reference/error items 2 to 3 px off in x, and fan-outs with an end too rare to be
+  exact; adding the ATM saves as a third fan-out corpus made only `1901/0` exact.
 - **A placeholder terminal name stays valid once the real one is known.** Naming Obtain Queue's
   `?parm2` broke the three queue helpers whose AIXML had been written with `?parm2` - a regression
   the recomposition caught. `?parmN` now names the same terminal as the real name.
