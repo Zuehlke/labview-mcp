@@ -1543,8 +1543,12 @@ NI's exporter name each from one VI that uses it: **29 event types**, now in
 | 0x4000003C | Pane Size | | 0xA000003A | Drag Over |
 | 0x4000003D | Drag Leave | | 0x40000043 / 44 | Operate / Shortcut Menu Dismissed |
 
-**The reader names all of them now** - 55 event types against the six it knew this morning. The
-composer writes only those whose data was measured:
+**The reader names all of them now** - 55 event types against the six it knew this morning. On
+the 768 cached exports it is unchanged (147 identical, every rate the same): none of these events
+occurs in NI's examples, which is why they had to be found elsewhere. **Exporting a VI through the
+server CACHES it** - naming the scan's VIs added 33 of LabVIEW's own dialogs to the corpus, so a
+`compare_full.py` run after it covers 801 and must be cut back by date to compare. The composer
+writes those whose data was measured:
 
 **The application's events** - written with no source, `<CaseFrame selector=" VI Activation ">`,
 the spec source 4, eFlags 1, `ddoUID` 0, the reference `AppRef` (an Application refnum, LVObjCtl
@@ -1555,8 +1559,7 @@ Discard?, with its filter node), **Bookmark Info Change** (Paths, Names - its re
 `App Ref`, with the space, as LabVIEW wrote it). `t136_application_events` carries all four,
 identical to LabVIEW's save and named back - and **VI Activation RUNS**: a VI opening its own panel
 raises it, every time (8 of 8, within 200-355 ms), its VIName this VI's own, which the test
-compares in the VI itself. **Application Activation** is refused still: LabVIEW's VIs handle it
-only beside other events, so its own data is unknown.
+compares in the VI itself. (Application Activation followed - "The rest of the scan" below.)
 
 **The notify key events - Key Down, Key Repeat, Key Up - on a control and on the VI.** NI's one
 frame with Key Down and Key Repeat gave both numbers and their data (Char, VKey, ScanCode, Mods,
@@ -1575,6 +1578,36 @@ message, which races with ours - so it is not asserted. **Key Repeat fired once 
 keys** (two key-downs, the second with lParam bit 30): not reproducible from messages either. A
 control's key events remain under the key-focus lottery.
 
+**The rest of the scan, with LabVIEW's own load as the judge.** `add_scanned_events.py` makes a
+row for every other named type from a frame of LabVIEW's that handles that one event - or, where
+LabVIEW's VIs have none (Drag Over, Application Activation), a PROVISIONAL row whose fields LabVIEW's
+save then confirms - and `probe_scanned_events.py` puts each into its own probe VI on a source an
+AIXML document can name:
+
+| event | on | ExecState, against LabVIEW's save |
+|---|---|---|
+| Mouse Down? | a string, a graph | 1, identical |
+| Drag Starting, Drag Ended, Shortcut Menu Dismissed, Shortcut Menu Selection (App) | a string | 1, identical |
+| Drag Leave; Drag Over (Drag Enter's fields, confirmed) | a graph | 1, identical |
+| Operate Menu Dismissed | a ring | 1, identical - once the reference was the RING's class |
+| Panel Close, Menu Selection? (App) | the VI | 1, identical |
+| Application Activation (no fields of its own, confirmed) | the application | 1, identical |
+| Operate Menu Dismissed | a string | **0** |
+| Edit Cell?, Double Click (0x0D) | a table | **0** - listbox events; AIXML has no listbox |
+| Data Change, Direction Change, Display State Change, Exec State Change | a plain VI | **0** - an XControl facade's |
+
+The broken rows are not the composer's: its clusters were LabVIEW's there too, and NI's exporter
+named no event - LabVIEW does not register them on that source. So the rows carry what LabVIEW
+said: `onlyClasses` (Operate Menu Dismissed on a ring; Edit Cell? and the 0x0D Double Click on a
+listbox; Item Open?, Item Close? and Item Close on a tree, which AIXML cannot write either) and
+`refused` (the XControl events; Pane Size, whose source is a pane). The composer refuses each by
+name with the measured reason. **And a RING's control reference is the Ring class (0x0022)** - the
+composer took it from the data type (Digital 0x0012), which only the Operate Menu Dismissed probe
+showed, since a frame reading `CtlRef` off a ring had never been composed.
+`t139_scanned_events` carries the eleven valid events in one VI - identical to LabVIEW's save,
+named back - and RUNS: the close box raises the notify **Panel Close** after the panel closed (3
+of 3), and its frame stops the loop.
+
 **The reader reads both nodes now**: an eventDataNode without 0x10000 is an `Event Filter Node`
 whose fields are inputs. NI's Drag and Drop example reads back with
 `fields="Data,Drag Mode" inputs="Data:541.appended array,Drag Mode:257.value"` - NI's export to the
@@ -1591,7 +1624,7 @@ reader cannot name.
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 112 composition tests, 143 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
+| `selftest.py`, `tests/` | 113 composition tests, 144 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
@@ -1603,6 +1636,7 @@ reader cannot name.
 | `probe_events.py` | compose an event probe, load it, compare with LabVIEW's own save, and have NI's exporter name every frame's events - the check any new event kind passes before it is trusted |
 | `find_multi_event_frames.py`, `event_frame_data.py` | Event Structure frames handling several events in the export cache; each frame's event data and sources' types read out of the VI (§7a, "Frames that handle several events") |
 | `scan_static_specs.py`, `name_static_specs.py`, `parts/event-type-names.json` | every static event spec in a tree of VIs that the table does not know (pylabview only), named by NI's exporter from one VI each - 29 types found in LabVIEW's own VIs (§7a, "Events found in LabVIEW's own VIs") |
+| `add_scanned_events.py`, `probe_scanned_events.py` | the scan's other events into the table, with the guards LabVIEW's load set (`onlyClasses`, `refused`); one probe VI per event and source, each through probe_events.py |
 | `add_app_events.py`, `add_key_notify.py` | the application's events and the notify key events into `parts/static-events.json`, each from a frame handling that one event or measured on LabVIEW's own save |
 | `add_key_events.py` | Key Down?'s CONTROL variant in `parts/static-events.json` (`controlVariant`), measured on LabVIEW's own save of a probe (§7a, "Filter events") |
 | `add_filter_fields.py` | every filter event's Event Filter Node cluster, read off NI's own VI, into `parts/static-events.json` as `filterFields` (§7a, "Filter events") |

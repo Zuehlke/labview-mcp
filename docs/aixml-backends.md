@@ -308,8 +308,13 @@ and Bookmark Info Change (`" VI Activation "`, no source, an `AppRef`), and Key 
 and Key Up on a control or on the VI - every one identical to LabVIEW's save. **VI Activation and
 the VI's Key Up RUN in the suite**: a VI opening its own panel raises VI Activation every time, and
 a key pressed into the panel raises Key Up with its scan code. Key Repeat fired once in three held
-keys and is not asserted. Still refused: Application Activation (only ever met beside other events),
-and the other scanned events whose data has not been measured.
+keys and is not asserted. **The rest of the scanned events compose wherever LabVIEW's own load
+accepts them** - Mouse Down?, Drag Starting, Drag Ended, Drag Leave, Drag Over, Shortcut Menu
+Dismissed, Shortcut Menu Selection (App), Operate Menu Dismissed on a ring, Panel Close, Menu
+Selection? (App), Application Activation - each probed alone, identical to LabVIEW's save; the
+close box raises Panel Close in the suite. Where LabVIEW breaks the VI the composer refuses by
+name: an event bound to a class on another class (Operate Menu Dismissed on a string, the listbox
+and tree events, which AIXML cannot write), the XControl facade events in a plain VI, Pane Size.
 
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke

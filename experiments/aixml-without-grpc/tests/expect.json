@@ -1467,5 +1467,19 @@
     }
    }
   ]
+ },
+ "t139_scanned_events": {
+  "cases": [
+   {
+    "inputs": "",
+    "post": "sysclose",
+    "postAfterMs": 800,
+    "outputs": {
+     "Last Frame": 11,
+     "#panel open": "False",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

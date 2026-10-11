@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="T139 Scanned Events.vi" description="Events found by scanning LabVIEW's own VIs, each in its own frame: Mouse Down?, Drag Starting, Drag Ended, Shortcut Menu Dismissed and Shortcut Menu Selection (App) on a string, Drag Leave and Drag Over on a waveform graph, Operate Menu Dismissed on a ring, Menu Selection? (App) and Panel Close of the VI, Application Activation. Filter events get their Event Filter Node from the composer. The run clicks the panel's close box; Panel Close stops the loop.">
+  <Control _name="Typed" outputs="value:" type="string" uid="4201" uid_parent="root" value="" />
+  <Indicator _name="Graph" inputs="value:" style="graph21703" type="array{double}" uid="4202" uid_parent="root" value="[]" />
+  <Control _name="Choice" items="Low,Mid,High" outputs="value:" style="Ring" type="uint16" uid="4203" uid_parent="root" value="1"/>
+  <Constant _name="Open" outputs="value:4206.value" type="bool" uid="4206" uid_parent="root" value="true"/>
+  <Node _name="VI Server Reference" outputs="This VI:4210.This VI" type="{LV.VI}" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4210.This VI,error in (no error):,Front Panel Window\3AOpen:4206.value" outputs="reference out:,error out:4212.error out" type="{LV.VI}" uid="4212" uid_parent="root"/>
+  <Structure _name="While Loop" count="4220.value" uid="4220" uid_parent="root">
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <CaseFrame selector=" &quot;Typed&quot;\3A Mouse Down? " uid="4300" uid_parent="4230">
+        <Constant outputs="value:4301.value" type="int32" uid="4301" uid_parent="4300" value="1"/>
+        <Constant outputs="value:4302.value" type="bool" uid="4302" uid_parent="4300" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4302.value" uid="4303" uid_parent="4300"/>
+        <Tunnel _id="Out2" inputs="value:4301.value" uid="4304" uid_parent="4300"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Typed&quot;\3A Drag Starting " uid="4310" uid_parent="4230">
+        <Constant outputs="value:4311.value" type="int32" uid="4311" uid_parent="4310" value="2"/>
+        <Constant outputs="value:4312.value" type="bool" uid="4312" uid_parent="4310" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4312.value" uid="4313" uid_parent="4310"/>
+        <Tunnel _id="Out2" inputs="value:4311.value" uid="4314" uid_parent="4310"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Typed&quot;\3A Drag Ended " uid="4320" uid_parent="4230">
+        <Constant outputs="value:4321.value" type="int32" uid="4321" uid_parent="4320" value="3"/>
+        <Constant outputs="value:4322.value" type="bool" uid="4322" uid_parent="4320" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4322.value" uid="4323" uid_parent="4320"/>
+        <Tunnel _id="Out2" inputs="value:4321.value" uid="4324" uid_parent="4320"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Typed&quot;\3A Shortcut Menu Dismissed " uid="4330" uid_parent="4230">
+        <Constant outputs="value:4331.value" type="int32" uid="4331" uid_parent="4330" value="4"/>
+        <Constant outputs="value:4332.value" type="bool" uid="4332" uid_parent="4330" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4332.value" uid="4333" uid_parent="4330"/>
+        <Tunnel _id="Out2" inputs="value:4331.value" uid="4334" uid_parent="4330"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Typed&quot;\3A Shortcut Menu Selection (App) " uid="4340" uid_parent="4230">
+        <Constant outputs="value:4341.value" type="int32" uid="4341" uid_parent="4340" value="5"/>
+        <Constant outputs="value:4342.value" type="bool" uid="4342" uid_parent="4340" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4342.value" uid="4343" uid_parent="4340"/>
+        <Tunnel _id="Out2" inputs="value:4341.value" uid="4344" uid_parent="4340"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Graph&quot;\3A Drag Leave " uid="4350" uid_parent="4230">
+        <Constant outputs="value:4351.value" type="int32" uid="4351" uid_parent="4350" value="6"/>
+        <Constant outputs="value:4352.value" type="bool" uid="4352" uid_parent="4350" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4352.value" uid="4353" uid_parent="4350"/>
+        <Tunnel _id="Out2" inputs="value:4351.value" uid="4354" uid_parent="4350"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Graph&quot;\3A Drag Over " uid="4360" uid_parent="4230">
+        <Constant outputs="value:4361.value" type="int32" uid="4361" uid_parent="4360" value="7"/>
+        <Constant outputs="value:4362.value" type="bool" uid="4362" uid_parent="4360" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4362.value" uid="4363" uid_parent="4360"/>
+        <Tunnel _id="Out2" inputs="value:4361.value" uid="4364" uid_parent="4360"/>
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Choice&quot;\3A Operate Menu Dismissed " uid="4370" uid_parent="4230">
+        <Constant outputs="value:4371.value" type="int32" uid="4371" uid_parent="4370" value="8"/>
+        <Constant outputs="value:4372.value" type="bool" uid="4372" uid_parent="4370" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4372.value" uid="4373" uid_parent="4370"/>
+        <Tunnel _id="Out2" inputs="value:4371.value" uid="4374" uid_parent="4370"/>
+      </CaseFrame>
+      <CaseFrame selector=" Menu Selection? (App) " uid="4380" uid_parent="4230">
+        <Constant outputs="value:4381.value" type="int32" uid="4381" uid_parent="4380" value="9"/>
+        <Constant outputs="value:4382.value" type="bool" uid="4382" uid_parent="4380" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4382.value" uid="4383" uid_parent="4380"/>
+        <Tunnel _id="Out2" inputs="value:4381.value" uid="4384" uid_parent="4380"/>
+      </CaseFrame>
+      <CaseFrame selector=" Application Activation " uid="4390" uid_parent="4230">
+        <Constant outputs="value:4391.value" type="int32" uid="4391" uid_parent="4390" value="10"/>
+        <Constant outputs="value:4392.value" type="bool" uid="4392" uid_parent="4390" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4392.value" uid="4393" uid_parent="4390"/>
+        <Tunnel _id="Out2" inputs="value:4391.value" uid="4394" uid_parent="4390"/>
+      </CaseFrame>
+      <CaseFrame selector=" Panel Close " uid="4400" uid_parent="4230">
+        <Constant outputs="value:4401.value" type="int32" uid="4401" uid_parent="4400" value="11"/>
+        <Constant outputs="value:4402.value" type="bool" uid="4402" uid_parent="4400" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4402.value" uid="4403" uid_parent="4400"/>
+        <Tunnel _id="Out2" inputs="value:4401.value" uid="4404" uid_parent="4400"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4280.value" uid="4280" uid_parent="4230"/>
+      <Tunnel _id="Out2" outputs="value:4281.value" uid="4281" uid_parent="4230"/>
+    </Structure>
+    <Condition inputs="value:4280.value" uid="4282" uid_parent="4220" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4281.value" outputs="value:4283.value" uid="4283" uid_parent="4220"/>
+  </Structure>
+  <Indicator _name="Last Frame" inputs="value:4283.value" type="int32" uid="4290" uid_parent="root" value="0"/>
+  <Indicator _name="Error Out" inputs="value:4212.error out" type="cluster{bool.status,int32.code,string.source}" uid="4292" uid_parent="root" value="[false,0,]" />
+</VI>

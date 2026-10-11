@@ -364,6 +364,10 @@ def control_ref_type(ctl_tree, label=None, style=None):
     t = ctl_tree.get("Type") or ""
     if style in GRAPH_STYLE_CLASS:
         flags, inner = GRAPH_STYLE_CLASS[style], True
+    elif style == "Ring":
+        # LabVIEW's save of a ring of uint16's Operate Menu Dismissed: Ring 0x0022, the data type
+        # inside - where the data type alone gave Digital 0x0012 (2026-10-11)
+        flags, inner = "0x0022", True
     elif is_enum(ctl_tree):
         flags, inner = "0x0023", True
     elif t.startswith("Num"):
@@ -1491,10 +1495,11 @@ class Composer:
         elif style not in (None, "", "latched"):
             self.report.append("style %r of %r not composed - shown as a plain %s" % (style, name, tree.get("Type")))
         fpdco, src, h, _ = self.build_ddo(tree, is_ind, "fpdco", None, force_class=force)
-        if force and force.startswith("stdGraph"):
-            # composed AS a graph: its control references are of the graph's class
+        if force and (force.startswith("stdGraph") or force == "stdRing"):
+            # composed AS a graph or a RING: its control references are of that class, not the
+            # data type's (a ring of uint16 is Ring 0x0022, not Digital 0x0012 - LabVIEW's save)
             self.graph_styles = getattr(self, "graph_styles", {})
-            self.graph_styles[name] = style
+            self.graph_styles[name] = style if force != "stdRing" else "Ring"
         ddo = fpdco.find("ddo")
         if force == "stdRing":
             self._set_ring(ddo, tree, items or "")
@@ -4265,6 +4270,19 @@ class Composer:
             raise Unsupported("Event Structure %s: the %s event %r is not composable yet" % (uid, r["sourceKind"], kind))
         if r.get("classDependent"):
             raise Unsupported("Event Structure %s: %r carries class-dependent data - not composable yet" % (uid, kind))
+        # what LabVIEW's own load said (probe_scanned_events.py, 2026-10-11): an event no source an
+        # AIXML document can name carries - an XControl's, a pane's - and an event bound to a class
+        # on any other class (Operate Menu Dismissed on a string, Edit Cell? on a table) break the VI
+        if r.get("refused"):
+            raise Unsupported("Event Structure %s: %r is %s" % (uid, kind, r["refused"]))
+        only = r.get("onlyClasses")
+        if only and ctl is not None:
+            info = getattr(self, "fp_info", {}).get(ctl)
+            ddo = info[2].find("ddo") if info is not None else None
+            cls = ddo.get("class") if ddo is not None else None
+            if cls is not None and cls not in only:
+                raise Unsupported("Event Structure %s: %r is an event of a %s only - %r is a %s, and LabVIEW "
+                                  "breaks the frame (measured)" % (uid, kind, " or ".join(only), ctl, cls))
         return r
 
     def _static_spec(self, uid, ctl, kind):
