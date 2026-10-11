@@ -982,6 +982,8 @@ class Composer:
         self.search_dirs = []        # where a <Call> target is looked for; the output dir first
         self.resolver = None         # built on the first <Call> that needs the installation
         self.links = {}              # callee path -> {"name", "flat", "cons", "offsets": [uid]}
+        self.dyn_links = {}          # dynamic-dispatch callee path -> resolver result + dynLink uids
+        self.class_consts = {}       # .lvclass path -> {"qual", "lib_ref", "uids": [ddo uid]}
 
     # ---- uids and types ------------------------------------------------------------------
     def alloc(self):
@@ -1547,8 +1549,97 @@ class Composer:
                     self.net_type[net] = type_tree(aixml_type)
         self.report.append("%s %r <- %s" % (el.tag, name, src))
 
+    def _callee_terminal(self, call_el, tname):
+        """(slot type, resolver result) of the terminal `tname` on a Call's callee pane."""
+        target = unescape(call_el.get("instance") or call_el.get("target") or "")
+        if self.resolver is None:
+            self.resolver = resolve.Resolver()
+        res = self.resolver.resolve(target, self.search_dirs, getattr(self, "caller_file", None))
+        if "error" in res:
+            return None, res
+        callee = lvheap.Bundle(_extract_callee(res["path"]))
+        conp = int(callee.main.find("CONP/Section/TypeDesc").get("TypeID"))
+        slots = [c for c in callee.tree(callee.flat_of_consolidated(conp)) if c.tag == "TypeDesc"]
+        for fpdco in callee.fp.iter("SL__arrayElement"):
+            if fpdco.get("class") != "fPDCO":
+                continue
+            con = fpdco.findtext("conNum")
+            con = 0 if con is None else int(con)
+            if 0 <= con < len(slots) and vi_label(fpdco.find("ddo")) == tname:
+                t = copy.deepcopy(slots[con])
+                for k in [k for k in t.attrib if k.startswith("ref.")]:
+                    del t.attrib[k]
+                return t, res
+        return None, res
+
+    def add_class_const(self, el):
+        """A CLASS constant. NI's export writes one as type ref{UDClassInst} and never names the
+        class - so, as NI's converter does, the class is the one its wire FEEDS: the class
+        terminal of the Call the constant is wired into. The object is a bDConstDCO around a
+        udClassDDO (a part cut from LabVIEW's own save of such a constant) and its value is the
+        class's flattened DEFAULT: uint32 1, the qualified name as one length-prefixed run of
+        Pascal strings ending in 00, PADDED TO 4, then 8 zero bytes - `00000001 13 11
+        Rectangle.lvclass 00` + 8 x 00 in LabVIEW's file. The padding is measured, not read: that
+        name happens to end on a multiple of 4, and padding to 2 left `Box.lvclass` (18 bytes)
+        eBad, "error of type 200", where padding to 4 loads executable (A/B, 2026-10-11). Its
+        links are written by write_class_links (FPPI, DDPI and the class's VIPI)."""
+        name = unescape(el.get("_name") or "")
+        nets = {n for _, n in pairs(el.get("outputs")) if n}
+        cls_tree, res = None, None
+        for e in self._elements:
+            if e.tag != "Call" or cls_tree is not None:
+                continue
+            for tname, net in pairs(e.get("inputs")):
+                if net in nets:
+                    t, r = self._callee_terminal(e, tname)
+                    if t is not None and t.get("RefType") == "UDClassInst":
+                        cls_tree, res = t, r
+                        break
+        if cls_tree is None or not res or not res.get("owner"):
+            raise Unsupported("Constant %r %s: a class constant (ref{UDClassInst}) must feed a "
+                              "class terminal of a Call, which names its class" % (name, el.get("uid")))
+        qual = [i.get("Text") for i in cls_tree.findall("Item")]
+        if len(qual) != 1:
+            raise Unsupported("Constant %r: class %s inside a library - not composable yet"
+                              % (name, ":".join(qual)))
+        got = self.instantiate("const/udClassDDO/Refnum.UDClassInst")
+        if got is None:
+            raise Unsupported("no class-constant part harvested (const/udClassDDO/Refnum.UDClassInst)")
+        term, donor_types, src = got
+        dco = term.find("dco")
+        ddo = dco.find("ddo")
+        old = int(ddo.get("uid"))
+        ddo.set("uid", str(self.claim(el.get("uid"))))
+        self.used_uids.discard(old)
+        self._set_label(ddo, name)
+        typed = []
+        for donor in donor_types:
+            t = copy.deepcopy(cls_tree)
+            if donor.get("Label") is not None and name:
+                t.set("Label", name)
+            else:
+                t.attrib.pop("Label", None)
+            typed.append(self.heap_tid(t))
+        lvheap.set_typeids(term, typed)
+        names = b"".join(bytes([len(q.encode("mac_roman"))]) + q.encode("mac_roman") for q in qual) + b"\x00"
+        value = (1).to_bytes(4, "big") + bytes([len(names)]) + names
+        value += b"\x00" * (-len(value) % 4) + b"\x00" * 8
+        dco.find("ConstValue").text = value.hex().upper()
+        diag = self.diag_of(el)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
+        diag.srn_terms.append(term)
+        self.ends[(el.get("uid"), "value")] = (term.get("uid"), diag)
+        diag.placed.append((ddo, el))
+        for net in nets:
+            self.net_type[net] = lvheap.strip_label(cls_tree)
+        c = self.class_consts.setdefault(res["owner"], {"qual": qual, "lib_ref": res["lib_ref"], "uids": []})
+        c["uids"].append(int(ddo.get("uid")))
+        self.report.append("Constant %r <- %s (class %s)" % (name, src, qual[0]))
+
     def add_const(self, el):
         aixml_type = el.get("type")
+        if (aixml_type or "").replace(" ", "") == "ref{UDClassInst}":
+            return self.add_class_const(el)
         diag = self.diag_of(el)
         name = unescape(el.get("_name") or "")
         tree = type_tree(aixml_type, label=name or None, constant=True)
@@ -3178,11 +3269,25 @@ class Composer:
         path = res["path"]
         diag = self.diag_of(el)
         callee = lvheap.Bundle(_extract_callee(path))
-        if callee.main.find("LVSR/Section/Execution").get("DynamicDispatch") == "1":
-            # a dynamic-dispatch method is called through a different node, and its class
-            # terminal needs a class wire this composer cannot author yet
-            raise Unsupported("Call %s: %r is a dynamic-dispatch method" % (el.get("uid"), target))
         conp = int(callee.main.find("CONP/Section/TypeDesc").get("TypeID"))
+        # dynamic dispatch is a PANE property: a terminal whose Flags carry 0x8000
+        # (Infra/PaneDispatch.cs, measured against NI's IsStaticMethod) - the LVSR flag stays
+        # unset on a wizard-made accessor that dispatches dynamically
+        dynamic = (callee.main.find("LVSR/Section/Execution").get("DynamicDispatch") == "1"
+                   or any(int(s.get("ref.Flags") or "0", 16) & 0x8000
+                          for s in callee.tree(callee.flat_of_consolidated(conp)) if s.tag == "TypeDesc"))
+        if dynamic:
+            # A DYNAMIC-DISPATCH call (2026-10-11): the same call node as a static one, class
+            # dynIUse, with one dynLink child; its link is a DyOM naming that child, beside VIPI
+            # records for the class and the method - read off LabVIEW's own saves of test VIs
+            # calling a class's accessors and methods (write_links). A class inside a LIBRARY
+            # qualifies its names one level deeper, which no measured file shows yet.
+            if res.get("kind") != "class member" or len(res.get("qual") or []) != 2:
+                raise Unsupported("Call %s: %r is a dynamic-dispatch method of a class this "
+                                  "composer cannot link yet (only a class outside any library)"
+                                  % (el.get("uid"), target))
+        # a STATIC class member (Caraya's Define Test.vi) stays an ordinary call with an IUVI that
+        # names the class in VILSPathRef - composed and run that way since Phase 3
         pane = callee.tree(callee.flat_of_consolidated(conp))
         slots = [c for c in pane if c.tag == "TypeDesc"]
         con_id = int(callee.fp.findtext("root/conPane/conId"))
@@ -3293,8 +3398,15 @@ class Composer:
             self.ends[(el.get("uid"), tname)] = (t.get("uid"), diag)
         for tname, (t, _) in by_dir["out"].items():
             self.ends[(el.get("uid"), out_key(el, tname))] = (t.get("uid"), diag)
-        link = self.links.setdefault(path, dict(res, pane=pane, offsets=[]))
-        link["offsets"].append(int(node.get("uid")))
+        if dynamic:
+            node.set("class", "dynIUse")
+            dyn = ET.SubElement(node, "dynLink", {"class": "dynLink", "uid": str(self.alloc()),
+                                                  "ScopeInfo": "0"})
+            link = self.dyn_links.setdefault(path, dict(res, offsets=[]))
+            link["offsets"].append(int(dyn.get("uid")))
+        else:
+            link = self.links.setdefault(path, dict(res, pane=pane, offsets=[]))
+            link["offsets"].append(int(node.get("uid")))
         diag.nodes.append(node)
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         diag.placed.append((node, el))
@@ -3469,6 +3581,7 @@ class Composer:
                     else:
                         ET.SubElement(rec, "VILSPathRef", {"Ident": "PTH0", "TpVal": "0", "ZeroFill": "True"})
                     ET.SubElement(rec, "IUseStr")
+        self.write_class_links(lvin, bdhp, path_ref)
         vi_ref_cons = None
         for path, link in getattr(self, "static_links", {}).items():
             if vi_ref_cons is None:
@@ -3488,6 +3601,80 @@ class Composer:
                         path_ref(rec, "VILSPathRef", *link["lib_ref"])
                     else:
                         ET.SubElement(rec, "VILSPathRef", {"Ident": "PTH0", "TpVal": "0", "ZeroFill": "True"})
+
+    @staticmethod
+    def _class_version(lvclass):
+        """A class's NI.Lib.Version as LabVIEW stores it in a link: four uint16, big-endian, one
+        integer - 1.0.0.0 is 281474976710656 in every record of the measured files."""
+        try:
+            for p in ET.parse(lvclass).getroot().iter("Property"):
+                if p.get("Name") == "NI.Lib.Version" and p.text:
+                    parts = [int(x) for x in p.text.strip().split(".")][:4] + [0, 0, 0, 0]
+                    return sum(v << (48 - 16 * i) for i, v in enumerate(parts[:4]))
+        except (ET.ParseError, OSError, ValueError):
+            pass
+        return 1 << 48
+
+    @staticmethod
+    def _lit(data):
+        """Bytes as pylabview writes an unprintable string: `&#xNN;` per byte, literally."""
+        return "".join("&#x%02X;" % b if b < 0x20 or b > 0x7E else chr(b) for b in data)
+
+    def write_class_links(self, lvin, bdhp, path_ref):
+        """The links of a CLASS a VI uses, as LabVIEW 2026 saves them - read off its own saves of
+        four test VIs that call a class's accessors and methods (2026-10-11), and readable as XML
+        only with pylabview patched for that version's 8 extra link-cache bytes (patches.json,
+        class-link-cache-extra).
+          LIvi  VIPI per class, FIRST, second name 07 00, content 0;
+                VIPI per method called, its name NESTED (01, length, name), content = its OWN
+                1-based position among LIvi's records
+          LIbd  DyOM per method called: the same names, content = that method's VIPI position,
+                its cache list the call nodes' dynLink uids
+                FPPI and DDPI per class with constants: cache list the constants' ddo uids
+        The 8 bytes after the content are 0 in a VIPI and 00000000ff000000 in the others, in
+        every one of the 22 records measured; what they mean is not established."""
+        classes = {}
+        for link in self.dyn_links.values():
+            classes.setdefault(link["owner"], {"qual": link["qual"][:1], "lib_ref": link["lib_ref"]})
+        for owner, c in self.class_consts.items():
+            classes.setdefault(owner, {"qual": c["qual"], "lib_ref": c["lib_ref"]})
+        if not classes:
+            return
+
+        def record(holder, tag, owner, second, content, extra, cache=None, at=None):
+            c = classes[owner]
+            rec = ET.Element(tag, {"LinkSaveFlag": "0",
+                                   "APILinkLibVersion": str(self._class_version(owner)),
+                                   "APILinkIsInternal": "0", "APILinkBool2": "1",
+                                   "APILinkCallParentNodes": "0", "APILinkExtra": extra})
+            qual = ET.SubElement(rec, "LinkSaveQualName")
+            ET.SubElement(qual, "String").text = c["qual"][0]
+            ET.SubElement(qual, "String").text = second
+            path_ref(rec, "LinkSavePathRef", *c["lib_ref"])
+            ET.SubElement(rec, "APILinkContent").text = self._lit(content.to_bytes(2, "big"))
+            if cache is not None:
+                cl = ET.SubElement(rec, "APILinkCacheList")
+                for uid in cache:
+                    ET.SubElement(cl, "Offset").text = "0x%04X" % uid
+            if at is None:
+                holder.append(rec)
+            else:
+                holder.insert(at, rec)
+            return rec
+
+        zero, heap_extra = "0000000000000000", "00000000ff000000"
+        for i, owner in enumerate(classes):
+            record(lvin, "VIPI", owner, self._lit(b"\x07\x00"), 0, zero, at=i)
+        for path, link in self.dyn_links.items():
+            name = link["qual"][-1].encode("mac_roman")
+            nested = self._lit(bytes([1, len(name)])) + link["qual"][-1]
+            rec = record(lvin, "VIPI", link["owner"], nested, 0, zero)
+            position = list(lvin).index(rec) + 1
+            rec.find("APILinkContent").text = self._lit(position.to_bytes(2, "big"))
+            record(bdhp, "DyOM", link["owner"], nested, position, heap_extra, cache=link["offsets"])
+        for owner, c in self.class_consts.items():
+            for tag in ("FPPI", "DDPI"):
+                record(bdhp, tag, owner, self._lit(b"\x07\x00"), 0, heap_extra, cache=c["uids"])
 
     def add_case(self, el):
         frames_el = [f for f in el if isinstance(f.tag, str) and f.tag == "CaseFrame"]

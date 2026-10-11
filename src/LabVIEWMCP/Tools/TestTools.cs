@@ -156,8 +156,6 @@ internal sealed class TestTools(LvaiConnection connection)
             var route = new JsonObject { ["route"] = "placeholder" };
             if (!directCall)
                 route["reason"] = "directCall was false.";
-            else if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
-                route["reason"] = AixmlBackend.NoDirectSubjectCall;
             else
             {
                 var (done, fallback) = await DirectAsync(viPath, testViPath, subjectName, cases,
@@ -394,17 +392,35 @@ internal sealed class TestTools(LvaiConnection connection)
         }
 
         // 3. load the subject - and every setup VI - THROUGH its project, which is what makes
-        //    them resolvable
-        var open = await new ActionTools(connection).OpenFileAsync(
-            viPath, Path.GetFileName(viPath), project, Path.GetFileName(project),
-            checkActive: true, timeoutSeconds, ct,
-            viPaths: setups.Count > 0 ? string.Join("\n", setups.Keys) : null);
-        steps.Add(new JsonObject { ["step"] = "openSubject", ["answer"] = Read(open) });
-        if (Read(open) is not JsonObject opened || opened["errorCode"]?.GetValue<int>() is not 0 ||
-            opened["projectBecameActive"]?.GetValue<bool>() is not true ||
-            opened["allOpened"]?.GetValue<bool>() is false)
-            return (null, "The subject's project did not become active, or a setup VI did not " +
-                          "open, so they are not known to be loaded - read the openSubject step.");
+        //    them resolvable. ON PYLABVIEW NOTHING IS LOADED: the composer resolves them by FILE,
+        //    so their folders are searched instead (2026-10-11)
+        if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
+        {
+            AixmlComposer.ExtraSearch.Value =
+                [.. new[] { viPath }.Concat(setups.Keys)
+                    .Select(f => Path.GetDirectoryName(Path.GetFullPath(f))!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)];
+            steps.Add(new JsonObject
+            {
+                ["step"] = "openSubject",
+                ["skipped"] = true,
+                ["note"] = "pylabview backend: the composer finds the subject and any setup VI " +
+                           "by FILE, so nothing is opened; their folders are searched instead.",
+            });
+        }
+        else
+        {
+            var open = await new ActionTools(connection).OpenFileAsync(
+                viPath, Path.GetFileName(viPath), project, Path.GetFileName(project),
+                checkActive: true, timeoutSeconds, ct,
+                viPaths: setups.Count > 0 ? string.Join("\n", setups.Keys) : null);
+            steps.Add(new JsonObject { ["step"] = "openSubject", ["answer"] = Read(open) });
+            if (Read(open) is not JsonObject opened || opened["errorCode"]?.GetValue<int>() is not 0 ||
+                opened["projectBecameActive"]?.GetValue<bool>() is not true ||
+                opened["allOpened"]?.GetValue<bool>() is false)
+                return (null, "The subject's project did not become active, or a setup VI did not " +
+                              "open, so they are not known to be loaded - read the openSubject step.");
+        }
 
         // 4. author the test against the subject's own name, and generate
         var aixmlPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
@@ -698,8 +714,6 @@ internal sealed class TestTools(LvaiConnection connection)
             var route = new JsonObject { ["route"] = "sockets" };
             if (!directCall)
                 route["reason"] = "directCall was false.";
-            else if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
-                route["reason"] = AixmlBackend.NoDirectClassCall;
             else
             {
                 var (done, fallback) = await DirectClassTestAsync(
@@ -934,21 +948,39 @@ internal sealed class TestTools(LvaiConnection connection)
                 : new[] { (JsonNode)p.First.WriteTarget, p.First.ReadTarget })]),
         });
 
-        // 3. load the class through its project - one member is enough for all of them
-        var open = await new ActionTools(connection).OpenFileAsync(
-            cases[0].WriteAccessor, Path.GetFileName(cases[0].WriteAccessor), project,
-            Path.GetFileName(project), checkActive: true, timeoutSeconds, ct);
-        steps.Add(new JsonObject { ["step"] = "openClass", ["answer"] = Read(open) });
-        if (Read(open) is not JsonObject opened || opened["errorCode"]?.GetValue<int>() is not 0 ||
-            opened["projectBecameActive"]?.GetValue<bool>() is not true)
-            return (null, "The class's project did not become active, so the class is not known " +
-                          "to be loaded - read the openClass step.");
+        // 3. load the class through its project - one member is enough for all of them. ON
+        //    PYLABVIEW NOTHING IS LOADED: the composer resolves the accessors by FILE, so the
+        //    class's folder is named as a search folder instead (2026-10-11)
+        var composed = AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview;
+        if (composed)
+        {
+            AixmlComposer.ExtraSearch.Value = [Path.GetDirectoryName(Path.GetFullPath(lvclassPath))!];
+            steps.Add(new JsonObject
+            {
+                ["step"] = "openClass",
+                ["skipped"] = true,
+                ["note"] = "pylabview backend: the composer finds the class by FILE, so nothing " +
+                           "is opened; the class's folder is searched instead.",
+            });
+        }
+        else
+        {
+            var open = await new ActionTools(connection).OpenFileAsync(
+                cases[0].WriteAccessor, Path.GetFileName(cases[0].WriteAccessor), project,
+                Path.GetFileName(project), checkActive: true, timeoutSeconds, ct);
+            steps.Add(new JsonObject { ["step"] = "openClass", ["answer"] = Read(open) });
+            if (Read(open) is not JsonObject opened || opened["errorCode"]?.GetValue<int>() is not 0 ||
+                opened["projectBecameActive"]?.GetValue<bool>() is not true)
+                return (null, "The class's project did not become active, so the class is not known " +
+                              "to be loaded - read the openClass step.");
+        }
 
         // 4. author against the real accessors and generate. `execState` failing HERE is expected
         //    and is not a failure: the seeds are still paths wired into class inputs.
         var testAixml = Path.Combine(scratch,
             Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
-        await File.WriteAllTextAsync(testAixml, ClassTestAixml(testViPath, className, cases, shapes), ct);
+        await File.WriteAllTextAsync(testAixml,
+            ClassTestAixml(testViPath, className, cases, shapes, classSeeds: composed), ct);
         var generated = await new BulkTools(connection).GenerateViAsync(
             testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
             timeoutSeconds, ct: ct);
@@ -977,21 +1009,38 @@ internal sealed class TestTools(LvaiConnection connection)
                 route: Direct(route)), null);
         }
 
-        // 5. the seeds become the class - the one Replace this route cannot do without
-        var seeds = new JsonArray([.. cases.Select(test => (JsonNode)new JsonObject
-        { ["label"] = test.SeedLabel, ["class"] = test.SeedClassPath })]);
-        var swapped = await new SwapTools(connection).SwapSubVisAsync(
-            testViPath, null, seeds.ToJsonString(), verify: true, verbose: false,
-            helperViPath: null, helperAixmlPath: null, regenerateHelper: false, editsJson: null,
-            timeoutSeconds, ct: ct);
-        steps.Add(new JsonObject { ["step"] = "seeds", ["answer"] = Read(swapped) });
-        var swapAnswer = Read(swapped) as JsonObject;
-        if (swapAnswer?["ok"]?.GetValue<bool>() is not true)
+        // 5. the seeds become the class - the one Replace this route cannot do without. NOT on
+        //    pylabview: the composer wrote them as class constants in the first place
+        JsonNode? callTargets;
+        if (composed)
         {
-            await CloseAsync();
-            return (Outcome(false, "seeds", steps, total, testViPath, testAixml,
-                "THE TEST VI WAS WRITTEN and calls the real accessors, but its seed constants are " +
-                "still paths, so it cannot run. Read the seeds step.", route: Direct(route)), null);
+            callTargets = await ComposedCallTargetsAsync(testViPath, scratch, timeoutSeconds, ct);
+            steps.Add(new JsonObject
+            {
+                ["step"] = "seeds",
+                ["skipped"] = true,
+                ["note"] = "pylabview backend: the seeds were composed as class constants, so " +
+                           "no Replace is needed.",
+            });
+        }
+        else
+        {
+            var seeds = new JsonArray([.. cases.Select(test => (JsonNode)new JsonObject
+            { ["label"] = test.SeedLabel, ["class"] = test.SeedClassPath })]);
+            var swapped = await new SwapTools(connection).SwapSubVisAsync(
+                testViPath, null, seeds.ToJsonString(), verify: true, verbose: false,
+                helperViPath: null, helperAixmlPath: null, regenerateHelper: false, editsJson: null,
+                timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "seeds", ["answer"] = Read(swapped) });
+            var swapAnswer = Read(swapped) as JsonObject;
+            callTargets = swapAnswer?["callTargets"]?.DeepClone();
+            if (swapAnswer?["ok"]?.GetValue<bool>() is not true)
+            {
+                await CloseAsync();
+                return (Outcome(false, "seeds", steps, total, testViPath, testAixml,
+                    "THE TEST VI WAS WRITTEN and calls the real accessors, but its seed constants are " +
+                    "still paths, so it cannot run. Read the seeds step.", route: Direct(route)), null);
+            }
         }
 
         // 5b. a written value feeding a TYPEDEF terminal carries the typedef, or it wears a dot
@@ -1039,11 +1088,13 @@ internal sealed class TestTools(LvaiConnection connection)
 
         return (Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
             $"Generated. {CaseSummary(cases)}, each calling the class's own accessors " +
-            "DIRECTLY - no sockets, no node swaps; only the seed constants were " +
-            "replaced. Run it through Caraya's runner with a Report Path ending in .xml and read " +
+            "DIRECTLY - no sockets, no node swaps; " +
+            (composed ? "the seeds were composed as class constants. "
+                      : "only the seed constants were replaced. ") +
+            "Run it through Caraya's runner with a Report Path ending in .xml and read " +
             "the JUnit report - and break one case on purpose once, because an all-green first " +
             "run proves very little: " + NegativeControlHint + " THE PROJECT IS LEFT CLOSED.",
-            swapAnswer["callTargets"]?.DeepClone(), Direct(route),
+            callTargets, Direct(route),
             ClassExpectedConstants(cases)), null);
     }
 
@@ -1054,6 +1105,28 @@ internal sealed class TestTools(LvaiConnection connection)
     /// there was nothing to break - measured on a cold build 2026-10-05. A round trip is listed
     /// too, under its `written <n>`, and says outright that breaking it proves nothing.
     /// </summary>
+    /// <summary>
+    /// The type a test's class SEED is authored as: a path for NI's converter, which cannot write
+    /// a class constant and has {LV.Constant} Replace turn it into the class afterwards - and the
+    /// class constant itself for the composer, which infers the class from the terminal the
+    /// constant feeds, as NI's export spells one (ref{UDClassInst}).
+    /// </summary>
+    internal static string SeedType(bool classSeeds) => classSeeds ? "ref{UDClassInst}" : "path";
+
+    /// <summary>What a composed test VI calls, read off the reader's export of the saved file.</summary>
+    internal async Task<JsonNode?> ComposedCallTargetsAsync(string viPath, string scratch,
+                                                             int timeoutSeconds, CancellationToken ct)
+    {
+        var export = Path.Combine(scratch, Path.GetFileNameWithoutExtension(viPath) + ".targets.xml");
+        var answer = await new AixmlTools(connection).ConvertViToAixmlAsync(
+            viPath, export, returnContent: true, maxContentChars: 0, timeoutSeconds, refresh: true, ct: ct);
+        try { File.Delete(export); }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
+        return (Read(answer) as JsonObject)?["xml"]?.GetValue<string>() is { } xml
+            ? new JsonArray([.. SwapTools.Targets(xml).Distinct().Select(t => (JsonNode)t!)])
+            : null;
+    }
+
     internal static JsonArray ClassExpectedConstants(IEnumerable<ClassCase> cases)
     {
         var list = new JsonArray();
@@ -2123,7 +2196,8 @@ internal sealed class TestTools(LvaiConnection connection)
     /// </summary>
     internal static string ClassTestAixml(string testViPath, string className,
                                           IReadOnlyList<ClassCase> cases,
-                                          IReadOnlyList<DirectAccessorCall>? direct = null)
+                                          IReadOnlyList<DirectAccessorCall>? direct = null,
+                                          bool classSeeds = false)
     {
         var geometry = StationPaneDefault.Read().Pattern is { } pattern
             ? ConnectorPanePatterns.Find(pattern)?.Geometry
@@ -2175,7 +2249,7 @@ internal sealed class TestTools(LvaiConnection connection)
             // The class source. Authored as a PATH constant and named, because lvai_swap_subvis
             // finds it by its block diagram label - AIXML's _name becomes that label.
             var seed = uid++;
-            sb.AppendLine(Constant(seed, "path", "", test.SeedLabel));
+            sb.AppendLine(Constant(seed, SeedType(classSeeds), "", test.SeedLabel));
 
             // A DEFAULT CASE writes nothing: the fresh object goes straight into the Read, and the
             // constant is the EXPECTED default rather than a written value.

@@ -30,12 +30,22 @@ Where upstream has an outright defect, the fix goes in `patches\patches.json` an
 applies it to the **assembled copy**. `vendor\` stays byte-identical to upstream, so a new release
 can still be taken by copying the package over it.
 
-Currently one entry, `probe-table-guard`: `LVblock.py` calls `getNumRepeats()` on the probe table
+Two fixes, six entries.
+
+`probe-table-guard`: `LVblock.py` calls `getNumRepeats()` on the probe table
 without checking it is a `RepeatedBlock`, and a VI whose probe table resolves to a `Cluster`,
 `Number` or `NumberPtr` then dies with `AttributeError` and extracts nothing. Measured on a
 production codebase at **32 of 900 VIs**, all from this one cause, all of them DQMH module VIs -
 which is why NI's own example corpus never hit it. `patches.json` carries the reasoning and the
 measurement; the crash is in cosmetic code, so no content was ever beyond reach.
+
+`class-link-cache-extra-*` (five entries in `LVlinkinfo.py`, 2026-10-11): LabVIEW 2026 writes 8
+more bytes into every class link record's API link cache, and upstream then misreads the record
+and leaves the WHOLE link block binary - every VI that calls a class method dynamically, and every
+class member. With the fix those blocks extract as XML and rebuild to byte-identical sections,
+measured on seven class-linked VIs; it is what lets the composer write class calls at all
+(`docs/aixml-backends.md`, "Calling a class DIRECTLY"). Only version 26 is measured, so the
+condition is that version.
 
 **The failure mode the mechanism is built against is silence.** A Find/Replace against a line of
 upstream source stops matching when upstream edits that line - and then the bundle assembles

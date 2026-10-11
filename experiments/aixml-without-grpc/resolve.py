@@ -174,7 +174,7 @@ class Resolver:
                     kind = "class member" if owners[-1].lower().endswith(".lvclass") else "library member"
                     return {"path": path, "qual": owners + [vi_name], "kind": kind,
                             "path_ref": self.ref(path, caller_file),
-                            "lib_ref": self.ref(owner, caller_file)}
+                            "lib_ref": self.ref(owner, caller_file), "owner": owner}
             return {"error": "%s lists no member %r" % (owners[-1], vi_name)}
         for d in caller_dirs:
             p = os.path.join(d, target)

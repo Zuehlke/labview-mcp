@@ -15,7 +15,7 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
 | AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
-| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4) |
+| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a) |
 | both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped) |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
@@ -1260,6 +1260,57 @@ runs without Nigel: the tools call `RunVIAsTopLevel`, and over ActiveX the helpe
 MAIN application instance rather than the AI add-on's. Helpers that hop into the IDE's instance
 through `Project:Active Project` should not care, and that is untested.
 
+### Calling a class directly - dynamic dispatch and class constants (2026-10-11)
+
+The question was the user's: NI's converter calls a class member it finds LOADED, so a composer that
+reads the member's FILE has everything it needs as well. It did - what was missing was writing the
+links, and pylabview could not even read them.
+
+**pylabview's part.** Every class link record (`VIPI` in LIvi; `DyOM`, `FPPI`, `DDPI` in LIbd) goes
+through one "API link cache", and LabVIEW 2026 writes 8 more bytes into it after the content LStr,
+then aligns to 2: zeros in a `VIPI`, `00000000ff000000` in the others - 22 of 22 records in four
+test VIs (two saved by NI's converter, two after `{LV.SubVI}` Replace) and the class members
+themselves. Upstream reads on into the offset list, answers `Offset List length 16711680 exceeds
+limit` or `List of LinkObjects incorrectly ended with 0`, and leaves the whole block raw. Five
+`class-link-cache-extra-*` entries in `tools/pylabview/patches/patches.json` read and write the
+field: seven class-linked VIs then extract LIvi, LIfp and LIbd as XML with no warning and rebuild to
+byte-identical sections (25 to 49 per VI, `pylabview -d`), and `compare_full.py` rose from 143 to
+145 of 768 with nothing worse. The reader's XML path reads the nested names (`&#x01;&#x0E;Write
+Width.vi`) and `APILinkCacheList`, the binary fallback (kept for an unpatched bundle) the same.
+
+**The records** (`class_link_records.py` dumps them):
+
+| record | block | names | content | cache list |
+|---|---|---|---|---|
+| `VIPI` (class) | LIvi, first | class, `07 00` | 0 | - |
+| `VIPI` (method) | LIvi | class, NESTED name `01 <len> <name>` | its OWN 1-based position in LIvi | - |
+| `DyOM` | LIbd | as its `VIPI` | that `VIPI`'s position | the call nodes' `dynLink` uids |
+| `FPPI`, `DDPI` | LIbd | class, `07 00` | 0 | the class constants' `ddo` uids |
+
+Path: the `.lvclass`, relative to the caller file. Version: the class's version as four uint16 -
+NI writes `LowestCompatibleVersion` (1.0.0.0) where we write `NI.Lib.Version` (1.0.0.1), and both
+load. What `07 00` and the 8 bytes mean is not established; they are copied.
+
+**The node and the constant.** A `dynIUse` is an `iUse` plus `<dynLink class="dynLink" uid=...
+ScopeInfo="0"/>` - nothing else differs, field by field. Dispatch is the pane flag `0x8000`, not
+LVSR's `DynamicDispatch`, which a wizard accessor leaves unset. A class constant is a `bDConstDCO`
+around a `udClassDDO` (part `const/udClassDDO/Refnum.UDClassInst`, cut from LabVIEW's save), typed
+with the class refnum the Call's terminal carries - the AIXML `ref{UDClassInst}` names no class -
+and valued with the class's flattened default: `uint32 1`, name length, the Pascal strings and a
+`00`, **padded to 4**, 8 zero bytes. Padding to 2 was right for `Rectangle.lvclass` by accident
+(24 bytes) and left `Box.lvclass` (18) eBad, "VI has an error of type 200", until an A/B settled it.
+
+**Measured.** A hand-written caller (constant -> Write Width -> Read Width) returned 3.5 and 7.25;
+`t128_dynamic_class_call` against the committed fixture `tests/fixtures/Box` (built without NI's
+service) passes 2 of 2; the NewWay test VIs composed this way are `execState 1` in a FRESH LabVIEW,
+so the links are read from disk; and the test generators on pylabview now take the direct route
+with nothing opened: NewWay builds in 120 s against 111 s over grpc, where the socket route took
+172 s.
+
+**Not covered**: a class inside a library, a static member of a class outside one (a library
+class's static member - Caraya's - links through `IUVI` as before), and class controls on a front
+panel (`LIfp`).
+
 ## 8. Files
 
 | file | |
@@ -1280,6 +1331,9 @@ through `Project:Active Project` should not care, and that is untested.
 | `static_event_survey.py`, `build_static_events.py`, `parts/static-events.json` | every static event NI's cached VIs handle, read out of the VIs; the table static events are composed from (§7a, "Static events") |
 | `probe_events.py` | compose an event probe, load it, compare with LabVIEW's own save, and have NI's exporter name every frame's events - the check any new event kind passes before it is trusted |
 | `find_multi_event_frames.py`, `event_frame_data.py` | Event Structure frames handling several events in the export cache; each frame's event data and sources' types read out of the VI (§7a, "Frames that handle several events") |
+| `class_link_records.py` | the class link records (`VIPI`, `DyOM`, `FPPI`, `DDPI`) of LabVIEW-saved VIs, field by field, from a raw link block (§7a, "Calling a class directly") |
+| `build_newway.py` | builds the NewWay demo - interface, class, Caraya tests - on one backend through the built server, timed per step; `--dead-grpc` makes any NI call fail |
+| `tests/fixtures/Box` | a one-field class with its accessors, built without NI's service, for `t128_dynamic_class_call` (`search` in `expect.json`) |
 | `try_export.py` | compose ONE cached NI export as `coverage.py` does, for a load check |
 | `probes/` | AIXML probes converted once through NI's converter: `pclean.xml` (clean parts of every scalar type, 1D and 2D), `pstyle.xml`, `pgraph.xml`, `pmodes.xml`, `ptypes.xml`, `prefcls.xml` (one refnum constant per class - the class specifier part), `ppaths.xml` (Build Path with a string; the parity run's target), ... |
 | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI run against the same expectations |

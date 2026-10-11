@@ -22,8 +22,11 @@ sys.path.insert(0, HERE)
 PY = sys.executable
 
 
-def compose(src, vi):
-    r = subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), src, vi, "--keep", vi[:-3] + ".bundle"],
+def compose(src, vi, search=()):
+    """`search`: folders under tests/ a test's Call targets live in (expect.json `search`) - a
+    class fixture, which the composer cannot build itself and so is committed."""
+    extra = [a for d in search for a in ("--search", os.path.join(HERE, "tests", d))]
+    r = subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), src, vi, "--keep", vi[:-3] + ".bundle"] + extra,
                        capture_output=True, text=True, stdin=subprocess.DEVNULL)
     return r.returncode, (r.stdout + r.stderr).strip()
 
@@ -188,7 +191,7 @@ def run_test(name, expect, out_dir, stamp):
         open(src, "w", encoding="utf-8").write(text.replace("{stamp}", stamp))
     vi = os.path.join(out_dir, "%s_%s.vi" % (name, stamp))
     log_before = len(dwarn_lines())
-    code, log = compose(src, vi)
+    code, log = compose(src, vi, expect[name].get("search", ()))
     if code != 0:
         results.append((name, "COMPOSE FAILED", log.splitlines()[-1] if log else ""))
         return results

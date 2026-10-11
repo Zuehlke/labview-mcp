@@ -1124,9 +1124,14 @@ AN INTERFACE AND THEIR CARAYA TESTS BUILD END TO END WITHOUT NI's SERVICE since 
 `lvai_create_interface`, `_create_class`, `_add_class_method`, `_create_accessors`,
 `_generate_class_test`, `_generate_method_test`, the runner and the run, with `LABVIEW_GRPC_PORT`
 dead so any hidden NI call would have failed: 5 of 5 green, every VI executable, a negative control
-failing on demand, **172 s against 111 s for the same build over grpc** - the gap is the test
-generators, which on pylabview take the socket route. A route tool given `backend` hands it to every
-inner call (`AixmlBackend.Inherited`). Still only with the harvested parts
+failing on demand, **120 s against 111 s for the same build over grpc**. A route tool given
+`backend` hands it to every inner call (`AixmlBackend.Inherited`). **And the test generators call
+the class DIRECTLY there too, with NOTHING OPENED** - the composer finds a class member by FILE and
+writes the dynamic-dispatch call (`dynIUse`, `VIPI`/`DyOM`) and the class constant (`FPPI`/`DDPI`)
+itself, which pylabview could only read after a patch for LabVIEW 2026's 8 extra link-cache bytes
+(`tools/pylabview/patches/patches.json`). Before that they took the socket route and the same build
+took 172 s. A class constant's flattened name is padded to 4 - `Rectangle.lvclass` hid it, the
+`Box` fixture showed it. Still only with the harvested parts
 (`LABVIEWMCP_AIXML_PARTS`). Run answers over ActiveX carry LabVIEW's flattened XML now, so a parser
 written for the gRPC shape reads both. A binary install has no composer yet: where its NI-derived
 parts come from is the user's open decision. `docs/aixml-backends.md`.

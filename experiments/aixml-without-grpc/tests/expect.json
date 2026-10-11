@@ -1300,5 +1300,24 @@
     }
    }
   ]
+ },
+ "t128_dynamic_class_call": {
+  "search": [
+   "fixtures"
+  ],
+  "cases": [
+   {
+    "inputs": "w=3.5",
+    "outputs": {
+     "r": 3.5
+    }
+   },
+   {
+    "inputs": "w=-2",
+    "outputs": {
+     "r": -2
+    }
+   }
+  ]
  }
 }

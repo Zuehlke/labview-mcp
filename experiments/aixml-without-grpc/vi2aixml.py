@@ -302,6 +302,13 @@ def _expand_nested(name):
     return [name]
 
 
+def _nested_text(text):
+    """A qualified-name string as pylabview writes it - unprintable bytes as literal `&#xNN;` -
+    back to its bytes, then expanded like a binary record's nested name."""
+    raw = re.sub(r"&#x([0-9A-Fa-f]{2});", lambda m: chr(int(m.group(1), 16)), text)
+    return [x.decode("mac_roman", "replace") for x in _expand_nested(raw.encode("mac_roman", "replace"))]
+
+
 def binary_link_records(data):
     """[(node uid, record tag, qualified name)] read straight out of a binary LIbd block, for
     the records that name diagram nodes. A record is its tag, a uint16 count of Pascal strings
@@ -501,14 +508,19 @@ class Reader:
             return out
         bdhp = self.b.main.find("LIbd/Section/BDHP")
         for rec in (bdhp if bdhp is not None else []):
-            qual = [x.text or "" for x in rec.findall("LinkSaveQualName/String")]
+            # a DyOM's method name is a NESTED qualified name, which pylabview writes as literal
+            # text (`&#x01;&#x0E;Write Width.vi`) - decoded and expanded as in the binary path
+            qual = [x for s in rec.findall("LinkSaveQualName/String")
+                    for x in _nested_text(s.text or "")]
             if not qual:
                 continue
             lib = [x.text or "" for x in rec.findall("VILSPathRef/String")]
             if len(qual) == 1 and lib and lib[-1].lower().endswith((".lvlib", ".lvclass", ".xctl", ".lvlibp")):
                 qual = [lib[-1]] + qual
             name = ":".join(qual)
-            for off in rec.findall("LinkOffsetList/Offset"):
+            # a class link record (DyOM, FPPI, DDPI) keeps its uids in APILinkCacheList - read
+            # once pylabview parses LabVIEW 2026's layout (patches.json, class-link-cache-extra)
+            for off in rec.findall("LinkOffsetList/Offset") + rec.findall("APILinkCacheList/Offset"):
                 try:
                     out.setdefault(str(int(off.text, 16)), {})[rec.tag] = name
                 except (TypeError, ValueError):

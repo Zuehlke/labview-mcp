@@ -1,0 +1,7 @@
+<VI _name="T128 Dynamic Class Call.vi" description="A class constant into two dynamic-dispatch accessors: Width written, then read back.">
+  <Constant _name="box" type="ref{UDClassInst}" uid="4200" uid_parent="root" value="" outputs="value:4200.value"/>
+  <Control _name="w" type="double" uid="4210" uid_parent="root" value="0" outputs="value:4210.value"/>
+  <Call target="Box.lvclass:Write Width.vi" uid="4230" uid_parent="root" inputs="Box in:4200.value,Width:4210.value" outputs="Box out:4230.Box out"/>
+  <Call target="Box.lvclass:Read Width.vi" uid="4240" uid_parent="root" inputs="Box in:4230.Box out" outputs="Width:4240.Width"/>
+  <Indicator _name="r" type="double" uid="4250" uid_parent="root" value="0" inputs="value:4240.Width"/>
+</VI>

@@ -172,6 +172,18 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         string viPath, string? helperAixmlPath, string? helperViPath, bool regenerateHelper,
         int timeoutSeconds, CancellationToken ct)
     {
+        // a route on pylabview reads the state over ActiveX, as lvai_exec_state does there: no
+        // helper VI, and so no linker errors either
+        if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
+        {
+            try
+            {
+                return new ExecStateReading(
+                    await LabViewCom.ExecStateAsync(Path.GetFullPath(viPath), timeoutSeconds, ct), "", 0, "");
+            }
+            catch (LabViewCom.ComException) { return null; }
+        }
+
         try
         {
             var aixml = helperAixmlPath ?? (StatusTools.ScriptsDirectory() is { } scripts

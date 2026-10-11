@@ -85,8 +85,8 @@ ones stay in `helpers`, so neither backend runs or overwrites the other's.
 | `lvai_create_class` | **no step touches NI's service**: throwaway project opened and closed, carrier composed, NI's own class provider run - all over ActiveX through composed helpers. `typedefFieldsJson` is refused; the typedef binding has no such route yet |
 | `lvai_create_interface`, `lvai_create_accessors` | as `lvai_create_class`: NI's own providers run from composed helpers over ActiveX, no step touches NI's service |
 | `lvai_add_class_method` | each method COMPOSED from its AIXML (path and cluster stand-ins compose like any type), the pane repaired by pylabview, the retype-and-membership helper composed and run over ActiveX - LabVIEW writes the class links on its own save. Validation is the composer's, not NI's wiring check |
-| `lvai_generate_class_test`, `lvai_generate_method_test` | the SOCKET route, always - the direct route names a loaded class member in a Call, which only NI's converter resolves; the composer writes no link to a class member. Sockets are composed, the suite is composed, and `lvai_swap_subvis` points them at the real members (`route.reason` says so) |
-| `lvai_generate_test` | the PLACEHOLDER route, and the call is pointed at the subject by LabVIEW's own `{LV.SubVI}` Replace - not the pylabview retarget, which answered ok here and left a test one folder below its subject failing with Error 7 Bad Linkage. One swap per case, because every case calls the same stub |
+| `lvai_generate_class_test`, `lvai_generate_method_test` | the DIRECT route, as on grpc, with NOTHING OPENED: the composer resolves the class's accessors and methods by FILE (the class's folder is passed as a search folder, `AixmlComposer.ExtraSearch`), writes the dynamic-dispatch calls itself, and composes the seeds as CLASS CONSTANTS - so the `{LV.Constant}` Replace step is skipped as well (next sections). The socket route stays as the fallback |
+| `lvai_generate_test` | the DIRECT route too: the subject (and any setup VI) found by file, no project opened. Its PLACEHOLDER fallback points the call at the subject with LabVIEW's own `{LV.SubVI}` Replace - not the pylabview retarget, which answered ok here and left a test one folder below its subject failing with Error 7 Bad Linkage - one swap per case, because every case calls the same stub |
 | `lvai_swap_subvis` | the same helper, composed and run over ActiveX - in LabVIEW's main instance, so `{LV.SubVI}` Replace works with no project open. Verified against the READER's export of the saved file, and the answer says so |
 | `lvai_generate_caraya_test_runner`, `lvai_run_caraya_tests` | the runner composed; the run over ActiveX, the JUnit report read as on grpc |
 | `lvai_placeholder_subvi`, `lvai_add_vis_to_project` | the stub composed from the reader's export; the listing is a file edit and never needed NI |
@@ -279,28 +279,30 @@ one of the 70 recorded steps says `backend: pylabview`. LabVIEW was restarted be
 because the other build's same-named classes would still be in memory (`Error 1721` from the
 interface provider, seen once).
 
-| step | pylabview, NI unreachable | grpc |
-|---|---|---|
-| create interface | 5.7 s | 8.1 s |
-| interface methods (2) | 10.0 s | 7.3 s |
-| close the project | 0.8 s | 0.1 s |
-| create class | 6.6 s | 3.8 s |
-| overrides (2) | 13.5 s | 5.0 s |
-| accessors (4) | 25.9 s | 25.2 s |
-| accessor test | 43.4 s | 26.6 s |
-| method test | 50.1 s | 24.2 s |
-| Caraya runner | 9.8 s | 5.5 s |
-| run the suite | 6.5 s | 5.4 s |
-| **total** | **172.2 s** | **111.2 s** |
+| step | pylabview, sockets (first build) | pylabview, DIRECT | grpc |
+|---|---|---|---|
+| create interface | 5.7 s | 5.6 s | 8.1 s |
+| interface methods (2) | 10.0 s | 10.9 s | 7.3 s |
+| close the project | 0.8 s | 0.6 s | 0.1 s |
+| create class | 6.6 s | 5.5 s | 3.8 s |
+| overrides (2) | 13.5 s | 13.5 s | 5.0 s |
+| accessors (4) | 25.9 s | 15.9 s | 25.2 s |
+| accessor test | 43.4 s | **26.8 s** | 26.6 s |
+| method test | 50.1 s | **26.0 s** | 24.2 s |
+| Caraya runner | 9.8 s | 9.5 s | 5.5 s |
+| run the suite | 6.5 s | 5.9 s | 5.4 s |
+| **total** | **172.2 s** | **120.4 s** | **111.2 s** |
 
-Both: 5 of 5 tests green, all 11 VIs `execState 1`, and a negative control - Area of 3 x 4 expected
-as 13 - failing exactly that case, green again once restored. One run each, so the per-step numbers
-are a single sample. **pylabview is about 1.5x slower, and the difference is the test generators**:
-on grpc they take the direct route (the class open, its members named in the Call), on pylabview the
-socket route - sockets composed, the suite composed, a swap - and every composed VI starts the
-interpreter. The class steps are within a few seconds of each other except the overrides. LabVIEW's
-DWarn log saturated during the pylabview build (`Wiring insanity found and fixed`), the known cost
-of composed wires (FINDINGS); nothing failed with it.
+All three: 5 of 5 tests green, all 11 VIs `execState 1`, and a negative control - Area of 3 x 4
+expected as 13 - failing exactly that case, green again once restored. One run each, so the
+per-step numbers are a single sample. **The first pylabview build was about 1.5x slower, and the
+whole difference was the test generators**: on grpc they take the direct route (the class open,
+its members named in the Call), on pylabview they took the socket route - sockets composed, the
+suite composed, a swap. **With the direct route on pylabview as well (next section) the two are
+level** - 26.8 s against 26.6 s and 26.0 s against 24.2 s, 120 s against 111 s in all; what is
+left is the interpreter starting once per composed VI. LabVIEW's DWarn log saturated during the
+pylabview builds (`Wiring insanity found and fixed`), the known cost of composed wires (FINDINGS);
+nothing failed with it.
 
 **What it took, and what the first runs found** - each of these answered `ok`, or a misleading
 error, before it was fixed:
@@ -329,6 +331,44 @@ error, before it was fixed:
 - **The script's own mistake, worth repeating**: it called `lvai_create_class` while an earlier
   tool had left the project open, and the next close saved LabVIEW's older copy over the new class
   entry - CLAUDE.md's "close the project before any `lvai_create_class`", on either backend.
+
+## Calling a class DIRECTLY from a composed VI (2026-10-11)
+
+The user's question after the first build: *if the VI or the class is already there, everything
+needed for a direct call should be there too - that is how NI's route does it.* It was. NI's
+converter resolves a member it finds LOADED; the composer finds it by FILE, which needs nothing
+loaded at all. What it lacked was the writing side, and that is now measured and built:
+
+- **A dynamic-dispatch call is an ordinary call node plus one child.** `dynIUse` carries exactly the
+  fields of `iUse` and a `<dynLink class="dynLink" uid=... ScopeInfo="0"/>` - compared field by
+  field on LabVIEW's own saves. Dispatch is read off the callee's PANE (a terminal with Flags
+  `0x8000`, `Infra/PaneDispatch.cs`): the LVSR flag is not set on a wizard-made accessor.
+- **Its links are four record kinds, all decoded from 22 records in four LabVIEW-saved test VIs:**
+  `VIPI` in LIvi for the class (first, content 0) and for each method called (its name NESTED -
+  `01`, length, name - its content its OWN 1-based position in LIvi); `DyOM` in LIbd per method,
+  content = that `VIPI`'s position, its cache list the call nodes' `dynLink` uids; `FPPI` and `DDPI`
+  per class constant, their cache list the constants' `ddo` uids.
+- **pylabview could not read those records at all** - LabVIEW 2026 writes 8 more bytes into every
+  class link cache (0 in a `VIPI`, `00000000ff000000` elsewhere) and upstream's parser then
+  misread the offset list and left the whole block binary. `tools/pylabview/patches/patches.json`,
+  `class-link-cache-extra-*`, reads and writes them: LIvi, LIfp and LIbd of seven class-linked VIs
+  now extract as XML and rebuild to byte-identical sections. That is what made the records
+  writable as XML - and it raised the reader's comparison to 145 of 768 VIs identical.
+- **A class constant** (`<Constant type="ref{UDClassInst}">`, NI's own export spelling, which
+  names no class) takes its class from the class terminal it feeds - as NI's converter must, since
+  its export does not say either. Its value is the class's flattened default: `uint32 1`, the
+  qualified name as one length-prefixed run of Pascal strings ending in `00`, **padded to 4**, then
+  8 zero bytes. The padding is a measurement: `Rectangle.lvclass` happens to end on a multiple of 4,
+  so padding to 2 passed every Rectangle test and left the `Box` fixture eBad ("error of type 200")
+  until an A/B settled it.
+- Measured: a hand-written caller (constant -> Write Width -> Read Width) returned 3.5 and 7.25;
+  the composer suite's `t128_dynamic_class_call` against the committed `tests/fixtures/Box` class
+  passes; and the NewWay test VIs, composed with the class not loaded, are `execState 1` in a FRESH
+  LabVIEW - so the links are read from disk, not borrowed from memory.
+
+**Not covered yet**: a class inside a LIBRARY (its names are one level deeper, no measured file), a
+STATIC class member on the dynamic record kinds (a static member in a library - Caraya's - links as
+before, through `IUVI`), and a class control on a FRONT PANEL (`LIfp` records).
 
 ## Not covered, and not measured
 

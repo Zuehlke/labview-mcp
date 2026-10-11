@@ -588,6 +588,7 @@ class LinkObjBase:
         self.apiLinkBool2 = 1
         self.apiLinkCallParentNodes = 0
         self.apiLinkContent = b''
+        self.apiLinkExtra = b''
 
     def parseUDClassAPILinkCache(self, bldata):
         ver = self.vi.getFileVersion()
@@ -621,6 +622,11 @@ class LinkObjBase:
 
         self.apiLinkContent = readLStr(bldata, 1, self.po)
         self.appendPrintMapEntry(bldata.tell(), 4+len(self.apiLinkContent), 1, "UDClassAPILinkCache.Content")
+        if isGreaterOrEqVersion(ver, 26):
+            self.apiLinkExtra = bldata.read(8)
+            self.appendPrintMapEntry(bldata.tell(), 8, 1, "UDClassAPILinkCache.Extra")
+            if (bldata.tell() % 2) > 0:
+                bldata.read(2 - (bldata.tell() % 2)) # Padding bytes
 
     def prepareUDClassAPILinkCache(self, start_offs):
         ver = self.vi.getFileVersion()
@@ -646,6 +652,10 @@ class LinkObjBase:
             data_buf += int(self.apiLinkCallParentNodes).to_bytes(1, byteorder='big', signed=False)
 
         data_buf += prepareLStr(self.apiLinkContent, 1, self.po)
+        if isGreaterOrEqVersion(ver, 26):
+            data_buf += (bytes(self.apiLinkExtra) + b'\0' * 8)[:8]
+            if (start_offs+len(data_buf)) % 2 > 0:
+                data_buf += b'\0' # Padding bytes
         return data_buf
 
     def initWithXMLUDClassAPILinkCache(self, lnkobj_elem):
@@ -655,6 +665,7 @@ class LinkObjBase:
         self.apiLinkIsInternal = int(lnkobj_elem.get("APILinkIsInternal"), 0)
         self.apiLinkBool2 = int(lnkobj_elem.get("APILinkBool2"), 0)
         self.apiLinkCallParentNodes = int(lnkobj_elem.get("APILinkCallParentNodes"), 0)
+        self.apiLinkExtra = bytes.fromhex(lnkobj_elem.get("APILinkExtra") or "")
 
         for subelem in lnkobj_elem:
             if (subelem.tag == "APILinkContent"):
@@ -672,6 +683,8 @@ class LinkObjBase:
         lnkobj_elem.set("APILinkIsInternal", "{:d}".format(self.apiLinkIsInternal))
         lnkobj_elem.set("APILinkBool2", "{:d}".format(self.apiLinkBool2))
         lnkobj_elem.set("APILinkCallParentNodes", "{:d}".format(self.apiLinkCallParentNodes))
+        if len(self.apiLinkExtra) > 0:
+            lnkobj_elem.set("APILinkExtra", bytes(self.apiLinkExtra).hex())
 
         subelem = ET.SubElement(lnkobj_elem,"APILinkContent")
         name_text = self.apiLinkContent.decode(self.vi.textEncoding)

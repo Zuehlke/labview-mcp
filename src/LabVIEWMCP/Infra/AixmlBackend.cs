@@ -61,25 +61,6 @@ internal static class AixmlBackend
             ? "the reader's export of the saved file (vi2aixml.py, not NI's converter)"
             : "LabVIEW's own export";
 
-    /// <summary>
-    /// Why a test generator on pylabview never tries the DIRECT route, which names a loaded class
-    /// member in a Call: NI's converter resolves that by name, and the composer writes no link to a
-    /// class member at all - the records it would need (LIbd DyOM, FPPI, DDPI) are ones pylabview
-    /// cannot write. Sockets plus LabVIEW's own Replace give the same diagram, measured 2026-10-11.
-    /// </summary>
-    public const string NoDirectClassCall =
-        "pylabview backend: the composer writes no link to a class member, so the members are " +
-        "called through sockets and LabVIEW's own {LV.SubVI} Replace links them to the real ones.";
-
-    /// <summary>
-    /// The same for a plain VI under test: the direct route names the LOADED subject in a Call,
-    /// which NI's converter resolves by name and the composer does not.
-    /// </summary>
-    public const string NoDirectSubjectCall =
-        "pylabview backend: the direct route names the loaded subject in a Call, which only NI's " +
-        "converter resolves, so the test calls a placeholder and LabVIEW's own {LV.SubVI} Replace " +
-        "points it at the subject.";
-
     private static string? _flagValue;
 
     /// <summary>The backend named on the command line, already checked by <see cref="Normalise"/>.</summary>

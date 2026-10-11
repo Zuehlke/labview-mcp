@@ -131,6 +131,14 @@ internal static class AixmlComposer
         // Delacor's DQMH libraries among them, three levels down - and NI's converter resolves
         // those only once they are loaded, while the composer resolves by file. Measured in
         // Phase 3: 13 of the server's DQMH helpers refused only because it was not searched.
+        // folders a TOOL knows its Call targets live in - a test generator names the subject's
+        // folder or the class's, which NI's converter would find because they are LOADED and the
+        // composer finds by file (2026-10-11)
+        foreach (var extra in ExtraSearch.Value ?? [])
+        {
+            args.Add("--search");
+            args.Add(extra);
+        }
         if (ProjectFolder.Value is { } project) { args.Add("--search"); args.Add(project); }
         args.Add(Path.GetFullPath(aixmlPath));
         args.Add(target);
@@ -200,6 +208,14 @@ internal static class AixmlComposer
     }
 
     /// <summary>The installation's project\ folder, looked up once; null when there is none.</summary>
+    /// <summary>
+    /// Extra folders the composer searches for Call targets in this async flow. What "loaded in
+    /// LabVIEW" is to NI's converter, a folder named here is to the composer, which resolves by
+    /// FILE: a test generator's direct route sets the subject's folder (or the class's) instead
+    /// of opening anything.
+    /// </summary>
+    public static readonly AsyncLocal<string[]?> ExtraSearch = new();
+
     private static readonly Lazy<string?> ProjectFolder = new(() =>
     {
         try
