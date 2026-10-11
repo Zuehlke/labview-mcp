@@ -1442,10 +1442,9 @@ survey saw it only on a listbox) - passes `probe_events.py`, which compares the 
 too: all four frames as LabVIEW writes them, every event named back by NI's exporter, and NI's
 export of LabVIEW's save reads all three filter nodes back with their fields and wiring. Executable
 and run (a drag needs a hand on the mouse, so the run fires the File frame), no insanity in a fresh
-LabVIEW. Every composer test with an Event Structure - 13 - passes. **Not covered**: a frame
-handling a filter event among others (refused by name - not measured), the application's filter
-events, and a RUN through a real drag. (The VI's own, `Panel Close?` and `Key Down?`, were added
-the same evening - below.)
+LabVIEW. Every composer test with an Event Structure - 13 - passes. **Not covered**: the
+application's filter events, and a RUN through a real drag. (The VI's own, `Panel Close?` and
+`Key Down?`, and frames handling several filter events were added the same evening - below.)
 
 **The VI's own filter events compose too - Panel Close? and Key Down? - and they RUN, fired for
 real.** NI writes their selector with no source (`" Panel Close? "`, 19 exports; `" Key Down? "`,
@@ -1495,6 +1494,32 @@ subject to the key-focus lottery above, so t134 runs through its File frame. **N
 changing `Char` rather than discarding it, the notify `Key Down`/`Key Repeat`/`Key Up` on a
 control, and the application's filter events.
 
+**A frame handling SEVERAL filter events** - none among NI's 768 cached exports, so LabVIEW's own
+load was the judge, one probe per shape, each compared with LabVIEW's save and named back by NI's
+exporter:
+
+| the frame | ExecState | |
+|---|---|---|
+| Drag Enter on two graphs | 1 | the same event on several sources |
+| Drag Enter on a graph AND a string | 1 | ...across classes - the reference becomes their common class |
+| Drag Enter and Drop on one graph | 1 | different events, identical data |
+| Drag Enter on one graph, Drop on another | 1 | ...the reference's class the same |
+| Drag Enter on a graph, Drop on a string | **0** | different events, the reference's class differs |
+| Panel Close? and Key Down? (the VI's) | **0** | different events, different data |
+| a control's Key Down? and the VI's Panel Close? | **0** | different data and references |
+| Drop and a Value Change | **0** | a filter event with a notify event - LabVIEW makes its placeholder filter node |
+
+Our clusters were LabVIEW's in every broken row as well - the frame itself is what LabVIEW refuses.
+So the rule the composer applies: several filter events share a frame when they are the SAME event,
+or when their data is IDENTICAL, the reference's class included; the filter cluster is merged by
+name like the data cluster (`_merge_event_fields`), its base fields hidden. Anything else is refused
+by name, with the measured case in the message, where it used to be refused as "not measured".
+`t135_multi_filter_frames` carries the three accepted shapes (one with no filter node in the
+document - the composer adds one with the first COMMON settable field): identical to LabVIEW's save,
+named back, run. NI's exporter writes the same event on several sources in the short form
+`"Graph", "Typed": Drag Enter`, which the parser takes as it takes `"Graph": Drag Enter; "Typed":
+Drag Enter`.
+
 **The reader reads both nodes now**: an eventDataNode without 0x10000 is an `Event Filter Node`
 whose fields are inputs. NI's Drag and Drop example reads back with
 `fields="Data,Drag Mode" inputs="Data:541.appended array,Drag Mode:257.value"` - NI's export to the
@@ -1511,7 +1536,7 @@ reader cannot name.
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 108 composition tests, 139 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
+| `selftest.py`, `tests/` | 109 composition tests, 140 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills |
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |

@@ -4165,19 +4165,26 @@ class Composer:
         self._synth_event_filter = getattr(self, "_synth_event_filter", [])
         for f in frames_el:
             its = event_items(unescape(f.get("selector") or ""))
-            rows = [static_event(self._event_of(it)[1], self._event_of(it)[0]) for it in its if self._dyn_source(it) is None]
-            if not any(r is not None and int(r["spec"]["type"]) < 0 for r in rows):
+            rows = [static_event(self._event_of(it)[1], self._event_of(it)[0]) if self._dyn_source(it) is None else None
+                    for it in its]
+            filt = [r is not None and int(r["spec"]["type"]) < 0 for r in rows]
+            if not any(filt):
                 continue
-            if len(its) != 1:
-                raise Unsupported("Event Structure %s: a frame handling a filter event among others is not measured yet"
-                                  % el.get("uid"))
-            if f.get("uid") in have_f or not rows[0].get("filterFields"):
+            if not all(filt):
+                # LabVIEW breaks it: Drop with a Value Change in one frame loaded ExecState 0, and
+                # LabVIEW's own save made its placeholder filter node there (2026-10-11)
+                raise Unsupported("Event Structure %s: a frame handling a filter event with a notify, dynamic or "
+                                  "timeout event - LabVIEW breaks such a frame (measured)" % el.get("uid"))
+            if f.get("uid") in have_f or not all(r.get("filterFields") for r in rows):
                 continue
-            settable = [self._field_label(x) for x in map(ET.fromstring, rows[0]["filterFields"]) if not self._hidden(x)]
-            if settable:
-                self._synth_event_filter.append(ET.Element("Node", {
-                    "_name": "Event Filter Node", "fields": settable[0], "inputs": settable[0] + ":",
-                    "uid": "0", "uid_parent": f.get("uid")}))
+            # several filter events: the settable fields they ALL have, by name, in the first one's
+            # order - the merge the frame's filter cluster gets (add_event_filter)
+            per = [[self._field_label(x) for x in map(ET.fromstring, r["filterFields"]) if not self._hidden(x)]
+                   for r in rows]
+            settable = [x for x in per[0] if all(x in p for p in per[1:])]
+            self._synth_event_filter.append(ET.Element("Node", {
+                "_name": "Event Filter Node", "fields": settable[0] if settable else "",
+                "inputs": (settable[0] + ":") if settable else "", "uid": "0", "uid_parent": f.get("uid")}))
         self.report.append("Structure 'Event Structure' (%d frames) <- %s" % (len(frames_el), src))
 
     @staticmethod
@@ -4873,25 +4880,44 @@ class Composer:
         if frame is None or frame.tag != "CaseFrame":
             raise Unsupported("Event Filter Node %s: not in an event frame" % el.get("uid"))
         items = event_items(unescape(frame.get("selector") or ""))
-        if len(items) != 1 or self._dyn_source(items[0]) is not None:
-            raise Unsupported("Event Filter Node %s: only a frame handling ONE static filter event is measured"
+        if any(self._dyn_source(it) is not None for it in items):
+            raise Unsupported("Event Filter Node %s: a filter event registered dynamically is not measured"
                               % el.get("uid"))
-        ctl, kind = self._event_of(items[0])
-        row = static_event(kind, ctl)
-        if row is None or int(row["spec"]["type"]) >= 0 or not row.get("filterFields"):
-            raise Unsupported("Event Filter Node %s: %r is not a filter event with a measured filter cluster"
-                              % (el.get("uid"), kind))
+        kind = self._event_of(items[0])[1]
         diag = self.diag_of(el)
         node, donor_types, src = self.instantiate("node/eventData")
         terms = list(node.find("termList"))
         agg, tpl = terms[0], terms[1]
         donor = plain(lvheap.strip_label(donor_types[0]))
-        fs = []
-        for f in self._event_fields(el, frame, items[0], fields(donor))[:4]:
-            f = copy.deepcopy(f)
-            (fields(f)[0] if f.get("Type") == "TypeDef" and fields(f) else f).set("Bit7", "1")
-            fs.append(f)
-        fs += [ET.fromstring(x) for x in row["filterFields"]]
+        # one filter cluster per event - Source, Type, Time and the reference, then the event's
+        # measured filter fields - merged by name as a frame's data clusters are when the frame
+        # handles several (_merge_event_fields); the base fields are hidden (Bit7) on this node
+        # whatever the merge made of them (a common class's plain refnum carries no bit)
+        clusters = []
+        for it in items:
+            c_, k_ = self._event_of(it)
+            row = static_event(k_, c_)
+            if row is None or int(row["spec"]["type"]) >= 0 or not row.get("filterFields"):
+                raise Unsupported("Event Filter Node %s: %r is not a filter event with a measured filter cluster"
+                                  % (el.get("uid"), k_))
+            clusters.append(self._event_fields(el, frame, it, fields(donor))[:4] +
+                            [ET.fromstring(x) for x in row["filterFields"]])
+        if len({self._event_of(it)[1] for it in items}) > 1:
+            # DIFFERENT filter events share a frame only with IDENTICAL data, the reference's class
+            # included - measured on LabVIEW's own load: Drag Enter and Drop on one graph, and on two
+            # graphs, ExecState 1; on a graph and a string, and Panel Close? with Key Down?, 0. The
+            # SAME event on several sources is fine across classes (Drag Enter on a graph and a
+            # string): LabVIEW then gives the reference their common class
+            sigs = {tuple(repr(type_sig(f)) + (self._field_label(f) or "") for f in c[3:]) for c in clusters}
+            if len(sigs) > 1:
+                raise Unsupported("Event Filter Node %s: the frame's filter events %s differ in their data or in "
+                                  "their reference's class - LabVIEW breaks such a frame (measured)"
+                                  % (el.get("uid"), " / ".join(it.strip() for it in items)))
+        fs = clusters[0] if len(clusters) == 1 else self._merge_event_fields(el.get("uid"), clusters)
+        fs = [copy.deepcopy(f) for f in fs]
+        for f in fs:
+            if self._field_label(f) in ("Source", "Type", "Time", "CtlRef", "VIRef"):
+                (fields(f)[0] if f.get("Type") == "TypeDef" and fields(f) else f).set("Bit7", "1")
         cl = ET.Element("TypeDesc", dict(donor.attrib))
         for f in fs:
             cl.append(f)

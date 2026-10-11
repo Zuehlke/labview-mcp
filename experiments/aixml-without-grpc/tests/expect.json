@@ -1416,5 +1416,17 @@
     }
    }
   ]
+ },
+ "t135_multi_filter_frames": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Last Frame": 4,
+     "Received": "C:\\probe\\multi.txt",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

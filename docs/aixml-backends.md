@@ -294,7 +294,11 @@ panel open, FALSE lets it close, and Key Down? reads the key every time. **Key D
 composes as well**, measured on LabVIEW's own save (its row's `controlVariant`), and fires at run
 time - but a key reaches a control only through its key focus, which follows the window active on
 the desktop, so no test asserts it: a message cannot make that reproducible, and bringing the panel
-to the front lost the focus. Still refused: a frame handling a filter event among others, and the
+to the front lost the focus. **A frame may handle SEVERAL filter events** exactly where LabVIEW
+accepts it, measured on its own load: the same event on several sources (even across classes), or
+different events with identical data and the same reference class (Drag Enter and Drop on graphs).
+Different data, different reference classes with different events, or a filter event beside a
+notify event break the VI in LabVIEW itself - those are refused by name. Still refused: the
 application's events.
 
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as

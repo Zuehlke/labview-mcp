@@ -1115,9 +1115,11 @@ route**: measured over the `scripts` documents, the composer builds 9 with the p
 blocked 28 - 39 of 82 after the repairs, 70 after the typedef and control-reference work, and
 **78 of 82 - all executable, 12 of 12 output-identical to NI's, every helper a tool runs and the
 user-event skeleton - after the remaining blockers**, recorded in FINDINGS §7a, with the composer's
-own suite at 139 of 139 cases - control references as event sources, frames handling several events,
+own suite at 140 of 140 cases - control references as event sources, frames handling several events,
 static mouse events, the events only a graph has and filter events with their Event Filter Node
-included (a filter frame WITHOUT that node is broken, so the composer adds one), the VI's own
+included (a filter frame WITHOUT that node is broken, so the composer adds one; several filter events
+share a frame only where LabVIEW's own load accepts it - the same event, or identical data and
+reference class - and the rest is refused by name), the VI's own
 Panel Close? and Key Down? FIRED FOR REAL by a window message to the panel; a control's Key Down?
 composes and fires, but nothing that needs a control's KEY FOCUS is reproducible from a message -
 it follows the desktop's active window. **No `.ctl` link
