@@ -1648,5 +1648,51 @@
     }
    }
   ]
+ },
+ "t152_string_ref_set": {
+  "cases": []
+ },
+ "t153_string_ref_terminal": {
+  "callees": {
+   "String Ref Set {stamp}.vi": "t152_string_ref_set"
+  },
+  "cases": [
+   {
+    "inputs": "text=written through the reference",
+    "outputs": {
+     "read back": "written through the reference",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t154_notifier": {
+  "cases": [
+   {
+    "inputs": "message=Stop=TRUE",
+    "outputs": {
+     "notification": "Stop=TRUE",
+     "timed out": "False",
+     "last notification": "Stop=TRUE",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t155_named_uids": {
+  "cases": [
+   {
+    "inputs": "flag=true;x=3.5",
+    "outputs": {
+     "y": 7
+    }
+   },
+   {
+    "inputs": "flag=false;x=3.5",
+    "outputs": {
+     "y": 3.5
+    }
+   }
+  ]
  }
 }

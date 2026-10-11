@@ -974,7 +974,7 @@ identical, the file sets of the print included.
 
 | blocker | helpers | nature |
 |---|---|---|
-| a CONTROL REFNUM type - `ref{LV.Cluster}`, `ref{LV.Enum}`, `ref{LV.Boolean}`, `ref{LV.String}` | 9 | composer: a refnum carrying a control class is not composable yet. `lvai_create_accessors`, the typedef binders and the typed run helper |
+| a CONTROL REFNUM type - `ref{LV.Cluster}`, `ref{LV.Enum}`, `ref{LV.Boolean}`, `ref{LV.String}` | 9 | composer: a refnum carrying a control class is not composable yet. `lvai_create_accessors`, the typedef binders and the typed run helper - composable since 2026-10-12: the TYPE is the plain class refnum, only the front-panel object nests ("Typed control refnums" below) |
 | a CALL the composer cannot resolve - DQMH: Delacor's libraries are under `project\`, which the composer does not search, and helpers calling helpers | 13 | the sibling half is an artefact of this measurement (every VI got a `P3 py` prefix, so `lvdqmh_pick_event.vi` was nowhere); the library half needs `project\Delacor` as a search folder |
 | terminal NAMES: `Flatten To XML` has no `anything`, `Unflatten From XML` no `xml string`, `New VI` no `vi type (standard vi)`, an invoke part without `Path`, `position`, `Controls`, `Value` | 16 | data: learnable from NI exports of the NI-built helpers (`learn_names_full.py`), or invoke parts re-harvested from them |
 | method ALIASES: AIXML says `Save VI Icon to File`, the heap stores `VI Icon.Save to File` | 2 | data: the method counterpart of `alias_props.py` |
@@ -1949,7 +1949,7 @@ each fixed and measured (composed, loaded, run, no insanity, no unexpected DWarn
 - **Unnamed terminals**: `Dequeue Element`'s `timed out?` (parmIndex 10) and `Number To Fractional
   String`'s `use system decimal point (T)` / `width (-)` - read off the parts' own type labels.
 
-Still open: a typed control refnum other than `ref{LV.Control}` (`ref{LV.String}` is refused).
+Still open: a typed control refnum other than `ref{LV.Control}` (`ref{LV.String}` is refused) - closed 2026-10-12, "Typed control refnums, notifiers and named uids".
 
 **Wave 2 - the state machine, the panel helpers and `ATM Main.vi` - composed in 25 minutes, every
 VI executable**, the main VI with its Event Structure (five front-panel frames, one handling two
@@ -2009,6 +2009,44 @@ composer: 22:54 to 23:55. Two layout findings, both fixed after it:
 - **A placeholder terminal name stays valid once the real one is known.** Naming Obtain Queue's
   `?parm2` broke the three queue helpers whose AIXML had been written with `?parm2` - a regression
   the recomposition caught. `?parmN` now names the same terminal as the real name.
+
+### Typed control refnums, notifiers and named uids (2026-10-12)
+
+**A `ref{LV.String}` control composes.** It was refused as "a control refnum (it carries a
+stdString)", on the reading that the TYPE carries the control's class. It does not: NI's converter's
+build of `probes/pref2.xml` (one control per VI Server class) writes every one of them as the PLAIN
+class refnum in VCTP - `ref{LV.String}` `LVObjCtl 0x001B`, `ref{LV.Boolean}` `0x0008`, nothing
+nested. What carries the control's class is the FRONT-PANEL object: its `stdRefNum` holds a data
+object of that class (a `stdString`, a `stdBool` ...). So the type is the plain refnum now, and
+`harvest_parts.py` files such a control a second time by its CLASS
+(`fpdco/stdRefNum/ctl/Refnum.LVObjCtl.<CtlFlags>`) - by the class and not by the inner object,
+because Ring and Enum both hold a `stdRing` of different types. 43 such parts from `pref2`.
+Measured: `pref2.xml` composed whole - 166 controls - loads executable with 0 DWarns, and the same
+document with every control an indicator likewise. `t152` takes a `ref{LV.String}` on its pane,
+writes `Value` through it and hands it back; `t153` passes a reference to its own string control
+and reads the written text back through the returned one.
+
+**`aixml-skeletons/web-browser-title-poll.xml` composes and loads executable** (with the parts
+harvested from NI-built helpers, for `ExecuteJavaScript`), the last of the five documents the
+helper coverage left out that is not an LUnit template. It needed four more things, each measured:
+
+- **A uid that is a NAME on a Case Structure.** The skeleton writes `cs`, `ev`; `claim` gives the
+  heap a number of its own, and the case tunnels then looked their structure up by that number -
+  `StopIteration`. The lookup is by the AIXML uid now. `t155` is `t40` with every uid a name:
+  COMPOSE FAILED before, PASS after.
+- **`Wait on Notification`'s unnamed terminals** - `ignore previous (F)` (1), `notifier out` (8),
+  `timed out?` (10) - and `Obtain Notifier`'s `name (unnamed)` / `create if not found? (T)`,
+  `Release Notifier`'s `force destroy? (F)`, `notifier name`, `last notification`: read off the
+  parts' own type labels, the polymorphic two by `Dequeue Element`'s identical layout.
+- **A notifier wire** (`Refnum.NotifierRef`), measured with `t154`: Obtain (string), Send, Wait on
+  Notification, Release, the notification, `timed out?` and the released notifier's last
+  notification read back.
+- **An error terminal is never in a polymorphic group.** The first `t154` loaded "Going from good
+  to bad after compiling": the notifier parts' donor sent an ERROR CLUSTER, so with labels stripped
+  `notification`, `error in` and `error out` were one donor type, and a string notification typed
+  `error out` String. Excluded by name (`error in (no error)`, `error in`, `error out`): executable,
+  0 DWarns, and the run above. The queue parts' donors sent other types, which is why `t144` never
+  showed it.
 
 ## 8. Files
 

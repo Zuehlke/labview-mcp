@@ -617,3 +617,11 @@ primResID	node	parmIndex	terminal	seen	competing
 9108	Obtain Queue	2	create if not found? (T)	1	
 9108	Obtain Queue	10	created new?	1	
 9109	Release Queue	2	force destroy? (F)	1	
+9105	Wait on Notification	1	ignore previous (F)	1	
+9105	Wait on Notification	8	notifier out	1	
+9105	Wait on Notification	10	timed out?	1	
+9101	Obtain Notifier	out	name (unnamed)	1	
+9101	Obtain Notifier	2	create if not found? (T)	1	
+9102	Release Notifier	2	force destroy? (F)	1	
+9102	Release Notifier	8	notifier name	1	
+9102	Release Notifier	9	last notification	1	

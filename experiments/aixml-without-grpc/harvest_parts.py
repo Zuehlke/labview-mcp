@@ -439,6 +439,14 @@ class Harvester:
                 tk = lvheap.type_key(types[0])
                 self.save("fpdco", "fpdco/%s/%s/%s" % (graph_class(ddo), ind, tk),
                           source, fpdco, types)
+                inner = ddo.find("ddo") if ddo is not None else None
+                if tk == "Refnum.LVObjCtl" and inner is not None:
+                    # a CONTROL refnum control (ref{LV.String}) holds an object of the control's
+                    # own class (a stdString) while its type is the plain class refnum - NI's
+                    # converter's build of probes/pref2.xml - so it is also filed by its CLASS
+                    # (CtlFlags): Ring and Enum both hold a stdRing, of different types
+                    self.save("fpdco", "fpdco/stdRefNum/%s/%s.%s" % (ind, tk, types[0].get("CtlFlags")),
+                              source, fpdco, types)
                 self.array_elements(b, fpdco, "fpdco", source)
         if b.bd is None:
             return

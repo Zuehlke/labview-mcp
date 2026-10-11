@@ -377,6 +377,15 @@ refnums travel on wires, `Value (Signaling)` resolves under its short name, any 
 table, and a constant goes beside its consumer with tall columns wrapping, which brought every
 test VI inside 1920 x 1080. FINDINGS §7a, "What a whole CLD exam found".
 
+**The next night closed what it had left open, and one rule fell out of it.** A queue refnum is a
+subVI terminal (`ref{Queue}{string}`; its control is a container like an array); a typed control
+refnum such as `ref{LV.String}` composes, because NI's converter writes its TYPE as the plain class
+refnum and only the front-panel object nests one of the control's class - so the part is chosen by
+class; a notifier travels on a wire; a Case Structure whose uids are names finds its tunnels. The
+rule: **an error terminal is never part of a polymorphic group** - the notifier parts' donor sent
+an error cluster as its data, and a string notification typed `error out` String until it was
+excluded by name. FINDINGS §7a, "Typed control refnums, notifiers and named uids".
+
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke
 the VI. And structures are sized round after round until nothing changes: a case or event

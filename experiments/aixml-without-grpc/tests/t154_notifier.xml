@@ -1,0 +1,13 @@
+<VI _name="T154 Notifier.vi" description="Obtains a string notifier, sends a message, waits for it and releases the notifier - the notification, timed out? and the released notifier's last notification are read back.">
+  <Control _name="message" outputs="value:4205.value" type="string" uid="4205" uid_parent="root" value=""/>
+  <Constant _name="notifier type" outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value=""/>
+  <Constant _name="timeout" outputs="value:4202.value" type="int32" uid="4202" uid_parent="root" value="100"/>
+  <Node _name="Obtain Notifier" inputs="name (unnamed):,notification data type:4200.value,create if not found? (T):,error in (no error):" outputs="notifier out:4210.notifier out,created new?:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Send Notification" inputs="notifier:4210.notifier out,notification:4205.value,error in (no error):4210.error out" outputs="notifier out:4230.notifier out,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Node _name="Wait on Notification" inputs="notifier:4230.notifier out,ignore previous (F):,timeout in ms (-1):4202.value,error in (no error):4230.error out" outputs="notifier out:4240.notifier out,notification:4240.notification,timed out?:4240.timed out?,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Node _name="Release Notifier" inputs="notifier:4240.notifier out,force destroy? (F):,error in (no error):4240.error out" outputs="notifier name:,last notification:4250.last notification,error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Indicator _name="notification" inputs="value:4240.notification" type="string" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="timed out" inputs="value:4240.timed out?" type="bool" uid="4310" uid_parent="root" value="false"/>
+  <Indicator _name="last notification" inputs="value:4250.last notification" type="string" uid="4315" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4320" uid_parent="root" value="[false,0,]"/>
+</VI>

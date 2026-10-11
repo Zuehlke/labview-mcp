@@ -1,0 +1,9 @@
+<VI _name="T152 String Ref Set.vi" description="A subVI that takes a reference to a string control on its connector pane and writes text into that control through it - a typed control refnum as a control and as an indicator.">
+  <Control _name="String ref" conIdx="5" connection="required" description="The string control to write into." outputs="value:4200.value" type="ref{LV.String}" uid="4200" uid_parent="root" value=""/>
+  <Control _name="text" conIdx="7" connection="recommended" description="The text to write." outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Error in." outputs="value:4205.value" type="cluster{bool.status,int32.code,string.source}" uid="4205" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Property Node" fields="write+Value" inputs="reference:4200.value,error in (no error):4205.value,Value:4202.value" outputs="reference out:4220.ref,error out:4220.err" type="{LV.String}" uid="4220" uid_parent="root"/>
+  <Indicator _name="String ref out" conIdx="6" connection="recommended" description="The same reference." inputs="value:4220.ref" type="ref{LV.String}" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Error out." inputs="value:4220.err" type="cluster{bool.status,int32.code,string.source}" uid="4330" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Writes the caller's string control" uid="0" uid_parent="root"/>
+</VI>

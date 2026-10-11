@@ -1,0 +1,19 @@
+<VI _name="T155 Named Uids.vi" description="A boolean case structure doubling x when flag is true, every uid a NAME rather than a number - as aixml-skeletons/web-browser-title-poll.xml writes them, which NI's converter accepts.">
+  <Control _name="flag" type="bool" uid="flag" uid_parent="root" value="false" outputs="value:flag.value"/>
+  <Control _name="x" type="double" uid="x" uid_parent="root" value="0" outputs="value:x.value"/>
+  <Structure _name="Case Structure" selectin="flag.value" uid="cs" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:x.value" uid="csIn" uid_parent="cs"/>
+    <CaseFrame selector="True" selectout="" uid="csT" uid_parent="cs">
+      <Tunnel _id="In1" outputs="value:tIn.value" uid="tIn" uid_parent="csT"/>
+      <Constant _name="two" type="double" uid="two" uid_parent="csT" value="2" outputs="value:two.value"/>
+      <Node _name="Multiply" inputs="x:tIn.value,y:two.value" outputs="x*y:mul.x*y" uid="mul" uid_parent="csT"/>
+      <Tunnel _id="Out1" inputs="value:mul.x*y" uid="tOut" uid_parent="csT"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="csF" uid_parent="cs">
+      <Tunnel _id="In1" outputs="value:fIn.value" uid="fIn" uid_parent="csF"/>
+      <Tunnel _id="Out1" inputs="value:fIn.value" uid="fOut" uid_parent="csF"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:csOut.value" uid="csOut" uid_parent="cs"/>
+  </Structure>
+  <Indicator _name="y" type="double" uid="y" uid_parent="root" value="0" inputs="value:csOut.value"/>
+</VI>

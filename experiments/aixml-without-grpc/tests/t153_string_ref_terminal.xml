@@ -1,0 +1,9 @@
+<VI _name="T153 String Ref Terminal.vi" description="Passes a reference to its own string control to a subVI, which writes text into the control through it; the control is read back through the reference the subVI hands back.">
+  <Control _name="text" outputs="value:4205.value" type="string" uid="4205" uid_parent="root" value=""/>
+  <Control _name="Display" outputs="value:" type="string" uid="4210" uid_parent="root" value=""/>
+  <Node _name="VI Server Reference" element="Display" outputs="Display:4220.Display" uid="4220" uid_parent="root"/>
+  <Call inputs="String ref:4220.Display,text:4205.value" outputs="String ref out:4230.ref,error out:4230.err" target="String Ref Set {stamp}.vi" uid="4230" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Value" inputs="reference:4230.ref,error in (no error):4230.err" outputs="Value:4240.value,reference out:,error out:4240.err" type="{LV.String}" uid="4240" uid_parent="root"/>
+  <Indicator _name="read back" inputs="value:4240.value" type="string" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4240.err" type="cluster{bool.status,int32.code,string.source}" uid="4320" uid_parent="root" value="[false,0,]"/>
+</VI>

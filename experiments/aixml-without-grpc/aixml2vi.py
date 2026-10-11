@@ -310,8 +310,11 @@ def control_event_row(cls, event):
 def refnum_type(inner, plain_class=False):
     """ref{LV.<Class>} -> Refnum RefType=LVObjCtl with the class's ID in CtlFlags, read off one
     AIXML-generated control per class (parts/refnum-classes.tsv); ref{Visa.Instr} -> the VISA
-    refnum with its Void variant, as the same probe wrote it. A control refnum (ref{LV.Boolean},
-    ...) carries an object of the control's class that fixes its data type - not composed yet."""
+    refnum with its Void variant, as the same probe wrote it. A CONTROL refnum (ref{LV.String},
+    ref{LV.Boolean} ...) is the same plain class refnum - NI's converter's build of
+    probes/pref2.xml has nothing nested in VCTP for any of them; the object of the control's own
+    class it carries lives in the front-panel object, which build_ddo takes from a part filed by
+    the class."""
     global _REF_CLASSES
     if _REF_CLASSES is None:
         _REF_CLASSES = {}
@@ -343,11 +346,6 @@ def refnum_type(inner, plain_class=False):
     row = _REF_CLASSES.get(inner)
     if row is None:
         raise Unsupported("type 'ref{%s}' is not composable yet" % inner)
-    if row[1] and not plain_class:
-        # (a property node's own reference terminals are the PLAIN class refnum even for a
-        # control class - measured on an implicit node on a string control: CtlFlags 0x001B,
-        # nothing nested - so they pass plain_class)
-        raise Unsupported("type 'ref{%s}' is a control refnum (it carries a %s), not composable yet" % (inner, row[1]))
     return ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl", "CtlFlags": row[0],
                                    "HasItem": "0", "Format": "inline"})
 
@@ -504,8 +502,10 @@ def unverified_wire_type(tree):
         # producer/consumer of the CLD ATM exam
         # ByteStream: Open/Create/Replace File (replace or create) -> Write to Text File -> Close
         # File replaced a longer file's content whole, read back by path (t147, 2026-10-11)
+        # NotifierRef: Obtain Notifier (string) -> Send -> Wait on Notification -> Release ran with
+        # the notification, `timed out?` and the last notification read back (t154, 2026-10-12)
         if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag", "TDMSFile", "UDClassInst",
-                                       "UserEvent", "EventReg", "Menu", "Queue", "ByteStream"):
+                                       "UserEvent", "EventReg", "Menu", "Queue", "ByteStream", "NotifierRef"):
             return "Refnum." + (tree.get("RefType") or "?")
         if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
             # a strictly typed VI reference: its pane is the callee's own (t103)
@@ -1368,6 +1368,16 @@ class Composer:
             key = "arrelem/%s/%s" % (prefix, ddo_class)
         if key is None and self._is_class_specifier(tree, prefix) and self.parts.get(self.CSC_KEY) is not None:
             key = self.CSC_KEY
+        if key is None and prefix == "fpdco" and tkey == "Refnum.LVObjCtl":
+            # a CONTROL refnum control holds an object of the control's own class (a stdString in
+            # a ref{LV.String}) - the part cut for exactly that class (harvest_parts.py, off NI's
+            # build of probes/pref2.xml); a plain class (LV.VI) keeps the generic part
+            cls = self._class_of_refnum(tree)
+            nested = _REF_CLASSES.get(cls, ("", ""))[1]
+            if nested:
+                key, _ = self.pick("fpdco/stdRefNum/", want, other, "%s.%s" % (tkey, tree.get("CtlFlags")))
+                if key is None:
+                    raise Unsupported("no front-panel part for a ref{%s} control (it holds a %s)" % (cls, nested))
         if key is None:
             key, _ = self.pick("%s/%s/" % (prefix, ddo_class), want, other, tkey)
         if key is None and is_enum(tree):
@@ -1884,6 +1894,14 @@ class Composer:
         donor = [plain(lvheap.strip_label(x)) for x in donor_types]
         new_types = list(donor)
         canon = [ET.tostring(x) for x in donor]
+        # An ERROR terminal is never a member of a polymorphic group. The notifier parts' donor
+        # sent an error cluster, so `notification` and `error in`/`error out` shared one donor
+        # type: a string notification typed `error out` String and the VI went "from good to bad
+        # after compiling" (t154, 2026-10-12)
+        for i, t in enumerate(terms):
+            if self.term_names.get((rid, t.find("dco").findtext("parmIndex") or "out")) in \
+                    ("error in (no error)", "error in", "error out"):
+                canon[i] = b"error terminal %d" % i
         wired_in = {}
         for tname, net in ins:
             if net and net in self.net_type:
@@ -3973,7 +3991,9 @@ class Composer:
         parent.z.insert(0, ET.Element("SL__arrayElement", {"uid": case.get("uid")}))
         parent.placed.append((case, el))
         self.cases = getattr(self, "cases", [])
+        self.case_by_uid = getattr(self, "case_by_uid", {})
         self.cases.append((case, frame_diags, parent))
+        self.case_by_uid[el.get("uid")] = self.cases[-1]
         self.ends[(el.get("uid"), "sel")] = (sel.get("uid"), parent)
         self.pending_cases = getattr(self, "pending_cases", [])
         self.pending_cases.append((case, el, kind, items, donor_ranges, frames_el))
@@ -4095,6 +4115,7 @@ class Composer:
         for c in list(case.find("tunnelList")):
             case.find("tunnelList").remove(c)
         self.cases = getattr(self, "cases", [])
+        self.case_by_uid = getattr(self, "case_by_uid", {})
         frame_diags = []
         for idx, d in enumerate(diags):
             fd = Diagram(d)
@@ -4123,6 +4144,7 @@ class Composer:
         parent.z.insert(0, ET.Element("SL__arrayElement", {"uid": case.get("uid")}))
         parent.placed.append((case, el))
         self.cases.append((case, frame_diags, parent))
+        self.case_by_uid[el.get("uid")] = self.cases[-1]
         self.ends[(el.get("uid"), "sel")] = (sel.get("uid"), parent)
         self.report.append("Structure 'Case Structure' (boolean) <- %s" % src)
 
@@ -4130,7 +4152,9 @@ class Composer:
         """One case tunnel: its outside half (`outer_el`, on the structure) and one inside half
         per frame (`halves`: frame uid -> Tunnel element), as AIXML writes it."""
         d = "in" if outer_el.get("_id", "").startswith("In") else "out"
-        case, frame_diags, parent = next(x for x in self.cases if x[0].get("uid") == case_el.get("uid"))
+        # by the AIXML uid: a uid that is a NAME (`cs`, `ev` in aixml-skeletons/web-browser-title-
+        # poll.xml) or one already taken gets a heap number of its own (claim)
+        case, frame_diags, parent = self.case_by_uid[case_el.get("uid")]
         part = getattr(self, "case_tunnel_part", {}).get(case.get("uid"))
         got = (self.instantiate("%s/%s" % (part, d)) if part else None) or             self.instantiate("seltun/bool/%s" % d) or self.instantiate("seltun/n/%s" % d)
         if got is None:
@@ -4274,7 +4298,9 @@ class Composer:
         parent.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         parent.placed.append((node, el))
         self.cases = getattr(self, "cases", [])
+        self.case_by_uid = getattr(self, "case_by_uid", {})
         self.cases.append((node, frame_diags, parent))
+        self.case_by_uid[el.get("uid")] = self.cases[-1]
         self.case_tunnel_part = getattr(self, "case_tunnel_part", {})
         self.case_tunnel_part[node.get("uid")] = "seltun/event"
         self.events = getattr(self, "events", [])
@@ -5224,7 +5250,9 @@ class Composer:
         parent.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         parent.placed.append((node, el))
         self.cases = getattr(self, "cases", [])
+        self.case_by_uid = getattr(self, "case_by_uid", {})
         self.cases.append((node, frame_diags, parent))
+        self.case_by_uid[el.get("uid")] = self.cases[-1]
         self.case_tunnel_part = getattr(self, "case_tunnel_part", {})
         self.case_tunnel_part[node.get("uid")] = "commenttun"
         self.report.append("Structure %r (%d frames) <- %s" % (el.get("_name"), len(frames_el), src))
