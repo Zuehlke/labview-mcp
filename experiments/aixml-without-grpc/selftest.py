@@ -93,6 +93,10 @@ def log_saturated():
 # range) both passed the Insane-only gate with right values, measured against LabVIEW's own VI
 # of the same objects, which logged nothing.
 EXPECTED_DWARNS = ("Wiring insanity found and fixed",)
+# what an INTERACTION a case posts makes LabVIEW log, whatever VI it runs: closing a popup menu
+# with Escape logs "WDestroy called on tracking window" - for LabVIEW's own save of t142 exactly
+# as for the composed VI (an A/B, 2026-10-11) - so it is expected only where a case posts esc
+POSTED_DWARNS = {"esc": ("WDestroy called on tracking window",)}
 
 
 def dwarn_lines():
@@ -263,8 +267,10 @@ def run_test(name, expect, out_dir, stamp):
             verdicts[-1] += " (TIMEOUT)"
     status = "PASS" if all(v.startswith("ok") for v in verdicts) else "FAIL"
     bad = insanities(vi)
+    steps = {p.split(":")[0] for c in cases for p in (c.get("post") or "").split(";") if p}
+    posted = tuple(x for k in steps for x in POSTED_DWARNS.get(k, ()))
     extra = [re.sub(r"0x[0-9A-F]{8}", "", l) for l in dwarn_lines()[log_before:]
-             if not any(x in l for x in EXPECTED_DWARNS)]
+             if not any(x in l for x in EXPECTED_DWARNS + posted)]
     if extra:
         status += " dwarn:%d" % len(extra)
         verdicts.append("first unexpected DWarn: %s" % extra[0][:120])

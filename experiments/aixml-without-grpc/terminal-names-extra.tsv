@@ -599,3 +599,15 @@ primResID	node	parmIndex	terminal	seen	competing
 1117	Greater Than 0?	out	x &gt; 0?	0	
 8012	?	out	error out	1
 8012	?	9	timeout ms	1
+# 9005 Get Menu Item Info: the part's own type labels in terminal order (LabVIEW labels a primitive's
+# terminal types), agreeing with the slots learned off wires (3, 4, 11) and with 9006's layout - 2026-10-11
+9005	Get Menu Item Info	out	error out	1	
+9005	Get Menu Item Info	1	enabled	1	
+9005	Get Menu Item Info	2	item name	1	
+9005	Get Menu Item Info	3	menu reference out	1	
+9005	Get Menu Item Info	4	checked	1	
+9005	Get Menu Item Info	5	submenu tags	1	
+9005	Get Menu Item Info	6	short cut	1	
+9005	Get Menu Item Info	7	item tag	1	
+9005	Get Menu Item Info	8	error in (no error)	1	
+9005	Get Menu Item Info	11	menu reference	1	

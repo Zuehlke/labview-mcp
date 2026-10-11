@@ -1115,7 +1115,7 @@ route**: measured over the `scripts` documents, the composer builds 9 with the p
 blocked 28 - 39 of 82 after the repairs, 70 after the typedef and control-reference work, and
 **78 of 82 - all executable, 12 of 12 output-identical to NI's, every helper a tool runs and the
 user-event skeleton - after the remaining blockers**, recorded in FINDINGS §7a, with the composer's
-own suite at 145 of 145 cases - control references as event sources, frames handling several events,
+own suite at 147 of 147 cases - control references as event sources, frames handling several events,
 static mouse events, the events only a graph has and filter events with their Event Filter Node
 included (a filter frame WITHOUT that node is broken, so the composer adds one; several filter events
 share a frame only where LabVIEW's own load accepts it - the same event, or identical data and
@@ -1131,7 +1131,9 @@ AIXML has no terminal for an Event Structure's TIMEOUT, so a facade returns only
 event's frame ends its loop: NI's facade composed as exported waited for ever and the XControl's
 method answered 0 where NI's answers 212, which only a run with the HOST's panel open showed. And a
 loaded XControl is served from memory for ANY path with its qualified name - `lv-com.ps1` says
-`SERVED FROM` now. **No `.ctl` link
+`SERVED FROM` now. **Menu references compose too**, between primitives and out of a Shortcut Menu
+Activation? frame's event data, the latter run with a real right-click - LabVIEW's popup menu is
+its own window class `LVMenuWnd`. **No `.ctl` link
 is needed for a typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs
 were a subVI input and output with one label sharing a terminal and two terminals on one `conIdx`. **A CLASS,

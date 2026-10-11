@@ -1,0 +1,11 @@
+<VI _name="T141 Menu Refnum.vi" description="Menu references on wires: the VI's own run-time menubar gets two items inserted, and one of them is read back by its tag, so the name returned proves the reference reached both nodes.">
+  <Constant _name="item names" type="array{string}" uid="4201" uid_parent="root" value="[Alpha,Beta]" outputs="value:4201.value" />
+  <Constant _name="item tags" type="array{string}" uid="4202" uid_parent="root" value="[ALPHA,BETA]" outputs="value:4202.value" />
+  <Constant _name="item tag" type="string" uid="4203" uid_parent="root" value="BETA" outputs="value:4203.value" />
+  <Node _name="Current VI's Menubar" uid="4210" uid_parent="root" outputs="menu reference:4210.menu reference" />
+  <Node _name="Insert Menu Items" uid="4220" uid_parent="root" inputs="menu reference:4210.menu reference,item names:4201.value,item tags:4202.value" outputs="menu reference out:4220.menu reference out,item tags out:4220.item tags out,error out:4220.error out" />
+  <Node _name="Get Menu Item Info" uid="4230" uid_parent="root" inputs="menu reference:4220.menu reference out,item tag:4203.value,error in (no error):4220.error out" outputs="item name:4230.item name,error out:4230.error out" />
+  <Indicator _name="Tags Out" type="array{string}" uid="4240" uid_parent="root" value="[]" inputs="value:4220.item tags out" />
+  <Indicator _name="Beta Name" type="string" uid="4241" uid_parent="root" value="" inputs="value:4230.item name" />
+  <Indicator _name="Error Out" type="cluster{bool.status,int32.code,string.source}" uid="4242" uid_parent="root" value="[false,0,]" inputs="value:4230.error out" />
+</VI>

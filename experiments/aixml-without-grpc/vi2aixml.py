@@ -1026,6 +1026,12 @@ class Reader:
                     txt = "%s..%s" % (val(s) if stt != 3 else "", val(e) if ett != 3 else "")
             items.setdefault(di, []).append(txt)
         dflt = node.findtext("SelectDefaultCase")
+        if dflt is None and st not in ("Boolean", "Cluster"):
+            # ABSENT means frame 0: LabVIEW writes 01, 02, 03 or FF (no default) and never 00 -
+            # NI's Simple Dual Mode Thermometer Facade.vi has none, NI's export calls its frame 0
+            # "Default", and read as "no default" the string case composed without one and broke
+            # the VI (2026-10-11)
+            dflt = "00"
         if dflt:
             try:
                 di = int(dflt, 16)

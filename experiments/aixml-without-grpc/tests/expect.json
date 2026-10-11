@@ -1497,5 +1497,31 @@
     }
    ]
   }
+ },
+ "t141_menu_refnum": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Tags Out": "[ALPHA,BETA]",
+     "Beta Name": "Beta",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t142_menu_event_refnum": {
+  "cases": [
+   {
+    "inputs": "",
+    "post": "rclick:75,122;esc;sysclose",
+    "postAfterMs": 1200,
+    "outputs": {
+     "Inserted": 2,
+     "#panel open": "False",
+     "Error Out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

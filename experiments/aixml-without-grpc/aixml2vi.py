@@ -482,8 +482,12 @@ def unverified_wire_type(tree):
         # UserEvent, EventReg: the user-event skeleton composed and RAN - Create, Register, the
         # dynamic event terminal, Generate, Unregister, Destroy - with Ticks Received = 5 and no
         # insanity in the log, and stopped by the payload alone in a variant (2026-10-10)
+        # Menu: Current VI's Menubar -> Insert Menu Items -> Get Menu Item Info read the inserted
+        # item back by tag (t141), and a Shortcut Menu Activation? frame's MenuRef took two items
+        # LabVIEW then showed in the control's menu (t142, a real right-click) - no insanity, no
+        # unexpected DWarn, identical to LabVIEW's own save (2026-10-11)
         if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag", "TDMSFile", "UDClassInst",
-                                       "UserEvent", "EventReg"):
+                                       "UserEvent", "EventReg", "Menu"):
             return "Refnum." + (tree.get("RefType") or "?")
         if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
             # a strictly typed VI reference: its pane is the callee's own (t103)

@@ -1560,6 +1560,9 @@ Discard?, with its filter node), **Bookmark Info Change** (Paths, Names - its re
 identical to LabVIEW's save and named back - and **VI Activation RUNS**: a VI opening its own panel
 raises it, every time (8 of 8, within 200-355 ms), its VIName this VI's own, which the test
 compares in the VI itself. (Application Activation followed - "The rest of the scan" below.)
+**"Every time" held for a quiet desktop only**: in one full suite run of 2026-10-11 the event did not
+come (`Last Frame` 0) while the same test alone passed 3 of 3 right after - the same lottery as a
+control's key focus, since activation follows the desktop's active window.
 
 **The notify key events - Key Down, Key Repeat, Key Up - on a control and on the VI.** NI's one
 frame with Key Down and Key Repeat gave both numbers and their data (Char, VKey, ScanCode, Mods,
@@ -1672,6 +1675,50 @@ composed one from another, ExecState 1 for the wrong file. `lv-com.ps1` reads th
 now and prints `SERVED FROM` when it is not the file asked for; the selftest calls that `STALE`, and
 an XControl test restarts LabVIEW first. The earlier "NI arm" of this very measurement had been ours.
 
+### Menu references on wires (2026-10-11)
+
+A `Refnum.Menu` wire was refused like every type no composed wire had carried - NI's facade stopped
+at its Shortcut Menu Activation? frame. Both sources of one are measured now and the type is in the
+verified set:
+
+- **between primitives** - `t141_menu_refnum`: `Current VI's Menubar` -> `Insert Menu Items` ->
+  `Get Menu Item Info` reads the inserted `BETA` back as `Beta`; with a tag never inserted the read
+  answers error 1162 and an empty name (the control arm). `Get Menu Item Info` was not composable:
+  its number 9005 came from `find_prim_ids.py`, its part from the one NI VI using it
+  (`StateDiagramEditor.vit`, harvested into a scratch folder so no other part came along), and its
+  terminal names from the part's own type LABELS in terminal order - LabVIEW labels a primitive's
+  terminal types - which agree with the three slots `learn_names_full.py` could learn off wires and
+  with its sibling `Set Menu Item Info`'s layout;
+- **out of event data** - `t142_menu_event_refnum`: a string's `Shortcut Menu Activation?` frame
+  passes the event's `MenuRef` to `Insert Menu Items`. Identical to LabVIEW's own save, named back by
+  NI's exporter, no insanity and no unexpected DWarn on a fresh LabVIEW - and RUN with a real
+  right-click: the control's run-time menu then showed `Alpha` and `Beta` under LabVIEW's own items
+  (captured), and the frame reported 2 tags; a right-click on empty panel reported 0.
+
+`lv-com.ps1 -Post` gained `rclick:x,y` - a point in the WINDOW's frame as a `PrintWindow` capture
+shows it, converted to client coordinates - and `esc`, which closes LabVIEW's popup menu: **LabVIEW
+draws its own, window class `LVMenuWnd`, not Windows' `#32768`**. Closing it that way logs
+`WDestroy called on tracking window` - for LabVIEW's own save of t142 exactly as for the composed VI,
+an A/B - so the selftest expects that DWarn only in a case that posts `esc` (`POSTED_DWARNS`).
+
+**The reader lost a string case's DEFAULT frame, which broke NI's facade once its menus composed.**
+Its selection frame dispatches on the menu's `ItemTag` through a string case structure whose frame 0
+is the default - and the heap has NO `SelectDefaultCase` for it: LabVIEW writes `01`, `02`, `03` or
+`FF` (no default) and never `00`, so an ABSENT field means frame 0. The reader took absent as "no
+default", wrote `selector=""`, and the composed facade was a string case without a default -
+ExecState 0, found by composing each menu frame alone. Read as `Default` the facade is executable
+with both menu frames, and over NI's cached exports the reader went from **147 to 157 of 768 VIs
+identical** (attributes 9 057 -> 9 197), so the rule is NI's.
+
+What the menus of the composed facade do on the host could not be shown: a posted right-click inside
+an XControl landed on the facade's helper string controls, which NI keeps HIDDEN and AIXML carries no
+visibility for - so the composed facade shows them at the origin - and NI's original at the same
+point showed a general menu without its own `Display Temperature...` item either. NI's facade also
+logged 13 `Bad edge will not be added to wire` and 5 `Cannot find terminal hotpoint` DWarns, with
+and without its menu frames - a composer gap elsewhere in that VI, not looked into yet - and its
+expected wire repairs fill LabVIEW's log, so the insanity check is blind for it; t142 is the clean
+measurement.
+
 ## 8. Files
 
 | file | |
@@ -1681,7 +1728,7 @@ an XControl test restarts LabVIEW first. The earlier "NI arm" of this very measu
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
-| `selftest.py`, `tests/` | 114 composition tests, 145 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills; `STALE` when LabVIEW served another file; `xcontrol` composes a facade into a copy of an installed XControl and runs its host with the panel open |
+| `selftest.py`, `tests/` | 116 composition tests, 147 cases, with expected outputs; LabVIEW-log gate on `Insane` lines AND on every DWarn other than the known wire repairs; LabVIEW restarted when its log fills; `STALE` when LabVIEW served another file; `xcontrol` composes a facade into a copy of an installed XControl and runs its host with the panel open |
 | `alias_props.py` | property names NI's export writes, paired with the heap's, field for field over 264 VIs |
 | `parity.py` | splits `coverage.py --tsv` refusals into "NI's converter refuses too" and "this composer's gap" |
 | `backfill_strs.py` | gives older parts the STR sections their tag/refnum objects name |
@@ -1709,7 +1756,7 @@ an XControl test restarts LabVIEW first. The earlier "NI arm" of this very measu
 | `coverage.py`, `cov_load.py`, `call_coverage.py` | compose NI's exports; load them (a crash is recorded and LabVIEW restarted); call resolution |
 | `harvest_templates.py`, `merge_props.py`, `event_specs.py` | template nodes named by wire joins; parallel property sweeps; EventSpec rows |
 | `try_vi.py`, `bisect_vi.py`, `dwarn_delta.py` | compose + load one VI with its log lines; split a broken VI; DWarns per VI |
-| `lv-com.ps1`, `lv-keeper.ps1`, `lv-restart.ps1`, `lv-save.ps1`, `lv-windows.ps1` | LabVIEW over COM - `-Post` sends window messages to the VI's own panel during a run (the close box, a key) and reports whether the panel is still open, a selftest case's `post`, and `SERVED FROM` when LabVIEW answers with another file than the one asked for; restart without the gRPC service; save a VI through LabVIEW |
+| `lv-com.ps1`, `lv-keeper.ps1`, `lv-restart.ps1`, `lv-save.ps1`, `lv-windows.ps1` | LabVIEW over COM - `-Post` sends window messages to the VI's own panel during a run (the close box, a key) and reports whether the panel is still open, a selftest case's `post`, and `SERVED FROM` when LabVIEW answers with another file than the one asked for; `rclick:x,y` and `esc` right-click a control and close LabVIEW's popup menu (`LVMenuWnd`); restart without the gRPC service; save a VI through LabVIEW |
 | `parts/refnum-classes.tsv`, `parts/vi-server-props.json` | the 166 VI Server class IDs; 1 052 properties and 496 methods with their codes |
 | `outline.py`, `normdiff.py` | read a heap object; diff two bundles uid-insensitively |
 | `parts/` | skeleton, parts, `wiretables.json`, `denylist.json` |

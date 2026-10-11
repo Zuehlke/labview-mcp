@@ -328,6 +328,13 @@ it carries no control STYLE, so the XControl looks like digital numerics and LED
 thermometer. A loaded XControl stays in LabVIEW's memory and is served for any path with the same
 qualified name. `experiments/aixml-without-grpc/FINDINGS.md` §7a, "XControl facades".
 
+**A MENU REFERENCE composes as a wire** - out of `Current VI's Menubar` into `Insert Menu Items` and
+`Get Menu Item Info`, and out of a `Shortcut Menu Activation?` frame's `MenuRef`; a right-click on
+the control then showed the inserted items in LabVIEW's own menu. The reader writes a string case's
+frame 0 as `Default` where the heap has no `SelectDefaultCase` - LabVIEW never writes `00` - and
+NI's facade with its menu frames composes executable. `experiments/aixml-without-grpc/FINDINGS.md`
+§7a, "Menu references on wires".
+
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke
 the VI. And structures are sized round after round until nothing changes: a case or event

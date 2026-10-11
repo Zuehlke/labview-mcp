@@ -1,0 +1,37 @@
+<VI _name="T142 Menu Event Refnum.vi" description="A menu reference out of event data: the Shortcut Menu Activation? frame of a string control inserts two items into the menu the event hands over and reports how many tags came back. The run right-clicks the control, closes the menu, then clicks the panel's close box; Panel Close stops the loop.">
+  <Control _name="Target" outputs="value:" type="string" uid="4201" uid_parent="root" value="" />
+  <Constant _name="Open" outputs="value:4206.value" type="bool" uid="4206" uid_parent="root" value="true"/>
+  <Node _name="VI Server Reference" outputs="This VI:4210.This VI" type="{LV.VI}" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Front Panel Window\3AOpen" inputs="reference:4210.This VI,error in (no error):,Front Panel Window\3AOpen:4206.value" outputs="reference out:,error out:4212.error out" type="{LV.VI}" uid="4212" uid_parent="root"/>
+  <Structure _name="While Loop" count="4220.value" uid="4220" uid_parent="root">
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <CaseFrame selector=" &quot;Target&quot;\3A Shortcut Menu Activation? " uid="4300" uid_parent="4230">
+        <Node _name="Event Data Node" fields="MenuRef" outputs="MenuRef:4301.MenuRef" uid="4301" uid_parent="4300"/>
+        <Constant _name="item names" type="array{string}" uid="4302" uid_parent="4300" value="[Alpha,Beta]" outputs="value:4302.value" />
+        <Constant _name="item tags" type="array{string}" uid="4303" uid_parent="4300" value="[ALPHA,BETA]" outputs="value:4303.value" />
+        <Node _name="Insert Menu Items" uid="4304" uid_parent="4300" inputs="menu reference:4301.MenuRef,item names:4302.value,item tags:4303.value" outputs="item tags out:4304.item tags out" />
+        <Node _name="Array Size" uid="4305" uid_parent="4300" inputs="array:4304.item tags out" outputs="size(s):4305.size(s)" />
+        <Constant outputs="value:4306.value" type="bool" uid="4306" uid_parent="4300" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4306.value" uid="4307" uid_parent="4300"/>
+        <Tunnel _id="Out2" inputs="value:4305.size(s)" uid="4308" uid_parent="4300"/>
+      </CaseFrame>
+      <CaseFrame selector=" Panel Close " uid="4400" uid_parent="4230">
+        <Constant outputs="value:4401.value" type="int32" uid="4401" uid_parent="4400" value="-1"/>
+        <Constant outputs="value:4402.value" type="bool" uid="4402" uid_parent="4400" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4402.value" uid="4403" uid_parent="4400"/>
+        <Tunnel _id="Out2" inputs="value:4401.value" uid="4404" uid_parent="4400"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4280.value" uid="4280" uid_parent="4230"/>
+      <Tunnel _id="Out2" outputs="value:4281.value" uid="4281" uid_parent="4230"/>
+    </Structure>
+    <ShiftReg uid="4250" uid_parent="4220">
+      <Left uid="4251" uid_parent="4250" inputs="value:4252.value" outputs="value:4251.value" />
+      <Right uid="4253" uid_parent="4250" outputs="value:4253.value" inputs="value:4254.max" />
+    </ShiftReg>
+    <Node _name="Max &amp; Min" uid="4254" uid_parent="4220" inputs="x:4251.value,y:4281.value" outputs="max(x\2Cy):4254.max" />
+    <Condition inputs="value:4280.value" uid="4282" uid_parent="4220" value="stop"/>
+  </Structure>
+  <Constant _name="none" outputs="value:4252.value" type="int32" uid="4252" uid_parent="root" value="0"/>
+  <Indicator _name="Inserted" inputs="value:4253.value" type="int32" uid="4290" uid_parent="root" value="0"/>
+  <Indicator _name="Error Out" inputs="value:4212.error out" type="cluster{bool.status,int32.code,string.source}" uid="4292" uid_parent="root" value="[false,0,]" />
+</VI>

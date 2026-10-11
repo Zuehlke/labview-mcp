@@ -42,6 +42,31 @@ public static class LvWin {
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
     [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
     [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code, uint mapType);
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+    [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] public static extern bool ScreenToClient(IntPtr h, ref POINT p);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+    // a point given in the WINDOW's frame - the one a PrintWindow capture of it shows, title bar
+    // included - as the lParam of a mouse message, which takes CLIENT coordinates
+    public static IntPtr ClientLParam(IntPtr h, int x, int y) {
+        RECT r; GetWindowRect(h, out r);
+        var p = new POINT { X = r.L + x, Y = r.T + y };
+        ScreenToClient(h, ref p);
+        return (IntPtr)((p.Y << 16) | (p.X & 0xFFFF));
+    }
+    // the process's visible windows of one window CLASS - "LVMenuWnd" is LabVIEW's popup menu
+    public static List<IntPtr> OfClass(uint pid, string cls) {
+        var hits = new List<IntPtr>();
+        EnumWindows((h, l) => {
+            uint p; GetWindowThreadProcessId(h, out p);
+            if (p != pid || !IsWindowVisible(h)) return true;
+            var sb = new StringBuilder(256); GetClassName(h, sb, 256);
+            if (sb.ToString() == cls) hits.Add(h);
+            return true;
+        }, IntPtr.Zero);
+        return hits;
+    }
     public static List<IntPtr> Find(uint pid, string title) {
         var hits = new List<IntPtr>();
         EnumWindows((h, l) => {
@@ -153,6 +178,20 @@ foreach ($p in $ViPath) {
                 # several messages are separated by ';', each sent -PostAfterMs after the one before
                 foreach ($one in ($Post -split ';' | Where-Object { $_ })) {
                     Start-Sleep -Milliseconds $PostAfterMs
+                    if ($one -eq 'esc') {
+                        # Escape to an open POPUP MENU - LabVIEW draws its own, window class
+                        # LVMenuWnd, not Windows' #32768 (2026-10-11) - the one a right-click
+                        # opened, so the run goes on; to the panel when none is open
+                        $lvp = Get-Process LabVIEW | Select-Object -First 1
+                        $menus = @([LvWin]::OfClass([uint32]$lvp.Id, 'LVMenuWnd'))
+                        $targets = if ($menus.Count -gt 0) { $menus } else { @(Panel-Windows $p) }
+                        Write-Output ('  post esc to ' + $menus.Count + ' popup menu(s)')
+                        foreach ($h in $targets) {
+                            [void][LvWin]::PostMessage($h, 0x0100, [IntPtr]0x1B, [IntPtr]0x00010001)
+                            [void][LvWin]::PostMessage($h, 0x0101, [IntPtr]0x1B, [IntPtr]0xC0010001)
+                        }
+                        continue
+                    }
                     $wins = Panel-Windows $p
                     Write-Output ('  post ' + $one + ' to ' + $wins.Count + ' panel window(s)')
                     foreach ($h in $wins) {
@@ -166,6 +205,13 @@ foreach ($p in $ViPath) {
                         # depends on which window is active on the desktop and is NOT reproducible
                         # (2026-10-11). Neither WM_ACTIVATE + WM_SETFOCUS nor SetForegroundWindow
                         # made it so: the first changed nothing, the second lost the key focus.
+                        # rclick:x,y - a right-click at a point of the panel WINDOW as a capture of
+                        # it shows it (lv-shot); a control there raises Shortcut Menu Activation?
+                        elseif ($one -match '^rclick:(\d+),(\d+)$') {
+                            $lp = [LvWin]::ClientLParam($h, [int]$Matches[1], [int]$Matches[2])
+                            [void][LvWin]::PostMessage($h, 0x0204, [IntPtr]2, $lp)
+                            [void][LvWin]::PostMessage($h, 0x0205, [IntPtr]::Zero, $lp)
+                        }
                         elseif ($one -match '^char:(\d+)$') { [void][LvWin]::PostMessage($h, 0x0102, [IntPtr][int]$Matches[1], [IntPtr]1) }
                         # down: a key pressed and released; repeat: a key HELD - pressed, pressed again
                         # with lParam bit 30 (already down), as Windows auto-repeats, released. Both
