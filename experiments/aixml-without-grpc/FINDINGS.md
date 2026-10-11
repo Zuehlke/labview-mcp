@@ -1804,12 +1804,20 @@ save KEEPING the routed tables (3 of 3 on t01, 4 of 4 on t63). The suite runs 11
 and `t125_multi_event_frames`, which filled LabVIEW's log on its own, is checked for insanity again.
 `AIXML2VI_GENERIC_WIRES=1` writes the generic tables as before.
 
+**The wires running backwards were the LAYOUT's.** A structure took its column from its own
+element alone - a tunnel is a wire end of its own - so a loop sat in column 0 beside the controls
+feeding it, and columns lay a fixed 160 px apart, so whatever followed a wide loop landed inside its
+width. Now a wire through a structure's border counts, on its OUTER side, as a wire of the structure
+(tunnels, shift registers, an In Place structure's element pairs), and each column is as wide as its
+widest object plus 60 px. Over the same 20 VIs the routed repairs went from **112 to 96** (`t40`,
+`t72` to 0, `t22` 10 to 6); the backward wires of six of them from 8 to 3 - the rest an In Place
+structure's pairs and a Feedback Node, whose terminal geometry the router leaves alone. Rendered,
+`t41` and `t118` read left to right.
+
 Still generic, each its own step: **fan-outs** (the three-ended table is a tree: n codes and n-1
-lengths, not decoded), a wire whose **sink lies left of its source** - mostly the layout's doing: a
-structure takes the column of its first node regardless of what feeds its tunnels, and columns are a
-fixed 160 px apart, so nodes after a wide loop land inside it - **inner terminals** whose DCO the
-heap does not give, and primitives the corpus has too few wires for (1188's output sits 11 px below
-its centre, seen on t83).
+lengths, not decoded) - now the bulk of what LabVIEW repairs - **inner terminals** whose DCO the
+heap does not give (a loop's `i`, an Event Structure's dynamic terminal), and primitives the corpus
+has too few wires for (1188's output sits 11 px below its centre, seen on t83).
 
 ## 8. Files
 

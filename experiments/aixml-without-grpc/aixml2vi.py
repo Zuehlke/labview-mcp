@@ -5744,12 +5744,50 @@ class Composer:
 
     def layout(self, nets):
         """Left to right by dependency depth, inner diagrams first so a loop can be sized
-        around what it holds. Geometry is not load-bearing (FINDINGS 3.7) - this is for
-        whoever opens the VI."""
+        around what it holds. LabVIEW does not need it (FINDINGS 3.7) - but the wire routes are
+        computed from it (wire_route.py), so a node placed behind its source is a wire LabVIEW
+        has to repair."""
+        # A wire through a structure's BORDER counts, on its OUTER side, as a wire of the
+        # structure itself: a loop depends on what feeds its input tunnels and shift registers,
+        # and what an output tunnel feeds comes after the loop. Keyed on the tunnel element alone,
+        # the loop had no source, took column 0 beside its own controls, and every wire into it
+        # ran backwards - the generic table LabVIEW repaired (2026-10-11). Inside, the tunnel
+        # stays the source, so the contents start at the structure's left edge.
+        def border_of(el):
+            # an In Place Element Structure's element pairs sit on its border as tunnels do
+            pair = el.tag == "Node" and unescape(el.get("_name") or "") in self.INPLACE_PAIRS
+            if el.tag not in ("Tunnel", "Left", "Right") and not pair:
+                return None
+            p = el.get("uid_parent")
+            pe = self._by_uid.get(p)
+            if el.tag in ("Left", "Right") and pe is not None and pe.tag == "ShiftReg":
+                p = pe.get("uid_parent")
+                pe = self._by_uid.get(p)
+            return p if pe is not None and pe.tag == "Structure" else None
+
+        def inside(uid, s):
+            for _ in range(64):
+                if uid is None or uid == "root":
+                    return False
+                if uid == s:
+                    return True
+                e = self._by_uid.get(uid)
+                uid = e.get("uid_parent") if e is not None else None
+            return False
+
         src_of = {}
         for net, ends in nets.items():
+            src = ends["src"][0]
+            s_struct = border_of(src)
             for sink, _ in ends["sinks"]:
-                src_of.setdefault(sink.get("uid"), []).append(ends["src"][0].get("uid"))
+                src_rep, sink_rep = src.get("uid"), sink.get("uid")
+                if s_struct and not inside(sink.get("uid"), s_struct):
+                    src_rep = s_struct
+                k_struct = border_of(sink)
+                if k_struct and not inside(src.get("uid"), k_struct):
+                    sink_rep = k_struct
+                if src_rep != sink_rep:
+                    src_of.setdefault(sink_rep, []).append(src_rep)
         level = {}
 
         def lv(uid, stack=()):
@@ -5955,18 +5993,31 @@ class Composer:
             sizes[seq.get("uid")] = (H, W)
             frame_dims[id(seq)] = dims
 
+    COLUMN_GAP = 60
+
     def _place(self, diag, lv, sizes, top0, left0):
-        rows, right, bottom = {}, 0, 0
+        # Columns by dependency level, each as wide as its widest object - a fixed 160 px put
+        # what follows a wide loop INSIDE the loop's width, and its wires ran backwards (the
+        # generic table LabVIEW repaired). Only the levels this diagram holds get a column.
+        items = []
         for obj, el in diag.placed:
-            L = lv(el.get("uid"))
-            y = top0 + rows.get(L, 0)
-            x = left0 + 160 * L
             if el.tag == "Structure":
                 h, w = sizes.get(obj.get("uid"), (120, 200))
+            else:
+                h, w = lvheap.size_of(obj)
+            items.append((obj, el, lv(el.get("uid")), h, w))
+        col_x, x = {}, left0
+        for L in sorted({it[2] for it in items}):
+            col_x[L] = x
+            x += max(it[4] for it in items if it[2] == L) + self.COLUMN_GAP
+        rows, right, bottom = {}, 0, 0
+        for obj, el, L, h, w in items:
+            y = top0 + rows.get(L, 0)
+            x = col_x[L]
+            if el.tag == "Structure":
                 obj.find("bounds").text = lvheap.fmt_bounds((y, x, y + h, x + w))
             else:
                 place_obj(obj, y, x)
-                h, w = lvheap.size_of(obj)
             rows[L] = rows.get(L, 0) + max(h, 32) + 30
             right, bottom = max(right, x + w), max(bottom, y + h)
         return right, bottom

@@ -90,8 +90,11 @@ class Geometry:
             b = dco.findtext("ddo/bounds")
             return (_bounds(b), None, None) if b else None
         if dco.get("class") is None:
+            # a tunnel's INNER side - only in a frame's own diagram (sRN); an In Place element
+            # pair's terminals refer to a DCO too, on the structure's border, and are not this
+            o = self.owner(t)
             ref = self.tunnel.get(dco.get("uid"))
-            if ref is None:
+            if ref is None or o is None or o.get("class") != "sRN":
                 return None
             return _bounds(ref.findtext("termBounds")), None, None
         tb = dco.findtext("termBounds")
