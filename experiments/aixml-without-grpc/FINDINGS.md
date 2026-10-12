@@ -1467,8 +1467,8 @@ Label.vi` returns that reference already closed (`Error 1055` on the next write)
 empty one, In Place, Conditional Disable frames, a one-frame Flat Sequence that wraps) and
 `t160_event_labels` (the While Loop and three event frames) compose, load executable, compute and
 render as LabVIEW's own. vi2aixml writes `label=` back, identical to NI's export of `Simple
-Occurrence.vi`. LabVIEW's log was saturated during these runs, so the insanity check has not seen
-them yet.
+Occurrence.vi`. The full suite on a freshly restarted LabVIEW, insanity check included: 128 PASS,
+`t136` FAIL as before (focus), 6 load-only cases executable - `t159` and `t160` among them clean.
 
 ### Graphs and their events (2026-10-11)
 
