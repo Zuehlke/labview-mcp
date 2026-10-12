@@ -487,6 +487,7 @@ class Reader:
         self.caller_libs = [l.text.strip() for l in self.b.main.findall("LIBN/Section/Library") if (l.text or "").strip()]
         self.call_targets = self._call_targets()
         self.instance_names = self._express_instances()
+        self.prop_items = {}     # property node uid -> its items' code paths, in field order
         self.diags = []         # every diagram walked, for wiring
         self.ordered_inputs = {}   # element -> its inputs in TERMINAL order, unwired ones listed
         self.ordered_ports = []    # (element, attr, [(term uid, name)]) rewritten after wiring
@@ -1492,6 +1493,17 @@ class Reader:
         return None
 
     _PROP_NAMES = None
+    _EXPORT_PROP_NAMES = None
+
+    @classmethod
+    def export_prop_names(cls):
+        """property code path ('104013829' or 'a/b' for a nested one) -> the name NI's exporter
+        writes for it, learned off its exports of whole VIs (parts/property-export-names.json,
+        learn_prop_names.py) - only codes every pair agreed on."""
+        if cls._EXPORT_PROP_NAMES is None:
+            p = os.path.join(aixml2vi.HERE, "parts", "property-export-names.json")
+            cls._EXPORT_PROP_NAMES = json.load(open(p, encoding="utf-8")).get("names", {}) if os.path.exists(p) else {}
+        return cls._EXPORT_PROP_NAMES
 
     @classmethod
     def catalogue_name(cls, klass, name, code):
@@ -1537,7 +1549,15 @@ class Reader:
                 infos = d.findall("propList/SL__arrayElement")
                 name = ".".join(unquote(i.findtext("PropItemName") or "") for i in infos)
                 code = infos[-1].findtext("PropItemCode") if infos else None
-                name = self.catalogue_name(cls, name, int(code) if code and code.lstrip("-").isdigit() else 0)
+                codepath = "/".join(i.findtext("PropItemCode") or "?" for i in infos)
+                self.prop_items.setdefault(node.get("uid"), []).append(codepath)
+                learned = self.export_prop_names().get(codepath)
+                if learned:
+                    # the name NI's exporter writes for these codes, learned off its own exports
+                    # (learn_prop_names.py): `HasConditionalTerm` is `Has Conditional Terminal?`
+                    name = learned
+                else:
+                    name = self.catalogue_name(cls, name, int(code) if code and code.lstrip("-").isdigit() else 0)
                 out = bool(int(d.findtext("objFlags") or 0) & 1)
                 fields.append(("read+" if out else "write+") + escape(name))
                 self.term_owner[t.get("uid")] = (el, name, not out)

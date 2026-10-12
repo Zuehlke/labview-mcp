@@ -15,7 +15,7 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
 | AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
-| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **175 of 761** - attributes 89.7 % - on 2026-10-12 with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
+| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **202 of 761** - attributes 92.7 %, elements 95.3 % - on 2026-10-12 with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
 | both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped); **111 of 130** on 2026-10-12, 4 skipped - the 15 failures (user events, control references as event sources, a class constant, the live-event tests) fail identically with the reader before that night's fixes |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
@@ -2104,6 +2104,17 @@ and the same holds for loop tunnels and disable structures. That frame's `sRN` m
 
 Over the 761: **190 identical** (175), elements 95.3 % (91.2), attributes 90.9 %, tunnel facts
 wrong 1 046 (2 943). The round trip stays at 111 of 130 with the same 15 failures.
+
+**A property node's heap keeps the name the node was SHOWN with, and NI's export writes the long
+one** - `HasConditionalTerm` / `Has Conditional Terminal?`, `App.ContextName` / `Application:Context
+Name`, `TSFlatSeq` / `Embedded Flat Sequence`, and `Properties:Name` where NI writes `Name`. The
+reader mapped names through the harvested table, which knows a long name only where some donor
+happened to show it. `learn_prop_names.py` pairs each heap property item with the same node's
+`fields` in NI's export, by its CODE: 280 VIs, 1 229 items, **310 code paths, every pair agreeing**
+(`parts/property-export-names.json`). It learns LabVIEW's own codes only: below 0x10000 a code is an
+ActiveX or .NET dispatch id, unique within its class - 572 was `{LV.VI}`'s Block Diagram in 17 pairs
+and an Excel `Workbooks` in 2, the seven disputes of the first run all of that kind. Over the 761:
+**202 identical** (190), attributes 92.7 %, wires 87.2 %; the round trip unchanged.
 
 ## 8. Files
 
