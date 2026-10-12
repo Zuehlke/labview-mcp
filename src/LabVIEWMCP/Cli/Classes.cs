@@ -137,8 +137,9 @@ internal static class Classes
         }
 
         var stopwatch = Stopwatch.StartNew();
-        var (text, removed, strayNames) = ClassTools.StripHelperItems(File.ReadAllText(projectPath));
-        if (removed > 0) File.WriteAllText(projectPath, text);
+        var (projectText, projectStyle) = LvTextFile.Read(projectPath);
+        var (text, removed, strayNames) = ClassTools.StripHelperItems(projectText);
+        if (removed > 0) LvTextFile.Write(projectPath, text, projectStyle);
         Console.Error.WriteLine($"  stripped {removed} helper item(s) from the .lvproj");
         foreach (var stray in strayNames) Console.Error.WriteLine($"    - {stray}");
 

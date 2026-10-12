@@ -270,7 +270,7 @@ internal sealed class CloseTools(LvaiConnection connection)
     /// file is not ours to rewrite: nothing was saved, so nothing was adopted, and editing it
     /// would be acting on a run that did not occur.
     /// </summary>
-    private static JsonObject SweepClosedProject(string projectPath)
+    internal static JsonObject SweepClosedProject(string projectPath)
     {
         var full = Path.GetFullPath(projectPath);
         if (!File.Exists(full))
@@ -283,9 +283,9 @@ internal sealed class CloseTools(LvaiConnection connection)
 
         try
         {
-            var (tidied, removed, names) = ClassTools.StripHelperItems(
-                File.ReadAllText(full), full);
-            if (removed > 0) File.WriteAllText(full, tidied);
+            var (projectText, projectStyle) = LvTextFile.Read(full);
+            var (tidied, removed, names) = ClassTools.StripHelperItems(projectText, full);
+            if (removed > 0) LvTextFile.Write(full, tidied, projectStyle);
 
             // A FILE LISTED TWICE MAKES THE NEXT OPEN FAIL with `Error 74` and load nothing, so a
             // close must not leave one behind. Measured 2026-09-25 on the ATM cold build: this

@@ -357,8 +357,12 @@ LabVIEW-saved file is otherwise noise:
 - **`Property` elements are alphabetically sorted** by `Name` within their block — 183/183
   blocks.
 
-LabVIEW writes tab indentation and CRLF line endings. Neither matters: a hand-written file with
-**bare LF, no BOM and UTF-8** parsed and loaded correctly (verified on LabVIEW 2026). Empty
+LabVIEW writes tab indentation, a UTF-8 BOM and CRLF line endings. None of them matters for
+loading: a hand-written file with **bare LF, no BOM and UTF-8** parsed and loaded correctly
+(verified on LabVIEW 2026). They matter for the DIFF: the server's own edits of a `.lvproj`,
+`.lvclass` or `.lvlib` dropped the BOM until 2026-10-12, so every edit showed up as a whole-file
+change against LabVIEW's next save. Every such write now goes through `Infra/LvTextFile.cs`, which
+keeps the BOM and line endings the file has and gives a NEW file LabVIEW's own BOM + CRLF. Empty
 string values are written as `<Property …></Property>`, not self-closed.
 
 ## 9. Generation recipes

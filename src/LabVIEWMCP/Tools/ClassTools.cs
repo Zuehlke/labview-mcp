@@ -1305,7 +1305,7 @@ internal sealed class ClassTools(LvaiConnection connection)
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         // An EMPTY project, not one listing the class: LabVIEW opens a modal search dialog for a
         // project item whose file is not there yet, and a modal dialog stops the gRPC service.
-        if (!File.Exists(full)) File.WriteAllText(full, LvClass.Project([], lvVersion));
+        if (!File.Exists(full)) LvTextFile.WriteNew(full, LvClass.Project([], lvVersion));
 
         // The parent is listed for the READER's benefit - a hierarchy the project does not show is
         // confusing - not because anything in the run needs it there.
@@ -1332,7 +1332,7 @@ internal sealed class ClassTools(LvaiConnection connection)
         if (projectPath is not { Length: > 0 })
         {
             var scratchPath = Path.Combine(work, $"{className}-loadcheck.lvproj");
-            File.WriteAllText(scratchPath, LvClass.Project(ParentEntry(scratchPath), lvVersion));
+            LvTextFile.WriteNew(scratchPath, LvClass.Project(ParentEntry(scratchPath), lvVersion));
             return (scratchPath, true, new JsonObject
             {
                 ["step"] = "project",
@@ -1350,7 +1350,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
         if (!File.Exists(full))
         {
-            File.WriteAllText(full, LvClass.Project(ParentEntry(full), lvVersion));
+            LvTextFile.WriteNew(full, LvClass.Project(ParentEntry(full), lvVersion));
             return (full, false, new JsonObject
             {
                 ["step"] = "project",
@@ -1527,9 +1527,9 @@ internal sealed class ClassTools(LvaiConnection connection)
             // helper and carrier end up listed in the user's project. Measured on the first live
             // run of this route: three stray VIs, one of them from an earlier session. They are
             // stripped here rather than left for the reader to notice.
-            var (tidied, removed, strayNames) = StripHelperItems(
-                File.ReadAllText(projectPath), projectPath);
-            if (removed > 0) File.WriteAllText(projectPath, tidied);
+            var (projectText, projectStyle) = LvTextFile.Read(projectPath);
+            var (tidied, removed, strayNames) = StripHelperItems(projectText, projectPath);
+            if (removed > 0) LvTextFile.Write(projectPath, tidied, projectStyle);
 
             return new JsonObject
             {
@@ -2577,9 +2577,10 @@ internal sealed class ClassTools(LvaiConnection connection)
         {
             try
             {
-                var (stripped, count, _) = StripHelperItems(File.ReadAllText(project), project);
+                var (projectText, projectStyle) = LvTextFile.Read(project);
+                var (stripped, count, _) = StripHelperItems(projectText, project);
                 removed = count;
-                if (removed > 0) File.WriteAllText(project, stripped);
+                if (removed > 0) LvTextFile.Write(project, stripped, projectStyle);
             }
             catch (Exception failure) { tidyError = failure.Message; }
         }

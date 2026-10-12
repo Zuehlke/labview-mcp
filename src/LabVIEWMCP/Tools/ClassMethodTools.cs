@@ -1339,11 +1339,14 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         if (wanted.Count == 0) return [];
 
         string text;
-        try { text = File.ReadAllText(classPath); }
+        LvTextFile.Style style;
+        try { (text, style) = LvTextFile.Read(classPath); }
         catch (IOException) { return []; }
         catch (UnauthorizedAccessException) { return []; }
 
         // Split on '\n' only, so each element keeps any '\r' it had and the join is byte-exact.
+        // The LINE ENDINGS were therefore always kept; what was lost until 2026-10-12 was the BOM,
+        // which File.ReadAllText strips and File.WriteAllText never writes.
         var lines = text.Split('\n');
         var kept = new List<string>(lines.Length);
         var removed = new List<string>();
@@ -1388,7 +1391,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         // An unterminated block means the file is not what we parsed. Leave it alone.
         if (dropping is not null || removed.Count == 0) return [];
 
-        try { File.WriteAllText(classPath, string.Join("\n", kept)); }
+        try { LvTextFile.Write(classPath, string.Join("\n", kept), style); }
         catch (IOException) { return []; }
         catch (UnauthorizedAccessException) { return []; }
         return removed;

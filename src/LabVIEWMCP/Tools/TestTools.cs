@@ -1774,9 +1774,9 @@ internal sealed class TestTools(LvaiConnection connection)
                 ? LvClass.AddVisToProject(projectPath, folderName, entries)
                 : 0;
 
-            var (tidied, removed, _) = ClassTools.StripHelperItems(
-                await File.ReadAllTextAsync(projectPath, ct), projectPath);
-            if (removed > 0) await File.WriteAllTextAsync(projectPath, tidied, ct);
+            var (projectText, projectStyle) = LvTextFile.Read(projectPath);
+            var (tidied, removed, _) = ClassTools.StripHelperItems(projectText, projectPath);
+            if (removed > 0) await LvTextFile.WriteAsync(projectPath, tidied, projectStyle, ct);
 
             // AND NO FILE LISTED TWICE, whoever wrote the second entry: that project answers
             // `Error 74` on the next open. AddVisToProject never adds one; this repairs one made

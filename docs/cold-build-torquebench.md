@@ -225,7 +225,9 @@ by that call's own save, so nothing anybody chose is overridden. `movedIntoFolde
 - **The `.lvproj` lost its UTF-8 BOM.** LabVIEW writes one (`EF BB BF`); after our rewrites
   `TorqueBench.lvproj` begins `<?x` while a LabVIEW-written `FilterBench.lvproj` still has the BOM.
   Line endings survived (22 CRLF, 0 bare LF). Cosmetic — LabVIEW restores it on its next save — but
-  it is a silent deviation from what LabVIEW itself produces, and nothing reports it.
+  it is a silent deviation from what LabVIEW itself produces, and nothing reports it. **Fixed
+  2026-10-12**: every `.lvproj`/`.lvclass`/`.lvlib` write goes through `Infra/LvTextFile.cs`, which
+  keeps the BOM, and a guard test fails on a writer that bypasses it.
 - **`dwarnCount` SATURATED**, 73 → **100** with `dwarnCountSaturated: true`. That is a **floor, not a
   magnitude**: the honest delta is **≥ +27** and the true figure is not recoverable from this
   reading. It stood at 80 after the class build and took the rest during two *concurrent* Caraya
