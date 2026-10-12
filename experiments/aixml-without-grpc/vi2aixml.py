@@ -1126,14 +1126,16 @@ class Reader:
             kind = self.event_kinds().get(int(sp.findtext("type") or 0), "?")
             ddo = sp.findtext("ddoUID") or "0"
             ctl = self.ctl_by_ddo.get(ddo) if ddo != "0" else None
+            # NI's selector names a control TRIMMED: `"Stop Button"` for a label padded with blanks
+            src = '"%s"' % ctl.get("_name").strip() if ctl is not None else None
             lst = items.setdefault(di, [])
-            if ctl is not None and lst and lst[-1][1] == kind and lst[-1][0]:
+            if src and lst and lst[-1][1] == kind and lst[-1][0]:
                 # the same event on the next control: ONE item listing its sources, as NI writes
                 # it (' "Numeric Control", "Stop", "Waveform": Mouse Enter ', Handling Mouse
                 # Events.vi) and aixml2vi.event_items reads it
-                lst[-1][0].append('"%s"' % ctl.get("_name"))
+                lst[-1][0].append(src)
             else:
-                lst.append(([('"%s"' % ctl.get("_name"))] if ctl is not None else [], kind))
+                lst.append(([src] if src else [], kind))
         # events are separated by ';' as NI's exporter writes them - a ',' separates SOURCES of
         # one event (aixml2vi.event_items), so joining with ',' made NI's Graph Events.vi frame
         # read back as one source list ending in 'Autoscale Range Change: Cursor Release'
@@ -1206,22 +1208,29 @@ class Reader:
             sel_tree = sel_tree.find("TypeDesc")
         st = (sel_tree.get("Type") if sel_tree is not None else "") or ""
         labels = [e.text or "" for e in sel_tree.findall("EnumLabel")] if sel_tree is not None else []
-        for r in node.findall("SelectRangeArray32/SL__arrayElement"):
+        ranges = node.findall("SelectRangeArray32/SL__arrayElement")
+        # an ERROR case has two encodings (error_case_survey.py over 73 VIs, no exception): on the
+        # STATUS - ranges 0 and 1, "No Error" / "Error" - and on the CODE, marked by INT_MIN or
+        # INT_MAX somewhere: "No Error" is INT_MIN..INT_MIN, "Error .." INT_MIN..INT_MAX open at
+        # both ends, "Error 1..5" a closed range, "Error 6, 10, 20" three single codes with the
+        # prefix written ONCE (Case Structure - Selector Data Types.vi)
+        on_code = any(int(r.findtext(k) or 0) in (INT_MIN, INT_MAX) for r in ranges for k in ("start", "end"))
+        code_items = {}
+        for r in ranges:
             di = int(r.findtext("diagramIdx") or 0)
             s, e = int(r.findtext("start") or 0), int(r.findtext("end") or 0)
             stt, ett = int(r.findtext("startRangeType") or 0), int(r.findtext("endRangeType") or 0)
             if st == "Boolean":
                 txt = "True" if s else "False"
             elif st == "Cluster":
-                # two encodings: a range on the code (No Error ends at INT_MIN, the other frame is
-                # "Error ..") and a plain 0/1 pair, which NI exports as "No Error" and "Error"
-                # (MGI's Read Number of children.vi) - 81 of 104 error cases in NI's exports
-                if e == INT_MIN or (stt == ett == 0 and s == e == 0):
+                if (on_code and e == INT_MIN) or (not on_code and stt == ett == 0 and s == e == 0):
                     txt = "No Error"
-                elif stt == ett == 0 and s == e == 1:
+                elif not on_code and stt == ett == 0 and s == e == 1:
                     txt = "Error"
                 else:
-                    txt = "Error .."
+                    code_items.setdefault(di, []).append(
+                        str(s) if stt == ett == 0 else "%s..%s" % (str(s) if stt != 3 else "", str(e) if ett != 3 else ""))
+                    continue
             else:
                 def val(v):
                     if st == "String":
@@ -1235,6 +1244,12 @@ class Reader:
                 else:
                     txt = "%s..%s" % (val(s) if stt != 3 else "", val(e) if ett != 3 else "")
             items.setdefault(di, []).append(txt)
+        for di, ci in code_items.items():
+            items.setdefault(di, []).extend(["Error " + ci[0]] + ci[1:])
+        if st == "Boolean" and not ranges and len(frames) == 2:
+            # a boolean case may carry NO range list at all: frame 0 is False, frame 1 True in
+            # NI's export (OpenG's Message and Response Example.vi)
+            items[0], items[1] = ["False"], ["True"]
         dflt = node.findtext("SelectDefaultCase")
         if dflt is None and st not in ("Boolean", "Cluster"):
             # ABSENT means frame 0: LabVIEW writes 01, 02, 03 or FF (no default) and never 00 -
