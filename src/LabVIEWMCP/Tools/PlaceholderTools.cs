@@ -32,7 +32,11 @@ namespace LabVIEWMcp.Tools;
 /// while a double one runs clean. So one generic placeholder cannot serve every signature, and
 /// generating one per signature beats installing a catalogue of shapes.
 ///
-/// The cache is keyed on the signature, so a second VI with the same pane reuses the first's stub.
+/// The cache is keyed on the signature - the TARGET's identity plus its pane - so a second call for
+/// the same VI with an unchanged pane reuses its stub, and two VIs never share one. They did until
+/// 2026-10-11, keyed on the pane alone: two Actor Framework methods with identical panes, or methods
+/// of two different classes (an export writes every class as bare `ref{UDClassInst}`), got ONE stub,
+/// and lvai_swap_subvis, matching by VI name, could not tell their nodes apart.
 /// </summary>
 [McpServerToolType]
 internal sealed class PlaceholderTools(LvaiConnection connection)
@@ -56,9 +60,16 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
         a loose VI in a plain folder under user.lib resolves by bare name, measured. Uninstall by
         deleting the folder. If the folder cannot be written the answer says so rather than
         failing obscurely; the station may need the directory created by hand once.
-        CACHED BY SIGNATURE: the stub name is a hash of the terminal names, types, conIdx and
-        direction, so two VIs with the same pane share one stub and a second call for the same VI
-        writes nothing. Pass refresh to regenerate anyway.
+        CACHED PER TARGET: the stub name is a hash of the SUBJECT's identity - its qualified name, or
+        its full path when it has none - plus the terminal names, types, conIdx and connection. So a
+        second call for the same VI with an unchanged pane writes nothing, and two VIs NEVER share a
+        stub. They did until 2026-10-11, keyed on the pane alone: two Actor Framework methods with
+        identical panes, or methods of different classes (an export writes every class as bare
+        `ref{UDClassInst}`), got ONE socket, and lvai_swap_subvis could not tell their nodes apart.
+        Stubs cached under the old key are left where they are. Pass refresh to regenerate anyway.
+        A CLASS INSIDE A CLUSTER keeps its cluster: `cluster{ref{UDClassInst}.hardware,uint32.n}`
+        becomes `cluster{path.hardware,uint32.n}` - only the element is the stand-in - where it
+        used to collapse the whole terminal to `path`. Named under `classElementsInClusters`.
         THE CLONE IS EXACT ON PURPOSE. A generic Variant placeholder does NOT work: the pane's type
         descriptor is part of the link binding, and retargeting a Variant stub onto a double VI
         gives `Error 7, Bad Linkage`. Measured on a controlled pair.
@@ -230,7 +241,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
                     $"'{subject.ViName}' has no terminals on its connector pane, so a call to it " +
                     "carries no wires and needs no placeholder.");
 
-            var signature = Signature(subject);
+            var signature = Signature(subject, viPath);
             var stubName = $"LVMCP Stub {Hash(signature)}.vi";
             var stubPath = Path.Combine(folder, stubName);
             var existed = File.Exists(stubPath);
@@ -251,7 +262,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             // the run was green with bind_typedef_constants never called. Reporting a repair that
             // must not happen reads as a skipped step, so those terminals are removed here and
             // counted separately.
-            _ = CloneTerminals(subjectXml, out var classTerminals);
+            _ = CloneTerminals(subjectXml, out var classTerminals, out var classElements);
             var classTerminalSet = new HashSet<string>(classTerminals, StringComparer.OrdinalIgnoreCase);
             var suppressedTypedefs = 0;
             if (typedefs is not null && classTerminalSet.Count > 0)
@@ -339,6 +350,25 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
                     "which RE-TYPES THE WIRES; a pylabview link retarget on this socket would " +
                     "answer Error 7, Bad Linkage. Wire the stand-in like any other terminal and " +
                     "let the swap correct the type.";
+            }
+
+            // A CLASS INSIDE A CLUSTER keeps its cluster, so the caller can wire one - and the
+            // half the swap does NOT do is said here rather than discovered: the CALLER's own
+            // cluster still carries the stand-in element after the swap.
+            if (classElements.Count > 0)
+            {
+                answer["classElementsInClusters"] = new JsonArray([.. classElements.Select(e =>
+                    (JsonNode)new JsonObject { ["terminal"] = e.Terminal, ["element"] = e.Element })]);
+                answer["classElementNote"] =
+                    $"{classElements.Count} class element(s) sit INSIDE a cluster on this pane and are " +
+                    "`path` stand-ins in the socket's cluster, the cluster itself kept - where the " +
+                    "whole terminal used to collapse to `path`. So the caller can wire a cluster. " +
+                    "AFTER THE SWAP the caller's own cluster source still carries a `path` element " +
+                    "where the real subVI wants the class: for a pane CONTROL follow up with " +
+                    "lvai_bind_pane_typedef; for a cluster CONSTANT, lvai_swap_subvis with the " +
+                    "typedef's `.ctl` path as that constant's `class` in constantsJson, which turns a " +
+                    "bare cluster constant into a typedef constant (observed in a field run, not yet " +
+                    "measured here).";
             }
 
             if (!existed || refresh)
@@ -440,7 +470,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             // loose VI retargeted the same way in the same session: execState 1, 0 coercion dots.
             // The correct advice was already in `classTerminalNote`, one field further up, which is
             // exactly the shape this repository keeps paying for.
-            answer["note"] = classTerminals.Count > 0
+            answer["note"] = classTerminals.Count > 0 || classElements.Count > 0
                 ? "Author the new VI with the `call` element above and generate it - then repoint " +
                   "the call with lvai_swap_subvis, NOT with the `retarget` below. This subject " +
                   "carries a LabVIEW class, so it is a class MEMBER: a pylabview link retarget " +
@@ -542,9 +572,26 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     /// The names of the terminals whose class type was replaced by <c>path</c>, in pane order.
     /// </param>
     internal static IEnumerable<string> CloneTerminals(string subjectXml,
-                                                       out List<string> classTerminals)
+                                                       out List<string> classTerminals) =>
+        CloneTerminals(subjectXml, out classTerminals, out _);
+
+    /// <summary>A class element found INSIDE a cluster terminal and made a <c>path</c> stand-in.</summary>
+    internal sealed record ClassElement(string Terminal, string Element);
+
+    /// <inheritdoc cref="CloneTerminals(string)"/>
+    /// <param name="classTerminals">
+    /// The names of the terminals whose WHOLE type became <c>path</c>, in pane order.
+    /// </param>
+    /// <param name="classElements">
+    /// The class elements inside a cluster terminal that became <c>path</c> while the cluster was
+    /// kept, as (terminal, element path) - see <see cref="RewriteClassElements"/>.
+    /// </param>
+    internal static IEnumerable<string> CloneTerminals(string subjectXml,
+                                                       out List<string> classTerminals,
+                                                       out List<ClassElement> classElements)
     {
         classTerminals = [];
+        classElements = [];
         var cloned = new List<string>();
         var root = System.Xml.Linq.XElement.Parse(subjectXml);
         foreach (var element in root.Descendants()
@@ -558,7 +605,29 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
             if (clone.Attribute("uid_parent") is not null)
                 clone.SetAttributeValue("uid_parent", "root");
 
-            if (IsClassType(clone.Attribute("type")?.Value))
+            // A CLASS INSIDE A CLUSTER IS REPLACED AT THE ELEMENT, and the cluster stays. This
+            // used to test the WHOLE type string for UDClassInst, so
+            // `cluster{ref{UDClassInst}.hardware,uint32.intervalMs}` became a scalar `path` and a
+            // caller authored against the socket could not wire its cluster at all. The cluster's
+            // `value` literal is kept: a class element's literal is empty, as a path's is - all 25
+            // class terminals in the local export cache carry value="". Anything the rewrite cannot
+            // express (a class inside a refnum payload, an array of classes outside any cluster)
+            // falls back to the whole-terminal stand-in below, exactly as before.
+            var type = clone.Attribute("type")?.Value;
+            if (!IsClassType(type) && ContainsClassType(type))
+            {
+                var found = new List<string>();
+                if (RewriteClassElements(type!, found) is { } rewritten && found.Count > 0)
+                {
+                    clone.SetAttributeValue("type", rewritten);
+                    var terminal = clone.Attribute("_name")?.Value ?? "(unnamed)";
+                    classElements.AddRange(found.Select(e => new ClassElement(terminal, e)));
+                    cloned.Add(clone.ToString(System.Xml.Linq.SaveOptions.DisableFormatting));
+                    continue;
+                }
+            }
+
+            if (ContainsClassType(type))
             {
                 clone.SetAttributeValue("type", "path");
                 clone.SetAttributeValue("value", "");
@@ -585,12 +654,72 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     }
 
     /// <summary>
-    /// Whether an AIXML type string names a LabVIEW class instance. Matched as a substring rather
-    /// than for equality because a refnum type can carry a payload, and the whole family is refused
-    /// by the generator the same way.
+    /// Whether an AIXML type string IS a LabVIEW class instance - the whole terminal, not one
+    /// element of it. It matched a substring until 2026-10-11, which made every cluster that merely
+    /// CONTAINED a class read as one; <see cref="ContainsClassType"/> is that wider question now.
     /// </summary>
     internal static bool IsClassType(string? type) =>
+        type is not null && type.TrimStart().StartsWith("ref{UDClassInst}", StringComparison.Ordinal);
+
+    /// <summary>Whether a class instance appears ANYWHERE in the type - the family the generator refuses.</summary>
+    internal static bool ContainsClassType(string? type) =>
         type is not null && type.Contains("UDClassInst", StringComparison.Ordinal);
+
+    /// <summary>
+    /// The type with every class MEMBER of a cluster - at any depth, through nested clusters and
+    /// arrays of clusters - written as <c>path</c>, or null when a class sits somewhere this cannot
+    /// express (a refnum payload, an array of classes outside any cluster, the whole type itself).
+    /// <paramref name="found"/> collects each replaced element as a path: <c>hardware</c>,
+    /// <c>inner.hw</c>, and <c>[]</c> for an array level (<c>items[].hw</c>).
+    ///
+    /// The grammar is docs/aixml-reference.md section 5: <c>cluster{TYPE.Name,...}</c> with members
+    /// split on the commas at brace depth zero, <c>array{ELEM}</c> and <c>array.N{ELEM}</c>, and a
+    /// member's name is what follows the first dot after its last closing brace. Those three
+    /// splitters are <see cref="TestTools"/>' own, shared rather than copied.
+    /// </summary>
+    internal static string? RewriteClassElements(string type, List<string> found) =>
+        Rewrite(type.Trim(), inCluster: false, at: "", found);
+
+    private static string? Rewrite(string type, bool inCluster, string at, List<string> found)
+    {
+        if (IsClassType(type))
+        {
+            if (!inCluster) return null;
+            found.Add(at.Length == 0 ? "(element)" : at);
+            return "path";
+        }
+        if (!ContainsClassType(type)) return type;
+
+        if (type.StartsWith("cluster{", StringComparison.Ordinal) && type.EndsWith('}')
+            && TestTools.Braced(type) is { } members)
+        {
+            var rebuilt = new List<string>();
+            foreach (var member in TestTools.SplitTopLevel(members))
+            {
+                var memberType = TestTools.FieldType(member);
+                var name = member.Length > memberType.Length ? member[(memberType.Length + 1)..] : "";
+                if (Rewrite(memberType, inCluster: true, Join(at, name), found) is not { } r) return null;
+                rebuilt.Add(name.Length > 0 ? $"{r}.{name}" : r);
+            }
+            return "cluster{" + string.Join(",", rebuilt) + "}";
+        }
+
+        if ((type.StartsWith("array{", StringComparison.Ordinal) ||
+             type.StartsWith("array.", StringComparison.Ordinal)) && type.EndsWith('}')
+            && TestTools.Braced(type) is { } element)
+        {
+            var head = type[..type.IndexOf('{')];
+            var elementType = TestTools.FieldType(element);
+            var name = element.Length > elementType.Length ? element[(elementType.Length + 1)..] : "";
+            if (Rewrite(elementType, inCluster, at + "[]", found) is not { } r) return null;
+            return head + "{" + (name.Length > 0 ? $"{r}.{name}" : r) + "}";
+        }
+
+        return null;
+    }
+
+    private static string Join(string at, string name) =>
+        at.Length == 0 ? name : name.Length == 0 ? at : $"{at}.{name}";
 
     /// <summary>A `Call` to the placeholder, carrying the SUBJECT's pane terminal names.</summary>
     internal static string CallElement(string stubName, ViTerminals.Result subject)
@@ -672,14 +801,34 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     /// this cache. `refresh` was the only way out, and nothing pointed at it.
     ///
     /// AND ONLY THE PANE IS IN IT - a front-panel object with no conIdx is not part of what binds,
-    /// and the stub no longer carries one (2026-10-12). A pane with no such object keeps the hash
-    /// it always had, so its cached stub is still found.
+    /// and the stub no longer carries one (2026-10-12).
+    ///
+    /// AND THE TARGET'S IDENTITY IS IN THE KEY, since 2026-10-11. Without it two subjects with the
+    /// same pane shared one stub - two Actor Framework methods (`ROOT in`, `error in`, `ROOT out`,
+    /// `error out`), or methods of two different classes, because the export writes every class as
+    /// bare `ref{UDClassInst}` - and lvai_swap_subvis, which matches by VI name, could not tell
+    /// their nodes apart. The identity is the export's library-qualified name when it has one
+    /// (`Channel.lvclass:Write Config.vi`), else the subject's full path, else its bare name.
+    /// Every stub cached under an older key stays in user.lib\LV_MCP\ and is simply no longer chosen.
     /// </summary>
-    internal static string Signature(ViTerminals.Result subject) =>
+    internal static string Signature(ViTerminals.Result subject, string? subjectPath = null) =>
         string.Join("|",
-            subject.PaneInputs.Select(t => $"i:{t.Name}:{t.Type}:{t.ConIdx}:{t.Connection}")
-                  .Concat(subject.PaneOutputs
-                      .Select(t => $"o:{t.Name}:{t.Type}:{t.ConIdx}:{t.Connection}")));
+            new[] { "t:" + Identity(subject, subjectPath) }
+                .Concat(subject.PaneInputs.Select(t => $"i:{t.Name}:{t.Type}:{t.ConIdx}:{t.Connection}"))
+                .Concat(subject.PaneOutputs
+                    .Select(t => $"o:{t.Name}:{t.Type}:{t.ConIdx}:{t.Connection}")));
+
+    /// <summary>
+    /// Which VI a stub stands for. A qualified name is the in-memory identity and survives a move
+    /// of the file; a loose VI has only its path, normalised because Windows paths are
+    /// case-insensitive and a caller may spell one either way.
+    /// </summary>
+    internal static string Identity(ViTerminals.Result subject, string? subjectPath) =>
+        subject.ViName.Contains(':', StringComparison.Ordinal)
+            ? subject.ViName
+            : subjectPath is { Length: > 0 }
+                ? Path.GetFullPath(subjectPath).ToUpperInvariant()
+                : subject.ViName;
 
     private static string Hash(string signature) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(signature)))[..10].ToLowerInvariant();

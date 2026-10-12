@@ -308,9 +308,25 @@ placeholder is never executed; it exists only so that there is something to repo
 ### Generate the placeholder, do not hunt for one
 
 **`lvai_placeholder_subvi` does all of this in one call.** Hand it the subject; it exports the
-subject's pane, hashes the signature, generates the stub into `user.lib\LV_MCP\` only if that
-signature has none yet, and answers with the bare name, a ready-to-paste `Call` element carrying
-the subject's own terminal names, and the `retarget` operation to hand `pylv_apply`. Verified end
+subject's pane, hashes the subject's IDENTITY together with the signature, generates the stub into
+`user.lib\LV_MCP\` only if that target has none yet, and answers with the bare name, a
+ready-to-paste `Call` element carrying the subject's own terminal names, and the `retarget`
+operation to hand `pylv_apply`.
+
+**ONE STUB PER TARGET, since 2026-10-11.** The cache key used to be the pane alone - names, types,
+`conIdx`, connection - so two subjects with identical panes shared one stub. For accessors that
+never bit (field names differ), but two Actor Framework methods with `ROOT in`, `error in`,
+`ROOT out`, `error out`, or methods of two different classes - an export writes every class as bare
+`ref{UDClassInst}` - got ONE socket, and `lvai_swap_subvis`, which matches nodes by VI name, could
+not tell them apart. The identity is the export's qualified name (`Channel.lvclass:Write Config.vi`)
+when it has one, else the subject's full path (case-normalised), else its bare name. The same
+subject with an unchanged pane still reuses its stub; stubs made under the old key are left in the
+folder and no longer chosen. NOT YET MEASURED against LabVIEW - the change is to the cache key, which
+LabVIEW never sees, but the two-method swap is the acceptance to run.
+
+**A class inside a cluster stays inside its cluster** - `cluster{path.hardware,uint32.intervalMs}`,
+listed under `classElementsInClusters` - where the whole terminal used to collapse to `path`. The
+caller's own cluster still needs binding after the swap: `docs/typedef-constants.md` §5a. Verified end
 to end 2026-08-27: first call `installed: true`, second `reused: true` with nothing written, and
 the resulting test ran `tests="3" failures="0"`. The rest of this section is what it does and why,
 which is worth knowing when it reports something unexpected.

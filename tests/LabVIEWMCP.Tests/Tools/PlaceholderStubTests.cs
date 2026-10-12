@@ -125,16 +125,152 @@ public sealed class PlaceholderStubTests
         Assert.NotEqual(PlaceholderTools.Signature(Subject()), PlaceholderTools.Signature(relaxed));
     }
 
+    /// <summary>
+    /// ONE STUB PER TARGET, since 2026-10-11. This asserted the opposite until then - "the stub is
+    /// about the pane alone, so these two subjects must share one placeholder" - and that sharing is
+    /// what made two methods with identical panes indistinguishable to lvai_swap_subvis, which
+    /// matches nodes by VI name. Same pane, different VI: different stubs.
+    /// </summary>
     [Fact]
-    public void TheSameePaneGivesTheSameSignature_WhichIsWhatMakesTheCacheHit()
+    public void TwoSubjectsWithTheSamePaneGetDifferentStubs()
     {
-        // Same pane, different VI name and different diagram: the stub is about the pane alone,
-        // so these two subjects must share one placeholder rather than generating two.
         var other = ViTerminals.Parse(
             SubjectXml.Replace("Celsius To Fahrenheit.vi", "Something Else.vi")
                       .Replace("value=\"1.8\"", "value=\"2.5\""))!;
 
-        Assert.Equal(PlaceholderTools.Signature(Subject()), PlaceholderTools.Signature(other));
+        Assert.NotEqual(PlaceholderTools.Signature(Subject()), PlaceholderTools.Signature(other));
+    }
+
+    /// <summary>The cache still hits for the SAME target with an unchanged pane, however its path is spelt.</summary>
+    [Fact]
+    public void TheSameSubjectTwiceGivesTheSameSignature_WhichIsWhatMakesTheCacheHit()
+    {
+        Assert.Equal(PlaceholderTools.Signature(Subject(), @"C:\proj\Celsius To Fahrenheit.vi"),
+                     PlaceholderTools.Signature(Subject(), @"c:\PROJ\.\Celsius To Fahrenheit.vi"));
+    }
+
+    /// <summary>Two loose VIs of one name in two folders are two targets.</summary>
+    [Fact]
+    public void TheSameFileNameInTwoFoldersIsTwoTargets() =>
+        Assert.NotEqual(PlaceholderTools.Signature(Subject(), @"C:\a\Celsius To Fahrenheit.vi"),
+                        PlaceholderTools.Signature(Subject(), @"C:\b\Celsius To Fahrenheit.vi"));
+
+    /// <summary>
+    /// The field case: two Actor Framework methods whose panes are identical - and, because the
+    /// export writes every class as bare `ref{UDClassInst}`, even methods of two DIFFERENT classes
+    /// are identical by type. Their qualified names are what tells them apart.
+    /// </summary>
+    [Fact]
+    public void TwoMethodsWithIdenticalPanesGetDifferentStubs()
+    {
+        const string pane = """
+            <VI _name="{0}" description="An AF method.">
+              <Control _name="ROOT in" conIdx="0" connection="dynamic" outputs="value:" type="ref{UDClassInst}" uid="4200" uid_parent="root" value=""/>
+              <Control _name="error in" conIdx="3" connection="recommended" outputs="value:" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+              <Indicator _name="ROOT out" conIdx="8" connection="dynamic" inputs="value:" type="ref{UDClassInst}" uid="4202" uid_parent="root" value=""/>
+              <Indicator _name="error out" conIdx="11" connection="recommended" inputs="value:" type="cluster{bool.status,int32.code,string.source}" uid="4203" uid_parent="root" value="[false,0,]"/>
+            </VI>
+            """;
+        var start = ViTerminals.Parse(pane.Replace("{0}", "Root.lvclass:Start.vi"))!;
+        var stop = ViTerminals.Parse(pane.Replace("{0}", "Root.lvclass:Stop.vi"))!;
+        var other = ViTerminals.Parse(pane.Replace("{0}", "Other.lvclass:Start.vi"))!;
+
+        Assert.NotEqual(PlaceholderTools.Signature(start, @"C:\r\Start.vi"),
+                        PlaceholderTools.Signature(stop, @"C:\r\Stop.vi"));
+        Assert.NotEqual(PlaceholderTools.Signature(start, @"C:\r\Start.vi"),
+                        PlaceholderTools.Signature(other, @"C:\o\Start.vi"));
+        // The qualified name is the identity, so the path does not split one member in two.
+        Assert.Equal(PlaceholderTools.Signature(start, @"C:\r\Start.vi"),
+                     PlaceholderTools.Signature(start, @"D:\moved\Start.vi"));
+    }
+
+    // ------------------------------------------------------- a class inside a cluster, 2026-10-11
+
+    /// <summary>The field case: a cluster of a class and a U32 kept its class as a scalar `path`.</summary>
+    [Fact]
+    public void AClassInsideAClusterIsReplacedAtTheElementOnly()
+    {
+        var found = new List<string>();
+        var rewritten = PlaceholderTools.RewriteClassElements(
+            "cluster{ref{UDClassInst}.hardware,uint32.intervalMs}", found);
+
+        Assert.Equal("cluster{path.hardware,uint32.intervalMs}", rewritten);
+        Assert.Equal(["hardware"], found);
+    }
+
+    [Fact]
+    public void ANestedClusterIsRewrittenAtEveryDepth()
+    {
+        var found = new List<string>();
+        var rewritten = PlaceholderTools.RewriteClassElements(
+            "cluster{cluster{ref{UDClassInst}.hw,int32.n}.inner,ref{UDClassInst}.log,string.name}", found);
+
+        Assert.Equal("cluster{cluster{path.hw,int32.n}.inner,path.log,string.name}", rewritten);
+        Assert.Equal(["inner.hw", "log"], found);
+    }
+
+    [Fact]
+    public void AnArrayOfClustersIsRewrittenInsideItsElement()
+    {
+        var found = new List<string>();
+        var rewritten = PlaceholderTools.RewriteClassElements(
+            "cluster{array{cluster{ref{UDClassInst}.hw,uint32.ms}.Device}.devices}", found);
+
+        Assert.Equal("cluster{array{cluster{path.hw,uint32.ms}.Device}.devices}", rewritten);
+        Assert.Equal(["devices[].hw"], found);
+    }
+
+    /// <summary>What the grammar cannot keep falls back to the whole-terminal stand-in, as before.</summary>
+    [Theory]
+    [InlineData("ref{UDClassInst}")]
+    [InlineData("array{ref{UDClassInst}}")]
+    [InlineData("cluster{ref{Queue}{ref{UDClassInst}}.q,int32.n}")]
+    public void WhatCannotBeKeptIsNotRewritten(string type) =>
+        Assert.Null(PlaceholderTools.RewriteClassElements(type, []));
+
+    private const string ClusterSubjectXml = """
+        <VI _name="Configure.vi" description="Takes a cluster of a class and a U32.">
+          <Control _name="settings" conIdx="0" connection="required" outputs="value:4200.value" type="cluster{ref{UDClassInst}.hardware,uint32.intervalMs}" uid="4200" uid_parent="root" value="[,100]"/>
+          <Indicator _name="error out" conIdx="11" connection="recommended" inputs="value:" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+        </VI>
+        """;
+
+    /// <summary>
+    /// The terminal keeps its cluster, its value literal and its connection, and is reported as a
+    /// class ELEMENT - not as a class terminal, which is the whole-path case.
+    /// </summary>
+    [Fact]
+    public void AClusterTerminalKeepsItsClusterAndIsReportedAsAnElement()
+    {
+        var terminals = PlaceholderTools.CloneTerminals(
+            ClusterSubjectXml, out var classTerminals, out var classElements).ToList();
+
+        Assert.Empty(classTerminals);
+        var element = Assert.Single(classElements);
+        Assert.Equal(new PlaceholderTools.ClassElement("settings", "hardware"), element);
+        var settings = Assert.Single(terminals, t => t.Contains("_name=\"settings\""));
+        Assert.Contains("type=\"cluster{path.hardware,uint32.intervalMs}\"", settings);
+        Assert.Contains("value=\"[,100]\"", settings);
+        Assert.Contains("connection=\"required\"", settings);
+        Assert.DoesNotContain("UDClassInst", string.Join("", terminals));
+    }
+
+    /// <summary>A whole class terminal keeps the old behaviour: `path`, and named as a class terminal.</summary>
+    [Fact]
+    public void AWholeClassTerminalIsStillAPathStandIn()
+    {
+        PlaceholderTools.CloneTerminals(AccessorXml, out var classTerminals, out var classElements);
+
+        Assert.Equal(["Brille in", "Brille out"], classTerminals);
+        Assert.Empty(classElements);
+    }
+
+    [Fact]
+    public void IsClassTypeMeansTheWholeTypeNow()
+    {
+        Assert.True(PlaceholderTools.IsClassType("ref{UDClassInst}"));
+        Assert.False(PlaceholderTools.IsClassType("cluster{ref{UDClassInst}.hardware,uint32.intervalMs}"));
+        Assert.True(PlaceholderTools.ContainsClassType("cluster{ref{UDClassInst}.hardware,uint32.intervalMs}"));
     }
 
     /// <summary>

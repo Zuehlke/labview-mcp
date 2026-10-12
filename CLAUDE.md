@@ -368,8 +368,20 @@ there is no dot and no constant — the bare type travels into whatever consumes
 `docs/typedef-constants.md` has the measurements, including why `Create Constant` alone is not the
 fix and the two traps around `Replace`.
 
+**A CLASS INSIDE A CLUSTER IS A STAND-IN AT THE ELEMENT, and the caller's own cluster still has to
+be bound afterwards.** Since 2026-10-11 `lvai_placeholder_subvi` writes
+`cluster{ref{UDClassInst}.hardware,uint32.intervalMs}` as `cluster{path.hardware,uint32.intervalMs}`
+- it collapsed the whole terminal to a scalar `path` before, so a caller could not wire its cluster
+at all - and names each such element under `classElementsInClusters`. The swap then lands, but the
+CALLER's cluster source still carries a `path` element where the real subVI wants the class. For a
+pane CONTROL the follow-up is `lvai_bind_pane_typedef`. For a cluster CONSTANT it is
+`lvai_swap_subvis` with the typedef's **`.ctl` path as that constant's `class`** in `constantsJson`:
+`{LV.Constant}` `Replace` with a `.ctl` turns a bare cluster constant into a typedef constant. That
+route was OBSERVED in a field run and is NOT YET MEASURED here - check the result with
+`lvai_coercion_dots` and `lvai_exec_state`. `docs/typedef-constants.md` §5a.
+
 The tool clones the subject's pane, caches the stub in `user.lib\LV_MCP\` under a hash of the
-signature, and hands back the `Call` element and the matching `retarget` operation. **Do not hunt
+TARGET and its signature, and hands back the `Call` element and the matching `retarget` operation. **Do not hunt
 the palette for a stand-in and do not hand-write one**: a borrowed placeholder needs a lucky hit per
 signature and forces the SUBJECT's pane to be reshaped, which then breaks on every regeneration —
 `7101, At least one test is not in a executable state`, with nothing in the message about panes.
@@ -2162,9 +2174,15 @@ placeholders cached "by signature" would give `Minimum Value`, `Maximum Value`, 
 inherited `Sample Rate` — all class + double — one indistinguishable socket. Measured the same day:
 `PlaceholderTools.Signature` puts the terminal NAME in the hash
 (`o:Minimum Value:double:2:recommended`), so those four produced four distinct stubs, and nine
-accessors produced nine. **Field names are unique within a class by construction, so accessor sockets
-cannot collide.** The collapse is real only for panes that are identical NAME INCLUDED — two methods
-with the same terminal names, not two fields with the same type.
+accessors produced nine. **For ACCESSORS that holds: field names are unique within a class, so
+their panes differ by name.** It is not general, and this paragraph read as if it were: **methods
+with identical panes DID collide until 2026-10-11** - two Actor Framework methods carrying `ROOT in`,
+`error in`, `ROOT out`, `error out`, or methods of two different classes, since an export writes
+every class as bare `ref{UDClassInst}`, got ONE stub, and `lvai_swap_subvis`, which matches by VI
+name, could not tell their nodes apart. The signature now carries the TARGET's identity - its
+qualified name, else its full path - so every subject gets its own stub, and a second call for the
+same subject with an unchanged pane still reuses its own. Stubs cached under the old key stay in
+`user.lib\LV_MCP\` and are simply no longer chosen.
 
 So a generated method CAN read its own fields, and a real HAL is reachable: measured over four DAQmx
 methods that take only the class wire and the error cluster, `socketsLeft: 0` on all four. Choose the

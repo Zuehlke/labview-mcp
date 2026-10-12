@@ -149,6 +149,32 @@ authoring rule is: *name every constant you wire into a subVI call after the ter
 
 A constant created by hand in the IDE usually has no label at all, and cannot be found this way.
 
+## 5a. A class INSIDE a cluster - the caller's cluster after the swap (2026-10-11, not yet measured)
+
+`lvai_placeholder_subvi` writes a class that is a cluster ELEMENT as a `path` element of the same
+cluster - `cluster{ref{UDClassInst}.hardware,uint32.intervalMs}` becomes
+`cluster{path.hardware,uint32.intervalMs}`, through nested clusters and arrays of clusters - and
+lists each under `classElementsInClusters` as `{terminal, element}` (`inner.hw`, `devices[].hw`).
+Until that day the whole terminal became a scalar `path`, because the class test looked for
+`UDClassInst` anywhere in the type string, so a caller authored against the socket had no cluster to
+wire. A class inside a refnum payload, or an array of classes outside any cluster, still collapses
+the whole terminal as before.
+
+The swap re-types the wires; it does NOT re-type the CALLER's own cluster source, which still
+carries the `path` element where the real subVI wants the class - the same leak §1 describes for a
+typedef, one level down. Two follow-ups, by where the cluster comes from:
+
+| caller's source | follow-up |
+|---|---|
+| a front-panel control | `lvai_bind_pane_typedef` - the constant-label route of §5 cannot reach a control |
+| a cluster constant | `lvai_swap_subvis` with `constantsJson` `[{"label":"<constant label>","class":"<path to the typedef .ctl>"}]` |
+
+The second row is `{LV.Constant}` `Replace` pointed at a `.ctl` rather than a `.lvclass`, which turns
+a bare cluster constant into an instance of that typedef. **It was observed in a field run and is
+not measured in this repository** - in particular it is not established what happens to the
+constant's value, or to a cluster the `.ctl` does not match. Check the result with
+`lvai_coercion_dots` and `lvai_exec_state` rather than trusting `constantsSwapped`.
+
 ## 6. Where the check belongs
 
 In `pylv_apply`'s **verify** step, not in `lvai_generate_vi`. At generation time the call still
