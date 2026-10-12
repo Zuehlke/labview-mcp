@@ -576,6 +576,45 @@ class Reader:
         return out
 
     @staticmethod
+    def _tunnel_ranks(node, dco_class):
+        """term uid -> its tunnel number as NI's export counts it: inputs and outputs separately,
+        in the order their INNER halves stand in the FIRST frame's sRN term list - not the order
+        of the structure's own term list, and not their position. MGI's Read Number of
+        children.vi lists the outer tunnels 164, 176, 348 (tops 203, 31, 116) and NI numbers them
+        Out2, Out1, Out3: frame 0's sRN lists their halves 174 (176's), 162 (164's), 340 (348's).
+        Empty when that list cannot be read; the caller then keeps the heap order."""
+        dl = node.find("diagramList")
+        if dl is None or not len(dl):
+            return {}
+        # the frame's OWN sRN - a nested structure's comes first in document order sometimes
+        srn = next((n for n in Reader.node_defs(dl[0]) if n.get("class") == "sRN"), None)
+        if srn is None or srn.find("termList") is None:
+            return {}
+        pos, by_dco = {}, {}
+        for i, t in enumerate(srn.find("termList")):
+            pos[t.get("uid")] = i
+            if t.find("dco") is not None:
+                # a half may name its tunnel's DCO instead of being listed by it (commentTun)
+                by_dco.setdefault(t.find("dco").get("uid"), i)
+        tuns = []
+        for term in node.find("termList") if node.find("termList") is not None else []:
+            d = term.find("dco")
+            if d is None or d.get("class") != dco_class:
+                continue
+            halves = [pos[x.get("uid")] for x in (d.find("termList") if d.find("termList") is not None else [])
+                      if x.get("uid") in pos]
+            if d.get("uid") in by_dco:
+                halves.append(by_dco[d.get("uid")])
+            if not halves:
+                return {}
+            tuns.append((int(d.findtext("objFlags") or 0) & 1, min(halves), term.get("uid")))
+        ranks = {}
+        for out in (0, 1):
+            for n, t in enumerate(sorted(x for x in tuns if x[0] == out), 1):
+                ranks[t[2]] = n
+        return ranks
+
+    @staticmethod
     def node_defs(diag):
         """The nodes of a diagram, in nodeList order, each resolved to its DEFINITION (often in
         zPlaneList, referenced from nodeList by a bare uid)."""
@@ -880,6 +919,7 @@ class Reader:
         n_in = n_out = 0
         sr = []
         children = []
+        rank = self._tunnel_ranks(node, "lpTun")
         for term in node.find("termList"):
             d = term.find("dco")
             if d is None:
@@ -891,7 +931,8 @@ class Reader:
                     n_out += 1
                 else:
                     n_in += 1
-                tun = ET.Element("Tunnel", {"_id": ("Out%d" % n_out) if out else ("In%d" % n_in),
+                tun = ET.Element("Tunnel", {"_id": ("Out%d" % rank.get(term.get("uid"), n_out)) if out
+                                            else ("In%d" % rank.get(term.get("uid"), n_in)),
                                             "uid": term.get("uid"), "uid_parent": node.get("uid")})
                 if d.find("innerLpTunDCO") is not None or d.findtext("TunnelType"):
                     tun.set("mode", "index")
@@ -989,11 +1030,20 @@ class Reader:
             kind = self.event_kinds().get(int(sp.findtext("type") or 0), "?")
             ddo = sp.findtext("ddoUID") or "0"
             ctl = self.ctl_by_ddo.get(ddo) if ddo != "0" else None
-            items.setdefault(di, []).append('"%s": %s' % (ctl.get("_name"), kind) if ctl is not None else kind)
+            lst = items.setdefault(di, [])
+            if ctl is not None and lst and lst[-1][1] == kind and lst[-1][0]:
+                # the same event on the next control: ONE item listing its sources, as NI writes
+                # it (' "Numeric Control", "Stop", "Waveform": Mouse Enter ', Handling Mouse
+                # Events.vi) and aixml2vi.event_items reads it
+                lst[-1][0].append('"%s"' % ctl.get("_name"))
+            else:
+                lst.append(([('"%s"' % ctl.get("_name"))] if ctl is not None else [], kind))
         # events are separated by ';' as NI's exporter writes them - a ',' separates SOURCES of
         # one event (aixml2vi.event_items), so joining with ',' made NI's Graph Events.vi frame
         # read back as one source list ending in 'Autoscale Range Change: Cursor Release'
-        return {i: " %s " % "; ".join(v) for i, v in items.items()}
+        # ...and ';' with TWO spaces after it (Graph Events.vi, `t125`'s user events)
+        return {i: " %s " % ";  ".join(("%s: %s" % (", ".join(src), kind)) if src else kind for src, kind in v)
+                for i, v in items.items()}
 
     def case(self, node, parent_uid, event=False):
         el = ET.Element("Structure", {"_name": "Event Structure" if event else "Case Structure",
@@ -1021,6 +1071,7 @@ class Reader:
             frame_els.append(ET.Element("CaseFrame", attrs))
         n_in = n_out = 0
         outer_tunnels = []
+        rank = self._tunnel_ranks(node, "selTun")
         for term in node.find("termList"):
             d = term.find("dco")
             if d is None:
@@ -1039,7 +1090,7 @@ class Reader:
                     n_out += 1
                 else:
                     n_in += 1
-                tid = ("Out%d" % n_out) if out else ("In%d" % n_in)
+                tid = ("Out%d" % rank.get(term.get("uid"), n_out)) if out else ("In%d" % rank.get(term.get("uid"), n_in))
                 tun = ET.Element("Tunnel", {"_id": tid, "uid": term.get("uid"), "uid_parent": node.get("uid")})
                 if f & 0x200000:
                     # cond="true" is the 0x200000 bit, on input and output tunnels alike
@@ -1066,7 +1117,15 @@ class Reader:
             if st == "Boolean":
                 txt = "True" if s else "False"
             elif st == "Cluster":
-                txt = "No Error" if e == INT_MIN else "Error .."
+                # two encodings: a range on the code (No Error ends at INT_MIN, the other frame is
+                # "Error ..") and a plain 0/1 pair, which NI exports as "No Error" and "Error"
+                # (MGI's Read Number of children.vi) - 81 of 104 error cases in NI's exports
+                if e == INT_MIN or (stt == ett == 0 and s == e == 0):
+                    txt = "No Error"
+                elif stt == ett == 0 and s == e == 1:
+                    txt = "Error"
+                else:
+                    txt = "Error .."
             else:
                 def val(v):
                     if st == "String":
@@ -1248,6 +1307,7 @@ class Reader:
                     ts.setdefault(d.get("uid"), []).append(t)
             frame_terms.append(ts)
         n_in = n_out = 0
+        rank = self._tunnel_ranks(node, "commentTun")
         for term in (node.find("termList") if node.find("termList") is not None else []):
             d = term.find("dco")
             if d is None or d.get("class") != "commentTun":
@@ -1257,7 +1317,7 @@ class Reader:
                 n_out += 1
             else:
                 n_in += 1
-            tid = ("Out%d" % n_out) if out else ("In%d" % n_in)
+            tid = ("Out%d" % rank.get(term.get("uid"), n_out)) if out else ("In%d" % rank.get(term.get("uid"), n_in))
             tun = ET.Element("Tunnel", {"_id": tid, "uid": term.get("uid"), "uid_parent": node.get("uid")})
             self.term_owner[term.get("uid")] = (tun, "value", not out)
             el.append(tun)

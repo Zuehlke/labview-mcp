@@ -2087,6 +2087,24 @@ too: a net name is an arbitrary token, and NI names the selector's net after the
 Over the 761: **175 identical in every fact** (157 before), attributes 89.7 % (83.8), selectors
 wrong 375 (828), call targets wrong 297 (672).
 
+**Then the largest gap, 2 943 tunnel facts: NI numbers tunnels by where their INNER halves stand.**
+Not by the structure's term list, which the reader followed, and not by position either - both
+were tried. MGI's `Read Number of children.vi` lists its case's output tunnels 164, 176, 348 (tops
+203, 31, 116) and NI exports them `Out2`, `Out1`, `Out3`: the first frame's own `sRN` term list
+holds their halves as 174 (176's), 162 (164's), 340 (348's). Inputs and outputs are counted apart,
+and the same holds for loop tunnels and disable structures. That frame's `sRN` must be its OWN
+(`node_defs`), since a nested structure's can come first in document order. Three more in passing:
+
+- **An error case is two encodings.** A range on the code (`No Error` ending at INT_MIN, the other
+  frame `Error ..`) and a plain 0/1 pair that NI exports `No Error` / `Error` - 81 of NI's 104 error
+  cases. The reader knew only the first and wrote `Error ..` on both frames of the second.
+- **One event on several controls is ONE item**: `"Numeric Control", "Stop", "Waveform": Mouse
+  Enter`, as `aixml2vi.event_items` already reads it (Handling Mouse Events.vi).
+- **Different events are joined by `;` and TWO spaces** (Graph Events.vi; `t125` writes it so).
+
+Over the 761: **190 identical** (175), elements 95.3 % (91.2), attributes 90.9 %, tunnel facts
+wrong 1 046 (2 943). The round trip stays at 111 of 130 with the same 15 failures.
+
 ## 8. Files
 
 | file | |
