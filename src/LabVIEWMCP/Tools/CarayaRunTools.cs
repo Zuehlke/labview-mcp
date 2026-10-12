@@ -53,11 +53,20 @@ internal sealed class CarayaRunTools(LvaiConnection connection)
         [Description("Local budget in seconds - a suite runs every test VI in it")]
         int timeoutSeconds = 600,
         CancellationToken ct = default,
-        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_run_caraya_tests", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        // Every answer names the backend that ran - the run's own answer had neither field until
+        // 2026-10-12, so a suite run on pylabview read exactly like one on grpc.
+        return AixmlBackend.Named(await RunCarayaTestsCoreAsync(runnerViPath, reportPath,
+                                                                timeoutSeconds, ct), choice);
+    }
+
+    private async Task<string> RunCarayaTestsCoreAsync(string runnerViPath, string? reportPath,
+                                                       int timeoutSeconds, CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
-            if (!AixmlBackend.TryResolve(backend, "lvai_run_caraya_tests", out _, out var badBackend))
-                return AixmlBackend.Refusal(badBackend);
             var runner = Path.GetFullPath(runnerViPath);
             if (!File.Exists(runner))
                 return Json.Error("fileNotFound", $"No runner at '{runner}'.", new { runnerViPath });
