@@ -1,0 +1,8 @@
+<VI _name="T156 Update While Typing.vi" description="Implicit property nodes write Update While Typing? on a string control and read it back - the setting that makes typing fire Value Change, which an inactivity timeout counts as activity.">
+  <Control _name="Text" outputs="value:" type="string" uid="4200" uid_parent="root" value=""/>
+  <Constant _name="update while typing" outputs="value:4300.value" type="bool" uid="4300" uid_parent="root" value="true"/>
+  <Node _name="Property Node" fields="write+Update While Typing?" inputs="Update While Typing?:4300.value" link="Text" outputs="error out:4400.err" type="{LV.String}" uid="4400" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Update While Typing?" inputs="error in (no error):4400.err" link="Text" outputs="Update While Typing?:4500.value,error out:4500.err" type="{LV.String}" uid="4500" uid_parent="root"/>
+  <Indicator _name="updates while typing" inputs="value:4500.value" type="bool" uid="4600" uid_parent="root" value="false"/>
+  <Indicator _name="error out" inputs="value:4500.err" type="cluster{bool.status,int32.code,string.source}" uid="4620" uid_parent="root" value="[false,0,]"/>
+</VI>

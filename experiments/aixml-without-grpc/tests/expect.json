@@ -1694,5 +1694,16 @@
     }
    }
   ]
+ },
+ "t156_update_while_typing": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "updates while typing": "True",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

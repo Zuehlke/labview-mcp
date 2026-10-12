@@ -1154,8 +1154,9 @@ found were closed that night - comments, descriptions, a bare name resolving NI'
 wide fan-outs, constants stacked into one tall column, five unnamed terminals - and a queue
 refnum as a subVI terminal the next night (`ref{Queue}{string}`, a container like an array),
 typed control refnums (`ref{LV.String}`: the TYPE is the plain class refnum, only the panel
-object nests one of the control's class) and notifier wires; still open: `Update While Typing?`;
-FINDINGS §7a.
+object nests one of the control's class), notifier wires and `Update While Typing?` - whose row
+came from LabVIEW's own VIs through a pylabview scan of `resource\` (`scan_props.py`), because a
+row from NI's build of our own AIXML is not committed; FINDINGS §7a.
 **No `.ctl` link
 is needed for a typedef - NI's converter writes none either**; what broke the typedef helpers was the typedef's
 inner type ids, copied from the donor VI unresolved, and the FATAL aborts once blamed on typedefs

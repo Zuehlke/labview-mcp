@@ -2172,6 +2172,15 @@ class Composer:
                         for b in names:
                             if a != b:
                                 al.setdefault(a, set()).add(b)
+            # and the pairs no class tables both of: a property only LabVIEW's own VIs use, under
+            # the short name their node shows (`UpdtWhileTyping`), where AIXML writes the long one
+            # (`Update While Typing?`) - parts/property-names.json, each pair measured by its code
+            p = os.path.join(HERE, "parts", "property-names.json")
+            if os.path.exists(p):
+                for long_, r in json.load(open(p, encoding="utf-8")).items():
+                    if isinstance(r, dict) and r.get("short"):
+                        al.setdefault(long_, set()).add(r["short"])
+                        al.setdefault(r["short"], set()).add(long_)
             self._prop_aliases = al
         return al
 

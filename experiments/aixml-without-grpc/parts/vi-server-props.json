@@ -9193,6 +9193,14 @@
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\JDP Science\\Flatline Controls\\Three Button Dialog CORE Flatline.vi",
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
+   "ClassName": {
+    "access": "r",
+    "code": 103970819,
+    "declaredBy": "LV.String",
+    "label": "ClassName",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
    "DefVal": {
     "access": "rw",
     "code": 104093705,
@@ -9218,12 +9226,28 @@
     "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
    },
    "Display Style": {
-    "access": "w",
+    "access": "rw",
     "code": 104093701,
     "declaredBy": "LV.String",
     "label": "Display Style",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\net\\SSH\\Client\\OpenSSH\\Prompt for Password CORE.vi",
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "DisplayFormatVisibility": {
+    "access": "rw",
+    "code": 104093717,
+    "declaredBy": "LV.String",
+    "label": "DisplayFormatVisibility",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "HScrollVis": {
+    "access": "rw",
+    "code": 104093713,
+    "declaredBy": "LV.String",
+    "label": "HScrollVis",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
    "Height": {
     "access": "rw",
@@ -9256,6 +9280,14 @@
     "label": "Left",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Framework\\Providers\\Builds\\BuildMonitor\\BuildMonitor_ImportBuildScript.vi",
     "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "LimitSglLine": {
+    "access": "rw",
+    "code": 104093703,
+    "declaredBy": "LV.String",
+    "label": "LimitSglLine",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
    "Master Bounds Rect": {
     "access": "r",
@@ -9345,8 +9377,16 @@
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\express\\express shared\\ex_SetStringTypes.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
+   "UpdtWhileTyping": {
+    "access": "rw",
+    "code": 104093704,
+    "declaredBy": "LV.String",
+    "label": "UpdtWhileTyping",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
    "VScrollVis": {
-    "access": "w",
+    "access": "rw",
     "code": 104093712,
     "declaredBy": "LV.String",
     "label": "VScrollVis",
@@ -9384,11 +9424,51 @@
     "label": "Width",
     "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\String\\String Word Wrapping with Get Nth Line Method.vi",
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "WrappingEnabled": {
+    "access": "rw",
+    "code": 104093714,
+    "declaredBy": "LV.String",
+    "label": "WrappingEnabled",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    }
   },
   "LV.StringConstant": {
+   "DispStyle": {
+    "access": "rw",
+    "code": 104136706,
+    "declaredBy": "LV.StringConstant",
+    "label": "DispStyle",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "DisplayFormatVisibility": {
+    "access": "rw",
+    "code": 104136709,
+    "declaredBy": "LV.StringConstant",
+    "label": "DisplayFormatVisibility",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "LimitSglLine": {
+    "access": "rw",
+    "code": 104136707,
+    "declaredBy": "LV.StringConstant",
+    "label": "LimitSglLine",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "ScrollVis": {
+    "access": "rw",
+    "code": 104136705,
+    "declaredBy": "LV.StringConstant",
+    "label": "ScrollVis",
+    "source": "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
    "SizeToText": {
-    "access": "w",
+    "access": "rw",
     "code": 104136704,
     "declaredBy": "LV.StringConstant",
     "label": "SizeToText",
