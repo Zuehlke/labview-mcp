@@ -1,0 +1,55 @@
+<VI _name="lvai_set_class_description.vi" description="Sets the description of ONE .lvclass (NI.Lib.Description) through LabVIEW's own VI Server\3A Project\3AActive Project -&gt; Application -&gt; LVClass.Open -&gt; read {LV.Library} Modifications Bit Set -&gt; read {LV.LVClassLibrary} Description -&gt; write it -&gt; read it back -&gt; {LV.LVClassLibrary} Save\2C which writes only the .lvclass. A class that ALREADY carries unsaved changes is left alone (Skipped TRUE)\2C because its Save would write those changes too. The route is a skill kit helper measured on 15 classes with the project OPEN and ACTIVE (LabVIEW 2026 Q3\2C 2026-10-11/12)\3B the unsaved-changes guard is new and unmeasured. LabVIEW stores the text ANSI\2C so a character outside CP1252 becomes a question mark with no error - the caller refuses those before it runs this.">
+  <FreeLabel comment="Open, guard, write, read back, save" uid="4200" uid_parent="root"/>
+  <Control _name="class path" type="path" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="description" type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.value"/>
+  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4203" uid_parent="root" value="[false,0,]" outputs="value:4203.value"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4203.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4210.proj,error in (no error):4210.err" outputs="Application:4215.app,reference out:,error out:4215.err" uid="4215" uid_parent="root"/>
+  <Indicator _name="project error" type="cluster{bool.status,int32.code,string.source}" uid="4216" uid_parent="root" value="[false,0,]" inputs="value:4215.err"/>
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4215.app,Path:4201.value,error in (no error):4215.err" outputs="reference out:,error out:4220.err,LVClass.Open:4220.cls" uid="4220" uid_parent="root"/>
+  <Indicator _name="open error" type="cluster{bool.status,int32.code,string.source}" uid="4221" uid_parent="root" value="[false,0,]" inputs="value:4220.err"/>
+  <Node _name="Property Node" fields="read+Modifications Bit Set" type="{LV.Library}" inputs="reference:4220.cls,error in (no error):4220.err" outputs="Modifications Bit Set:4225.mods,reference out:,error out:4225.err" uid="4225" uid_parent="root"/>
+  <Node _name="Not Equal To 0?" inputs="x:4225.mods" outputs="x != 0?:4226.dirty" uid="4226" uid_parent="root"/>
+  <Indicator _name="skipped" type="bool" uid="4227" uid_parent="root" value="false" inputs="value:4226.dirty"/>
+  <Node _name="Property Node" fields="read+Description" type="{LV.LVClassLibrary}" inputs="reference:4220.cls,error in (no error):4225.err" outputs="Description:4230.before,reference out:,error out:4230.err" uid="4230" uid_parent="root"/>
+  <Indicator _name="description before" type="string" uid="4231" uid_parent="root" value="" inputs="value:4230.before"/>
+  <Structure _name="Case Structure" selectin="4226.dirty" uid="4240" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4220.cls" uid="4241" uid_parent="4240"/>
+    <Tunnel _id="In2" inputs="value:4230.err" uid="4242" uid_parent="4240"/>
+    <Tunnel _id="In3" inputs="value:4202.value" uid="4243" uid_parent="4240"/>
+    <Tunnel _id="In4" inputs="value:4230.before" uid="4244" uid_parent="4240"/>
+    <CaseFrame selector="False" selectout="" uid="4250" uid_parent="4240">
+      <FreeLabel comment="No unsaved changes - write and save" uid="4259" uid_parent="4250"/>
+      <Tunnel _id="In1" outputs="value:4251.cls" uid="4251" uid_parent="4250"/>
+      <Tunnel _id="In2" outputs="value:4252.err" uid="4252" uid_parent="4250"/>
+      <Tunnel _id="In3" outputs="value:4253.text" uid="4253" uid_parent="4250"/>
+      <Tunnel _id="In4" outputs="value:" uid="4254" uid_parent="4250"/>
+      <Node _name="Property Node" fields="write+Description" type="{LV.LVClassLibrary}" inputs="reference:4251.cls,error in (no error):4252.err,Description:4253.text" outputs="reference out:,error out:4255.err" uid="4255" uid_parent="4250"/>
+      <Node _name="Property Node" fields="read+Description" type="{LV.LVClassLibrary}" inputs="reference:4251.cls,error in (no error):4255.err" outputs="Description:4256.after,reference out:,error out:4256.err" uid="4256" uid_parent="4250"/>
+      <Node _name="Invoke Node" target="Save" type="{LV.LVClassLibrary}" inputs="reference:4251.cls,error in (no error):4256.err" outputs="reference out:,error out:4257.err" uid="4257" uid_parent="4250"/>
+      <Tunnel _id="Out1" inputs="value:4256.after" uid="4260" uid_parent="4250"/>
+      <Tunnel _id="Out2" inputs="value:4255.err" uid="4261" uid_parent="4250"/>
+      <Tunnel _id="Out3" inputs="value:4257.err" uid="4262" uid_parent="4250"/>
+    </CaseFrame>
+    <CaseFrame selector="True" selectout="" uid="4270" uid_parent="4240">
+      <FreeLabel comment="Unsaved changes - leave the class alone" uid="4279" uid_parent="4270"/>
+      <Tunnel _id="In1" outputs="value:" uid="4271" uid_parent="4270"/>
+      <Tunnel _id="In2" outputs="value:4272.err" uid="4272" uid_parent="4270"/>
+      <Tunnel _id="In3" outputs="value:" uid="4273" uid_parent="4270"/>
+      <Tunnel _id="In4" outputs="value:4274.before" uid="4274" uid_parent="4270"/>
+      <Tunnel _id="Out1" inputs="value:4274.before" uid="4275" uid_parent="4270"/>
+      <Tunnel _id="Out2" inputs="value:4272.err" uid="4276" uid_parent="4270"/>
+      <Tunnel _id="Out3" inputs="value:4272.err" uid="4277" uid_parent="4270"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4280.after" uid="4280" uid_parent="4240"/>
+    <Tunnel _id="Out2" outputs="value:4281.werr" uid="4281" uid_parent="4240"/>
+    <Tunnel _id="Out3" outputs="value:4282.serr" uid="4282" uid_parent="4240"/>
+  </Structure>
+  <Indicator _name="description after" type="string" uid="4290" uid_parent="root" value="" inputs="value:4280.after"/>
+  <Indicator _name="write error" type="cluster{bool.status,int32.code,string.source}" uid="4291" uid_parent="root" value="[false,0,]" inputs="value:4281.werr"/>
+  <Indicator _name="save error" type="cluster{bool.status,int32.code,string.source}" uid="4292" uid_parent="root" value="[false,0,]" inputs="value:4282.serr"/>
+  <Node _name="Close Reference" inputs="reference:4220.cls,error in (no error):4282.serr" outputs="error out:4300.err" uid="4300" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4215.app,error in (no error):4300.err" outputs="error out:4301.err" uid="4301" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.proj,error in (no error):4301.err" outputs="error out:4302.err" uid="4302" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4310" uid_parent="root" value="[false,0,]" inputs="value:4302.err"/>
+</VI>

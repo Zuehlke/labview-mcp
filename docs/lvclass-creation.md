@@ -1801,3 +1801,39 @@ project close every method, an accessor and a message's `Do.vi` still `execState
 `.lvclass`, field name not already present, project active), and the `describe_class` before/after
 is exactly the verify block `lvai_add_to_library` already has. Until then the helper ships under
 `scripts/` and is driven with `lvai_run_vi_and_read_values`: `class path`, `carrier path`.
+
+## 10. Class housekeeping: description, virtual folders, membership - ported 2026-10-12
+
+Four tools that change a class or library AFTER it exists, ported from a field run's helpers
+(LabVIEW 2026 Q3 32-bit, 2026-10-11/12, 15 classes). Each goes through NI's own VI Server, never
+through a hand edit of the `.lvclass`, and each verifies from the FILE LabVIEW saved. What was
+measured in that run is said per tool; what the port adds is marked unmeasured until the
+acceptance run.
+
+### 10a. `lvai_set_class_description` - `NI.Lib.Description`
+
+`LVClass.Open` on the ACTIVE PROJECT's application instance, write `{LV.LVClassLibrary}`
+`Description`, read it back, `{LV.LVClassLibrary}` `Save`. Measured on 15 classes. A `.lvlib` goes
+the twin route - `Library.Open`, `{LV.Library}` `Description`, `{LV.Library}` `Save` with no path -
+which is NOT measured: `lvserver.rsc`'s ActiveX type library lists `Description` on the `Library`
+interface, the open and the save are measured in other helpers, the write is not.
+
+**The text is stored ANSI.** An arrow (U+2192) written through `Description` came back as `?` - no
+error from the write, the read-back or the save. The tool therefore refuses any character outside
+Windows-1252 before LabVIEW is touched (`textNotCp1252`), names each one with its position and an
+ASCII replacement where one is obvious (`->` for the arrow), and returns `suggestedText` when every
+offender has one. Control characters other than TAB, CR and LF are refused too: two of them carry a
+line break to the typed run helper. Line breaks are written CRLF, which is how NI's own files store a
+multi-line class description (`Last Ack.lvclass` in `vi.lib`, read 2026-10-12).
+
+**The verdict is the saved file.** The `.lvclass` is re-read as XML after the save and its
+`NI.Lib.Description` compared with the text, line breaks as LF because an XML reader normalises
+CRLF. LabVIEW's own read-back is reported beside it (`labviewReadBackMatches`) and never decides:
+it reads the class in MEMORY, which a save that did not reach the disk leaves just as correct.
+`filesChanged` lists every file under the owner's folder whose write time or length moved, so
+"saves only that file" is checked rather than assumed - `ok` is false when anything else changed.
+
+**New in the port, unmeasured:** a class or library that already carries unsaved changes
+(`{LV.Library}` `Modifications Bit Set` nonzero) is left alone, because its `Save` would write those
+changes too (`ownerHasUnsavedChanges`). An empty text is refused - an empty value does not survive
+the run helper's name/value pairing - so clearing a description is not supported.
