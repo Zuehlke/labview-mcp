@@ -2125,14 +2125,22 @@ class Reader:
         el.set(attr, item if not cur else cur + "," + item)
 
     def pane_flags(self):
-        """conIdx (as text) -> connection, read off the pane's Function type."""
+        """conIdx (as text) -> connection, read off the pane's Function type.
+
+        0x8000 is a DYNAMIC DISPATCH terminal (Infra/PaneDispatch.cs, checked against NI's own
+        IsStaticMethod) and NI's exporter writes it `dynamic` whatever wire rule sits beside it.
+        This read it as `required` / `recommended` until 2026-10-12, so lvai_vi_terminals on a
+        class accessor answered `Sensor in ... required` where NI's export says `dynamic`, and
+        a method test could not tell the dispatch input among several class-typed ones.
+        """
         out = {}
         cons = int(self.b.main.find("CONP/Section/TypeDesc").get("TypeID"))
         func = self.b.flat[self.b.flat_of_consolidated(cons)]
         for i, c in enumerate([c for c in func if c.tag == "TypeDesc"]):
             f = int(c.get("Flags"), 16)
             if c.get("TypeID") is not None and f:
-                out[str(i)] = "required" if f & 0x1000 else "recommended" if f & 0x0800 else "optional"
+                out[str(i)] = ("dynamic" if f & 0x8000 else "required" if f & 0x1000
+                               else "recommended" if f & 0x0800 else "optional")
         return out
 
 
