@@ -103,7 +103,7 @@ def main(argv):
             ref = ET.parse(x).getroot()
             if sum(1 for e in ref.iter() if e.get("uid")) == 0:
                 continue        # a password-protected VI: NI's export is empty, nothing to compare
-            mine = vi2aixml.Reader(lvheap.extract(vp, tmp)).read()
+            mine = vi2aixml.Reader(lvheap.extract(vp, tmp), vi_path=vp).read()
         except Exception as ex:   # an unreadable VI is counted, not fatal
             print("SKIP %s: %s" % (os.path.basename(vp), str(ex).splitlines()[0][:100]), file=sys.stderr)
             continue

@@ -364,6 +364,7 @@ def binary_link_records(data):
             # LinkSaveFlag: the uint32 right after the path (pylabview's BasicLinkSaveInfo) - 2
             # means the name is relative to the CALLER's library
             flag = int.from_bytes(data[path_end:path_end + 4], "big") if path_end + 4 <= len(data) else None
+            path = _path_components(data[p1:path_end])
             nxt = min([k for k in (data.find(t, i + 4) for t in RECORD_TAGS) if k > 0] or [len(data)])
             p2 = data.find(b"PTH0", path_end)
             if 0 <= p2 < nxt:
@@ -379,8 +380,89 @@ def binary_link_records(data):
                     break
                 if int.from_bytes(data[at:at + 4], "big") == k:
                     offs = [int.from_bytes(data[at + 4 + 4 * m:at + 8 + 4 * m], "big") for m in range(k)]
-                    out.extend((o, tag.decode(), ":".join(names), flag) for o in offs)
+                    out.extend((o, tag.decode(), ":".join(names), flag, path) for o in offs)
                     break
+    return out
+
+
+def _path_components(b):
+    """A flattened PTH0 path -> (type, [components]): type 0 absolute (an anchor such as `<vilib>`
+    first), 1 relative to the caller FILE with "" for each level up. None if it is not one."""
+    if len(b) < 12 or b[:4] != b"PTH0":
+        return None
+    kind, count = struct.unpack(">HH", b[8:12])
+    comps, i = [], 12
+    for _ in range(count):
+        if i >= len(b):
+            return None
+        n = b[i]
+        comps.append(b[i + 1:i + 1 + n].decode("mac_roman", "replace"))
+        i += 1 + n
+    return kind, comps
+
+
+_RESOLVER = None
+_CALLEE_SLOTS = {}
+
+
+def link_file(path, caller_file):
+    """A link's path -> the callee's file on this machine, or None: an anchored one through the
+    installation's and the LVAddons' trees (resolve.py), a relative one from the caller's file."""
+    global _RESOLVER
+    if not path:
+        return None
+    kind, comps = path
+    if not comps:
+        return None
+    if comps[0].startswith("<") and comps[0].endswith(">"):
+        if _RESOLVER is None:
+            import resolve
+            _RESOLVER = resolve.Resolver()
+        for anchor, d in _RESOLVER.roots:
+            if anchor == comps[0]:
+                p = os.path.join(d, *comps[1:])
+                if os.path.exists(p):
+                    return p
+        return None
+    if kind == 0:
+        p = os.path.join(comps[0] + "\\", *comps[1:]) if len(comps[0]) == 2 and comps[0][1] == ":" else None
+        return p if p and os.path.exists(p) else None
+    if not caller_file:
+        return None
+    p = caller_file
+    for c in comps:
+        p = os.path.dirname(p) if c == "" else os.path.join(p, c)
+    return p if os.path.isfile(p) else None
+
+
+def callee_slots(path):
+    """A VI file -> {conIdx: terminal label}, read off its front panel heap: the pane's `cons`
+    array (sparse - an element carries `index=` only where it jumps) names each slot's fPDCO, and
+    the fPDCO's own label is the terminal's name. Cached per file; {} when it cannot be read."""
+    if path in _CALLEE_SLOTS:
+        return _CALLEE_SLOTS[path]
+    out = {}
+    tmp = tempfile.mkdtemp(prefix="callee_")
+    try:
+        cp = os.path.join(tmp, "c" + os.path.splitext(path)[1])
+        shutil.copyfile(path, cp)
+        b = lvheap.Bundle(lvheap.extract(cp, tmp))
+        dcos = {e.get("uid"): e for e in b.fp.iter("SL__arrayElement") if e.get("class") == "fPDCO"}
+        cons = next(b.fp.iter("cons"), None)
+        cursor = 0
+        for c in (cons if cons is not None else []):
+            if c.get("index") is not None:
+                cursor = int(c.get("index"))
+            dco = c.find("ConnectionDCO")
+            f = dcos.get(dco.get("uid")) if dco is not None else None
+            if f is not None and f.find("ddo") is not None:
+                out[cursor] = label_text(f.find("ddo"))
+            cursor += 1
+    except Exception:
+        out = {}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    _CALLEE_SLOTS[path] = out
     return out
 
 
@@ -483,8 +565,12 @@ class Reader:
     terminal), a Condition the lTst DCO, a ShiftReg the rSR DCO, its Left the lSR DCO and its
     Right the rSR's inner terminal, a Call the iUse node."""
 
-    def __init__(self, main_xml):
+    def __init__(self, main_xml, vi_path=None):
         self.b = lvheap.Bundle(main_xml)
+        # the VI's own file: a callee linked RELATIVE to it is found from here, to name a call's
+        # terminals its link carries no labels for
+        self.vi_path = vi_path
+        self.call_paths = {}
         _, self.term_names = aixml2vi.load_names()
         self.prim_name = {}
         import csv, html
@@ -528,9 +614,11 @@ class Reader:
             # pylabview leaves the block BINARY when one record is of a kind it cannot parse -
             # a call into a CLASS (LUnit's Test Case.lvclass:Pass If.vi) was "?" for that
             data = open(os.path.join(self.b.dir, sec.get("File")), "rb").read()
-            for off, tag, name, flag in binary_link_records(data):
+            for off, tag, name, flag, path in binary_link_records(data):
                 name = ":".join(self._relative_to_caller(name.split(":"), str(flag)))
                 out.setdefault(str(off), {})[tag] = name
+                if path and (tag == "IUVI" or str(off) not in self.call_paths):
+                    self.call_paths[str(off)] = path
             return out
         bdhp = self.b.main.find("LIbd/Section/BDHP")
         for rec in (bdhp if bdhp is not None else []):
@@ -546,13 +634,18 @@ class Reader:
             else:
                 qual = self._relative_to_caller(qual, rec.get("LinkSaveFlag"))
             name = ":".join(qual)
+            pref = rec.find("LinkSavePathRef")
+            path = (int(pref.get("TpVal") or 0), [s.text or "" for s in pref.findall("String")]) if pref is not None else None
             # a class link record (DyOM, FPPI, DDPI) keeps its uids in APILinkCacheList - read
             # once pylabview parses LabVIEW 2026's layout (patches.json, class-link-cache-extra)
             for off in rec.findall("LinkOffsetList/Offset") + rec.findall("APILinkCacheList/Offset"):
                 try:
-                    out.setdefault(str(int(off.text, 16)), {})[rec.tag] = name
+                    k = str(int(off.text, 16))
                 except (TypeError, ValueError):
-                    pass
+                    continue
+                out.setdefault(k, {})[rec.tag] = name
+                if path and (rec.tag == "IUVI" or k not in self.call_paths):
+                    self.call_paths[k] = path
         return out
 
     def _relative_to_caller(self, qual, flag):
@@ -977,13 +1070,24 @@ class Reader:
             el.set("adapt", "true")
             el.set("instance", recs["IUVI"])
         el.set("target", target)
-        for term in node.find("termList"):
+        slots = None
+        for i, term in enumerate(node.find("termList")):
             d = term.find("dco")
             tree = self.tid_tree(term)
             if tree is None or tree.get("Type") == "Void":
                 continue
+            name = tree.get("Label")
+            if not name:
+                # the link's pane type carries no label for this terminal: the CALLEE's own
+                # panel names it, by slot (the call's terms stand in pane order, Void for an
+                # unconnected slot) - Traverse for GObjects.vi's `Traverse Target`
+                if slots is None:
+                    f = link_file(self.call_paths.get(node.get("uid")) or
+                                  (self.call_paths.get(link.get("uid")) if link is not None else None), self.vi_path)
+                    slots = callee_slots(f) if f else {}
+                name = slots.get(i) or "?"
             out = int(d.findtext("objFlags") or 0) & 1
-            self.term_owner[term.get("uid")] = (el, tree.get("Label") or "?", not out)
+            self.term_owner[term.get("uid")] = (el, name, not out)
         return el
 
     def loop(self, node, parent_uid):
@@ -1931,7 +2035,7 @@ def main(argv):
         tmp = tempfile.mkdtemp(prefix="vi2aixml_")
         main_xml = lvheap.extract(src, tmp)
     try:
-        root = Reader(main_xml).read()
+        root = Reader(main_xml, vi_path=None if src.lower().endswith(".xml") else os.path.abspath(src)).read()
     finally:
         if tmp:
             shutil.rmtree(tmp, ignore_errors=True)

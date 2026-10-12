@@ -60,7 +60,7 @@ def main(argv):
         tmp = tempfile.mkdtemp(prefix="learn_")
         try:
             ref = ET.parse(x).getroot()
-            r = vi2aixml.Reader(lvheap.extract(vp, tmp))
+            r = vi2aixml.Reader(lvheap.extract(vp, tmp), vi_path=vp)
             mine = r.read()
         except Exception:
             continue

@@ -15,7 +15,7 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
 | AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
-| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **270 of 747** - elements 97.7 %, attributes 95.1 %, values 96.4 %, wires 89.3 % - on 2026-10-12, 23 stale cache entries also left out with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
+| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **371 of 747** - elements 97.7 %, attributes 95.1 %, values 96.4 %, wires 92.7 % - on 2026-10-12, 23 stale cache entries also left out with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
 | both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped); **111 of 130** on 2026-10-12, 4 skipped - the 15 failures (user events, control references as event sources, a class constant, the live-event tests) fail identically with the reader before that night's fixes |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
@@ -2139,6 +2139,18 @@ may carry no range list at all - frame 0 is `False` then - and an event selector
 TRIMMED, `"Stop Button"` for a label padded with blanks. Over the 747: **270 identical**, attributes 95.1 %; the round
 trip unchanged. Not read yet: a malleable VI's Type Specialization Structure (a disable structure with
 `Tag0273` set, frames ` [0] Accepted ` / ` [1] Ignored `) - 3 VIs, and the composer has none either.
+
+**A call's terminal with no label in the link's pane type was `?` - half the wrong wires.** The
+reader names a call's terminals by the labels of the types the caller keeps for its callee, and
+those are sometimes bare (`Traverse for GObjects.vi`'s `Traverse Target`, the AI plugin's
+`fileType`): 460 of the 929 wrong wires shown were such a `?`. NI's exporter reads the CALLEE. So
+does the reader now: the link record's path (TpVal 0 through an anchor - `<vilib>`, `<resource>`,
+the LVAddons trees, as `resolve.py` maps them; TpVal 1 relative to the caller FILE, `""` per level
+up) finds the callee's file, and its panel's `cons` array names each pane slot's control, whose
+label is the terminal's name - the call's terms stand in pane order, Void for an unconnected slot.
+Each callee is read once per process. It needs the VI's own path, so `Reader` takes `vi_path` now.
+Over the 747: **371 identical** (270), wires 92.7 % (89.3); the round trip unchanged at 111
+of 130.
 
 `compare_full.py` also drops a STALE cache entry now: the cache key carries the VI's write time
 in .NET ticks, and 23 entries were being compared with old exports of VIs written since - among

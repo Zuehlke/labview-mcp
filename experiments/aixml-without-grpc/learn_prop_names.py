@@ -54,7 +54,7 @@ def main(argv):
             continue
         tmp = tempfile.mkdtemp(prefix="lpn_")
         try:
-            r = vi2aixml.Reader(lvheap.extract(vp, tmp))
+            r = vi2aixml.Reader(lvheap.extract(vp, tmp), vi_path=vp)
             r.read()
         except Exception as ex:  # an unreadable VI is skipped
             print("SKIP %s: %s" % (os.path.basename(vp), str(ex).splitlines()[0][:100]), file=sys.stderr)

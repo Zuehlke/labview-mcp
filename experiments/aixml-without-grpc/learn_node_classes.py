@@ -52,7 +52,7 @@ def main(argv):
             continue
         tmp = tempfile.mkdtemp(prefix="lnc_")
         try:
-            r = vi2aixml.Reader(lvheap.extract(vp, tmp))
+            r = vi2aixml.Reader(lvheap.extract(vp, tmp), vi_path=vp)
         except Exception:
             continue
         finally:
