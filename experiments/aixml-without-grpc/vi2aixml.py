@@ -346,6 +346,9 @@ def binary_link_records(data):
             p1 = data.find(b"PTH0", j)
             ln = int.from_bytes(data[p1 + 4:p1 + 8], "big")
             path_end = p1 + 8 + ln
+            # LinkSaveFlag: the uint32 right after the path (pylabview's BasicLinkSaveInfo) - 2
+            # means the name is relative to the CALLER's library
+            flag = int.from_bytes(data[path_end:path_end + 4], "big") if path_end + 4 <= len(data) else None
             nxt = min([k for k in (data.find(t, i + 4) for t in RECORD_TAGS) if k > 0] or [len(data)])
             p2 = data.find(b"PTH0", path_end)
             if 0 <= p2 < nxt:
@@ -361,7 +364,7 @@ def binary_link_records(data):
                     break
                 if int.from_bytes(data[at:at + 4], "big") == k:
                     offs = [int.from_bytes(data[at + 4 + 4 * m:at + 8 + 4 * m], "big") for m in range(k)]
-                    out.extend((o, tag.decode(), ":".join(names)) for o in offs)
+                    out.extend((o, tag.decode(), ":".join(names), flag) for o in offs)
                     break
     return out
 
@@ -479,7 +482,11 @@ class Reader:
         self.out = ET.Element("VI")
         self.term_owner = _Owners()    # heap term uid -> (aixml element, terminal name, is_sink)
         self.notes = []
+        # the libraries the VI itself belongs to (LIBN), outermost first: a link record saved
+        # RELATIVE to them (LinkSaveFlag 2) names its target without them
+        self.caller_libs = [l.text.strip() for l in self.b.main.findall("LIBN/Section/Library") if (l.text or "").strip()]
         self.call_targets = self._call_targets()
+        self.instance_names = self._express_instances()
         self.diags = []         # every diagram walked, for wiring
         self.ordered_inputs = {}   # element -> its inputs in TERMINAL order, unwired ones listed
         self.ordered_ports = []    # (element, attr, [(term uid, name)]) rewritten after wiring
@@ -503,7 +510,9 @@ class Reader:
             # pylabview leaves the block BINARY when one record is of a kind it cannot parse -
             # a call into a CLASS (LUnit's Test Case.lvclass:Pass If.vi) was "?" for that
             data = open(os.path.join(self.b.dir, sec.get("File")), "rb").read()
-            for off, tag, name in binary_link_records(data):
+            for off, tag, name, flag in binary_link_records(data):
+                if ":" not in name and flag == 2 and self.caller_libs:
+                    name = ":".join(self.caller_libs + [name])     # relative to the caller's library
                 out.setdefault(str(off), {})[tag] = name
             return out
         bdhp = self.b.main.find("LIbd/Section/BDHP")
@@ -517,6 +526,11 @@ class Reader:
             lib = [x.text or "" for x in rec.findall("VILSPathRef/String")]
             if len(qual) == 1 and lib and lib[-1].lower().endswith((".lvlib", ".lvclass", ".xctl", ".lvlibp")):
                 qual = [lib[-1]] + qual
+            elif len(qual) == 1 and rec.get("LinkSaveFlag") == "2" and self.caller_libs:
+                # LinkSaveFlag 2: the name is RELATIVE to the caller's own library - Caraya's Run
+                # Tests.vi calls `Run Test (Object).vi`, NI's export names it
+                # `Caraya.lvlib:Run Test (Object).vi`
+                qual = self.caller_libs + qual
             name = ":".join(qual)
             # a class link record (DyOM, FPPI, DDPI) keeps its uids in APILinkCacheList - read
             # once pylabview parses LabVIEW 2026's layout (patches.json, class-link-cache-extra)
@@ -525,6 +539,40 @@ class Reader:
                     out.setdefault(str(int(off.text, 16)), {})[rec.tag] = name
                 except (TypeError, ValueError):
                     pass
+        return out
+
+    def _express_instances(self):
+        """Express VI instance name (`1`) -> the name NI's export gives its call
+        (`Ex_Inst_Sample Compression.vi`). The VI's VINS block: section 0 is an index - a uint32
+        count, then each instance's name as a Pascal string padded with zeros - and section k+1
+        holds instance k, an embedded VI whose own name is `Ex_Inst_<title>.vi`. Read off NI's
+        Express VI - Sample Compression.vi, whose export calls Instance:1 and Instance:0
+        Sample Compression and Simulate Signal. A malleable VI's instance holds no such name
+        (its call names the .vim) and is left alone."""
+        secs = {int(s.get("Index") or 0): s.get("File") for s in self.b.main.findall("VINS/Section")
+                if s.get("Format") == "bin" and s.get("File")}
+        if 0 not in secs:
+            return {}
+        idx = open(os.path.join(self.b.dir, secs[0]), "rb").read()
+        count = int.from_bytes(idx[:4], "big")
+        names, pos = [], 4
+        for _ in range(count):
+            while pos < len(idx) and idx[pos] == 0:
+                pos += 1
+            if pos >= len(idx):
+                break
+            ln = idx[pos]
+            names.append(idx[pos + 1:pos + 1 + ln].decode("mac_roman", "replace"))
+            pos += 1 + ln
+        out = {}
+        for k, nm in enumerate(names):
+            f = secs.get(k + 1)
+            if not f:
+                continue
+            data = open(os.path.join(self.b.dir, f), "rb").read()
+            m = re.search(rb"Ex_Inst_[^\x00-\x1f]{1,120}?\.vi", data)
+            if m:
+                out[nm] = m.group(0).decode("mac_roman", "replace")
         return out
 
     @staticmethod
@@ -786,6 +834,8 @@ class Reader:
         if target is None:
             self.notes.append("call node %s: no link record names it" % node.get("uid"))
             target = "?"
+        elif target.startswith("Instance:") and target[len("Instance:"):] in self.instance_names:
+            target = self.instance_names[target[len("Instance:"):]]    # an Express VI
         if recs.get("PUPV") and recs.get("IUVI"):
             # a polymorphic call: NI writes the polymorphic VI as target, the instance it
             # adapted to as instance, and adapt="true"
@@ -1003,6 +1053,10 @@ class Reader:
                         frame_els[i].append(half)
         # selectors
         items = {i: [] for i in range(len(frames))}
+        while sel_tree is not None and sel_tree.get("Type") == "TypeDef" and sel_tree.find("TypeDesc") is not None:
+            # a typedef'd enum (State Machine Fundamentals' States): its items are inside, and read
+            # off the wrapper alone the frames came out numbered "2", "3" where NI writes the items
+            sel_tree = sel_tree.find("TypeDesc")
         st = (sel_tree.get("Type") if sel_tree is not None else "") or ""
         labels = [e.text or "" for e in sel_tree.findall("EnumLabel")] if sel_tree is not None else []
         for r in node.findall("SelectRangeArray32/SL__arrayElement"):
@@ -1018,7 +1072,8 @@ class Reader:
                     if st == "String":
                         return '"%s"' % sel_strings[v] if 0 <= v < len(sel_strings) else str(v)
                     if labels:
-                        return labels[v] if 0 <= v < len(labels) else str(v)
+                        # QUOTED, as NI's exporter writes an enum item (`"State 1"`, t97)
+                        return '"%s"' % labels[v] if 0 <= v < len(labels) else str(v)
                     return str(v)
                 if stt == 0 and ett == 0:
                     txt = val(s)

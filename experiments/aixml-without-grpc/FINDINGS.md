@@ -15,8 +15,8 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
 | AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
-| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events") |
-| both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped) |
+| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **175 of 761** - attributes 89.7 % - on 2026-10-12 with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
+| both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped); **111 of 130** on 2026-10-12, 4 skipped - the 15 failures (user events, control references as event sources, a class constant, the live-event tests) fail identically with the reader before that night's fixes |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
 TOP-LEVEL subset only (415 of 552 identical); 2026-10-10 morning, 70 tests, 159 of 792, the
@@ -2047,6 +2047,45 @@ helper coverage left out that is not an LUnit template. It needed four more thin
   `error out` String. Excluded by name (`error in (no error)`, `error in`, `error out`): executable,
   0 DWarns, and the run above. The queue parts' donors sent other types, which is why `t144` never
   showed it.
+
+**`{LV.String}` `Update While Typing?` composes - and its row comes from LabVIEW's OWN VIs.** None of
+the cached NI exports uses it; NI's converter's build of the seventh ATM build's `ATM Main.vi` has it
+(code 104093704, Boolean), but a row harvested from NI's build of OUR AIXML is the kind of part this
+experiment does not commit. So `scan_props.py` - a pylabview scan for a property by name or code, no
+LabVIEW - went through `resource\` and `project\` (8 941 VIs, about 13 minutes) and found two users,
+`PropertyPages\Pages\PropPage_StringAppearance.vi` and `IfDef.llb\ConfigureCondition.vi`, both with
+the same code under the SHORT name their node shows, `UpdtWhileTyping`. The harvest from the first
+added it with nine siblings; `parts/property-names.json` maps the long name AIXML writes to the short
+one, each pair carrying the code that proves it. `t156` writes TRUE and reads TRUE back; a control
+arm writing FALSE reads FALSE.
+
+**The reader comparison counted LOCKED VIs as reader failures.** The event scans had exported 107 of
+LabVIEW's `resource\` dialogs, and for a locked VI NI's exporter writes about 200 bytes - its one
+visible control, no diagram - where the reader sees the whole diagram. `compare_full.py` skipped only
+an EMPTY export, so these became "157 of 801". It skips an export with no diagram element where the
+VI has one now, and says how many. It compares a case structure's `selectin` by the net's SOURCE
+too: a net name is an arbitrary token, and NI names the selector's net after the case structure
+(`202.value`) where the reader names it after its source - 83 mismatches that were not.
+
+**Three reader defects, each measured on the VI that showed it:**
+
+- **A typedef'd enum selector** (`State Machine Fundamentals.vi`'s States) came out numbered, `"2"`,
+  because the item labels were looked for on the TypeDef wrapper. And NI's export QUOTES an enum
+  item (`"State 1"`, as `t97` already composes) where the reader wrote it bare. That example is
+  identical in every fact now.
+- **A call into the caller's own library** came out bare (`Run Test (Object).vi` where NI writes
+  `Caraya.lvlib:Run Test (Object).vi`): its link record carries `LinkSaveFlag 2`, the name RELATIVE
+  to the caller's library (LIBN). The flag is per record - in `Pry.vi`'s binary link block the calls
+  into `vi.lib` read 0 and the call into its own class 2 - and in a binary block it is the uint32
+  right after the path (pylabview's BasicLinkSaveInfo).
+- **An Express VI call** came out `Instance:1` where NI writes `Ex_Inst_Sample Compression.vi`: the
+  VI's VINS block is an index (section 0: a count, then each instance's name) plus one section per
+  instance, an embedded VI whose own name is that `Ex_Inst_` one. A MALLEABLE instance (`Instance:
+  <guid>.vi`, NI writes the `.vim`) is left as it was: its embedded VI links to its source AND to
+  every `.vim` it calls in turn, and nothing read so far tells them apart - 10 VIs, 35 calls.
+
+Over the 761: **175 identical in every fact** (157 before), attributes 89.7 % (83.8), selectors
+wrong 375 (828), call targets wrong 297 (672).
 
 ## 8. Files
 

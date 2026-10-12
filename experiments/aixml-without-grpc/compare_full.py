@@ -51,7 +51,12 @@ def facts(root):
         els.add((el.tag, el.get("uid"), el.get("uid_parent"), name, typ))
         for a in ATTRS:
             if el.get(a) is not None:
-                attrs.add((el.get("uid"), a, aixml2vi.unescape(el.get(a))))
+                v = aixml2vi.unescape(el.get(a))
+                if a == "selectin" and v in src_of:
+                    # a net NAME is an arbitrary token (NI names the selector's net after the case
+                    # structure, the reader after its source) - compared by its SOURCE like an edge
+                    v = "%s.%s" % src_of[v]
+                attrs.add((el.get("uid"), a, v))
         if el.tag == "Constant":
             vals.add((el.get("uid"), el.get("value")))
         for term, net in aixml2vi.pairs(el.get("inputs")):
@@ -61,11 +66,14 @@ def facts(root):
 
 
 def main(argv):
-    limit = int(argv[argv.index("--max") + 1]) if "--max" in argv else 10 ** 9
+    # a constant's value may hold any character; redirected to a file the console's cp1252 refused
+    # one (U+02C7) and ended a whole run
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    limit =int(argv[argv.index("--max") + 1]) if "--max" in argv else 10 ** 9
     show = int(argv[argv.index("--show") + 1]) if "--show" in argv else 0
     only = re.compile(argv[argv.index("--only") + 1]) if "--only" in argv else None
     tot = {k: [0, 0] for k in ("elements", "attrs", "values", "edges")}
-    same = n = 0
+    same = n = locked = 0
     shown = 0
     import collections
     why = collections.Counter()
@@ -93,6 +101,13 @@ def main(argv):
             continue
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+        diagram = ("Node", "Call", "Structure", "Constant")
+        if not any(e.tag in diagram for e in ref.iter()) and any(e.tag in diagram for e in mine.iter()):
+            # NI's exporter saw no diagram where the VI has one: a LOCKED VI, exported as its one
+            # visible control (about 200 bytes - 107 of LabVIEW's resource\ dialogs, cached by
+            # the event scans). Nothing to compare the reader against.
+            locked += 1
+            continue
         a, b = facts(ref), facts(mine)
         ok = True
         for k, fa, fb in zip(("elements", "attrs", "values", "edges"), a, b):
@@ -121,7 +136,7 @@ def main(argv):
     if "--why" in argv:
         for k, c in why.most_common(40):
             print("  %5d  %s" % (c, k))
-    print("%d of %d VIs identical in every fact" % (same, n))
+    print("%d of %d VIs identical in every fact (%d locked VIs skipped: NI exported no diagram)" % (same, n, locked))
     for k, (hit, all_) in tot.items():
         print("  %-9s %d of %d (%.1f %%)" % (k, hit, all_, 100.0 * hit / max(1, all_)))
 
