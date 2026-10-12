@@ -15,7 +15,7 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
 | AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
-| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **223 of 747** - elements 97.0 %, attributes 93.3 %, wires 88.6 % - on 2026-10-12, 23 stale cache entries also left out with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
+| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **253 of 747** - elements 97.7 %, attributes 93.8 %, values 96.4 %, wires 88.6 % - on 2026-10-12, 23 stale cache entries also left out with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
 | both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped); **111 of 130** on 2026-10-12, 4 skipped - the 15 failures (user events, control references as event sources, a class constant, the live-event tests) fail identically with the reader before that night's fixes |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
@@ -2149,6 +2149,28 @@ SceneMesh, TimeFlatSequence 0x406F), and a node with NO reference input - implic
 This VI, the application - has only its own name (`WFChart (strict)` is `LV.WaveformChart`, `Tbl`
 `LV.Table`): `parts/class-ids-learned.json` holds both. Over the 747: **223 identical** (216), elements 97.0 %;
 the round trip unchanged.
+
+**NI's export writes a BACKSLASH in a value doubled, never as `\5C`** - the reader's `escape_value`
+said the opposite and was counted wrong: 0 values with `\5C` in NI's exports against 100 with `\\`
+(76 paths, `..\\lvcanvas.html`; 21 strings, `[\\t\\n\\r\\s\5D*$`), which `aixml2vi.unescape` reads
+back as one. (Authoring with `\5C` stays right - CLAUDE.md's rule is about what the VALIDATOR
+accepts, and both spellings unescape alike.) A relative path's EMPTY component is one level up,
+which NI writes `..`. And more types: a fixed-point number is `fixed`, an ActiveX refnum
+`ref{ActiveX}`, a typedef'd field inside a cluster keeps its label (it sits on the type the
+TypeDef wraps), and a NUL byte in a label - pylabview writes the six characters `&#x00;` - is an
+empty label in NI's export.
+
+**An instance's call is named after what it was MADE FROM**, read out of the VI's `VINS` block:
+- an Express VI after its template's file, the last component of a path inside the instance -
+  `Ex_Inst_Sample Compression.vi`, `File Dialog Source.vi`, `DDT to 1D Dbl Automatic.vi` - the path
+  followed by seven zero bytes and a Pascal string (`Localized`, `NI.LV.AL...`, `_Conversion`), and
+  never the `Configure <X>.vi` dialog whose path stands earlier in some instances;
+- a malleable VI after its `.vim`: the FIRST `.vim` among the embedded instance's VI-level links
+  (`LIvi`, pylabview extracts the section as a VI of its own) - `Test Case.lvclass:Pass If
+  Equal.vim`, where the `Compare Variants.vim` it calls in turn is only in its `LIbd`.
+Every Express and malleable call over the corpus is named as NI names it now; XNodes are next.
+Over the 747: **253 identical** (223), elements 97.7 %, values 96.4 % (94.8); the round trip
+unchanged.
 
 ## 8. Files
 

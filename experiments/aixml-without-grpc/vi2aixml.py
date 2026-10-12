@@ -59,6 +59,12 @@ def _sub(tree):
     if t is None:
         return None
     lab = tree.get("Label")
+    inner = tree
+    while not lab and inner is not None and inner.get("Type") == "TypeDef":
+        # a typedef'd field carries its label on the type it wraps (an Alignment cluster's
+        # `uint16{Left,Center,Right}.Horizontal`, which NI's export keeps and the wrapper lost)
+        inner = next((c for c in inner if c.tag == "TypeDesc"), None)
+        lab = inner.get("Label") if inner is not None else None
     return t + ("." + lab.replace(",", "\\2C") if lab else "")
 
 
@@ -92,8 +98,11 @@ def aixml_type(tree):
         return "tag{%s}" % n if n else None
     if t == "Refnum":
         rt = tree.get("RefType")
+        if rt == "AutoRef":
+            return "ref{ActiveX}"       # an ActiveX refnum, whatever its interface (Excel._Application)
         if rt == "LVObjCtl":
-            cls = ref_class_name(tree.get("CtlFlags"))
+            cls = ref_class_name(tree.get("CtlFlags")) or \
+                Reader.learned_classes().get("classes", {}).get((tree.get("CtlFlags") or "").upper())
             if cls is None:
                 return None
             if kids:
@@ -111,6 +120,8 @@ def aixml_type(tree):
             return "ref{GenClassTag.%s.%s}" % (tree.get("Ident") or "", tree.get("TypeName") or "")
         return None
     k = lvheap.type_key(tree)
+    if t == "FixedPoint":
+        return "fixed"      # NI's export writes a fixed-point number bare, its word lengths dropped
     if k and k.startswith("Unit"):
         base = TYPE_TO_AIXML.get("Num" + k[4:])
         if base is None or tree.find("PhysUnit") is not None:
@@ -124,9 +135,11 @@ def aixml_type(tree):
 
 def escape_value(v):
     """NI's escaping inside value= and type literals, counted over 1 584 cached exports:
-    control characters, ',' ']' and the backslash become a backslash plus two hex digits;
-    ':' and ';' stay raw."""
-    return "".join("\\%02X" % ord(c) if ord(c) < 0x20 or c in ",]\\" else c for c in v)
+    control characters, ',' and ']' become a backslash plus two hex digits; ':' and ';' stay raw.
+    A BACKSLASH is DOUBLED - this said `\\5C` until 2026-10-12, and NI's exports hold 0 values with
+    `\\5C` against 100 with `\\\\` (76 paths `..\\\\lvcanvas.html`, 21 strings `[\\\\t\\\\n...`), which
+    aixml2vi.unescape reads back as one backslash."""
+    return "".join("\\\\" if c == "\\" else ("\\%02X" % ord(c) if ord(c) < 0x20 or c in ",]" else c) for c in v)
 
 
 def fmt_float(v):
@@ -257,7 +270,9 @@ def _decode_value(tree, hexstr):
             i += 1 + n
         if kind == 0 and comps:
             return escape_value(comps[0] + ":\\" + "\\".join(comps[1:]))
-        return escape_value("\\".join(comps))
+        # a relative path's EMPTY component is one level up, which NI writes `..`
+        # (`..\\support\\sample.wav`, Excel - Macro.vi)
+        return escape_value("\\".join(c if c else ".." for c in comps))
     return None
 
 
@@ -375,9 +390,11 @@ def label_text(ddo):
         if part.get("class") == "label" and part.findtext("partID") == "16":
             t = part.findtext("textRec/text")
             if t and t.startswith('"') and t.endswith('"'):
-                return t[1:-1].replace('\\"', '"').replace("\\\\", "\\")
-            # pylabview writes an unquoted [NULL] for a label with no text at all
-            return "" if t in (None, "[NULL]") else t
+                t = t[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+            # pylabview writes an unquoted [NULL] for a label with no text at all, and a NUL
+            # BYTE as the literal text `&#x00;` - NI's export of DW Test Change Info.vi has an
+            # empty label there
+            return "" if t in (None, "[NULL]") else t.replace("&#x00;", "")
     return ""
 
 
@@ -557,13 +574,16 @@ class Reader:
         return qual
 
     def _express_instances(self):
-        """Express VI instance name (`1`) -> the name NI's export gives its call
-        (`Ex_Inst_Sample Compression.vi`). The VI's VINS block: section 0 is an index - a uint32
-        count, then each instance's name as a Pascal string padded with zeros - and section k+1
-        holds instance k, an embedded VI whose own name is `Ex_Inst_<title>.vi`. Read off NI's
-        Express VI - Sample Compression.vi, whose export calls Instance:1 and Instance:0
-        Sample Compression and Simulate Signal. A malleable VI's instance holds no such name
-        (its call names the .vim) and is left alone."""
+        """Instance name (`1`, a GUID) -> the name NI's export gives its call. The VI's VINS
+        block: section 0 is an index - a uint32 count, then each instance's name as a Pascal
+        string padded with zeros - and section k+1 holds instance k, an embedded VI of its own.
+        - An EXPRESS VI's instance holds the path of the template it was made from, followed by
+          `Localized`: `<vilib>\\express\\...\\SampleCompressionBlock.llb\\Ex_Inst_Sample
+          Compression.vi`, `...\\FileDialogBlock.llb\\File Dialog Source.vi` - and NI names the
+          call after that file (Express VI - Sample Compression.vi, Manage DataPlugins.vi).
+        - A MALLEABLE VI's instance links to its .vim FIRST among its VI-level links (LIvi) -
+          `Pass If Equal.vim` before the `Compare Variants.vim` its diagram calls in turn, which
+          only its LIbd names - and NI names the call after the .vim."""
         secs = {int(s.get("Index") or 0): s.get("File") for s in self.b.main.findall("VINS/Section")
                 if s.get("Format") == "bin" and s.get("File")}
         if 0 not in secs:
@@ -588,7 +608,68 @@ class Reader:
             m = re.search(rb"Ex_Inst_[^\x00-\x1f]{1,120}?\.vi", data)
             if m:
                 out[nm] = m.group(0).decode("mac_roman", "replace")
+                continue
+            # else the template path, then seven zero bytes and a Pascal string: `Localized` after
+            # most (File Dialog Source.vi), `NI.LV.AL...` after Dual Channel Spectral Measurement
+            # Source.vi, `_Conversion` after Collector's DDT to 1D Dbl Automatic.vi - tried in that
+            # order of certainty - and never the express VI's `Configure <X>.vi` dialog, whose path
+            # stands earlier in some instances
+            found = None
+            for after in (rb"\tLocalized", rb"[\x01-\x40][A-Za-z]", rb"[\x01-\x40]_"):
+                for m in re.finditer(rb"([^\x00-\x1f][^\x00]{0,120}?\.vi)\x00{7}" + after, data):
+                    # the path's last component, a Pascal string: its length byte precedes it
+                    tail = m.group(1)
+                    for i in range(len(tail) - 4, -1, -1):
+                        if m.start(1) + i > 0 and data[m.start(1) + i - 1] == len(tail) - i:
+                            name = tail[i:].decode("mac_roman", "replace")
+                            if not name.startswith("Configure "):
+                                found = name
+                            break
+                    if found:
+                        break
+                if found:
+                    break
+            if found:
+                out[nm] = found
+                continue
+            vim = self._malleable_source(data)
+            if vim:
+                out[nm] = vim
         return out
+
+    @staticmethod
+    def _malleable_source(data):
+        """The qualified name of the .vim a malleable instance was made from: the first
+        qualified name ending in .vim among the embedded VI's VI-level links (LIvi)."""
+        tmp = tempfile.mkdtemp(prefix="vins_")
+        try:
+            p = os.path.join(tmp, "i.vi")
+            with open(p, "wb") as fh:
+                fh.write(data)
+            try:
+                b = lvheap.Bundle(lvheap.extract(p, tmp))
+            except Exception:
+                return None
+            sec = b.main.find("LIvi/Section")
+            if sec is None:
+                return None
+            if sec.get("Format") != "bin":
+                for rec in sec.iter():
+                    q = [x for s in rec.findall("LinkSaveQualName/String") for x in _nested_text(s.text or "")]
+                    if q and q[-1].lower().endswith(".vim"):
+                        return ":".join(q)
+                return None
+            raw = open(os.path.join(b.dir, sec.get("File")), "rb").read()
+            for s in range(2, len(raw) - 4):
+                n = int.from_bytes(raw[s - 2:s], "big")
+                if not 1 <= n <= 4:
+                    continue
+                cand, end = _pascal_names(raw, s, n)
+                if cand and cand[-1].lower().endswith(b".vim") and 0 <= raw.find(b"PTH0", end) - end <= 8:
+                    return ":".join(x.decode("mac_roman", "replace") for nm_ in cand for x in _expand_nested(nm_))
+            return None
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
     @staticmethod
     def _tunnel_ranks(node, dco_class):
