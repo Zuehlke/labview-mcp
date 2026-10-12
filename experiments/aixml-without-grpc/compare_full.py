@@ -73,7 +73,7 @@ def main(argv):
     show = int(argv[argv.index("--show") + 1]) if "--show" in argv else 0
     only = re.compile(argv[argv.index("--only") + 1]) if "--only" in argv else None
     tot = {k: [0, 0] for k in ("elements", "attrs", "values", "edges")}
-    same = n = locked = 0
+    same = n = locked = stale = 0
     shown = 0
     import collections
     why = collections.Counter()
@@ -90,6 +90,14 @@ def main(argv):
         st = os.stat(vp)
         if m.get("ViSize") not in (None, st.st_size):
             continue
+        key = (m.get("Key") or "").split("|")
+        if len(key) == 3 and key[1].isdigit() and key[2].isdigit():
+            # the cache's own key: path | LastWriteTimeUtc in .NET ticks | size. An export of a VI
+            # written since (our user.lib\LV_MCP sockets, regenerated with the same size) is stale
+            ticks = st.st_mtime_ns // 100 + 621355968000000000
+            if int(key[2]) != st.st_size or abs(int(key[1]) - ticks) > 10:
+                stale += 1
+                continue
         tmp = tempfile.mkdtemp(prefix="cmp_")
         try:
             ref = ET.parse(x).getroot()
@@ -136,7 +144,7 @@ def main(argv):
     if "--why" in argv:
         for k, c in why.most_common(40):
             print("  %5d  %s" % (c, k))
-    print("%d of %d VIs identical in every fact (%d locked VIs skipped: NI exported no diagram)" % (same, n, locked))
+    print("%d of %d VIs identical in every fact (%d locked VIs skipped: NI exported no diagram; %d stale cache entries)" % (same, n, locked, stale))
     for k, (hit, all_) in tot.items():
         print("  %-9s %d of %d (%.1f %%)" % (k, hit, all_, 100.0 * hit / max(1, all_)))
 

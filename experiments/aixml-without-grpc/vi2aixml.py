@@ -512,8 +512,7 @@ class Reader:
             # a call into a CLASS (LUnit's Test Case.lvclass:Pass If.vi) was "?" for that
             data = open(os.path.join(self.b.dir, sec.get("File")), "rb").read()
             for off, tag, name, flag in binary_link_records(data):
-                if ":" not in name and flag == 2 and self.caller_libs:
-                    name = ":".join(self.caller_libs + [name])     # relative to the caller's library
+                name = ":".join(self._relative_to_caller(name.split(":"), str(flag)))
                 out.setdefault(str(off), {})[tag] = name
             return out
         bdhp = self.b.main.find("LIbd/Section/BDHP")
@@ -527,11 +526,8 @@ class Reader:
             lib = [x.text or "" for x in rec.findall("VILSPathRef/String")]
             if len(qual) == 1 and lib and lib[-1].lower().endswith((".lvlib", ".lvclass", ".xctl", ".lvlibp")):
                 qual = [lib[-1]] + qual
-            elif len(qual) == 1 and rec.get("LinkSaveFlag") == "2" and self.caller_libs:
-                # LinkSaveFlag 2: the name is RELATIVE to the caller's own library - Caraya's Run
-                # Tests.vi calls `Run Test (Object).vi`, NI's export names it
-                # `Caraya.lvlib:Run Test (Object).vi`
-                qual = self.caller_libs + qual
+            else:
+                qual = self._relative_to_caller(qual, rec.get("LinkSaveFlag"))
             name = ":".join(qual)
             # a class link record (DyOM, FPPI, DDPI) keeps its uids in APILinkCacheList - read
             # once pylabview parses LabVIEW 2026's layout (patches.json, class-link-cache-extra)
@@ -541,6 +537,24 @@ class Reader:
                 except (TypeError, ValueError):
                     pass
         return out
+
+    def _relative_to_caller(self, qual, flag):
+        """A link record's qualified name, completed by the caller's own libraries (LIBN) where
+        its LinkSaveFlag says it was saved RELATIVE to them:
+        2 - to the caller's whole library chain: Caraya's Run Tests.vi calls `Run Test
+            (Object).vi`, NI exports `Caraya.lvlib:Run Test (Object).vi`; Pry.vi in Lever.lvclass
+            calls `Multiply Force.vi`, NI exports `Lever.lvclass:Multiply Force.vi`;
+        3 - to its OUTERMOST library only: Send Normal Stop.vi (Actor Framework.lvlib, Stop
+            Msg.lvclass) calls `Message Enqueuer.lvclass:Enqueue.vi`, NI exports `Actor
+            Framework.lvlib:Message Enqueuer.lvclass:Enqueue.vi` - Message Maker's the same.
+        The flag is per record: Pry.vi's calls into vi.lib carry 0."""
+        if not self.caller_libs or not qual:
+            return qual
+        if flag == "2" and len(qual) == 1:
+            return self.caller_libs + qual
+        if flag == "3":
+            return self.caller_libs[:1] + qual
+        return qual
 
     def _express_instances(self):
         """Express VI instance name (`1`) -> the name NI's export gives its call

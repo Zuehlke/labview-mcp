@@ -2077,7 +2077,12 @@ too: a net name is an arbitrary token, and NI names the selector's net after the
   `Caraya.lvlib:Run Test (Object).vi`): its link record carries `LinkSaveFlag 2`, the name RELATIVE
   to the caller's library (LIBN). The flag is per record - in `Pry.vi`'s binary link block the calls
   into `vi.lib` read 0 and the call into its own class 2 - and in a binary block it is the uint32
-  right after the path (pylabview's BasicLinkSaveInfo).
+  right after the path (pylabview's BasicLinkSaveInfo). **Flag 3 is relative to the OUTERMOST
+  library only**: `Send Normal Stop.vi` (Actor Framework.lvlib, Stop Msg.lvclass) stores
+  `Message Enqueuer.lvclass:Enqueue.vi` and NI exports `Actor Framework.lvlib:Message
+  Enqueuer.lvclass:Enqueue.vi`; Message Maker's coupled scripter the same. Still open: a
+  dynamic-dispatch call of an INHERITED method, which NI names after the class that DEFINES it
+  (`Mock.lvclass:Init Mock.vi` from Mock Serial.lvclass) - that needs the class hierarchy.
 - **An Express VI call** came out `Instance:1` where NI writes `Ex_Inst_Sample Compression.vi`: the
   VI's VINS block is an index (section 0: a count, then each instance's name) plus one section per
   instance, an embedded VI whose own name is that `Ex_Inst_` one. A MALLEABLE instance (`Instance:
@@ -2115,6 +2120,11 @@ happened to show it. `learn_prop_names.py` pairs each heap property item with th
 ActiveX or .NET dispatch id, unique within its class - 572 was `{LV.VI}`'s Block Diagram in 17 pairs
 and an Excel `Workbooks` in 2, the seven disputes of the first run all of that kind. Over the 761:
 **202 identical** (190), attributes 92.7 %, wires 87.2 %; the round trip unchanged.
+
+`compare_full.py` also drops a STALE cache entry now: the cache key carries the VI's write time
+in .NET ticks, and 23 entries were being compared with old exports of VIs written since - among
+them our own `user.lib\LV_MCP` sockets, regenerated at the same size. With Flag 3 as well, over the 747 left:
+**206 identical**, elements 95.5 %, attributes 93.3 %; the round trip unchanged at 111 of 130.
 
 ## 8. Files
 
