@@ -168,7 +168,9 @@ def same(want, got):
 def main(argv):
     out_dir = r"C:\temp\aixml-no-grpc\out"
     if "--out" in argv:
-        out_dir = argv[argv.index("--out") + 1]
+        # backslashes: LabVIEW over COM loads no VI from a forward-slash path, and every case of
+        # a run then read "BROKEN (ExecState None)" (2026-10-12)
+        out_dir = os.path.abspath(argv[argv.index("--out") + 1])
     flt = [a for a in argv if not a.startswith("--") and a != out_dir]
     os.makedirs(out_dir, exist_ok=True)
     expect = json.load(open(os.path.join(HERE, "tests", "expect.json"), encoding="utf-8"))
