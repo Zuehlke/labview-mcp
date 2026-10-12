@@ -1,0 +1,11 @@
+<VI _name="T163 Cluster Array Shapes.vi" description="Cluster-array constants of other shapes than t74's: three numeric fields, and a string beside an int32. Their element, cells and anchor follow the element (2026-10-12), where the donor's 19 px cell killed LabVIEW's render.">
+  <Constant _name="triples" type="array{cluster{double.x,int32.n,double.y}}" uid="4200" uid_parent="root" value="[[1.5,2,3.5],[4.5,5,6.5]]" outputs="value:4200.value"/>
+  <Constant _name="named" type="array{cluster{string.s,int32.k}}" uid="4210" uid_parent="root" value="[[ab,1],[cd,2]]" outputs="value:4210.value"/>
+  <Control _name="index" type="int32" uid="4220" uid_parent="root" value="0" outputs="value:4220.value"/>
+  <Node _name="Index Array" inputs="array:4200.value,index:4220.value" outputs="element:4230.element" uid="4230" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="y" inputs="input cluster:4230.element" outputs="y:4235.y" uid="4235" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4210.value,index:4220.value" outputs="element:4240.element" uid="4240" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="s" inputs="input cluster:4240.element" outputs="s:4245.s" uid="4245" uid_parent="root"/>
+  <Indicator _name="y" type="double" uid="4250" uid_parent="root" value="0" inputs="value:4235.y"/>
+  <Indicator _name="s" type="string" uid="4255" uid_parent="root" value="" inputs="value:4245.s"/>
+</VI>

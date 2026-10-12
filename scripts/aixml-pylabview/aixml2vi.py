@@ -1382,6 +1382,8 @@ class Composer:
                 kids = []
                 for f in fields(tree):
                     child, _, h, cw = self.build_ddo(f, is_ind, prefix, "SL__arrayElement", in_array)
+                    if prefix == "const" and in_array and child.get("class") == "stdNum":
+                        cw = self._narrow_array_field(child)
                     place_obj(child, y, x0)
                     y += max(h, 14) + (0 if in_array else 4)
                     w = max(w, cw)
@@ -1398,10 +1400,23 @@ class Composer:
                           if pane.find("origin") is not None else (y0, x0))
                 ph = max(y - y0, y - oy + 3)
                 pw = max(w, x0 + w - ox + 3)
+                if prefix == "const" and in_array:
+                    # THE ELEMENT OF A CLUSTER-ARRAY CONSTANT gets NI's shape, the pane exactly
+                    # around its fields and the frame 3 px outside (NI's t74: pane (3, 3, 37, 16),
+                    # cluster (3, 54, 43, 73)) - its origin is set from that later
+                    # (_set_cluster_frames). The rule above reads `origin` as (v, h) where it is
+                    # (h, v); the cluster-array donor's (-262, -512) then made the pane 301 px
+                    # wide and the element 308, and Print.VI To HTML of the constant KILLED
+                    # LabVIEW 2026 - `Unable to create DIB Section`, every time, t74 (2026-10-12).
+                    # NI's 19 px element alone in the same file, nothing else changed, drew.
+                    ph, pw = y - y0, w
+                    ddo.set(self.CLUSTER_ORIGIN, "1")
+                    self._size_cluster_parts(ddo, pane, ph, pw)
                 pb = lvheap.parse_bounds(pane.find("bounds").text)
                 pane.find("bounds").text = lvheap.fmt_bounds((pb[0], pb[1], pb[0] + ph, pb[1] + pw))
                 b = lvheap.parse_bounds(ddo.find("bounds").text)
-                ddo.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + pb[0] + ph + 4, b[1] + pb[1] + pw + 4))
+                pad = 3 if prefix == "const" and in_array else 4
+                ddo.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + pb[0] + ph + pad, b[1] + pb[1] + pw + pad))
                 if prefix == "fpdco":
                     self._fit_fp_cluster_frame(ddo, pane, kids)
             else:
@@ -1447,6 +1462,20 @@ class Composer:
                     b = lvheap.parse_bounds(ddo.find("bounds").text)
                     ddo.find("bounds").text = lvheap.fmt_bounds(
                         (b[0], b[1], max(b[2], b[0] + cb + 3), max(b[3], b[1] + cr + 3)))
+                    if prefix == "const" and child.get("class") == "stdClust":
+                        self._fit_array_cell(ddo, child)
+                        if ddo.get(ANCHOR_K) is not None:
+                            # THE ANCHOR IS THE CENTRE OF THE ARRAY'S BOX, k = (w div 2, h div 2):
+                            # exact on all ten arrays NI's converter built on 2026-10-12 - six
+                            # cluster arrays of different fields, a numeric, string and boolean
+                            # array. The donor's (38, 23) fits only a 76 x 46 box: under a wider
+                            # element LabVIEW drew the grid a cell to the left (element 1 over the
+                            # index display, the cell greyed), and one pixel right of or below
+                            # the centre is `Insane Array Constant {graphics} (0x80)` - measured
+                            # as a scan, k_h 33..38 clean and 39..41 insane on a 77 px box, k_v
+                            # 22..23 clean and 24 insane on a 46 px one.
+                            at_, al_, ab_, ar_ = lvheap.parse_bounds(ddo.findtext("bounds"))
+                            ddo.set(ANCHOR_K, "%d,%d" % ((ar_ - al_) // 2, (ab_ - at_) // 2))
             if is_ind is not None and prefix == "fpdco":
                 self._direction(ddo, is_ind)
             self._typed_donor(holder, donor_types, kids)
@@ -2009,6 +2038,61 @@ class Composer:
                 il = lvheap.parse_bounds(idx.findtext("bounds"))[1] if idx is not None else 2
                 obj.set(ANCHOR_K, "%d,%d" % (il + 23, 11))
         self._hide_label(obj)
+
+    @staticmethod
+    def _size_cluster_parts(ddo, pane, H, W):
+        """A label-less cluster's frame parts around an H x W pane - the pane's own 28/39/38/44 and
+        the cluster's 28 (the pane's place) and 9 (3 px outside), as _fit_cluster sizes a diagram
+        cluster's. An array's element cluster kept the donor's two-field parts: a three-field
+        element drew two fields and an empty band (2026-10-12)."""
+        fb = lvheap.fmt_bounds
+        for p in pane.find("partsList"):
+            box = {"28": (0, 0, H, W), "39": (0, W, H, W + 17), "38": (H, 0, H + 17, W),
+                   "44": (H, W, H + 17, W + 17)}.get(p.findtext("partID")) if p.get("class") == "cosm" else None
+            if box is not None and p.find("bounds") is not None:
+                p.find("bounds").text = fb(box)
+        for p in ddo.find("partsList"):
+            box = {"28": (3, 3, 3 + H, 3 + W), "9": (0, 0, H + 6, W + 6)}.get(p.findtext("partID")) \
+                if p.get("class") == "cosm" else None
+            if box is not None and p.find("bounds") is not None:
+                p.find("bounds").text = fb(box)
+
+    ARRAY_FIELD_NUM_W = 13
+
+    def _narrow_array_field(self, obj):
+        """A numeric field of a cluster-array constant at NI's 13 px (its converter: numLabel
+        (1, 1, 16, 12), frame (0, 0, 17, 13), in every cluster array of 2026-10-12). The arrelem part
+        is a 36 px numeric, which LabVIEW drew 13 px wide inside a 36 px box. Returns the width."""
+        w = self.ARRAY_FIELD_NUM_W
+        for p in obj.find("partsList"):
+            if p.get("class") == "numLabel" and p.find("bounds") is not None:
+                p.find("bounds").text = lvheap.fmt_bounds((1, 1, 16, w - 1))
+            elif p.get("class") == "cosm" and p.findtext("partID") == "9" and p.find("bounds") is not None:
+                p.find("bounds").text = lvheap.fmt_bounds((0, 0, 17, w))
+        t, l, b, r = lvheap.parse_bounds(obj.findtext("bounds"))
+        obj.find("bounds").text = lvheap.fmt_bounds((t, l, b, l + w))
+        return w
+
+    @staticmethod
+    def _fit_array_cell(arr, elem):
+        """An array constant's own CELL parts around its element, as NI's converter has them (t74,
+        a cluster element at (3, 54, 43, 73)): the cell 28 the element's box, 39 and 38 its right
+        and bottom 15 px, 44 their corner, the frame 9 three px outside. Left at the donor's 19 px
+        cell under a wider element, LabVIEW drew several cells per element - greyed, doubled - and
+        under the 308 px element the composer used to build, Print.VI To HTML died in `Unable to
+        create DIB Section` (2026-10-12)."""
+        t, l, b, r = lvheap.parse_bounds(elem.findtext("bounds"))
+        boxes = {"28": (t, l, b, r), "39": (t, r - 15, b, r), "38": (b - 15, l, b, r),
+                 "44": (b - 15, r - 15, b, r), "9": (t - 3, l - 3, b + 3, r + 3)}
+        for p in arr.find("partsList"):
+            box = boxes.get(p.findtext("partID")) if p.get("class") == "cosm" else None
+            if box is not None and p.find("bounds") is not None:
+                p.find("bounds").text = lvheap.fmt_bounds(box)
+        # and the ARRAY's own box ends with that frame, as NI's (a cluster element to (43, 72) in
+        # a 46 x 75 array): left at the donor's 46 px over a 23 px element, LabVIEW drew a column
+        # of nine cells reaching far below the constant
+        at, al = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+        arr.find("bounds").text = lvheap.fmt_bounds((at, al, at + b + 3, al + r + 3))
 
     def _fit_cluster(self, ddo, name, tree, values):
         pane = ddo.find("paneHierarchy")
@@ -7014,6 +7098,12 @@ class Composer:
             frame, e = None, clus
             while e in parent:
                 e = parent[e]
+                if e.get("class") == "indArr" and e.find("bounds") is not None:
+                    # a cluster that is an ARRAY's element sits in the array's frame: NI's t74
+                    # element at (3, 54) in an array at (159, 287) carries docBounds (-162, -341)
+                    at_, al_ = lvheap.parse_bounds(e.findtext("bounds"))[:2]
+                    t, l = t + at_, l + al_
+                    continue
                 if e.get("class") == "stdClust":
                     pp = e.find("paneHierarchy")
                     pdt, pdl = lvheap.parse_bounds(pp.findtext("docBounds"))[:2]

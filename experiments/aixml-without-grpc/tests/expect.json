@@ -1803,5 +1803,23 @@
     }
    }
   ]
+ },
+ "t163_cluster_array_shapes": {
+  "cases": [
+   {
+    "inputs": "index=0",
+    "outputs": {
+     "y": 3.5,
+     "s": "ab"
+    }
+   },
+   {
+    "inputs": "index=1",
+    "outputs": {
+     "y": 6.5,
+     "s": "cd"
+    }
+   }
+  ]
  }
 }

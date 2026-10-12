@@ -129,11 +129,16 @@ things went wrong, each handled now:
   now says `labviewDied: true` and leads its note with it when a LabVIEW that ran before the
   render is gone after it.
 
-  **A separate render crash in LabVIEW 2026 itself, OPEN**: t74 (string, boolean and
-  cluster-array CONSTANTS) kills LabVIEW in the same print - 45 `Unable to create DIB Section`,
-  then gone - with or without the `dBounds` change, rendered alone. Its cluster-in-array element
-  carries `minPaneSize (-258, -508)` and `origin (-262, -512)`, values the part's donor - a VI
-  NI's converter built - carries too; not yet established as the cause.
+  **A separate render crash in LabVIEW 2026 itself, solved the same evening**: t74 killed
+  LabVIEW in the same print (`Unable to create DIB Section`, then gone), in both formats. Bisected
+  to its CLUSTER-ARRAY constant: the composer built the element cluster 308 px wide (a pane sized
+  from the donor's `origin` read the wrong way round) inside array cells still sized for the
+  donor's 19 px. Fixed with NI's shape - the element's pane exactly around its fields, the array's
+  cell parts and box around the element, the array anchor at the CENTRE of the array's box (k =
+  w div 2, h div 2 - exact on ten NI conversions; one pixel right of or below it is `Insane Array
+  Constant {graphics}`, measured as a scan), the element's frame parts sized, numeric fields 13 px
+  - and t74 plus six probes of other field types and counts load clean and render complete.
+  FINDINGS has the bisection.
 
   The report's second lead - "LabVIEW 2025 writes no 8 cache bytes, `Launcher.vi` cannot be read
   with them" - does not hold: the Sensor accessors LabVIEW 2025 (25.3.5) saved carry them (`VIPI`

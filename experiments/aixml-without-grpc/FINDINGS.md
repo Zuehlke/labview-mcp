@@ -1452,13 +1452,51 @@ does not. Format 1, STANDARD, writes `docc`, `docp` and `docd` only; `diagramSiz
 `docd`, so the ActiveX render prints format 1 since. Format enum: Custom, Standard, Using Panel,
 Using SubVI, Complete (`scripts/lvdoc_print.xml`).
 
-**t74 kills LabVIEW 2026 in the same print, OPEN.** Rendered after ~30 others in one scan, and
-again ALONE after a restart with `dBounds` fitted: 17, then 45 `Unable to create DIB Section`
-(`image.cpp`) with `Unable to delete IGetMesaBuffer bitmap`, then the process is gone. Its array
-constants include a cluster array, whose element cluster carries `minPaneSize (-258, -508)` and
-`origin (-262, -512)` - the values of the part's donor (`parr2.vi`, a VI NI's converter built) -
-against `docBounds` the composer recomputed. Not established as the cause; NI's conversion of t74
-has not been rendered. GDI objects per render: +1 to +15, not a leak that explains it.
+**t74 killed LabVIEW 2026 in the same print - SOLVED the same evening: a CLUSTER-ARRAY CONSTANT
+whose element the composer built 308 px wide inside cells sized for the donor's 19 px.** Rendered
+after ~30 others in one scan, and again ALONE after a restart, in format 4 and in format 1 alike:
+17 to 98 `Unable to create DIB Section` (`image.cpp`), `Unable to delete IGetMesaBuffer bitmap`,
+then the process is gone. GDI objects per render: +1 to +15, no leak. Bisected with one render per
+variant in a fresh copy (scratch `try_render.ps1`, LabVIEW restarted after each death):
+
+| variant | render |
+|---|---|
+| NI's conversion of t74 | survives, drawn |
+| t74's string array, boolean array, string-array control alone | survive |
+| t74's cluster array (`pts`, `array{cluster{double.x,int32.n}}`) alone | **dies** |
+| ... with the cluster's `origin`/`minPaneSize` recomputed, or its `savedSize` set | dies |
+| ... with the ELEMENT cluster's box set to NI's (3, 54, 43, 73) and nothing else | survives |
+
+Four defects, each measured, all in an array constant whose element is a cluster:
+
+- **The element was 308 px wide.** `build_ddo` sizes a cluster's pane from the donor's `origin`
+  read as (v, h) - it is (h, v) - and the cluster-array donor's (-262, -512) made the pane 301 px
+  and the element 308. Now: the pane exactly around the fields and the frame 3 px outside, as NI's
+  converter has it (pane (3, 3, 37, 16), element (3, 54, 43, 73)); `origin` follows from that in
+  `_set_cluster_frames`, which counts the array's own place in now (NI: element (3, 54) in an array
+  at (159, 287) carries docBounds (-162, -341)).
+- **The array's own cell parts kept the donor's 19 px cell** (28 the cell, 39/38/44 its right and
+  bottom 15 px, 9 the frame 3 px outside, and the array box ending there): under a wider element
+  LabVIEW drew several cells per element - doubled, greyed, one over the index display - and under
+  308 px it died. `_fit_array_cell` sizes them from the element.
+- **The array anchor (`nRC`/`oRC`) followed the donor, not this array: it is THE CENTRE OF THE
+  ARRAY'S BOX, k = (w div 2, h div 2)** - exact on all ten arrays NI's converter built for this
+  (six cluster arrays of different field types and counts, a numeric array, t74's string, boolean
+  and cluster arrays). Under a 26 px element with the donor's (38, 23) the grid sat a cell to the
+  left - element 1 over the index display, the cell greyed. A first rule, "element centre - 25",
+  fitted NI's six probes too (the box surrounds the element by a fixed margin) and drew right, but
+  LabVIEW's load check then answered `Insane Array Constant {graphics} (0x80)` for every composed
+  cluster array: the saturated log had hidden it during the render work, and a fresh one showed it.
+  Bisected by geometry group (scratch `mix_groups.py`): only anchor and box TOGETHER, and scanned on
+  a 77 x 46 box: k_h 33..38 clean, 39..41 insane; k_v 22..23 clean, 24 insane - the centre is the
+  edge. With the centre all seven load clean and render.
+- **The element's frame parts kept the donor's two fields**: a three-field element drew two and an
+  empty band. `_size_cluster_parts` sizes them as `_fit_cluster` does for a diagram cluster. And a
+  numeric field is NI's 13 px now (`_narrow_array_field`) - the arrelem part's 36 px was drawn 13 px
+  wide anyway.
+
+After all four: t74 and the six probes (string + int32, boolean + double, path + double, one
+double, three numerics, two strings) render complete in format 1 and 4, values shown, no ghosts.
 
 **Measured.** A hand-written caller (constant -> Write Width -> Read Width) returned 3.5 and 7.25;
 `t128_dynamic_class_call` against the committed fixture `tests/fixtures/Box` (built without NI's
