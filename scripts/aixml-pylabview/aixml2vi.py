@@ -1121,6 +1121,7 @@ class Composer:
         self.links = {}              # callee path -> {"name", "flat", "cons", "offsets": [uid]}
         self.dyn_links = {}          # dynamic-dispatch callee path -> resolver result + dynLink uids
         self.class_consts = {}       # .lvclass path -> {"qual", "lib_ref", "uids": [ddo uid]}
+        self.target_major = None     # --lv-version: the LabVIEW major to write for (25 for 2025)
 
     # ---- uids and types ------------------------------------------------------------------
     def alloc(self):
@@ -1156,9 +1157,10 @@ class Composer:
             # A LABEL's objFlags bit 29 is the donor's, never ours: Launcher.vi's class constant
             # carries it (538378570) - 1 of the 192 class constants in NI's examples, and 1 of the
             # 17 797 objects in every part - and the 191 others read 1507658 / 1507650 with the
-            # bit clear. LabVIEW 2025 aborted rendering a composed VI carrying it, "bad image in
-            # ValidateImage" (image2.cpp 262), the user's bug report of 2026-10-12; LabVIEW 2026
-            # draws it either way.
+            # bit clear, so the majority value is written. It was suspected of LabVIEW 2025's
+            # render abort ("bad image in ValidateImage") and the user's retest REFUTED that: a
+            # VI with the bit clear aborted the same way (bug report 2, 2026-10-12). The class
+            # link LAYOUT is the remaining suspect - Composer.write_class_links.
             if label.get("class") == "label" and label.findtext("objFlags"):
                 flags = int(label.findtext("objFlags"))
                 if flags & LABEL_FLAG_DONOR_ONLY:
@@ -4208,6 +4210,22 @@ class Composer:
             return rec
 
         zero, heap_extra = "0000000000000000", "00000000ff000000"
+        if self.target_major is not None and self.target_major < 26:
+            # A FILE FOR AN OLDER LabVIEW GETS THE OLDER LAYOUT, read off LabVIEW 2026's own Save
+            # for Previous of three composed callers (2025, and 2024 and 2020 answered the same):
+            # NO VIPI in LIvi at all, NO DDPI, a DyOM's content the method's 1-based place among
+            # the DyOMs, and the 8 bytes not 00000000ff000000 - LabVIEW wrote a different fifth
+            # byte on every save (00, 10, 58, 70, 80, a0, e0, f8), so they are not a field and
+            # are written zero here. The 2026 layout under a 2025 stamp loaded and ran in
+            # LabVIEW 2025 and aborted its diagram render, `bad image in ValidateImage` (the
+            # user's bug report, 2026-10-12, image2.cpp 262).
+            for n, link in enumerate(self.dyn_links.values(), 1):
+                name = link["qual"][-1].encode("mac_roman")
+                nested = self._lit(bytes([1, len(name)])) + link["qual"][-1]
+                record(bdhp, "DyOM", link["owner"], nested, n, zero, cache=link["offsets"])
+            for owner, c in self.class_consts.items():
+                record(bdhp, "FPPI", owner, self._lit(b"\x07\x00"), 0, zero, cache=c["uids"])
+            return
         for i, owner in enumerate(classes):
             record(lvin, "VIPI", owner, self._lit(b"\x07\x00"), 0, zero, at=i)
         for path, link in self.dyn_links.items():
@@ -7208,12 +7226,13 @@ def retarget_version(bdir, base, major):
     LabVIEW version" - measured on a user's station 2026-10-12 - because every VI inherits the
     skeleton's LabVIEW 2026 stamps. Three places carry the version:
       - LVSR's Version (the FILE FORMAT, 26.0) - pylabview reads it too and writes the
-        version-dependent records to match (the 8 extra class-link bytes only from 26 on);
+        version-dependent records to match (the 8 extra class-link bytes from 20 on);
       - vers (the application, 26.3.1);
       - the version word a flattened variant starts with, 0x26008000 - the VITS block's
         NI.LV.All.SourceOnly tag, an empty variant constant, a waveform's attribute variant.
-    What else LabVIEW 2026 writes differently is not known: the parts are heap fragments cut from
-    2026 VIs, and whether an older LabVIEW reads every one of them needs that LabVIEW."""
+    The class links get the older LAYOUT in write_class_links (target_major). What else LabVIEW
+    2026 writes differently is not known: the parts are heap fragments cut from 2026 VIs, and
+    whether an older LabVIEW reads every one of them needs that LabVIEW."""
     word_old, word_new = "26008000", "%02d008000" % major
     main_xml = os.path.join(bdir, base + ".xml")
     m = ET.parse(main_xml)
@@ -7263,6 +7282,7 @@ def main(argv):
             args.append(argv[i]); i += 1
     src, out_vi = args
     c = Composer(parts)
+    c.target_major = target
     c.search_dirs = [os.path.dirname(os.path.abspath(out_vi))] + search
     c.caller_file = os.path.abspath(out_vi)   # relative links are computed from the caller FILE
     try:

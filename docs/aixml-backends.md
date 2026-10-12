@@ -81,9 +81,36 @@ things went wrong, each handled now:
   constant's LABEL `objFlags`, `538378570` - bit 29 set - copied from its donor, `Launcher.vi`.
   It is 1 of 192 class constants in NI's examples (the 191 others read `1507658` / `1507650`) and
   1 of the 17 797 objects in every part. `Composer.instantiate` clears that bit on any label since.
-  **That this was the cause is NOT measured** - no LabVIEW 2025 here; the user's test is
-  `ProbeA_flag.vi` (bit set) against `ProbeB_fixed.vi` (cleared). And the three Caraya test
-  generators take `measureDiagram: false`, which skips the render AND the clean-up.
+  **The user's retest REFUTED it as the cause**: a VI with the bit clear aborted the same way, in
+  the same call (bug report 2). The bit stays cleared - it is the majority value - but it is not
+  the fix. The three Caraya test generators take `measureDiagram`, which skips (false) or forces
+  (true) the render AND the clean-up; omitted, it is off while the LabVIEW in use is older than
+  2026 (`TestTools.MeasureTestDiagram`), so a test build there never renders until the abort is
+  understood.
+
+  **What LabVIEW itself writes for 2025 is now known, and the CLASS LINKS differ.** LabVIEW 2026's
+  own `Save for Previous` (`{LV.VI}` `Save.For Previous`, over ActiveX `SaveForPrevious(path,
+  "25.0")`) of the crashing VI and of three suite VIs gave the reference: the heaps are the same
+  but for type ids and compile flags, and the link blocks are not. In the 2025 layout there are
+  **no `VIPI` records in LIvi at all, no `DDPI`, a `DyOM`'s content is the method's 1-based place
+  among the `DyOM`s**, and the 8 cache bytes carry a different fifth byte on every save (`00`,
+  `10`, `40`, `58`, `70`, `80`, `a0`, `e0`, `f8` - uninitialised memory, not a field). Asked for
+  2024 or 2020 LabVIEW 2026 wrote the same 25 file. The composer writes that layout for any target
+  below 26 since (`Composer.write_class_links`, the 8 bytes zero): t128, t157 and t162 composed as
+  25 files load and run in LabVIEW 2026, and the minimal repro renders there - which the old layout
+  did too. **Whether LabVIEW 2025 renders it is the user's test**: `C:\Temp\BR2probe\Tests\`
+  holds `ProbeC_lv25layout.vi` (composed, new layout) and `ProbeE_saved_by_LV2026_for_2025.vi`
+  (LabVIEW's own 2025 save of the crashing VI, the control), both linking `..\Sensor\Sensor.lvclass`.
+  If the control aborts too, the composer's file is not what LabVIEW 2025 fails on.
+
+  The report's second lead - "LabVIEW 2025 writes no 8 cache bytes, `Launcher.vi` cannot be read
+  with them" - does not hold: the Sensor accessors LabVIEW 2025 (25.3.5) saved carry them (`VIPI`
+  `0000000000000000`, `DDPI` `0000000065000000`) and parse clean, and LabVIEW 2026's OWN
+  `Launcher.vi` fails with the identical messages, `ended with 16739 after b'VIPI'` and `LIbd size
+  977`. That is a READER gap, version-independent: over NI's 509 class-linked examples, 140
+  2026-format files stop after a `VIPI` in LIvi and 138 meet an `LIbd` record class pylabview does
+  not know, `TCPI` - so a `VIPI` is sometimes longer than the 8 bytes, and the reader falls back to
+  raw for those blocks. The composer never reads them.
 - **Eight class methods were `Memory or data structure corrupt`, Error 74** - the encoding of
   link contents 9 and 10, under "Calling a class DIRECTLY" below; nothing version-specific.
 - **An OLDER CARAYA names Assert Equal Value_Variant's inputs `X` and `Y`**, and every test

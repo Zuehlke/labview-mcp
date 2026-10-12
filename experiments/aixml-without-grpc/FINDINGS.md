@@ -1372,6 +1372,46 @@ clears it on any label (`LABEL_FLAG_DONOR_ONLY`); the constant then reads `15076
 `ProbeA_flag.vi` (the bug report's minimal document, bit set, LabVIEW 2025 stamp) against
 `ProbeB_fixed.vi` (cleared), both executable in LabVIEW 2026. What bit 29 means is not known.
 
+**Refuted the same evening by the user's retest** (bug report 2): composed with the bit clear, the
+VI aborted LabVIEW 2025's render the same way. The bit stays cleared - the majority value - and is
+not the fix.
+
+**LabVIEW's own 2025 layout of the class links, read off `Save for Previous`.** LabVIEW 2026 saves
+for an older release through `{LV.VI}` `Save.For Previous` - over ActiveX `SaveForPrevious(path,
+"25.0")` - and that file is what LabVIEW 2025 reads. Saved that way: the user's crashing VI and
+three suite VIs (t128, t162, and t162 again for "24.0" and "20.0", which came out as 25 files
+too). Against the composed 25-stamped files the heaps differ only in type ids and compile-state
+flags (scratch `heapcmp.py`); the class constant and the `dynIUse` are the same objects. The LINK
+blocks differ (scratch `classlinks.py`):
+
+| | composed (2026 layout) | LabVIEW's 2025 save |
+|---|---|---|
+| LIvi | `VIPI` per class and per method | **none** (empty `LVIN`, even the `VIVI` gone) |
+| `DyOM` content | the method's `VIPI` content | the method's 1-based place among the `DyOM`s |
+| `FPPI` | yes | yes |
+| `DDPI` | beside each `FPPI` | **none** |
+| 8 cache bytes | `00000000ff000000` | fifth byte `00` `10` `40` `58` `70` `80` `a0` `e0` `f8` - a different one on every save, uninitialised memory |
+| `APILinkLibVersion` | `NI.Lib.Version` (1.0.0.1) | 1.0.0.0 |
+
+`Composer.write_class_links` writes the 2025 column for any `--lv-version` below 26 (8 bytes zero,
+the lib version left as it was - both load). t128, t157 and t162 composed as 25 files pass in
+LabVIEW 2026, and the minimal repro renders there; so did the old layout, so LabVIEW 2026 settles
+nothing about the abort. The user's test: `ProbeC_lv25layout.vi` (composed, new layout) against
+`ProbeE_saved_by_LV2026_for_2025.vi` (LabVIEW's own save of the crashing VI, the control).
+
+**The report's other lead - "LabVIEW 2025 writes no 8 cache bytes" - does not hold.** The Sensor
+accessors LabVIEW 2025 (25.3.5) saved carry them (`VIPI` `0000000000000000`, `DDPI`
+`0000000065000000`) and parse clean with the patch. The `Launcher.vi` that would not parse fails
+identically in LabVIEW 2026's copy - `List of LinkObjects incorrectly ended with 16739 after
+b'VIPI'`, `LIbd size 977 does not match parsed size 16` - so it is a READER gap, not a version
+property. Over the 509 class-linked examples (scratch `extra_by_version.py`): 140 2026-format files
+stop after a `VIPI` in LIvi, 138 meet an `LIbd` record class pylabview does not know, `TCPI`; 2017
+and 8.x files answer `Offset List length exceeds limit` on `FPPI`/`DyOM` - the symptom of a reader
+NOT taking the 8 bytes, which the patch does below version 20, so the field may be older still
+(not measured). A `VIPI` is therefore sometimes LONGER than content +
+8 bytes - its layout is not decoded. The composer reads none of these; `vi2aixml.py` falls back to
+raw for such blocks.
+
 **Measured.** A hand-written caller (constant -> Write Width -> Read Width) returned 3.5 and 7.25;
 `t128_dynamic_class_call` against the committed fixture `tests/fixtures/Box` (built without NI's
 service) passes 2 of 2; the NewWay test VIs composed this way are `execState 1` in a FRESH LabVIEW,
