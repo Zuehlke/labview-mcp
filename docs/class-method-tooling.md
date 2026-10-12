@@ -161,7 +161,11 @@ Replace the class terminals (BY NAME)  →  AddItemFromMemory  →  SetWireRule(
 - **Terminals by name, never by index.** `Controls[]` order is front-panel creation order for a
   generated VI and error-clusters-first for a template-built one. The helper's Case Structure guards
   against `Search 1D Array` answering `-1`, which `Index Array` would clamp to element 0 — silently
-  retyping the error cluster. `terminals retyped` must equal the number of names asked for.
+  retyping the error cluster. `terminals retyped` must equal the number of names asked for — and
+  since 2026-10-12 it counts only Replace calls that answered no error, each terminal's control is
+  looked up afresh for its own Replace, and the order above is ENFORCED by dataflow: until then the
+  diagram only described it, and the membership-and-save chain ran in parallel with the Replaces
+  (§4r).
 - **Membership before the saves.** Saving a VI before it is a member writes it with no
   owning-library link; LabVIEW marks the LIBRARY broken and it then blocks every VI it owns as
   `Error 1003`, healthy ones included.
@@ -1585,3 +1589,152 @@ back. **Its control arm matches `read+SubVIs[]`, the property-node spelling, not
 the first version matched the bare name, failed, and was right to: the helper's own description
 contains `SubVIs[]` where it explains why that property is not used. A whole-file substring check
 was asserting against prose.
+
+## 4r. The retype raced the membership step, and a `vi`-only re-run orphaned the method — 2026-10-12
+
+**The report.** `C:\Temp\BackendCompare` built the same `Sensor` class on both backends. On
+`pylabview`, `lvai_add_class_method` answered `failedAtStep: verify`, `classTypedTerminals: 1`,
+`pathStandInsLeft: 1`, `expected: 2` — while the member step said `terminals retyped: 2` and every
+stage `error 0`. `pylv_extract` showed `Sensor out` still `stdPath`, `Sensor in` `udClassDDO`. The
+failing AIXML wires `Sensor out` from `Read Gain.vi`'s `Sensor out` — a CLASS wire, because the
+composer resolves the accessors by file — and `Scaled Value v2.xml`, wiring it from the `Sensor in`
+control, succeeded. A repair re-run with `{"vi": …}` only then hit `add member error 1004`.
+
+### The stated hypotheses did not reproduce
+
+Both suggested causes were tested first and neither holds in a clean LabVIEW:
+
+| run | state | result |
+|---|---|---|
+| copy of the Pylab class, the failing AIXML | project closed, nothing loaded | **ok**, 2 of 2 retyped on disk |
+| fresh class, `create_class` → `create_accessors` → the failing shape | as the original: accessors just made by the wizard, project open | **ok** |
+| the same, `classTerminals` reversed (`out` first) | — | **ok** |
+| a gRPC arm with a same-named `Sensor` class built and closed first, then the Pylab arm | — | **ok** |
+| the same, after a gRPC export loaded the other `Sensor` into the add-on's instance | — | **ok** |
+
+And the composed file is not the variable: `Scaled Value.xml` and `v2.xml`, composed side by side,
+give byte-identical front-panel heaps; the block diagrams differ only in the one wire. So the
+"composer writes that indicator in a way the helper misses" hypothesis is refuted, and "Replace on a
+path indicator fed by a class wire is not persisted" is refuted in a clean state, both orders.
+
+### What the instrumented helper showed
+
+The helper discarded the Replace's own `error out` and counted names FOUND as `terminals retyped`.
+Wiring the code out per terminal and re-reading the panel after the loop was the first change, and
+the first run with it, on a `vi`-only re-run whose VI was orphaned (below), answered
+`replace error codes [0, 1055]` — **the second Replace got an invalid reference, and the old
+helper would have called it retyped** — with the read-back of the panel EMPTY: the panel reference
+itself was dead by then.
+
+**The cause is in the helper's dataflow.** `LVClass.Open` took its `error in` from the `Controls[]`
+read BEFORE the Replace loop, and nothing downstream of it — `AddItemFromMemory`, `SetWireRule`,
+`Save.Instrument`, the class `Save` — depended on the loop at all. The order the helper's own
+description insists on ("Replace, then AddItemFromMemory, then …") was prose; LabVIEW was free to run
+the membership step between two Replaces, which invalidates the VI's panel references, or to save
+the VI before the last Replace. Measured on the same orphaned VI, one variable:
+
+| helper | panel read back after the loop | Replace codes |
+|---|---|---|
+| unsequenced (as shipped) | **empty, 2 of 2** | `[0, 1055]`, `[0, 0]` |
+| class chain sequenced after the loop | **complete, 2 of 2** | `[0, 0]`, `[0, 0]` |
+
+That explains every observation of the report without a state nobody could name: two Replaces
+counted, every stage clean, the file holding the state of whichever branch LabVIEW scheduled first —
+and `v2` succeeding the next time round. **The clean-state runs above passing is consistent with it,
+not evidence against it**: a race is decided by scheduling, and the original first-run state was not
+reproduced, so this is the mechanism measured on the orphan state and read off the diagram, not a
+replay of the original run.
+
+**The fix, `scripts/lvai_add_class_method.xml`**: the error cluster and the VI reference travel
+through the Replace loop on shift registers, `LVClass.Open` takes its `error in` from the far end of
+the read-back loop, so the whole class chain waits for every Replace and the read-back; each Replace
+reads `Front Panel → Controls[]` afresh from the VI reference; `terminals retyped` counts Replace
+calls that answered 0, `replace error codes` reports each one (`-1` = not on the panel), and
+`classes after replace` / `names after replace` read the panel back (`LabVIEWClassControl` for a
+retyped terminal). The tool turns those into a `retype` step and stops at `member`, naming the code
+or the in-memory no-op, before the verify ever runs. `ClassMethodRetypeSequenceTests` asserts the
+dataflow on the shipped helper — every save downstream of the Replace loop, the Replace error wired,
+`Controls[]` read inside the loop — and **fails 4 of its 4 helper assertions against the old file**.
+
+### The `vi`-only re-run: Error 1004, and a class left without its member
+
+Reproduced on a fresh class: `{"vi": "…\Scaled Value.vi"}` with no `aixml`, over a healthy member,
+answered `failedStage: add member error`, `1004` — and LEFT THE CLASS FILE WITHOUT THE ENTRY, the VI
+`eBad`; a project close did not write it back. The re-run path drops the class's entry so that the
+run takes the first-run path, which is right for an `aixml` method — the convert writes the VI
+afresh, naming no owner. A `vi` keeps its `LIBN` block naming the class, so LabVIEW loads it as a
+member again, and AddItemFromMemory refuses to add a member it already has against a class file that
+no longer lists it. "LabVIEW still held the member in memory" was the reading at the time; the file
+is what holds it.
+
+**Fixed**: a method passed as an existing `vi` whose `LIBN` (read with pylabview) names this class
+keeps its entry and takes the tolerated already-a-member path (`keepExistingMembers`). Measured on two
+classes: `ok`, both terminals `udClassDDO`, **`privateDataBytes` unchanged (6278, 6299), every
+member `execState 1`, the accessor files not rewritten** — so not the 2026-09-14 destruction, whose
+shape was a freshly converted file with no owner under an entry the class still listed. An ORPHAN — the
+VI names the class, the class file does not list it — cannot be repaired by AddItemFromMemory
+(measured twice: 1004 tolerated, every save 0, still no entry, still `eBad`), so it is refused up
+front, `memberOrphaned`, naming the remedy: call again with the `aixml`, which repaired it on the
+first try. And the verify now also requires the class file to list the VI (`listedInClassFile`):
+the orphan runs had answered `ok: true` with both terminals class-typed on disk.
+
+### Smaller, same day
+
+- **A composer refusal was waved through as class-wire strictness.** `Sensor.lvclass lists no member
+  'Read Value.vi'` contains `.lvclass`, which is all `IsClassTypeComplaint` looks for; the convert
+  then refused the same document again. `errorKind: composerRefused` is excluded now — the composer
+  does not type-check wiring, it refuses what it cannot build.
+- **An empty array read as one blank element**: LabVIEW's flattened XML writes a template element
+  into an empty array, and `Names()` returned `[""]`. It honours `Dimsize` now.
+- **Each method's `sourceOnly`** is reported from the saved file (no `VICD`, `TM80`, `DFDS`,
+  `CCST`). Measured source-only on both backends; reported, not gated.
+- **`scripts/lvlu_add_test_method.xml` has the same unsequenced shape** — `LVClass.Open` off the
+  pre-loop `Controls[]` error, the Replace error unwired. Not changed here.
+
+### Accepted, 2026-10-12, through the built server over raw stdio
+
+| | answer |
+|---|---|
+| the ORIGINAL `Scaled Value.xml` on a copy of the Pylab `Sensor` class, `pylabview` | `ok: true`, `verifiedOnDisk`, `listedInClassFile`, `replaceErrorCodes [0,0]`, both read back `LabVIEWClassControl`, `sourceOnly` |
+| `lvai_exec_state` on it, project closed | `1` |
+| a composed caller, `Write Value 3` → `Write Gain 2.5` → `Scaled Value` | **`7.5`**, `error out` clean |
+| `{"vi"}`-only re-run on the same class | `keepExistingMembers`, `ok`, `privateDataBytes` 6299 → 6299, all 7 members `execState 1` |
+| the helper built by NI's converter, a method on a `grpc` class | `ok`, `replaceErrorCodes [0,0]`, read back both, `sourceOnly` |
+
+## 4s. NI's accessor wizard saved every accessor WITH compiled code — 2026-10-12
+
+All six accessors of the BackendCompare class carried `VICD`, `TM80`, `DFDS` and `CCST`, on both
+backends — the user's standing rule is that every VI this server writes is source-only. Three
+routes were candidates: `pylv-strip-compiled.py` after the wizard (a pylabview rebuild of six class
+members, with the project closed first), a `{LV.VI}` "separate compiled code" property (not in the
+VI Server catalogue at all), and LabVIEW's own project setting. **Measured as a clean A/B in one
+LabVIEW**: the same class built twice through `lvai_create_class` + `lvai_create_accessors`, one
+variable — the project's `NI.LV.All.SourceOnly`, "Separate compiled code from new project items":
+
+| project flag | the six accessors | `execState` |
+|---|---|---|
+| `false` | `VICD`, `TM80`, `DFDS`, `CCST` in every one | 1 |
+| `true` | **none** | 1 |
+
+`LvClass.Project` — the writer behind every project `lvai_create_class` and `lvai_create_interface`
+create — wrote `false`. It writes `true` now, so the wizard's own files are what ships, with no edit
+and no extra save. For a project that already exists without it, `lvai_create_accessors` sets it
+first, as a FILE edit: the project is saved and closed if it is the active one, otherwise saved and
+closed BY PATH (`lvai_close_project`, over ActiveX — a project loaded but not active is out of reach
+of the ordinary close, and LabVIEW's next save would undo the edit). Reported as `projectSourceOnly`
+(`before`, `action`, `after`), because it changes a setting the user owns for every new item in that
+project. Then each accessor's file is read: `sourceOnly` per VI with its `compiledBlocks`,
+`accessorsSourceOnly` overall, and compiled code after the call set the project up is `ok: false`.
+Without `projectPath` nothing can be set and `sourceOnlyNote` says so.
+
+**`lvai_create_class` writes no VI** into the class folder — the private data lives inside the
+`.lvclass`, which carries `NI.LV.All.SourceOnly` `true` itself (it did before, and it did not help
+the accessors: the PROJECT's flag decides). **`lvai_add_class_method`'s methods were already
+source-only on both backends** (§4r).
+
+Accepted the same day through the built server: a fresh class on `pylabview` and one on `grpc` —
+`projectSourceOnly: alreadyTrue`, six of six accessors `sourceOnly`, `execState 1`, and a composed
+round trip (`Write Value 3`, `Write Gain 2.5`, read back) answering `3` and `2.5`; an existing
+project at `false` and OPEN — `closedActiveProject`, `flippedFalseToTrue`, four of four source-only,
+the flag still `true` after LabVIEW's own save on close; an existing project WITHOUT the property
+and not loaded, on `grpc` — `closedByPath`, `inserted`, four of four source-only.
