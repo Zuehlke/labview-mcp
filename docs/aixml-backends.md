@@ -222,8 +222,8 @@ ones stay in `helpers`, so neither backend runs or overwrites the other's.
 | `lvai_open_file` | a PROJECT only: the composed `lvai_open_project` helper over ActiveX - `Project.Open` and `Open Window` in LabVIEW's main instance, which is the IDE's - then the same active-project check and foreground retry, then a REOPEN retry (`reopenRetry`): a project already LOADED but not active stays inactive however often it is opened, so it is saved and closed by path (`lvai_close_project.xml`) and opened again. A VI is refused (`notAvailableOnBackend`) |
 | `lvai_close_active_project` | the composed close helper over ActiveX - the same Save and Close, the same sweep |
 | `lvai_create_class` | **no step touches NI's service**: throwaway project opened and closed, carrier composed, NI's own class provider run - all over ActiveX through composed helpers. `typedefFieldsJson` is refused; the typedef binding has no such route yet |
-| `lvai_create_interface`, `lvai_create_accessors` | as `lvai_create_class`: NI's own providers run from composed helpers over ActiveX, no step touches NI's service |
-| `lvai_add_class_method` | each method COMPOSED from its AIXML (path and cluster stand-ins compose like any type), the pane repaired by pylabview, the retype-and-membership helper composed and run over ActiveX - LabVIEW writes the class links on its own save. Validation is the composer's, not NI's wiring check |
+| `lvai_create_interface`, `lvai_create_accessors` | as `lvai_create_class`: NI's own providers run from composed helpers over ActiveX, no step touches NI's service. The accessors come out SOURCE-ONLY on both backends since 2026-10-12 - the project's `NI.LV.All.SourceOnly` decides it, and the tool sets it (`projectSourceOnly`) and reads every saved accessor back (`sourceOnly`) |
+| `lvai_add_class_method` | each method COMPOSED from its AIXML (path and cluster stand-ins compose like any type), the pane repaired by pylabview, the retype-and-membership helper composed and run over ActiveX - LabVIEW writes the class links on its own save. Validation is the composer's, not NI's wiring check, and a `composerRefused` is never waved through as class-wire strictness. A composed method calls the class's accessors DIRECTLY, so a class terminal can be fed by a real class wire - the shape that exposed the helper's retype race (below) |
 | `lvai_generate_class_test`, `lvai_generate_method_test` | the DIRECT route, as on grpc, with NOTHING OPENED: the composer resolves the class's accessors and methods by FILE (the class's folder is passed as a search folder, `AixmlComposer.ExtraSearch`), writes the dynamic-dispatch calls itself, and composes the seeds as CLASS CONSTANTS - so the `{LV.Constant}` Replace step is skipped as well (next sections). The socket route stays as the fallback |
 | `lvai_generate_test` | the DIRECT route too: the subject (and any setup VI) found by file, no project opened. Its PLACEHOLDER fallback points the call at the subject with LabVIEW's own `{LV.SubVI}` Replace - not the pylabview retarget, which answered ok here and left a test one folder below its subject failing with Error 7 Bad Linkage - one swap per case, because every case calls the same stub |
 | `lvai_swap_subvis` | the same helper, composed and run over ActiveX - in LabVIEW's main instance, so `{LV.SubVI}` Replace works with no project open. Verified against the READER's export of the saved file, and the answer says so |
@@ -729,6 +729,26 @@ loaded at all. What it lacked was the writing side, and that is now measured and
 **Not covered yet**: a class inside a LIBRARY (its names are one level deeper, no measured file), a
 STATIC class member on the dynamic record kinds (a static member in a library - Caraya's - links as
 before, through `IUVI`), and a class control on a FRONT PANEL (`LIfp` records).
+
+## The BackendCompare class build, 2026-10-12: two defects, neither the composer's
+
+`C:\Temp\BackendCompare` built one `Sensor` class with a method on each backend. Both findings
+turned out to be in the shared route, not in the composer; `docs/class-method-tooling.md` §4r and
+§4s have the measurements.
+
+- **`lvai_add_class_method` answered `verify` with one class terminal left a path** on `pylabview`,
+  every stage clean and `terminals retyped: 2`. The composed file was not the cause - two composed
+  variants have byte-identical front-panel heaps, and the failing shape passed 5 of 5 clean-state
+  runs. The retype helper's diagram ran its membership-and-save chain IN PARALLEL with the Replace
+  loop (nothing tied them together) and discarded each Replace's error: measured on one VI, the old
+  helper's panel reference was dead after the loop 2 of 2 times, one Replace answering 1055 and still
+  counted, and the sequenced helper read the panel back complete 2 of 2. Fixed in the helper, for
+  both backends; the original `Scaled Value.xml` then went through on a copy of the Pylab class and
+  ran (`7.5`). The composer route is where it SHOWED because only there is a class terminal fed by a
+  real class wire before the retype - the gRPC arm called placeholder sockets with path stand-ins.
+- **The accessors carried compiled code on both backends** - NI's wizard writes what the PROJECT's
+  "Separate compiled code from new project items" says, and the projects our tools write said
+  `false`. They say `true` now, and `lvai_create_accessors` sets it on an existing project first.
 
 ## Not covered, and not measured
 
