@@ -1900,3 +1900,44 @@ call must never touch one. The CP1252 check refuses the whole batch for one bad 
 of a batch cannot be refused after 39 VIs were already changed. **New in the port, unmeasured:** a VI
 that already carries unsaved changes (any of the three Modifications bitsets nonzero) is left alone,
 because `Save.Instrument` would write those changes too.
+
+### 10d. `lvai_add_to_class` - an existing `.ctl` or VI into a class
+
+**Adding a typedef to a class RENAMES it.** `X.ctl` becomes `Class.lvclass:X.ctl`, and every caller
+relinks - but only callers that are LOADED. A caller that is not loaded keeps the old link with no
+dialog and no error (the field run's rename finding, the same mechanism). The field run's route,
+measured on 11 typedefs added to classes with the project open and active (2026-10-11/12): open
+every caller outside the class through the project first, `{LV.ProjectItem}` `AddItem` (Name, Path,
+Type) on the folder item, `Edit LVLibs.lvlib:Save All This Library.vi` on the class - a `.ctl`
+saves only through a library save, because `Open VI Reference` answers 1035 for one - then save the
+callers LabVIEW marks modified. LabVIEW makes the added typedef public.
+
+**Callers are an argument, not a guess.** No helper here can name the callers of a file that is not
+in memory: `scripts/lvai_member_callers.xml` reads `Callers' Names` of VIs ALREADY loaded, which is
+the question a re-run asks and not this one. So `callerPaths` lists them, and they are opened
+through the project before the add. What the tool does offline is scan every `.vi`/`.ctl`/`.vim`
+under the project folder for link records (`LIvi`, `LIfp`, `LIbd`) that name an item's file name as
+a whole length-prefixed string, skipping the class's own members (their `LIBN` names the class, and
+they relink with it). A hit that is not in `callerPaths` refuses the call (`callersNotLoaded`)
+before LabVIEW is touched. It is a heuristic - a same-named file in another folder matches too -
+which is what `acceptUnlistedCallers` is for.
+
+**Only listed callers are saved.** `scripts/lvai_save_modified_vis.xml` lists every VI in memory of
+the project's instance with its three Modifications bitsets and saves only those that are
+modified AND in the list; the rest are reported (`modifiedNotSaved`). The same helper runs first
+in read-only mode, and anything already modified refuses the call (`unsavedChangesBefore`), because
+the class save and the caller saves would write it. The kit helper it is ported from saved EVERY
+modified VI; the restriction is new and unmeasured.
+
+**Refused from the files, before LabVIEW:** a file whose own `LIBN` resource names an owner (a
+class member or a library member - `LIBN` is a count plus length-prefixed names, read off NI's
+examples: a member and a class-owned typedef carry one, a loose VI none), a file the class already
+lists, anything but `.vi`/`.ctl`, a nested folder path, an ambiguous folder, a missing folder with
+`createFolder: false`.
+
+**Verified from the files:** the re-read `.lvclass` must list every item at the requested place, and
+each item's own `LIBN` must now name the class - the second check is the one that catches a save
+that never reached the item's file. `filesChanged` lists every file under the project folder (and
+the class folder) whose write time or length moved: that is the "every file it re-saved" list.
+**Unmeasured until acceptance:** the class-root route (AddItem on the class reference rather than a
+folder item), `Type VI` for a `.vi` (the kit used it for typedefs), and every guard.
