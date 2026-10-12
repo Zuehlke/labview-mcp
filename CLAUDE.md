@@ -1199,8 +1199,10 @@ writes the dynamic-dispatch call (`dynIUse`, `VIPI`/`DyOM`) and the class consta
 itself, which pylabview could only read after a patch for LabVIEW 2026's 8 extra link-cache bytes
 (`tools/pylabview/patches/patches.json`). Before that they took the socket route and the same build
 took 172 s. A class constant's flattened name is padded to 4 - `Rectangle.lvclass` hid it, the
-`Box` fixture showed it. Still only with the harvested parts
-(`LABVIEWMCP_AIXML_PARTS`). Run answers over ActiveX carry LabVIEW's flattened XML now, so a parser
+`Box` fixture showed it. Those harvested parts needed `LABVIEWMCP_AIXML_PARTS` until they shipped in
+`scripts\aixml-pylabview\parts` (below); the variable now only OVERRIDES the parts the server
+hands the composer (`--parts`), while the composer's own tables - hotpoints, event codes, names -
+always come from the `parts\` beside its code (`lvheap.own_parts`). Run answers over ActiveX carry LabVIEW's flattened XML now, so a parser
 written for the gRPC shape reads both. **EVERYTHING THE BACKEND NEEDS SHIPS SINCE 2026-10-12 -
 the user's decision that a ZIP user needs nothing from `experiments\`.** Code, name tables and all
 1 242 parts live in `scripts\aixml-pylabview`, the helper parts NI's converter built from our own
