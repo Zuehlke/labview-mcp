@@ -86,7 +86,14 @@ internal sealed class TypedefTools(LvaiConnection connection)
         labels differ from the terminal names.
         PRECONDITION: a project must be OPEN and ACTIVE in the IDE - the helper reaches the VI
         through Application:Project:Active Project so it edits the copy the project holds. Error
-        1055 means no project was active.
+        1055 is blamed on the project only once the subVI is known to be on the diagram - a name
+        matching no node fails with the same code.
+        THE NAME IS RESOLVED FIRST, against the names the sweep before the edit sees: an exact
+        match wins, a bare class-member name ('Write Config.vi') maps onto the one qualified name
+        it matches ('Channel.lvclass:Write Config.vi'), and a name matching nothing
+        (`subViNotOnDiagram`) or several qualified names (`subViNameAmbiguous`) is refused before
+        anything is edited, with the names on the diagram listed. `subViNameResolved` says which
+        name the helper used.
         THE VERDICT IS `coercedAfter` AND `stillCoerced`, from a sweep over EVERY subVI call node
         run before and after the edit - not the per-terminal rows. Those come from a helper that
         matches one node by VI Name, which cannot speak for a diagram calling the same subVI twice:
@@ -100,7 +107,9 @@ internal sealed class TypedefTools(LvaiConnection connection)
         [Description(@"Absolute path to the .vi whose constants should be bound")] string viPath,
         [Description("""
             The subVI call to work on, by its VI Name as LabVIEW reports it - e.g.
-            'CalculateSomething.vi'. Matched against {LV.SubVI} VI Name over the diagram's SubVIs[].
+            'CalculateSomething.vi'. A class or library member may be named bare ('Write
+            Config.vi') or qualified ('Channel.lvclass:Write Config.vi'); a bare name is resolved
+            to the one qualified name it matches on the diagram before the helper runs.
             """)]
         string subViName,
         [Description("""
@@ -170,7 +179,38 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 helperGenerated = true;
             }
 
-            var before = await CoercedTerminalsAsync(viPath, timeoutSeconds, ct: ct);
+            var sweepBefore = await SweepAsync(viPath, timeoutSeconds, ct: ct);
+            var before = sweepBefore?.Coerced;
+
+            // RESOLVE THE NAME BEFORE THE HELPER SEES IT. The helper matches `{LV.SubVI} VI Name`
+            // exactly, and a class member's VI Name is QUALIFIED (`Channel.lvclass:Write
+            // Config.vi`), so a bare name used to match no node; the helper then read Terminals[]
+            // off an invalid reference, answered Error 1055, and Hint() blamed a missing active
+            // project. The sweep already lists every node's name, so the name is settled here.
+            // A sweep that could not run resolves nothing: the name goes on as given, and the
+            // answer says so in `subViNameResolved`.
+            var resolution = sweepBefore is null
+                ? null
+                : ResolveSubViName(subViName, sweepBefore.SubViNames);
+            if (resolution is { Resolved: null } refused)
+                return refused.Ambiguous.Count > 0
+                    ? Json.Error("subViNameAmbiguous",
+                        $"'{subViName}' is a bare name and matches {refused.Ambiguous.Count} " +
+                        "different qualified subVIs on this diagram, so it does not say which " +
+                        "call is meant. Pass one of the qualified names listed below. Nothing " +
+                        "was edited.",
+                        new
+                        {
+                            subViName, candidates = refused.Ambiguous,
+                            subVisOnDiagram = refused.OnDiagram,
+                        })
+                    : Json.Error("subViNotOnDiagram",
+                        $"No subVI call on this diagram is named '{subViName}'. A class or " +
+                        "library member is matched by its bare name as well as its qualified " +
+                        "one; the names actually on the diagram are listed below. Nothing was " +
+                        "edited.",
+                        new { subViName, subVisOnDiagram = refused.OnDiagram });
+            var helperSubVi = resolution?.Resolved ?? subViName;
 
             // One helper run per terminal, in order. LabVIEW serialises this work anyway - six
             // generate calls issued together were measured at 559 ms against 543 ms sequentially -
@@ -183,7 +223,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 var inputs = new JsonObject
                 {
                     ["vi path"] = Path.GetFullPath(viPath),
-                    ["subvi name"] = subViName,
+                    ["subvi name"] = helperSubVi,
                     ["terminal name"] = wanted[i],
                     ["constant label"] = labels[i],
                 }.ToJsonString();
@@ -201,8 +241,38 @@ internal sealed class TypedefTools(LvaiConnection connection)
             var after = await CoercedTerminalsAsync(viPath, timeoutSeconds, ct: ct);
 
             return Describe(answers, wanted, viPath, subViName, helperVi, aixml, helperGenerated,
-                            before, after);
+                            before, after, resolution);
         }));
+
+    /// <summary>
+    /// How a requested `subViName` maps onto the names a sweep saw. <see cref="Resolved"/> is the
+    /// name to hand the helper, or null when the request was refused; <see cref="Ambiguous"/> is
+    /// non-empty only for a bare name matching several distinct qualified names.
+    /// </summary>
+    internal sealed record SubViResolution(
+        string Requested, string? Resolved, IReadOnlyList<string> Ambiguous,
+        IReadOnlyList<string> OnDiagram);
+
+    /// <summary>
+    /// Settle a requested subVI name against the names on the diagram. An exact match wins; else
+    /// a bare name maps onto the ONE qualified name it is the tail of (<see cref="MatchesSubVi"/>);
+    /// no match, or several distinct ones, is refused - the same rule as a duplicate label
+    /// elsewhere: a request that does not say which node is meant is not guessed at.
+    /// </summary>
+    internal static SubViResolution ResolveSubViName(
+        string requested, IReadOnlyList<string> namesOnDiagram)
+    {
+        var onDiagram = namesOnDiagram.Where(n => n.Length > 0)
+            .Distinct(StringComparer.Ordinal).ToList();
+
+        if (onDiagram.Contains(requested, StringComparer.Ordinal))
+            return new(requested, requested, [], onDiagram);
+
+        var matches = onDiagram.Where(n => MatchesSubVi(n, requested)).ToList();
+        return matches.Count == 1
+            ? new(requested, matches[0], [], onDiagram)
+            : new(requested, null, matches.Count > 1 ? matches : [], onDiagram);
+    }
 
     /// <summary>
     /// Turn the per-terminal helper runs into this tool's answer. Kept apart from the RPC work so
@@ -212,8 +282,12 @@ internal sealed class TypedefTools(LvaiConnection connection)
     internal static string Describe(
         IReadOnlyList<string> runnerAnswers, IReadOnlyList<string> wanted, string viPath,
         string subViName, string helperVi, string aixml, bool helperGenerated,
-        IReadOnlyList<string>? before, IReadOnlyList<string>? after)
+        IReadOnlyList<string>? before, IReadOnlyList<string>? after,
+        SubViResolution? resolution = null)
     {
+        // Whether the sweep CONFIRMED the subVI is on the diagram. It decides what a 1055 means:
+        // with the node confirmed, the helper's only 1055 left is the project hop.
+        var onDiagram = resolution?.Resolved is not null;
         var rows = new JsonArray();
         var replaced = 0;
         var failed = 0;
@@ -253,7 +327,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
                 row["outcome"] = "error";
                 row["errorCode"] = int.TryParse(code, out var parsed) ? parsed : 0;
                 row["errorSource"] = Value(values, "source") ?? "";
-                if (Hint(code, foundSubVi, foundTerminal, constantClass) is { } hint)
+                if (Hint(code, foundSubVi, foundTerminal, constantClass, onDiagram) is { } hint)
                 {
                     row["hint"] = hint;
                     firstHint ??= hint;
@@ -287,6 +361,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
             ["ok"] = failed == 0 && after is not null && after.Count == 0,
             ["viPath"] = Path.GetFullPath(viPath),
             ["subViName"] = subViName,
+            ["subViNameResolved"] = resolution?.Resolved,
             ["replaced"] = replaced,
             ["failed"] = failed,
             ["coercedBefore"] = before?.Count,
@@ -299,6 +374,16 @@ internal sealed class TypedefTools(LvaiConnection connection)
         };
 
         if (firstHint is { } h) result["hint"] = h;
+
+        var nameNote = resolution is null
+            ? "The sweep before the edit could not run, so the name was NOT checked against the " +
+              "diagram and went to the helper as given. A class member's VI Name is qualified " +
+              "('Channel.lvclass:Write Config.vi'); a bare name then matches no node."
+            : resolution.Resolved is { } resolved && resolved != subViName
+            ? $"'{subViName}' was resolved to '{resolved}', the one qualified name on the " +
+              "diagram it matches, and that is the name the helper used."
+            : null;
+        if (nameNote is not null) result["subViNameNote"] = nameNote;
 
         result["note"] = after is null
             ? "The VI was edited but the verifying sweep could not run, so NOTHING here says the " +
@@ -319,11 +404,25 @@ internal sealed class TypedefTools(LvaiConnection connection)
     /// than faults, and each was measured while building this tool.
     /// </summary>
     internal static string? Hint(
-        string? code, string subViFound, string terminalFound, string constantClass) =>
-        code == "1055"
+        string? code, string subViFound, string terminalFound, string constantClass,
+        bool subViOnDiagram = false) =>
+        // 1055 IS NOT ONE CAUSE. It is what 'Project:Active Project' answers with no active
+        // project, AND what the helper's next Property Node answers when no call node matched the
+        // name and it reads Terminals[] off the resulting invalid reference. This hint used to
+        // check 1055 first and blamed the project for both - measured on a bare class-member name,
+        // whose VI Name is qualified. So the project is blamed only once the node is known to be
+        // there: found by the helper, or confirmed by the sweep that ran before it.
+        code == "1055" && (subViFound.Length > 0 || subViOnDiagram)
             ? "Error 1055 is 'Project:Active Project' finding no ACTIVE project in the IDE. This " +
               "helper edits the copy the project holds, so open the VI's .lvproj and make it " +
               "active, then try again."
+        : code == "1055"
+            ? "Error 1055 with no subVI found: either no call node matched `subViName` - the " +
+              "helper then reads Terminals[] off an invalid reference, which is this error - or " +
+              "no project is ACTIVE in the IDE, which fails the same way one node earlier. " +
+              "`subViName` is matched against {LV.SubVI} VI Name, and a class or library " +
+              "member's VI Name is QUALIFIED ('Channel.lvclass:Write Config.vi'); " +
+              "lvai_coercion_dots lists the names on the diagram without needing a project."
         : subViFound.Length == 0
             ? "The subVI was not found on the diagram. `subViName` is matched against " +
               "{LV.SubVI} VI Name exactly - check the spelling, including the .vi extension, " +
@@ -352,6 +451,28 @@ internal sealed class TypedefTools(LvaiConnection connection)
     /// application instance, which matters because pylv_apply has just closed the project.
     /// </summary>
     internal async Task<IReadOnlyList<string>?> CoercedTerminalsAsync(
+        string viPath, int timeoutSeconds, CancellationToken ct) =>
+        (await SweepAsync(viPath, timeoutSeconds, ct: ct))?.Coerced;
+
+    /// <summary>
+    /// What one sweep over a diagram saw: every subVI call node, as (VI Name, index), and every
+    /// coerced terminal on them.
+    /// </summary>
+    internal sealed record DiagramSweep(
+        IReadOnlyList<(string Name, int Index)> Nodes, IReadOnlyList<string> Coerced)
+    {
+        /// <summary>The distinct VI Names on the diagram, in diagram order.</summary>
+        public IReadOnlyList<string> SubViNames =>
+            Nodes.Select(n => n.Name).Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>
+    /// The sweep behind <see cref="CoercedTerminalsAsync"/>, exposing the call NODES as well as
+    /// the coerced terminals - lvai_bind_typedef_constants resolves its `subViName` against those
+    /// names before its repair helper runs. Null means the sweep could not run, with the same
+    /// fail-soft contract.
+    /// </summary>
+    internal async Task<DiagramSweep?> SweepAsync(
         string viPath, int timeoutSeconds, CancellationToken ct)
     {
         try
@@ -400,7 +521,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
                         coerced.Add(Where(name, index, nodes, names[i]));
             }
 
-            return coerced;
+            return new DiagramSweep(nodes, coerced);
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {

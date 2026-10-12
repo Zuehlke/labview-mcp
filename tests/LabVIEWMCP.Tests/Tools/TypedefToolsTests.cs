@@ -128,14 +128,129 @@ public class TypedefToolsTests
         Assert.Contains("_name", hint);
     }
 
-    /// <summary>1055 outranks the not-found hints: without a project nothing could be read at all.</summary>
+    /// <summary>
+    /// 1055 names the project only once the node is known to be there - found by the helper, or
+    /// confirmed by the sweep that ran before it. That sweep needs no project, so a node it saw
+    /// leaves the project hop as the one 1055 still possible.
+    /// </summary>
     [Fact]
-    public void No_active_project_is_reported_before_anything_else()
+    public void No_active_project_is_named_once_the_subvi_is_known_to_be_on_the_diagram()
+    {
+        var byHelper = TypedefTools.Hint("1055", "Channel.lvclass:Write Config.vi", "", "");
+        var bySweep = TypedefTools.Hint("1055", "", "", "", subViOnDiagram: true);
+
+        Assert.Contains("no ACTIVE project", byHelper);
+        Assert.Contains("no ACTIVE project", bySweep);
+    }
+
+    /// <summary>
+    /// The defect: a bare class-member name matched no node, the helper read Terminals[] off an
+    /// invalid reference, answered 1055, and the hint blamed a missing active project. With
+    /// nothing confirming the node, a 1055 has two causes and the hint must name both - the
+    /// qualified VI Name first, because that is the one the old hint hid.
+    /// </summary>
+    [Fact]
+    public void A_1055_with_no_subvi_found_names_the_qualified_name_rather_than_only_the_project()
     {
         var hint = TypedefTools.Hint("1055", "", "", "");
 
         Assert.NotNull(hint);
-        Assert.Contains("1055", hint);
+        Assert.Contains("QUALIFIED", hint);
+        Assert.Contains("invalid reference", hint);
+        Assert.DoesNotContain("Error 1055 is 'Project:Active Project'", hint);
+    }
+
+    // ---- resolving subViName against the sweep ----
+
+    [Fact]
+    public void An_exact_name_wins_over_a_qualified_one_it_is_the_tail_of()
+    {
+        var r = TypedefTools.ResolveSubViName("Write Config.vi",
+            ["Channel.lvclass:Write Config.vi", "Write Config.vi"]);
+
+        Assert.Equal("Write Config.vi", r.Resolved);
+        Assert.Empty(r.Ambiguous);
+    }
+
+    /// <summary>The measured case: LabVIEW reports a class member by its qualified VI Name.</summary>
+    [Fact]
+    public void A_bare_class_member_name_resolves_to_its_one_qualified_name()
+    {
+        var r = TypedefTools.ResolveSubViName("Write Config.vi",
+            ["Channel.lvclass:Write Config.vi", "Read Config.vi",
+             "Channel.lvclass:Write Config.vi"]);
+
+        Assert.Equal("Channel.lvclass:Write Config.vi", r.Resolved);
+    }
+
+    [Fact]
+    public void A_bare_name_matching_two_classes_is_ambiguous_and_resolves_to_nothing()
+    {
+        var r = TypedefTools.ResolveSubViName("Write Config.vi",
+            ["Channel.lvclass:Write Config.vi", "Sensor.lvclass:Write Config.vi"]);
+
+        Assert.Null(r.Resolved);
+        Assert.Equal(["Channel.lvclass:Write Config.vi", "Sensor.lvclass:Write Config.vi"],
+                     r.Ambiguous);
+    }
+
+    [Fact]
+    public void A_name_on_no_node_resolves_to_nothing_and_lists_what_is_there()
+    {
+        var r = TypedefTools.ResolveSubViName("Gibtsnicht.vi",
+            ["Channel.lvclass:Write Config.vi", ""]);
+
+        Assert.Null(r.Resolved);
+        Assert.Empty(r.Ambiguous);
+        Assert.Equal(["Channel.lvclass:Write Config.vi"], r.OnDiagram);
+    }
+
+    /// <summary>A qualified request stays qualified: it never matches a different class's member.</summary>
+    [Fact]
+    public void A_qualified_name_matches_only_itself()
+    {
+        var r = TypedefTools.ResolveSubViName("Sensor.lvclass:Write Config.vi",
+            ["Channel.lvclass:Write Config.vi"]);
+
+        Assert.Null(r.Resolved);
+    }
+
+    [Fact]
+    public void The_answer_names_the_resolved_subvi_and_says_it_was_rewritten()
+    {
+        var resolution = TypedefTools.ResolveSubViName("Write Config.vi",
+            ["Channel.lvclass:Write Config.vi"]);
+        var result = (JsonObject)JsonNode.Parse(TypedefTools.Describe(
+            [BindRun(subVi: "Channel.lvclass:Write Config.vi")], ["Borkenkaefer"], Vi,
+            "Write Config.vi", Helper, Aixml, false, [], [], resolution))!;
+
+        Assert.Equal("Write Config.vi", result["subViName"]!.GetValue<string>());
+        Assert.Equal("Channel.lvclass:Write Config.vi",
+                     result["subViNameResolved"]!.GetValue<string>());
+        Assert.Contains("was resolved to", result["subViNameNote"]!.GetValue<string>());
+    }
+
+    /// <summary>With the node confirmed by the sweep, a helper 1055 is the project hop.</summary>
+    [Fact]
+    public void A_helper_1055_after_a_confirmed_resolution_blames_the_project()
+    {
+        var resolution = TypedefTools.ResolveSubViName("Write Config.vi",
+            ["Channel.lvclass:Write Config.vi"]);
+        var result = (JsonObject)JsonNode.Parse(TypedefTools.Describe(
+            [BindRun(status: "1", code: "1055", subVi: "", terminal: "", constantClass: "",
+                     typedefPath: "")],
+            ["Borkenkaefer"], Vi, "Write Config.vi", Helper, Aixml, false, [], null, resolution))!;
+
+        Assert.Contains("no ACTIVE project", result["hint"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void A_bind_whose_sweep_could_not_run_says_the_name_went_unchecked()
+    {
+        var result = Bind(null, null, BindRun());
+
+        Assert.Null(result["subViNameResolved"]);
+        Assert.Contains("NOT checked", result["subViNameNote"]!.GetValue<string>());
     }
 
     [Fact]
