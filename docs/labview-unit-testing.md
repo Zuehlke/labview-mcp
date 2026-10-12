@@ -230,6 +230,63 @@ Two limits worth knowing before writing cases:
 - **read the JUnit report, not `error out`.** The VI's error cluster carries the first failed
   assertion only — §4.
 
+**A GENERATED CALL LISTS THE SUBJECT'S CONNECTOR PANE AND NOTHING ELSE - until 2026-10-12 it listed
+every front-panel object.** Measured that day: `lvai_generate_test` on `Sensor Event Demo.vi` (grpc,
+direct route) answered `failedAtStep: generate` with `Error 1 occurred at LV AI Core.lvlibp:VI
+generator.vi ... An input parameter is invalid`. Its AIXML called the subject with
+`inputs="Count:…,error in:,Stop:"`, and `Stop` is a latched button inside an Event Structure frame -
+on the panel, read by the subject's own diagram, on NO pane slot. `lvai_vi_terminals` printed it as
+"not on the connector pane" while the generator wired it anyway. The same AIXML without `,Stop:`
+generated and ran green. Nothing in LabVIEW's message names the terminal or the case.
+
+The cause was one list read in many places: `ViTerminals.Result.Inputs`/`Outputs` are EVERY control
+and indicator in the export (which is right for `lvai_vi_terminals` and `lvai_connector_pane`), and
+everything that authors a Call read them as if they were the pane. Where it bit:
+
+| tool | what was wrong |
+|---|---|
+| `lvai_generate_test`, direct route | the subject Call named the off-pane `Stop` - the measured failure |
+| `lvai_generate_test`, placeholder route / `lvai_placeholder_subvi` | `terminals`, the `call` element and the cache `signature` listed off-pane objects; the stub cloned top-level ones, and MISSED a real pane terminal whose element sits inside a structure (the opposite fault: a stub a terminal short) |
+| `lvai_generate_test` `setup` | a setup input was checked against every panel object |
+| `lvai_generate_method_test` | an `inputs` or `expectOutput` naming an off-pane object was accepted and wired; its method and Write-accessor shapes already read the pane |
+| `lvai_generate_class_test` | accessor recognition counted off-pane objects, so one would have refused a sound pair - no bad Call, a false refusal |
+| `lvai_vi_terminals` | the paste-ready Call skeleton listed them |
+
+**The fix is one list and one rule.** `Result.PaneInputs`/`PaneOutputs` (a `conIdx` in the export)
+feed every Call; `ViTerminals.CheckCallNames` decides every name a caller hands in, for all three
+generators and the setup calls. A refused name is sorted by why - **not on the pane**, **on the other
+side of the pane**, or **no such terminal** - and the answer lists the pane it does have: `refusal`
+with `notOnPane`, `wrongDirection`, `unknown`, `paneInputs` and `paneOutputs` on `lvai_generate_test`,
+`errorKind: terminalNotOnPane` on `lvai_generate_method_test`. The placeholder answer carries
+`notOnPane` beside `terminals`, and `lvai_vi_terminals` lists such objects in their own section. The
+wrong-side case closes a second silence: an `inputs` key naming an OUTPUT was never read, because the
+test is authored by walking the subject's inputs, so that case ran on the default.
+
+**Accepted 2026-10-12 on the pylabview backend**, driving the built exe over raw stdio, against a copy
+of the real subject in a scratch folder: two cases (Count 5 gives 5 and 10, Count 3 gives 3 and 3)
+answered `ok: true`, `route: direct`, a subject Call of `inputs="Count:4203.value,error in:"` - byte
+for byte the hand-fixed one - `execState 1` over ActiveX, and a generated runner reported 4 tests, 0
+failures. The refusal arm, a case naming `Stop`, answered `failedAtStep: cases` with nothing written
+and `refusal.notOnPane: ["Stop"]`. A grpc run of the tool itself is still owed; its authoring code is
+the same, and `PaneOnlyCallTests` pins the authored Call to the hand-fixed one that ran on grpc.
+
+**AND ON PYLABVIEW THE TEST GENERATORS CLOSED SOMEBODY ELSE'S PROJECT** - found preparing that run.
+The direct routes end by closing "the active project", which on grpc is the one they opened. On
+pylabview they open nothing (the composer finds its targets by file), so the same close, over ActiveX,
+closed whatever LabVIEW had active. On the acceptance run that was another agent's
+`Sensor-loadcheck.lvproj`. Since then the listing step and every failure-path close of
+`lvai_generate_test`, `lvai_generate_class_test` and `lvai_generate_method_test` close the active
+project on pylabview ONLY when it is the project the test is listed in; otherwise the step says
+`closeSkipped` with the active path, and the listing is a file edit. grpc is unchanged.
+
+**One more thing the acceptance run found, not fixed here:** the pylabview reader takes a VI's
+`_name` from the name stored INSIDE the file (`LVSR`), not from its file name - so a VI copied or
+renamed outside LabVIEW exports under its OLD name, and the direct route then writes a Call target
+no file in the search folders carries. NI's exporter names the loaded VI, which is the file name.
+Copy a subject under its own name, or rename it with LabVIEW's own Save As, until the reader is
+changed. (The acceptance copy was renamed to keep it apart from the original in a shared LabVIEW,
+and its stored name was rewritten with `pylv_extract`/`pylv_rebuild` - one `LVSR` `Section Name`.)
+
 **A retry under the same `testViPath` can fail with `Error 1051` even though the first attempt wrote
 nothing.** Measured twice in a row 2026-08-27: a failed *validation* leaves a phantom under the
 document's `_name`, and this tool derives that `_name` from the test file name, so the next attempt

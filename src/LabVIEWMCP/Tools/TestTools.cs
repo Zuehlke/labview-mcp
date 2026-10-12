@@ -81,7 +81,11 @@ internal sealed class TestTools(LvaiConnection connection)
         EVERY EXPECTED CONSTANT IS LABELLED `expected <n>` and listed in `expectedConstants` with
         its case - lvai_set_constant breaks one for a negative control.
         `inputs` and `expect` are keyed by the SUBJECT's own terminal names - lvai_vi_terminals
-        prints them, and so does this tool's placeholder step. Values are written verbatim into an
+        prints them, and so does this tool's placeholder step. CONNECTOR-PANE TERMINALS ONLY: a
+        front-panel object with no conIdx (a UI VI's Stop button), an `inputs` key that is an
+        output or an `expect` key that is an input is refused by name, with the pane listed under
+        `refusal` - a Call naming an off-pane control is `Error 1 ... An input parameter is
+        invalid` from LabVIEW, measured 2026-10-12. Values are written verbatim into an
         AIXML constant of that terminal's type, so "100" is a double if the terminal is a double;
         a value the format cannot express as a constant is refused at validation, by name.
         EVERY assertion is `Assert Equal Value_Variant`, and float equality is EXACT - Caraya's
@@ -190,11 +194,10 @@ internal sealed class TestTools(LvaiConnection connection)
             var stubName = stub["placeholder"]!.GetValue<string>();
             var terminals = Terminal.From(stub["terminals"] as JsonArray);
 
-            if (Unknown(cases, terminals) is { } unknown)
+            if (CaseNames(cases, subjectName + ".vi", terminals,
+                          Terminal.From(stub["notOnPane"] as JsonArray)) is { Ok: false } refused)
                 return Outcome(false, "cases", steps, total, testViPath, null,
-                    $"The cases name terminals the subject does not have: {unknown}. The " +
-                    "subject's terminals are listed in the placeholder step under `terminals`.",
-                    route: route);
+                    refused.Message("casesJson"), route: route, refusal: refused.ToJson());
 
             // 2. author and generate against the placeholder
             var aixmlPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
@@ -344,27 +347,30 @@ internal sealed class TestTools(LvaiConnection connection)
             ViTerminals.Parse(subjectXml) is not { } subject)
             return (null, "The subject could not be exported, so its terminals are unknown; the " +
                           "placeholder route reports the same failure in its own words.");
-        if (subject.Instances.Count > 0 || subject.Inputs.Count + subject.Outputs.Count == 0)
-            return (null, "The subject is polymorphic or has no terminals; the placeholder route " +
-                          "refuses it with the specific reason.");
+        if (subject.Instances.Count > 0 || subject.PaneInputs.Count + subject.PaneOutputs.Count == 0)
+            return (null, "The subject is polymorphic or has no terminals on its connector pane; " +
+                          "the placeholder route refuses it with the specific reason.");
 
         // A typedef on the pane is not a reason to fall back: the Call is to the REAL subject, so
         // its terminals carry the typedef and only the constants the test wires in are bare.
+        // PANE TERMINALS ONLY - the Call below lists every one of them, and a front-panel object
+        // with no conIdx in that list is `Error 1 ... An input parameter is invalid` (2026-10-12).
         var typedefs = await new TypedefTools(connection).PaneTypedefsAsync(viPath, timeoutSeconds, ct);
         var terminals = Terminal.From(PlaceholderTools.Terminals(subject, typedefs));
+        var offPane = Terminal.From(PlaceholderTools.OffPane(subject));
         steps.Add(new JsonObject
         {
             ["step"] = "subject",
             ["viName"] = subject.ViName,
-            ["inputs"] = subject.Inputs.Count,
-            ["outputs"] = subject.Outputs.Count,
+            ["inputs"] = subject.PaneInputs.Count,
+            ["outputs"] = subject.PaneOutputs.Count,
+            ["notOnPane"] = new JsonArray([.. offPane.Select(t => (JsonNode)t.Name)]),
             ["typedefTerminals"] = typedefs?.Count,
         });
 
-        if (Unknown(cases, terminals) is { } unknown)
+        if (CaseNames(cases, subject.ViName, terminals, offPane) is { Ok: false } refused)
             return (Outcome(false, "cases", steps, total, testViPath, null,
-                $"The cases name terminals the subject does not have: {unknown}. The subject's " +
-                "terminals are what lvai_vi_terminals prints for it.", route: Direct(route)), null);
+                refused.Message("casesJson"), route: Direct(route), refusal: refused.ToJson()), null);
 
         // 2b. THE SETUP VIs, each read off its own export like the subject, and refused before
         //     anything is opened when it cannot be chained: the error wire is what orders the
@@ -447,11 +453,7 @@ internal sealed class TestTools(LvaiConnection connection)
             steps.Add(await ListInProjectAsync(project, testFolderName, [testViPath],
                                                timeoutSeconds, ct, reopen: false));
         else
-        {
-            var close = await new CloseTools(connection).CloseActiveProjectAsync(
-                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
-            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(close) });
-        }
+            steps.Add(await ReleaseProjectAsync(project, timeoutSeconds, ct));
 
         if (NotResolved(answer))
             return (null, "The subject was opened through its project and still did not resolve " +
@@ -993,9 +995,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
         async Task<string?> CloseAsync()
         {
-            var closed = await new CloseTools(connection).CloseActiveProjectAsync(
-                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
-            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) });
+            steps.Add(await ReleaseProjectAsync(project, timeoutSeconds, ct));
             return null;
         }
 
@@ -1634,6 +1634,73 @@ internal sealed class TestTools(LvaiConnection connection)
         return step;
     }
 
+    /// <summary>
+    /// Release the project a test generator's direct route opened: its `closeProject` step. ON
+    /// PYLABVIEW that route opened nothing, so LabVIEW's active project is closed only when it IS
+    /// <paramref name="project"/> - see <see cref="KeepActiveProjectReason"/>.
+    /// </summary>
+    internal async Task<JsonObject> ReleaseProjectAsync(string project, int timeoutSeconds,
+                                                        CancellationToken ct)
+    {
+        if (await KeepActiveProjectAsync(project, timeoutSeconds, ct) is { } keep)
+            return new JsonObject { ["step"] = "closeProject", ["skipped"] = true, ["reason"] = keep };
+        var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+            projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
+        return new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) };
+    }
+
+    /// <summary>
+    /// <see cref="KeepActiveProjectReason"/> with LabVIEW asked which project is active - only on
+    /// pylabview, so the grpc routes pay nothing.
+    /// </summary>
+    private async Task<string?> KeepActiveProjectAsync(string project, int timeoutSeconds,
+                                                      CancellationToken ct)
+    {
+        var backend = AixmlBackend.Inherited.Value?.Name;
+        if (backend != AixmlBackend.PyLabview) return null;
+        var (active, _, activePath) = await new ActionTools(connection)
+            .ProjectIsActiveAsync(timeoutSeconds, ct, AixmlBackend.PyLabview);
+        return KeepActiveProjectReason(backend, active, activePath, project);
+    }
+
+    /// <summary>
+    /// Why the active project must be LEFT OPEN, or null when closing it is this route's business.
+    ///
+    /// THE DIRECT ROUTES CLOSE "THE ACTIVE PROJECT", and on grpc that is the one they opened. ON
+    /// PYLABVIEW THEY OPEN NOTHING - the composer finds the subject, the class and the setup VIs by
+    /// FILE (2026-10-11) - so the same close, run over ActiveX, closed whatever project LabVIEW
+    /// had active: another agent's, the user's. Found 2026-10-12 while preparing a pylabview
+    /// acceptance run on a LabVIEW shared with other agents, where closing a project is forbidden.
+    /// So on pylabview the close runs only when the active project IS the one this call lists the
+    /// test in - then LabVIEW holds it and a file edit would be lost on its next save. Anything
+    /// else - another project, none, a check that could not run - is left alone, and the listing
+    /// is a file edit with LabVIEW uninvolved.
+    /// </summary>
+    internal static string? KeepActiveProjectReason(string? backend, bool? active, string? activePath,
+                                                    string project)
+    {
+        if (backend != AixmlBackend.PyLabview) return null;
+        if (active is true && activePath is { Length: > 0 } &&
+            string.Equals(SafeFullPath(activePath), SafeFullPath(project), StringComparison.OrdinalIgnoreCase))
+            return null;
+        return active switch
+        {
+            true => $"pylabview backend: nothing was opened, and LabVIEW's active project is " +
+                    $"'{(activePath is { Length: > 0 } ? activePath : "(path not reported)")}', not " +
+                    "this one - it is not this call's to close.",
+            false => "pylabview backend: nothing was opened and no project is active - nothing to close.",
+            null => "pylabview backend: nothing was opened, and which project LabVIEW has active " +
+                    "could not be read - left alone rather than closing an unknown one.",
+        };
+
+        static string SafeFullPath(string path)
+        {
+            try { return Path.GetFullPath(path); }
+            catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException)
+            { return path; }
+        }
+    }
+
     internal async Task<JsonObject> ListInProjectAsync(
         string projectPath, string folderName, IReadOnlyList<string> viPaths, int timeoutSeconds,
         CancellationToken ct, bool reopen = true, bool moveTargetLevel = false)
@@ -1649,9 +1716,19 @@ internal sealed class TestTools(LvaiConnection connection)
             // same reason since 2026-08-28; this route did not, and that is half of the defect.
             var listedBefore = LvClass.ListedVis(projectPath);
 
-            var closed = await new CloseTools(connection)
-                .CloseActiveProjectAsync(null, null, false, timeoutSeconds: timeoutSeconds, ct: ct);
-            step["closed"] = Read(closed);
+            // ON PYLABVIEW ONLY THIS PROJECT IS CLOSED, never whatever else is active - see
+            // KeepActiveProjectReason.
+            if (await KeepActiveProjectAsync(projectPath, timeoutSeconds, ct) is { } keep)
+            {
+                step["closed"] = null;
+                step["closeSkipped"] = keep;
+            }
+            else
+            {
+                var closed = await new CloseTools(connection)
+                    .CloseActiveProjectAsync(null, null, false, timeoutSeconds: timeoutSeconds, ct: ct);
+                step["closed"] = Read(closed);
+            }
 
             // A VI THAT IS NOT ON DISK IS REFUSED RATHER THAN LISTED. It used to be added, counted
             // in `added`, and then swept straight back out by the tidy pass's dangling check - so
@@ -2552,11 +2629,13 @@ internal sealed class TestTools(LvaiConnection connection)
             static bool IsClass(ViTerminals.Terminal t) => t.Type == ClassType;
             static bool IsData(ViTerminals.Terminal t) => t.Type != ClassType && t.Type != ErrorCluster;
 
-            var writeIn = One(write.Inputs, IsClass);
-            var writeOut = One(write.Outputs, IsClass);
-            var writeData = One(write.Inputs, IsData);
-            var readIn = One(read.Inputs, IsClass);
-            var readData = One(read.Outputs, IsData);
+            // PANE TERMINALS ONLY - the names picked here go into a Call, and a panel object with
+            // no conIdx would also count as a second "data terminal" and refuse a sound pair.
+            var writeIn = One(write.PaneInputs, IsClass);
+            var writeOut = One(write.PaneOutputs, IsClass);
+            var writeData = One(write.PaneInputs, IsData);
+            var readIn = One(read.PaneInputs, IsClass);
+            var readData = One(read.PaneOutputs, IsData);
 
             if (writeIn is null || writeOut is null || readIn is null)
                 return (null, $"'{write.ViName}' / '{read.ViName}' do not carry exactly one class " +
@@ -2738,6 +2817,7 @@ internal sealed class TestTools(LvaiConnection connection)
     {
         var all = calls.ToList();
         var setups = new Dictionary<string, SetupShape>(StringComparer.OrdinalIgnoreCase);
+        var exported = new Dictionary<string, ViTerminals.Result>(StringComparer.OrdinalIgnoreCase);
         foreach (var setupVi in all.Select(s => Path.GetFullPath(s.ViPath))
                                    .Distinct(StringComparer.OrdinalIgnoreCase))
         {
@@ -2758,17 +2838,20 @@ internal sealed class TestTools(LvaiConnection connection)
                     "and the error wire is the only thing that orders a setup call before the " +
                     "subject.");
             setups[setupVi] = new SetupShape(setupSubject.ViName.Replace(":", @"\3A"), setupTerminals);
+            exported[setupVi] = setupSubject;
         }
 
-        var badSetupInputs = all
-            .SelectMany(s => s.Inputs.Keys.Where(k =>
-                !setups[Path.GetFullPath(s.ViPath)].Terminals.Any(t => t.IsInput && t.Name == k))
-                .Select(k => $"'{k}' on {Path.GetFileName(s.ViPath)}"))
-            .Distinct().ToList();
-        if (badSetupInputs.Count > 0)
-            return (null, "setup",
-                "Setup inputs name terminals their VI does not have: " +
-                string.Join(", ", badSetupInputs) + ".");
+        // THE SAME RULE AS THE SUBJECT'S: a setup Call lists the setup VI's pane, so a value for a
+        // panel object off the pane, for an output, or for no terminal at all is refused by name.
+        foreach (var (setupVi, vi) in exported)
+        {
+            var check = ViTerminals.CheckCallNames(vi,
+                all.Where(s => Path.GetFullPath(s.ViPath).Equals(setupVi, StringComparison.OrdinalIgnoreCase))
+                   .SelectMany(s => s.Inputs.Keys),
+                []);
+            if (!check.Ok)
+                return (null, "setup", check.Message($"The setup inputs for '{Path.GetFileName(setupVi)}'"));
+        }
         return (setups, null, null);
     }
 
@@ -3320,27 +3403,33 @@ internal sealed class TestTools(LvaiConnection connection)
     }
 
     /// <summary>
-    /// Terminal names in the cases that the subject does not have - a typo, or a stale case list
-    /// after the subject's pane changed. Caught here because AIXML's own message for it names the
-    /// generated constant rather than the case that produced it.
+    /// The names in the cases a Call to the subject cannot wire: a typo or a stale case list
+    /// (no such terminal), an `inputs` key that is an output or an `expect` key that is an input,
+    /// and - measured 2026-10-12 - a front-panel object that is NOT ON THE PANE. Caught here because
+    /// LabVIEW's own message names none of them: a typo names the generated constant, and an
+    /// off-pane `Stop` came back as `Error 1 ... An input parameter is invalid`.
+    ///
+    /// AN `inputs` KEY NAMING AN OUTPUT USED TO VANISH: TestAixml walks the subject's INPUTS and
+    /// looks each up in the case, so the value was never read and the case ran on the default.
+    /// <paramref name="terminals"/> are the pane terminals the Call lists;
+    /// <paramref name="offPane"/> the panel objects it must not - the rule itself is
+    /// <c>ViTerminals.CheckCallNames</c>, shared with lvai_generate_method_test.
     /// </summary>
-    internal static string? Unknown(IReadOnlyList<Case> cases, IReadOnlyList<Terminal> terminals)
-    {
-        var known = terminals.Select(t => t.Name).ToHashSet();
-        var missing = cases
-            .SelectMany(c => c.Inputs.Keys.Concat(c.Expect.Keys))
-            .Where(name => !known.Contains(name))
-            .Distinct()
-            .ToList();
-        return missing.Count == 0 ? null : string.Join(", ", missing.Select(m => $"'{m}'"));
-    }
+    internal static ViTerminals.CallNameCheck CaseNames(
+        IReadOnlyList<Case> cases, string viName, IReadOnlyList<Terminal> terminals,
+        IReadOnlyList<Terminal> offPane) =>
+        ViTerminals.CheckCallNames(viName,
+            [.. terminals.Select(t => (t.Name, t.IsInput))],
+            [.. offPane.Select(t => (t.Name, t.IsInput))],
+            cases.SelectMany(c => c.Inputs.Keys),
+            cases.SelectMany(c => c.Expect.Keys));
 
     // ------------------------------------------------------------------ answer
 
     private static string Outcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,
                                   string testViPath, string? aixmlPath, string note,
                                   JsonNode? callTargets = null, JsonObject? route = null,
-                                  JsonArray? expectedConstants = null)
+                                  JsonArray? expectedConstants = null, JsonObject? refusal = null)
     {
         var result = new JsonObject
         {
@@ -3351,6 +3440,8 @@ internal sealed class TestTools(LvaiConnection connection)
             ["aixml"] = aixmlPath,
             ["callTargets"] = callTargets,
         };
+        // Which names the cases got wrong and what the pane DOES carry, as data.
+        if (refusal is not null) result["refusal"] = refusal;
         // Which constant to break for a negative control, by lvai_set_constant.
         if (expectedConstants is not null) result["expectedConstants"] = expectedConstants;
         // Which route ran, and when it was the placeholder one, why the direct one did not.

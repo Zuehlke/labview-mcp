@@ -1,0 +1,68 @@
+<VI _name="Sensor Event Demo.vi" description="Demonstrates a user event that carries a double payload. A For Loop fires the Reading user event Count times with the payload values 0 to Count-1; a parallel While Loop handles each event in an Event Structure, reads the payload off its Event Data Node, counts the events and sums the payloads, and stops once Count events have arrived. The event is then unregistered and destroyed. One error chain runs from error in through Create, Register, every Generate, Unregister and Destroy to error out. With Count 0 or less no event is fired and the handler waits until Stop is pressed.">
+  <Control _name="Count" type="int32" uid="4205" uid_parent="root" value="5" conIdx="0" connection="recommended" outputs="value:4205.value" />
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" uid="4206" uid_parent="root" value="0" conIdx="11" connection="recommended" outputs="value:4206.value" />
+  <Constant _name="Reading" type="double" uid="4201" uid_parent="root" value="0" outputs="value:4201.value" />
+  <Constant _name="Sum Seed" type="double" uid="4207" uid_parent="root" value="0" outputs="value:4207.value" />
+  <Indicator _name="Events Received" type="int32" uid="4272" uid_parent="root" value="0" conIdx="4" connection="recommended" inputs="value:4265.value" />
+  <Indicator _name="Payload Sum" type="double" uid="4273" uid_parent="root" value="0" conIdx="6" connection="recommended" inputs="value:4225.value" />
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="4274" uid_parent="root" value="0" conIdx="15" connection="recommended" inputs="value:4271.error out" />
+  <Node _name="Create User Event" uid="4202" uid_parent="root" outputs="user event:4202.user event,error out:4202.error out" inputs="user event datatype:4201.value,error in:4206.value" />
+  <Node _name="Register For Events" uid="4203" uid_parent="root" inputs="event registration refnum:,error in (no error):4202.error out,event source:4202.user event" outputs="event registration refnum:4203.event registration refnum,error out:4203.error out" />
+  <Structure _name="For Loop" uid="4210" uid_parent="root" count="4210.value" maxin="4205.value" maxout="" label="Fire one Reading per iteration">
+    <Node _name="To Double Precision Float" uid="4212" uid_parent="4210" inputs="number:4210.value" outputs="double precision float:4212.double precision float" />
+    <Node _name="Generate User Event" uid="4215" uid_parent="4210" inputs="user event:4211.value,event data cluster:4212.double precision float,error in:4214.value" outputs="error out:4215.error out" />
+    <Tunnel _id="In1" uid="4211" uid_parent="4210" inputs="value:4202.user event" outputs="value:4211.value" />
+    <ShiftReg uid="4213" uid_parent="4210">
+      <Left uid="4214" uid_parent="4213" inputs="value:4203.error out" outputs="value:4214.value" />
+      <Right uid="4216" uid_parent="4213" outputs="value:4216.value" inputs="value:4215.error out" />
+    </ShiftReg>
+  </Structure>
+  <Structure _name="While Loop" uid="4220" uid_parent="root" count="4220.value" label="Handle one Reading per iteration">
+    <Structure _name="Event Structure" uid="4230" uid_parent="4220">
+      <Tunnel _id="In1" uid="4231" uid_parent="4230" inputs="value:4221.value" />
+      <Tunnel _id="In2" uid="4232" uid_parent="4230" inputs="value:4222.value" />
+      <Tunnel _id="In3" uid="4233" uid_parent="4230" inputs="value:4220.value" />
+      <Tunnel _id="In4" uid="4234" uid_parent="4230" inputs="value:4224.value" />
+      <CaseFrame selector=" &lt;Reading&gt;: User Event " uid="4240" uid_parent="4230">
+        <Tunnel _id="In1" uid="4241" uid_parent="4240" />
+        <Tunnel _id="In2" uid="4242" uid_parent="4240" outputs="value:4242.value" />
+        <Tunnel _id="In3" uid="4243" uid_parent="4240" outputs="value:4243.value" />
+        <Tunnel _id="In4" uid="4239" uid_parent="4240" outputs="value:4239.value" />
+        <Tunnel _id="Out1" uid="4248" uid_parent="4240" inputs="value:4247.x &gt;= y?" />
+        <Tunnel _id="Out2" uid="4246" uid_parent="4240" inputs="value:4245.x+1" />
+        <Tunnel _id="Out3" uid="4238" uid_parent="4240" inputs="value:4290.x+y" />
+        <Constant _name="Payload Placeholder" type="double" uid="4280" uid_parent="4240" value="0" />
+        <Node _name="Event Data Node" uid="4244" uid_parent="4240" fields="Source,Reading,Time" outputs="Reading:4244.Reading" />
+        <Node _name="Add" uid="4290" uid_parent="4240" outputs="x+y:4290.x+y" inputs="y:4244.Reading,x:4239.value" />
+        <Node _name="Increment" uid="4245" uid_parent="4240" outputs="x+1:4245.x+1" inputs="x:4243.value" />
+        <Node _name="Greater Or Equal?" uid="4247" uid_parent="4240" inputs="y:4242.value,x:4245.x+1" outputs="x &gt;= y?:4247.x &gt;= y?" />
+      </CaseFrame>
+      <CaseFrame selector=" &quot;Stop&quot;: Value Change " uid="4250" uid_parent="4230">
+        <Tunnel _id="In1" uid="4251" uid_parent="4250" />
+        <Tunnel _id="In2" uid="4252" uid_parent="4250" />
+        <Tunnel _id="In3" uid="4253" uid_parent="4250" outputs="value:4253.value" />
+        <Tunnel _id="In4" uid="4259" uid_parent="4250" outputs="value:4259.value" />
+        <Tunnel _id="Out1" uid="4257" uid_parent="4250" inputs="value:4256.value" />
+        <Tunnel _id="Out2" uid="4258" uid_parent="4250" inputs="value:4253.value" />
+        <Tunnel _id="Out3" uid="4237" uid_parent="4250" inputs="value:4259.value" />
+        <Control _name="Stop" type="bool" style="latched" uid="4254" uid_parent="4250" value="false" />
+        <Constant type="bool" uid="4256" uid_parent="4250" value="true" outputs="value:4256.value" />
+        <Node _name="Event Data Node" uid="4255" uid_parent="4250" fields="Source,Type,Time" />
+      </CaseFrame>
+      <Tunnel _id="Out1" uid="4260" uid_parent="4230" outputs="value:4260.value" />
+      <Tunnel _id="Out2" uid="4261" uid_parent="4230" outputs="value:4261.value" />
+      <Tunnel _id="Out3" uid="4262" uid_parent="4230" outputs="value:4262.value" />
+    </Structure>
+    <Tunnel _id="In1" uid="4221" uid_parent="4220" inputs="value:4203.event registration refnum" outputs="value:4221.value" />
+    <Tunnel _id="In2" uid="4222" uid_parent="4220" inputs="value:4205.value" outputs="value:4222.value" />
+    <Tunnel _id="Out1" uid="4264" uid_parent="4220" outputs="value:4264.value" inputs="value:4221.value" />
+    <Tunnel _id="Out2" uid="4265" uid_parent="4220" outputs="value:4265.value" inputs="value:4261.value" />
+    <ShiftReg uid="4223" uid_parent="4220">
+      <Left uid="4224" uid_parent="4223" inputs="value:4207.value" outputs="value:4224.value" />
+      <Right uid="4225" uid_parent="4223" outputs="value:4225.value" inputs="value:4262.value" />
+    </ShiftReg>
+    <Condition uid="4263" uid_parent="4220" value="stop" inputs="value:4260.value" />
+  </Structure>
+  <Node _name="Unregister For Events" uid="4270" uid_parent="root" outputs="error out:4270.error out" inputs="event registration refnum:4264.value,error in:4216.value" />
+  <Node _name="Destroy User Event" uid="4271" uid_parent="root" outputs="error out:4271.error out" inputs="user event:4202.user event,error in:4270.error out" />
+</VI>

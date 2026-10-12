@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -38,13 +39,159 @@ internal static class ViTerminals
     /// <summary>
     /// <paramref name="Instances"/> is non-empty exactly for a polymorphic wrapper, and then the
     /// control/indicator lists are empty - a wrapper has no diagram of its own.
+    ///
+    /// <paramref name="Inputs"/> and <paramref name="Outputs"/> are EVERY control and indicator on
+    /// the front panel, pane or not - <c>lvai_vi_terminals</c> and <c>lvai_connector_pane</c> report
+    /// on all of them. Anything that AUTHORS A CALL must read <see cref="PaneInputs"/> and
+    /// <see cref="PaneOutputs"/> instead.
     /// </summary>
     internal sealed record Result(
         string ViName,
         IReadOnlyList<Terminal> Inputs,
         IReadOnlyList<Terminal> Outputs,
         IReadOnlyList<Instance> Instances,
-        string? Description);
+        string? Description)
+    {
+        /// <summary>
+        /// THE INPUTS A CALL CAN WIRE: the controls that sit on the connector pane, i.e. carry a
+        /// <c>conIdx</c> in the export.
+        ///
+        /// A FRONT-PANEL OBJECT WITH NO conIdx IS NOT A TERMINAL, and a Call naming one is refused
+        /// in words that name neither. Measured 2026-10-12: lvai_generate_test wrote
+        /// <c>inputs="Count:…,error in:,Stop:"</c> for a subject whose `Stop` is a latched button
+        /// inside an Event Structure frame - read by the VI's own diagram, on no pane slot - and
+        /// the generator answered <c>Error 1 ... VI generator.vi ... An input parameter is
+        /// invalid</c>. The same document without <c>,Stop:</c> generated and ran green.
+        /// </summary>
+        public IReadOnlyList<Terminal> PaneInputs => [.. Inputs.Where(t => t.ConIdx is not null)];
+
+        /// <summary>The outputs a Call can wire - see <see cref="PaneInputs"/>.</summary>
+        public IReadOnlyList<Terminal> PaneOutputs => [.. Outputs.Where(t => t.ConIdx is not null)];
+
+        /// <summary>Controls with no <c>conIdx</c>: on the panel, read by the diagram, not wirable.</summary>
+        public IReadOnlyList<Terminal> OffPaneInputs => [.. Inputs.Where(t => t.ConIdx is null)];
+
+        /// <summary>Indicators with no <c>conIdx</c> - see <see cref="OffPaneInputs"/>.</summary>
+        public IReadOnlyList<Terminal> OffPaneOutputs => [.. Outputs.Where(t => t.ConIdx is null)];
+    }
+
+    /// <summary>
+    /// The names a Call to one VI cannot wire, sorted by WHY, beside the pane it does carry.
+    ///
+    /// THE ONE RULE every generator that writes a Call against a VI's terminals applies to the
+    /// names a CALLER hands it - lvai_generate_test's `inputs`, `expect` and `setup` inputs,
+    /// lvai_generate_method_test's `inputs` and `expectOutput`. One implementation, so the tools
+    /// cannot come to disagree about what is wirable, which is how this repository's checkers have
+    /// drifted before.
+    /// </summary>
+    /// <param name="NotOnPane">On the panel but with no conIdx - only the VI's own diagram reads it.</param>
+    /// <param name="WrongDirection">On the pane, but asked for as an input when it is an output or the reverse.</param>
+    /// <param name="Unknown">Not a control or indicator of the VI at all.</param>
+    internal sealed record CallNameCheck(
+        string ViName,
+        IReadOnlyList<string> NotOnPane,
+        IReadOnlyList<(string Name, bool AskedAsInput)> WrongDirection,
+        IReadOnlyList<string> Unknown,
+        IReadOnlyList<string> PaneInputs,
+        IReadOnlyList<string> PaneOutputs)
+    {
+        public bool Ok => NotOnPane.Count == 0 && WrongDirection.Count == 0 && Unknown.Count == 0;
+
+        /// <summary>
+        /// The refusal, naming every offending name and listing the pane. <paramref name="what"/>
+        /// says who asked - "casesJson", "the setup inputs of X.vi" - so the reader knows which of
+        /// their own arguments to change.
+        /// </summary>
+        public string Message(string what)
+        {
+            var sb = new StringBuilder($"{what} names terminal(s) a Call to '{ViName}' cannot wire. ");
+            if (NotOnPane.Count > 0)
+                sb.Append($"NOT ON THE CONNECTOR PANE: {Quote(NotOnPane)} - a front-panel object with " +
+                          "no conIdx, which only the VI's own diagram reads. A Call wires the pane " +
+                          "and nothing else, and LabVIEW's generator answers such a name with " +
+                          "`Error 1 ... An input parameter is invalid`, naming neither the terminal " +
+                          "nor the case (measured 2026-10-12). ");
+            if (WrongDirection.Count > 0)
+                sb.Append("ON THE OTHER SIDE OF THE PANE: " + string.Join(", ", WrongDirection.Select(w =>
+                    w.AskedAsInput
+                        ? $"'{w.Name}' is an output, given as an input"
+                        : $"'{w.Name}' is an input, asked for as an output")) + ". ");
+            if (Unknown.Count > 0)
+                sb.Append($"NOT A TERMINAL OF THE VI AT ALL: {Quote(Unknown)} - names are literal " +
+                          "and case-sensitive. ");
+            sb.Append($"The pane carries inputs {Quote(PaneInputs)} and outputs {Quote(PaneOutputs)}.");
+            return sb.ToString();
+        }
+
+        /// <summary>The same, as data, for an answer's `detail`.</summary>
+        public JsonObject ToJson() => new()
+        {
+            ["viName"] = ViName,
+            ["notOnPane"] = Array(NotOnPane),
+            ["wrongDirection"] = new JsonArray([.. WrongDirection.Select(w => (JsonNode)new JsonObject
+            {
+                ["name"] = w.Name,
+                ["givenAs"] = w.AskedAsInput ? "input" : "output",
+                ["is"] = w.AskedAsInput ? "output" : "input",
+            })]),
+            ["unknown"] = Array(Unknown),
+            ["paneInputs"] = Array(PaneInputs),
+            ["paneOutputs"] = Array(PaneOutputs),
+        };
+
+        private static string Quote(IEnumerable<string> names) =>
+            names.Any() ? string.Join(", ", names.Select(n => $"'{n}'")) : "(none)";
+
+        private static JsonArray Array(IEnumerable<string> names) =>
+            new([.. names.Select(n => (JsonNode)n)]);
+    }
+
+    /// <summary>
+    /// Which of <paramref name="inputs"/> and <paramref name="outputs"/> a Call to
+    /// <paramref name="vi"/> cannot wire. Duplicates are reported once, in first-seen order.
+    /// </summary>
+    internal static CallNameCheck CheckCallNames(Result vi, IEnumerable<string> inputs,
+                                                 IEnumerable<string> outputs) =>
+        CheckCallNames(vi.ViName,
+            [.. vi.PaneInputs.Select(t => (t.Name, true)), .. vi.PaneOutputs.Select(t => (t.Name, false))],
+            [.. vi.OffPaneInputs.Select(t => (t.Name, true)), .. vi.OffPaneOutputs.Select(t => (t.Name, false))],
+            inputs, outputs);
+
+    /// <summary>
+    /// The rule on bare (name, is-input) pairs, for a caller that holds the terminal lists in
+    /// another shape - lvai_generate_test's placeholder route has them as the placeholder's JSON.
+    /// </summary>
+    internal static CallNameCheck CheckCallNames(
+        string viName,
+        IReadOnlyCollection<(string Name, bool IsInput)> pane,
+        IReadOnlyCollection<(string Name, bool IsInput)> offPane,
+        IEnumerable<string> inputs, IEnumerable<string> outputs)
+    {
+        var notOnPane = new List<string>();
+        var wrong = new List<(string, bool)>();
+        var unknown = new List<string>();
+        var seen = new HashSet<(string, bool)>();
+
+        foreach (var (name, askedAsInput) in inputs.Select(n => (n, true))
+                     .Concat(outputs.Select(n => (n, false))))
+        {
+            if (!seen.Add((name, askedAsInput))) continue;
+            if (pane.Contains((name, askedAsInput))) continue;
+            if (pane.Any(t => t.Name == name))
+            {
+                if (!wrong.Contains((name, askedAsInput))) wrong.Add((name, askedAsInput));
+            }
+            else if (offPane.Any(t => t.Name == name))
+            {
+                if (!notOnPane.Contains(name)) notOnPane.Add(name);
+            }
+            else if (!unknown.Contains(name)) unknown.Add(name);
+        }
+
+        return new CallNameCheck(viName, notOnPane, wrong, unknown,
+            [.. pane.Where(t => t.IsInput).Select(t => t.Name)],
+            [.. pane.Where(t => !t.IsInput).Select(t => t.Name)]);
+    }
 
     public static Result? Parse(string? aixml)
     {
@@ -105,9 +252,11 @@ internal static class ViTerminals
             .ToList();
 
     /// <summary>
-    /// A `Call` element ready to paste, with every terminal listed and no net wired. Nets are
+    /// A `Call` element ready to paste, with every PANE terminal listed and no net wired. Nets are
     /// left empty on purpose: the caller fills in the ones it needs, and an unused terminal
-    /// stays as `name:` - which is how an export writes it too.
+    /// stays as `name:` - which is how an export writes it too. A front-panel object with no
+    /// conIdx is left out: a Call naming it is refused (see <see cref="Result.PaneInputs"/>), and
+    /// this skeleton listed it until 2026-10-12.
     /// </summary>
     public static string CallSkeleton(Result result, Instance? instance = null)
     {
@@ -117,8 +266,8 @@ internal static class ViTerminals
                    $"      inputs=\"{inst.Inputs}\"" + Environment.NewLine +
                    $"      outputs=\"{inst.Outputs}\" uid=\"NN\" uid_parent=\"root\"/>";
 
-        var inputs = string.Join(",", result.Inputs.Select(t => t.Name + ":"));
-        var outputs = string.Join(",", result.Outputs.Select(t => t.Name + ":"));
+        var inputs = string.Join(",", result.PaneInputs.Select(t => t.Name + ":"));
+        var outputs = string.Join(",", result.PaneOutputs.Select(t => t.Name + ":"));
         return $"<Call target=\"{TargetSpelling(result.ViName)}\"" + Environment.NewLine +
                $"      inputs=\"{inputs}\"" + Environment.NewLine +
                $"      outputs=\"{outputs}\" uid=\"NN\" uid_parent=\"root\"/>";
@@ -152,13 +301,28 @@ internal static class ViTerminals
             return sb.ToString().TrimEnd();
         }
 
-        sb.AppendLine($"{result.ViName} - {result.Inputs.Count} input terminal(s), " +
-                      $"{result.Outputs.Count} output terminal(s).");
+        var offPane = result.OffPaneInputs.Count + result.OffPaneOutputs.Count;
+        sb.AppendLine($"{result.ViName} - {result.PaneInputs.Count} input terminal(s), " +
+                      $"{result.PaneOutputs.Count} output terminal(s) on the connector pane." +
+                      (offPane > 0
+                          ? $" {offPane} more front-panel object(s) are NOT on the pane and cannot " +
+                            "be named in a Call."
+                          : ""));
         sb.AppendLine();
-        Append(sb, "INPUTS  (Controls - these are the Call's `inputs`)", result.Inputs);
+        Append(sb, "INPUTS  (Controls - these are the Call's `inputs`)", result.PaneInputs);
         sb.AppendLine();
-        Append(sb, "OUTPUTS (Indicators - these are the Call's `outputs`)", result.Outputs);
+        Append(sb, "OUTPUTS (Indicators - these are the Call's `outputs`)", result.PaneOutputs);
         sb.AppendLine();
+        if (offPane > 0)
+        {
+            // Listed rather than hidden: the name is on the panel, and a reader who sees it there
+            // and not here would otherwise conclude this tool missed it. A Call naming one is
+            // refused with `Error 1 ... An input parameter is invalid`, measured 2026-10-12.
+            Append(sb, "NOT ON THE CONNECTOR PANE (front panel only - read by the VI's own " +
+                       "diagram; a Call must NOT name these)",
+                   [.. result.OffPaneInputs, .. result.OffPaneOutputs]);
+            sb.AppendLine();
+        }
         sb.AppendLine("Ready to paste - fill in the nets you need, leave the rest as `name:`:");
         sb.AppendLine(CallSkeleton(result));
         sb.AppendLine();

@@ -133,7 +133,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         `inputs` sets ANY input terminal of the method, required or not: a required one is always
         wired (with the default where the case gives none), any other only when the case names it,
         so an unnamed one keeps the method's own default. A name the method does not declare is
-        refused (`inputTerminalNotFound`), as is the class or error input (`inputNotSettable`).
+        refused (`inputTerminalNotFound`), as is the class or error input (`inputNotSettable`), and
+        a front-panel object with no conIdx in `inputs` or `expectOutput` (`terminalNotOnPane`) -
+        a Call cannot wire it, and LabVIEW says only `An input parameter is invalid`.
         Until 2026-09-25 a value for a non-required terminal was dropped in silence.
         EVERY METHOD MUST ALREADY BE A CLASS MEMBER with a class-typed pane - use
         lvai_add_class_method first. A method whose .vi is missing is named rather than generated.
@@ -358,20 +360,25 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 int? outputConIdx = null;
                 if (request.ExpectOutput is { } wanted)
                 {
-                    var match = terminals!.Outputs
-                        .FirstOrDefault(t => t.Name.Equals(wanted, StringComparison.Ordinal));
-                    if (match.Name is null)
-                        return Json.Error("outputTerminalNotFound",
-                            $"'{request.Method}' has no output terminal called '{wanted}'. " +
-                            "Names are literal and case-sensitive, and a wrong one is not caught " +
-                            "later - the swap would re-attach the wire by name, leave the real " +
-                            "terminal unwired, and the suite would pass having asserted nothing.",
+                    // THE SAME RULE AS `inputs`: a pane OUTPUT, or refused by name - an indicator
+                    // off the pane cannot be read off the method's Call (2026-10-12).
+                    var check = ViTerminals.CheckCallNames(terminals!, [], [wanted]);
+                    if (!check.Ok)
+                        return Json.Error(
+                            check.NotOnPane.Count > 0 ? "terminalNotOnPane" : "outputTerminalNotFound",
+                            check.Message($"`expectOutput` for '{request.Method}'") +
+                            " A wrong name is not caught later - the swap would re-attach the " +
+                            "wire by name, leave the real terminal unwired, and the suite would " +
+                            "pass having asserted nothing.",
                             new
                             {
                                 method = request.Method,
                                 asked = wanted,
-                                available = terminals.Outputs.Select(t => t.Name).ToArray(),
+                                available = check.PaneOutputs.ToArray(),
+                                check = check.ToJson(),
                             });
+                    var match = terminals!.PaneOutputs
+                        .First(t => t.Name.Equals(wanted, StringComparison.Ordinal));
 
                     outputType ??= match.Type;
                     var freeOut = FreeOutputSlots();
@@ -836,12 +843,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                               "so they are not known to be loaded - read the openClass step.");
         }
 
-        async Task CloseAsync()
-        {
-            var closed = await new CloseTools(connection).CloseActiveProjectAsync(
-                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
-            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) });
-        }
+        async Task CloseAsync() =>
+            steps.Add(await tests.ReleaseProjectAsync(project, timeoutSeconds, ct));
 
         // 4. author against the real members and generate. `execState` failing HERE is expected
         //    and is not a failure: the seeds are still paths wired into class inputs.
@@ -1506,19 +1509,27 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         // them. Before 2026-09-25 an `inputs` entry for anything but a `required` terminal was
         // dropped in silence: `Withdraw` with `amount` = 800 (a `recommended` input) ran as a
         // withdrawal of 0, and the case "800 is refused" failed against a correct method.
+        // AND A NAME ON THE PANEL BUT OFF THE PANE IS REFUSED TOO, by the rule lvai_generate_test
+        // applies (2026-10-12): wired into the method's Call it is `Error 1 ... An input parameter
+        // is invalid` from LabVIEW's generator, which names neither the terminal nor the case.
+        if (supplied is { Count: > 0 } &&
+            ViTerminals.CheckCallNames(terminals, supplied.Keys, []) is { Ok: false } refused)
+            return (null, new Fault(
+                refused.NotOnPane.Count > 0 ? "terminalNotOnPane" : "inputTerminalNotFound",
+                refused.Message($"The `inputs` for '{Path.GetFileName(methodVi)}'") +
+                " A value for a terminal the Call cannot wire would be wired to nothing and the " +
+                "case would run on the default.",
+                new
+                {
+                    methodVi,
+                    terminal = refused.NotOnPane.Concat(refused.Unknown)
+                                      .Concat(refused.WrongDirection.Select(w => w.Name)).First(),
+                    inputs = refused.PaneInputs.ToArray(),
+                    check = refused.ToJson(),
+                }));
         foreach (var name in supplied?.Keys ?? Enumerable.Empty<string>())
         {
-            var match = terminals.Inputs.FirstOrDefault(t => t.Name.Equals(name, StringComparison.Ordinal));
-            if (match.Name is null)
-                return (null, new Fault("inputTerminalNotFound",
-                    $"'{Path.GetFileName(methodVi)}' has no input terminal called '{name}'. " +
-                    "Names are literal and case-sensitive; a value for a terminal that does not " +
-                    "exist would be wired to nothing and the case would run on the default.",
-                    new
-                    {
-                        methodVi, terminal = name,
-                        inputs = terminals.Inputs.Select(t => t.Name).ToArray(),
-                    }));
+            var match = terminals.PaneInputs.First(t => t.Name.Equals(name, StringComparison.Ordinal));
             if (match.Type.StartsWith("ref{UDClassInst}", StringComparison.Ordinal)
                 || ConnectorPane.IsErrorIn(match.Name))
                 return (null, new Fault("inputNotSettable",
@@ -1530,7 +1541,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
         var slots = FreeSocketSlots();
         var resolved = new List<RequiredInput>();
-        foreach (var terminal in terminals.Inputs)
+        foreach (var terminal in terminals.PaneInputs)
         {
             if (terminal.Type.StartsWith("ref{UDClassInst}", StringComparison.Ordinal)) continue;
             if (ConnectorPane.IsErrorIn(terminal.Name)) continue;
@@ -1645,8 +1656,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         internal static DirectWriteCall? From(ViTerminals.Result write, string target)
         {
             const string classType = "ref{UDClassInst}";
-            var inputs = write.Inputs.Where(t => t.ConIdx is not null).ToList();
-            var outputs = write.Outputs.Where(t => t.ConIdx is not null).ToList();
+            var inputs = write.PaneInputs;
+            var outputs = write.PaneOutputs;
             var classIn = inputs.Where(t => t.Type == classType).ToList();
             var classOut = outputs.Where(t => t.Type == classType).ToList();
             var data = inputs.Where(t => t.Type != classType && t.Type != ErrorCluster).ToList();
@@ -1680,8 +1691,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 return hits.Count == 1 ? hits[0] : null;
             }
 
-            var inputs = method.Inputs.Where(t => t.ConIdx is not null).ToList();
-            var outputs = method.Outputs.Where(t => t.ConIdx is not null).ToList();
+            var inputs = method.PaneInputs;
+            var outputs = method.PaneOutputs;
 
             var classIn = Dispatch(inputs);
             if (classIn is null)
