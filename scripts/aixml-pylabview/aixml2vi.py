@@ -664,10 +664,53 @@ def internal_shift(o, dy, dx):
         internal_shift(o.find("ddo"), dy, dx)   # the element itself sits relative to the array
 
 
+def _position_pair(o):
+    """An array's nRC/oRC when it is a POSITION: a negated (h, v) pair tied to where the array
+    sits - the donor's (-60, -2393) at bounds (2382, 2, ...). A waveform control's (0, 4) /
+    (0, 1) is not one, and is left alone."""
+    pair = [c for c in o if c.tag in ("nRC", "oRC")]
+    if pair and any(v < 0 for c in pair for v in _pair_values(c)):
+        return pair
+    return []
+
+
+def _pair_values(c):
+    return [int(x) for x in (c.text or "0, 0").strip("() ").split(",")[:2]]
+
+
+# An array constant's nRC/oRC ANCHOR: -(where the array sits + k), (h, v) order, where "sits" is
+# its ABSOLUTE place on the diagram - its own top-left plus that of every structure around it -
+# or, for a field of a cluster, its place in the cluster pane's document (own top-left minus the
+# pane's docBounds). k is the anchor's offset into the array, read off the donor; LabVIEW's own
+# arrays carry k = (25..118, 11..81). Read off NI's VIs 2026-10-12 (scratchpad nrc_abs.py): at the
+# top level and in Case frames to the pixel, in loops within that band. An anchor ABOVE-LEFT of
+# the array - (0, 0) when the pair is missing - draws the constant as a grid of greyed elements
+# reaching to it; one far BELOW it (a donor's pair left at a new place) is "Insane Array Constant
+# {graphics} (0x80)" (2026-10-09).
+ANCHOR_K = "_anchor_k"
+ANCHOR_K_SANE = ((0, 200), (0, 120))
+
+
+def _anchor_k(arr):
+    """The anchor offset of a part's array, from the donor's own pair and bounds; a donor that sat
+    inside a structure or a cluster gives no usable k, and the array's index display decides."""
+    pair = _position_pair(arr)
+    t, l = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+    h, v = _pair_values(pair[0])
+    k = (-h - l, -v - t)
+    if all(lo <= x <= hi for x, (lo, hi) in zip(k, ANCHOR_K_SANE)):
+        return k
+    idx = next((p for p in (arr.find("partsList") if arr.find("partsList") is not None else [])
+                if p.findtext("partID") == "8002"), None)
+    il = lvheap.parse_bounds(idx.findtext("bounds"))[1] if idx is not None else 2
+    return (il + 23, 12)           # NI's arrays with the index at x 2: k = (25, 12)
+
+
 def move_obj(o, dy, dx):
     """Move an object by (dy, dx) and keep a cluster's or array's insides consistent with it:
     moving a cluster constant without them was `Insane Array Constant {graphics}` on an array
-    field (and a field outside the pane)."""
+    field (and a field outside the pane). An array's anchor pair is set once every position is
+    final (Composer.set_array_anchors)."""
     _shift_bounds(o.find("bounds"), dy, dx)
     internal_shift(o, -dy, -dx)
 
@@ -744,6 +787,38 @@ def out_key(el, tname):
         if tname in {t for t, _ in pairs(el.get("inputs"))}:
             return tname + "\x00out"
     return tname
+
+
+_FONT = {}
+
+
+def text_width(s):
+    """How wide LabVIEW draws s on a block diagram, in px: the sum of its characters' advances in
+    the diagram font (parts/font-widths.json - Segoe UI 11 px, read off GDI and fitted against
+    the boxes LabVIEW sized itself, 2026-10-12). A character outside the table counts 6."""
+    if not _FONT:
+        p = os.path.join(lvheap.own_parts(), "font-widths.json")
+        _FONT.update(json.load(open(p, encoding="utf-8"))["advances"] if os.path.exists(p) else {})
+    return sum(float(_FONT.get(str(ord(c)), 6)) for c in s)
+
+
+INT_TYPES = set(INT_RANGE)
+
+
+def numeric_display(value, t):
+    """The text a numeric constant shows: an integer as such, a float as LabVIEW's default
+    %#_g - six significant digits, no trailing zeros, an exponent as E-3."""
+    try:
+        v = float(unescape(value or "0"))
+    except ValueError:
+        return value or "0"
+    if t in INT_TYPES:
+        return str(int(v))
+    s = "%.6g" % v
+    if "e" in s:
+        m, e = s.split("e")
+        s = "%sE%d" % (m, int(e))
+    return s
 
 
 def const_value(tree, value):
@@ -1131,16 +1206,20 @@ class Composer:
                 self.strs[new] = sec
                 e.text = str(new)
             heap.attrib.pop("_strs", None)
-        # An annex's nRC/oRC is a coordinate pair tied to where the DONOR sat: the same array
-        # constant was clean at the donor's (417, 231) and "Insane Array Constant {graphics}
-        # (0x80)" at (102, 40); without the pair it was clean at both (measured 2026-10-09).
-        # Only a NEGATIVE pair is a position; a waveform control's (0, 4) / (0, 1) is not, and
-        # stripping it was one of two differences from a working reference.
+        # An array's nRC/oRC is an anchor tied to where the DONOR sat: the same array constant was
+        # clean at the donor's (417, 231) and "Insane Array Constant {graphics} (0x80)" at
+        # (102, 40) (2026-10-09). Stripped, it loaded clean and LabVIEW drew it as a grid of
+        # greyed elements (2026-10-12) - so an indArr keeps the donor's anchor OFFSET and gets
+        # its pair back once its place is final (set_array_anchors, ANCHOR_K). Any other owner's
+        # negative pair (a waveform's insides) is still stripped, as measured clean.
         for p in heap.iter():
-            pair = [c for c in p if c.tag in ("nRC", "oRC")]
-            if pair and any(v < 0 for c in pair for v in lvheap.parse_bounds("(%s, 0, 0)" % (c.text or "0, 0").strip("() "))[:2]):
-                for c in pair:
-                    p.remove(c)
+            pair = _position_pair(p)
+            if not pair:
+                continue
+            if p.get("class") == "indArr" and p.find("bounds") is not None:
+                p.set(ANCHOR_K, "%d,%d" % _anchor_k(p))
+            for c in pair:
+                p.remove(c)
         if own_uid is not None:
             target = heap if own_path is None else heap.find(own_path)
             old = target.get("uid")
@@ -1653,6 +1732,7 @@ class Composer:
         # loop has its terminal in the loop's diagram, and so does its wire
         term, _, _ = self.instantiate("fpterm/%s" % want)
         term.find("dco").set("uid", fpdco.get("uid"))
+        self._fit_term_label(term, name, is_ind)
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
         diag.srn_terms.append(term)
         self.ends[(el.get("uid"), "value")] = (term.get("uid"), diag)
@@ -1764,6 +1844,7 @@ class Composer:
         ddo.set("uid", str(self.claim(el.get("uid"))))
         self.used_uids.discard(old)
         dco.find("ConstValue").text = const_value(tree, el.get("value"))
+        self._fit_const(ddo, name, tree, el.get("value"))
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
         diag.srn_terms.append(term)
         self.ends[(el.get("uid"), "value")] = (term.get("uid"), diag)
@@ -1772,6 +1853,55 @@ class Composer:
             if net:
                 self.net_type[net] = type_tree(aixml_type, constant=True)
         self.report.append("Constant %r <- %s" % (name, src))
+
+    # A string or numeric constant SIZED TO ITS TEXT, as LabVIEW sizes its own: the label part as
+    # wide as the label, the value part as wide as the value, the frame around both - read off
+    # NI's conversion of the same test VIs (2026-10-12): a label is its text's advances + 3 px,
+    # 10 of 10, a value + 5. The donor part's fixed box (label 42 px, value 10) clipped
+    # `written 1` to `written` and showed no value at all. (part class, partID, padding over the
+    # value's advances, value part's offset after the label)
+    FIT_PARTS = {"stdString": ("label", "11", 5, 3), "stdNum": ("numLabel", "10", 5, 1)}
+    LABEL_PAD = 3
+    LINE_PX = 15
+
+    def _fit_term_label(self, term, name, is_ind):
+        """A diagram terminal's label as wide as its text: left of a control's terminal, right of
+        an indicator's - NI's (0, -(W + 3), 15, 0) and (0, 32, 15, 32 + W + 3), 7 of 7 in a
+        converted VI. The donor's fixed 47 px cut `simple out` to `simple`."""
+        lab = term.find("label")
+        if lab is None or lab.find("bounds") is None or not name:
+            return
+        w = int(-(-text_width(name) // 1)) + self.LABEL_PAD
+        lab.find("bounds").text = lvheap.fmt_bounds((0, 32, 15, 32 + w) if is_ind else (0, -w, 15, 0))
+
+    def _fit_const(self, ddo, name, tree, value):
+        cls = ddo.get("class")
+        spec = self.FIT_PARTS.get(cls)
+        t = tree.get("Type")
+        if spec is None or (cls == "stdNum" and (t not in NUM_RANK or "Complex" in t)):
+            return
+        parts = {(p.get("class"), p.findtext("partID")): p for p in ddo.find("partsList")}
+        label, text = parts.get(("label", "16")), parts.get(spec[:2])
+        mcosm, cosm = parts.get(("multiCosm", "15")), parts.get(("cosm", "9"))
+        if label is None or text is None or cosm is None:
+            return
+        if cls == "stdString":
+            lines = unescape(value or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+        else:
+            lines = [numeric_display(value, t)]
+        tw = max(10 if cls == "stdString" else 11,
+                 max(int(-(-text_width(l) // 1)) for l in lines) + spec[2])
+        lw = int(-(-text_width(name) // 1)) + self.LABEL_PAD if name else 0
+        extra = self.LINE_PX * (len(lines) - 1)
+        off = spec[3]
+        fb = lvheap.fmt_bounds
+        label.find("bounds").text = fb((1, 0, 16, lw) if lw else (-15, 0, 0, 8))
+        if mcosm is not None:
+            mcosm.find("bounds").text = fb((2, lw - 4, 14, lw + 2))
+        text.find("bounds").text = fb((1, lw + off, 16 + extra, lw + off + tw))
+        cosm.find("bounds").text = fb((0, lw, 17 + extra, lw + off + tw + 1))
+        top, left = lvheap.parse_bounds(ddo.findtext("bounds"))[:2]
+        ddo.find("bounds").text = fb((top, left, top + 17 + extra, left + lw + off + tw + 1))
 
     # palette FIXED constants: AIXML's name -> the bDFixed ddo's `cnst` code (absent for 0),
     # read off an AIXML-generated VI holding all ten that NI's exports use
@@ -3858,12 +3988,17 @@ class Composer:
         class-link-cache-extra).
           LIvi  VIPI per class, FIRST, second name 07 00, content 0;
                 VIPI per method called, its name NESTED (01, length, name), content = its OWN
-                1-based position among LIvi's records
-          LIbd  DyOM per method called: the same names, content = that method's VIPI position,
+                0-based INDEX among LIvi's records, the VIVI records before it counted
+          LIbd  DyOM per method called: the same names, content = that method's VIPI index,
                 its cache list the call nodes' dynLink uids
                 FPPI and DDPI per class with constants: cache list the constants' ddo uids
         The 8 bytes after the content are 0 in a VIPI and 00000000ff000000 in the others, in
-        every one of the 22 records measured; what they mean is not established."""
+        every one of the 22 records measured; what they mean is not established.
+        The content was written 1-based until 2026-10-12 - one past the record. LabVIEW loaded
+        that with up to five methods called and refused six (`Memory or data structure corrupt`,
+        any six); why five passed is not established. The 0-based index is read off three of
+        LabVIEW's own saves - content 3..8 on LIvi records 4..9, 1..3 on records 2..4 - and loads
+        and runs with six."""
         classes = {}
         for link in self.dyn_links.values():
             classes.setdefault(link["owner"], {"qual": link["qual"][:1], "lib_ref": link["lib_ref"]})
@@ -3900,9 +4035,9 @@ class Composer:
             name = link["qual"][-1].encode("mac_roman")
             nested = self._lit(bytes([1, len(name)])) + link["qual"][-1]
             rec = record(lvin, "VIPI", link["owner"], nested, 0, zero)
-            position = list(lvin).index(rec) + 1
-            rec.find("APILinkContent").text = self._lit(position.to_bytes(2, "big"))
-            record(bdhp, "DyOM", link["owner"], nested, position, heap_extra, cache=link["offsets"])
+            index = list(lvin).index(rec)
+            rec.find("APILinkContent").text = self._lit(index.to_bytes(2, "big"))
+            record(bdhp, "DyOM", link["owner"], nested, index, heap_extra, cache=link["offsets"])
         for owner, c in self.class_consts.items():
             for tag in ("FPPI", "DDPI"):
                 record(bdhp, tag, owner, self._lit(b"\x07\x00"), 0, heap_extra, cache=c["uids"])
@@ -6449,6 +6584,7 @@ class Composer:
             t1, l1 = lvheap.parse_bounds(hidden.find("bounds").text)[:2]
             for t in hidden.find("termList"):
                 _shift_bounds(t.find("dco/termBounds"), t1 - t0, l1 - l0)
+        self.set_array_anchors()
         if os.environ.get("AIXML2VI_GENERIC_WIRES") != "1":
             # REAL wire geometry, now every position is final: each two-ended wire whose ends the
             # heap locates gets the route between their hotpoints, where it used to get the
@@ -6465,6 +6601,49 @@ class Composer:
             self.report.append("wires routed: %d, left generic: %d" % (routed, left))
         self.connector_pane()
         self.description = vi.get("description") or ""
+
+    def set_array_anchors(self):
+        """Give every array constant its nRC/oRC anchor now that every position is final (see
+        ANCHOR_K): on the diagram, -(absolute top-left + k), the absolute place summing the
+        top-left of each structure around it; in a cluster, -(place in the pane's document + k).
+        An array inside any other data object (a waveform's) keeps no pair, as before."""
+        for heap in (self.bd, self.fp):
+            parent = {c: p for p in heap.iter() for c in p}
+            for arr in [e for e in heap.iter() if e.get(ANCHOR_K) is not None]:
+                k = [int(x) for x in arr.attrib.pop(ANCHOR_K).split(",")]
+                if heap is self.fp:
+                    continue
+                t, l = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+                frame, e = None, arr
+                while e in parent:
+                    e = parent[e]
+                    cls = e.get("class") or ""
+                    if cls == "stdClust":
+                        doc = e.find("paneHierarchy/docBounds")
+                        if doc is None:
+                            break
+                        dt, dl = lvheap.parse_bounds(doc.text)[:2]
+                        frame = (t - dt, l - dl)
+                        break
+                    if e.tag == "ddo" or cls in ("stdMeasureData", "indArr"):
+                        break               # inside another data object: no measured frame
+                    if cls == "bDConstDCO":
+                        at, al = t, l
+                        while e in parent:
+                            e = parent[e]
+                            if e.find("diagramList") is not None and e.find("bounds") is not None:
+                                st, sl = lvheap.parse_bounds(e.findtext("bounds"))[:2]
+                                at, al = at + st, al + sl
+                        frame = (at, al)
+                        break
+                if frame is None:
+                    continue
+                pos = arr.find("FpgaImplementation")
+                at = list(arr).index(pos) if pos is not None else len(arr)
+                for i, tag in enumerate(("nRC", "oRC")):
+                    c = ET.Element(tag)
+                    c.text = "(%d, %d)" % (-(frame[1] + k[0]), -(frame[0] + k[1]))
+                    arr.insert(at + i, c)
 
     def write(self, out_dir, base):
         os.makedirs(out_dir, exist_ok=True)

@@ -421,9 +421,19 @@ where every end's hotpoint is known EXACTLY, because the table spells out every 
 terminal kinds those are is learned from LabVIEW's own fan-outs: NI's examples, plus the suite's
 own VIs composed with the generic tables and saved by LabVIEW, which routes them itself - the only
 corpus that carries a loop's `i` or an Event Structure's dynamic terminal in a fan-out. Constants
-follow a calibration instead: LabVIEW sizes its own constants to their text, the composer does not.
+follow a calibration instead: LabVIEW sizes its own constants to their text, the composer did not.
 Over the same 20 VIs the load-time repairs went from 96 to 28 (364 with the generic tables), 15 of
 them load with none, and LabVIEW's save keeps every routed fan-out table. FINDINGS §7a, "Fan-outs".
+
+**Since 2026-10-12 the composer sizes them to their text too.** A string or numeric constant's
+label part and value part, and a diagram terminal's label, are as wide as LabVIEW makes them -
+Segoe UI 11 px advances (`parts/font-widths.json`) + 3 for a label, + 5 for a value, 10 of 10 and
+7 of 7 against NI's own boxes - where the donor's fixed boxes cut `written 1` to `written` and
+showed no value; a string or numeric constant's wire attaches at the middle of its value box. And
+an ARRAY constant keeps its `nRC`/`oRC` anchor, recomputed for its absolute place (structures
+summed; in a cluster, relative to the pane's document): stripped, LabVIEW drew it as a grid of
+greyed zeros from the diagram's origin to the array. A CLUSTER constant is still drawn empty, an
+open item. FINDINGS, "Constants as LabVIEW draws them".
 
 **And to 12 with LabVIEW's own hotpoint offsets.** A DCO may carry `<termHotPoint>(dx, dy)`
 (shift registers, the Feedback Node, some array nodes); with it in the base rule the offsets learned
@@ -548,9 +558,12 @@ loaded at all. What it lacked was the writing side, and that is now measured and
   `0x8000`, `Infra/PaneDispatch.cs`): the LVSR flag is not set on a wizard-made accessor.
 - **Its links are four record kinds, all decoded from 22 records in four LabVIEW-saved test VIs:**
   `VIPI` in LIvi for the class (first, content 0) and for each method called (its name NESTED -
-  `01`, length, name - its content its OWN 1-based position in LIvi); `DyOM` in LIbd per method,
-  content = that `VIPI`'s position, its cache list the call nodes' `dynLink` uids; `FPPI` and `DDPI`
-  per class constant, their cache list the constants' `ddo` uids.
+  `01`, length, name - its content its OWN 0-based INDEX in LIvi, the VIVI records before it
+  counted); `DyOM` in LIbd per method, content = that `VIPI`'s index, its cache list the call
+  nodes' `dynLink` uids; `FPPI` and `DDPI` per class constant, their cache list the constants'
+  `ddo` uids. **This said "1-based position" until 2026-10-12**, and the composer wrote one past the
+  record: LabVIEW loaded that with up to five methods called and refused six as `Memory or data
+  structure corrupt`. LabVIEW's own saves read 3..8 on records 4..9; `t157_six_dynamic_calls`.
 - **pylabview could not read those records at all** - LabVIEW 2026 writes 8 more bytes into every
   class link cache (0 in a `VIPI`, `00000000ff000000` elsewhere) and upstream's parser then
   misread the offset list and left the whole block binary. `tools/pylabview/patches/patches.json`,

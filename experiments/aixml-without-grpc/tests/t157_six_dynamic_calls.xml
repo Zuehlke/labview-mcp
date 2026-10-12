@@ -1,0 +1,15 @@
+<VI _name="T157 Six Dynamic Calls.vi" description="A class constant through all six dynamic-dispatch accessors of Gauge: three writes, three reads. Six distinct methods made the method links' content index run one past LIvi until 2026-10-12 - five loaded, six were Memory or data structure corrupt.">
+  <Constant _name="gauge" type="ref{UDClassInst}" uid="4200" uid_parent="root" value="" outputs="value:4200.value"/>
+  <Control _name="name" type="string" uid="4210" uid_parent="root" value="" outputs="value:4210.value"/>
+  <Control _name="gain" type="double" uid="4211" uid_parent="root" value="0" outputs="value:4211.value"/>
+  <Control _name="offset" type="double" uid="4212" uid_parent="root" value="0" outputs="value:4212.value"/>
+  <Call target="Gauge.lvclass:Write Name.vi" uid="4230" uid_parent="root" inputs="Gauge in:4200.value,Name:4210.value" outputs="Gauge out:4230.Gauge out"/>
+  <Call target="Gauge.lvclass:Write Gain.vi" uid="4231" uid_parent="root" inputs="Gauge in:4230.Gauge out,Gain:4211.value" outputs="Gauge out:4231.Gauge out"/>
+  <Call target="Gauge.lvclass:Write Offset.vi" uid="4232" uid_parent="root" inputs="Gauge in:4231.Gauge out,Offset:4212.value" outputs="Gauge out:4232.Gauge out"/>
+  <Call target="Gauge.lvclass:Read Name.vi" uid="4240" uid_parent="root" inputs="Gauge in:4232.Gauge out" outputs="Gauge out:4240.Gauge out,Name:4240.Name"/>
+  <Call target="Gauge.lvclass:Read Gain.vi" uid="4241" uid_parent="root" inputs="Gauge in:4240.Gauge out" outputs="Gauge out:4241.Gauge out,Gain:4241.Gain"/>
+  <Call target="Gauge.lvclass:Read Offset.vi" uid="4242" uid_parent="root" inputs="Gauge in:4241.Gauge out" outputs="Offset:4242.Offset"/>
+  <Indicator _name="name out" type="string" uid="4250" uid_parent="root" value="" inputs="value:4240.Name"/>
+  <Indicator _name="gain out" type="double" uid="4251" uid_parent="root" value="0" inputs="value:4241.Gain"/>
+  <Indicator _name="offset out" type="double" uid="4252" uid_parent="root" value="0" inputs="value:4242.Offset"/>
+</VI>

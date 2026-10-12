@@ -1705,5 +1705,28 @@
     }
    }
   ]
+ },
+ "t157_six_dynamic_calls": {
+  "search": [
+   "fixtures"
+  ],
+  "cases": [
+   {
+    "inputs": "name=PT-100;gain=2.5;offset=-0.75",
+    "outputs": {
+     "name out": "PT-100",
+     "gain out": 2.5,
+     "offset out": -0.75
+    }
+   },
+   {
+    "inputs": "name=X;gain=-4;offset=8",
+    "outputs": {
+     "name out": "X",
+     "gain out": -4,
+     "offset out": 8
+    }
+   }
+  ]
  }
 }

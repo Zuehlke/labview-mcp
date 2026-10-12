@@ -1321,8 +1321,15 @@ Width.vi`) and `APILinkCacheList`, the binary fallback (kept for an unpatched bu
 | record | block | names | content | cache list |
 |---|---|---|---|---|
 | `VIPI` (class) | LIvi, first | class, `07 00` | 0 | - |
-| `VIPI` (method) | LIvi | class, NESTED name `01 <len> <name>` | its OWN 1-based position in LIvi | - |
-| `DyOM` | LIbd | as its `VIPI` | that `VIPI`'s position | the call nodes' `dynLink` uids |
+| `VIPI` (method) | LIvi | class, NESTED name `01 <len> <name>` | its OWN 0-based index in LIvi, VIVI records counted | - |
+| `DyOM` | LIbd | as its `VIPI` | that `VIPI`'s index | the call nodes' `dynLink` uids |
+
+**Corrected 2026-10-12: the content is the 0-based INDEX.** This table said "1-based position" and the
+composer wrote it so - one past the record. LabVIEW loaded that with up to five methods called and
+refused SIX, any six, as `Memory or data structure corrupt` (`linker info inconsistent` in its log):
+the gRPC-built `Test Sensor.vi` of the demo, saved by LabVIEW, carries content 3..8 on LIvi records
+4..9, and its `Main.vi` 1..3 on 2..4. Why five passed is not established - Box's two methods (t128)
+were off the end too. `t157_six_dynamic_calls` against the `Gauge` fixture (six accessors) pins it.
 | `FPPI`, `DDPI` | LIbd | class, `07 00` | 0 | the class constants' `ddo` uids |
 
 Path: the `.lvclass`, relative to the caller file. Version: the class's version as four uint16 -
@@ -1348,6 +1355,49 @@ with nothing opened: NewWay builds in 120 s against 111 s over grpc, where the s
 **Not covered**: a class inside a library, a static member of a class outside one (a library
 class's static member - Caraya's - links through `IUVI` as before), and class controls on a front
 panel (`LIfp`).
+
+### Constants as LabVIEW draws them, and its own clean-up (2026-10-12)
+
+Found by the user on the demo built without NI's service: Main.vi showed "many 0 elements", and a
+composed Caraya test's `written`/`Label` constants could not be read. Neither showed in any check -
+the VIs loaded, ran and passed; only a render saw them.
+
+**An array constant's `nRC`/`oRC` is an ANCHOR, and dropping it draws a grid.** The composer
+stripped the pair since 2026-10-09 because the donor's pair left at a new place was `Insane Array
+Constant {graphics}`. Without it LabVIEW anchors at (0, 0) and draws the constant as a grid of
+greyed elements reaching from the diagram's origin to the array - four renders of one probe:
+pair missing (label left or above) = grid, pair present (either label place) = one clean element.
+Read off NI's VIs (scratch `nrc_abs.py`, 60 VIs): `nRC = -(h + kh, v + kv)` in (h, v) order, where
+(v, h) is the array's ABSOLUTE place - its own top-left plus that of every enclosing structure,
+exact to the pixel at the top level and in Case frames (B Spline Fitting Demo, 3 of 3) - and k is
+the anchor's offset into the array, (25, 12) on NI's standard layout and 25..118 / 11..81 overall.
+Inside a cluster constant the pair is relative to the pane's document instead (own top-left minus
+`docBounds`): three DQMH clusters at three places carry one pair. A sibling inside a For Loop with
+the pair computed WITHOUT the loop's offset drew the grid again, which is what settled "absolute".
+`set_array_anchors` writes the pair once layout is final, k from the donor's own relation (the
+index display's x + 23 when the donor sat nested). A waveform's inner array keeps no pair.
+
+**A constant is sized to its text.** LabVIEW's diagram font is Segoe UI at 11 px (LabVIEW.ini
+`BDFont "2" 13`); GDI's advances fit LabVIEW's own boxes exactly: a label part is the sum of its
+advances + 3 (10 of 10 labels), a string or numeric value part + 5. Layout, read off NI's
+conversion of the same test: label `(1, 0, 16, lw)`, a numeric's text at `lw + 1`, a string's at
+`lw + 3`, the frame `cosm` from `lw`; with no label, the label above at `(-15, 0, 0, 8)` and the
+parts from 0. A diagram terminal's label is `(0, -(W + 3), 15, 0)` on a control and `(0, 32, 15,
+32 + W + 3)` on an indicator (7 of 7). The donor's fixed boxes - label 42 px, value 10 - cut
+`written 1` to `written` and showed no value. `parts/font-widths.json` carries the advances; the
+wire router now attaches a string or numeric constant at the middle of its value box, which is the
+calibrated 7 px from the right on the old 13 px box and NI's own 7..14 on text-sized ones.
+
+**Cluster constants are still drawn empty** - an open finding: the composed pane's frame parts stay
+at the donor's size while the pane grows, and the field labels are shown where NI hides them; the
+pane's `origin` is another cached anchor with no simple rule in NI's two samples.
+
+**LabVIEW's own Clean Up Diagram after every VI we create** (the user's recommendation, both
+backends): `{LV.VI}` `BD.CleanUp` then `Save.Instrument` with the path unwired - read off NI's
+Message Maker (Build Do.vi, Build Send.vi, Build Concrete Do.vi). `scripts\lvai_cleanup_diagram.xml`
+composes (the part was harvested) and builds through NI's converter; both saves stayed source-only
+on a composed VI and on one NI converted with nothing loaded. The six-method test came out 760 px
+wide instead of 980, each case one row.
 
 ### Graphs and their events (2026-10-11)
 

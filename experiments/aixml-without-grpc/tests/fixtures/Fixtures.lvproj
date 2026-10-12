@@ -13,6 +13,7 @@
 		<Property Name="server.vi.propertiesEnabled" Type="Bool">true</Property>
 		<Property Name="specify.custom.address" Type="Bool">false</Property>
 		<Item Name="Box.lvclass" Type="LVClass" URL="../Box/Box.lvclass"/>
+		<Item Name="Gauge.lvclass" Type="LVClass" URL="../Gauge/Gauge.lvclass"/>
 		<Item Name="Dependencies" Type="Dependencies"/>
 		<Item Name="Build Specifications" Type="Build"/>
 	</Item>

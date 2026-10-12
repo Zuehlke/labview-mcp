@@ -131,7 +131,7 @@ class Geometry:
         if dco.get("class") == "bDConstDCO":
             ddo = dco.find("ddo")
             b = ddo.findtext("bounds") if ddo is not None else None
-            return (_bounds(b), None, None, "const:%s" % ddo.get("class"), None) if b else None
+            return (_bounds(b), None, None, "const:%s" % ddo.get("class"), _value_box_centre(ddo)) if b else None
         o = self.owner(t)
         if dco.get("class") is None:
             ref = self.tunnel.get(dco.get("uid"))
@@ -174,6 +174,17 @@ def _hot(dco):
     array nodes - and which the offsets learned for those kinds turned out to be."""
     h = dco.findtext("termHotPoint")
     return _bounds(h) if h else None
+
+
+def _value_box_centre(ddo):
+    """A constant's value box (its cosm part 9) centre, in px from the constant's LEFT edge - the
+    output of a string or numeric constant sits there; None when the constant has no such part."""
+    parts = ddo.find("partsList")
+    for p in parts if parts is not None else []:
+        if p.get("class") == "cosm" and p.findtext("partID") == "9" and p.findtext("bounds"):
+            _, cl, _, cr = _bounds(p.findtext("bounds"))
+            return (cl + cr) // 2
+    return None
 
 
 def junction_for(min_dx):
@@ -274,7 +285,11 @@ class Hotpoints:
         if kind and kind.startswith("const:"):
             cls = kind[6:]
             if cls in self.CONST_FROM_RIGHT:
-                x = r - self.CONST_FROM_RIGHT[cls]
+                # the middle of the VALUE box when the constant says where it is - a constant sized
+                # to its text (aixml2vi._fit_const) has a wider one; the donor's 13 px box gives
+                # the calibrated 7 - and NI's own text-sized numerics sit 7 to 14 in (see above)
+                x = l + hot if cls in ("stdNum", "stdString") and isinstance(hot, int) \
+                    else r - self.CONST_FROM_RIGHT[cls]
             if cls in self.CONST_FROM_LEFT:
                 x = l + self.CONST_FROM_LEFT[cls]
             if cls in self.CONST_FROM_TOP:
