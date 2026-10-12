@@ -443,7 +443,8 @@ fields included, and its wire attaches exactly. FINDINGS, "Constants as LabVIEW 
 **A front-panel label too**: the text's advances + 4 px (296 labels of NI's examples measured
 +3..4), with the object's own box widened to its visible label as NI's converter writes it -
 outside that box LabVIEW cut it - and the text written raw, since pylabview escapes nothing
-between the quotes. A front-panel CLUSTER's pane still cuts its last field (FINDINGS).
+between the quotes. A front-panel CLUSTER's frame and pane parts follow its re-stacked pane - they
+kept the donor's size, which cut an error cluster's `source` (FINDINGS).
 
 **A structure's SUBDIAGRAM LABEL composes since the same day** - `label=` on the `<Structure>`,
 `<CaseFrame>` or `<Diagram>` that holds the subdiagram, as NI's exporter writes it and NI's

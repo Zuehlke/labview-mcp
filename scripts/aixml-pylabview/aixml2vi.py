@@ -1386,6 +1386,8 @@ class Composer:
                 pane.find("bounds").text = lvheap.fmt_bounds((pb[0], pb[1], pb[0] + ph, pb[1] + pw))
                 b = lvheap.parse_bounds(ddo.find("bounds").text)
                 ddo.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + pb[0] + ph + 4, b[1] + pb[1] + pw + 4))
+                if prefix == "fpdco":
+                    self._fit_fp_cluster_frame(ddo, pane, kids)
             else:
                 old = ddo.find("ddo")
                 kids = []
@@ -1513,6 +1515,43 @@ class Composer:
             return holder, src, 0, 0
         h, w = lvheap.size_of(ddo)
         return self._retag(ddo, tag), src, h, w
+
+    def _fit_fp_cluster_frame(self, ddo, pane, kids):
+        """A FRONT-PANEL cluster's frame and pane parts at the pane's size, its box around them.
+        The parts kept the donor's size while the fields were re-stacked, so an error cluster
+        showed 111 px of a 122 px pane - its `source` cut at the bottom - and a 147 px frame in a
+        108 px box, cut at the right (t161, 2026-10-12). Read off NI's converter's error cluster,
+        whose parts are the same donor's: frame cosm 28 = the pane's bounds, cosm 9 = the pane's
+        bounds grown by 4; the pane's own parts 28 (0, 0, H, W), the scroll bars 39 and 38 and
+        their corner 44 one px beyond and 17 wide; the box down to cosm 9's corner."""
+        pt, pl, pb, pr = lvheap.parse_bounds(pane.find("bounds").text)
+        H, W = pb - pt, pr - pl
+        right = pr + 4
+        for p in ddo.find("partsList"):
+            pid, cls = p.findtext("partID"), p.get("class")
+            if p.find("bounds") is None:
+                continue
+            if cls == "cosm" and pid == "28":
+                p.find("bounds").text = lvheap.fmt_bounds((pt, pl, pb, pr))
+            elif cls == "cosm" and pid == "9":
+                p.find("bounds").text = lvheap.fmt_bounds((pt - 4, pl - 4, pb + 4, pr + 4))
+            elif cls == "label" and pid == "16" and not int(p.findtext("objFlags") or 0) & 8:
+                right = max(right, lvheap.parse_bounds(p.findtext("bounds"))[3])
+        own = {"28": (0, 0, H, W), "39": (0, W + 1, H + 1, W + 18),
+               "38": (H + 1, 0, H + 18, W + 1), "44": (H + 1, W + 1, H + 18, W + 18)}
+        for p in (pane.find("partsList") if pane.find("partsList") is not None else []):
+            if p.get("class") == "cosm" and p.findtext("partID") in own and p.find("bounds") is not None:
+                p.find("bounds").text = lvheap.fmt_bounds(own[p.findtext("partID")])
+        b = lvheap.parse_bounds(ddo.find("bounds").text)
+        ddo.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + pb + 4, b[1] + right))
+        # the pane's document must still hold every field: the donor's docBounds was cut to its
+        # own fields, and a cluster of more fields reaches past it
+        doc = pane.find("docBounds")
+        if doc is not None and kids:
+            dt, dl, db, dr = lvheap.parse_bounds(doc.text)
+            fb = [lvheap.parse_bounds(k.find("bounds").text) for k in kids if k.find("bounds") is not None]
+            doc.text = lvheap.fmt_bounds((dt, dl, max(db, max(f[2] for f in fb) + 4),
+                                          max(dr, max(f[3] for f in fb) + 4)))
 
     @staticmethod
     def _retag(ddo, tag):

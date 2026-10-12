@@ -1401,10 +1401,18 @@ must fit its cell). And the label text is written RAW between the quotes: pylabv
 nothing inside them (LVheap's string node), so the `\"` the composer wrote showed as `\"` -
 `say \"hi\"` for `say "hi"` - and vi2aixml stripped escapes LabVIEW never wrote.
 
-**Still open: a front-panel CLUSTER's pane cuts its last field.** Not a label - the same render
-before the change shows it: `error out`'s `source` string is cut at the bottom and the frame at
-the right, where NI's converter shows the whole cluster. The pane keeps the donor's `origin` and
-`docBounds` while its fields are re-stacked.
+**A front-panel CLUSTER's frame follows its pane** (fixed the same day; it was cut before the
+label change too). `error out`'s `source` string was cut at the bottom and the frame at the
+right, where NI's converter showed the whole cluster - and the two VIs carry IDENTICAL frame and
+pane parts, the error-cluster donor's 111 x 147: NI keeps the donor's field layout, which fits
+them, while the composer re-stacks the fields into a 122 x 100 pane and left the parts as they
+were - 111 px of it visible, a 147 px frame in a 108 px box. Read off NI's parts: the frame
+`cosm` 28 is the pane's bounds, `cosm` 9 those grown by 4; the pane's own parts 28 `(0, 0, H, W)`,
+the scroll bars 39 `(0, W+1, H+1, W+18)` and 38 `(H+1, 0, H+18, W+1)` and their corner 44; the
+object's box down to `cosm` 9's corner (and the label's right edge). The view needs nothing: the
+fields start at the donor's first field, `docBounds` + (11, 32) in both VIs, which is where the
+pane shows from. `docBounds` is grown to hold every field. `_fit_fp_cluster_frame`; `t161` renders
+both clusters whole.
 
 **Cluster constants are drawn as NI draws them** (closed the same day; it was an open finding
 until then: frames drawn empty, the pane's parts at the donor's size while the pane grew, field
