@@ -1,4 +1,4 @@
-<VI _name="lvai_swap_subvis.vi" description="Swap MANY subVI nodes and MANY diagram constants on one block diagram\2C in one run\2C then save the VI in place.\0A\0AWHY TRAVERSE AND NOT SubVIs[]. {LV.Diagram} SubVIs[] lists the nodes of the diagram it is asked about and does NOT descend into structures\2C so every call inside a While Loop or a Case frame was invisible to this helper - it came back under socketsNotOnDiagram while sitting plainly on the diagram\2C and the caller was left with a VI still pointing at its sockets. Measured 2026-09-16 on a VI with five subVI calls\2C three on the top-level diagram and two inside a Case frame\3A diagramSubVis listed the three and socketsNotOnDiagram named the two. Verified after the change on a generated main VI whose six calls all sit inside its event loop\2C two of them additionally inside Case frames - all six are listed and five of five entries swap in one call. Traverse for GObjects walks the whole block diagram\2C which is the only difference\3B it returns GObject references\2C so each one is cast with To More Specific Class before VI Name is read or Replace is called.\0A\0AWHY IT LOOPS INSTEAD OF TAKING ONE INDEX. Driving this from outside cost 19 tool calls for a single three-class test suite\2C alternating a list call and a replace call almost every time - measured 2026-08-29. The list call is not avoidable from outside because {LV.Diagram} SubVIs[] RE-ORDERS after every Replace and the replaced node's reference dies with it\2C so an index taken before a swap means something else after it. Inside one run the ordering problem disappears\3A the references and the names are collected ONCE\2C and each swap is then addressed BY NAME through Search 1D Array.\0A\0AWHY THE LOOPS ARE NOT NESTED. They were at first\2C with SubVIs[] re-read per swap\2C and AIXML auto-indexes a tunnel that carries a refnum array into an inner loop - `the type of the sink is 1D array of SubVI Refnum` - plus two For Loops reported as members of a cycle. Collecting first and matching second needs no nesting and no shift register at all.\0A\0AWHY A SOCKET NAME MUST BE UNIQUE. Matching is by VI Name\2C so two nodes calling the same socket are indistinguishable and the wrong subject lands in the wrong case with no error at all. The caller generates one socket per slot for exactly this reason. A name that is not found gives Search 1D Array -1\2C and Index Array then clamps to element 0 - so an unmatched name silently swaps the WRONG node. The caller checks the names against the listing before calling.\0A\0AWHY CONSTANTS COME SECOND. A dynamic dispatch input is a REQUIRED terminal\2C so a class chain needs a class value\3B AIXML cannot author a class constant\2C so the caller authors a PATH constant\2C wires it\2C and it is replaced here. Order matters\3A with the nodes swapped first the wire already has a class sink and Replace re-types it. The other way round the wire has a class source and a path sink\2C and breaks.\0A\0ALists are pipe separated. A pipe is illegal in a Windows path so it cannot occur inside a value\3B a newline could not be used because the runner separates its own name/value pairs that way.\0A\0ANothing is read back after a Replace\2C on purpose\3A both its reference out and its Replace output are poison - Error 1055 on the next property read\2C and because that error travels down the wire it would also stop Save.Instrument and leave the edit unwritten. Verify by AIXML-exporting the VI and reading target=.">
+<VI _name="lvai_swap_subvis.vi" description="Swap MANY subVI nodes and MANY diagram constants on one block diagram\2C in one run\2C then save the VI in place.\0A\0AWHY TRAVERSE AND NOT SubVIs[]. {LV.Diagram} SubVIs[] lists the nodes of the diagram it is asked about and does NOT descend into structures\2C so every call inside a While Loop or a Case frame was invisible to this helper - it came back under socketsNotOnDiagram while sitting plainly on the diagram\2C and the caller was left with a VI still pointing at its sockets. Measured 2026-09-16 on a VI with five subVI calls\2C three on the top-level diagram and two inside a Case frame\3A diagramSubVis listed the three and socketsNotOnDiagram named the two. Verified after the change on a generated main VI whose six calls all sit inside its event loop\2C two of them additionally inside Case frames - all six are listed and five of five entries swap in one call. Traverse for GObjects walks the whole block diagram\2C which is the only difference\3B it returns GObject references\2C so each one is cast with To More Specific Class before VI Name is read or Replace is called.\0A\0AWHY IT LOOPS INSTEAD OF TAKING ONE INDEX. Driving this from outside cost 19 tool calls for a single three-class test suite\2C alternating a list call and a replace call almost every time - measured 2026-08-29. The list call is not avoidable from outside because {LV.Diagram} SubVIs[] RE-ORDERS after every Replace and the replaced node's reference dies with it\2C so an index taken before a swap means something else after it. Inside one run the ordering problem disappears\3A the references and the names are collected ONCE\2C and each swap is then addressed BY NAME through Search 1D Array.\0A\0AWHY THE LOOPS ARE NOT NESTED. They were at first\2C with SubVIs[] re-read per swap\2C and AIXML auto-indexes a tunnel that carries a refnum array into an inner loop - `the type of the sink is 1D array of SubVI Refnum` - plus two For Loops reported as members of a cycle. Collecting first and matching second needs no nesting and no shift register at all.\0A\0AWHY A SOCKET NAME MUST BE UNIQUE. Matching is by VI Name\2C so two nodes calling the same socket are indistinguishable and the wrong subject lands in the wrong case with no error at all. The caller generates one socket per slot for exactly this reason. A name that is not found gives Search 1D Array -1\2C and Index Array then clamps to element 0 - so an unmatched name silently swaps the WRONG node. The caller checks the names against the listing before calling.\0A\0AWHY CONSTANTS COME SECOND. A dynamic dispatch input is a REQUIRED terminal\2C so a class chain needs a class value\3B AIXML cannot author a class constant\2C so the caller authors a PATH constant\2C wires it\2C and it is replaced here. Order matters\3A with the nodes swapped first the wire already has a class sink and Replace re-types it. The other way round the wire has a class source and a path sink\2C and breaks.\0A\0AWHY CONSTANTS ARE TRAVERSED TOO. They were collected from {LV.Diagram} All Objects[] of the top-level diagram\2C which does not descend into structures either\2C so a seed constant inside a Case frame or a loop was never found. A second Traverse for GObjects call collects them at any depth now. Its Class Name is ONE constant\2C Constant Class Name\2C because whether a diagram constant answers to the class name Constant is NOT MEASURED - a string constant reports StringConstant and a class constant LabVIEWClassConstant\2C so it depends on whether the traversal matches descendant classes. constants seen reports how many the traversal returned\2C so a wrong class name reads as zero rather than as a mystery.\0A\0AA LABEL THAT MATCHES MORE THAN ONE CONSTANT IS NOT REPLACED. Matching is by label\2C so two constants with one label cannot say which one is meant - the user's decision of 2026-10-11 is to refuse that label and replace the others. constant matches reports\2C per requested label and in request order\2C how many constants carried it\3B only a label with exactly one match is replaced\2C and a label with none or several is skipped with the error chain passed through untouched. The per-label count is an inner loop over the collected labels - collected ONCE before any Replace\2C so the nesting does not re-read anything.\0A\0ALists are pipe separated. A pipe is illegal in a Windows path so it cannot occur inside a value\3B a newline could not be used because the runner separates its own name/value pairs that way.\0A\0ANothing is read back after a Replace\2C on purpose\3A both its reference out and its Replace output are poison - Error 1055 on the next property read\2C and because that error travels down the wire it would also stop Save.Instrument and leave the edit unwritten. Verify by AIXML-exporting the VI and reading target=.">
   <Control _name="vi path" conIdx="0" connection="required" description="Absolute path of the VI to edit. It is saved in place." outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
   <Control _name="socket names" conIdx="1" connection="recommended" description="VI Names of the nodes to replace\2C pipe separated. Empty to swap no nodes." outputs="value:11.value" type="string" uid="11" uid_parent="root" value=""/>
   <Control _name="target paths" conIdx="2" connection="recommended" description="Absolute paths the nodes should call instead\2C pipe separated\2C same order as socket names." outputs="value:12.value" type="string" uid="12" uid_parent="root" value=""/>
@@ -7,14 +7,14 @@
 
   <Node _name="String To Path" inputs="string:10.value" outputs="path:20.path" uid="20" uid_parent="root"/>
   <Node _name="Open VI Reference" inputs="vi path:20.path" outputs="vi reference:22.vi reference,error out:22.error out" uid="22" uid_parent="root"/>
-  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:22.vi reference,error in (no error):22.error out" outputs="Block Diagram:24.bd,reference out:,error out:24.error out" uid="24" uid_parent="root"/>
-  <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:24.bd,error in (no error):24.error out" outputs="All Objects[]:26.objs,reference out:,error out:26.error out" uid="26" uid_parent="root"/>
-
-  <FreeLabel comment="Traverse finds calls inside structures too." uid="25" uid_parent="root"/>
+  <FreeLabel comment="Traverse finds calls and constants anywhere." uid="25" uid_parent="root"/>
   <Constant _name="SubVI Class Name" outputs="value:27.value" type="string" uid="27" uid_parent="root" value="SubVI"/>
   <Constant _name="Block Diagram" outputs="value:28.value" type="uint16{FP,BD,Other}" uid="28" uid_parent="root" value="1"/>
-  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:22.vi reference,Class Name:27.value,error in (no error):26.error out,Traverse Target:28.value,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:29.dup,References:29.subvis,# of Refs:,error out:29.error out" uid="29" uid_parent="root"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:22.vi reference,Class Name:27.value,error in (no error):22.error out,Traverse Target:28.value,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:29.dup,References:29.subvis,# of Refs:,error out:29.error out" uid="29" uid_parent="root"/>
   <Constant _name="SubVI Reference" outputs="value:41.value" type="ref{LV.SubVI}" uid="41" uid_parent="root" value=""/>
+
+  <Constant _name="Constant Class Name" outputs="value:4250.value" type="string" uid="4250" uid_parent="root" value="Constant"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:22.vi reference,Class Name:4250.value,error in (no error):29.error out,Traverse Target:28.value,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:,References:4251.konsts,# of Refs:4251.n,error out:4251.error out" uid="4251" uid_parent="root"/>
 
   <Constant _name="Zeilenformat" outputs="value:30.value" type="string" uid="30" uid_parent="root" value="%s"/>
   <Constant _name="leeres Stringarray" outputs="value:31.value" type="array{string.String}" uid="31" uid_parent="root" value="[]"/>
@@ -34,12 +34,13 @@
 
   <Constant _name="keine Konstante" outputs="value:40.value" type="ref{LV.Constant}" uid="40" uid_parent="root" value=""/>
   <Structure _name="For Loop" count="" maxin="" maxout="" uid="200" uid_parent="root">
-    <Tunnel _id="In1" inputs="value:26.objs" mode="index" outputs="value:201.value" uid="201" uid_parent="200"/>
+    <Tunnel _id="In1" inputs="value:4251.konsts" mode="index" outputs="value:201.value" uid="201" uid_parent="200"/>
     <Tunnel _id="In2" inputs="value:40.value" outputs="value:202.value" uid="202" uid_parent="200"/>
     <Node _name="To More Specific Class" inputs="reference:201.value,error in:,target class:202.value" outputs="specific class reference:210.k,error out:210.error out" uid="210" uid_parent="200"/>
     <Node _name="Property Node" fields="read+Label" type="{LV.Constant}" inputs="reference:210.k,error in (no error):" outputs="Label:212.label,reference out:,error out:212.error out" uid="212" uid_parent="200"/>
     <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:212.label,error in (no error):" outputs="Text:214.text,reference out:,error out:214.error out" uid="214" uid_parent="200"/>
     <Tunnel _id="Out1" inputs="value:214.text" mode="index" outputs="value:220.labels" uid="220" uid_parent="200"/>
+    <Tunnel _id="Out2" inputs="value:210.k" mode="index" outputs="value:221.krefs" uid="221" uid_parent="200"/>
   </Structure>
 
   <Structure _name="For Loop" count="" maxin="" maxout="" uid="300" uid_parent="root">
@@ -49,7 +50,7 @@
     <Tunnel _id="In4" inputs="value:29.subvis" outputs="value:304.value" uid="304" uid_parent="300"/>
     <Tunnel _id="In5" inputs="value:41.value" outputs="value:316.value" uid="316" uid_parent="300"/>
     <ShiftReg uid="305" uid_parent="300">
-      <Left inputs="value:29.error out" outputs="value:306.err" uid="307" uid_parent="305"/>
+      <Left inputs="value:4251.error out" outputs="value:306.err" uid="307" uid_parent="305"/>
       <Right inputs="value:320.error out" outputs="value:330.error out" uid="308" uid_parent="305"/>
     </ShiftReg>
     <Node _name="Search 1D Array" inputs="1D array:303.value,element:301.value,start index (0):" outputs="index of element:310.index" uid="310" uid_parent="300"/>
@@ -63,17 +64,44 @@
     <Tunnel _id="In1" inputs="value:35.array" mode="index" outputs="value:401.value" uid="401" uid_parent="400"/>
     <Tunnel _id="In2" inputs="value:36.array" mode="index" outputs="value:402.value" uid="402" uid_parent="400"/>
     <Tunnel _id="In3" inputs="value:220.labels" outputs="value:403.value" uid="403" uid_parent="400"/>
-    <Tunnel _id="In4" inputs="value:26.objs" outputs="value:404.value" uid="404" uid_parent="400"/>
-    <Tunnel _id="In5" inputs="value:40.value" outputs="value:405.value" uid="405" uid_parent="400"/>
+    <Tunnel _id="In4" inputs="value:221.krefs" outputs="value:404.value" uid="404" uid_parent="400"/>
     <ShiftReg uid="406" uid_parent="400">
       <Left inputs="value:330.error out" outputs="value:407.err" uid="408" uid_parent="406"/>
-      <Right inputs="value:420.error out" outputs="value:430.error out" uid="409" uid_parent="406"/>
+      <Right inputs="value:4480.err" outputs="value:430.error out" uid="409" uid_parent="406"/>
     </ShiftReg>
-    <Node _name="Search 1D Array" inputs="1D array:403.value,element:401.value,start index (0):" outputs="index of element:410.index" uid="410" uid_parent="400"/>
-    <Node _name="Index Array" inputs="array:404.value,index:410.index" outputs="element:412.element" uid="412" uid_parent="400"/>
-    <Node _name="To More Specific Class" inputs="reference:412.element,error in:407.err,target class:405.value" outputs="specific class reference:414.k,error out:414.error out" uid="414" uid_parent="400"/>
-    <Node _name="String To Path" inputs="string:402.value" outputs="path:416.path" uid="416" uid_parent="400"/>
-    <Node _name="Invoke Node" target="Replace" type="{LV.Constant}" inputs="reference:414.k,error in (no error):414.error out,Style:,Path:416.path,PaletteString:" outputs="reference out:,error out:420.error out,Replace:" uid="420" uid_parent="400"/>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="4410" uid_parent="400">
+      <Tunnel _id="In1" inputs="value:403.value" mode="index" outputs="value:4411.label" uid="4411" uid_parent="4410"/>
+      <Tunnel _id="In2" inputs="value:404.value" mode="index" outputs="value:4412.kref" uid="4412" uid_parent="4410"/>
+      <Tunnel _id="In3" inputs="value:401.value" outputs="value:4413.wanted" uid="4413" uid_parent="4410"/>
+      <Node _name="Equal?" inputs="x:4411.label,y:4413.wanted" outputs="x = y?:4414.hit" uid="4414" uid_parent="4410"/>
+      <Tunnel _id="Out1" cond="4414.hit" inputs="value:4412.kref" mode="index" outputs="value:4415.matches" uid="4415" uid_parent="4410"/>
+    </Structure>
+    <Node _name="Array Size" inputs="array:4415.matches" outputs="size(s):4420.n" uid="4420" uid_parent="400"/>
+    <Constant _name="exactly one" outputs="value:4421.value" type="int32" uid="4421" uid_parent="400" value="1"/>
+    <Node _name="Equal?" inputs="x:4420.n,y:4421.value" outputs="x = y?:4422.one" uid="4422" uid_parent="400"/>
+    <Structure _name="Case Structure" selectin="4422.one" uid="4430" uid_parent="400">
+      <Tunnel _id="In1" inputs="value:4415.matches" uid="4431" uid_parent="4430"/>
+      <Tunnel _id="In2" inputs="value:402.value" uid="4432" uid_parent="4430"/>
+      <Tunnel _id="In3" inputs="value:407.err" uid="4433" uid_parent="4430"/>
+      <CaseFrame selector="True" selectout="" uid="4440" uid_parent="4430">
+        <Tunnel _id="In1" outputs="value:4441.matches" uid="4441" uid_parent="4440"/>
+        <Tunnel _id="In2" outputs="value:4442.cls" uid="4442" uid_parent="4440"/>
+        <Tunnel _id="In3" outputs="value:4443.err" uid="4443" uid_parent="4440"/>
+        <Constant _name="first match" outputs="value:4444.value" type="int32" uid="4444" uid_parent="4440" value="0"/>
+        <Node _name="Index Array" inputs="array:4441.matches,index:4444.value" outputs="element:4445.k" uid="4445" uid_parent="4440"/>
+        <Node _name="String To Path" inputs="string:4442.cls" outputs="path:4446.path" uid="4446" uid_parent="4440"/>
+        <Node _name="Invoke Node" target="Replace" type="{LV.Constant}" inputs="reference:4445.k,error in (no error):4443.err,Style:,Path:4446.path,PaletteString:" outputs="reference out:,error out:4447.error out,Replace:" uid="4447" uid_parent="4440"/>
+        <Tunnel _id="Out1" inputs="value:4447.error out" uid="4448" uid_parent="4440"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="4450" uid_parent="4430">
+        <Tunnel _id="In1" outputs="value:" uid="4451" uid_parent="4450"/>
+        <Tunnel _id="In2" outputs="value:" uid="4452" uid_parent="4450"/>
+        <Tunnel _id="In3" outputs="value:4453.err" uid="4453" uid_parent="4450"/>
+        <Tunnel _id="Out1" inputs="value:4453.err" uid="4454" uid_parent="4450"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4480.err" uid="4480" uid_parent="4430"/>
+    </Structure>
+    <Tunnel _id="Out1" inputs="value:4420.n" mode="index" outputs="value:4490.counts" uid="4490" uid_parent="400"/>
   </Structure>
 
   <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:22.vi reference,error in (no error):430.error out,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:500.reference out,error out:500.error out" uid="500" uid_parent="root"/>
@@ -86,6 +114,8 @@
   <Indicator _name="nodes requested" conIdx="6" connection="recommended" description="How many socket names were given. Replace cannot be read back\2C so this counts what was asked for - AIXML-export the VI to see what landed." inputs="value:520.size" type="int32" uid="900" uid_parent="root" value="0"/>
   <Indicator _name="constants requested" conIdx="7" connection="recommended" description="How many constant labels were given." inputs="value:522.size" type="int32" uid="901" uid_parent="root" value="0"/>
   <Indicator _name="node names found" conIdx="5" connection="recommended" description="Every subVI node name on the diagram BEFORE the swap. Compare it with socket names - a name missing here is the silent-wrong-node case." inputs="value:120.names" type="array{string.String}" uid="902" uid_parent="root" value="[]"/>
+  <Indicator _name="constant matches" description="Per requested constant label\2C in request order\2C how many diagram constants carried it. Only a label with exactly one match was replaced." inputs="value:4490.counts" type="array{int32}" uid="4500" uid_parent="root" value="[]"/>
+  <Indicator _name="constants seen" description="How many constants the traversal returned. Zero with labels requested means Constant Class Name matched nothing." inputs="value:4251.n" type="int32" uid="4501" uid_parent="root" value="0"/>
   <Indicator _name="status" conIdx="13" connection="recommended" description="True when anything failed." inputs="value:530.status" type="bool" uid="903" uid_parent="root" value="false"/>
   <Indicator _name="code" conIdx="14" connection="recommended" description="Zero when every swap and the save succeeded." inputs="value:530.code" type="int32" uid="904" uid_parent="root" value="0"/>
   <Indicator _name="source" conIdx="15" connection="recommended" description="Source of the first error." inputs="value:530.source" type="string" uid="905" uid_parent="root" value=""/>

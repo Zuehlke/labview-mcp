@@ -714,6 +714,33 @@ def test_nested_property_separator(directory: str) -> None:
           "and the message names the spelling that works", str([f.message[:80] for f in hit]))
 
 
+def test_conditional_tunnel_consumes_its_condition(directory: str) -> None:
+    """`cond=` on an Out tunnel READS a net, so the Equal? feeding it is not unconsumed."""
+    print("\n[8b] a conditional tunnel's cond counts as a consumer")
+    doc = (
+        '<VI _name="probe.vi" description="probe">'
+        '<Control _name="a" type="array{string}" value="[]" uid="4200" uid_parent="root" '
+        'outputs="value:4200.value"/>'
+        '<Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">'
+        '<Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4301.s" '
+        'uid="4301" uid_parent="4300"/>'
+        '<Constant type="string" value="x" uid="4302" uid_parent="4300" outputs="value:4302.value"/>'
+        '<Node _name="Equal?" inputs="x:4301.s,y:4302.value" outputs="x = y?:4303.hit" '
+        'uid="4303" uid_parent="4300"/>'
+        '<Tunnel _id="Out1" cond="4303.hit" inputs="value:4301.s" mode="index" '
+        'outputs="value:4304.kept" uid="4304" uid_parent="4300"/>'
+        '</Structure>'
+        '<Indicator _name="k" type="array{string}" value="[]" inputs="value:4304.kept" '
+        'uid="4400" uid_parent="root"/></VI>'
+    )
+    p = os.path.join(directory, "cond_tunnel.xml")
+    with open(p, "w", encoding="utf-8") as fh:
+        fh.write(doc)
+    findings = [(f.code, f.uid) for f in lint.lint_file(p)]
+    check(("net-unconsumed", "4303") not in findings,
+          "the Equal? read only by cond is not reported unconsumed", str(findings))
+
+
 def test_no_regression_on_shipped_helpers() -> None:
     print("\n[9] the shipped helpers stay error-free under the new checks")
     helpers = sorted(glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), "*.xml")))
@@ -748,6 +775,7 @@ def main() -> int:
         test_case_tunnel_completeness(directory)
         test_measured_against_labview(directory)
         test_nested_property_separator(directory)
+        test_conditional_tunnel_consumes_its_condition(directory)
         test_no_regression_on_shipped_helpers()
 
         # These mutate whatever document in the pool carries the right shape, and the pool

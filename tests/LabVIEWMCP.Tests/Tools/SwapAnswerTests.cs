@@ -156,6 +156,105 @@ public sealed class SwapAnswerTests
                      SwapTools.SubVisInExport(xml));
     }
 
+    // --------------------------------------------- constant labels, the user's option A, 2026-10-11
+
+    private static List<SwapTools.ConstantSwap> Labels(params string[] labels) =>
+        [.. labels.Select(l => new SwapTools.ConstantSwap(l, @"C:\c\Seed.lvclass"))];
+
+    /// <summary>
+    /// A LABEL TWO CONSTANTS CARRY IS REFUSED, NOT GUESSED: it is not counted as swapped, it is
+    /// named with its match count, and the labels that matched once still count.
+    /// </summary>
+    [Fact]
+    public void ALabelOnTwoConstantsIsRefusedAndTheOthersStillLand()
+    {
+        var outcome = SwapTools.ConstantOutcome.From(Labels("seed", "other"), [2, 1], swapped: true);
+
+        Assert.Equal(1, outcome.Swapped);
+        var refused = Assert.Single(outcome.Ambiguous);
+        Assert.Equal(("seed", 2), refused);
+        Assert.Empty(outcome.Missing);
+
+        var json = outcome.AmbiguousJson()!;
+        Assert.Equal("seed", json[0]!["label"]!.GetValue<string>());
+        Assert.Equal(2, json[0]!["matches"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public void ALabelNoConstantCarriesIsNamedAsNotOnTheDiagram()
+    {
+        var outcome = SwapTools.ConstantOutcome.From(Labels("seed"), [0], swapped: true, seen: 3);
+
+        Assert.Equal(0, outcome.Swapped);
+        Assert.Equal(["seed"], outcome.Missing);
+        Assert.Empty(outcome.Ambiguous);
+    }
+
+    /// <summary>An errored helper saved nothing, whatever it counted.</summary>
+    [Fact]
+    public void AnErroredHelperSwappedNoConstant()
+    {
+        var outcome = SwapTools.ConstantOutcome.From(Labels("seed"), [1], swapped: false);
+
+        Assert.Equal(0, outcome.Swapped);
+    }
+
+    /// <summary>
+    /// A reply WITHOUT the per-label count is an older helper, and the request stands in for the
+    /// outcome - as it did before the count existed. So does a reply whose count is the empty-array
+    /// template LabVIEW flattens (one element with an empty Val, parsed as -1).
+    /// </summary>
+    [Fact]
+    public void AReplyWithoutCountsFallsBackToTheRequest()
+    {
+        Assert.Equal(2, SwapTools.ConstantOutcome.From(Labels("a", "b"), [], swapped: true).Swapped);
+        Assert.Equal(1, SwapTools.ConstantOutcome.From(Labels("a"), [-1], swapped: true).Swapped);
+        Assert.Null(SwapTools.ConstantOutcome.From(Labels("a"), [], swapped: true).MatchesJson());
+    }
+
+    /// <summary>The helper's int32 array arrives as flattened XML and is read in request order.</summary>
+    [Fact]
+    public void TheCountsAreReadOutOfTheFlattenedArray()
+    {
+        var values = new System.Text.Json.Nodes.JsonObject
+        {
+            ["constant matches"] = new System.Text.Json.Nodes.JsonObject
+            {
+                ["xml"] = "<Array><Name>constant matches</Name><Dimsize>3</Dimsize>" +
+                          "<I32><Name>Numeric</Name><Val>1</Val></I32>" +
+                          "<I32><Name>Numeric</Name><Val>2</Val></I32>" +
+                          "<I32><Name>Numeric</Name><Val>0</Val></I32></Array>",
+            },
+        };
+
+        Assert.Equal([1, 2, 0], SwapTools.Counts(values, "constant matches"));
+        Assert.Empty(SwapTools.Counts(values, "absent"));
+    }
+
+    [Fact]
+    public void TheNoteNamesTheRefusedLabelAndWhatToDo()
+    {
+        var outcome = SwapTools.ConstantOutcome.From(Labels("seed"), [2], swapped: true);
+        var note = SwapTools.Note(ok: false, swapped: true, missing: [], socketsLeft: 0,
+                                  verify: true, code: "0", present: OnDiagram, constants: outcome);
+
+        Assert.Contains("REFUSED", note, StringComparison.Ordinal);
+        Assert.Contains("'seed' (2 constants)", note, StringComparison.Ordinal);
+        Assert.Contains("_name", note, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Zero constants seen points at the helper's class name, not at the label - the one thing the
+    /// first live probe has to settle.
+    /// </summary>
+    [Fact]
+    public void ATraversalThatSawNoConstantSaysWhichLineIsSuspect()
+    {
+        var outcome = SwapTools.ConstantOutcome.From(Labels("seed"), [0], swapped: true, seen: 0);
+
+        Assert.Contains("Constant Class Name", SwapTools.ConstantNote(outcome), StringComparison.Ordinal);
+    }
+
     /// <summary>A clean swap says nothing about names, because there is nothing to correct.</summary>
     [Fact]
     public void AGoodSwapDoesNotListTheDiagram()

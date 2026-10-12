@@ -2225,6 +2225,19 @@ them additionally inside Case frames — all six listed, five of five entries sw
 references, so each needs `To More Specific Class` onto `ref{LV.SubVI}` before `VI Name` is read or
 `Replace` is invoked.
 
+**THE CONSTANTS HAD THE SAME BLIND SPOT FOR ANOTHER MONTH, and `constantsJson` reaches any depth as
+of 2026-10-11 - not measured against LabVIEW yet.** The class constants were still collected from
+the top-level diagram's `All Objects[]`, so a `path` seed nested in a Case frame inside a loop was
+never found. A second `Traverse for GObjects.vi` call collects them now; its `Class Name` is ONE
+labelled constant, `Constant Class Name` = `Constant`, because a string constant reports
+`StringConstant` and a class constant `LabVIEWClassConstant`, so whether the traversal answers
+`Constant` for every kind depends on whether it matches descendant classes - the first live probe
+settles it, and `constantsSeen: 0` in the answer is the tell that it does not. **A label that MORE
+THAN ONE constant carries is REFUSED** (the user's decision of 2026-10-11): it is not replaced,
+`constantsAmbiguous` names it with its count, `ok` is false with `errorKind:
+constantLabelAmbiguous`, and every label that matched exactly once is still replaced and saved. So
+name every seed constant `_name`-uniquely. `docs/class-method-tooling.md` "Constants at any depth".
+
 **THE PYLABVIEW FALLBACK IS NOT AN ANSWER FOR THIS, and it fails LOUDLY only on the second look.**
 `pylv_apply {"op":"retarget"}` reaches a nested node — it edits link records and never walks a
 diagram — and on the same VI it produced `callTargets` naming all five real subVIs, a clean AIXML

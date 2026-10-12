@@ -87,6 +87,10 @@ BARE_NET_ATTRS = {
     ("Structure", "maxout"): "produce",
     ("Structure", "selectin"): "consume",
     ("CaseFrame", "selectout"): "produce",
+    # A CONDITIONAL output tunnel READS its condition net - `cond="4414.hit"` on an indexing
+    # Out tunnel. Without this row an Equal? feeding only a cond was reported net-unconsumed,
+    # a false positive lvai_af_remove_hook has carried since it was written.
+    ("Tunnel", "cond"): "consume",
 }
 
 #: uid values below this are inside the range LabVIEW reserves for its own panel heap, and

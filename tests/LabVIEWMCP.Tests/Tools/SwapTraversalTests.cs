@@ -79,4 +79,57 @@ public sealed class SwapTraversalTests
         Assert.Contains("uint16{FP,BD,Other}", helper, StringComparison.Ordinal);
         Assert.Contains("Class Name", helper, StringComparison.Ordinal);
     }
+
+    // ------------------------------------------------------------- constants, 2026-10-11
+
+    /// <summary>
+    /// CONSTANTS ARE TRAVERSED TOO. They were collected from the top-level diagram's
+    /// <c>All Objects[]</c>, which does not descend into a structure, so a seed constant inside a
+    /// Case frame was never found. The control arm is the property node spelling: its absence is
+    /// what the fix consists of.
+    /// </summary>
+    [Fact]
+    public void CollectsConstantsByTraversingNotFromTheTopDiagram()
+    {
+        var helper = Helper();
+        Assert.DoesNotContain("read+All Objects[]", helper, StringComparison.Ordinal);
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(
+            helper, @"<Call target=""VI Scripting - Traverse\.lvlib\\3ATraverse for GObjects\.vi""").Count);
+    }
+
+    /// <summary>
+    /// The class name the second traversal asks for is ONE labelled constant, because whether a
+    /// diagram constant answers to <c>Constant</c> is not measured - a string constant reports
+    /// <c>StringConstant</c>. If the first live probe says otherwise, this is the one line to change.
+    /// </summary>
+    [Fact]
+    public void TheConstantClassNameIsOneLabelledConstant()
+    {
+        var root = System.Xml.Linq.XElement.Parse(Helper());
+        var named = root.Descendants("Constant")
+            .Where(c => (string?)c.Attribute("_name") == "Constant Class Name").ToList();
+
+        var only = Assert.Single(named);
+        Assert.Equal("Constant", (string?)only.Attribute("value"));
+    }
+
+    /// <summary>
+    /// A label is replaced only when EXACTLY ONE constant carries it - the replace sits in the
+    /// True frame of a Case selected by `count = 1`, and the per-label count leaves the helper.
+    /// </summary>
+    [Fact]
+    public void OnlyALabelWithExactlyOneMatchIsReplaced()
+    {
+        var root = System.Xml.Linq.XElement.Parse(Helper());
+        var replace = root.Descendants("Node").Single(n =>
+            (string?)n.Attribute("target") == "Replace" && (string?)n.Attribute("type") == "{LV.Constant}");
+
+        var frame = replace.Parent!;
+        Assert.Equal("CaseFrame", frame.Name.LocalName);
+        Assert.Equal("True", (string?)frame.Attribute("selector"));
+        Assert.Contains(root.Descendants("Constant"), c =>
+            (string?)c.Attribute("_name") == "exactly one" && (string?)c.Attribute("value") == "1");
+        Assert.Contains(root.Elements("Indicator"), i => (string?)i.Attribute("_name") == "constant matches");
+        Assert.Contains(root.Elements("Indicator"), i => (string?)i.Attribute("_name") == "constants seen");
+    }
 }

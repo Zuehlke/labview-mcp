@@ -1746,3 +1746,34 @@ round trip (`Write Value 3`, `Write Gain 2.5`, read back) answering `3` and `2.5
 project at `false` and OPEN — `closedActiveProject`, `flippedFalseToTrue`, four of four source-only,
 the flag still `true` after LabVIEW's own save on close; an existing project WITHOUT the property
 and not loaded, on `grpc` — `closedByPath`, `inserted`, four of four source-only.
+
+### Constants at any depth, and a label two constants carry - 2026-10-11, NOT YET MEASURED
+
+The node half was fixed above; the CONSTANT half kept the old blind spot. `constantsJson` was
+matched against `{LV.Diagram}` `All Objects[]` of the top-level diagram, which does not descend
+either, so a `path` seed constant inside a Case frame inside a While Loop was invisible - the
+shape a generated method test takes as soon as a case needs its own seed. The helper now:
+
+1. collects the constants with a SECOND `Traverse for GObjects.vi` call, `Class Name` taken from
+   the one labelled constant `Constant Class Name` (value `Constant`). **Whether the traversal
+   answers that name for a path or class constant is not measured**: `All Objects[]` reports a
+   string constant as `StringConstant` and a class constant as `LabVIEWClassConstant`, so it holds
+   only if the traversal matches descendant classes. The helper reports `constants seen`, and the
+   answer's `constantsSeen: 0` with labels requested is the tell - a one-line change to that
+   constant is the remedy;
+2. counts, per requested label, how many collected constants carry it (an inner loop over the
+   labels collected ONCE before any Replace - the "do not nest" rule in the helper's description is
+   about re-reading `SubVIs[]` per swap, which this does not do);
+3. replaces a label only when the count is exactly 1, inside the True frame of a Case selected by
+   `count = 1`. A label with none or several is skipped and the error chain passes through.
+
+The answer carries `constantMatches` (every label with its count), `constantsAmbiguous`
+(`[{label, matches}]` for a count above 1), `constantsNotOnDiagram`, `constantsSeen`, and
+`constantsSwapped` counted from the matches rather than echoed from the request. **A label several
+constants carry is REFUSED, the user's decision of 2026-10-11 (option A)**: matching is by label, so
+two constants with one label cannot say which one is meant, and guessing would put a class into the
+wrong wire with no error. `ok` is false (`errorKind: constantLabelAmbiguous`, or
+`constantLabelNotOnDiagram` for a label nothing carries) while every label that matched once is
+still replaced and the VI saved. The swap's cached helper VI is rebuilt when its AIXML is newer
+(`HelperCache`), because this site used to key on existence alone and would otherwise keep running
+a helper with neither new output.
