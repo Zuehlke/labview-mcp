@@ -167,7 +167,8 @@ internal static class LabViewVersionStamp
     /// source, not the newest installation: that is the whole point - <c>LabViewLocator.Select</c>
     /// answers "newest installed", which is the wrong question here.
     /// </summary>
-    private static List<(int Release, int Pid)> RunningReleases()
+    /// <summary>The release and pid of every running LabVIEW whose folder names its release.</summary>
+    internal static List<(int Release, int Pid)> RunningReleases()
     {
         var found = new List<(int, int)>();
         foreach (var process in LabViewLocator.RunningInstances())

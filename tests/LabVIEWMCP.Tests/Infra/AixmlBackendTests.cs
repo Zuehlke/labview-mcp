@@ -75,6 +75,80 @@ public sealed class AixmlBackendTests
         Assert.Equal("grpc", Resolve(null, clientTool: null, flag: "pylabview").Name);
     }
 
+    private static AixmlBackend.Choice ResolveWith(int? labviewInUse, string? perCall = null,
+                                                   string? clientTool = Tool, string? flag = null,
+                                                   string? environment = null)
+    {
+        Assert.True(AixmlBackend.TryResolve(perCall, Tool, clientTool, flag, environment, null,
+                                            () => labviewInUse, out var choice, out var error), error);
+        return choice;
+    }
+
+    /// <summary>
+    /// The user's rule of 2026-10-12: a LabVIEW OLDER than 2026 in use makes pylabview the default -
+    /// even 2025, which has NI's service - while an explicit choice anywhere above still wins and an
+    /// internal call still stays grpc.
+    /// </summary>
+    [Fact]
+    public void An_older_LabVIEW_makes_pylabview_the_default_and_nothing_more()
+    {
+        var older = ResolveWith(2025);
+        Assert.Equal("pylabview", older.Name);
+        Assert.Contains("2025", older.Source);
+        Assert.Equal("pylabview", ResolveWith(2019).Name);
+
+        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveWith(2026));
+        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveWith(2027));
+        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveWith(null));
+
+        Assert.Equal(new AixmlBackend.Choice("grpc", "call"), ResolveWith(2025, perCall: "grpc"));
+        Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Flag), ResolveWith(2025, flag: "grpc"));
+        Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Variable), ResolveWith(2025, environment: "grpc"));
+        Assert.Equal("grpc", ResolveWith(2025, clientTool: "lvai_create_class").Name);
+    }
+
+    /// <summary>
+    /// The release is read only when every rule above it is silent: it costs a look at the process
+    /// table, and a call that names its backend must not pay for it.
+    /// </summary>
+    [Fact]
+    public void The_LabVIEW_release_is_read_only_when_nothing_above_decided()
+    {
+        var asked = 0;
+        int? Count() { asked++; return 2025; }
+        AixmlBackend.TryResolve("grpc", Tool, Tool, null, null, null, Count, out _, out _);
+        AixmlBackend.TryResolve(null, Tool, Tool, "grpc", null, null, Count, out _, out _);
+        AixmlBackend.TryResolve(null, Tool, "lvai_create_class", null, null, null, Count, out _, out _);
+        Assert.Equal(0, asked);
+        AixmlBackend.TryResolve(null, Tool, Tool, null, null, null, Count, out _, out _);
+        Assert.Equal(1, asked);
+    }
+
+    /// <summary>
+    /// The composer writes files of its parts' release, and LabVIEW opens no file of a later
+    /// version - so for an older LabVIEW it refuses rather than writing an unloadable VI.
+    /// </summary>
+    [Fact]
+    public void The_composer_refuses_to_write_for_a_LabVIEW_older_than_its_parts()
+    {
+        var why = AixmlComposer.RefusalForOlderLabView(2025, 2026);
+        Assert.NotNull(why);
+        Assert.Contains("LabVIEW 2025", why);
+        Assert.Contains("LabVIEW 2026", why);
+        Assert.Null(AixmlComposer.RefusalForOlderLabView(2026, 2026));
+        Assert.Null(AixmlComposer.RefusalForOlderLabView(null, 2026));
+        Assert.Null(AixmlComposer.RefusalForOlderLabView(2025, null));
+    }
+
+    /// <summary>The shipped parts are LabVIEW 2026 parts - read off the skeleton, not assumed.</summary>
+    [Fact]
+    public void The_shipped_parts_say_which_release_they_were_cut_from()
+    {
+        var parts = RepoTree.Path("scripts", AixmlComposer.ComposerFolder, "parts");
+        Assert.Equal(2026, AixmlComposer.PartsRelease(parts));
+        Assert.Null(AixmlComposer.PartsRelease(RepoTree.Path("scripts")));
+    }
+
     [Fact]
     public void An_unknown_name_is_refused_and_a_known_one_is_read_loosely()
     {

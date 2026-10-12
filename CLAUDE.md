@@ -1181,7 +1181,10 @@ AIXML included (80 of 83 helper documents compose and all 80 load executable; th
 LUnit templates the tool fills first). A part's provenance names `<labview>\…` or a bare file name,
 never a workstation path - `lvheap.portable_source`, also at every harvest, and a test fails on an
 absolute path. `experiments\` keeps the measurement scripts, the suite and FINDINGS, which import
-the code from its new place. `docs/aixml-backends.md`.
+the code from its new place. **A LabVIEW OLDER THAN 2026 in use makes `pylabview` the default** (the
+user's rule of 2026-10-12, below an explicit call, flag or variable) - even 2025, which has NI's
+service - **and the composer then REFUSES TO WRITE**: its parts are 2026 files, which an older
+LabVIEW cannot open. Unmeasured on an older LabVIEW, none being installed here. `docs/aixml-backends.md`.
 
 **THERE IS A FIFTH DOOR AND IT IS NAILED SHUT: `lvai_apply_aixml_to_vi` IS NOT CALLED. EVER —
 unless the user asks for it by name, in that session.** The user's standing instruction of

@@ -554,8 +554,10 @@ State, in this order:
 
 The server converts AIXML two ways: NI's gRPC service (`grpc`, the default) and our own pylabview
 composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAULT
-(`LABVIEWMCP_AIXML_BACKEND`, `--aixml-backend`); you do not pick one on your own. **Read which one
-is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
+(`LABVIEWMCP_AIXML_BACKEND`, `--aixml-backend`); you do not pick one on your own. **A LabVIEW
+OLDER than 2026 in use makes `pylabview` the default by itself** - and there every compose is
+refused (`composerRefused`), because the composer's parts are LabVIEW 2026 files that an older
+LabVIEW cannot open; rule 4 below applies. **Read which one is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
 `pylabviewAvailable` without LabVIEW, and every answer of a backend-aware tool names `backend` and
 `backendSource`.
 

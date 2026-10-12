@@ -43,7 +43,25 @@ Highest wins:
 | 1 | `backend` argument of the call | `call` |
 | 2 | `--aixml-backend <grpc\|pylabview>` on the server's command line | `--aixml-backend` |
 | 3 | `LABVIEWMCP_AIXML_BACKEND` in the server's environment | `LABVIEWMCP_AIXML_BACKEND` |
-| 4 | nothing set | `default` (grpc) |
+| 4 | the LabVIEW in use is OLDER than 2026 → `pylabview` | `LabVIEW <year> is older than 2026 - …` |
+| 5 | nothing set | `default` (grpc) |
+
+**Rule 4 is the user's of 2026-10-12, and it holds even for LabVIEW 2025, which HAS NI's service**
+(`NI Nigel AI Advisor for LabVIEW 2025`). "In use" is the newest RUNNING LabVIEW, else the newest
+INSTALLED one - the one `lvai_ensure_labview` would start; with neither readable the rule does not
+apply. It is asked only when rules 1-3 are silent, and only for a tool the client called, like rules
+2-3. `pylv_status` shows both releases it compares, `labviewInUse` and `partsRelease`.
+
+**AND THE COMPOSER STILL REFUSES TO WRITE FOR SUCH A LabVIEW.** Its parts are cut from LabVIEW 2026
+- `partsRelease` is read off the skeleton's `vers` block, not assumed - and LabVIEW opens no file
+of a later version, so a VI composed from them would not load in 2025. Every compose therefore
+answers `composerRefused`, naming both releases and writing nothing (`RefusalForOlderLabView`) - the
+same rule as `LabViewVersionStamp`: a file the station cannot open is worse than a call that
+declines to write one. What does NOT compose there: every write, the scratch compose a validation
+is, and every helper a route tool composes. **Neither half is measured on an older LabVIEW** - none
+is installed here; the rule and the refusal are unit-tested, the ActiveX route and the reader on an
+older release are not. Writing for an older release needs parts harvested from that installation
+(`harvest_parts.py`), which is the follow-up.
 
 A server registered with the composer as its default:
 

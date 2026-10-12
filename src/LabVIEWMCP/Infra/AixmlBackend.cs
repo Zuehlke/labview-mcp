@@ -9,7 +9,10 @@ namespace LabVIEWMcp.Infra;
 ///   1. the `backend` argument of the call
 ///   2. `--aixml-backend` on the server's command line
 ///   3. the LABVIEWMCP_AIXML_BACKEND environment variable
-///   4. grpc
+///   4. pylabview when the LabVIEW in use is OLDER than 2026 - the user's rule of 2026-10-12, which
+///      holds even where NI's service exists (LabVIEW 2025 has one). The composer itself still
+///      refuses to WRITE for such a LabVIEW: its parts are 2026 files (<see cref="AixmlComposer"/>)
+///   5. grpc
 ///
 /// THE SERVER DEFAULT REACHES ONLY A TOOL THE CLIENT CALLED ITSELF. About forty places in this
 /// server call lvai_generate_vi or the convert tools from C# - the class tools, the test
@@ -27,6 +30,35 @@ internal static class AixmlBackend
     public const string Flag = "--aixml-backend";
 
     public static readonly string[] Names = [Grpc, PyLabview];
+
+    /// <summary>
+    /// The first LabVIEW release on which NI's converter is the default. An older LabVIEW in use
+    /// makes pylabview the default instead - the user's rule of 2026-10-12.
+    /// </summary>
+    public const int FirstGrpcRelease = 2026;
+
+    /// <summary>
+    /// The LabVIEW release in use: the newest RUNNING instance, else the newest INSTALLED - the one
+    /// lvai_ensure_labview would start. Null when neither can be read (no LabVIEW on the machine,
+    /// a process that refuses its module path); the older-LabVIEW rule then does not apply.
+    /// </summary>
+    internal static int? LabViewInUse()
+    {
+        try
+        {
+            var running = LabViewVersionStamp.RunningReleases();
+            if (running.Count > 0) return running.Max(r => r.Release);
+            return global::LabVIEWMcp.Grpc.LabViewLocator.Select(
+                global::LabVIEWMcp.Grpc.LabViewLocator.Discover())?.Release;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private static string OlderLabViewSource(int release) =>
+        $"LabVIEW {release} is older than {FirstGrpcRelease} - pylabview is the default there";
 
     /// <summary>The MCP tool the client invoked in this async flow; set by DiagnosingTool.</summary>
     public static readonly AsyncLocal<string?> ClientTool = new();
@@ -83,7 +115,7 @@ internal static class AixmlBackend
     {
         var resolved = TryResolve(perCall, tool, ClientTool.Value, _flagValue,
                                   Environment.GetEnvironmentVariable(Variable), Inherited.Value,
-                                  out choice, out error);
+                                  LabViewInUse, out choice, out error);
         // A route on pylabview hands its choice down: every inner call this tool makes from here on
         // inherits it. Set in the CALLER's async context (this method is synchronous), so it ends
         // with the tool that resolved it.
@@ -102,7 +134,17 @@ internal static class AixmlBackend
     /// <summary>The same, with the inherited choice explicit as well.</summary>
     internal static bool TryResolve(string? perCall, string tool, string? clientTool,
                                     string? flagValue, string? environmentValue, Choice? inherited,
-                                    out Choice choice, out string error)
+                                    out Choice choice, out string error) =>
+        TryResolve(perCall, tool, clientTool, flagValue, environmentValue, inherited,
+                   () => null, out choice, out error);
+
+    /// <summary>
+    /// The same, with the LabVIEW release in use as well - asked only when every rule above it is
+    /// silent, because finding it reads the process table.
+    /// </summary>
+    internal static bool TryResolve(string? perCall, string tool, string? clientTool,
+                                    string? flagValue, string? environmentValue, Choice? inherited,
+                                    Func<int?> labviewInUse, out Choice choice, out string error)
     {
         choice = new Choice(Grpc, "default");
         error = "";
@@ -148,6 +190,9 @@ internal static class AixmlBackend
             return true;
         }
 
+        if (labviewInUse() is { } release && release < FirstGrpcRelease)
+            choice = new Choice(PyLabview, OlderLabViewSource(release));
+
         return true;
     }
 
@@ -158,6 +203,8 @@ internal static class AixmlBackend
         var environment = Environment.GetEnvironmentVariable(Variable);
         if (!string.IsNullOrWhiteSpace(environment))
             return new Choice(Normalise(environment) ?? $"invalid: {environment}", Variable);
+        if (LabViewInUse() is { } release && release < FirstGrpcRelease)
+            return new Choice(PyLabview, OlderLabViewSource(release));
         return new Choice(Grpc, "default");
     }
 
@@ -184,7 +231,8 @@ internal static class AixmlBackend
         "pylabview" (no NI service at all: our own composer and reader write and read a VI with no
         LabVIEW, and what needs a running LabVIEW - executability, a run, a render - goes over
         its ActiveX server). Omit it to use the server's default - --aixml-backend or
-        LABVIEWMCP_AIXML_BACKEND, else grpc. Every answer names the backend that ran under
+        LABVIEWMCP_AIXML_BACKEND, else pylabview when the LabVIEW in use is older than 2026, else
+        grpc. Every answer names the backend that ran under
         `backend` and why under `backendSource`. docs/aixml-backends.md has what each covers.
         """;
 }

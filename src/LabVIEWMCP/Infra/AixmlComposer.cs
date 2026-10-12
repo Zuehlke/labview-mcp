@@ -77,6 +77,10 @@ internal static class AixmlComposer
             ["pylabviewAvailable"] = setup is not null,
             ["composerDirectory"] = setup?.ComposerDirectory,
             ["partsDirectory"] = setup?.PartsDirectory,
+            // the two releases the older-LabVIEW rules compare: below 2026 pylabview is the
+            // default, and the composer refuses to write for a LabVIEW older than its parts
+            ["labviewInUse"] = AixmlBackend.LabViewInUse(),
+            ["partsRelease"] = setup is null ? null : PartsRelease(setup.PartsDirectory),
             ["missing"] = setup is null ? missing : null,
         };
     }
@@ -142,6 +146,9 @@ internal static class AixmlComposer
                                                   IReadOnlyList<string> searchFolders,
                                                   int timeoutSeconds, CancellationToken ct)
     {
+        if (RefusalForOlderLabView(AixmlBackend.LabViewInUse(), PartsRelease(setup.PartsDirectory)) is { } tooOld)
+            return new Result(false, true, tooOld, [], 0, 2);
+
         var target = Path.GetFullPath(viPath);
         if (Path.GetDirectoryName(target) is { Length: > 0 } folder) Directory.CreateDirectory(folder);
 
@@ -175,6 +182,46 @@ internal static class AixmlComposer
             ? new Result(false, true, refusal["UNSUPPORTED:".Length..].Trim(), report, run.ElapsedMs, run.ExitCode)
             : new Result(false, false, Tail(run.StdErr, run.StdOut), report, run.ElapsedMs, run.ExitCode);
     }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, int?> PartsReleases = new();
+
+    /// <summary>
+    /// The LabVIEW release the parts were cut from - the skeleton's own `vers` block, Major 26 for
+    /// 2026 - or null when no skeleton can be read. Read, not assumed: parts harvested from another
+    /// installation carry that installation's release.
+    /// </summary>
+    internal static int? PartsRelease(string partsDirectory) =>
+        PartsReleases.GetOrAdd(Path.GetFullPath(partsDirectory), dir =>
+        {
+            try
+            {
+                using var stream = File.OpenRead(Path.Combine(dir, "skeleton", "skeleton.xml"));
+                var major = System.Xml.Linq.XDocument.Load(stream).Descendants("vers")
+                    .SelectMany(v => v.Descendants("Version"))
+                    .Select(v => (string?)v.Attribute("Major")).FirstOrDefault();
+                return int.TryParse(major, out var m) && m is > 0 and < 100 ? 2000 + m : null;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException
+                                           or System.Xml.XmlException)
+            {
+                return null;
+            }
+        });
+
+    /// <summary>
+    /// The composer's refusal for a LabVIEW OLDER than its parts, or null. LabVIEW opens no file of a
+    /// later version, so a VI composed from 2026 parts is unloadable in LabVIEW 2025 - and a file the
+    /// station cannot open is worse than a call that declines to write one (the same rule as
+    /// <see cref="LabViewVersionStamp"/>). Since 2026-10-12 an older LabVIEW makes pylabview the
+    /// DEFAULT (<see cref="AixmlBackend.FirstGrpcRelease"/>), so this is what such a station meets.
+    /// Not measured on an older LabVIEW: none is installed where this was written.
+    /// </summary>
+    internal static string? RefusalForOlderLabView(int? labviewInUse, int? partsRelease) =>
+        labviewInUse is { } lv && partsRelease is { } parts && lv < parts
+            ? $"the composer writes LabVIEW {parts} files - its parts were cut from LabVIEW {parts} - " +
+              $"and LabVIEW {lv}, the one in use, cannot open a file of a later version. Nothing was " +
+              $"written. Composing for LabVIEW {lv} needs parts harvested from that installation."
+            : null;
 
     /// <summary>VI -> AIXML, written to <paramref name="aixmlPath"/>.</summary>
     public static async Task<Result> ReadAsync(Setup setup, string viPath, string aixmlPath,
