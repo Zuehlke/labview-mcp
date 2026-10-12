@@ -1138,7 +1138,12 @@ class Reader:
                 tun = ET.Element("Tunnel", {"_id": ("Out%d" % rank.get(term.get("uid"), n_out)) if out
                                             else ("In%d" % rank.get(term.get("uid"), n_in)),
                                             "uid": term.get("uid"), "uid_parent": node.get("uid")})
-                if d.find("innerLpTunDCO") is not None or d.findtext("TunnelType"):
+                tt = (d.findtext("TunnelType") or "").strip()
+                if tt and tt.isalnum() and int(tt, 16) == 2 and d.find("innerLpTunDCO") is None:
+                    # a CONCATENATING output: no inner DCO, TunnelType 02 (the composer's own
+                    # finding, NI's TDMS example) - read as indexing it broke t117's round trip
+                    tun.set("mode", "concat")
+                elif d.find("innerLpTunDCO") is not None or tt:
                     tun.set("mode", "index")
                 self.term_owner[term.get("uid")] = (tun, "value", not out)
                 for t in inner_terms.get(d.get("uid"), []):

@@ -37,15 +37,34 @@ def main(argv):
     for name in sorted(expect):
         if flt and not any(f in name for f in flt):
             continue
-        if expect[name].get("callees"):
-            rows.append((name, "SKIPPED", "calls composed callees"))
-            continue
         src = os.path.join(HERE, "tests", name + ".xml")
         # the two VIs carry the SAME name as selftest.py gives it (<test>_<stamp>.vi), in two
         # folders: a test that reads its own VI name (t91) must not see a longer one
         os.makedirs(os.path.join(out_dir, "a"), exist_ok=True)
+        # a test that CALLS composed VIs gets them beside BOTH of its VIs, under the per-run name
+        # selftest.py gives them - the reader then names the call after that file, and the second
+        # compose finds it beside the caller (these four were skipped until 2026-10-12)
+        failed = None
+        for fname, callee in expect[name].get("callees", {}).items():
+            for folder in (os.path.join(out_dir, "a"), out_dir):
+                cvi = os.path.join(folder, fname.replace("{stamp}", stamp))
+                os.makedirs(os.path.dirname(cvi), exist_ok=True)
+                code, log = run([os.path.join(HERE, "aixml2vi.py"), os.path.join(HERE, "tests", callee + ".xml"), cvi])
+                if code:
+                    failed = log.splitlines()[-1] if log else callee
+        if failed:
+            rows.append((name, "CALLEE FAILED", failed))
+            continue
+        text = open(src, encoding="utf-8").read()
+        if "{stamp}" in text:
+            src = os.path.join(out_dir, "%s_%s.src.xml" % (name, stamp))
+            open(src, "w", encoding="utf-8").write(text.replace("{stamp}", stamp))
         vi1 = os.path.join(out_dir, "a", "%s_%s.vi" % (name, stamp))
-        code, log = run([os.path.join(HERE, "aixml2vi.py"), src, vi1])
+        # the folders under tests/ a test's Call targets live in (expect.json `search`, a class
+        # fixture) - for BOTH composes, as selftest.compose passes them; without them t128 could
+        # not even compose its source here
+        extra = [a for d in expect[name].get("search", ()) for a in ("--search", os.path.join(HERE, "tests", d))]
+        code, log = run([os.path.join(HERE, "aixml2vi.py"), src, vi1] + extra)
         if code:
             rows.append((name, "COMPOSE 1 FAILED", log.splitlines()[-1] if log else ""))
             continue
@@ -55,7 +74,7 @@ def main(argv):
             rows.append((name, "READ FAILED", log.splitlines()[-1] if log else ""))
             continue
         vi2 = os.path.join(out_dir, "%s_%s.vi" % (name, stamp))
-        code, log = run([os.path.join(HERE, "aixml2vi.py"), xml2, vi2])
+        code, log = run([os.path.join(HERE, "aixml2vi.py"), xml2, vi2] + extra)
         if code:
             rows.append((name, "COMPOSE 2 FAILED", log.splitlines()[-1] if log else ""))
             continue
