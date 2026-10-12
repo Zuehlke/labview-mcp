@@ -272,7 +272,7 @@ def static_event(event, ctl=None):
     data fields after the reference, read off NI's own VIs by static_event_survey.py
     (build_static_events.py). None when the survey never saw it. An event of the VI that a CONTROL
     has too under the same name (Key Down?) carries `controlVariant`, used when the selector names
-    a source `ctl` (add_key_events.py, measured on LabVIEW's own save)."""
+    a source `ctl` (measured on LabVIEW's own save, 2026-10-11)."""
     global _STATIC_EVENTS
     if _STATIC_EVENTS is None:
         p = os.path.join(OWN_PARTS, "static-events.json")
@@ -283,7 +283,7 @@ def static_event(event, ctl=None):
         r.pop("controlVariant", None)
     elif r is not None and ctl is None and r.get("sourceKind") == "control" and r.get("viVariant"):
         # the other way round: a control's event the VI has too (the notify Key Down, Key Repeat,
-        # Key Up - add_key_notify.py), used when the selector names no source
+        # Key Up - measured 2026-10-11), used when the selector names no source
         r = dict(r, **r["viVariant"])
         r.pop("viVariant", None)
     return r

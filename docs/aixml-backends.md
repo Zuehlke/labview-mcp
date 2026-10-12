@@ -175,8 +175,9 @@ templates whose `{{TYPE}}` the tool fills in first - and all 80 load executable 
 name for anything else (`lvheap.portable_source`, applied to 2 939 values and at the entry of every
 harvest), and `The_shipped_parts_carry_no_absolute_path` fails on one that slips through. Only
 provenance was touched; the diff of every part outside those fields is empty. The repair scripts
-that re-read a donor through `source` (`backfill_strs.py`, `attach_images.py`,
-`repair_nested_types.py`) have done their job; a re-run needs `<labview>` expanded first.
+that re-read a donor through `source` have done their job - `backfill_strs.py` and
+`attach_images.py` were removed since (git history), `repair_nested_types.py` stays because the
+composer's refusal of an old-format part names it; a re-run needs `<labview>` expanded first.
 
 ## Measured, 2026-10-10
 
