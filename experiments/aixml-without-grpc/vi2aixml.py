@@ -1505,7 +1505,12 @@ class Reader:
                 self.term_owner[t.get("uid")] = (el, "waveform" if wave else "input cluster", True)
                 continue
             i = int(d.findtext("i") or 0) if d is not None else 0
-            nm = labels[i] if i < len(labels) else "?"
+            nm = labels[i] if i < len(labels) else None
+            if nm is None:
+                # a CLASS's private data: the wire is a class refnum with no fields to read, but each
+                # element terminal carries the field's own labelled type (`Levels to Spawn`)
+                tt = self.tid_tree(t)
+                nm = (tt.get("Label") if tt is not None else None) or "?"
             fields.append(nm)
             self.term_owner[t.get("uid")] = (el, nm, not self._is_out(t))
         el.set("fields", ",".join(escape(x) for x in fields))
@@ -1689,8 +1694,11 @@ class Reader:
                 name = ".".join(unquote(i.findtext("PropItemName") or "") for i in infos)
                 code = infos[-1].findtext("PropItemCode") if infos else None
                 codepath = "/".join(i.findtext("PropItemCode") or "?" for i in infos)
-                self.prop_items.setdefault(node.get("uid"), []).append(codepath)
-                learned = self.export_prop_names().get(codepath)
+                self.prop_items.setdefault(node.get("uid"), []).append((cls, codepath))
+                # a small code is unique only within its class (a DAQmx Timing property's 12760):
+                # learned under "<class>|<codes>", a LabVIEW one under its codes alone
+                learned = self.export_prop_names().get(codepath) or \
+                    self.export_prop_names().get("%s|%s" % (cls, codepath))
                 if learned:
                     # the name NI's exporter writes for these codes, learned off its own exports
                     # (learn_prop_names.py): `HasConditionalTerm` is `Has Conditional Terminal?`

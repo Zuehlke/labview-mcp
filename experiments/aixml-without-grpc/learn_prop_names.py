@@ -69,13 +69,22 @@ def main(argv):
             names = [f.split("+", 1)[-1] for f in el.get("fields").split(",")]
             if len(names) != len(codes):
                 continue
-            for c, nm in zip(codes, names):
-                # LabVIEW's own property codes only (104013829): an ActiveX or .NET property's is
-                # a dispatch id unique only within its class - 572 is {LV.VI}'s Block Diagram in
-                # 17 pairs and an Excel Workbooks in 2
-                if "?" not in c and all(p.lstrip("-").isdigit() and int(p) > 0xFFFF for p in c.split("/")):
-                    seen[c][aixml2vi.unescape(nm)] += 1
-                    pairs += 1
+            for (cls, c), nm in zip(codes, names):
+                if "?" in c or not all(p.lstrip("-").isdigit() for p in c.split("/")):
+                    continue
+                if all(int(p) > 0xFFFF for p in c.split("/")):
+                    # LabVIEW's own property codes (104013829) are global
+                    key = c
+                elif cls.startswith(("GenClassTag.", "GenClass.", "LV.", "Visa.")):
+                    # a small code is unique only within its class: a DAQmx Timing property's, or
+                    # {LV.Application}'s old `Project.ActiveProject`, 146
+                    key = "%s|%s" % (cls, c)
+                else:
+                    # an ActiveX or .NET dispatch id - 572 is {LV.VI}'s Block Diagram in 17 pairs
+                    # and an Excel Workbooks in 2, and "ActiveX" names no interface
+                    continue
+                seen[key][aixml2vi.unescape(nm)] += 1
+                pairs += 1
         if n >= limit:
             break
     agreed = {c: next(iter(cnt)) for c, cnt in seen.items() if len(cnt) == 1}

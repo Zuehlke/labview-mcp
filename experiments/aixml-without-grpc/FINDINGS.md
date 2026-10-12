@@ -15,7 +15,7 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
 | AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
-| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **253 of 747** - elements 97.7 %, attributes 93.8 %, values 96.4 %, wires 88.6 % - on 2026-10-12, 23 stale cache entries also left out with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
+| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **268 of 747** - elements 97.7 %, attributes 94.9 %, values 96.4 %, wires 89.3 % - on 2026-10-12, 23 stale cache entries also left out with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
 | both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped); **111 of 130** on 2026-10-12, 4 skipped - the 15 failures (user events, control references as event sources, a class constant, the live-event tests) fail identically with the reader before that night's fixes |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
@@ -2119,7 +2119,15 @@ happened to show it. `learn_prop_names.py` pairs each heap property item with th
 (`parts/property-export-names.json`). It learns LabVIEW's own codes only: below 0x10000 a code is an
 ActiveX or .NET dispatch id, unique within its class - 572 was `{LV.VI}`'s Block Diagram in 17 pairs
 and an Excel `Workbooks` in 2, the seven disputes of the first run all of that kind. Over the 761:
-**202 identical** (190), attributes 92.7 %, wires 87.2 %; the round trip unchanged.
+**202 identical** (190), attributes 92.7 %, wires 87.2 %; the round trip unchanged. Once the node
+classes were read (below), a SMALL code became learnable too, under `<class>|<code>`: DAQmx's
+(`GenClassTag.DAQmx Timing.NIDAQ|...` -> `SampClk.Rate`'s long name) and LabVIEW's own old ones
+(`LV.Application|146` -> `Project:Active Project`, which the heap shows as `Project.ActiveProject`)
+- 383 code paths, only ActiveX and .NET left out, and the one dispute (`-1`, no code at all)
+dropped. And Bundle/Unbundle By Name on a CLASS's private data came out `?` for every field: the
+wire is a class refnum with no fields to read - but each element terminal carries the field's own
+LABELLED type (`Levels to Spawn`), which is what NI's export names. With both: **268 of 747 identical**
+(253), attributes 94.9 %, wires 89.3 %; the round trip unchanged at 111 of 130.
 
 `compare_full.py` also drops a STALE cache entry now: the cache key carries the VI's write time
 in .NET ticks, and 23 entries were being compared with old exports of VIs written since - among
