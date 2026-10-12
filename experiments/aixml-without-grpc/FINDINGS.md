@@ -1427,6 +1427,49 @@ came out arranged (inputs left, outputs right, the error pair at the bottom) and
 -> 6953 bytes composed over ActiveX and 7025 -> 6958 through NI's converter; NI's `Simulation - Tank
 Level.vi`, which has a tab control, answered `arranged` false, no dialog, the file byte-identical.
 
+### Subdiagram labels (2026-10-12)
+
+The user's request: a structure's Subdiagram Label (Visible Items > Subdiagram Label) as a place
+for comments, on every structure that has one. **AIXML already has it - `label=`** on the element
+that holds the subdiagram: `<Structure>` of a While/For/Timed Loop, an In Place Element Structure
+or a one-frame Flat Sequence, `<CaseFrame>` of a Case or Event Structure, `<Diagram>` of a Flat
+Sequence or Disable frame. 805 of them in the cached NI exports (462 frames, 258 While Loops, 50
+Diagrams, 25 For Loops, 8 Timed Loops, 2 one-frame Flat Sequences); NI's exporter writes it, NI's
+converter reads it, and the composer ignored it until now (t86, t118 and t119 carried it all along).
+
+**In the heap it is a `label` object, not a field of the diagram.** A first scan of 2 366 VIs for
+an unknown child of `diag` found nothing because the label lives in the diagram's `zPlaneList`:
+partID 8024, objFlags 1048914, howGrow 4096, ImageResID -619, LAST in the z list, at the content
+rectangle's top-left (contRect minus bounds) and exactly as wide as the content. Read off a probe
+that made the labels visible through NI's own property-page stubs
+(`resource\PropertyPages\Pages\SubDiagramLabelStubs\pp_SubDiagLblVis[FlatSeq]WriteStub.vi`,
+properties `SubDiagLbl Vis` 104204298 on a structure, 897104906 on a flat sequence; `{LV.Diagram}`
+`SubDiag Label` 104290315 returns the label as a `ref{LV.Text}`) - DQMH's `Diagram Has Subdiagram
+Label.vi` returns that reference already closed (`Error 1055` on the next write).
+
+- **Style by kind, as LabVIEW and NI's examples have it**: a While Loop's label is grey (fgColor
+  and bgColor `007F7F7F`) with white text in the BOLD application font (FTAB `0`, Prop4 1000, which
+  the skeleton already holds); every other one pale yellow `00FFFFD7` in the dialog font. Which
+  structure was labelled first does not matter (A/B: For first, then While - still grey).
+- **Under a selector the text scrolls down**: a Case or Disable frame's box is 8 px taller with
+  `textRec/view` `(8, 0, 0, 0)`, an Event frame's 10 px with `(10, 0, 0, 0)` - without it the
+  selector covered the text in the render.
+- **A fontRun's fontid counts from FTAB's first named font**, past the section's Prop3 leading
+  entries (3): LabVIEW rewrites the table on save and every fontid with it, so the id is looked up
+  in the skeleton, not copied.
+- **The text is written raw inside its quotes**: `\"` came out as a literal backslash.
+- **LabVIEW wraps inside the width and never grows the box.** NI's converter keeps the structure
+  at its own size, so `forLoop frame 0 note` showed as `forLoop frame 0`. The composer widens the
+  structure to the longest line (at most 600 px, `SUBLABEL_MAX_W`), gives the box 16 px per
+  wrapped line, and moves the contents and the border terminals down by the box's height.
+
+`t159_subdiagram_labels` (While, For with two lines, Case frames with `\2C`, `\3A` and quotes and an
+empty one, In Place, Conditional Disable frames, a one-frame Flat Sequence that wraps) and
+`t160_event_labels` (the While Loop and three event frames) compose, load executable, compute and
+render as LabVIEW's own. vi2aixml writes `label=` back, identical to NI's export of `Simple
+Occurrence.vi`. LabVIEW's log was saturated during these runs, so the insanity check has not seen
+them yet.
+
 ### Graphs and their events (2026-10-11)
 
 **Graphs compose by default** (§3, "Graphs and charts"), and their events with them. A static

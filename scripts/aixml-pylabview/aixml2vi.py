@@ -1070,6 +1070,7 @@ class Diagram:
         self.signals = diag_el.find("signalList")
         self.owner = owner          # the AIXML <Structure>, None for the root
         self.placed = []            # (heap object with bounds, AIXML element)
+        self.sublabel = None        # its subdiagram label: {"text", "grey", "h"} (label=)
 
     def lists(self):
         return (self.z, self.nodes, self.srn_terms, self.signals)
@@ -6200,6 +6201,7 @@ class Composer:
             st, sl_, _, _ = lvheap.parse_bounds(seq.find("bounds").text)
             x = 0
             for (fr, fd, _), (h, w) in zip(frames, frame_dims[id(seq)]):
+                lh = fd.sublabel["h"] if fd.sublabel else 0
                 H = lvheap.size_of(seq)[0]
                 fr.find("bounds").text = lvheap.fmt_bounds((0, x, H, x + w))
                 cr = fr.find("contRect")
@@ -6228,7 +6230,7 @@ class Composer:
                         y = H - th
                         xx = w - 25 - 12 * k if out else 10 + 12 * k
                     else:
-                        y = 20 + 24 * slot[out]
+                        y = 20 + lh + 24 * slot[out]
                         slot[out] += 1
                         xx = w - tw if out else 0
                     tb.text = lvheap.fmt_bounds((y, xx, y + th, xx + tw))
@@ -6244,14 +6246,15 @@ class Composer:
             sb = d.srn.find("bounds")
             if sb is not None:
                 sb.text = lvheap.fmt_bounds((-t, -l, -t, -l))
+            lh = d.sublabel["h"] if d.sublabel else 0
             for k, (left, right) in enumerate(ip["pairs"]):
-                y = 23 + 24 * k
+                y = 23 + lh + 24 * k
                 left.find("bounds").text = lvheap.fmt_bounds((y, 0, y + 12, 16))
                 right.find("bounds").text = lvheap.fmt_bounds((y, r - l - 16, y + 12, r - l))
             # tunnels below the pairs: inputs down the left border, outputs down the right
             slot = {"in": len(ip["pairs"]), "out": len(ip["pairs"])}
             for tdco, d_ in ip.get("tunnels", []):
-                y = 23 + 24 * slot[d_]
+                y = 23 + lh + 24 * slot[d_]
                 slot[d_] += 1
                 x = 0 if d_ == "in" else r - l - 9
                 tdco.find("termBounds").text = lvheap.fmt_bounds((y, x, y + 9, x + 9))
@@ -6272,6 +6275,7 @@ class Composer:
                 if sb is not None:
                     sb.text = lvheap.fmt_bounds((-t, -l, -t, -l))
             event = case.get("class") == "eventStruct"
+            lh = getattr(self, "case_label_h", {}).get(case.get("uid"), 0)
             slot = {0: 0, 1: 0}
             w_ = r - l
             for c in case.find("termList"):
@@ -6292,7 +6296,7 @@ class Composer:
                     continue
                 out = int(dco.findtext("objFlags") or 0) & 1
                 tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
-                y = (45 if event else 30) + 24 * slot[out]
+                y = (45 if event else 30) + lh + 24 * slot[out]
                 slot[out] += 1
                 x = (r - l) - (tr - tl) if out else 0
                 tb.text = lvheap.fmt_bounds((y, x, y + (tbb - tt), x + (tr - tl)))
@@ -6303,7 +6307,7 @@ class Composer:
             stb = sel.find("dco/termBounds") if sel is not None else None   # a disable has none
             if stb is not None:
                 tt, tl, tbb, tr = lvheap.parse_bounds(stb.text)
-                y = 30 + 24 * slot[0] + 6
+                y = 30 + lh + 24 * slot[0] + 6
                 stb.text = lvheap.fmt_bounds((y, 0, y + (tbb - tt), tr - tl))
         for loop, inner, parent in self.loops:
             for c in loop.find("termList"):
@@ -6323,6 +6327,7 @@ class Composer:
             # and every border terminal gets its own slot - inputs down the left edge, outputs
             # down the right.
             h, w = b - t, r - l
+            lh = inner.sublabel["h"] if inner.sublabel else 0
             for dco, x in ((loop.find("loopIndexDCO"), 11), (loop.find("loopTestDCO"), w - 27)):
                 if dco is None:
                     continue
@@ -6336,7 +6341,7 @@ class Composer:
                     continue
                 out = int(c.find("dco").findtext("objFlags") or 0) & 1
                 tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
-                y = 20 + 24 * slot[out]
+                y = 20 + lh + 24 * slot[out]
                 slot[out] += 1
                 x = w - (tr - tl) if out else 0
                 tb.text = lvheap.fmt_bounds((y, x, y + (tbb - tt), x + (tr - tl)))
@@ -6344,35 +6349,154 @@ class Composer:
                     if tdco is c.find("dco"):
                         # the condition sits right below its tunnel, as LabVIEW draws it
                         cdco.find("termBounds").text = lvheap.fmt_bounds((y + (tbb - tt), x, y + (tbb - tt) + 9, x + (tr - tl)))
+        self.place_sublabels()
+
+    # ---- subdiagram labels -----------------------------------------------------------------
+    # A structure's SUBDIAGRAM LABEL (right-click > Visible Items > Subdiagram Label) is AIXML's
+    # `label=` on the element that holds the subdiagram - a While/For Loop, an In Place Element
+    # Structure or a one-frame Flat Sequence on its <Structure>, a Case or Event frame on its
+    # <CaseFrame>, a Flat Sequence or Disable frame on its <Diagram> - as NI's exporter writes it
+    # and NI's converter reads it (2026-10-12). In the heap it is a `label` (partID 8024) LAST in
+    # that diagram's zPlaneList, at the content rectangle's top-left and as wide as it: pale
+    # yellow, and on a While Loop grey with white bold text, as LabVIEW draws both (NI's examples
+    # and LabVIEW's own Visible Items alike). LabVIEW wraps the text inside that width and does
+    # not grow the box, so the composer widens the structure to the longest line (up to
+    # SUBLABEL_MAX_W) and gives the box one line per wrapped line - NI's converter does neither
+    # and clips the text.
+    SUBLABEL_FLAGS, SUBLABEL_PART, SUBLABEL_MODE = "1048914", "8024", "82980"
+    SUBLABEL_MAX_W = 600
+    SUBLABEL_LINE = 16
+    SUBLABEL_TAGS = ("Structure", "CaseFrame", "Diagram")
+
+    def collect_sublabels(self, elements):
+        for el in elements:
+            if el.get("label") is None or el.tag not in self.SUBLABEL_TAGS:
+                continue
+            d = self.diagrams.get(el.get("uid"))
+            if d is None:
+                raise Unsupported("label= on %s %s: a subdiagram label belongs to a subdiagram - write it "
+                                  "on each <CaseFrame> of a Case or Event Structure and on each <Diagram> "
+                                  "of a Flat Sequence or Disable Structure" % (el.tag, el.get("uid")))
+            grey = el.tag == "Structure" and el.get("_name") == "While Loop"
+            # a frame of a structure with a SELECTOR on its top border keeps its text below it:
+            # LabVIEW makes the box taller and scrolls the text down by `view` - 8 px under a
+            # Case or Disable selector, 10 under an Event Structure's (its own labels, 2026-10-12)
+            owner = self._by_uid.get(el.get("uid_parent"))
+            offset = 0
+            if el.tag == "CaseFrame":
+                offset = 10 if owner is not None and owner.get("_name") == "Event Structure" else 8
+            elif el.tag == "Diagram" and owner is not None and owner.tag == "Node":
+                offset = 8
+            d.sublabel = {"text": unescape(el.get("label")).replace("\r\n", "\n").replace("\r", "\n"),
+                          "grey": grey, "h": 0, "offset": offset}
+
+    def _sublabel_box(self, d):
+        """(height, width) a diagram's subdiagram label needs, (0, 0) without one. A line wider than
+        SUBLABEL_MAX_W counts as the lines LabVIEW wraps it into."""
+        sl = d.sublabel
+        if sl is None:
+            return 0, 0
+        scale = 1.15 if sl["grey"] else 1.0      # the While Loop's label is bold
+        widths = [text_width(line) * scale + 10 for line in sl["text"].split("\n")]
+        n = sum(max(1, -(-int(w) // self.SUBLABEL_MAX_W)) for w in widths)
+        sl["h"] = self.SUBLABEL_LINE * n + 1 + sl["offset"]
+        return sl["h"], int(min(max(widths), self.SUBLABEL_MAX_W))
+
+    def _ftab_fontid(self, name, style):
+        """The fontid of FTAB's font `name` ("0" application, "2" dialog) in `style` (Prop4: 32768
+        plain, 1000 bold): a fontRun counts from the first named font, past the section's Prop3
+        leading entries - LabVIEW rewrites the table on save and every fontid with it."""
+        sec = self.main.find("FTAB/Section")
+        fonts = [f for f in sec if f.tag == "Font"]
+        lead = int(sec.get("Prop3") or 0)
+        for i, f in enumerate(fonts):
+            if i >= lead and f.findtext("Name") == name and f.get("Prop4") == style:
+                return i - lead
+        plain = next(f for f in fonts[lead:] if f.get("Prop4") == "32768")
+        new = copy.deepcopy(plain)
+        new.find("Name").text = name
+        if style == "1000":
+            new.set("Prop4", "1000")
+            new.set("Prop7", "216")
+            new.set("Prop8", "207")
+        sec.append(new)
+        return len(fonts) - lead
+
+    def place_sublabels(self):
+        """Write each subdiagram label once every structure has its final bounds and contRect."""
+        owners = [(inner, loop, loop) for loop, inner, _ in self.loops]
+        owners += [(fd, case, case) for case, fds, _ in getattr(self, "cases", []) for fd in fds]
+        owners += [(ip["diag"], ip["node"], ip["node"]) for ip in getattr(self, "inplaces", [])]
+        owners += [(fd, fr, fr) for _, frames, _ in getattr(self, "seqs", []) for fr, fd, _ in frames]
+        for d, b_el, c_el in owners:
+            sl = d.sublabel
+            if sl is None or c_el.find("contRect") is None:
+                continue
+            bt, bl, _, _ = lvheap.parse_bounds(b_el.find("bounds").text)
+            ct, cl, _, cr = lvheap.parse_bounds(c_el.find("contRect").text)
+            lab = ET.Element("SL__arrayElement", {"class": "label", "uid": str(self.alloc())})
+            ET.SubElement(lab, "objFlags").text = self.SUBLABEL_FLAGS
+            ET.SubElement(lab, "partID").text = self.SUBLABEL_PART
+            ET.SubElement(lab, "howGrow").text = "4096"
+            ET.SubElement(lab, "bounds").text = lvheap.fmt_bounds((ct - bt, cl - bl, ct - bt + sl["h"], cr - bl))
+            img = ET.SubElement(lab, "image", {"class": "Image"})
+            ET.SubElement(img, "ImageResID").text = "-619"
+            if sl["grey"]:
+                ET.SubElement(lab, "fgColor").text = "007F7F7F"
+            ET.SubElement(lab, "bgColor").text = "007F7F7F" if sl["grey"] else self.LABEL_COLOUR
+            rec = ET.SubElement(lab, "textRec", {"class": "textHair"})
+            ET.SubElement(rec, "mode").text = self.SUBLABEL_MODE
+            ET.SubElement(rec, "text").text = '"%s"' % sl["text"]     # pylabview escapes nothing
+            if sl["offset"]:
+                ET.SubElement(rec, "view").text = "(%d, 0, 0, 0)" % sl["offset"]
+            ET.SubElement(rec, "bgColor").text = "01000000"
+            fr = ET.SubElement(rec, "fr", {"elements": "1"})
+            run = ET.SubElement(fr, "SL__arrayElement", {"class": "fontRun"})
+            if sl["grey"]:
+                ET.SubElement(run, "fontid").text = str(self._ftab_fontid("0", "1000"))
+                ET.SubElement(run, "fontcolor").text = "00FFFFFF"
+            else:
+                ET.SubElement(run, "fontid").text = str(self._ftab_fontid("2", "32768"))
+            d.z.append(lab)                      # LabVIEW keeps it LAST in the z list
+            d.z.set("elements", str(len(d.z)))
 
     def _size_structures(self, lv, sizes, frame_dims):
         """One round of sizing every structure around its placed contents (layout())."""
+        # A SUBDIAGRAM LABEL takes the top of its diagram (lh px) and widens its structure to its
+        # text (lw px): the contents and the border terminals start below it.
         for loop, inner, parent in reversed(self.loops):
-            w, h = self._place(inner, lv, sizes, 30, 40)
+            lh, lw = self._sublabel_box(inner)
+            w, h = self._place(inner, lv, sizes, 30 + lh, 40)
             side = {0: 0, 1: 0}
             for c in loop.find("termList"):
                 side[int(c.find("dco").findtext("objFlags") or 0) & 1] += 1
-            border = 20 + 24 * max(side.values()) + 40     # room for the stacked terminals
-            sizes[loop.get("uid")] = (max(h + 40, border, 120), max(w + 40, 200))
+            border = 20 + lh + 24 * max(side.values()) + 40     # room for the stacked terminals
+            sizes[loop.get("uid")] = (max(h + 40, border, 120), max(w + 40, 200, lw + 12))
         for case, frame_diags, parent in reversed(getattr(self, "cases", [])):
-            dims = [self._place(fd, lv, sizes, 30, 30) for fd in frame_diags]
+            boxes = [self._sublabel_box(fd) for fd in frame_diags]
+            lh, lw = max(b[0] for b in boxes), max(b[1] for b in boxes)
+            self.case_label_h = getattr(self, "case_label_h", {})
+            self.case_label_h[case.get("uid")] = lh
+            dims = [self._place(fd, lv, sizes, 30 + lh, 30) for fd in frame_diags]
             w = max(x for x, _ in dims)
             h = max(y for _, y in dims)
             n = max(1, len(case.find("tunnelList")))
             # room for every tunnel slot plus the selector terminal below them
-            sizes[case.get("uid")] = (max(h + 40, 30 + 24 * (n + 1) + 30, 120), max(w + 40, 200))
+            sizes[case.get("uid")] = (max(h + 40, 30 + lh + 24 * (n + 1) + 30, 120), max(w + 40, 200, lw + 12))
         for ip in reversed(getattr(self, "inplaces", [])):
-            w, h = self._place(ip["diag"], lv, sizes, 30, 30)
+            lh, lw = self._sublabel_box(ip["diag"])
+            w, h = self._place(ip["diag"], lv, sizes, 30 + lh, 30)
             n_t = {d_: sum(1 for _, x in ip.get("tunnels", []) if x == d_) for d_ in ("in", "out")}
             n = max(1, len(ip["pairs"]) + max(n_t.values()))
-            sizes[ip["node"].get("uid")] = (max(h + 40, 23 + 24 * n + 20, 90), max(w + 40, 100))
+            sizes[ip["node"].get("uid")] = (max(h + 40, 23 + lh + 24 * n + 20, 90), max(w + 40, 100, lw + 8))
         for seq, frames, parent in reversed(getattr(self, "seqs", [])):
             dims = []
             for fr, fd, _ in frames:
-                w, h = self._place(fd, lv, sizes, 30, 30)
+                lh, lw = self._sublabel_box(fd)
+                w, h = self._place(fd, lv, sizes, 30 + lh, 30)
                 n_in = sum(1 for t in fr.find("termList") if not int(t.find("dco").findtext("objFlags") or 0) & 1)
                 n_out = len(fr.find("termList")) - n_in
-                dims.append((max(h + 40, 30 + 24 * max(n_in, n_out, 1) + 20, 90), max(w + 40, 112)))
+                dims.append((max(h + 40, 30 + lh + 24 * max(n_in, n_out, 1) + 20, 90), max(w + 40, 112, lw + 12)))
             H = max(d[0] for d in dims)
             W = sum(d[1] for d in dims) - 5 * (len(dims) - 1)   # neighbours share 5 px of border
             sizes[seq.get("uid")] = (H, W)
@@ -6551,6 +6675,7 @@ class Composer:
                 self.add_loop(el)
         for el in [e for e in elements if e.tag == "Node" and unescape(e.get("_name") or "") in self.DISABLES]:
             self.add_disable(el)
+        self.collect_sublabels(elements)
 
         def seq_frame(uid):
             """The flat-sequence frame a tunnel sits on: a <Diagram> of one, or the structure."""

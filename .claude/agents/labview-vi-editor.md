@@ -821,6 +821,14 @@ regeneration you are making anyway.
 
 ## Diagram comments, event data, and sharing one LabVIEW - standing rules
 
+**SUBDIAGRAM LABELS SURVIVE AN EDIT - keep them in the AIXML.** A structure's Subdiagram Label is
+`label="…"` on its `<Structure>` (While, For, In Place), `<CaseFrame>` (Case, Event) or `<Diagram>`
+(Flat Sequence, Disable frame); the export carries it and both backends write it back, so do not
+strip it from the exported AIXML. A comment about one loop or one frame you ADD goes there too -
+it is drawn across the top of exactly that structure, with no placement step. On `grpc` NI's
+converter clips a label wider than its structure; the pylabview composer widens the structure.
+`lvai_aixml_reference` §7, "Subdiagram labels".
+
 **KEEP A DIAGRAM COMMENT UNDER ABOUT 45 CHARACTERS.** A `<FreeLabel>` box does not auto-grow, and
 LabVIEW sizes it from the space it happens to find rather than from your text, so a long caption is
 cut off MID-SENTENCE in silence. Measured 2026-09-16: a 79-character comment landed in a five-line

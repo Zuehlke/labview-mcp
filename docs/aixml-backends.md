@@ -437,6 +437,13 @@ out - fields stacked with their labels hidden, the pane's frame parts, `docBound
 computed from its size - where it used to be drawn as an empty frame; nested clusters and array
 fields included, and its wire attaches exactly. FINDINGS, "Constants as LabVIEW draws them".
 
+**A structure's SUBDIAGRAM LABEL composes since the same day** - `label=` on the `<Structure>`,
+`<CaseFrame>` or `<Diagram>` that holds the subdiagram, as NI's exporter writes it and NI's
+converter reads it, and vi2aixml writes it back. The composer was ignoring it. Where NI's
+converter keeps the structure at its own size and clips a longer label, the composer widens
+the structure to the text and wraps beyond 600 px. FINDINGS, "Subdiagram labels";
+`docs/aixml-reference.md` §7.
+
 **And to 12 with LabVIEW's own hotpoint offsets.** A DCO may carry `<termHotPoint>(dx, dy)`
 (shift registers, the Feedback Node, some array nodes); with it in the base rule the offsets learned
 for those kinds all came out zero. An In Place structure's element pair is one node straddling the

@@ -57,6 +57,9 @@ VI with three labels of 12–20 characters, and moving the prose into the `VI de
 So: keep diagram comments to a few words, and put explanations in `description`.
 Verify by exporting the rendered diagram — see `--diagram` in the README.
 
+**A comment about a LOOP or a FRAME has a place that needs no coordinates: its subdiagram label**,
+`label=` on the `<Structure>`, `<CaseFrame>` or `<Diagram>` - §7, "Subdiagram labels".
+
 **An XML comment is not a place to put anything — it breaks validation.** `<!-- … -->` anywhere
 inside the document makes `ValidateAIXML` answer
 
@@ -702,6 +705,45 @@ escapes overlap AIXML's.
 nothing naming the comment. Notes belong in the `description` attribute.
 
 ## 7. Structures
+
+### Subdiagram labels - `label=`, a comment that lands exactly where it belongs
+
+A structure's **subdiagram label** (right-click > Visible Items > Subdiagram Label) is the
+`label` attribute of the element that HOLDS the subdiagram - measured 2026-10-12 against NI's
+exporter, NI's converter and LabVIEW's own Visible Items, and present 805 times in the cached NI
+exports:
+
+| subdiagram | element that carries `label=` |
+|---|---|
+| a loop (While, For, Timed) or an In Place Element Structure | its `<Structure>` |
+| a one-frame Flat Sequence | its `<Structure _name="Flat Sequence Frame">` |
+| each frame of a Flat Sequence, Diagram Disable or Conditional Disable | its `<Diagram>` |
+| each frame of a Case or Event Structure | its `<CaseFrame>` |
+
+```xml
+<Structure _name="While Loop" count="" label="Poll the instrument until Stop" uid="85" uid_parent="root">
+<CaseFrame label="No error\2C so log the reading" selector="False" selectout="" uid="90" uid_parent="88">
+```
+
+It is escaped like `description` (`\2C`, `\3A`, `\0A` for a line break); `label=""` is a visible
+EMPTY label, and no attribute means no label. On a `<Structure>` of a Case or Event Structure it
+means nothing - the composer refuses it there and names the `<CaseFrame>` instead.
+
+**This is the comment that needs no placement.** A `<FreeLabel>` lands wherever LabVIEW puts it
+(§1, "Practical consequence for comments"); a subdiagram label is drawn across the top of ITS
+loop or frame, every time, on both backends. So a comment ABOUT a loop or a case frame - what one
+iteration does, why this frame exists - belongs here, and a `FreeLabel` keeps the statements
+about the diagram as a whole.
+
+The two backends differ in one way that matters. LabVIEW draws the label as wide as the
+structure's content and wraps the text inside it without growing the box, so NI's converter -
+which keeps the structure at its own size - CLIPS a label longer than the structure is wide
+(`forLoop frame 0 note` came out as `forLoop frame 0`). The pylabview composer widens the
+structure to the longest line (up to 600 px) and makes the box as tall as the wrapped text. On
+`grpc`, keep a label shorter than the structure.
+
+LabVIEW draws a While Loop's label grey with white bold text and every other one pale yellow;
+on a frame under a selector (Case, Disable, Event) the text sits below the selector.
 
 ### While Loop
 

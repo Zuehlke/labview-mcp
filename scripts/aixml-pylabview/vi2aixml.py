@@ -484,6 +484,27 @@ INT_MIN, INT_MAX = -2 ** 31, 2 ** 31 - 1
 IGNORED, MISSING = object(), object()     # term_owner sentinels: an end AIXML has no terminal for
 
 
+def sublabel_text(diag):
+    """A subdiagram's LABEL (Visible Items > Subdiagram Label): a `label` of partID 8024 in the
+    diagram's own zPlaneList. None when the diagram shows none - NI writes `label=""` only for a
+    label that is visible and empty."""
+    z = diag.find("zPlaneList") if diag is not None else None
+    for o in (z if z is not None else []):
+        if o.get("class") == "label" and o.findtext("partID") == "8024":
+            t = o.findtext("textRec/text")
+            if t and len(t) > 1 and t.startswith('"') and t.endswith('"'):
+                t = t[1:-1]
+            return "" if t in (None, "[NULL]") else t.replace("&#x00;", "")
+    return None
+
+
+def set_sublabel(el, diag):
+    """`label=` as NI's exporter writes it: , : \\ and control characters as \\XX."""
+    t = sublabel_text(diag)
+    if t is not None:
+        el.set("label", "".join("\\%02X" % ord(c) if c in ",:\\" or ord(c) < 0x20 else c for c in t))
+
+
 def unquote(t):
     if t and t.startswith('"') and t.endswith('"'):
         return t[1:-1].replace('\\"', '"').replace("\\\\", "\\")
@@ -1103,6 +1124,7 @@ class Reader:
             el.set("maxin", "")
             el.set("maxout", "")
         inner = node.find("diagramList/SL__arrayElement")
+        set_sublabel(el, inner)
         srn = next((n for n in self.node_defs(inner) if n.get("class") == "sRN"), None) if inner is not None else None
         inner_terms = {}
         for t in (srn.find("termList") if srn is not None else []):
@@ -1294,6 +1316,7 @@ class Reader:
             if not event:
                 attrs["selectout"] = ""
             frame_els.append(ET.Element("CaseFrame", attrs))
+            set_sublabel(frame_els[-1], fr)
         n_in = n_out = 0
         outer_tunnels = []
         rank = self._tunnel_ranks(node, "selTun")
@@ -1429,6 +1452,7 @@ class Reader:
             else:
                 d_el = ET.SubElement(el, "Diagram", {"uid": diag.get("uid"), "uid_parent": node.get("uid")})
                 owner = diag.get("uid")
+            set_sublabel(d_el, diag)
             srn = next((n for n in self.node_defs(diag) if n.get("class") == "sRN"), None)
             inner = {}
             for t in (srn.find("termList") if srn is not None else []):
@@ -1468,6 +1492,7 @@ class Reader:
         el = ET.Element("Structure", {"_name": "In Place Element Structure", "uid": node.get("uid"),
                                       "uid_parent": parent_uid})
         diag = node.find("diagramList/SL__arrayElement")
+        set_sublabel(el, diag)
         outer = {}
         for t in (node.find("termList") if node.find("termList") is not None else []):
             d = t.find("dco")
@@ -1552,6 +1577,7 @@ class Reader:
             else:
                 sel = " %s " % (conds[i] if i < len(conds) else "Default")
             d_els.append(ET.SubElement(el, "Diagram", {"selector": sel, "uid": fr.get("uid"), "uid_parent": node.get("uid")}))
+            set_sublabel(d_els[-1], fr)
         frame_terms = []
         for fr in frames:
             srn = next((n for n in self.node_defs(fr) if n.get("class") == "sRN"), None)

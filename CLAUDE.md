@@ -753,6 +753,15 @@ manufactures confident, wrong documentation. **Fewer and shorter wins twice**: t
 to one comment per diagram was both the fastest (570 s against 776 s) and the one that placed most
 cleanly, because a small box has more positions clear of its neighbours.
 
+**A COMMENT ABOUT A LOOP OR A FRAME GOES INTO ITS SUBDIAGRAM LABEL, which needs no placement -
+the user's request of 2026-10-12.** `label="…"` on the `<Structure>` (While, For, In Place), the
+`<CaseFrame>` (Case, Event) or the `<Diagram>` (Flat Sequence, Disable) is the structure's
+Subdiagram Label, drawn across the top of exactly that loop or frame - NI's exporter writes it,
+NI's converter and the composer both read it, 805 of them in the cached NI exports. NI's
+converter keeps the structure at its own size and CLIPS a label wider than it; the composer
+widens the structure and wraps. So a node-free statement about the diagram stays a `<FreeLabel>`,
+and what one iteration or one case does goes into `label=`. `docs/aixml-reference.md` §7.
+
 **A diagram comment authored in AIXML lands somewhere the generator chooses, not on the node you
 meant.** AIXML has no coordinate attribute at all, so `<FreeLabel>` can only be *created* there.
 Measured 2026-08-24 on `DaqReadAndTDMS2.vi`: six comments came out at six plausible node positions

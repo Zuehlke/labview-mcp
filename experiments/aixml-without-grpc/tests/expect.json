@@ -1741,5 +1741,28 @@
     }
    }
   ]
+ },
+ "t159_subdiagram_labels": {
+  "cases": [
+   {
+    "inputs": "x=2.5;choose=true;y=7",
+    "outputs": {
+     "x out": 4.5,
+     "y out": 14,
+     "seq": 1
+    }
+   },
+   {
+    "inputs": "x=2.5;choose=false;y=-3",
+    "outputs": {
+     "x out": 3.5,
+     "y out": -6,
+     "seq": 1
+    }
+   }
+  ]
+ },
+ "t160_event_labels": {
+  "cases": []
  }
 }

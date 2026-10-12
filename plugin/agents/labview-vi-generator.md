@@ -519,6 +519,16 @@ true wherever it lands — `One iteration per element of Values; the indexing tu
 Clamped` — and never as a label for one node, like `Scale by 9/5`, which is wrong the moment it
 drifts to the `Add`.
 
+**A comment about ONE LOOP or ONE FRAME needs no placement at all: write it as that structure's
+SUBDIAGRAM LABEL** (the user's request of 2026-10-12) - `label="…"` on the `<Structure>` (While,
+For, In Place), on each `<CaseFrame>` (Case, Event) or on each `<Diagram>` (Flat Sequence,
+Disable frame). LabVIEW draws it across the top of exactly that loop or frame on both backends,
+so `Poll until Stop or an error` on the While Loop and `No error: log the reading` on a case frame
+are documentation that cannot drift. Escape it like `description` (`\2C`, `\3A`). On `grpc` NI's
+converter CLIPS a label wider than its structure - keep it short there; the pylabview composer
+widens the structure instead. The mandatory `<FreeLabel>` above stays.
+`lvai_aixml_reference` §7, "Subdiagram labels".
+
 ### THE DEFAULT PATH ENDS HERE. Do not touch pylabview at all.
 
 **Write the comment into the AIXML, generate, and move on.** No `pylv_apply`, not even its
