@@ -724,6 +724,12 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     // VI read eBad. Plain XML, no LabVIEW.
                     var listed = IsAlreadyMember(classPath, viPath);
                     evidence["listedInClassFile"] = listed;
+                    // REPORTED, not gated: measured source-only on both backends (2026-10-12) - the
+                    // composed or converted VI goes through pylv_apply's strip and LabVIEW's own
+                    // save keeps it so - but the rule is that it is read, not assumed.
+                    var blocks = ClassTools.CompiledBlocks(viPath);
+                    evidence["sourceOnly"] = blocks.Count == 0;
+                    evidence["compiledBlocks"] = new JsonArray([.. blocks.Select(b => (JsonNode)b!)]);
                     verified = listed
                                && evidence["classTypedTerminals"]?.GetValue<int>()
                                == method.ClassTerminals.Count
@@ -753,6 +759,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     ["terminalsRetyped"] = retyped,
                     ["dynamicDispatchTerminals"] = new JsonArray([.. (indices ?? []).Select(i => (JsonNode)i)]),
                     ["verifiedOnDisk"] = verify,
+                    ["sourceOnly"] = ClassTools.CompiledBlocks(viPath).Count == 0,
                     ["memberAlreadyExisted"] = alreadyMember,
                     ["steps"] = steps,
                 });
