@@ -15,7 +15,7 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
 | AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
-| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **374 of 747** - elements 97.7 %, attributes 95.5 %, values 96.4 %, wires 93.0 % - on 2026-10-12, 23 stale cache entries also left out with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
+| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **392 of 747** - elements 97.7 %, attributes 95.5 %, values 96.4 %, wires 93.5 % - on 2026-10-12, 23 stale cache entries also left out with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
 | both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped); **129 of 130** on 2026-10-12, none skipped - every test but t136 (desktop focus) goes VI -> AIXML -> VI and computes what it did |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
@@ -2169,6 +2169,14 @@ loop tunnel (TunnelType 02, no inner DCO) was read as indexing and broke t117; `
 did not pass a test's `search` folders (t128's class fixture) nor compose its callees (t50, t57,
 t151, t153 were skipped) - both done as `selftest.py` does them. Left is t136, which needs the
 desktop's focus in the plain suite too. Over the 747: **374 identical**.
+
+**A user-defined refnum's property node names its reference terminals after the TYPE's label**
+- a DAQmx node's `task out` in and out, a System Configuration node's `System Hardware` / `System
+Hardware out` - where every LabVIEW-object node says `reference` / `reference out`. Taking the
+label for ALL nodes broke t91's round trip at once: a LabVIEW refnum's label is its SOURCE's, and
+an invoke node's input read `reference out`. So only `UsrDefndTag` / `UsrDefined` refnums, and only
+the reference terminals. Over the 747: **392 identical** (374), wires 93.5 %; the round trip
+still 129 of 130.
 
 `compare_full.py` also drops a STALE cache entry now: the cache key carries the VI's write time
 in .NET ticks, and 23 entries were being compared with old exports of VIs written since - among

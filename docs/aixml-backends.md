@@ -24,7 +24,7 @@ The composer's reach is measured in `experiments/aixml-without-grpc/FINDINGS.md`
 only): 88 composition tests load and run; 252 of NI's 792 exports compose and 216 of those are
 executable, with no LabVIEW crash; the reader matches NI's own export in every fact for 143 of 768
 VIs (2026-10-11, after it learned dynamic-dispatch calls; 109 of the same 768 before) - and for
-**374 of 747** a night later (wires 93.0 %), after it learned what NI's exporter does with tunnel
+**392 of 747** a night later (wires 93.5 %), after it learned what NI's exporter does with tunnel
 order, property names and node classes (both learned off NI's exports by code), Express and
 malleable calls, error cases, flat sequence frames, and a call's terminal names read off the
 CALLEE's panel; 40 locked VIs and 23 stale cache entries are left out of that count. **Both

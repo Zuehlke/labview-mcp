@@ -1753,6 +1753,20 @@ class Reader:
             cls._LEARNED_CLASSES = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
         return cls._LEARNED_CLASSES
 
+    def _hgrow_name(self, term, default):
+        """A property or invoke node's fixed terminal by its role (`reference`, `error out`) - but
+        a USER-DEFINED refnum's reference terminals by their type's label, as NI's export names
+        them: a DAQmx node's `task out` in and out, a System Configuration node's `System
+        Hardware` / `System Hardware out`. Not a LabVIEW object refnum's: its label is the
+        SOURCE's (`reference out` on an invoke node's input), and NI writes `reference` there -
+        taking it broke t91's round trip."""
+        if not default.startswith("reference"):
+            return default
+        tree = self.tid_tree(term)
+        if tree is not None and tree.get("RefType") in ("UsrDefndTag", "UsrDefined") and tree.get("Label"):
+            return tree.get("Label")
+        return default
+
     def _vi_server_class(self, node):
         """The class NI's export writes on a property or invoke node, read off its reference
         input's refnum - each rule taken from NI's exports by learn_node_classes.py: a user-
@@ -1838,7 +1852,7 @@ class Reader:
             if d.get("class") == "hGrowCItem":
                 role = self.HGROW.get(int(d.findtext("objFlags") or 0))
                 if role:
-                    self.term_owner[t.get("uid")] = (el, role[0], role[1])
+                    self.term_owner[t.get("uid")] = (el, self._hgrow_name(t, role[0]), role[1])
             elif d.get("class") == "propItem":
                 infos = d.findall("propList/SL__arrayElement")
                 name = ".".join(unquote(i.findtext("PropItemName") or "") for i in infos)
@@ -1904,7 +1918,7 @@ class Reader:
             if d.get("class") == "hGrowCItem":
                 role = self.HGROW.get(int(d.findtext("objFlags") or 0))
                 if role:
-                    self.term_owner[t.get("uid")] = (el, role[0], role[1])
+                    self.term_owner[t.get("uid")] = (el, self._hgrow_name(t, role[0]), role[1])
             elif d.get("class") == "invokeItem":
                 tree = self.tid_tree(t)
                 if tree is None or tree.get("Type") == "Void":
