@@ -1,4 +1,4 @@
-class	property	access
+class	property	access	source
 {LV.AbsTimeConstant}	Auto-Update From Typedef	read
 {LV.AbsTimeConstant}	Bounds	read
 {LV.AbsTimeConstant}	Bounds:Area Height	read
@@ -245,6 +245,7 @@ class	property	access
 {LV.Application}	Web Server:Server Active	read
 {LV.Application}	Web Server:TCP/IP Access List	read
 {LV.Application}	Web Server:VI Access List	read
+{LV.Application}	Project:Active Project	read	helper scripts/lvai_active_project.xml (+46 more)
 {LV.ArrayConstant}	Auto-Update From Typedef	read
 {LV.ArrayConstant}	Bounds	read
 {LV.ArrayConstant}	Bounds:Area Height	read
@@ -3228,6 +3229,10 @@ class	property	access
 {LV.Knob}	Value (Signaling)	write
 {LV.Knob}	Visible	read
 {LV.Knob}	Wizard Data	read
+{LV.LVClassLibrary}	Description	read	field run 2026-10-11/12 on 15 classes; helper scripts/lvai_set_class_description.xml
+{LV.LVClassLibrary}	Description	write	field run 2026-10-11/12 on 15 classes; helper scripts/lvai_set_class_description.xml
+{LV.LVClassLibrary}	Path	read	helper scripts/lvai_create_accessors.xml
+{LV.LVClassLibrary}	Private Data Control	read	helper scripts/lvpdc_export.xml (+3 more)
 {LV.LVVariant}	Auto-Update From Typedef	read
 {LV.LVVariant}	Bit Accurate Data Size	read
 {LV.LVVariant}	Blinking	read
@@ -3302,6 +3307,15 @@ class	property	access
 {LV.LeftShiftRegister}	Right Shift Register	read
 {LV.LeftShiftRegister}	Selected	read
 {LV.LeftShiftRegister}	Total Bounds Rect	read
+{LV.Library}	Description	read	UNMEASURED - helper scripts/lvai_set_library_description.xml; lvserver.rsc ActiveX type library lists the property (propget)
+{LV.Library}	Description	write	UNMEASURED - helper scripts/lvai_set_library_description.xml; lvserver.rsc ActiveX type library lists the property (propget)
+{LV.Library}	Help:Document Path	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.Library}	Help:Document Tag	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.Library}	Localized Name	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.Library}	Modifications Bit Set	read	field run 2026-10-11/12 on 15 classes; helper scripts/lvai_move_to_folder_class.xml (+3 more)
+{LV.Library}	Path	read	helper scripts/lvai_create_actor_library.xml
+{LV.Library}	Qualified Name	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.Library}	Version	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
 {LV.ListBox}	Auto-Update From Typedef	read
 {LV.ListBox}	Bit Accurate Data Size	read
 {LV.ListBox}	Blinking	read
@@ -4357,6 +4371,31 @@ class	property	access
 {LV.Probe}	Owning VI	read
 {LV.Probe}	Probe VI	read
 {LV.Probe}	Wire	read
+{LV.ProjectItem}	Contains Conflicts?	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Display Name	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Icon	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	In Conflict?	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Item ID	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Library Item Type:String	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Library Item:Type	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Name	read	helper scripts/lvai_add_one_to_library.xml (+2 more)
+{LV.ProjectItem}	Owned Items[]	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Owner	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Path	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Project	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Target	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Type GUID	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	Type String	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	VI Reference	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.ProjectItem}	VI Reference No Load	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.Project}	Application	read	helper scripts/lvai_add_class_field.xml (+41 more)
+{LV.Project}	Description	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.Project}	Files View Root	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.Project}	My Computer	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.Project}	Name	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.Project}	Path	read	helper scripts/lvai_active_project.xml
+{LV.Project}	Root	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
+{LV.Project}	Targets	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
 {LV.PropertyItem}	Bounds	read
 {LV.PropertyItem}	Bounds:Area Height	read
 {LV.PropertyItem}	Bounds:Area Width	read

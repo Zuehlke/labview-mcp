@@ -1,4 +1,4 @@
-class	method	parameters	returns
+class	method	parameters	returns	source
 {LV.AbsTimeConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
 {LV.AbsTimeConstant}	Delete		
 {LV.AbsTimeConstant}	Discon Typedef		Discon Typedef
@@ -128,6 +128,8 @@ class	method	parameters	returns
 {LV.Application}	SwitchExecTarget		
 {LV.Application}	UI.Hilight Pal Menu Item	func name; Position	Hilite Pal Menu Item
 {LV.Application}	Write Linker Info from File	files to change; new paths; old names	
+{LV.Application}	LVClass.Open	Path	LVClass.Open	helper scripts/lvai_add_class_method.xml (+17 more)
+{LV.Application}	Library.Open	Path	Library.Open	helper scripts/lvai_add_one_to_library.xml (+7 more)
 {LV.ArrayConstant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
 {LV.ArrayConstant}	Delete		
 {LV.ArrayConstant}	Discon Typedef		Discon Typedef
@@ -1507,6 +1509,10 @@ class	method	parameters	returns
 {LV.Knob}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
 {LV.Knob}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
 {LV.Knob}	Update Typedef		Update Typedef
+{LV.LVClassLibrary}	AddItemFromMemory	Name		helper scripts/lvai_add_class_method.xml (+1 more)
+{LV.LVClassLibrary}	Get Icon		color; monochrome	helper scripts/lvai_icon_get_class_icon.xml
+{LV.LVClassLibrary}	Save			helper scripts/lvai_add_class_method.xml (+8 more)
+{LV.LVClassLibrary}	Set Icon	color; monochrome		helper scripts/lvai_icon_set_class_icon.xml
 {LV.LVVariant}	AttachDataSocket	url; mode; enabled	
 {LV.LVVariant}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
 {LV.LVVariant}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
@@ -1548,6 +1554,12 @@ class	method	parameters	returns
 {LV.LeftShiftRegister}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
 {LV.LeftShiftRegister}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
 {LV.LeftShiftRegister}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.Library}	AddItem	Name; Path; Type	AddItem	helper scripts/lvai_create_actor_library.xml (+2 more)
+{LV.Library}	ApplyIconToVIs			helper scripts/lvai_icon_apply_and_save_n.xml (+1 more)
+{LV.Library}	Get All Descendents	Type; Exclude Dependencies; ExcludeBuilds; ExcludeTargets	All Descendents	helper scripts/lvai_add_one_to_library.xml (+2 more)
+{LV.Library}	Get Icon		color; monochrome	helper scripts/lvai_icon_get_library_icon.xml
+{LV.Library}	Save	Path		helper scripts/lvai_create_actor_library.xml (+6 more)
+{LV.Library}	Set Icon	color; monochrome		helper scripts/lvai_icon_set_library_icon.xml
 {LV.ListBox}	AttachDataSocket	url; mode; enabled	
 {LV.ListBox}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
 {LV.ListBox}	CpyWizTmpl	TmplPath; WizID; Select	CpyWizTmpl
@@ -2056,6 +2068,10 @@ class	method	parameters	returns
 {LV.Probe}	SetTag	TagName; Value; isPersistent	SetTag; OldValue
 {LV.Probe}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
 {LV.Probe}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
+{LV.ProjectItem}	AddItem	Name; Path; Type	AddItem	helper scripts/lvai_add_one_to_library.xml
+{LV.ProjectItem}	Move	New Parent; Insert After; Query Only		field run 2026-10-11/12 on 15 classes; helper scripts/lvai_move_to_folder_class.xml
+{LV.Project}	Close			helper scripts/lvai_close_active_project.xml
+{LV.Project}	Save			helper scripts/lvai_close_active_project.xml
 {LV.PropertyItem}	CallClassOp	OpName; ContextDataIn	CallClassOp; ContextDataIn
 {LV.PropertyItem}	Delete		
 {LV.PropertyItem}	GetProperty	Index	GetProperty

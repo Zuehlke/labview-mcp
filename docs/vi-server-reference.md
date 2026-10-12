@@ -11,12 +11,12 @@ string **cannot be looked up from outside LabVIEW**: method names are binary IDs
 handful, and `SearchInfoCache` covers palette items rather than VI Server methods. Every method
 had to be discovered by placing the node in a scratch VI and exporting it.
 
-These two files remove that step for 3 078 methods and 6 410 properties across 153 classes:
+These two files remove that step for 3 094 methods and 6 451 properties across 157 classes:
 
 | File | Rows | Columns |
 |---|---|---|
-| [`vi-server-methods.tsv`](vi-server-methods.tsv) | 3 078 | `class`, `method`, `parameters`, `returns` |
-| [`vi-server-properties.tsv`](vi-server-properties.tsv) | 6 410 | `class`, `property`, `access` |
+| [`vi-server-methods.tsv`](vi-server-methods.tsv) | 3 094 | `class`, `method`, `parameters`, `returns`, `source` |
+| [`vi-server-properties.tsv`](vi-server-properties.tsv) | 6 451 | `class`, `property`, `access`, `source` |
 | [`vi-server-classes.tsv`](vi-server-classes.tsv) | 296 | `class`, `parentId` — the class list, authoritative |
 | [`vi-server-aixml-names.tsv`](vi-server-aixml-names.tsv) | 614 | `class`, `kind`, `name`, `files` — the names WORKING AIXML uses, harvested from NI's cached exports and our helpers by `scripts/harvest_aixml_vi_server_names.py` |
 
@@ -28,13 +28,15 @@ catalogue alone accuses working code. Write the property's FULL name: the catalo
 all four files; `aixml-reference.md`, "A wrong PROPERTY name can kill LabVIEW", has the measurement
 and the severities.
 
-**THOSE 153 CLASSES ARE NOT ALL OF THEM, and the third file is why.** Both catalogues were harvested
+**THOSE 157 CLASSES ARE NOT ALL OF THEM, and the third file is why.** Both catalogues were harvested
 by placing nodes and exporting, so they contain what somebody happened to call — nothing more.
 LabVIEW itself will hand over the complete list: `{LV.ClassSpecifierConstant}` carries an
 `All Types[]` property returning every class name with its parent id, read through
 `scripts\lvai_class_names.xml`. Measured 2026-08-26: **296 classes, of which 143 appear in neither
-TSV.** Among the missing are `LVClassLibrary` (a `.lvclass`), `LabVIEWClassControl` (a front-panel
-control whose type is a LabVIEW class), `Library` and `LabVIEWClassConstant`.
+TSV.** Among the missing were `LVClassLibrary` (a `.lvclass`), `LabVIEWClassControl` (a front-panel
+control whose type is a LabVIEW class), `Library` and `LabVIEWClassConstant`. `LVClassLibrary`,
+`Library`, `Project` and `ProjectItem` have rows since 2026-10-12 - not from a harvest, see
+"Rows added without a harvest" below - so 139 of the 296 are in neither TSV now.
 
 So **a class absent from the two TSVs is not absent from LabVIEW** — check `vi-server-classes.tsv`
 first, then probe its members with `ValidateAIXML` against a negative control: an invented class
@@ -160,14 +162,43 @@ boolean indicators named after them (`Down Tee`, `Left Tee`, …) inside a Stack
 decoration element of any kind. The AIXML exporter drops them, so a generated VI cannot carry
 arrows, boxes or separators. `FreeLabel` is the one annotation that does survive.
 
-**The whole PROJECT surface is missing.** Grep both files for `Project`: across 153 classes and
-9 488 entries there is **not one** hit — no `{LV.Project}` class, and no `Project\3AActive Project`
+**The whole PROJECT surface was missing** until 2026-10-12, when the rows in "Rows added without a
+harvest" below went in. Grep both files for `Project` then: across 153 classes and 9 488 entries
+there was **not one** hit — no `{LV.Project}` class, and no `Project\3AActive Project`
 on `{LV.Application}`. Yet both names are real: a hand-built VI using them exported cleanly,
 validated, and ran. So the collector VIs this catalogue was flattened from simply did not include
 the project classes, and the claim above that this is the *only* index for "a property or action of
 a LabVIEW object" has a hole in it exactly where projects are. When a name is missing here, it does
 not follow that it does not exist — **build the node by hand in the IDE and export that VI**, which
 is how these two were recovered. That is also the standing recipe for extending this catalogue.
+
+### Rows added without a harvest - 2026-10-12
+
+**A FULL HARVEST OF THESE CLASSES IS STILL TO BE RUN AGAINST LabVIEW.** The 16 method and 39
+property rows for `{LV.Project}`, `{LV.ProjectItem}`, `{LV.Library}` and `{LV.LVClassLibrary}` - plus
+`LVClass.Open`, `Library.Open` and `Project:Active Project` on `{LV.Application}` - were added by
+READING, with no LabVIEW running, and each row says where it came from in a new last column,
+`source`. The 9 488 harvested rows have no `source` field: an absent one means "the collector
+export" described above. Two sources, never mixed in one row:
+
+| `source` reads | what it means | how far to trust it |
+|---|---|---|
+| `helper scripts/<file>.xml (+N more)` | the node exactly as a helper this repository ships wires it, with every parameter and return name it uses | the spelling generates and runs in that helper; it is not proof of the parameters the helper leaves out |
+| `field run 2026-10-11/12 on 15 classes; helper …` | the same, and the route was measured end to end on 15 classes before it was ported | measured |
+| `UNMEASURED - helper …` | used by a ported helper that no run has executed yet (`{LV.Library}` `Description`) | a candidate |
+| `lvserver.rsc ActiveX type library (propget) …` | a property NAME read out of the ActiveX type library embedded in LabVIEW's `resource\lvserver.rsc` (`interface _IProject`, `_IProjectItem`, `_ILibrary`), with `read` access because that library declares only `propget` | a candidate name: the ActiveX names have matched the AIXML ones wherever both were seen (`Application`, `Name`, `Path`, `Description`), but none of these was validated - and an invented name has crashed the validator, so do not probe blind |
+
+**Methods were NOT taken from the type library**, on purpose: it names them by C identifier
+(`GetAllDescendents`) where an Invoke Node's `target` needs the scripting name (`Get All
+Descendents`) - the display-name-versus-identifier trap this catalogue already records. The
+`lvserver.rsc` string table does carry pairs such as `Get All Descendents` / `Add Item` / `AddItem`
+and, for the project class, `Close`, `Save`, `Save As`, `Save For Previous`, `Save Version`,
+`Is Edit-Only`; they are not assigned to classes there in a form that can be decoded offline, so
+they stay out of the TSV until a harvest settles them.
+
+**To harvest them for real:** the recipe above - a collector VI with one node per method and per
+property of each class, exported with `ConvertVIToAIXML` and flattened - then drop the `source`
+field from every row it confirms. `scripts/lvai_class_names.xml` lists the classes still missing.
 
 ### Probing for a name instead of building the node by hand
 
@@ -814,8 +845,9 @@ application instance is not what releases the VI. **Closing the panel while insi
 is.** And it must be `State` = `Closed` rather than `Open` = `False`, because in the addon's
 instance the panel already reads closed, so that write is the no-op described earlier.
 
-Note `{LV.Project}` and `Project\3AActive Project` appear nowhere in the catalogue — see the fifth
-entry under "things the data will not tell you". Both names came from a hand-built VI.
+Note `{LV.Project}` and `Project\3AActive Project` appeared nowhere in the catalogue until
+2026-10-12 — see the fifth entry under "things the data will not tell you". Both names came from a
+hand-built VI; they have rows now, with a `source` naming the helpers that use them.
 
 ### The older, weaker findings this replaces
 
@@ -1002,8 +1034,8 @@ AIXML rules themselves.
 
 Measured 2026-08-28, while trying to bind a class private data field to a typedef.
 
-**The catalogue does not list `{LV.LVClassLibrary}` at all** — 153 classes, and that is not one of
-them. It is nevertheless a real class with a real `Private Data Control` property, which hands back
+**The catalogue did not list `{LV.LVClassLibrary}` at all** — 153 classes, and that was not one of
+them (it has rows since 2026-10-12, below). It is nevertheless a real class with a real `Private Data Control` property, which hands back
 a VI reference to the control. Same lesson as `{LV.Project}`, which the catalogue also omits while
 `Save` and `Close` work: **a catalogue miss is not evidence that a property does not exist.** Settle
 it with a throwaway `ValidateAIXML`, which accepts a real name and refuses an invented one.

@@ -143,6 +143,48 @@ public class ViServerKnowledgeTests
         Assert.DoesNotContain("METHODS", propertiesOnly);
     }
 
+    /// <summary>
+    /// The project and library classes were absent from the harvest; since 2026-10-12 they have
+    /// rows read off the shipped helpers and lvserver.rsc, each carrying where it came from.
+    /// </summary>
+    [Fact]
+    public void TheProjectAndLibraryClassesAreFindableAndSayWhereTheirRowsCameFrom()
+    {
+        var move = KnowledgeTools.ViServerReference(query: "Move", cls: "LV.ProjectItem", kind: "methods");
+        Assert.Contains("New Parent", move);
+        Assert.Contains("field run", move);
+
+        var description = KnowledgeTools.ViServerReference(query: "Description", cls: "LV.LVClassLibrary");
+        Assert.Contains("{LV.LVClassLibrary}\tDescription\twrite", description);
+
+        var active = KnowledgeTools.ViServerReference(query: "Active Project", cls: "LV.Application");
+        Assert.Contains("Project:Active Project", active);
+    }
+
+    /// <summary>
+    /// A row added without a harvest MUST say so, and only those rows may - an empty source field
+    /// on a hand-added row would read as "the collector export", which it is not.
+    /// </summary>
+    [Fact]
+    public void EveryRowWithASourceBelongsToTheHandAddedClasses()
+    {
+        string[] added = ["{LV.Project}", "{LV.ProjectItem}", "{LV.Library}", "{LV.LVClassLibrary}",
+                          "{LV.Application}"];
+        foreach (var (resource, width) in new[] { ("vi-server-methods.tsv", 5), ("vi-server-properties.tsv", 4) })
+        {
+            var lines = KnowledgeTools.Load(resource).Replace("\r\n", "\n").Split('\n');
+            Assert.EndsWith("\tsource", lines[0]);
+            foreach (var line in lines.Skip(1).Where(l => l.Length > 0))
+            {
+                var fields = line.Split('\t');
+                if (added.Take(4).Contains(fields[0]))
+                    Assert.True(fields.Length == width && fields[^1].Length > 0, $"no source: {line}");
+                if (fields.Length == width)
+                    Assert.Contains(fields[0], added);
+            }
+        }
+    }
+
     [Fact]
     public void TruncationIsReportedRatherThanSilent()
     {
