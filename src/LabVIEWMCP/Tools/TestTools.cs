@@ -1061,6 +1061,7 @@ internal sealed class TestTools(LvaiConnection connection)
             ["step"] = "execState",
             ["execState"] = reading?.State,
             ["linkerErrors"] = reading?.LinkerErrors,
+            ["openError"] = reading is { CouldNotOpen: true } ? $"{reading.Code}: {reading.Source}" : null,
         });
         if (reading is { Broken: true })
         {
@@ -1068,6 +1069,21 @@ internal sealed class TestTools(LvaiConnection connection)
             return (Outcome(false, "execState", steps, total, testViPath, testAixml,
                 "THE TEST VI WAS WRITTEN and LabVIEW cannot run it after the seeds were replaced - " +
                 "read linkerErrors in the execState step.", route: Direct(route)), null);
+        }
+        // A VI LabVIEW CANNOT EVEN OPEN, or one nobody could read, is not a deliverable either:
+        // measured 2026-10-12, a composed test calling six accessors answered `ok: true` with
+        // execState null while LabVIEW refused to open it (`Memory or data structure corrupt`),
+        // because only Broken was gated on.
+        if (reading is null or { CouldNotOpen: true })
+        {
+            await CloseAsync();
+            return (Outcome(false, "execState", steps, total, testViPath, testAixml,
+                reading is null
+                    ? "THE TEST VI WAS WRITTEN and its executability could not be read, so nothing " +
+                      "says it runs. Read it with lvai_exec_state before using it."
+                    : "THE TEST VI WAS WRITTEN and LabVIEW could NOT OPEN it - " + reading.Code + ": " +
+                      reading.Source + ". A file LabVIEW refuses to load is not a test.",
+                route: Direct(route)), null);
         }
 
         if (!keepAixml)

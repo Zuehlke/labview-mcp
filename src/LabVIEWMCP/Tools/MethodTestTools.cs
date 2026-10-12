@@ -930,6 +930,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             ["step"] = "execState",
             ["execState"] = reading?.State,
             ["linkerErrors"] = reading?.LinkerErrors,
+            ["openError"] = reading is { CouldNotOpen: true } ? $"{reading.Code}: {reading.Source}" : null,
         });
         if (reading is { Broken: true })
         {
@@ -938,6 +939,19 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 "THE TEST VI WAS WRITTEN and LabVIEW cannot run it after the seeds were replaced - " +
                 "read linkerErrors in the execState step. A required input of a method that this " +
                 "call did not wire would look exactly like this.", route: Direct(route)), null);
+        }
+        // Unreadable or unopenable is no pass either - the class test answered ok with execState
+        // null over a VI LabVIEW refused to open (2026-10-12), gated on Broken alone.
+        if (reading is null or { CouldNotOpen: true })
+        {
+            await CloseAsync();
+            return (Outcome(false, "execState", steps, total, testViPath, testAixml,
+                reading is null
+                    ? "THE TEST VI WAS WRITTEN and its executability could not be read, so nothing " +
+                      "says it runs. Read it with lvai_exec_state before using it."
+                    : "THE TEST VI WAS WRITTEN and LabVIEW could NOT OPEN it - " + reading.Code + ": " +
+                      reading.Source + ". A file LabVIEW refuses to load is not a test.",
+                route: Direct(route)), null);
         }
 
         if (!keepAixml)
