@@ -1050,10 +1050,10 @@ internal sealed class AixmlTools(LvaiConnection connection)
                  "not cached: the export cache holds NI's converter output, and a reader's output " +
                  "stored there would later be served as NI's")),
              ("readerNote", JsonValue.Create(
-                 "Read by vi2aixml.py, NOT by NI's converter. Measured 2026-10-10 against NI's own " +
-                 "exports of 760 VIs: 133 identical in every fact; elements 92.7 %, constant values " +
-                 "92.0 %, wires 85.6 %, attributes 78.6 %. Treat a difference from an NI export as " +
-                 "the reader's until shown otherwise."))]);
+                 "Read by vi2aixml.py, NOT by NI's converter. Measured 2026-10-12 against NI's own " +
+                 "exports of 747 VIs (locked VIs and stale cache entries left out): 371 identical in " +
+                 "every fact; elements 97.7 %, constant values 96.4 %, wires 92.7 %, attributes " +
+                 "95.1 %. Treat a difference from an NI export as the reader's until shown otherwise."))]);
     }
 
     /// <summary>
