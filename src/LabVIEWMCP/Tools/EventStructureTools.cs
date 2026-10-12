@@ -350,7 +350,17 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                     "because validation was skipped and nothing here type-checks your wiring. " +
                     DataFieldNote(reading, afterWiringWillStillBeBad: false));
 
-            // 8. THE SIZE. This tool builds the main VIs, which are the ones that came out largest:
+            // 8. THE CLEAN-UP, LabVIEW's own, once every pylabview edit is in the file - it is a
+            //    LabVIEW save - and before the size, so the size is the diagram the caller gets.
+            //    Only on an executable VI: one still waiting for lvai_wire_dynamic_events returned
+            //    above, and that tool cleans up when it has finished the frames.
+            var cleaned = await new DiagramCleanup(connection).RunAsync(
+                viPath, AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc, timeoutSeconds, ct);
+            steps.Add(cleaned);
+            var cleanNote = cleaned["ok"]?.GetValue<bool>() == true ? ""
+                : " The block diagram was NOT cleaned up: " + cleaned["note"]?.GetValue<string>();
+
+            // 9. THE SIZE. This tool builds the main VIs, which are the ones that came out largest:
             //    3306, 3456 and 4152 px wide over three agent builds, with this answer silent about
             //    it every time. Measured last, on the finished file - the rebuild is done, so the
             //    render cannot load a copy something is about to write under.
@@ -366,7 +376,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                 DataFieldNote(reading, afterWiringWillStillBeBad: false) +
                 "A diagram comment too long for its box is cut off in silence: call " +
                 "lvai_render_diagrams and look, which is the only check that sees it." +
-                (size["note"]?.GetValue<string>() ?? ""),
+                (size["note"]?.GetValue<string>() ?? "") + cleanNote,
                 size);
         });
 

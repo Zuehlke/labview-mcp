@@ -19,7 +19,17 @@ namespace LabVIEWMcp.Infra;
 /// </summary>
 internal static class HelperCache
 {
+    /// <summary>Smaller than any VI LabVIEW writes - an empty one is about 3 KB.</summary>
+    internal const long SmallestVi = 1024;
+
+    /// <summary>
+    /// AND A FILE TOO SMALL TO BE A VI IS REBUILT. Found 2026-10-12: a unit test's fake service had
+    /// written its 14-byte placeholder `a generated VI` into %TEMP%\LabVIEWMCP\helpers under a new
+    /// helper's name, and by timestamp alone that placeholder was a current helper - production would
+    /// have run it.
+    /// </summary>
     internal static bool NeedsRebuild(string aixmlPath, string helperViPath) =>
         !File.Exists(helperViPath) ||
+        new FileInfo(helperViPath).Length < SmallestVi ||
         File.GetLastWriteTimeUtc(aixmlPath) > File.GetLastWriteTimeUtc(helperViPath);
 }

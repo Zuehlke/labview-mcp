@@ -529,6 +529,14 @@ come back ready to paste. `ok: false` with `failedAtStep: connectorPane` still m
 written** — it is the pane that needs another pass, not the diagram. Measured 2026-08-25: 1.1 s for
 the whole sequence against three round trips. `docs/bulk-operations.md`.
 
+**AND IT RUNS LabVIEW's OWN CLEAN UP DIAGRAM ON EVERY DELIVERABLE, on both backends - the user's
+recommendation of 2026-10-12.** `{LV.VI}` `BD.CleanUp` then `Save.Instrument`, the two calls NI's
+Message Maker makes, through `scripts\lvai_cleanup_diagram.xml`; before `diagramSize`, so the size
+is the diagram the caller gets. `cleanUpDiagram` follows `measureDiagram` when omitted, so helpers
+and carriers skip it; `lvai_generate_vi_with_events` and `lvai_wire_dynamic_events` clean up at
+their successful end. A save that brings compiled code into a source-only VI is stripped again. A
+failed clean-up is reported in the `cleanUpDiagram` step and does not fail the call.
+
 **When any output is not a string, run it with `lvai_run_vi_and_read_values` instead.** That is
 almost every real VI: a boolean, a cluster, an array or a waveform all come back blank from the
 plain call. The tool sets the inputs, runs the target and reads every control and indicator back

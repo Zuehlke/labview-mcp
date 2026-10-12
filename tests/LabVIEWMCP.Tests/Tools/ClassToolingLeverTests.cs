@@ -529,6 +529,7 @@ public sealed class ClassToolingLeverTests
         var helper = Path.GetTempFileName();
         try
         {
+            File.WriteAllBytes(helper, new byte[HelperCache.SmallestVi]);
             File.SetLastWriteTimeUtc(aixml, new DateTime(2026, 9, 7, 12, 0, 0, DateTimeKind.Utc));
             File.SetLastWriteTimeUtc(helper, new DateTime(2026, 9, 7, 13, 0, 0, DateTimeKind.Utc));
             Assert.False(HelperCache.NeedsRebuild(aixml, helper));
@@ -537,6 +538,11 @@ public sealed class ClassToolingLeverTests
             Assert.True(HelperCache.NeedsRebuild(aixml, helper));
 
             File.Delete(helper);
+            Assert.True(HelperCache.NeedsRebuild(aixml, helper));
+
+            // a fake service's placeholder, newer than its source, is still no VI (2026-10-12)
+            File.WriteAllText(helper, "a generated VI");
+            File.SetLastWriteTimeUtc(helper, new DateTime(2026, 9, 7, 15, 0, 0, DateTimeKind.Utc));
             Assert.True(HelperCache.NeedsRebuild(aixml, helper));
         }
         finally

@@ -277,6 +277,19 @@ internal sealed class WireEventTools(LvaiConnection connection)
                 }
             }
 
+            // THE CLEAN-UP, LabVIEW's own, on the finished VI - the end of the route that
+            // lvai_generate_vi_with_events hands over to for user events, so the VI is cleaned up
+            // whichever tool finishes it. After every pylabview rebuild above: it is a LabVIEW save.
+            if (payload["ok"]?.GetValue<bool>() == true)
+            {
+                var cleaned = await new DiagramCleanup(connection).RunAsync(
+                    viPath, AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc, timeoutSeconds, ct);
+                payload["cleanUpDiagram"] = cleaned;
+                if (cleaned["ok"]?.GetValue<bool>() != true)
+                    payload["note"] = JsonValue.Create($"{payload["note"]?.GetValue<string>()} The block " +
+                        "diagram was NOT cleaned up: " + cleaned["note"]?.GetValue<string>());
+            }
+
             if (before is { } b)
                 try { Directory.Delete(b.Directory, recursive: true); } catch (IOException) { }
 

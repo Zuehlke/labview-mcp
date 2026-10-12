@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using LabVIEWMcp.Infra;
 using LabVIEWMcp.Tests.Infra;
 using LabVIEWMcp.Tests.Fakes;
@@ -95,7 +96,7 @@ public class BulkGenerateViTests
 
         // a folder that does not exist yet: a save-time Error 7 here would leave an orphan
         var viPath = Path.Combine(Path.GetDirectoryName(server.TempPath("x"))!, "new", "Out.vi");
-        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender }
+        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp }
             .GenerateViAsync(CallerAixml(server), viPath, measurePane: false);
 
         Assert.True(Res.Bool(result, "ok"));
@@ -232,6 +233,11 @@ public class BulkGenerateViTests
     private static readonly Func<string, int, CancellationToken, Task<((int, int)?, string?)>> NoRender =
         (_, _, _) => Task.FromResult<((int, int)?, string?)>((null, null));
 
+    // The clean-up step builds its own helper through the same fake service when none is cached -
+    // the same order-dependent second convert as the render. Tests that count converts stub it.
+    internal static readonly Func<string, string, int, CancellationToken, Task<JsonObject>> NoCleanUp =
+        (_, _, _, _) => Task.FromResult(new JsonObject { ["step"] = "cleanUpDiagram", ["ok"] = true });
+
     // The three failure shapes of the route, each copied from a real answer on 2026-09-25. They
     // need opposite advice, and the first draft gave the Save-time warning for all of them.
     private const string NotLoaded =
@@ -284,7 +290,7 @@ public class BulkGenerateViTests
         server.Service.ViFileContent = "a generated VI";
         var asked = new List<string>();
 
-        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender }
+        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp }
             .GenerateViAsync(CallerAixml(server), server.TempPath("Out.vi"), measurePane: false);
 
         Assert.True(Res.Bool(result, "ok"));

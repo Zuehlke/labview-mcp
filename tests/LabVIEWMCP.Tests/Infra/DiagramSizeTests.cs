@@ -146,6 +146,7 @@ public sealed class DiagramSizeTests
         var tools = new BulkTools(server.Connection)
         {
             MeasureDiagram = (_, _, _) => Task.FromResult<((int, int)?, string?)>(((4152, 1023), @"C:\x\d.png")),
+            CleanUp = LabVIEWMcp.Tests.Tools.BulkGenerateViTests.NoCleanUp,
         };
 
         var result = await tools.GenerateViAsync(Aixml(server), server.TempPath("Out.vi"), measurePane: false);
@@ -173,6 +174,79 @@ public sealed class DiagramSizeTests
 
         Assert.Equal(0, asked);
         Assert.False(Res.Has(result, "diagramSize"));
+    }
+
+    // ---- LabVIEW's own Clean Up Diagram, the user's recommendation of 2026-10-12
+
+    private static (BulkTools Tools, List<(string Vi, string Backend)> Asked) Cleaning(
+        LvaiTestServer server, bool ok = true)
+    {
+        var asked = new List<(string, string)>();
+        var tools = new BulkTools(server.Connection)
+        {
+            MeasureDiagram = (_, _, _) => Task.FromResult<((int, int)?, string?)>(((900, 400), @"C:\x\d.png")),
+            CleanUp = (vi, backend, _, _) =>
+            {
+                asked.Add((vi, backend));
+                return Task.FromResult(new JsonObject
+                {
+                    ["step"] = "cleanUpDiagram",
+                    ["ok"] = ok,
+                    ["note"] = ok ? "cleaned" : "LabVIEW answered error 1003 to the clean-up",
+                });
+            },
+        };
+        return (tools, asked);
+    }
+
+    [Fact]
+    public async Task A_deliverable_is_cleaned_up_before_its_size_is_measured()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "a generated VI";
+        var (tools, asked) = Cleaning(server);
+        var vi = server.TempPath("Out.vi");
+
+        var result = await tools.GenerateViAsync(Aixml(server), vi, measurePane: false);
+
+        Assert.Equal([(vi, AixmlBackend.Grpc)], asked);
+        var names = Res.Obj(result)["steps"]!.AsArray().Select(s => s!["step"]!.GetValue<string>()).ToList();
+        Assert.True(names.IndexOf("cleanUpDiagram") >= 0 && names.IndexOf("cleanUpDiagram") < names.IndexOf("diagramSize"),
+                    string.Join(", ", names));
+        Assert.True(Res.Bool(result, "ok"));
+    }
+
+    [Fact]
+    public async Task The_clean_up_can_be_turned_off_and_follows_the_measurement_by_default()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "a generated VI";
+        var (tools, asked) = Cleaning(server);
+
+        await tools.GenerateViAsync(Aixml(server), server.TempPath("A.vi"), measurePane: false,
+                                    cleanUpDiagram: false);
+        // a helper or carrier: measureDiagram false and nothing said about the clean-up
+        await tools.GenerateViAsync(Aixml(server), server.TempPath("B.vi"), measurePane: false,
+                                    measureDiagram: false);
+        // the IDE holds its own copy of an opened VI
+        await tools.GenerateViAsync(Aixml(server), server.TempPath("C.vi"), openVI: true,
+                                    measurePane: false);
+
+        Assert.Empty(asked);
+    }
+
+    [Fact]
+    public async Task A_failed_clean_up_does_not_fail_the_generation_and_says_so()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "a generated VI";
+        var (tools, _) = Cleaning(server, ok: false);
+
+        var result = await tools.GenerateViAsync(Aixml(server), server.TempPath("Out.vi"), measurePane: false);
+
+        Assert.True(Res.Bool(result, "ok"));
+        Assert.Contains("NOT cleaned up", Res.Str(result, "note"));
+        Assert.Contains("1003", Res.Str(result, "note"));
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using LabVIEWMcp.Infra;
 using LabVIEWMcp.Lvai;
 using LabVIEWMcp.Tests.Fakes;
 using LabVIEWMcp.Tests.Support;
@@ -54,7 +55,8 @@ public sealed class RunToolsTests : IDisposable
     private static async Task<LvaiTestServer> ServerWith(string? valuesXml = OneBoolean)
     {
         var server = await LvaiTestServer.StartAsync();
-        server.Service.ViFileContent = "generated helper";
+        // as large as a real VI: a cached helper smaller than one is rebuilt (HelperCache.SmallestVi)
+        server.Service.ViFileContent = "generated helper".PadRight((int)HelperCache.SmallestVi);
         if (valuesXml is not null) server.Service.Outputs["values xml"] = valuesXml;
         return server;
     }

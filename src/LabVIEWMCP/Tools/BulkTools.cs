@@ -118,13 +118,24 @@ internal sealed class BulkTools(LvaiConnection connection)
             LabVIEW's ActiveX server (which needs a RUNNING LabVIEW and never starts one), the pane
             is read from the file by pylabview, and panePattern rebuilds without closing a project.
             """)]
-        string? backend = null)
+        string? backend = null,
+        [Description("""
+            Run LabVIEW's own Clean Up Diagram on the written VI and save it in place - {LV.VI}
+            BD.CleanUp then Save.Instrument, the two calls NI's Message Maker makes on every VI it
+            scripts - BEFORE the diagram is measured, so diagramSize is the diagram you get. Omit
+            it to clean up whenever the diagram is measured, which is every deliverable; helpers
+            and carriers skip it. Skipped with openVI, where the IDE holds its own copy. A VI that
+            had no compiled code comes back with none: a LabVIEW save that writes some is stripped
+            again. A failed clean-up does not fail the call - the VI is as generated, and the
+            cleanUpDiagram step says why.
+            """)]
+        bool? cleanUpDiagram = null)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_generate_vi", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
         var answer = AixmlTools.WithBackend(await GenerateViCoreAsync(
             aiXmlFilePath, viPath, openVI, measurePane, panePattern, timeoutSeconds, measureDiagram,
-            choice, ct), choice);
+            choice, cleanUpDiagram ?? measureDiagram, ct), choice);
         return choice.Name == AixmlBackend.PyLabview ? WithUnmeasuredExecutability(answer) : answer;
     }
 
@@ -148,7 +159,8 @@ internal sealed class BulkTools(LvaiConnection connection)
 
     private async Task<string> GenerateViCoreAsync(
         string aiXmlFilePath, string viPath, bool openVI, bool measurePane, int? panePattern,
-        int timeoutSeconds, bool measureDiagram, AixmlBackend.Choice choice, CancellationToken ct) =>
+        int timeoutSeconds, bool measureDiagram, AixmlBackend.Choice choice, bool cleanUp,
+        CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
             var total = Stopwatch.StartNew();
@@ -441,6 +453,21 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "executable. Read the panePattern step.", route);
             }
 
+            // THE CLEAN-UP, after any pane repair - it is a LabVIEW SAVE, and a pylabview rebuild
+            // after it would write under the copy LabVIEW just saved - and before the size, so
+            // diagramSize measures the diagram the caller gets. The user's recommendation of
+            // 2026-10-12, for both backends; a failure leaves the VI as generated and is reported.
+            var cleanNote = "";
+            if (cleanUp && !openVI)
+            {
+                var cleaned = await (CleanUp?.Invoke(viPath, choice.Name, timeoutSeconds, ct)
+                    ?? new DiagramCleanup(connection).RunAsync(viPath, choice.Name, timeoutSeconds, ct));
+                steps.Add(cleaned);
+                if (cleaned["ok"]?.GetValue<bool>() != true)
+                    cleanNote = " The block diagram was NOT cleaned up - the VI is as generated: " +
+                                cleaned["note"]?.GetValue<string>();
+            }
+
             // THE SIZE, after any pane repair (a render loads the VI, and a pylabview rebuild
             // after that would write under LabVIEW's loaded copy) and before the pane measurement.
             JsonObject? size = null;
@@ -450,7 +477,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                                                   overCom: composed);
                 steps.Add(size);
             }
-            var sizeNote = size?["note"]?.GetValue<string>() ?? "";
+            var sizeNote = (size?["note"]?.GetValue<string>() ?? "") + cleanNote;
 
             if (!measurePane)
                 return Outcome(true, null, steps, total, viPath, null,
@@ -521,6 +548,13 @@ internal sealed class BulkTools(LvaiConnection connection)
 
     /// <summary>Test seam for the render behind `diagramSize`; null in production.</summary>
     internal Func<string, int, CancellationToken, Task<((int Width, int Height)? Size, string? Png)>>? MeasureDiagram
+    {
+        get; init;
+    }
+
+    /// <summary>Test seam for the `cleanUpDiagram` step (viPath, backend); null in production, where
+    /// <see cref="DiagramCleanup"/> runs LabVIEW's own Clean Up Diagram.</summary>
+    internal Func<string, string, int, CancellationToken, Task<JsonObject>>? CleanUp
     {
         get; init;
     }
