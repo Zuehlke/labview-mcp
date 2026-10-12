@@ -1870,3 +1870,33 @@ would have left a modified, unsaved class in memory for the next save to write.
 **Verified from the saved owner:** each item's parent element in the re-read XML must be the
 folder, every member listed before the call must still be listed (`membersLost`), and no other file
 under the owner's folder may have changed (`otherFilesChanged`).
+
+### 10c. `lvai_set_vi_descriptions` - VI descriptions without a regeneration
+
+A description edit used to be a full regeneration, which costs `Error 1357`, the whole swap cycle
+and an icon reset for one sentence (CLAUDE.md). `{LV.VI}` `VI Description` plus `Save.Instrument`
+changes the description and nothing else. The route was measured by a field run on 2026-10-12 with
+the project CLOSED: each VI opened by path in the DEFAULT application instance, the whole text
+written, read back, saved, the reference closed - 62 descriptions rewritten over a production tree
+and every one equal to the text asked for when the files were compared afterwards, none mismatched.
+
+**The project must be closed, and the tool checks.** It asks `Project:Active Project` first and
+refuses (`projectActive`, naming the project) when one is active: a VI the project holds lives in the
+project's application instance, and saving a second copy of it from the default instance is not a
+route anyone has measured. When the check itself cannot run, the call goes ahead and says so under
+`projectCheck`.
+
+**One helper run per VI, inside one call.** The field run read a record file of `path TAB text`
+lines, which rules out a line break inside a description. Here each description travels as an
+ordinary control value, and the typed run helper already carries a line break encoded (LF as 0x1E,
+CR as 0x1D) and decodes it - so a multi-line description needs no separator of its own. Line breaks
+are written CRLF, which is how NI's own VIs store them in `STRG`.
+
+**Verified per VI from the saved file.** `STRG` holds the description as a big-endian length plus
+CP1252 bytes (read off NI's examples - `Get Cost.vi`: 41 bytes, length 37); it is read back offline
+and compared with the text, line breaks as LF. The icon PIXELS - the `icl8`, `icl4` and `ICON`
+resources - are hashed before and after, and an entry whose icon changed is not `ok`, because this
+call must never touch one. The CP1252 check refuses the whole batch for one bad entry, so entry 40
+of a batch cannot be refused after 39 VIs were already changed. **New in the port, unmeasured:** a VI
+that already carries unsaved changes (any of the three Modifications bitsets nonzero) is left alone,
+because `Save.Instrument` would write those changes too.
