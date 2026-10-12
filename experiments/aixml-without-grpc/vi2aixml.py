@@ -1187,11 +1187,18 @@ class Reader:
         each frame's seqTun tunnels inside its Diagram with both sides on one element."""
         el = ET.Element("Structure", {"_name": "Flat Sequence Frame", "uid": node.get("uid"), "uid_parent": parent_uid})
         seql = node.find("sequenceList")
-        for fr in (seql if seql is not None else []):
+        frames_ = list(seql) if seql is not None else []
+        for fr in frames_:
             diag = fr.find("diagramList/SL__arrayElement")
             if diag is None:
                 continue
-            d_el = ET.SubElement(el, "Diagram", {"uid": diag.get("uid"), "uid_parent": node.get("uid")})
+            if len(frames_) == 1:
+                # ONE frame: NI writes no <Diagram>, the frame's content sits on the structure itself
+                # (Simple Serial.vi), which aixml2vi's seq_frame reads as the frame
+                d_el, owner = el, node.get("uid")
+            else:
+                d_el = ET.SubElement(el, "Diagram", {"uid": diag.get("uid"), "uid_parent": node.get("uid")})
+                owner = diag.get("uid")
             srn = next((n for n in self.node_defs(diag) if n.get("class") == "sRN"), None)
             inner = {}
             for t in (srn.find("termList") if srn is not None else []):
@@ -1202,7 +1209,10 @@ class Reader:
             tunnels = []
             for term in (fr.find("termList") if fr.find("termList") is not None else []):
                 d = term.find("dco")
-                if d is None or d.get("class") != "seqTun":
+                # seqTun: a tunnel to the OUTSIDE; flatSeqTun: one from frame to frame - its out
+                # half on frame k, its in half (0x200800) on frame k+1, joined by a wire on the
+                # diagram around the sequence (VI Execution Properties.vi: 9 of them were missing)
+                if d is None or d.get("class") not in ("seqTun", "flatSeqTun"):
                     continue
                 out = int(d.findtext("objFlags") or 0) & 1
                 if out:
@@ -1210,12 +1220,12 @@ class Reader:
                 else:
                     n_in += 1
                 tun = ET.Element("Tunnel", {"_id": ("Out%d" % n_out) if out else ("In%d" % n_in),
-                                            "uid": term.get("uid"), "uid_parent": diag.get("uid")})
+                                            "uid": term.get("uid"), "uid_parent": owner})
                 self.term_owner[term.get("uid")] = (tun, "value", not out)
                 for t in inner.get(d.get("uid"), []):
                     self.term_owner[t.get("uid")] = (tun, "value", bool(out))
                 tunnels.append(tun)
-            self.walk(diag, diag.get("uid"), d_el)
+            self.walk(diag, owner, d_el)
             for t in tunnels:
                 d_el.append(t)
         return el
@@ -1504,6 +1514,10 @@ class Reader:
                     return ref_class_name(tree.get("CtlFlags"))
                 if tree is not None and tree.get("RefType") == "UDClassInst":
                     return "UDClassInst"
+                if tree is not None and tree.get("RefType") == "VisaRef":
+                    # a VISA session's properties: NI exports the node as type="{Visa.Instr}"
+                    # (Simple Serial.vi), the class from the refnum's Ident
+                    return "Visa." + (tree.get("Ident") or "Instr")
         return None
 
     _PROP_NAMES = None
