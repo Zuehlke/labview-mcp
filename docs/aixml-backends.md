@@ -105,6 +105,16 @@ Before either backend: `lvai_check_aixml`'s pre-checks, and the refusal of a pro
 category dropped (`propertyNameWouldCrashLabview`) — that document is wrong whichever converter
 reads it.
 
+**These 22 are the whole list, and every agent knows it since 2026-10-12.** Every other tool that
+reaches LabVIEW has no `backend` and still goes through NI's service - `lvai_generate_vi_with_events`,
+`lvai_wire_dynamic_events`, `lvai_set_event_data_fields`, `lvai_graft_diagram`, the DQMH and LUnit
+tools among them. The eight `labview-*` agents carry one shared section, "The AIXML backend - grpc
+or pylabview": read the server default from `pylv_status` (now in every roster), compose an Event
+Structure in one `lvai_generate_vi` call instead of the three-step gRPC route, let a `Call` resolve
+by file instead of opening callees, treat `composerRefused` as a composer gap and repeat that one
+call on `grpc` only when NI's service is up, and expect no `signalsJson` over ActiveX.
+`PluginAgentTests.EveryAgentCarriesTheBackendRuleAndMayReadTheBackend` keeps it in all eight.
+
 ## Where the pylabview pieces are found
 
 | piece | search order |

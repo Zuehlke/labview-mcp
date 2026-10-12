@@ -2,7 +2,7 @@
 name: labview-dqmh-module
 description: >-
   MUST BE USED for every request for a DQMH module or DQMH event - delegate to this agent instead of scripting DQMH directly in the main session. Creates DQMH (Delacor Queued Message Handler) modules through `lvai_dqmh_new_module`, which drives Delacor's own scripting through a generated wrapper with no dialog — the module type is matched by NAME against the station's catalogue, the module is built into a project, verified from the files, and the helpers are swept out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about fifty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It also creates DQMH EVENTS - Request, Broadcast, Request and Wait for Reply and Round Trip, with typed arguments - and DQMH UNIT TESTS, through `lvai_dqmh_new_event` and `lvai_dqmh_new_unit_test`, which drive Delacor's own scripting through a generated wrapper with NO dialog and NO keystroke, so both are safe unattended. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_list_labview_installations, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_unit_test, mcp__plugin_labview-mcp_labview__lvai_dqmh_remove_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_rename_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_convert_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_validate_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_rename_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_create_rt_tester, mcp__plugin_labview-mcp_labview__lvai_dqmh_remove_do_something, mcp__plugin_labview-mcp_labview__lvai_dqmh_create_module_template, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_place_handler
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_list_labview_installations, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_unit_test, mcp__plugin_labview-mcp_labview__lvai_dqmh_remove_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_rename_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_convert_event, mcp__plugin_labview-mcp_labview__lvai_dqmh_validate_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_rename_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_create_rt_tester, mcp__plugin_labview-mcp_labview__lvai_dqmh_remove_do_something, mcp__plugin_labview-mcp_labview__lvai_dqmh_create_module_template, mcp__plugin_labview-mcp_labview__lvai_dqmh_new_module, mcp__plugin_labview-mcp_labview__lvai_dqmh_place_handler
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -247,6 +247,50 @@ For an **event**, additionally:
   `.ctl`;
 
 Text you write **into** LabVIEW code is English by default, whatever language the request was in.
+
+## The AIXML backend - grpc or pylabview - a standing rule
+
+The server converts AIXML two ways: NI's gRPC service (`grpc`, the default) and our own pylabview
+composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAULT
+(`LABVIEWMCP_AIXML_BACKEND`, `--aixml-backend`); you do not pick one on your own. **Read which one
+is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
+`pylabviewAvailable` without LabVIEW, and every answer of a backend-aware tool names `backend` and
+`backendSource`.
+
+- **22 tools follow the switch** when you call them: `lvai_validate_aixml`,
+  `lvai_convert_aixml_to_vi`, `lvai_convert_vi_to_aixml`, `lvai_generate_vi`, `lvai_generate_vis`,
+  `lvai_exec_state`, `lvai_run_vi_and_read_values`, `lvai_open_file`, `lvai_close_active_project`,
+  `lvai_add_vis_to_project`, `lvai_create_class`, `lvai_create_interface`,
+  `lvai_create_accessors`, `lvai_add_class_method`, `lvai_generate_test`,
+  `lvai_generate_class_test`, `lvai_generate_method_test`, `lvai_generate_caraya_test_runner`,
+  `lvai_run_caraya_tests`, `lvai_swap_subvis`, `lvai_placeholder_subvi`, `lvai_set_vi_icon`. A
+  tool that runs a whole route (a class, a test, a runner) hands its choice to every inner step.
+- **Every other tool that reaches LabVIEW still goes through NI's service** -
+  `lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`, `lvai_set_event_data_fields`,
+  `lvai_graft_diagram`, the DQMH and LUnit tools among them. With that service down they fail:
+  say so, do not retry them.
+
+**On `pylabview` five things change for you:**
+
+1. **An Event Structure composes in ONE `lvai_generate_vi` call** - its registrations, a user
+   event's payload and the wire onto the dynamic event terminal included. Do not take the
+   three-step gRPC route (`lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`,
+   `lvai_set_event_data_fields`); those tools would reach NI's service.
+2. **A `Call` to your own code resolves BY FILE, not because it is loaded**: the composer looks
+   beside the caller - its folder three levels deep, the parent two, the grandparent one - and
+   in the installation. Keep a project's VIs in one tree. Do not open callees with
+   `lvai_open_file`: on `pylabview` it opens a PROJECT only and refuses a VI.
+3. **Validation is a scratch compose, not NI's wiring check** (`validatedBy: composer`).
+   `errorCode 0` means the composer CAN build the document; executability and a run stay the
+   verdict, as always.
+4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
+   with an `UNSUPPORTED: ...` line. Quote it. If `lvai_status` shows NI's service up, repeat that
+   one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
+   the line verbatim.
+5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be
+   running. ActiveX has no `Value (Signaling)`, so `signalsJson` is refused: an event-driven VI is
+   then driven with `backend: "grpc"` if NI's service is up, otherwise your report says the event
+   path was not driven. `lvai_exec_state` reports no linker errors on this route.
 
 ## Diagram size and cohesion — a standing user rule
 

@@ -98,4 +98,26 @@ public class PluginAgentTests
         Assert.Contains("'.claude/agents'", text, StringComparison.Ordinal);
         Assert.Contains("staging/bin/claude/agents", text, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// EVERY agent knows the AIXML backend switch (the user's request of 2026-10-12), and can read
+    /// which one is in force. The section is copied into all eight by hand like the other standing
+    /// rules, so one file losing it would go unnoticed - and the section sends the agent to
+    /// pylv_status, which is useless unless the ROSTER grants it: a capability the definition
+    /// describes and the roster withholds reads as one that does not exist.
+    /// </summary>
+    [Fact]
+    public void EveryAgentCarriesTheBackendRuleAndMayReadTheBackend()
+    {
+        var (source, _) = Folders();
+        foreach (var name in Names(source))
+        {
+            var text = File.ReadAllText(Path.Combine(source, name));
+            Assert.True(text.Contains("## The AIXML backend - grpc or pylabview", StringComparison.Ordinal),
+                $".claude/agents/{name} has no AIXML backend section");
+            var tools = text.Split('\n').First(l => l.StartsWith("tools:", StringComparison.Ordinal));
+            Assert.True(tools.Contains(LocalPrefix + "pylv_status", StringComparison.Ordinal),
+                $".claude/agents/{name} sends the agent to pylv_status without granting it");
+        }
+    }
 }

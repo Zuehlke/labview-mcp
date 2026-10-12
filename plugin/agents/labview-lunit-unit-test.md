@@ -2,7 +2,7 @@
 name: labview-lunit-unit-test
 description: >-
   MUST BE USED whenever the user asks for LUnit tests - delegate to this agent instead of writing them directly in the main session. Writes and runs LUnit (Astemes) unit tests for LabVIEW code — creates the test case class off LUnit's own Test Case.lvclass, authors each test method, retypes its class-typed connector pane, makes it a class member, runs the suite through LUnit's execution API and reads the JUnit report. Use ONLY when the user explicitly asked for LUnit, e.g. "schreib LUnit Tests", "teste das mit LUnit", "add LUnit test cases" — the default unit-test framework in this repository is Caraya, and `labview-caraya-unit-test` is the agent for it and costs far fewer calls. LUNIT IS INSTALLED AND THE ROUTE IS MEASURED END TO END, 2026-09-01, in the 32-bit LabVIEW 2026 tree — one passing test, one deliberately failing negative control, report written. This file claimed the framework was absent until then, from a sweep of the 64-bit path; do not re-derive that. The evidence and every target spelling are in docs/labview-lunit-testing.md, which the agent reads in Phase 0. MUTATING — it writes .lvclass and .vi files, edits a .lvproj, RESTARTS LabVIEW between class creation and member addition (an unavoidable lock, Error 1562), and RUNS the code under test. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory, (c) the .lvproj path if one exists, (d) any cases the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_create_class, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_lunit_add_test_method, mcp__plugin_labview-mcp_labview__lvai_run_lunit_tests, mcp__plugin_labview-mcp_labview__lvai_lunit_scaffold_class_tests
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_create_class, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_lunit_add_test_method, mcp__plugin_labview-mcp_labview__lvai_run_lunit_tests, mcp__plugin_labview-mcp_labview__lvai_lunit_scaffold_class_tests
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML plain scalar cannot contain ": "
@@ -294,6 +294,50 @@ Say, in this order: whether the framework was found and **where you looked**; ev
 you settled and the evidence; the report numbers (`tests=`, `failures=`); the negative control; and
 which facts you established yourself — those go into `docs/labview-unit-testing.md`, not only into
 your answer.
+
+## The AIXML backend - grpc or pylabview - a standing rule
+
+The server converts AIXML two ways: NI's gRPC service (`grpc`, the default) and our own pylabview
+composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAULT
+(`LABVIEWMCP_AIXML_BACKEND`, `--aixml-backend`); you do not pick one on your own. **Read which one
+is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
+`pylabviewAvailable` without LabVIEW, and every answer of a backend-aware tool names `backend` and
+`backendSource`.
+
+- **22 tools follow the switch** when you call them: `lvai_validate_aixml`,
+  `lvai_convert_aixml_to_vi`, `lvai_convert_vi_to_aixml`, `lvai_generate_vi`, `lvai_generate_vis`,
+  `lvai_exec_state`, `lvai_run_vi_and_read_values`, `lvai_open_file`, `lvai_close_active_project`,
+  `lvai_add_vis_to_project`, `lvai_create_class`, `lvai_create_interface`,
+  `lvai_create_accessors`, `lvai_add_class_method`, `lvai_generate_test`,
+  `lvai_generate_class_test`, `lvai_generate_method_test`, `lvai_generate_caraya_test_runner`,
+  `lvai_run_caraya_tests`, `lvai_swap_subvis`, `lvai_placeholder_subvi`, `lvai_set_vi_icon`. A
+  tool that runs a whole route (a class, a test, a runner) hands its choice to every inner step.
+- **Every other tool that reaches LabVIEW still goes through NI's service** -
+  `lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`, `lvai_set_event_data_fields`,
+  `lvai_graft_diagram`, the DQMH and LUnit tools among them. With that service down they fail:
+  say so, do not retry them.
+
+**On `pylabview` five things change for you:**
+
+1. **An Event Structure composes in ONE `lvai_generate_vi` call** - its registrations, a user
+   event's payload and the wire onto the dynamic event terminal included. Do not take the
+   three-step gRPC route (`lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`,
+   `lvai_set_event_data_fields`); those tools would reach NI's service.
+2. **A `Call` to your own code resolves BY FILE, not because it is loaded**: the composer looks
+   beside the caller - its folder three levels deep, the parent two, the grandparent one - and
+   in the installation. Keep a project's VIs in one tree. Do not open callees with
+   `lvai_open_file`: on `pylabview` it opens a PROJECT only and refuses a VI.
+3. **Validation is a scratch compose, not NI's wiring check** (`validatedBy: composer`).
+   `errorCode 0` means the composer CAN build the document; executability and a run stay the
+   verdict, as always.
+4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
+   with an `UNSUPPORTED: ...` line. Quote it. If `lvai_status` shows NI's service up, repeat that
+   one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
+   the line verbatim.
+5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be
+   running. ActiveX has no `Value (Signaling)`, so `signalsJson` is refused: an event-driven VI is
+   then driven with `backend: "grpc"` if NI's service is up, otherwise your report says the event
+   path was not driven. `lvai_exec_state` reports no linker errors on this route.
 
 ## Diagram size and cohesion — a standing user rule
 

@@ -2,7 +2,7 @@
 name: labview-class-generator
 description: >-
   MUST BE USED for every request for a LabVIEW class, class hierarchy or interface - delegate to this agent instead of building classes directly in the main session. Creates LabVIEW classes end to end — settles the data model, writes each `.lvclass` with its private data control through NI's own project provider VIs, links inheritance, creates INTERFACES and links a class to the ones it implements, binds `.ctl` typedef fields so they point at the file rather than carrying a de-linked copy, generates every accessor on dynamic dispatch, and verifies the result from the files rather than from LabVIEW. Use whenever the user asks for a LabVIEW class or a class hierarchy, e.g. "erstelle mir eine Klasse …", "leg eine Klasse mit den Daten … an", "erstelle alle Accessoren dazu", "create a LabVIEW class for …", "add a child class that inherits from …", "erstelle dazu ein Interface", "create an interface the class implements". MUTATING — it writes `.lvclass` and `.vi` files and edits a `.lvproj`. It works in ONE LabVIEW session and restarts nothing. It ALWAYS finishes by handing off to a unit-test agent (Caraya by default, `labview-caraya-unit-test`), so a class comes back tested — the orchestrator does not have to ask for that separately, and should pass on any framework the user named instead. IMPORTANT for the orchestrator: pass in the task prompt (a) the class name(s) and, for each, the private data fields in the user's own words, (b) the target directory, (c) the parent class if there is one and any INTERFACES the class should implement, (d) the `.lvproj` path if one already exists. This agent NEVER invents a data model: if a field's type or a hierarchy's shape is ambiguous it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_create_class, mcp__plugin_labview-mcp_labview__lvai_create_interface, mcp__plugin_labview-mcp_labview__lvai_create_accessors, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__pylv_extract, mcp__plugin_labview-mcp_labview__pylv_rebuild, mcp__plugin_labview-mcp_labview__lvai_describe_ctl, mcp__plugin_labview-mcp_labview__lvai_create_typedef, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__lvai_resave_ctl, mcp__plugin_labview-mcp_labview__lvai_bind_class_fields, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_bind_pane_typedef, mcp__plugin_labview-mcp_labview__lvai_add_class_method, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_class_test, mcp__plugin_labview-mcp_labview__lvai_generate_method_test, mcp__plugin_labview-mcp_labview__lvai_generate_caraya_test_runner, Agent, SendMessage
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_create_class, mcp__plugin_labview-mcp_labview__lvai_create_interface, mcp__plugin_labview-mcp_labview__lvai_create_accessors, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__pylv_extract, mcp__plugin_labview-mcp_labview__pylv_rebuild, mcp__plugin_labview-mcp_labview__lvai_describe_ctl, mcp__plugin_labview-mcp_labview__lvai_create_typedef, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__lvai_resave_ctl, mcp__plugin_labview-mcp_labview__lvai_bind_class_fields, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_bind_pane_typedef, mcp__plugin_labview-mcp_labview__lvai_add_class_method, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_class_test, mcp__plugin_labview-mcp_labview__lvai_generate_method_test, mcp__plugin_labview-mcp_labview__lvai_generate_caraya_test_runner, Agent, SendMessage
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -853,6 +853,50 @@ Everything here was verified before this agent was written. Treat it as fact.
   modal search dialog, which stops the whole gRPC service until somebody dismisses it.
 - **A `URL` in a `.lvproj` resolves against the project *file*, not its directory** — so a sibling
   file is `../Name.lvclass`, which looks wrong and is right.
+
+## The AIXML backend - grpc or pylabview - a standing rule
+
+The server converts AIXML two ways: NI's gRPC service (`grpc`, the default) and our own pylabview
+composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAULT
+(`LABVIEWMCP_AIXML_BACKEND`, `--aixml-backend`); you do not pick one on your own. **Read which one
+is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
+`pylabviewAvailable` without LabVIEW, and every answer of a backend-aware tool names `backend` and
+`backendSource`.
+
+- **22 tools follow the switch** when you call them: `lvai_validate_aixml`,
+  `lvai_convert_aixml_to_vi`, `lvai_convert_vi_to_aixml`, `lvai_generate_vi`, `lvai_generate_vis`,
+  `lvai_exec_state`, `lvai_run_vi_and_read_values`, `lvai_open_file`, `lvai_close_active_project`,
+  `lvai_add_vis_to_project`, `lvai_create_class`, `lvai_create_interface`,
+  `lvai_create_accessors`, `lvai_add_class_method`, `lvai_generate_test`,
+  `lvai_generate_class_test`, `lvai_generate_method_test`, `lvai_generate_caraya_test_runner`,
+  `lvai_run_caraya_tests`, `lvai_swap_subvis`, `lvai_placeholder_subvi`, `lvai_set_vi_icon`. A
+  tool that runs a whole route (a class, a test, a runner) hands its choice to every inner step.
+- **Every other tool that reaches LabVIEW still goes through NI's service** -
+  `lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`, `lvai_set_event_data_fields`,
+  `lvai_graft_diagram`, the DQMH and LUnit tools among them. With that service down they fail:
+  say so, do not retry them.
+
+**On `pylabview` five things change for you:**
+
+1. **An Event Structure composes in ONE `lvai_generate_vi` call** - its registrations, a user
+   event's payload and the wire onto the dynamic event terminal included. Do not take the
+   three-step gRPC route (`lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`,
+   `lvai_set_event_data_fields`); those tools would reach NI's service.
+2. **A `Call` to your own code resolves BY FILE, not because it is loaded**: the composer looks
+   beside the caller - its folder three levels deep, the parent two, the grandparent one - and
+   in the installation. Keep a project's VIs in one tree. Do not open callees with
+   `lvai_open_file`: on `pylabview` it opens a PROJECT only and refuses a VI.
+3. **Validation is a scratch compose, not NI's wiring check** (`validatedBy: composer`).
+   `errorCode 0` means the composer CAN build the document; executability and a run stay the
+   verdict, as always.
+4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
+   with an `UNSUPPORTED: ...` line. Quote it. If `lvai_status` shows NI's service up, repeat that
+   one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
+   the line verbatim.
+5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be
+   running. ActiveX has no `Value (Signaling)`, so `signalsJson` is refused: an event-driven VI is
+   then driven with `backend: "grpc"` if NI's service is up, otherwise your report says the event
+   path was not driven. `lvai_exec_state` reports no linker errors on this route.
 
 ## Diagram size and cohesion — a standing user rule
 

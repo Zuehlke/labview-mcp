@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   MUST BE USED for every request for a NEW LabVIEW VI - delegate to this agent instead of generating the VI directly in the main session. Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. (d) a SUPPLIED VI whose front panel must be used, if the task has one (an exam template, a customer panel) - the program is then built as a scaffold and GRAFTED into that VI with lvai_graft_diagram, and the supplied panel survives untouched. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram, mcp__labview__lvai_bind_control_references
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__pylv_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram, mcp__labview__lvai_bind_control_references
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -863,6 +863,50 @@ Everything here was verified before this agent was written. Treat it as fact.
   error. **So does a Python string literal**: `'\3A'` is an OCTAL escape there (`\x03` then `A`), so
   a `str.replace` aimed at AIXML text silently matches nothing - write the patterns as raw
   strings (`r'\3A'`), as the fifth Web Browser acceptance found.
+
+## The AIXML backend - grpc or pylabview - a standing rule
+
+The server converts AIXML two ways: NI's gRPC service (`grpc`, the default) and our own pylabview
+composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAULT
+(`LABVIEWMCP_AIXML_BACKEND`, `--aixml-backend`); you do not pick one on your own. **Read which one
+is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
+`pylabviewAvailable` without LabVIEW, and every answer of a backend-aware tool names `backend` and
+`backendSource`.
+
+- **22 tools follow the switch** when you call them: `lvai_validate_aixml`,
+  `lvai_convert_aixml_to_vi`, `lvai_convert_vi_to_aixml`, `lvai_generate_vi`, `lvai_generate_vis`,
+  `lvai_exec_state`, `lvai_run_vi_and_read_values`, `lvai_open_file`, `lvai_close_active_project`,
+  `lvai_add_vis_to_project`, `lvai_create_class`, `lvai_create_interface`,
+  `lvai_create_accessors`, `lvai_add_class_method`, `lvai_generate_test`,
+  `lvai_generate_class_test`, `lvai_generate_method_test`, `lvai_generate_caraya_test_runner`,
+  `lvai_run_caraya_tests`, `lvai_swap_subvis`, `lvai_placeholder_subvi`, `lvai_set_vi_icon`. A
+  tool that runs a whole route (a class, a test, a runner) hands its choice to every inner step.
+- **Every other tool that reaches LabVIEW still goes through NI's service** -
+  `lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`, `lvai_set_event_data_fields`,
+  `lvai_graft_diagram`, the DQMH and LUnit tools among them. With that service down they fail:
+  say so, do not retry them.
+
+**On `pylabview` five things change for you:**
+
+1. **An Event Structure composes in ONE `lvai_generate_vi` call** - its registrations, a user
+   event's payload and the wire onto the dynamic event terminal included. Do not take the
+   three-step gRPC route (`lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`,
+   `lvai_set_event_data_fields`); those tools would reach NI's service.
+2. **A `Call` to your own code resolves BY FILE, not because it is loaded**: the composer looks
+   beside the caller - its folder three levels deep, the parent two, the grandparent one - and
+   in the installation. Keep a project's VIs in one tree. Do not open callees with
+   `lvai_open_file`: on `pylabview` it opens a PROJECT only and refuses a VI.
+3. **Validation is a scratch compose, not NI's wiring check** (`validatedBy: composer`).
+   `errorCode 0` means the composer CAN build the document; executability and a run stay the
+   verdict, as always.
+4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
+   with an `UNSUPPORTED: ...` line. Quote it. If `lvai_status` shows NI's service up, repeat that
+   one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
+   the line verbatim.
+5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be
+   running. ActiveX has no `Value (Signaling)`, so `signalsJson` is refused: an event-driven VI is
+   then driven with `backend: "grpc"` if NI's service is up, otherwise your report says the event
+   path was not driven. `lvai_exec_state` reports no linker errors on this route.
 
 ## Diagram size and cohesion — a standing user rule
 
