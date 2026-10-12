@@ -89,7 +89,23 @@ internal sealed class RenderTools(LvaiConnection connection)
         bool regenerateHelper = false,
         [Description("Local budget in seconds, per VI")]
         int timeoutSeconds = 300,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview each VI is printed by LabVIEW's own Print.VI To HTML over ActiveX - no
+            helper VI and no NI service - so the helper arguments are not used, and LabVIEW must
+            already be running.
+            """)]
+        string? backend = null,
         CancellationToken ct = default)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_render_diagrams", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        return AixmlBackend.Named(await RenderDiagramsCoreAsync(viPaths, outputDirectory, helperViPath,
+            helperAixmlPath, regenerateHelper, timeoutSeconds, choice, ct), choice);
+    }
+
+    private async Task<string> RenderDiagramsCoreAsync(
+        string viPaths, string? outputDirectory, string? helperViPath, string? helperAixmlPath,
+        bool regenerateHelper, int timeoutSeconds, AixmlBackend.Choice choice, CancellationToken ct)
     {
         var targets = viPaths
             .Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -105,6 +121,13 @@ internal sealed class RenderTools(LvaiConnection connection)
                 $"No file at '{missing}'. Every path is checked before LabVIEW is asked to " +
                 "render anything, so a typo costs a message rather than a half-finished set.",
                 new { missing, requested = targets.Length });
+
+        if (choice.Name == AixmlBackend.PyLabview)
+        {
+            var renders = Path.GetFullPath(outputDirectory ?? DefaultOutputDirectory());
+            Directory.CreateDirectory(renders);
+            return await RenderOverComAllAsync(targets, renders, timeoutSeconds, ct);
+        }
 
         var aixml = helperAixmlPath ?? DefaultHelperAixmlPath()
             ?? throw new FileNotFoundException(
@@ -285,14 +308,119 @@ internal sealed class RenderTools(LvaiConnection connection)
                                   $"{htmlBase}-{Guid.NewGuid():N}"[..^24]);
         try
         {
-            Directory.CreateDirectory(folder);
-            var started = DateTime.UtcNow;
-            await LabViewCom.PrintToHtmlAsync(viPath, Path.Combine(folder, htmlBase + ".html"),
-                                              folder, timeoutSeconds, ct);
-            var png = DiagramImages(folder, htmlBase, started).FirstOrDefault();
+            var (diagrams, _) = await RenderOverComAsync(viPath, folder, htmlBase, timeoutSeconds, ct);
+            var png = diagrams.FirstOrDefault();
             return png is null ? (null, null) : (DiagramSize.PngSize(png), png);
         }
         catch (Exception e) when (e is not OperationCanceledException) { return (null, null); }
+    }
+
+    /// <summary>
+    /// One VI printed by LabVIEW's own Print.VI To HTML over ActiveX into <paramref name="folder"/>
+    /// (created first - Error 118 otherwise), and the diagram PNGs this call wrote. The route the
+    /// `diagramSize` step and lvai_render_diagrams take on the pylabview backend. A COM refusal is
+    /// returned as its kind and text, never thrown, so one VI that will not load does not cost the
+    /// others their pictures.
+    /// </summary>
+    internal static async Task<(List<string> Diagrams, LabViewCom.ComException? Failure)>
+        RenderOverComAsync(string viPath, string folder, string htmlBase, int timeoutSeconds,
+                           CancellationToken ct, PrintToHtml? print = null)
+    {
+        Directory.CreateDirectory(folder);
+        var started = DateTime.UtcNow;
+        LabViewCom.ComException? failure = null;
+        try
+        {
+            await (print ?? LabViewCom.PrintToHtmlAsync)(viPath, Path.Combine(folder, htmlBase + ".html"),
+                                                         folder, timeoutSeconds, ct);
+        }
+        catch (LabViewCom.ComException e) { failure = e; }
+        return (DiagramImages(folder, htmlBase, started), failure);
+    }
+
+    /// <summary>The shape of <see cref="LabViewCom.PrintToHtmlAsync"/>: VI, HTML file, image folder.</summary>
+    internal delegate Task<bool> PrintToHtml(string viPath, string htmlPath, string imageDirectory,
+                                             int timeoutSeconds, CancellationToken ct);
+
+    /// <summary>Test seam for the ActiveX print on the pylabview route; null in production.</summary>
+    internal PrintToHtml? PrintOverCom { get; init; }
+
+    /// <summary>Test seam for <see cref="LabViewCom.NotReady"/>; null in production.</summary>
+    internal Func<string?>? ComNotReady { get; init; }
+
+    /// <summary>
+    /// lvai_render_diagrams on the pylabview backend: every VI printed over ActiveX, nothing
+    /// through NI's service - no helper VI to build, none to run. The answer keeps the gRPC
+    /// route's shape (`ok`, `results`, `diagrams` per VI) so a reader parses both alike; what
+    /// differs is named. LabVIEW must already be running: this route never starts it.
+    /// </summary>
+    private async Task<string> RenderOverComAllAsync(
+        string[] targets, string outputs, int timeoutSeconds, CancellationToken ct)
+    {
+        if ((ComNotReady ?? LabViewCom.NotReady)() is { } notReady)
+            return Json.Error("labviewNotRunning", notReady, new { requested = targets.Length });
+
+        var results = new JsonArray();
+        var renderedCount = 0;
+        var basesUsed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var target in targets)
+        {
+            var viPath = Path.GetFullPath(target);
+            var htmlBase = UniqueBase(SafeBaseName(Path.GetFileNameWithoutExtension(viPath)), basesUsed);
+            var htmlPath = Path.Combine(outputs, htmlBase + ".html");
+
+            // A render once KILLED LabVIEW 2025 (bug report of 2026-10-12) and the generator
+            // answered "could not be rendered" - so the process table is asked before and after.
+            var running = LabViewCom.RunningPids();
+            var (diagrams, failure) = await RenderOverComAsync(viPath, outputs, htmlBase,
+                                                               timeoutSeconds, ct, PrintOverCom);
+            var rendered = diagrams.Count > 0;
+            if (rendered) renderedCount++;
+
+            var entry = new JsonObject
+            {
+                ["viPath"] = viPath,
+                ["rendered"] = rendered,
+                ["htmlPath"] = File.Exists(htmlPath) ? htmlPath : null,
+                ["diagrams"] = new JsonArray([.. diagrams.Select(d => JsonValue.Create(d))]),
+                ["diagramCount"] = diagrams.Count,
+            };
+            if (failure is not null)
+            {
+                entry["errorKind"] = failure.Kind;
+                entry["error"] = failure.Message;
+            }
+            if (!rendered && LabViewCom.AnyGone(running))
+            {
+                entry["labviewDied"] = true;
+                entry["hint"] = "LABVIEW DIED DURING THIS RENDER - a LabVIEW process that ran " +
+                                "before it is gone. Start LabVIEW again before any later call; its " +
+                                "log (%TEMP%\\LabVIEW_*_cur.txt) is overwritten on the next start - " +
+                                "copy it first.";
+            }
+            else if (!rendered)
+                entry["hint"] = failure is not null
+                    ? "LabVIEW refused the print - error above. A VI LabVIEW cannot open is the " +
+                      "likeliest cause; lvai_exec_state says whether it loads."
+                    : "No diagram PNG appeared, and LabVIEW raised no error. Check the VI opens.";
+            results.Add(entry);
+        }
+
+        return Json.Document(new JsonObject
+        {
+            ["ok"] = renderedCount == targets.Length,
+            ["requested"] = targets.Length,
+            ["rendered"] = renderedCount,
+            ["failed"] = targets.Length - renderedCount,
+            ["outputDirectory"] = outputs,
+            ["renderedBy"] = "LabVIEW's Print.VI To HTML over ActiveX, format Standard - no helper " +
+                             "VI and no NI service",
+            ["results"] = results,
+            ["note"] =
+                "The top-level diagram is the FIRST entry of each `diagrams` list; the rest are " +
+                "Case frames. Read them - `rendered: true` says a picture exists, never that the " +
+                "diagram looks right. The helper arguments are not used on this backend.",
+        });
     }
 
     /// <summary>
