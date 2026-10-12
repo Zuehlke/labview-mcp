@@ -214,6 +214,32 @@ internal static class AixmlBackend
         Json.Error("unknownBackend", error, new { accepted = Names });
 
     /// <summary>
+    /// The backend named in an answer of EITHER shape. Most tools answer JSON, and there it is two
+    /// fields, `backend` and `backendSource`, as everywhere else. A few answer TEXT for a reader -
+    /// lvai_vi_terminals, lvai_connector_pane - and there it is one closing line spelling the same
+    /// two keys, so a reader and a grep find it alike. A JSON error out of a text tool (a refusal,
+    /// an RPC fault) gets the fields, not the line.
+    /// </summary>
+    public static string Named(string answer, Choice choice)
+    {
+        if (answer.TrimStart().StartsWith('{'))
+        {
+            try
+            {
+                if (System.Text.Json.Nodes.JsonNode.Parse(answer) is System.Text.Json.Nodes.JsonObject o)
+                {
+                    o["backend"] = choice.Name;
+                    o["backendSource"] = choice.Source;
+                    return Json.Document(o);
+                }
+            }
+            catch (System.Text.Json.JsonException) { }
+        }
+        return answer.TrimEnd() + Environment.NewLine + Environment.NewLine +
+               $"backend: {choice.Name} - backendSource: {choice.Source}";
+    }
+
+    /// <summary>
     /// The parameter text for a tool that runs a whole ROUTE - a test generator, a swap, a runner -
     /// whose inner conversions, runs and helpers all follow the one choice.
     /// </summary>
