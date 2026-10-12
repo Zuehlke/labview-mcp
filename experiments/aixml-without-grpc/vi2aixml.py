@@ -481,6 +481,7 @@ def label_text(ddo):
 
 
 INT_MIN, INT_MAX = -2 ** 31, 2 ** 31 - 1
+IGNORED, MISSING = object(), object()     # term_owner sentinels: an end AIXML has no terminal for
 
 
 def unquote(t):
@@ -505,6 +506,7 @@ TEMPLATE_CLASSES = {"aDelete": "Delete From Array", "aInit": "Initialize Array",
 NODE_READERS = {"nMux": "nmux", "mux": "mux", "demux": "demux", "aIndx": "aindx", "aBuild": "abuild",
                 "propNode": "propnode", "invokeNode": "invokenode", "eventDataNode": "eventdata",
                 "statVIRef": "statvi", "ctlRefConst": "ctlref", "gRef": "gref", "hiddenFBNode": "feedback",
+                "eventRegNode": "eventreg",
                 "exprNode": "expr"}
 CA_OPS = {0: "Add", 1: "Multiply", 2: "AND", 3: "OR", 4: "XOR"}
 # a bDFixed constant's `cnst` code -> its AIXML FixedConst name (the composer's own table, reversed)
@@ -905,6 +907,8 @@ class Reader:
             if tu in seen:
                 continue
             seen.add(tu)
+            if self.term_owner[tu] is IGNORED:
+                continue
             el, nm, sink = self.term_owner[tu]
             if el.tag in ("Node", "Call") and not nm.startswith("#"):
                 per_el.setdefault(id(el), (el, []))[1].append((tu, nm, sink))
@@ -1225,6 +1229,18 @@ class Reader:
         """Frame index -> the AIXML selector of an Event Structure frame, from its EventSpecs:
         ' "Stop": Value Change ', ' Timeout ', ' Panel Close? '."""
         items = {i: [] for i in range(n)}
+        # a DYNAMIC event's source is the registration's child its EventSpec's dynIndex (1-based)
+        # points at, named by that child's label in angle brackets: `<Tick>: User Event`,
+        # `<File>: Mouse Down`, `<Actor.Stopped>: User Event` - the registration is the type of
+        # the structure's dynamic event terminal
+        dyn = []
+        for t in node.find("termList"):
+            d = t.find("dco")
+            if d is not None and d.get("class") == "eventDynDCO":
+                tree = self.tid_tree(t)
+                if tree is not None and tree.get("RefType") == "EventReg":
+                    dyn = [c.get("Label") or "" for c in aixml2vi.fields(tree)]
+                    break
         for sp in node.findall("EventNodeEvents/SL__arrayElement"):
             di = int(sp.findtext("diagramIdx") or 0)
             kind = self.event_kinds().get(int(sp.findtext("type") or 0), "?")
@@ -1232,6 +1248,9 @@ class Reader:
             ctl = self.ctl_by_ddo.get(ddo) if ddo != "0" else None
             # NI's selector names a control TRIMMED: `"Stop Button"` for a label padded with blanks
             src = '"%s"' % ctl.get("_name").strip() if ctl is not None else None
+            k = int(sp.findtext("dynIndex") or 0)
+            if src is None and 0 < k <= len(dyn) and dyn[k - 1]:
+                src = "<%s>" % dyn[k - 1]
             lst = items.setdefault(di, [])
             if src and lst and lst[-1][1] == kind and lst[-1][0]:
                 # the same event on the next control: ONE item listing its sources, as NI writes
@@ -1279,6 +1298,13 @@ class Reader:
             if d is None:
                 continue
             dc = d.get("class")
+            if dc == "eventDynDCO":
+                # the dynamic event terminals: no AIXML terminal, so their wire ends are dropped
+                self.term_owner[term.get("uid")] = IGNORED
+                for ts in frame_srn_terms:
+                    for t in ts.get(d.get("uid"), []):
+                        self.term_owner[t.get("uid")] = IGNORED
+                continue
             if dc == "caseSel":
                 sel_tree = self.tid_tree(term)
                 self.term_owner[term.get("uid")] = (el, "#selectin", True)
@@ -1834,6 +1860,34 @@ class Reader:
         el.set("type", "{%s}" % cls)
         return el
 
+    def eventreg(self, node, parent_uid):
+        """Register For Events (eventRegNode): built like a property node - four fixed hGrowCItem
+        terminals (registration refnum in and out, error in and out) - plus one eventRegItem per
+        event source. Its inputs are written in NI's order, `event registration refnum:`, `error
+        in (no error):`, then one `event source:` per item IN ITEM ORDER, because the composer
+        pairs the i-th source with the i-th item (aixml2vi.add_event_reg). It was not read at all,
+        which dropped every user event's wiring and failed the round trip of t118-t125."""
+        el = self._node_el(node, parent_uid, "Register For Events")
+        roles = {0x10000: ("event registration refnum", True), 0x40001: ("event registration refnum", False),
+                 0x20000: ("error in (no error)", True), 0x80001: ("error out", False)}
+        head, sources = [], []
+        for t in node.find("termList"):
+            d = t.find("dco")
+            if d is None:
+                continue
+            if d.get("class") == "hGrowCItem":
+                role = roles.get(int(d.findtext("objFlags") or 0))
+                if role:
+                    self.term_owner[t.get("uid")] = (el, role[0], role[1])
+                    if role[1]:
+                        head.append((t.get("uid"), role[0]))
+            elif d.get("class") == "eventRegItem":
+                self.term_owner[t.get("uid")] = (el, "event source", True)
+                sources.append((t.get("uid"), "event source"))
+        head.sort(key=lambda x: 0 if x[1] == "event registration refnum" else 1)
+        self.ordered_inputs[id(el)] = (el, head + sources)
+        return el
+
     def invokenode(self, node, parent_uid):
         cls = self._vi_server_class(node) or "?"
         el = self._node_el(node, parent_uid, "Invoke Node", target=unquote(node.findtext("methName") or ""),
@@ -1966,7 +2020,11 @@ class Reader:
     def wire(self, diag):
         sl = diag.find("signalList")
         for sig in (sl if sl is not None else []):
-            ends = [self.term_owner.get(t.get("uid")) for t in sig.find("termList")]
+            # an Event Structure's DYNAMIC event terminal is no AIXML terminal: NI's export simply
+            # leaves that end out of the registration's net, and so does the reader (IGNORED)
+            ends = [e for e in (self.term_owner.get(t.get("uid"), MISSING) for t in sig.find("termList"))
+                    if e is not IGNORED]
+            ends = [None if e is MISSING else e for e in ends]
             if any(e is None for e in ends):
                 self.notes.append("signal %s touches an unread terminal" % sig.get("uid"))
                 continue
