@@ -85,12 +85,30 @@ internal sealed class InspectTools(LvaiConnection connection)
         example - `Voltage - Finite Input.vi` - yielded every terminal name AND both polymorphic
         instance names at once. That is the documented route for any library-owned VI, not a
         workaround.
+        ON THE pylabview BACKEND the export is our own reader's (vi2aixml.py) - no LabVIEW and no
+        NI service at all - and it is never cached and never served from the cache, which holds
+        NI's converter output only. The answer's last line names `backend` and `backendSource`.
         """)]
     public async Task<string> ViTerminalsAsync(
         [Description(@"Absolute path to the .vi whose terminals you need")] string viPath,
         [Description("Re-export even when a cached export exists")] bool refresh = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 180,
-        CancellationToken ct = default) =>
+        [Description(AixmlBackend.ParameterDescription)] string? backend = null,
+        CancellationToken ct = default)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_vi_terminals", out var choice, out var badBackend))
+            return AixmlBackend.Refusal(badBackend);
+        return AixmlBackend.Named(await ViTerminalsCoreAsync(viPath, refresh, timeoutSeconds,
+                                                             choice, ct), choice);
+    }
+
+    /// <summary>
+    /// The body of <see cref="ViTerminalsAsync"/> once the backend is settled. On pylabview the
+    /// export is the READER's and NI's service is never asked - the Caraya agent's two terminal
+    /// lookups were the calls that kept a "pylabview" build from being NI-free (2026-10-12).
+    /// </summary>
+    private async Task<string> ViTerminalsCoreAsync(string viPath, bool refresh, int timeoutSeconds,
+                                                     AixmlBackend.Choice choice, CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(viPath))
@@ -103,13 +121,19 @@ internal sealed class InspectTools(LvaiConnection connection)
                 $"terminals-{Path.GetFileNameWithoutExtension(viPath)}.xml");
             Directory.CreateDirectory(CacheDirectory.Scratch);
 
+            // THE READER NEITHER READS NOR WRITES THE EXPORT CACHE. It holds NI's converter output,
+            // and lvai_convert_vi_to_aixml on pylabview keeps the same rule: a reader export stored
+            // there would later be served as NI's, and an NI export served here would be an answer
+            // the backend asked for did not give.
+            var composed = choice.Name == AixmlBackend.PyLabview;
+
             // Through the export cache, both ways. This tool used to call the RPC directly and so
             // never touched the cache at all - measured by watching the cache directory during a
             // VI-generator run: the run produced no entries, because a terminal lookup was the only
             // export it did. That is backwards. A palette VI's terminals are the single most
             // repeated read in the whole workflow - every generator run looks up the same handful -
             // and it was the one read paying a full LabVIEW export every time.
-            var fromCache = !refresh && AixmlExportStore.TryCopyTo(viPath, scratch);
+            var fromCache = !composed && !refresh && AixmlExportStore.TryCopyTo(viPath, scratch);
 
             // Where the export came from, in the caller's words rather than only in the file
             // timestamps. Three VI-generator runs reported this omission independently - the tool
@@ -119,7 +143,25 @@ internal sealed class InspectTools(LvaiConnection connection)
             // about everything else, so it does not get to stand here.
             string provenance;
 
-            if (fromCache)
+            if (composed)
+            {
+                if (AixmlComposer.Locate(out var missing) is not { } setup)
+                    return Json.Error("backendNotAvailable", missing, new { viPath });
+
+                var read = await AixmlComposer.ReadAsync(setup, viPath, scratch, timeoutSeconds, ct);
+                if (!read.Written)
+                    return Json.Error("exportFailed",
+                        $"vi2aixml.py could not read '{viPath}': {read.Message}",
+                        new { viPath, readerExitCode = read.ExitCode });
+
+                provenance = "Read by vi2aixml.py, the pylabview backend's reader - NOT by NI's " +
+                             "converter, and no LabVIEW was asked. Never cached: the export cache " +
+                             "holds NI's output only" +
+                             (refresh ? ", so refresh changes nothing here." : ".") +
+                             " A terminal name that differs from NI's export is the reader's until " +
+                             "shown otherwise.";
+            }
+            else if (fromCache)
             {
                 provenance = AixmlExportStore.CachedUtc(viPath) is { } taken
                     ? $"Export served from the cache, taken {taken:yyyy-MM-dd HH:mm}Z - no LabVIEW " +

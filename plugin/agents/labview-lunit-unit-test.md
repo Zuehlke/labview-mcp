@@ -308,14 +308,15 @@ report, and if the VI does not load there while NI's service is up, compose it a
 `pylabviewAvailable` without LabVIEW, and every answer of a backend-aware tool names `backend` and
 `backendSource`.
 
-- **22 tools follow the switch** when you call them: `lvai_validate_aixml`,
+- **25 tools follow the switch** when you call them: `lvai_validate_aixml`,
   `lvai_convert_aixml_to_vi`, `lvai_convert_vi_to_aixml`, `lvai_generate_vi`, `lvai_generate_vis`,
   `lvai_exec_state`, `lvai_run_vi_and_read_values`, `lvai_open_file`, `lvai_close_active_project`,
   `lvai_add_vis_to_project`, `lvai_create_class`, `lvai_create_interface`,
   `lvai_create_accessors`, `lvai_add_class_method`, `lvai_generate_test`,
   `lvai_generate_class_test`, `lvai_generate_method_test`, `lvai_generate_caraya_test_runner`,
-  `lvai_run_caraya_tests`, `lvai_swap_subvis`, `lvai_placeholder_subvi`, `lvai_set_vi_icon`. A
-  tool that runs a whole route (a class, a test, a runner) hands its choice to every inner step.
+  `lvai_run_caraya_tests`, `lvai_swap_subvis`, `lvai_placeholder_subvi`, `lvai_set_vi_icon`,
+  `lvai_vi_terminals`, `lvai_connector_pane` (with `viPath`), `lvai_render_diagrams`. A tool
+  that runs a whole route (a class, a test, a runner) hands its choice to every inner step.
 - **Every other tool that reaches LabVIEW still goes through NI's service** -
   `lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`, `lvai_set_event_data_fields`,
   `lvai_graft_diagram`, the DQMH and LUnit tools among them. With that service down they fail:

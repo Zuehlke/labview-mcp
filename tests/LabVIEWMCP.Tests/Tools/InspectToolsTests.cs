@@ -95,15 +95,58 @@ public sealed class InspectToolsTests : IDisposable
         Assert.Contains(@"inputs=""in one:,error in (no error):""", result);
     }
 
-    /// <summary>The provenance goes last, so it never pushes the Call out of a truncated view.</summary>
+    /// <summary>
+    /// The provenance goes after the Call, so it never pushes the Call out of a truncated view -
+    /// and only the backend line follows it (since 2026-10-12, when the tool learned `backend`).
+    /// </summary>
     [Fact]
-    public async Task TheProvenanceIsTheLastThingInTheAnswer()
+    public async Task TheProvenanceFollowsTheCallAndOnlyTheBackendLineFollowsIt()
     {
         await using var server = await ServerWith();
 
         var result = await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi());
 
-        Assert.EndsWith("cannot see.", result.TrimEnd());
+        var lines = result.TrimEnd().Split(Environment.NewLine);
+        Assert.StartsWith("backend: grpc - backendSource: internal call", lines[^1]);
+        Assert.EndsWith("cannot see.", lines[^3]);
+        Assert.True(result.IndexOf("<Call ", StringComparison.Ordinal) <
+                    result.IndexOf("Exported from LabVIEW", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task TheBackendTheCallNamedIsTheOneTheAnswerNames()
+    {
+        await using var server = await ServerWith();
+
+        var result = await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi(), backend: "grpc");
+
+        Assert.EndsWith("backend: grpc - backendSource: call", result.TrimEnd());
+        Assert.Single(server.Service.Received, r => r.Method == "ConvertVIToAIXML");
+    }
+
+    [Fact]
+    public async Task AnUnknownBackendIsRefusedBeforeAnyExport()
+    {
+        await using var server = await ServerWith();
+
+        var result = await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi(), backend: "nigel");
+
+        Assert.Equal("unknownBackend", Res.Str(result, "errorKind"));
+        Assert.DoesNotContain(server.Service.Received, r => r.Method == "ConvertVIToAIXML");
+    }
+
+    /// <summary>A JSON refusal out of this text tool carries the backend as FIELDS, not as a line.</summary>
+    [Fact]
+    public async Task AJsonAnswerNamesTheBackendAsFields()
+    {
+        await using var server = await ServerWith();
+
+        var result = await new InspectTools(server.Connection)
+            .ViTerminalsAsync(Path.Combine(_dir, "absent.vi"), backend: "grpc");
+
+        Assert.False(Res.Bool(result, "ok"));
+        Assert.Equal("grpc", Res.Str(result, "backend"));
+        Assert.Equal("call", Res.Str(result, "backendSource"));
     }
 
     [Fact]
