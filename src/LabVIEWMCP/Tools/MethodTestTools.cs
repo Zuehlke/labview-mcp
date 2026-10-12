@@ -133,7 +133,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         `inputs` sets ANY input terminal of the method, required or not: a required one is always
         wired (with the default where the case gives none), any other only when the case names it,
         so an unnamed one keeps the method's own default. A name the method does not declare is
-        refused (`inputTerminalNotFound`), as is the class or error input (`inputNotSettable`).
+        refused (`inputTerminalNotFound`), as is the class or error input (`inputNotSettable`), and
+        a front-panel object with no conIdx in `inputs` or `expectOutput` (`terminalNotOnPane`) -
+        a Call cannot wire it, and LabVIEW says only `An input parameter is invalid`.
         Until 2026-09-25 a value for a non-required terminal was dropped in silence.
         EVERY METHOD MUST ALREADY BE A CLASS MEMBER with a class-typed pane - use
         lvai_add_class_method first. A method whose .vi is missing is named rather than generated.

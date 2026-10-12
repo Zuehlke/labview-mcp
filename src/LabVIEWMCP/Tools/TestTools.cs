@@ -81,7 +81,11 @@ internal sealed class TestTools(LvaiConnection connection)
         EVERY EXPECTED CONSTANT IS LABELLED `expected <n>` and listed in `expectedConstants` with
         its case - lvai_set_constant breaks one for a negative control.
         `inputs` and `expect` are keyed by the SUBJECT's own terminal names - lvai_vi_terminals
-        prints them, and so does this tool's placeholder step. Values are written verbatim into an
+        prints them, and so does this tool's placeholder step. CONNECTOR-PANE TERMINALS ONLY: a
+        front-panel object with no conIdx (a UI VI's Stop button), an `inputs` key that is an
+        output or an `expect` key that is an input is refused by name, with the pane listed under
+        `refusal` - a Call naming an off-pane control is `Error 1 ... An input parameter is
+        invalid` from LabVIEW, measured 2026-10-12. Values are written verbatim into an
         AIXML constant of that terminal's type, so "100" is a double if the terminal is a double;
         a value the format cannot express as a constant is refused at validation, by name.
         EVERY assertion is `Assert Equal Value_Variant`, and float equality is EXACT - Caraya's
