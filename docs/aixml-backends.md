@@ -230,12 +230,29 @@ ones stay in `helpers`, so neither backend runs or overwrites the other's.
 | `lvai_generate_caraya_test_runner`, `lvai_run_caraya_tests` | the runner composed; the run over ActiveX, the JUnit report read as on grpc |
 | `lvai_placeholder_subvi`, `lvai_add_vis_to_project` | the stub composed from the reader's export; the listing is a file edit and never needed NI |
 | `lvai_set_vi_icon` | the icon helper composed and run over ActiveX, judged by the same read-back file. Until 2026-10-11 it took the parameter and still called NI's `RunVIAsTopLevel` |
-| `lvai_exec_state` | `ExecState` over ActiveX — no helper VI; no linker errors, which ActiveX does not expose |
+| `lvai_exec_state` | the SAME `lvai_exec_state.xml` helper, COMPOSED and run over ActiveX, so linker errors are named as on grpc (`route: helper`) - `Missing subVI X.vi in VI Y.vi.`. Only when the helper cannot be composed or run is `ExecState` read directly over ActiveX, which has no linker-error property: then `route: direct`, `linkerErrorsAvailable: false` and `linkerErrorsUnavailableBecause`. A route on pylabview (`lvai_generate_test`, `lvai_add_class_method`, …) reads it the same way. Until 2026-10-12 the direct read was the only one, and `linkerErrors` was null for every VI |
 | `lvai_run_vi_and_read_values` | the panel's names and types read from the FILE (ActiveX can set and get a control by name but cannot list them), inputs converted by type, `SetControlValue` → `Run` → `GetControlValue`. **The answer has the gRPC shape**: the INDICATORS (as NI's helper reads them), each with LabVIEW's type tag (`DBL`), its `Val` text and LabVIEW's flattened `xml` - generated from the value and its type, measured identical to NI's on 11 of 11 values - plus the AIXML `literal`. A DBL keeps LabVIEW's shape, not its last digits (LabVIEW printed 5050 as `5049.99999999999999`). `runForMs` works — a snapshot, then Abort. Refused before anything runs: `signalsJson` (ActiveX has no Value (Signaling)), a control the panel does not have, a value that does not convert, a broken VI, a waveform, a refnum, a 2D array |
 
 Before either backend: `lvai_check_aixml`'s pre-checks, and the refusal of a property name with its
 category dropped (`propertyNameWouldCrashLabview`) — that document is wrong whichever converter
 reads it.
+
+**`lvai_exec_state` NAMES LINKER ERRORS ON `pylabview` since 2026-10-12.** It read `ExecState`
+directly over ActiveX and answered `linkerErrors: null` for every VI - "which ActiveX does not
+expose", as this table said - while the helper that reads them had composed and run executable
+since the helper repairs (FINDINGS §7a: `VI Linker Errors`, code 599, label `VILoadErr`, harvested
+from NI's own build of this helper). Measured on a caller whose subVI file was removed after
+composing: both backends answered `execState 0` and the identical
+`<Val>Missing subVI ESA Gone 7f3a.vi in VI ESA Orphan 7f3a.vi.</Val>`, and on the intact caller
+`execState 1` and an empty `<Val>`; a `.xml` given as the VI answered `-1`, code 1059, on both.
+**ActiveX hands the string back with CRLF line ends** where the grpc answer has LF (its XML parse
+normalises them), so the route writes LF and the two answers are byte-identical. The cost,
+interleaved on one LabVIEW: a median **67 ms** per call through the helper against **20 ms**
+direct on the intact caller (grpc **68 ms**), 178 against 119 ms on the broken one (grpc 171) -
+so a route reads it the same way. Composing the helper costs about 1.1 s, once per parts change.
+The input is READ BACK after the run and an answer whose path changed is not trusted: the
+composed helper is one VI for every server process on the LabVIEW, and a second caller can set its
+control between our set and our run. No missing-subVI search dialog appeared on either backend.
 
 **These 22 are the whole list, and every agent knows it since 2026-10-12.** Every other tool that
 reaches LabVIEW has no `backend` and still goes through NI's service - `lvai_generate_vi_with_events`,

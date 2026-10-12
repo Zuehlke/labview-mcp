@@ -760,7 +760,7 @@ report, and if the VI does not load there while NI's service is up, compose it a
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be
    running. ActiveX has no `Value (Signaling)`, so `signalsJson` is refused: an event-driven VI is
    then driven with `backend: "grpc"` if NI's service is up, otherwise your report says the event
-   path was not driven. `lvai_exec_state` reports no linker errors on this route.
+   path was not driven. `lvai_exec_state` names linker errors on this route too.
 
 ## Diagram size and cohesion — a standing user rule
 
