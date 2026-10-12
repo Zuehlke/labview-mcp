@@ -237,8 +237,12 @@ public sealed class GenerateTestTests
 
         // Caught here because AIXML's own complaint would name the generated constant, not the
         // case that produced it - and 'celcius' for 'celsius' is exactly the mistake that gets made.
-        Assert.Equal("'celcius'", TestTools.Unknown([typo], Terminals));
-        Assert.Null(TestTools.Unknown([OneCase("fine", "100", "212")], Terminals));
+        var refused = TestTools.CaseNames([typo], "Celsius To Fahrenheit.vi", Terminals, []);
+        Assert.False(refused.Ok);
+        Assert.Equal(["celcius"], refused.Unknown);
+        Assert.Contains("'celcius'", refused.Message("casesJson"));
+        Assert.True(TestTools.CaseNames([OneCase("fine", "100", "212")], "Celsius To Fahrenheit.vi",
+                                        Terminals, []).Ok);
     }
 
     [Theory]
