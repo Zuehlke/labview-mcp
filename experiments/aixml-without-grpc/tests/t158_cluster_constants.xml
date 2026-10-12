@@ -1,0 +1,15 @@
+<VI _name="T158 Cluster Constants.vi" description="Cluster constants drawn as NI draws them: a plain one, one with an array field, a nested one and one inside a loop. Composed with the donor pane they were empty frames until 2026-10-12.">
+  <Constant _name="Pair" outputs="value:4300.value" type="cluster{array{double}.a,double.b}" uid="4300" uid_parent="root" value="[[3],4]"/>
+  <Indicator _name="pair out" inputs="value:4300.value" type="cluster{array{double}.a,double.b}" uid="4310" uid_parent="root" value="[[],0]"/>
+  <Constant _name="Simple" outputs="value:4320.value" type="cluster{int32.n,string.s}" uid="4320" uid_parent="root" value="[5,abc]"/>
+  <Indicator _name="simple out" inputs="value:4320.value" type="cluster{int32.n,string.s}" uid="4330" uid_parent="root" value="[0,]"/>
+  <Constant _name="Nested Settings" outputs="value:4340.value" type="cluster{string.name,cluster{double.min,double.max}.range,bool.on}" uid="4340" uid_parent="root" value="[Channel 1,[-10,10],true]"/>
+  <Indicator _name="nested out" inputs="value:4340.value" type="cluster{string.name,cluster{double.min,double.max}.range,bool.on}" uid="4350" uid_parent="root" value="[,[0,0],false]"/>
+  <Constant _name="n" type="int32" uid="4400" uid_parent="root" value="2" outputs="value:4400.value"/>
+  <Structure _name="For Loop" uid="4410" uid_parent="root" maxin="4400.value">
+    <Constant _name="Loop Cluster" type="cluster{int32.count,string.unit}" uid="4420" uid_parent="4410" value="[42,mm]" outputs="value:4420.value"/>
+    <Tunnel _id="Out1" uid="4430" uid_parent="4410" inputs="value:4420.value" outputs="value:4430.value" indexing="false"/>
+  </Structure>
+  <Indicator _name="loop out" type="cluster{int32.count,string.unit}" uid="4440" uid_parent="root" value="[0,]" inputs="value:4430.value"/>
+  <FreeLabel comment="Cluster constant probe" uid="4460" uid_parent="root"/>
+</VI>

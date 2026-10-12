@@ -432,8 +432,10 @@ Segoe UI 11 px advances (`parts/font-widths.json`) + 3 for a label, + 5 for a va
 showed no value; a string or numeric constant's wire attaches at the middle of its value box. And
 an ARRAY constant keeps its `nRC`/`oRC` anchor, recomputed for its absolute place (structures
 summed; in a cluster, relative to the pane's document): stripped, LabVIEW drew it as a grid of
-greyed zeros from the diagram's origin to the array. A CLUSTER constant is still drawn empty, an
-open item. FINDINGS, "Constants as LabVIEW draws them".
+greyed zeros from the diagram's origin to the array. A CLUSTER constant is laid out as NI lays it
+out - fields stacked with their labels hidden, the pane's frame parts, `docBounds` and `origin`
+computed from its size - where it used to be drawn as an empty frame; nested clusters and array
+fields included, and its wire attaches exactly. FINDINGS, "Constants as LabVIEW draws them".
 
 **And to 12 with LabVIEW's own hotpoint offsets.** A DCO may carry `<termHotPoint>(dx, dy)`
 (shift registers, the Feedback Node, some array nodes); with it in the base rule the offsets learned

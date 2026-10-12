@@ -284,6 +284,11 @@ class Hotpoints:
         y, x = (t + b) // 2, (l + r) // 2
         if kind and kind.startswith("const:"):
             cls = kind[6:]
+            if cls == "stdClust" and isinstance(hot, int):
+                # a cluster constant laid out as NI's (aixml2vi._fit_cluster): the middle of its
+                # frame part 9, half way down - const_calibrate.py, 4 of 4 clusters to the pixel
+                # on LabVIEW's own saves (2026-10-12)
+                return (t + b) // 2, l + hot
             if cls in self.CONST_FROM_RIGHT:
                 # the middle of the VALUE box when the constant says where it is - a constant sized
                 # to its text (aixml2vi._fit_const) has a wider one; the donor's 13 px box gives
@@ -322,7 +327,7 @@ class Hotpoints:
         tables do (learn_hotpoints_fanout.py) - decided by the finest key the model knows; a
         constant by the calibration above."""
         if kind and kind.startswith("const:"):
-            return kind[6:] in self.CONST_EXACT
+            return kind[6:] in self.CONST_EXACT or (kind[6:] == "stdClust" and isinstance(hot, int))
         for k in self.keys(prim, pos, kind):
             if k in self.exact_keys:
                 return True

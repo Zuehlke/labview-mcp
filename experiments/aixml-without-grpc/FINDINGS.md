@@ -1388,9 +1388,26 @@ parts from 0. A diagram terminal's label is `(0, -(W + 3), 15, 0)` on a control 
 wire router now attaches a string or numeric constant at the middle of its value box, which is the
 calibrated 7 px from the right on the old 13 px box and NI's own 7..14 on text-sized ones.
 
-**Cluster constants are still drawn empty** - an open finding: the composed pane's frame parts stay
-at the donor's size while the pane grows, and the field labels are shown where NI hides them; the
-pane's `origin` is another cached anchor with no simple rule in NI's two samples.
+**Cluster constants are drawn as NI draws them** (closed the same day; it was an open finding
+until then: frames drawn empty, the pane's parts at the donor's size while the pane grew, field
+labels shown where NI hides them). Read off NI's conversion of the same four constants
+(`t158_cluster_constants`: a pair, one with an array field, a nested one, one in a loop):
+
+- the fields are stacked with no gap at `(docT + sum of the heights above, docL - lw)`, each with
+  its label HIDDEN (`objFlags | 8`, label at `(-15, 0, 0, w)`) and its value parts from x 0, and
+  `howGrow 240`; `zPlaneList` follows the `ddoList` order;
+- the pane and its `cosm` 28 at `(3, lw + 3, 3 + H, lw + 3 + W)`, the frame `cosm` 9 at
+  `(0, lw, H + 6, lw + W + 6)`, the label centred at `(H + 6 - 15) // 2`; the pane's own parts
+  28 = `(0, 0, H, W)`, 39 = `(0, W, H, W + 17)`, 38 = `(H, 0, H + 17, W)`, 44 = `(H, W, H + 17, W + 17)`;
+- `docBounds` is minus the pane's place in its drawing frame and the fields move with it; the
+  "cached anchor" `origin` has a rule after all, `(docL - pl - (W + 6) // 2, docT - pt - (H + 6) // 2)`
+  in (h, v), and `minPaneSize` is that plus 4;
+- an ARRAY field's anchor is relative to the pane's document with kv = 11, not the diagram's 12:
+  12 drew the array a row down.
+
+The wire router attaches a cluster constant at the vertical middle of its frame and the horizontal
+middle of `cosm` 9 - exact, 4 of 4 with `const_calibrate.py` - so t158 loads with no wire repair.
+All four render as NI's, a nested cluster included.
 
 **LabVIEW's own Clean Up Diagram after every VI we create** (the user's recommendation, both
 backends): `{LV.VI}` `BD.CleanUp` then `Save.Instrument` with the path unwired - read off NI's

@@ -1728,5 +1728,18 @@
     }
    }
   ]
+ },
+ "t158_cluster_constants": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "pair out": "[[3],4]",
+     "simple out": "[5,abc]",
+     "nested out": "[Channel 1,[-10,10],True]",
+     "loop out": "[42,mm]"
+    }
+   }
+  ]
  }
 }

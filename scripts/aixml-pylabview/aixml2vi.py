@@ -1844,7 +1844,11 @@ class Composer:
         ddo.set("uid", str(self.claim(el.get("uid"))))
         self.used_uids.discard(old)
         dco.find("ConstValue").text = const_value(tree, el.get("value"))
-        self._fit_const(ddo, name, tree, el.get("value"))
+        if ddo.get("class") == "stdClust":
+            vals = parse_literal(el.get("value"))
+            self._fit_cluster(ddo, name, tree, vals if isinstance(vals, list) else [])
+        else:
+            self._fit_const(ddo, name, tree, el.get("value"))
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
         diag.srn_terms.append(term)
         self.ends[(el.get("uid"), "value")] = (term.get("uid"), diag)
@@ -1902,6 +1906,108 @@ class Composer:
         cosm.find("bounds").text = fb((0, lw, 17 + extra, lw + off + tw + 1))
         top, left = lvheap.parse_bounds(ddo.findtext("bounds"))[:2]
         ddo.find("bounds").text = fb((top, left, top + 17 + extra, left + lw + off + tw + 1))
+
+    # A CLUSTER CONSTANT as NI's converter lays one out (two clusters read off its build of the same
+    # document, 2026-10-12): the fields stacked with no gap from the pane's document top, each at
+    # x = docL - lw with its own label HIDDEN above it (objFlags | 8, bounds (-15, 0, 0, w)) and its
+    # value from x = 0; the pane and frame part 28 exactly around them at (3, lw + 3), frame part 9
+    # 3 px outside, the cluster's label centred beside them. Composed with the donor's boxes and its
+    # own pane ORIGIN the constant was an empty frame: the origin is where the pane's view sits, and
+    # NI's own file drew empty too with the donor's origin written in (A/B). set_anchors writes it.
+    CLUSTER_ORIGIN = "_cluster_origin"
+
+    @staticmethod
+    def _hide_label(obj):
+        for p in obj.find("partsList") if obj.find("partsList") is not None else []:
+            if p.get("class") == "label" and p.findtext("partID") == "16":
+                if p.find("objFlags") is not None:
+                    p.find("objFlags").text = str(int(p.findtext("objFlags") or 0) | 8)
+                b = lvheap.parse_bounds(p.findtext("bounds"))
+                p.find("bounds").text = lvheap.fmt_bounds((-15, 0, 0, max(8, b[3] - b[1])))
+
+    def _fit_field(self, obj, tree, value):
+        """One field of a cluster constant laid out with its label hidden and its value from x 0."""
+        cls = obj.get("class")
+        if cls == "stdClust":
+            self._fit_cluster(obj, "", tree, value if isinstance(value, list) else [])
+        elif cls in self.FIT_PARTS:
+            self._fit_const(obj, "", tree, value if isinstance(value, str) else None)
+        else:
+            # any other object: the parts after its inline label move to x 0
+            parts = [p for p in obj.find("partsList") if p.find("bounds") is not None
+                     and not (p.get("class") == "label" and p.findtext("partID") == "16")]
+            dx = min((lvheap.parse_bounds(p.findtext("bounds"))[1] for p in parts), default=0)
+            if dx > 0:
+                for p in parts:
+                    _shift_bounds(p.find("bounds"), 0, -dx)
+                if obj.find("ddo") is not None:
+                    _shift_bounds(obj.find("ddo").find("bounds"), 0, -dx)
+                t, l, b, r = lvheap.parse_bounds(obj.findtext("bounds"))
+                obj.find("bounds").text = lvheap.fmt_bounds((t, l, b, r - dx))
+            if cls == "indArr" and obj.get(ANCHOR_K) is not None:
+                # NI's own array field with the index at x 2 anchors at (25, 11); the donor's offset
+                # was taken with the label inline and would now point LEFT of the array - a grid.
+                # And ONE PIXEL lower, 12, LabVIEW drew the array a row down, over the next field
+                # (A/B on one probe, 2026-10-12)
+                idx = next((p for p in parts if p.findtext("partID") == "8002"), None)
+                il = lvheap.parse_bounds(idx.findtext("bounds"))[1] if idx is not None else 2
+                obj.set(ANCHOR_K, "%d,%d" % (il + 23, 11))
+        self._hide_label(obj)
+
+    def _fit_cluster(self, ddo, name, tree, values):
+        pane = ddo.find("paneHierarchy")
+        dlist = ddo.find("ddoList")
+        if pane is None or dlist is None or pane.find("docBounds") is None:
+            return
+        by_uid = {f.get("uid"): f for f in pane.find("zPlaneList")}
+        objs = [by_uid.get(e.get("uid")) for e in dlist]
+        trees = fields(tree)
+        if None in objs or len(objs) != len(trees) or not objs:
+            return
+        values = list(values) + [None] * (len(objs) - len(values))
+        dt, dl = lvheap.parse_bounds(pane.findtext("docBounds"))[:2]
+        lw = int(-(-text_width(name) // 1)) + self.LABEL_PAD if name else 0
+        y, W = dt, 0
+        for obj, ftree, fval in zip(objs, trees, values):
+            self._fit_field(obj, ftree, fval)
+            t, l, b, r = lvheap.parse_bounds(obj.findtext("bounds"))
+            place_obj(obj, y, dl - lw)
+            y += b - t
+            W = max(W, r - l)
+        H = y - dt
+        fb = lvheap.fmt_bounds
+        # the PANE's own parts, in its own frame: 28 is the visible content area, exactly the
+        # pane's size in NI's build, with the scroll bars' 39 / 38 / 44 beside and below it. Left
+        # at the donor's (0, 0, 31, 16) LabVIEW drew a 16 px sliver of the fields and no more.
+        pane_parts = {p.findtext("partID"): p for p in pane.find("partsList") if p.get("class") == "cosm"}
+        for pid, box in (("28", (0, 0, H, W)), ("39", (0, W, H, W + 17)),
+                         ("38", (H, 0, H + 17, W)), ("44", (H, W, H + 17, W + 17))):
+            if pane_parts.get(pid) is not None and pane_parts[pid].find("bounds") is not None:
+                pane_parts[pid].find("bounds").text = fb(box)
+        # z-order = field order, as in NI's build; newest-first put the array behind the next field
+        z = pane.find("zPlaneList")
+        for obj in objs:
+            z.remove(obj)
+        for obj in objs:
+            z.append(obj)
+        for obj in objs:
+            if obj.find("howGrow") is None and obj.find("objFlags") is not None:
+                hg = ET.Element("howGrow")
+                hg.text = "240"     # NI's fields carry it; the constant parts they come from do not
+                obj.insert(list(obj).index(obj.find("objFlags")) + 1, hg)
+        parts = {(p.get("class"), p.findtext("partID")): p for p in ddo.find("partsList")}
+        pane.find("bounds").text = fb((3, lw + 3, 3 + H, lw + 3 + W))
+        if parts.get(("cosm", "28")) is not None:
+            parts[("cosm", "28")].find("bounds").text = fb((3, lw + 3, 3 + H, lw + 3 + W))
+        if parts.get(("cosm", "9")) is not None:
+            parts[("cosm", "9")].find("bounds").text = fb((0, lw, H + 6, lw + W + 6))
+        label = parts.get(("label", "16"))
+        if label is not None:
+            lt = (H + 6 - 15) // 2
+            label.find("bounds").text = fb((lt, 0, lt + 15, lw) if lw else (-15, 0, 0, 8))
+        top, left = lvheap.parse_bounds(ddo.findtext("bounds"))[:2]
+        ddo.find("bounds").text = fb((top, left, top + H + 6, left + lw + W + 6))
+        ddo.set(self.CLUSTER_ORIGIN, "1")
 
     # palette FIXED constants: AIXML's name -> the bDFixed ddo's `cnst` code (absent for 0),
     # read off an AIXML-generated VI holding all ten that NI's exports use
@@ -6609,6 +6715,7 @@ class Composer:
         An array inside any other data object (a waveform's) keeps no pair, as before."""
         for heap in (self.bd, self.fp):
             parent = {c: p for p in heap.iter() for c in p}
+            self._set_cluster_frames(heap, parent)
             for arr in [e for e in heap.iter() if e.get(ANCHOR_K) is not None]:
                 k = [int(x) for x in arr.attrib.pop(ANCHOR_K).split(",")]
                 if heap is self.fp:
@@ -6619,11 +6726,16 @@ class Composer:
                     e = parent[e]
                     cls = e.get("class") or ""
                     if cls == "stdClust":
+                        # a field's place in its cluster: own minus the pane's docBounds plus the
+                        # pane's own top-left - NI's array field (-243, -253) under docBounds
+                        # (-243, -231) and a pane at (3, 25) carries nRC (-28, -14), k (25, 11)
+                        # exactly as at the top level (2026-10-12)
                         doc = e.find("paneHierarchy/docBounds")
                         if doc is None:
                             break
                         dt, dl = lvheap.parse_bounds(doc.text)[:2]
-                        frame = (t - dt, l - dl)
+                        pt, pl = lvheap.parse_bounds(e.findtext("paneHierarchy/bounds") or "(0, 0, 0, 0)")[:2]
+                        frame = (t - dt + pt, l - dl + pl)
                         break
                     if e.tag == "ddo" or cls in ("stdMeasureData", "indArr"):
                         break               # inside another data object: no measured frame
@@ -6644,6 +6756,57 @@ class Composer:
                     c = ET.Element(tag)
                     c.text = "(%d, %d)" % (-(frame[1] + k[0]), -(frame[0] + k[1]))
                     arr.insert(at + i, c)
+
+    def _set_cluster_frames(self, heap, parent):
+        """A cluster CONSTANT's docBounds and pane origin, now that every position is final.
+        docBounds is the NEGATED place of the cluster in the frame that draws it - its absolute
+        place on the diagram (own top-left plus every enclosing structure's: NI's cluster at
+        (20, 41) in a loop at (315, 260) carries (-335, -301)), or, for a cluster inside a
+        cluster, its place in the parent's box (own - parent docBounds + parent pane top-left:
+        NI's nested (-20, -3)); the fields move with it. Composed relative to the loop, the
+        constant drew empty. Then the origin, (h, v): docBounds + -(pane top-left + (pane size
+        + 6) div 2), and minPaneSize = origin + 4 - exact on all four of NI's clusters, nested and
+        in a loop included (2026-10-12)."""
+        marked = [e for e in heap.iter() if e.get(self.CLUSTER_ORIGIN) is not None]
+        for clus in marked:
+            clus.attrib.pop(self.CLUSTER_ORIGIN)
+            pane = clus.find("paneHierarchy")
+            if heap is self.fp or pane is None or pane.find("origin") is None:
+                continue
+            t, l = lvheap.parse_bounds(clus.findtext("bounds"))[:2]
+            frame, e = None, clus
+            while e in parent:
+                e = parent[e]
+                if e.get("class") == "stdClust":
+                    pp = e.find("paneHierarchy")
+                    pdt, pdl = lvheap.parse_bounds(pp.findtext("docBounds"))[:2]
+                    ppt, ppl = lvheap.parse_bounds(pp.findtext("bounds"))[:2]
+                    frame = (t - pdt + ppt, l - pdl + ppl)
+                    break
+                if e.get("class") == "bDConstDCO":
+                    at, al = t, l
+                    while e in parent:
+                        e = parent[e]
+                        if e.find("diagramList") is not None and e.find("bounds") is not None:
+                            st, sl = lvheap.parse_bounds(e.findtext("bounds"))[:2]
+                            at, al = at + st, al + sl
+                    frame = (at, al)
+                    break
+            if frame is None:
+                continue
+            doc = pane.find("docBounds")
+            dt, dl = lvheap.parse_bounds(doc.text)[:2]
+            dy, dx = -frame[0] - dt, -frame[1] - dl
+            _shift_bounds(doc, dy, dx)
+            for f in pane.find("zPlaneList"):
+                _shift_bounds(f.find("bounds"), dy, dx)
+            dt, dl = dt + dy, dl + dx
+            pt, pl, pbt, pr = lvheap.parse_bounds(pane.findtext("bounds"))
+            oh = dl - pl - (pr - pl + 6) // 2
+            ov = dt - pt - (pbt - pt + 6) // 2
+            pane.find("origin").text = "(%d, %d)" % (oh, ov)
+            if pane.find("minPaneSize") is not None:
+                pane.find("minPaneSize").text = "(%d, %d)" % (oh + 4, ov + 4)
 
     def write(self, out_dir, base):
         os.makedirs(out_dir, exist_ok=True)
