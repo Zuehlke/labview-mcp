@@ -26,7 +26,7 @@ import lvheap  # noqa: E402
 import vi2aixml  # noqa: E402
 
 CACHE = os.path.join(os.path.expanduser("~"), ".labviewmcp", "cache", "aixml")
-OUT = os.path.join(HERE, "parts", "class-ids-learned.json")
+OUT = os.path.join(COMPOSER, "parts", "class-ids-learned.json")
 
 
 def main(argv):

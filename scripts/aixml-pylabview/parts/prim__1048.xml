@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1048" source="&lt;labview&gt;\examples\Signal Processing\Signal Generation\Colored Gaussian Noise Generation.vi"><types><TypeDesc Type="SubArray" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumComplex128" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="SubArray" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumComplex128" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="2775">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="2781">
+                    <dco class="parm" uid="2782">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(146)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>43</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2784">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="2785">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(147)</typeDesc>
+                      <termBounds>(0, 0, 21, 10)</termBounds>
+                      <primIndex>43</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(108, 695, 140, 727)</bounds>
+                <shortCount>58</shortCount>
+                <clumpNum>720899</clumpNum>
+                <primResID>1048</primResID>
+                <primIndex>43</primIndex>
+                </SL__arrayElement>
+              </heap></part>

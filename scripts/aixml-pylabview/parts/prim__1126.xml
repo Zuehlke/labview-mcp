@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1126" source="&lt;labview&gt;\examples\Comparison\Compare Character Types.vi"><types><TypeDesc Type="NumInt16" Prop1="0" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="858">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="864">
+                    <dco class="parm" uid="865">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(19)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>12</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="867">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="868">
+                      <typeDesc>TypeID(20)</typeDesc>
+                      <termBounds>(0, 0, 21, 10)</termBounds>
+                      <primIndex>12</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <label class="label" uid="873">
+                  <objFlags>1507650</objFlags>
+                  <partID>16</partID>
+                  <howGrow>4096</howGrow>
+                  <bounds>(-17, 0, 0, 68)</bounds>
+                  <image class="Image">
+                    <ImageResID>-619</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <mode>82948</mode>
+                    <text>"Lexical Class"</text>
+                    <bgColor>01000000</bgColor>
+                    </textRec>
+                  </label>
+                <bounds>(292, 245, 324, 277)</bounds>
+                <shortCount>4</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1126</primResID>
+                <primIndex>12</primIndex>
+                </SL__arrayElement>
+              </heap></part>

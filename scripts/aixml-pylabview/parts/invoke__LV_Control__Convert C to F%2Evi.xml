@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Control/Convert C to F%2Evi" source="&lt;labview&gt;\examples\Controls and Indicators\XControls\Dual Mode Thermometer\Run Dual Mode Thermometer XControl.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0006" HasItem="1" ItmIdent="LVXC" Format="inline" Label="reference"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><Item Text="Simple Dual Mode Thermometer XControl.xctl" />
+        <Item Text="Simple Dual Mode Thermometer XControl" />
+        </TypeDesc><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0006" HasItem="1" ItmIdent="LVXC" Format="inline" Label="reference"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><Item Text="Simple Dual Mode Thermometer XControl.xctl" />
+        <Item Text="Simple Dual Mode Thermometer XControl" />
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Convert C to F.vi" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Convert C to F.vi" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Degrees Celsius" /><TypeDesc Type="Void" Format="inline" Label="Degrees Celsius" /></types><heap><SL__arrayElement class="invokeNode" uid="168">
+                <objFlags>167772800</objFlags>
+                <termList elements="8">
+                  <SL__arrayElement class="term" uid="191">
+                    <objFlags>8388608</objFlags>
+                    <dco class="hGrowCItem" uid="184">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(15)</typeDesc>
+                      <termBounds>(-9, 0, 0, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="198">
+                    <objFlags>8388608</objFlags>
+                    <dco class="hGrowCItem" uid="195">
+                      <objFlags>262145</objFlags>
+                      <typeDesc>TypeID(16)</typeDesc>
+                      <termBounds>(-9, 81, 0, 94)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="202">
+                    <dco class="hGrowCItem" uid="199">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(17)</typeDesc>
+                      <termBounds>(0, 0, 9, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="205">
+                    <dco class="hGrowCItem" uid="203">
+                      <objFlags>524289</objFlags>
+                      <typeDesc>TypeID(18)</typeDesc>
+                      <termBounds>(0, 81, 9, 94)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="225">
+                    <dco class="invokeItem" uid="217">
+                      <objFlags>196608</objFlags>
+                      <typeDesc>TypeID(19)</typeDesc>
+                      <termBounds>(9, 0, 25, 47)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="238">
+                    <dco class="invokeItem" uid="227">
+                      <objFlags>65537</objFlags>
+                      <typeDesc>TypeID(20)</typeDesc>
+                      <termBounds>(9, 47, 25, 94)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="250">
+                    <objFlags>32768</objFlags>
+                    <dco class="invokeItem" uid="246">
+                      <typeDesc>TypeID(21)</typeDesc>
+                      <termBounds>(25, 0, 41, 47)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="255">
+                    <dco class="invokeItem" uid="252">
+                      <objFlags>131073</objFlags>
+                      <typeDesc>TypeID(22)</typeDesc>
+                      <termBounds>(25, 47, 41, 94)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <label class="label" uid="258">
+                  <objFlags>1507650</objFlags>
+                  <partID>16</partID>
+                  <howGrow>4096</howGrow>
+                  <bounds>(-17, 0, 0, 227)</bounds>
+                  <image class="Image">
+                    <ImageResID>-619</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <mode>82948</mode>
+                    <text>"Dual Mode Thermometer Indicator (DMTI)"</text>
+                    <bgColor>01000000</bgColor>
+                    </textRec>
+                  </label>
+                <bounds>(59, 193, 101, 287)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>327684</clumpNum>
+                <dcoList elements="4">
+                  <SL__arrayElement uid="217" />
+                  <SL__arrayElement uid="227" />
+                  <SL__arrayElement uid="246" />
+                  <SL__arrayElement uid="252" />
+                  </dcoList>
+                <permDCOList elements="4">
+                  <SL__arrayElement uid="184" />
+                  <SL__arrayElement uid="195" />
+                  <SL__arrayElement uid="199" />
+                  <SL__arrayElement uid="203" />
+                  </permDCOList>
+                <nodeName>"Simple Dual Mode Thermometer XC"</nodeName>
+                <oMId>0003</oMId>
+                <ddo uid="107" />
+                <methName>"Convert C to F.vi"</methName>
+                <methCode>-1</methCode>
+                <invokeFlags>08</invokeFlags>
+                <propList elements="0" />
+                <privDataList elements="0" />
+                </SL__arrayElement>
+              </heap></part>

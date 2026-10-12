@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1187" source="&lt;labview&gt;\examples\Strings\Extract Numbers with Match Pattern.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="offset past number" /><TypeDesc Type="Boolean" Format="inline" Label="use system decimal point (T)" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="227">
+                <termList elements="6">
+                  <SL__arrayElement class="term" uid="228">
+                    <dco class="parm" uid="230">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(13)</typeDesc>
+                      <termBounds>(16, 21, 32, 32)</termBounds>
+                      <primIndex>23</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="231">
+                    <dco class="parm" uid="234">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(14)</typeDesc>
+                      <termBounds>(0, 21, 16, 32)</termBounds>
+                      <primIndex>23</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="236">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="238">
+                      <typeDesc>TypeID(15)</typeDesc>
+                      <termBounds>(0, 11, 32, 21)</termBounds>
+                      <primIndex>23</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="243">
+                    <dco class="parm" uid="237">
+                      <typeDesc>TypeID(16)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(21, 0, 32, 11)</termBounds>
+                      <primIndex>23</primIndex>
+                      <parmIndex>3</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="240">
+                    <dco class="parm" uid="244">
+                      <typeDesc>TypeID(17)</typeDesc>
+                      <termBounds>(11, 0, 21, 11)</termBounds>
+                      <primIndex>23</primIndex>
+                      <parmIndex>4</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="245">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="241">
+                      <typeDesc>TypeID(18)</typeDesc>
+                      <termBounds>(0, 0, 11, 11)</termBounds>
+                      <primIndex>23</primIndex>
+                      <parmIndex>5</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <label class="label" uid="1566">
+                  <objFlags>1507650</objFlags>
+                  <partID>16</partID>
+                  <howGrow>4096</howGrow>
+                  <bounds>(0, 32, 17, 182)</bounds>
+                  <image class="Image">
+                    <ImageResID>-619</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <flags>512</flags>
+                    <mode>82948</mode>
+                    <text>"Fract/Exp String To Number"</text>
+                    <bgColor>01000000</bgColor>
+                    </textRec>
+                  </label>
+                <bounds>(69, 378, 101, 410)</bounds>
+                <shortCount>8</shortCount>
+                <clumpNum>262147</clumpNum>
+                <primResID>1187</primResID>
+                <primIndex>23</primIndex>
+                </SL__arrayElement>
+              </heap></part>

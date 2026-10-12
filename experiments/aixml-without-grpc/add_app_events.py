@@ -16,10 +16,11 @@ import sys
 import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer and its parts, since 2026-10-12
 sys.path.insert(0, HERE)
 import event_frame_data  # noqa: E402
 
-TABLE = os.path.join(HERE, "parts", "static-events.json")
+TABLE = os.path.join(COMPOSER, "parts", "static-events.json")
 # number -> NI's exporter's name (name_static_specs.py over the scan, 2026-10-11)
 EVENTS = {"1073741850": "Application Instance Close", "-2147483644": "Application Instance Close?",
           "1073741888": "Application Activation", "1073741906": "Bookmark Info Change"}

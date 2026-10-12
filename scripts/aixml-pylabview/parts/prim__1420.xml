@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1420" source="&lt;labview&gt;\examples\File IO\Zip\Create Zip File.vi"><types><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="path" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="stripped path" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="name" /></types><heap><SL__arrayElement class="prim" uid="196">
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="783">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="784">
+              <typeDesc>TypeID(49)</typeDesc>
+              <termBounds>(0, 0, 32, 16)</termBounds>
+              <primIndex>194</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="787">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="836">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(50)</typeDesc>
+              <termBounds>(0, 16, 16, 32)</termBounds>
+              <primIndex>194</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="853">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="854">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(51)</typeDesc>
+              <termBounds>(16, 16, 32, 32)</termBounds>
+              <primIndex>194</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="1232">
+          <objFlags>1507658</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-17, 0, 0, 56)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <bgColor>00FFFFFF</bgColor>
+          <textRec class="textHair">
+            <mode>8471556</mode>
+            <text>"Strip Path"</text>
+            <bgColor>00FFFFFF</bgColor>
+            </textRec>
+          </label>
+        <bounds>(282, -11, 314, 21)</bounds>
+        <shortCount>14</shortCount>
+        <clumpNum>262148</clumpNum>
+        <primResID>1420</primResID>
+        <primIndex>194</primIndex>
+        </SL__arrayElement>
+      </heap></part>

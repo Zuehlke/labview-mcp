@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.VI/Ctrl Val%2EGet All" source="&lt;labview&gt;\vi.lib\Astemes\LUnit\Core\LUnit Test Case\Run.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="Test Method Ref" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="Test Method Ref" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Get All Control Values Variant" /><TypeDesc Type="Array" Format="inline" Label="Get All Control Values Variant"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Name" /><TypeDesc Type="LVVariant" Format="inline" Label="Variant Data" /></TypeDesc></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="Controls" /><TypeDesc Type="Void" Format="inline" Label="Controls" /></types><heap><SL__arrayElement class="invokeNode" uid="6051">
+        <objFlags>33555072</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="6054">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="6055">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(115)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="6057">
+            <dco class="hGrowCItem" uid="6058">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(116)</typeDesc>
+              <termBounds>(0, 73, 9, 86)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="6060">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="6061">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(117)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="6063">
+            <dco class="hGrowCItem" uid="6064">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(118)</typeDesc>
+              <termBounds>(9, 73, 18, 86)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="6066">
+            <dco class="invokeItem" uid="6067">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(119)</typeDesc>
+              <termBounds>(18, 0, 34, 43)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="6070">
+            <dco class="invokeItem" uid="6071">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(120)</typeDesc>
+              <termBounds>(18, 43, 34, 86)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="6074">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="6075">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(121)</typeDesc>
+              <termBounds>(34, 0, 50, 43)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="6078">
+            <dco class="invokeItem" uid="6079">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(122)</typeDesc>
+              <termBounds>(34, 43, 50, 86)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="6052">
+          <objFlags>1507658</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-15, 0, 0, 68)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"Invoke Node"</text>
+            <bgColor>01000000</bgColor>
+            </textRec>
+          </label>
+        <bounds>(174, 2271, 225, 2357)</bounds>
+        <shortCount>36</shortCount>
+        <clumpNum>196611</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="6067" />
+          <SL__arrayElement uid="6071" />
+          <SL__arrayElement uid="6075" />
+          <SL__arrayElement uid="6079" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="6055" />
+          <SL__arrayElement uid="6058" />
+          <SL__arrayElement uid="6061" />
+          <SL__arrayElement uid="6064" />
+          </permDCOList>
+        <nodeName>"VI"</nodeName>
+        <oMId>0007</oMId>
+        <methName>"Ctrl Val.Get All"</methName>
+        <methCode>1053</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

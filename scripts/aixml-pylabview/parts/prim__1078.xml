@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1078" source="&lt;labview&gt;\examples\Object-Oriented Programming\Basic Interfaces\Lever\Pry.vi"><types><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="226">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="487">
+            <dco class="parm" uid="488">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(11)</typeDesc>
+              <termBounds>(0, 12, 11, 25)</termBounds>
+              <primIndex>32</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="490">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="491">
+              <typeDesc>TypeID(12)</typeDesc>
+              <termBounds>(0, 0, 11, 12)</termBounds>
+              <primIndex>32</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(567, 196, 599, 228)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>393220</clumpNum>
+        <primResID>1078</primResID>
+        <primIndex>32</primIndex>
+        </SL__arrayElement>
+      </heap></part>

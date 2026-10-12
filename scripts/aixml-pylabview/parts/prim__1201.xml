@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1201" source="&lt;labview&gt;\examples\Controls and Indicators\Graphs and Charts\Math Plots - 3D\3D Comet Graph.vi"><types><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="425">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="427">
+                    <dco class="parm" uid="428">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(27)</typeDesc>
+                      <termBounds>(0, 16, 32, 32)</termBounds>
+                      <primIndex>73</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="430">
+                    <objFlags>32769</objFlags>
+                    <dco class="parm" uid="431">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(28)</typeDesc>
+                      <termBounds>(0, 0, 32, 16)</termBounds>
+                      <primIndex>73</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(83, 160, 115, 192)</bounds>
+                <shortCount>4</shortCount>
+                <clumpNum>262147</clumpNum>
+                <primResID>1201</primResID>
+                <primIndex>73</primIndex>
+                </SL__arrayElement>
+              </heap></part>

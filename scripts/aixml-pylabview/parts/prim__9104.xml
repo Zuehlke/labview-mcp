@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/9104" source="&lt;labview&gt;\examples\File IO\TDMS\TDMS Display Defragmentation Progress.vi"><types><TypeDesc Type="Refnum" RefType="NotifierRef" Format="inline" Label="notifier out"><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="NotifierRef" Format="inline" Label="notifier out"><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="659">
+        <objFlags>512</objFlags>
+        <termList elements="5">
+          <SL__arrayElement class="term" uid="699">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="703">
+              <typeDesc>TypeID(47)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>473</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="709">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="710">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(48)</typeDesc>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <primIndex>473</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="712">
+            <dco class="parm" uid="713">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(49)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>473</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="716">
+            <dco class="parm" uid="717">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(50)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>473</primIndex>
+              <parmIndex>8</parmIndex>
+              <inplace>1</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="719">
+            <dco class="parm" uid="720">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(51)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>473</primIndex>
+              <parmIndex>11</parmIndex>
+              <inplace>3</inplace>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1134, -1344, 1166, -1312)</bounds>
+        <shortCount>22</shortCount>
+        <clumpNum>196611</clumpNum>
+        <primResID>9104</primResID>
+        <primIndex>473</primIndex>
+        </SL__arrayElement>
+      </heap></part>

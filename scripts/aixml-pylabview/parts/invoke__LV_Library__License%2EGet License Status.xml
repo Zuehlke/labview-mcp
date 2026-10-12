@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Library/License%2EGet License Status" source="&lt;labview&gt;\vi.lib\AppBuilder\AB_Classes\Source\Library\Get_Feature_State.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0050" HasItem="0" Format="inline" Label="eng_reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0050" HasItem="0" Format="inline" Label="eng_reference" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="License.Get License Status" /><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="License.Get License Status"><EnumLabel>Failure</EnumLabel>
+        <EnumLabel>Activated Success</EnumLabel>
+        <EnumLabel>Demo Success</EnumLabel>
+        <EnumLabel>Full Demo Success</EnumLabel>
+        </TypeDesc></types><heap><SL__arrayElement class="invokeNode" uid="1664">
+                                        <objFlags>66176</objFlags>
+                                        <termList elements="6">
+                                          <SL__arrayElement class="term" uid="1842">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="hGrowCItem" uid="1843">
+                                              <objFlags>65536</objFlags>
+                                              <typeDesc>TypeID(238)</typeDesc>
+                                              <termBounds>(0, 0, 9, 13)</termBounds>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="1845">
+                                            <dco class="hGrowCItem" uid="1847">
+                                              <objFlags>262145</objFlags>
+                                              <typeDesc>TypeID(239)</typeDesc>
+                                              <termBounds>(0, 133, 9, 146)</termBounds>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="1852">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="hGrowCItem" uid="1854">
+                                              <objFlags>131072</objFlags>
+                                              <typeDesc>TypeID(240)</typeDesc>
+                                              <termBounds>(9, 0, 18, 13)</termBounds>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="1856">
+                                            <dco class="hGrowCItem" uid="1857">
+                                              <objFlags>524289</objFlags>
+                                              <typeDesc>TypeID(241)</typeDesc>
+                                              <termBounds>(9, 133, 18, 146)</termBounds>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="1859">
+                                            <dco class="invokeItem" uid="1860">
+                                              <objFlags>196608</objFlags>
+                                              <typeDesc>TypeID(242)</typeDesc>
+                                              <termBounds>(18, 0, 34, 73)</termBounds>
+                                              <privDataList elements="0" />
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="1863">
+                                            <dco class="invokeItem" uid="1864">
+                                              <objFlags>65537</objFlags>
+                                              <typeDesc>TypeID(243)</typeDesc>
+                                              <termBounds>(18, 73, 34, 146)</termBounds>
+                                              <privDataList elements="0" />
+                                              </dco>
+                                            </SL__arrayElement>
+                                          </termList>
+                                        <bounds>(87, 123, 122, 269)</bounds>
+                                        <shortCount>2</shortCount>
+                                        <clumpNum>1769475</clumpNum>
+                                        <dcoList elements="2">
+                                          <SL__arrayElement uid="1860" />
+                                          <SL__arrayElement uid="1864" />
+                                          </dcoList>
+                                        <permDCOList elements="4">
+                                          <SL__arrayElement uid="1843" />
+                                          <SL__arrayElement uid="1847" />
+                                          <SL__arrayElement uid="1854" />
+                                          <SL__arrayElement uid="1857" />
+                                          </permDCOList>
+                                        <nodeName>"Library"</nodeName>
+                                        <oMId>00D1</oMId>
+                                        <methName>"License.Get License Status"</methName>
+                                        <methCode>1292952611</methCode>
+                                        <invokeFlags>0408</invokeFlags>
+                                        <propList elements="0" />
+                                        <privDataList elements="0" />
+                                        </SL__arrayElement>
+                                      </heap></part>

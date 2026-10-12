@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1213" source="&lt;labview&gt;\examples\Mathematics\Linear Algebra\Matrix to a Power.vi"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumComplex128" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Eigenvalues"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumComplex128" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="284">
+                                <objFlags>196608</objFlags>
+                                <termList elements="3">
+                                  <SL__arrayElement class="term" uid="577">
+                                    <dco class="parm" uid="579">
+                                      <objFlags>1</objFlags>
+                                      <typeDesc>TypeID(153)</typeDesc>
+                                      <dcoFiller>2</dcoFiller>
+                                      <termBounds>(0, 16, 32, 32)</termBounds>
+                                      <primIndex>89</primIndex>
+                                      <inplace>2</inplace>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="604">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="621">
+                                      <objFlags>65536</objFlags>
+                                      <typeDesc>TypeID(154)</typeDesc>
+                                      <termBounds>(16, 0, 32, 16)</termBounds>
+                                      <primIndex>89</primIndex>
+                                      <parmIndex>1</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="641">
+                                    <objFlags>294912</objFlags>
+                                    <dco class="parm" uid="645">
+                                      <typeDesc>TypeID(155)</typeDesc>
+                                      <dsw>1024</dsw>
+                                      <termBounds>(0, 0, 16, 16)</termBounds>
+                                      <primIndex>89</primIndex>
+                                      <parmIndex>2</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </termList>
+                                <bounds>(196, 250, 228, 282)</bounds>
+                                <shortCount>4</shortCount>
+                                <clumpNum>1048580</clumpNum>
+                                <primResID>1213</primResID>
+                                <primIndex>89</primIndex>
+                                </SL__arrayElement>
+                              </heap></part>

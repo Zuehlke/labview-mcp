@@ -25,7 +25,7 @@ def main(argv):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     n = 0
     for f in sorted(glob.glob(os.path.join(CACHE, "*.xml"))):
-        c = aixml2vi.Composer(os.path.join(HERE, "parts"))
+        c = aixml2vi.Composer(os.path.join(COMPOSER, "parts"))
         meta = f[:-4] + ".json"
         vp = json.load(open(meta, encoding="utf-8")).get("ViPath") if os.path.exists(meta) else ""
         if vp:

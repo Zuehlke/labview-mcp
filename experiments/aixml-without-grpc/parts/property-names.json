@@ -1,6 +1,0 @@
-{
- "_doc": "AIXML's LONG property name -> the SHORT name a property node of LabVIEW's own VIs may carry instead (the node's Name Format), where no class tables both. Each pair is measured: the same property code under both names, the long one from NI's converter's build of AIXML naming it, the short one from the installation VI the row is harvested from.",
- "Update While Typing?": {"short": "UpdtWhileTyping", "code": 104093704,
-                          "long": "C:\\temp\\ATM_Agents_7\\Automatic Teller Machine\\ATM Main.vi",
-                          "short_source": "resource\\PropertyPages\\Pages\\PropPage_StringAppearance.vi"}
-}

@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/2074" source="&lt;labview&gt;\examples\Collections\Map Collection - Comparing Test Results_Generate.vi"><types><TypeDesc Type="Refnum" RefType="UserEvent" Format="inline" Label="measurement"><TypeDesc Type="Cluster" Format="inline" Label="measurement"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="name" /><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline" Label="amount"><PhysUnit Val1="3" Val2="65533" />
+        <PhysUnit Val1="4" Val2="1" />
+        </TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="measurement"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="name" /><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline" Label="amount"><PhysUnit Val1="3" Val2="65533" />
+        <PhysUnit Val1="4" Val2="1" />
+        </TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="UnitUInt32" Nested="True" Prop1="0" Format="inline" Label="priority (normal)">
+          <EnumLabel>high priority</EnumLabel>
+          <EnumLabel>normal priority</EnumLabel>
+          </TypeDesc>
+        <Label Text="usereventprio.ctl" />
+        </TypeDesc><TypeDesc Type="Refnum" RefType="UserEvent" Format="inline" Label="measurement"><TypeDesc Type="Cluster" Format="inline" Label="measurement"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="name" /><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline" Label="amount"><PhysUnit Val1="3" Val2="65533" />
+        <PhysUnit Val1="4" Val2="1" />
+        </TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="341">
+        <objFlags>512</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="343">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="344">
+              <typeDesc>TypeID(13)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>496</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="346">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="347">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(14)</typeDesc>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <primIndex>496</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="349">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="350">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(15)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>496</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="352">
+            <dco class="parm" uid="353">
+              <typeDesc>TypeID(16)</typeDesc>
+              <termBounds>(0, 8, 16, 16)</termBounds>
+              <primIndex>496</primIndex>
+              <parmIndex>4</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="355">
+            <dco class="parm" uid="356">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(17)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>496</primIndex>
+              <parmIndex>8</parmIndex>
+              <inplace>1</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="358">
+            <dco class="parm" uid="359">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(18)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>496</primIndex>
+              <parmIndex>11</parmIndex>
+              <inplace>3</inplace>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(705, 989, 737, 1021)</bounds>
+        <shortCount>12</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>2074</primResID>
+        <primIndex>496</primIndex>
+        </SL__arrayElement>
+      </heap></part>

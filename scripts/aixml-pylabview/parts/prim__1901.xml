@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1901" source="&lt;labview&gt;\examples\MGI\Panel Manager\Basic Panel Actors\Composite User Interface\Data Viewer\Actor Core.vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="index of element" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="element" /><TypeDesc Type="Array" Format="inline" Label="Available Data Names"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="1913">
+                        <termList elements="4">
+                          <SL__arrayElement class="term" uid="1919">
+                            <dco class="parm" uid="1920">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(112)</typeDesc>
+                              <termBounds>(0, 16, 32, 32)</termBounds>
+                              <primIndex>208</primIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1922">
+                            <dco class="parm" uid="1923">
+                              <typeDesc>TypeID(113)</typeDesc>
+                              <termBounds>(21, 0, 32, 16)</termBounds>
+                              <primIndex>208</primIndex>
+                              <parmIndex>1</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1925">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="1926">
+                              <typeDesc>TypeID(114)</typeDesc>
+                              <dsw>4096</dsw>
+                              <termBounds>(11, 0, 21, 16)</termBounds>
+                              <primIndex>208</primIndex>
+                              <parmIndex>2</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1928">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="1929">
+                              <typeDesc>TypeID(115)</typeDesc>
+                              <termBounds>(0, 0, 11, 16)</termBounds>
+                              <primIndex>208</primIndex>
+                              <parmIndex>3</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(112, 175, 144, 207)</bounds>
+                        <shortCount>4</shortCount>
+                        <clumpNum>589827</clumpNum>
+                        <primResID>1901</primResID>
+                        <primIndex>208</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

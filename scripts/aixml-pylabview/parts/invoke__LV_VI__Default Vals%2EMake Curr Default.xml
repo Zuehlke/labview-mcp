@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.VI/Default Vals%2EMake Curr Default" source="&lt;labview&gt;\vi.lib\express\rvi\timing\Mutation\nirviSetTimerProperties.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="VI ref" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="VI ref" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Make Current Values Default" /><TypeDesc Type="Void" Format="inline" Label="Make Current Values Default" /></types><heap><SL__arrayElement class="invokeNode" uid="701">
+                <objFlags>33620608</objFlags>
+                <termList elements="6">
+                  <SL__arrayElement class="term" uid="703">
+                    <objFlags>32768</objFlags>
+                    <dco class="hGrowCItem" uid="704">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(70)</typeDesc>
+                      <termBounds>(0, 0, 9, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="706">
+                    <dco class="hGrowCItem" uid="707">
+                      <objFlags>262145</objFlags>
+                      <typeDesc>TypeID(71)</typeDesc>
+                      <termBounds>(0, 159, 9, 172)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="709">
+                    <objFlags>32768</objFlags>
+                    <dco class="hGrowCItem" uid="710">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(72)</typeDesc>
+                      <termBounds>(9, 0, 18, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="712">
+                    <dco class="hGrowCItem" uid="713">
+                      <objFlags>524289</objFlags>
+                      <typeDesc>TypeID(73)</typeDesc>
+                      <termBounds>(9, 159, 18, 172)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="715">
+                    <objFlags>1</objFlags>
+                    <dco class="invokeItem" uid="716">
+                      <objFlags>196608</objFlags>
+                      <typeDesc>TypeID(74)</typeDesc>
+                      <termBounds>(18, 0, 34, 86)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="719">
+                    <objFlags>1</objFlags>
+                    <dco class="invokeItem" uid="720">
+                      <objFlags>196609</objFlags>
+                      <typeDesc>TypeID(75)</typeDesc>
+                      <termBounds>(18, 86, 34, 172)</termBounds>
+                      <privDataList elements="0" />
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(44, 482, 79, 654)</bounds>
+                <shortCount>14</shortCount>
+                <clumpNum>327684</clumpNum>
+                <dcoList elements="2">
+                  <SL__arrayElement uid="716" />
+                  <SL__arrayElement uid="720" />
+                  </dcoList>
+                <permDCOList elements="4">
+                  <SL__arrayElement uid="704" />
+                  <SL__arrayElement uid="707" />
+                  <SL__arrayElement uid="710" />
+                  <SL__arrayElement uid="713" />
+                  </permDCOList>
+                <nodeName>"VI"</nodeName>
+                <oMId>0004</oMId>
+                <methName>"Default Vals.Make Curr Default"</methName>
+                <methCode>1011</methCode>
+                <invokeFlags>1008</invokeFlags>
+                <propList elements="0" />
+                <privDataList elements="0" />
+                </SL__arrayElement>
+              </heap></part>

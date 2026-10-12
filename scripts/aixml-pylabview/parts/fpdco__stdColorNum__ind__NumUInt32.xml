@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdColorNum/ind/NumUInt32" source="&lt;labview&gt;\examples\control\fuzzy\Color Learner\FuzzyEx Color Learner.vi"><types><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Sorted color " /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Sorted color " /></types><heap><SL__arrayElement class="fPDCO" uid="57">
+          <objFlags>65</objFlags>
+          <typeDesc>TypeID(31)</typeDesc>
+          <ddo class="stdColorNum" uid="43">
+            <objFlags>786433</objFlags>
+            <bounds>(240, 12, 438, 144)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="51">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(181, 30, 198, 100)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <flags>1536</flags>
+                  <mode>17412</mode>
+                  <text>"Sorted color "</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="52">
+                <objFlags>2354</objFlags>
+                <partID>41</partID>
+                <masterPart>9</masterPart>
+                <howGrow>240</howGrow>
+                <bounds>(4, 4, 176, 128)</bounds>
+                <image class="Image">
+                  <ImageResID>-239</ImageResID>
+                  </image>
+                <fgColor>01000016</fgColor>
+                <bgColor>01000016</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="53">
+                <objFlags>2391</objFlags>
+                <partID>9</partID>
+                <howGrow>240</howGrow>
+                <bounds>(0, 0, 180, 132)</bounds>
+                <image class="Image">
+                  <ImageResID>-412</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="54">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>21019</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(32)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            <StdNumMin>0</StdNumMin>
+            <StdNumMax>4294967295</StdNumMax>
+            <StdNumInc>0</StdNumInc>
+            </ddo>
+          <conNum>-1</conNum>
+          <termListLength>5</termListLength>
+          <DefaultData>"&amp;#x01;&amp;#x00;&amp;#x00;&amp;#x16;"</DefaultData>
+          </SL__arrayElement>
+        </heap></part>

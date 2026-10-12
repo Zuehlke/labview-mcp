@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1608" source="&lt;labview&gt;\examples\File IO\Spreadsheet\Tab-Delimited Data\Buffered Stream to Tab-Delimited Text File.vi"><types><TypeDesc Type="Array" Format="inline" Label="unsigned byte array"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="563">
+                                    <termList elements="2">
+                                      <SL__arrayElement class="term" uid="571">
+                                        <dco class="parm" uid="569">
+                                          <objFlags>1</objFlags>
+                                          <typeDesc>TypeID(155)</typeDesc>
+                                          <termBounds>(0, 13, 11, 25)</termBounds>
+                                          <primIndex>148</primIndex>
+                                          <inplace>2</inplace>
+                                          </dco>
+                                        </SL__arrayElement>
+                                      <SL__arrayElement class="term" uid="575">
+                                        <objFlags>32768</objFlags>
+                                        <dco class="parm" uid="573">
+                                          <typeDesc>TypeID(156)</typeDesc>
+                                          <termBounds>(0, 0, 11, 13)</termBounds>
+                                          <primIndex>148</primIndex>
+                                          <parmIndex>1</parmIndex>
+                                          </dco>
+                                        </SL__arrayElement>
+                                      </termList>
+                                    <bounds>(99, 37, 131, 69)</bounds>
+                                    <shortCount>4</shortCount>
+                                    <clumpNum>983044</clumpNum>
+                                    <primResID>1608</primResID>
+                                    <primIndex>148</primIndex>
+                                    </SL__arrayElement>
+                                  </heap></part>

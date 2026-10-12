@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1169" source="&lt;labview&gt;\examples\Mathematics\Optimization\2D Explorer.vi"><types><TypeDesc Type="SubArray" Format="inline" Label="Cursor.Cursor Position"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Cursor X" /></TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Cursor.Cursor Position"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Cursor X" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Cursor Y" /></TypeDesc><Label Text="LVPointDoubleTypeDef.ctl" />
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="7201">
+                <objFlags>16777216</objFlags>
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="7206">
+                    <dco class="parm" uid="7208">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(180)</typeDesc>
+                      <termBounds>(0, 12, 11, 25)</termBounds>
+                      <primIndex>162</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="7212">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="7223">
+                      <typeDesc>TypeID(181)</typeDesc>
+                      <termBounds>(0, 0, 11, 12)</termBounds>
+                      <primIndex>162</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(145, 398, 177, 430)</bounds>
+                <shortCount>16</shortCount>
+                <clumpNum>393220</clumpNum>
+                <primResID>1169</primResID>
+                <primIndex>162</primIndex>
+                </SL__arrayElement>
+              </heap></part>

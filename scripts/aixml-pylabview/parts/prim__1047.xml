@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1047" source="&lt;labview&gt;\examples\Signal Processing\Transforms\Spectrum using Chirp Z Transform.vi"><types><TypeDesc Type="NumComplex128" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="1082">
+                <objFlags>65536</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="1088">
+                    <dco class="parm" uid="1089">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(61)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>91</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1091">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="1095">
+                      <typeDesc>TypeID(62)</typeDesc>
+                      <termBounds>(10, 0, 21, 10)</termBounds>
+                      <primIndex>91</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1098">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="1099">
+                      <typeDesc>TypeID(63)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(0, 0, 10, 10)</termBounds>
+                      <primIndex>91</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(386, 645, 418, 677)</bounds>
+                <shortCount>40</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1047</primResID>
+                <primIndex>91</primIndex>
+                </SL__arrayElement>
+              </heap></part>

@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1702" source="&lt;labview&gt;\examples\Synchronization\Occurrence\Simple Occurrence.vi"><types><TypeDesc Type="Refnum" RefType="Occurrence" Format="inline" Label="occurrence" /></types><heap><SL__arrayElement class="prim" uid="462">
+                    <objFlags>512</objFlags>
+                    <termList elements="1">
+                      <SL__arrayElement class="term" uid="472">
+                        <objFlags>32768</objFlags>
+                        <dco class="parm" uid="473">
+                          <typeDesc>TypeID(23)</typeDesc>
+                          <termBounds>(0, 0, 21, 16)</termBounds>
+                          <primIndex>219</primIndex>
+                          </dco>
+                        </SL__arrayElement>
+                      </termList>
+                    <bounds>(96, 502, 128, 534)</bounds>
+                    <shortCount>8</shortCount>
+                    <clumpNum>327683</clumpNum>
+                    <primResID>1702</primResID>
+                    <primIndex>219</primIndex>
+                    </SL__arrayElement>
+                  </heap></part>

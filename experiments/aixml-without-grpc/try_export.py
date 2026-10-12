@@ -32,7 +32,7 @@ def main(argv):
     if src is None:
         print("no cached export of %s" % vp)
         return 1
-    c = aixml2vi.Composer(os.path.join(HERE, "parts"))
+    c = aixml2vi.Composer(os.path.join(COMPOSER, "parts"))
     c.search_dirs = [os.path.dirname(vp)]
     c.caller_file = out
     try:

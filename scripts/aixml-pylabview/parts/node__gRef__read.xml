@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/gRef/read" source="pseq.xml" clean="1"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="n" /></types><heap><SL__arrayElement class="gRef" uid="4420">
+        <objFlags>512</objFlags>
+        <termList elements="1">
+          <SL__arrayElement class="term" uid="4872">
+            <dco class="gRefDCO" uid="4871">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(33)</typeDesc>
+              <termBounds>(0, 0, 16, 31)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="4869">
+          <objFlags>394571</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-15, 0, 0, 39)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"pseq.vi"</text>
+            <bgColor>01000000</bgColor>
+            <fr elements="1">
+              <SL__arrayElement class="fontRun">
+                <fontid>1</fontid>
+                </SL__arrayElement>
+              </fr>
+            </textRec>
+          </label>
+        <bounds>(532, 195, 548, 226)</bounds>
+        <shortCount>10</shortCount>
+        <clumpNum>131075</clumpNum>
+        </SL__arrayElement>
+      </heap></part>

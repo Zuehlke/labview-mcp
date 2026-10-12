@@ -1,0 +1,108 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="struct" key="struct/forLoop" source="forl.xml"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="forLoop" uid="1134">
+        <objFlags>268435712</objFlags>
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="1155">
+            <objFlags>294976</objFlags>
+            <dco class="lMax" uid="1152">
+              <termList elements="2">
+                <SL__arrayElement uid="1154" />
+                <SL__arrayElement uid="1155" />
+                </termList>
+              <typeDesc>TypeID(39)</typeDesc>
+              <dsw>1024</dsw>
+              <dcoFiller>1536</dcoFiller>
+              <termBounds>(0, 0, 16, 16)</termBounds>
+              <termBMPs>2</termBMPs>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1203">
+            <objFlags>2097216</objFlags>
+            <dco class="lpTun" uid="1197">
+              <objFlags>16779265</objFlags>
+              <termList elements="2">
+                <SL__arrayElement uid="1199" />
+                <SL__arrayElement uid="1203" />
+                </termList>
+              <typeDesc>TypeID(40)</typeDesc>
+              <termBounds>(23, 89, 32, 98)</termBounds>
+              <innerLpTunDCO class="innerLpTun" uid="1206">
+                <objFlags>20971521</objFlags>
+                <termList elements="2">
+                  <SL__arrayElement uid="1199" />
+                  <SL__arrayElement uid="1203" />
+                  </termList>
+                <typeDesc>TypeID(41)</typeDesc>
+                <lpTunDCO uid="1197" />
+                </innerLpTunDCO>
+              <TunnelType>01</TunnelType>
+              <DefaultTunnelType>01</DefaultTunnelType>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(325, 553, 375, 651)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>655364</clumpNum>
+        <contRect>(326, 554, 370, 646)</contRect>
+        <tunnelList elements="1">
+          <SL__arrayElement uid="1197" />
+          </tunnelList>
+        <diagramList elements="1">
+          <SL__arrayElement class="diag" uid="1142">
+            <zPlaneList elements="1">
+              <SL__arrayElement uid="1151" />
+              </zPlaneList>
+            <nodeList elements="1">
+              <SL__arrayElement class="sRN" uid="1146">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="1151">
+                    <objFlags>131392</objFlags>
+                    <dco uid="1149" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1154">
+                    <objFlags>131072</objFlags>
+                    <dco uid="1152" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1199">
+                    <objFlags>2260992</objFlags>
+                    <dco uid="1197" />
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(-325, -553, -325, -553)</bounds>
+                <shortCount>1</shortCount>
+                <clumpNum>720900</clumpNum>
+                </SL__arrayElement>
+              </nodeList>
+            <signalList elements="1">
+              <SL__arrayElement class="signal" uid="1208">
+                <termList elements="2">
+                  <SL__arrayElement uid="1151" />
+                  <SL__arrayElement uid="1199" />
+                  </termList>
+                <state>1</state>
+                <compressedWireTable>0208</compressedWireTable>
+                <lastSignalKind>259</lastSignalKind>
+                </SL__arrayElement>
+              </signalList>
+            <bgColor>00FFFFFF</bgColor>
+            <firstNodeIdx>13</firstNodeIdx>
+            </SL__arrayElement>
+          </diagramList>
+        <loopIndexDCO class="lCnt" uid="1149">
+          <termList elements="1">
+            <SL__arrayElement uid="1151" />
+            </termList>
+          <typeDesc>TypeID(42)</typeDesc>
+          <termBounds>(19, 46, 35, 62)</termBounds>
+          <termBMPs>1</termBMPs>
+          </loopIndexDCO>
+        <loopLimitDCO uid="1152" />
+        <srDCOList elements="0" />
+        <ConditionDCOList elements="0" />
+        <ParForIndexDistribution>00</ParForIndexDistribution>
+        <ParForNumStaticWorkers>00</ParForNumStaticWorkers>
+        <DebuggingEnabled />
+        <OutputInstanceNumberFromP />
+        </SL__arrayElement>
+      </heap></part>

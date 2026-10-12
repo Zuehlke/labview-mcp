@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TimedLoop/Replace With TimedSeq" source="&lt;labview&gt;\examples\Application Control\VI Scripting\Structures\VI Scripting with Structures - Timed Loop.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4053" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4053" HasItem="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="ReplaceWithTimedSequence" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4070" HasItem="0" Format="inline" Label="ReplaceWithTimedSequence" /></types><heap><SL__arrayElement class="invokeNode" uid="780">
+        <objFlags>131712</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="786">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="783">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(7)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="789">
+            <dco class="hGrowCItem" uid="787">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(8)</typeDesc>
+              <termBounds>(0, 151, 9, 164)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="796">
+            <dco class="hGrowCItem" uid="792">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(9)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="799">
+            <dco class="hGrowCItem" uid="797">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(10)</typeDesc>
+              <termBounds>(9, 151, 18, 164)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="806">
+            <dco class="invokeItem" uid="803">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(11)</typeDesc>
+              <termBounds>(18, 0, 34, 82)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="810">
+            <dco class="invokeItem" uid="807">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(12)</typeDesc>
+              <termBounds>(18, 82, 34, 164)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(195, 609, 230, 773)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>196613</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="803" />
+          <SL__arrayElement uid="807" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="783" />
+          <SL__arrayElement uid="787" />
+          <SL__arrayElement uid="792" />
+          <SL__arrayElement uid="797" />
+          </permDCOList>
+        <nodeName>"TimedLoop"</nodeName>
+        <oMId>0003</oMId>
+        <methName>"Replace With TimedSeq"</methName>
+        <methCode>1526525953</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

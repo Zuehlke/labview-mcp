@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="arrelem" key="arrelem/const/stdBool" source="pclean.xml" clean="1"><types><TypeDesc Type="Boolean" Format="inline" /></types><heap><ddo class="stdBool" uid="8607">
+                  <objFlags>4</objFlags>
+                  <howGrow>240</howGrow>
+                  <bounds>(3, 87, 17, 103)</bounds>
+                  <partsList elements="2">
+                    <SL__arrayElement class="multiCosm" uid="8609">
+                      <objFlags>2358</objFlags>
+                      <partID>21</partID>
+                      <howGrow>240</howGrow>
+                      <bounds>(0, 0, 14, 16)</bounds>
+                      <fgColor>00007F00</fgColor>
+                      <bgColor>00FFFFFF</bgColor>
+                      <table elements="2">
+                        <SL__arrayElement class="Image">
+                          <ImageResID>-2103</ImageResID>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="Image">
+                          <ImageResID>-2102</ImageResID>
+                          </SL__arrayElement>
+                        </table>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="annex" uid="8610">
+                      <partID>66</partID>
+                      <rsrcID>2006</rsrcID>
+                      </SL__arrayElement>
+                    </partsList>
+                  <typeDesc>TypeID(557)</typeDesc>
+                  <MouseWheelSupport>0</MouseWheelSupport>
+                  <MinButSize>(-81, -5001)</MinButSize>
+                  </ddo>
+                </heap></part>

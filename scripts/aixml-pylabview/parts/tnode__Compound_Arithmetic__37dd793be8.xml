@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Compound_Arithmetic/37dd793be8" source="&lt;labview&gt;\examples\Signal Processing\Transforms\Generalized Fourier Spectrum.vi" node="Compound Arithmetic" ins="value|value#1|value#2|value#3|value#4" outs="result" mode="inversions= , , , , , ;operation=Add" nodeFlags="524288"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Offset" /></types><heap><SL__arrayElement class="cpdArith" uid="394">
+                <objFlags>524288</objFlags>
+                <termList elements="6">
+                  <SL__arrayElement class="term" uid="545" aixml="result">
+                    <objFlags>64</objFlags>
+                    <dco class="cpdArithDCO" uid="529">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(70)</typeDesc>
+                      <termBounds>(0, 12, 41, 24)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3140" aixml="value">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="3139">
+                      <objFlags>262144</objFlags>
+                      <typeDesc>TypeID(71)</typeDesc>
+                      <termBounds>(0, 0, 8, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2206" aixml="value#1">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="2205">
+                      <objFlags>262144</objFlags>
+                      <typeDesc>TypeID(72)</typeDesc>
+                      <termBounds>(8, 0, 16, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="482" aixml="value#2">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="400">
+                      <objFlags>262144</objFlags>
+                      <typeDesc>TypeID(73)</typeDesc>
+                      <termBounds>(16, 0, 24, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="525" aixml="value#3">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="512">
+                      <objFlags>262144</objFlags>
+                      <typeDesc>TypeID(74)</typeDesc>
+                      <termBounds>(24, 0, 32, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4940" aixml="value#4">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="4939">
+                      <typeDesc>TypeID(75)</typeDesc>
+                      <termBounds>(32, 0, 40, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(337, 569, 378, 593)</bounds>
+                <shortCount>32</shortCount>
+                <clumpNum>262147</clumpNum>
+                <dcoList elements="5">
+                  <SL__arrayElement uid="3139" />
+                  <SL__arrayElement uid="2205" />
+                  <SL__arrayElement uid="400" />
+                  <SL__arrayElement uid="512" />
+                  <SL__arrayElement uid="4939" />
+                  </dcoList>
+                <dcoAgg uid="529" />
+                </SL__arrayElement>
+              </heap></part>

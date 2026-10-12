@@ -37,7 +37,7 @@ CACHE = os.path.join(os.environ.get("USERPROFILE", ""), ".labviewmcp", "cache", 
 
 def classes_by_flags():
     out = {}
-    with open(os.path.join(HERE, "parts", "refnum-classes.tsv"), encoding="utf-8") as f:
+    with open(os.path.join(COMPOSER, "parts", "refnum-classes.tsv"), encoding="utf-8") as f:
         for line in f:
             row = line.rstrip("\r\n").split("\t")
             if line.startswith("#") or row[0] == "class" or len(row) < 2:
@@ -51,7 +51,7 @@ def class_parents():
     LV.GObject 0x0024 - refnum-classes.tsv), and docs/vi-server-classes.tsv gives each class's
     parent by that id (Control -> 36, Boolean -> 6, Digital -> 17 = Numeric)."""
     ids = {}
-    for line in open(os.path.join(HERE, "parts", "refnum-classes.tsv"), encoding="utf-8"):
+    for line in open(os.path.join(COMPOSER, "parts", "refnum-classes.tsv"), encoding="utf-8"):
         row = line.rstrip("\r\n").split("\t")
         if not line.startswith("#") and len(row) >= 2 and row[0].startswith("LV."):
             ids[int(row[1], 16)] = row[0]

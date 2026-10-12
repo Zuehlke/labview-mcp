@@ -18,10 +18,11 @@ import sys
 import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer and its parts, since 2026-10-12
 sys.path.insert(0, HERE)
 import event_frame_data  # noqa: E402
 
-TABLE = os.path.join(HERE, "parts", "static-events.json")
+TABLE = os.path.join(COMPOSER, "parts", "static-events.json")
 
 
 def main(argv):

@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/9111" source="&lt;labview&gt;\examples\Design Patterns\Queued Message Handler\Queued Message Handler Fundamentals.vi"><types><TypeDesc Type="Refnum" RefType="Queue" Format="inline" Label="queue out"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" /><TypeDesc Type="LVVariant" Format="inline" Label="Message Data" /></TypeDesc><Label Text="QMH Fundamentals - Message Cluster.ctl" />
+        </TypeDesc></TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" /><TypeDesc Type="LVVariant" Format="inline" Label="Message Data" /></TypeDesc><Label Text="QMH Fundamentals - Message Cluster.ctl" />
+        </TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="timeout in ms (-1)" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="Queue" Format="inline" Label="queue out"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" /><TypeDesc Type="LVVariant" Format="inline" Label="Message Data" /></TypeDesc><Label Text="QMH Fundamentals - Message Cluster.ctl" />
+        </TypeDesc></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="timed out?" /><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="4169">
+        <objFlags>640</objFlags>
+        <termList elements="7">
+          <SL__arrayElement class="term" uid="4270">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="4271">
+              <typeDesc>TypeID(9)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>482</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4273">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="4274">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(10)</typeDesc>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <primIndex>482</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4276">
+            <dco class="parm" uid="4277">
+              <typeDesc>TypeID(11)</typeDesc>
+              <termBounds>(16, 0, 24, 8)</termBounds>
+              <primIndex>482</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4279">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="4280">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(12)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>482</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4282">
+            <dco class="parm" uid="4283">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(13)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>482</primIndex>
+              <parmIndex>8</parmIndex>
+              <inplace>1</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4285">
+            <dco class="parm" uid="4286">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(14)</typeDesc>
+              <termBounds>(16, 24, 24, 32)</termBounds>
+              <primIndex>482</primIndex>
+              <parmIndex>10</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4288">
+            <dco class="parm" uid="4289">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(15)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>482</primIndex>
+              <parmIndex>11</parmIndex>
+              <inplace>4</inplace>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="4268">
+          <objFlags>1507658</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-17, 0, 0, 95)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"Enqueue Element"</text>
+            <bgColor>01000000</bgColor>
+            <fr elements="1">
+              <SL__arrayElement class="fontRun">
+                <fontid>2</fontid>
+                </SL__arrayElement>
+              </fr>
+            </textRec>
+          </label>
+        <bounds>(284, -500, 316, -468)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>9111</primResID>
+        <primIndex>482</primIndex>
+        </SL__arrayElement>
+      </heap></part>

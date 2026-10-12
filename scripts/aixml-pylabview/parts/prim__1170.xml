@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1170" source="&lt;labview&gt;\examples\Structures\Event Structure\Handling Common User Interface Events.vi"><types><TypeDesc Type="NumInt16" Prop1="0" Format="inline" /><TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /><TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="493">
+                        <termList elements="3">
+                          <SL__arrayElement class="term" uid="499">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="502">
+                              <typeDesc>TypeID(59)</typeDesc>
+                              <termBounds>(0, 0, 18, 9)</termBounds>
+                              <primIndex>30</primIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="505">
+                            <dco class="parm" uid="506">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(60)</typeDesc>
+                              <termBounds>(0, 9, 9, 18)</termBounds>
+                              <primIndex>30</primIndex>
+                              <parmIndex>1</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="508">
+                            <dco class="parm" uid="510">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(61)</typeDesc>
+                              <termBounds>(9, 9, 18, 18)</termBounds>
+                              <primIndex>30</primIndex>
+                              <parmIndex>2</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(154, 141, 186, 173)</bounds>
+                        <shortCount>6</shortCount>
+                        <clumpNum>524291</clumpNum>
+                        <primResID>1170</primResID>
+                        <primIndex>30</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

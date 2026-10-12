@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1057" source="GetID.xml"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="127">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="133">
+            <dco class="overridableParm" uid="134">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(6)</typeDesc>
+              <termBounds>(0, 10, 21, 21)</termBounds>
+              <primIndex>34</primIndex>
+              <inplace>2</inplace>
+              <maxWordLength>64</maxWordLength>
+              <override>3</override>
+              <overflow>2</overflow>
+              <quantize>3</quantize>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="136">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="137">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(7)</typeDesc>
+              <termBounds>(0, 0, 21, 10)</termBounds>
+              <primIndex>34</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(296, 227, 328, 259)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>196611</clumpNum>
+        <primResID>1057</primResID>
+        <primIndex>34</primIndex>
+        </SL__arrayElement>
+      </heap></part>

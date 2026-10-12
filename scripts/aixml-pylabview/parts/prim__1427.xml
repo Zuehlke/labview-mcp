@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1427" source="&lt;labview&gt;\examples\Connectivity\Libraries and Executables\Command Line Execution.vi"><types><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="path" /></types><heap><SL__arrayElement class="prim" uid="217">
+                <objFlags>512</objFlags>
+                <termList elements="1">
+                  <SL__arrayElement class="term" uid="223">
+                    <objFlags>1</objFlags>
+                    <dco class="parm" uid="224">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(35)</typeDesc>
+                      <termBounds>(0, 0, 16, 17)</termBounds>
+                      <primIndex>202</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <label class="label" uid="349">
+                  <objFlags>1507658</objFlags>
+                  <partID>16</partID>
+                  <howGrow>4096</howGrow>
+                  <bounds>(-17, 0, 0, 94)</bounds>
+                  <image class="Image">
+                    <ImageResID>-619</ImageResID>
+                    </image>
+                  <bgColor>00FFFFFF</bgColor>
+                  <textRec class="textHair">
+                    <mode>8471556</mode>
+                    <text>"Default Directory"</text>
+                    <bgColor>00FFFFFF</bgColor>
+                    <fr elements="1">
+                      <SL__arrayElement class="fontRun">
+                        <fontid>2</fontid>
+                        </SL__arrayElement>
+                      </fr>
+                    </textRec>
+                  </label>
+                <bounds>(143, 171, 175, 203)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1427</primResID>
+                <primIndex>202</primIndex>
+                </SL__arrayElement>
+              </heap></part>

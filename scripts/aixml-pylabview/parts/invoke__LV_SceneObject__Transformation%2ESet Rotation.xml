@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.SceneObject/Transformation%2ESet Rotation" source="&lt;labview&gt;\vi.lib\picture\3D Picture Control\Transformations\Set Rotation.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene Object" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene Object" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Transformation.Set Rotation" /><TypeDesc Type="Void" Format="inline" Label="Transformation.Set Rotation" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Param1"><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="X" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="Y" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="Z" /></TypeDesc><Label Text="LV3DPointTypeDef.ctl" />
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="Param1" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="Param2" /><TypeDesc Type="Void" Format="inline" Label="Param2" /></types><heap><SL__arrayElement class="invokeNode" uid="223">
+        <objFlags>640</objFlags>
+        <termList elements="10">
+          <SL__arrayElement class="term" uid="228">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="226">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(22)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="231">
+            <dco class="hGrowCItem" uid="229">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(23)</typeDesc>
+              <termBounds>(0, 145, 9, 158)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="234">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="232">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(24)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="237">
+            <dco class="hGrowCItem" uid="235">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(25)</typeDesc>
+              <termBounds>(9, 145, 18, 158)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="245">
+            <dco class="invokeItem" uid="241">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(26)</typeDesc>
+              <termBounds>(18, 0, 34, 79)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="252">
+            <dco class="invokeItem" uid="249">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(27)</typeDesc>
+              <termBounds>(18, 79, 34, 158)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="259">
+            <objFlags>294912</objFlags>
+            <dco class="invokeItem" uid="257">
+              <typeDesc>TypeID(28)</typeDesc>
+              <dsw>1024</dsw>
+              <termBounds>(34, 0, 50, 79)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="263">
+            <dco class="invokeItem" uid="261">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(29)</typeDesc>
+              <termBounds>(34, 79, 50, 158)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="267">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="265">
+              <typeDesc>TypeID(30)</typeDesc>
+              <termBounds>(50, 0, 66, 79)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="271">
+            <dco class="invokeItem" uid="269">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(31)</typeDesc>
+              <termBounds>(50, 79, 66, 158)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(320, 177, 387, 335)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="6">
+          <SL__arrayElement uid="241" />
+          <SL__arrayElement uid="249" />
+          <SL__arrayElement uid="257" />
+          <SL__arrayElement uid="261" />
+          <SL__arrayElement uid="265" />
+          <SL__arrayElement uid="269" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="226" />
+          <SL__arrayElement uid="229" />
+          <SL__arrayElement uid="232" />
+          <SL__arrayElement uid="235" />
+          </permDCOList>
+        <nodeName>"SceneObject"</nodeName>
+        <oMId>0003</oMId>
+        <methName>"Transformation.Set Rotation"</methName>
+        <methCode>763851801</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

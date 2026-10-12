@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Project/Close" source="P3 ni lvai_close_active_project.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0049" HasItem="0" Format="inline" Label="Project.ActiveProject" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0049" HasItem="0" Format="inline" Label="Project.ActiveProject" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Close" /><TypeDesc Type="Void" Format="inline" Label="Close" /></types><heap><SL__arrayElement class="invokeNode" uid="40">
+        <objFlags>640</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="129">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="127">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(14)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="132">
+            <dco class="hGrowCItem" uid="130">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(15)</typeDesc>
+              <termBounds>(0, 53, 9, 66)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="135">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="133">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(16)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="138">
+            <dco class="hGrowCItem" uid="136">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(17)</typeDesc>
+              <termBounds>(9, 53, 18, 66)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="145">
+            <dco class="invokeItem" uid="142">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(18)</typeDesc>
+              <termBounds>(18, 0, 34, 33)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="149">
+            <dco class="invokeItem" uid="146">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(19)</typeDesc>
+              <termBounds>(18, 33, 34, 66)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(250, 467, 285, 533)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="142" />
+          <SL__arrayElement uid="146" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="127" />
+          <SL__arrayElement uid="130" />
+          <SL__arrayElement uid="133" />
+          <SL__arrayElement uid="136" />
+          </permDCOList>
+        <nodeName>"Instr"</nodeName>
+        <oMId>0003</oMId>
+        <methName>"Close"</methName>
+        <methCode>655396866</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

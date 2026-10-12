@@ -18,6 +18,7 @@ import sys
 import threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer and its parts, since 2026-10-12
 sys.path.insert(0, HERE)
 import event_frame_data  # noqa: E402
 
@@ -25,7 +26,7 @@ KNOWN = {1073741826, 1073741825, 1073741839, 1073741838, 1000}
 
 
 def known_types():
-    t = json.load(open(os.path.join(HERE, "parts", "static-events.json"), encoding="utf-8"))
+    t = json.load(open(os.path.join(COMPOSER, "parts", "static-events.json"), encoding="utf-8"))
     return KNOWN | {int(r["spec"]["type"]) for r in t.values() if r.get("spec")}
 
 

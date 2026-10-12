@@ -943,9 +943,13 @@ public sealed class ShippedHelperAixmlTests
     {
         get
         {
+            // the composer's parts (scripts\aixml-pylabview\parts, shipped since 2026-10-12) are
+            // heap fragments cut from VIs, not AIXML - Every_shipped_part_is_well_formed covers them
+            var parts = Path.Combine(RepoRoot("scripts"), "aixml-pylabview", "parts") + Path.DirectorySeparatorChar;
             var data = new TheoryData<string>();
             foreach (var f in Directory.GetFiles(RepoRoot("scripts"), "*.xml", SearchOption.AllDirectories))
-                data.Add(f);
+                if (!f.StartsWith(parts, StringComparison.OrdinalIgnoreCase))
+                    data.Add(f);
             return data;
         }
     }

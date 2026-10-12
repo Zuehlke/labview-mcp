@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Boolean/Create%2EInvoke Node" source="&lt;labview&gt;\vi.lib\TargetSupport\NI_TargetHelper\Script Reinit To Default.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0008" HasItem="0" Format="inline" Label="bool ctrl" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0008" HasItem="0" Format="inline" Label="bool ctrl" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Create Invoke Node" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4024" HasItem="0" Format="inline" Label="Create Invoke Node" /></types><heap><SL__arrayElement class="invokeNode" uid="298">
+        <objFlags>640</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="300">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="301">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(83)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="304">
+            <dco class="hGrowCItem" uid="305">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(84)</typeDesc>
+              <termBounds>(0, 101, 9, 114)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="307">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="308">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(85)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="310">
+            <dco class="hGrowCItem" uid="311">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(86)</typeDesc>
+              <termBounds>(9, 101, 18, 114)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="313">
+            <dco class="invokeItem" uid="314">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(87)</typeDesc>
+              <termBounds>(18, 0, 34, 57)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="317">
+            <dco class="invokeItem" uid="318">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(88)</typeDesc>
+              <termBounds>(18, 57, 34, 114)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(353, 421, 388, 535)</bounds>
+        <shortCount>12</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="314" />
+          <SL__arrayElement uid="318" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="301" />
+          <SL__arrayElement uid="305" />
+          <SL__arrayElement uid="308" />
+          <SL__arrayElement uid="311" />
+          </permDCOList>
+        <nodeName>"Bool"</nodeName>
+        <oMId>0007</oMId>
+        <methName>"Create.Invoke Node"</methName>
+        <methCode>104012804</methCode>
+        <invokeFlags>201008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

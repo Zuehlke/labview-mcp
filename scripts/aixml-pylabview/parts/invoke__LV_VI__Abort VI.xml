@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.VI/Abort VI" source="&lt;labview&gt;\examples\Controls and Indicators\Containers\Multiple VIs in a Subpanel.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Abort VI" /><TypeDesc Type="Void" Format="inline" Label="Abort VI" /></types><heap><SL__arrayElement class="invokeNode" uid="1277">
+                                <objFlags>33620608</objFlags>
+                                <termList elements="6">
+                                  <SL__arrayElement class="term" uid="1283">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="hGrowCItem" uid="1284">
+                                      <objFlags>65536</objFlags>
+                                      <typeDesc>TypeID(94)</typeDesc>
+                                      <termBounds>(0, 0, 9, 13)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1286">
+                                    <dco class="hGrowCItem" uid="1287">
+                                      <objFlags>262145</objFlags>
+                                      <typeDesc>TypeID(95)</typeDesc>
+                                      <termBounds>(0, 41, 9, 54)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1289">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="hGrowCItem" uid="1290">
+                                      <objFlags>131072</objFlags>
+                                      <typeDesc>TypeID(96)</typeDesc>
+                                      <termBounds>(9, 0, 18, 13)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1292">
+                                    <dco class="hGrowCItem" uid="1293">
+                                      <objFlags>524289</objFlags>
+                                      <typeDesc>TypeID(97)</typeDesc>
+                                      <termBounds>(9, 41, 18, 54)</termBounds>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1295">
+                                    <dco class="invokeItem" uid="1296">
+                                      <objFlags>196608</objFlags>
+                                      <typeDesc>TypeID(98)</typeDesc>
+                                      <termBounds>(18, 0, 34, 27)</termBounds>
+                                      <privDataList elements="0" />
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1299">
+                                    <dco class="invokeItem" uid="1300">
+                                      <objFlags>196609</objFlags>
+                                      <typeDesc>TypeID(99)</typeDesc>
+                                      <termBounds>(18, 27, 34, 54)</termBounds>
+                                      <privDataList elements="0" />
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </termList>
+                                <bounds>(24, 46, 59, 100)</bounds>
+                                <shortCount>2</shortCount>
+                                <clumpNum>983043</clumpNum>
+                                <dcoList elements="2">
+                                  <SL__arrayElement uid="1296" />
+                                  <SL__arrayElement uid="1300" />
+                                  </dcoList>
+                                <permDCOList elements="4">
+                                  <SL__arrayElement uid="1284" />
+                                  <SL__arrayElement uid="1287" />
+                                  <SL__arrayElement uid="1290" />
+                                  <SL__arrayElement uid="1293" />
+                                  </permDCOList>
+                                <nodeName>"VI"</nodeName>
+                                <oMId>0004</oMId>
+                                <methName>"Abort VI"</methName>
+                                <methCode>1004</methCode>
+                                <invokeFlags>08</invokeFlags>
+                                <propList elements="0" />
+                                <privDataList elements="0" />
+                                </SL__arrayElement>
+                              </heap></part>

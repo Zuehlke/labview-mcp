@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1063" source="&lt;labview&gt;\examples\control\PID\Autotuning PID Offline.vi"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="Autotune" /><TypeDesc Type="Boolean" Format="inline" Label="Autotune" /></types><heap><SL__arrayElement class="prim" uid="1454">
+                <objFlags>65536</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="1462">
+                    <dco class="parm" uid="1460">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(277)</typeDesc>
+                      <dcoFiller>770</dcoFiller>
+                      <termBounds>(0, 12, 16, 24)</termBounds>
+                      <primIndex>98</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1465">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="1463">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(278)</typeDesc>
+                      <termBounds>(8, 0, 16, 12)</termBounds>
+                      <primIndex>98</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1468">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="1466">
+                      <typeDesc>TypeID(279)</typeDesc>
+                      <termBounds>(0, 0, 8, 12)</termBounds>
+                      <primIndex>98</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(298, 120, 330, 152)</bounds>
+                <shortCount>10</shortCount>
+                <clumpNum>1048581</clumpNum>
+                <primResID>1063</primResID>
+                <primIndex>98</primIndex>
+                </SL__arrayElement>
+              </heap></part>

@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1905" source="&lt;labview&gt;\examples\Mathematics\Interpolation\Interpolation Solver.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="SubArray" Format="inline" Label="Original Data (X,Y)"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Data 2" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="1024">
+                        <termList elements="3">
+                          <SL__arrayElement class="term" uid="1030">
+                            <dco class="parm" uid="1031">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(96)</typeDesc>
+                              <termBounds>(0, 16, 32, 32)</termBounds>
+                              <primIndex>205</primIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1033">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="1034">
+                              <typeDesc>TypeID(97)</typeDesc>
+                              <termBounds>(16, 0, 32, 16)</termBounds>
+                              <primIndex>205</primIndex>
+                              <parmIndex>1</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1036">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="1037">
+                              <typeDesc>TypeID(98)</typeDesc>
+                              <dsw>512</dsw>
+                              <termBounds>(0, 0, 16, 16)</termBounds>
+                              <primIndex>205</primIndex>
+                              <parmIndex>2</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(67, 71, 99, 103)</bounds>
+                        <shortCount>4</shortCount>
+                        <clumpNum>524291</clumpNum>
+                        <primResID>1905</primResID>
+                        <primIndex>205</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1302" source="&lt;labview&gt;\examples\Application Control\Application Builder API\Build Specification Project\Sample Main.vi"><types><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="millisecond timer value" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="milliseconds to wait" /></types><heap><SL__arrayElement class="prim" uid="43">
+                <objFlags>640</objFlags>
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="86">
+                    <dco class="parm" uid="87">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(26)</typeDesc>
+                      <termBounds>(0, 16, 32, 32)</termBounds>
+                      <primIndex>165</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="294">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="295">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(27)</typeDesc>
+                      <termBounds>(0, 0, 32, 16)</termBounds>
+                      <primIndex>165</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(129, 97, 161, 129)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1302</primResID>
+                <primIndex>165</primIndex>
+                </SL__arrayElement>
+              </heap></part>

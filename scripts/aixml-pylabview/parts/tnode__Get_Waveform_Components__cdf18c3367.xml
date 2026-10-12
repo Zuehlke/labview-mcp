@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Get_Waveform_Components/cdf18c3367" source="&lt;labview&gt;\examples\Signal Processing\Waveform Measurements\Pulse and Transition Measurements.vi" node="Get Waveform Components" ins="waveform" outs="t0" mode="fields=t0" nodeFlags="851968"><types><TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" Label="waveform out" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="t0" /></types><heap><SL__arrayElement class="nMux" uid="1706">
+                        <objFlags>851968</objFlags>
+                        <termList elements="2">
+                          <SL__arrayElement class="term" uid="1709" aixml="waveform">
+                            <objFlags>32832</objFlags>
+                            <dco class="nmxDCO" uid="1711">
+                              <typeDesc>TypeID(551)</typeDesc>
+                              <termBounds>(0, 0, 17, 16)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1707" aixml="t0">
+                            <objFlags>64</objFlags>
+                            <dco class="nmxDCO" uid="1710">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(552)</typeDesc>
+                              <termBounds>(0, 16, 16, 34)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(315, 200, 332, 234)</bounds>
+                        <shortCount>10</shortCount>
+                        <clumpNum>1835018</clumpNum>
+                        <dcoList elements="1">
+                          <SL__arrayElement uid="1710" />
+                          </dcoList>
+                        <dcoAgg uid="1711" />
+                        </SL__arrayElement>
+                      </heap></part>

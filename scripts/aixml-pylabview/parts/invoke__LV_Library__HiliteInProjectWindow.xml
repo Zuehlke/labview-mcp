@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Library/HiliteInProjectWindow" source="&lt;labview&gt;\vi.lib\LabVIEW Icon API\Examples\Advanced Generate LV Icon.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0050" HasItem="0" Format="inline" Label="Create Library" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0050" HasItem="0" Format="inline" Label="Create Library" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="HiliteInProjectWindow" /><TypeDesc Type="Void" Format="inline" Label="HiliteInProjectWindow" /></types><heap><SL__arrayElement class="invokeNode" uid="2385">
+        <objFlags>640</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="2395">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="2396">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(330)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2398">
+            <dco class="hGrowCItem" uid="2399">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(331)</typeDesc>
+              <termBounds>(0, 115, 9, 128)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2401">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="2402">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(332)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2404">
+            <dco class="hGrowCItem" uid="2405">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(333)</typeDesc>
+              <termBounds>(9, 115, 18, 128)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2407">
+            <dco class="invokeItem" uid="2408">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(334)</typeDesc>
+              <termBounds>(18, 0, 34, 64)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2411">
+            <dco class="invokeItem" uid="2412">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(335)</typeDesc>
+              <termBounds>(18, 64, 34, 128)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(377, 192, 412, 320)</bounds>
+        <shortCount>18</shortCount>
+        <clumpNum>589831</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="2408" />
+          <SL__arrayElement uid="2412" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="2396" />
+          <SL__arrayElement uid="2399" />
+          <SL__arrayElement uid="2402" />
+          <SL__arrayElement uid="2405" />
+          </permDCOList>
+        <nodeName>"Library"</nodeName>
+        <oMId>0015</oMId>
+        <methName>"HiliteInProjectWindow"</methName>
+        <methCode>1292952601</methCode>
+        <invokeFlags>1008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

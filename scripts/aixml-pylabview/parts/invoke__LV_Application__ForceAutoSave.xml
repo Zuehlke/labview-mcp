@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/ForceAutoSave" source="&lt;labview&gt;\resource\Framework\Providers\Builds\BuildMonitor\BuildMonitor_BuildItems_Init.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="ForceAutoSave" /><TypeDesc Type="Void" Format="inline" Label="ForceAutoSave" /></types><heap><SL__arrayElement class="invokeNode" uid="802">
+        <objFlags>33620608</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="812">
+            <dco class="hGrowCItem" uid="813">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(50)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="815">
+            <dco class="hGrowCItem" uid="816">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(51)</typeDesc>
+              <termBounds>(0, 75, 9, 88)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="820">
+            <dco class="hGrowCItem" uid="833">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(52)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="841">
+            <dco class="hGrowCItem" uid="844">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(53)</typeDesc>
+              <termBounds>(9, 75, 18, 88)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="846">
+            <dco class="invokeItem" uid="847">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(54)</typeDesc>
+              <termBounds>(18, 0, 34, 44)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="850">
+            <dco class="invokeItem" uid="851">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(55)</typeDesc>
+              <termBounds>(18, 44, 34, 88)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(419, -39, 454, 49)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="847" />
+          <SL__arrayElement uid="851" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="813" />
+          <SL__arrayElement uid="816" />
+          <SL__arrayElement uid="833" />
+          <SL__arrayElement uid="844" />
+          </permDCOList>
+        <nodeName>"App"</nodeName>
+        <oMId>0010</oMId>
+        <methName>"ForceAutoSave"</methName>
+        <methCode>2178</methCode>
+        <invokeFlags>1408</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

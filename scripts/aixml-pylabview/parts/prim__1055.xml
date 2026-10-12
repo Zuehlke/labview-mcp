@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1055" source="&lt;labview&gt;\examples\Signal Processing\Transforms\FFT and Power Spectrum Units.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="4811">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="4813">
+                    <dco class="parm" uid="4815">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(98)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>33</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4817">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="4818">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(99)</typeDesc>
+                      <termBounds>(0, 0, 21, 10)</termBounds>
+                      <primIndex>33</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(427, 529, 459, 561)</bounds>
+                <shortCount>8</shortCount>
+                <clumpNum>458755</clumpNum>
+                <primResID>1055</primResID>
+                <primIndex>33</primIndex>
+                </SL__arrayElement>
+              </heap></part>

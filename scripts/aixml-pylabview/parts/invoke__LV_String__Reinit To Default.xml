@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.String/Reinit To Default" source="&lt;labview&gt;\examples\Connectivity\Web Services\Weather Monitor\Client\Request\Log In.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001B" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001B" HasItem="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Reinit To Dflt" /><TypeDesc Type="Void" Format="inline" Label="Reinit To Dflt" /></types><heap><SL__arrayElement class="invokeNode" uid="900">
+        <objFlags>167772800</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="987">
+            <objFlags>8388608</objFlags>
+            <dco class="hGrowCItem" uid="988">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(34)</typeDesc>
+              <termBounds>(-9, 0, 0, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="990">
+            <objFlags>8388608</objFlags>
+            <dco class="hGrowCItem" uid="991">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(35)</typeDesc>
+              <termBounds>(-9, 85, 0, 98)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="993">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="994">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(36)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="996">
+            <dco class="hGrowCItem" uid="997">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(37)</typeDesc>
+              <termBounds>(0, 85, 9, 98)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="999">
+            <dco class="invokeItem" uid="1000">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(38)</typeDesc>
+              <termBounds>(9, 0, 25, 49)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1003">
+            <dco class="invokeItem" uid="1004">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(39)</typeDesc>
+              <termBounds>(9, 49, 25, 98)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="985">
+          <objFlags>1507650</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-17, 0, 0, 84)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"Password Input"</text>
+            <bgColor>01000000</bgColor>
+            </textRec>
+          </label>
+        <bounds>(338, 83, 364, 181)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>393221</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="1000" />
+          <SL__arrayElement uid="1004" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="988" />
+          <SL__arrayElement uid="991" />
+          <SL__arrayElement uid="994" />
+          <SL__arrayElement uid="997" />
+          </permDCOList>
+        <nodeName>"Str"</nodeName>
+        <oMId>0004</oMId>
+        <ddo uid="447" />
+        <methName>"Reinit To Default"</methName>
+        <methCode>104012800</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

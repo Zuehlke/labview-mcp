@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/statVIRef" source="pvsr.xml" clean="1"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" /></types><heap><SL__arrayElement class="statVIRef" uid="4500">
+        <objFlags>512</objFlags>
+        <termList elements="1">
+          <SL__arrayElement class="term" uid="4707">
+            <dco class="bDDCO" uid="4706">
+              <objFlags>9</objFlags>
+              <typeDesc>TypeID(21)</typeDesc>
+              <termBounds>(0, 0, 48, 36)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="4704">
+          <objFlags>394571</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-15, 0, 0, 73)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"Clear Errors.vi"</text>
+            <bgColor>01000000</bgColor>
+            <fr elements="1">
+              <SL__arrayElement class="fontRun">
+                <fontid>1</fontid>
+                </SL__arrayElement>
+              </fr>
+            </textRec>
+          </label>
+        <bounds>(169, 423, 217, 459)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <connectorTM>TypeID(22)</connectorTM>
+        </SL__arrayElement>
+      </heap></part>

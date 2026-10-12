@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1303" source="&lt;labview&gt;\examples\MGI\MGI Monitored Actor\Example\Example Actor\Example Actor\Update Label.vi"><types><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="seconds since 1Jan1904" /></types><heap><SL__arrayElement class="prim" uid="123">
+                <objFlags>512</objFlags>
+                <termList elements="1">
+                  <SL__arrayElement class="term" uid="375">
+                    <objFlags>4096</objFlags>
+                    <dco class="parm" uid="376">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(59)</typeDesc>
+                      <termBounds>(0, 0, 32, 32)</termBounds>
+                      <primIndex>132</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(135, 131, 167, 163)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>262147</clumpNum>
+                <primResID>1303</primResID>
+                <primIndex>132</primIndex>
+                </SL__arrayElement>
+              </heap></part>

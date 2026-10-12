@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1168" source="&lt;labview&gt;\examples\Arrays\Array to Cluster.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="Array of Strings"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Array of Strings[0]" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Array of Strings[1]" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Array of Strings[2]" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Array of Strings"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="String" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="76">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="82">
+            <dco class="parm" uid="83">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(10)</typeDesc>
+              <termBounds>(0, 12, 11, 25)</termBounds>
+              <primIndex>161</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="85">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="86">
+              <typeDesc>TypeID(11)</typeDesc>
+              <termBounds>(0, 0, 11, 12)</termBounds>
+              <primIndex>161</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(364, 451, 396, 483)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1168</primResID>
+        <primIndex>161</primIndex>
+        </SL__arrayElement>
+      </heap></part>

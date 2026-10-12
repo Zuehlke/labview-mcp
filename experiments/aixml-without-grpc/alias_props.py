@@ -107,7 +107,7 @@ def main(argv):
                 if long_name != short:
                     pairs.setdefault((cls, long_name), set()).add((short, code))
     print("%d VIs read, %d node(s) with a field count that did not match" % (seen_vis, mism))
-    parts_dir = argv[argv.index("--parts") + 1] if "--parts" in argv else os.path.join(HERE, "parts")
+    parts_dir = argv[argv.index("--parts") + 1] if "--parts" in argv else os.path.join(COMPOSER, "parts")
     path = os.path.join(parts_dir, "vi-server-props.json")
     table = json.load(open(path, encoding="utf-8"))
     props = table["props"]

@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="seltun" key="seltun/bool/in" source="case.xml"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><wrap><SL__arrayElement class="term" uid="258">
+            <objFlags>4227136</objFlags>
+            <dco class="selTun" uid="254">
+              <objFlags>2048</objFlags>
+              <termList elements="3">
+                <SL__arrayElement uid="256" />
+                <SL__arrayElement uid="257" />
+                <SL__arrayElement uid="258" />
+                </termList>
+              <typeDesc>TypeID(14)</typeDesc>
+              <termBounds>(136, 0, 145, 9)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="256">
+                    <objFlags>4325376</objFlags>
+                    <dco uid="254" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="257">
+                    <objFlags>4325376</objFlags>
+                    <dco uid="254" />
+                    </SL__arrayElement>
+                  </wrap></heap></part>

@@ -16,6 +16,7 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer and its parts, since 2026-10-12
 sys.path.insert(0, HERE)
 import wire_decode as wd  # noqa: E402
 import wire_fit as wf  # noqa: E402
@@ -71,7 +72,7 @@ def main(argv):
             print("  %-14s y %-28s x %-20s -> %s" % (kk, dict(ax["y"]), dict(ax["x"]), corr[kk]))
     print("%d primitive terminals with a correction" % len(corr))
     if "--write" in argv:
-        json.dump(corr, open(os.path.join(HERE, "parts", "hotpoints.json"), "w", encoding="utf-8"), indent=1, sort_keys=True)
+        json.dump(corr, open(os.path.join(COMPOSER, "parts", "hotpoints.json"), "w", encoding="utf-8"), indent=1, sort_keys=True)
         print("wrote parts/hotpoints.json")
 
 

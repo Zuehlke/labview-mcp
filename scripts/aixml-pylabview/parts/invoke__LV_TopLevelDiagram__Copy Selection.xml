@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TopLevelDiagram/Copy Selection" source="P3 ni lvbd_graft_paste.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4027" HasItem="0" Format="inline" Label="Diagram" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4027" HasItem="0" Format="inline" Label="Diagram" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Copy Selection" /><TypeDesc Type="Void" Format="inline" Label="Copy Selection" /></types><heap><SL__arrayElement class="invokeNode" uid="4242">
+        <objFlags>640</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="4675">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="4673">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(78)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4678">
+            <dco class="hGrowCItem" uid="4676">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(79)</typeDesc>
+              <termBounds>(0, 75, 9, 88)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4681">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="4679">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(80)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4684">
+            <dco class="hGrowCItem" uid="4682">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(81)</typeDesc>
+              <termBounds>(9, 75, 18, 88)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4691">
+            <dco class="invokeItem" uid="4688">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(82)</typeDesc>
+              <termBounds>(18, 0, 34, 44)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4695">
+            <dco class="invokeItem" uid="4692">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(83)</typeDesc>
+              <termBounds>(18, 44, 34, 88)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(143, 1023, 178, 1111)</bounds>
+        <shortCount>24</shortCount>
+        <clumpNum>262148</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="4688" />
+          <SL__arrayElement uid="4692" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="4673" />
+          <SL__arrayElement uid="4676" />
+          <SL__arrayElement uid="4679" />
+          <SL__arrayElement uid="4682" />
+          </permDCOList>
+        <nodeName>"Instr"</nodeName>
+        <oMId>0006</oMId>
+        <methName>"Copy Selection"</methName>
+        <methCode>104108035</methCode>
+        <invokeFlags>201008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

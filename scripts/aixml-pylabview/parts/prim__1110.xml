@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1110" source="&lt;labview&gt;\examples\Collections\Map Collection - Comparing Test Results.vi"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline" Label="amount"><PhysUnit Val1="3" Val2="65533" />
+        <PhysUnit Val1="4" Val2="1" />
+        </TypeDesc><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline" Label="amount"><PhysUnit Val1="3" Val2="65533" />
+        <PhysUnit Val1="4" Val2="1" />
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="922">
+                <objFlags>65536</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="930">
+                    <dco class="parm" uid="928">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(53)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>113</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="933">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="931">
+                      <typeDesc>TypeID(54)</typeDesc>
+                      <termBounds>(10, 0, 21, 10)</termBounds>
+                      <primIndex>113</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="937">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="935">
+                      <typeDesc>TypeID(55)</typeDesc>
+                      <termBounds>(0, 0, 10, 10)</termBounds>
+                      <primIndex>113</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(38, 188, 70, 220)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>786435</clumpNum>
+                <primResID>1110</primResID>
+                <primIndex>113</primIndex>
+                </SL__arrayElement>
+              </heap></part>

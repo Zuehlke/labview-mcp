@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1540" source="&lt;labview&gt;\examples\Arrays\Array to Spreadsheet String.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="spreadsheet string" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Delimiter ('\' Codes Display)" /><TypeDesc Type="Array" Format="inline" Label="Original 2D Array"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Numeric" /></TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Format String" /></types><heap><SL__arrayElement class="prim" uid="223">
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="229">
+            <dco class="parm" uid="230">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(14)</typeDesc>
+              <termBounds>(0, 21, 32, 32)</termBounds>
+              <primIndex>130</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="232">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="233">
+              <typeDesc>TypeID(15)</typeDesc>
+              <termBounds>(0, 11, 32, 21)</termBounds>
+              <primIndex>130</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="235">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="236">
+              <typeDesc>TypeID(16)</typeDesc>
+              <termBounds>(16, 0, 32, 11)</termBounds>
+              <primIndex>130</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="238">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="239">
+              <typeDesc>TypeID(17)</typeDesc>
+              <termBounds>(0, 0, 16, 11)</termBounds>
+              <primIndex>130</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(91, 216, 123, 248)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1540</primResID>
+        <primIndex>130</primIndex>
+        </SL__arrayElement>
+      </heap></part>

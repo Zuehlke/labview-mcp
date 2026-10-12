@@ -13,7 +13,8 @@ import sys
 import time
 
 sys.path.insert(0, r"C:\Projects\LabVIEWMCP\experiments\aixml-without-grpc")
-os.environ["LABVIEWMCP_AIXML_PARTS"] = os.path.join(os.environ["TEMP"], "LabVIEWMCP", "parts-phase3c")
+# the helper parts this build needs ship in scripts/aixml-pylabview/parts since 2026-10-12;
+# until then they came from a harvested copy in %TEMP% (LabVIEWMCP\parts-phase3c)
 import helper_parity as hp  # noqa: E402
 
 root, backend = sys.argv[1], sys.argv[2]

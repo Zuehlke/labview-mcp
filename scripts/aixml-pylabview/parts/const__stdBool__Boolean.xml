@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/stdBool/Boolean" source="pclean.xml" clean="1"><types><TypeDesc Type="Boolean" Format="inline" Label="bool k" /><TypeDesc Type="Boolean" Format="inline" Label="bool k" /></types><heap><SL__arrayElement class="term" uid="8423">
+            <objFlags>131136</objFlags>
+            <dco class="bDConstDCO" uid="8421">
+              <typeDesc>TypeID(547)</typeDesc>
+              <dsw>4096</dsw>
+              <ddo class="stdBool" uid="5120">
+                <objFlags>4</objFlags>
+                <bounds>(3332, 2, 3347, 54)</bounds>
+                <partsList elements="3">
+                  <SL__arrayElement class="label" uid="8420">
+                    <objFlags>1507650</objFlags>
+                    <partID>16</partID>
+                    <masterPart>21</masterPart>
+                    <howGrow>4096</howGrow>
+                    <bounds>(0, 0, 15, 36)</bounds>
+                    <image class="Image">
+                      <ImageResID>-619</ImageResID>
+                      </image>
+                    <fgColor>01000000</fgColor>
+                    <bgColor>01000000</bgColor>
+                    <textRec class="textHair">
+                      <mode>82948</mode>
+                      <text>"bool k"</text>
+                      <bgColor>01000000</bgColor>
+                      <fr elements="1">
+                        <SL__arrayElement class="fontRun">
+                          <fontid>1</fontid>
+                          </SL__arrayElement>
+                        </fr>
+                      </textRec>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="multiCosm" uid="8418">
+                    <objFlags>2358</objFlags>
+                    <partID>21</partID>
+                    <howGrow>240</howGrow>
+                    <bounds>(0, 36, 14, 52)</bounds>
+                    <fgColor>00007F00</fgColor>
+                    <bgColor>00FFFFFF</bgColor>
+                    <table elements="2">
+                      <SL__arrayElement class="Image">
+                        <ImageResID>-2103</ImageResID>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="Image">
+                        <ImageResID>-2102</ImageResID>
+                        </SL__arrayElement>
+                      </table>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="annex" uid="8419">
+                    <partID>66</partID>
+                    <rsrcID>2006</rsrcID>
+                    </SL__arrayElement>
+                  </partsList>
+                <typeDesc>TypeID(548)</typeDesc>
+                <MouseWheelSupport>0</MouseWheelSupport>
+                <MinButSize>(-12, -3325)</MinButSize>
+                </ddo>
+              <ConstValue>0000</ConstValue>
+              </dco>
+            </SL__arrayElement>
+          </heap></part>

@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1211" source="&lt;labview&gt;\examples\Mathematics\Elementary &amp; Special Functions\Exponential Functions\Exponential.vi"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="Cluster 2"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="numeric 1" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="numeric 2" /></TypeDesc></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="Cluster 2"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="numeric 1" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="numeric 2" /></TypeDesc></TypeDesc></types><heap><SL__arrayElement class="prim" uid="209">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="217">
+            <dco class="parm" uid="215">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(37)</typeDesc>
+              <termBounds>(0, 16, 32, 32)</termBounds>
+              <primIndex>46</primIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="255">
+            <objFlags>32769</objFlags>
+            <dco class="parm" uid="227">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(38)</typeDesc>
+              <termBounds>(0, 0, 32, 16)</termBounds>
+              <primIndex>46</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(349, 640, 381, 672)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1211</primResID>
+        <primIndex>46</primIndex>
+        </SL__arrayElement>
+      </heap></part>

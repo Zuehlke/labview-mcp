@@ -1,0 +1,1669 @@
+{
+ "Double Click": {
+  "classes": {
+   "listbox": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741837"
+  },
+  "vi": "<labview>\\examples\\Connectivity\\Libraries and Executables\\External Code (DLL) Execution.vi",
+  "onlyClasses": [
+   "listbox"
+  ]
+ },
+ "Drag Enter": {
+  "classes": {
+   "stdGraph": 3
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Available Data Names\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit7=\"1\" Label=\"Accepted?\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 3
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "-1610612679"
+  },
+  "vi": "<labview>\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Composite User Interface\\Data Viewer\\Actor Core.vi",
+  "filterFields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Bit7=\"1\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Bit7=\"1\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Bit7=\"1\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Bit7=\"1\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Bit7=\"1\" Label=\"Available Data Names\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Accepted?\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "filterRefLabel": "CtlRef"
+ },
+ "Drag Starting?": {
+  "classes": {
+   "listbox": 2
+  },
+  "eFlagsSeen": {
+   "4": 2
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Data\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"data name\" /><TypeDesc Type=\"LVVariant\" Format=\"inline\" Label=\"drag data\" /></TypeDesc></TypeDesc>",
+   "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Drag Mode\"><EnumLabel>copy or move</EnumLabel>\n        <EnumLabel>copy only</EnumLabel>\n        <EnumLabel>move only</EnumLabel>\n        </TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483647": 1,
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "-2147483647",
+   "source": "3",
+   "type": "-2147483604"
+  },
+  "vi": "<labview>\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Composite User Interface\\Data Manager\\Actor Core.vi",
+  "filterFields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Bit7=\"1\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Bit7=\"1\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Bit7=\"1\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Bit7=\"1\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Data\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"data name\" /><TypeDesc Type=\"LVVariant\" Format=\"inline\" Label=\"drag data\" /></TypeDesc></TypeDesc>",
+   "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Drag Mode\"><EnumLabel>copy or move</EnumLabel>\n        <EnumLabel>copy only</EnumLabel>\n        <EnumLabel>move only</EnumLabel>\n        </TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ],
+  "filterRefLabel": "CtlRef"
+ },
+ "Drop": {
+  "classes": {
+   "stdGraph": 3
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Available Data Names\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit7=\"1\" Label=\"Accepted?\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 3
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "-1610612674"
+  },
+  "vi": "<labview>\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Composite User Interface\\Data Viewer\\Actor Core.vi",
+  "filterFields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Bit7=\"1\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Bit7=\"1\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Bit7=\"1\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Bit7=\"1\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Bit7=\"1\" Label=\"Available Data Names\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Accepted?\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "filterRefLabel": "CtlRef"
+ },
+ "Key Down?": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "2": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Char\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"VKey\"><EnumLabel>ASCII</EnumLabel>\n          <EnumLabel>Enter</EnumLabel>\n          <EnumLabel>Return</EnumLabel>\n          <EnumLabel>Shift</EnumLabel>\n          <EnumLabel>Ctrl</EnumLabel>\n          <EnumLabel>Alt</EnumLabel>\n          <EnumLabel>Cmd</EnumLabel>\n          <EnumLabel>Opt</EnumLabel>\n          <EnumLabel>Caps</EnumLabel>\n          <EnumLabel>NumLock</EnumLabel>\n          <EnumLabel>Clear</EnumLabel>\n          <EnumLabel>Break</EnumLabel>\n          <EnumLabel>Up</EnumLabel>\n          <EnumLabel>Down</EnumLabel>\n          <EnumLabel>Left</EnumLabel>\n          <EnumLabel>Right</EnumLabel>\n          <EnumLabel>Insert</EnumLabel>\n          <EnumLabel>Delete</EnumLabel>\n          <EnumLabel>Home</EnumLabel>\n          <EnumLabel>End</EnumLabel>\n          <EnumLabel>PageUp</EnumLabel>\n          <EnumLabel>PageDown</EnumLabel>\n          <EnumLabel>Escape</EnumLabel>\n          <EnumLabel>Help</EnumLabel>\n          <EnumLabel>Pause</EnumLabel>\n          <EnumLabel>ScrollLock</EnumLabel>\n          <EnumLabel>F1</EnumLabel>\n          <EnumLabel>F2</EnumLabel>\n          <EnumLabel>F3</EnumLabel>\n          <EnumLabel>F4</EnumLabel>\n          <EnumLabel>F5</EnumLabel>\n          <EnumLabel>F6</EnumLabel>\n          <EnumLabel>F7</EnumLabel>\n          <EnumLabel>F8</EnumLabel>\n          <EnumLabel>F9</EnumLabel>\n          <EnumLabel>F10</EnumLabel>\n          <EnumLabel>F11</EnumLabel>\n          <EnumLabel>F12</EnumLabel>\n          <EnumLabel>F13</EnumLabel>\n          <EnumLabel>F14</EnumLabel>\n          <EnumLabel>F15</EnumLabel>\n          <EnumLabel>F16</EnumLabel>\n          <EnumLabel>F17</EnumLabel>\n          <EnumLabel>F18</EnumLabel>\n          <EnumLabel>F19</EnumLabel>\n          <EnumLabel>F20</EnumLabel>\n          <EnumLabel>F21</EnumLabel>\n          <EnumLabel>F22</EnumLabel>\n          <EnumLabel>F23</EnumLabel>\n          <EnumLabel>F24</EnumLabel>\n          <EnumLabel>Play</EnumLabel>\n          <EnumLabel>VolumeUp</EnumLabel>\n          <EnumLabel>VolumeDown</EnumLabel>\n          <EnumLabel>Mute</EnumLabel>\n          <EnumLabel>Two Byte Char</EnumLabel>\n          </TypeDesc><Label Text=\"eventvkey.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"ScanCode\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "5",
+   "type": "-2147483638"
+  },
+  "vi": "<labview>\\resource\\dialog\\NewProjectWizard\\NewProjectDialog.vi",
+  "filterFields": [
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Char\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"VKey\"><EnumLabel>ASCII</EnumLabel>\n          <EnumLabel>Enter</EnumLabel>\n          <EnumLabel>Return</EnumLabel>\n          <EnumLabel>Shift</EnumLabel>\n          <EnumLabel>Ctrl</EnumLabel>\n          <EnumLabel>Alt</EnumLabel>\n          <EnumLabel>Cmd</EnumLabel>\n          <EnumLabel>Opt</EnumLabel>\n          <EnumLabel>Caps</EnumLabel>\n          <EnumLabel>NumLock</EnumLabel>\n          <EnumLabel>Clear</EnumLabel>\n          <EnumLabel>Break</EnumLabel>\n          <EnumLabel>Up</EnumLabel>\n          <EnumLabel>Down</EnumLabel>\n          <EnumLabel>Left</EnumLabel>\n          <EnumLabel>Right</EnumLabel>\n          <EnumLabel>Insert</EnumLabel>\n          <EnumLabel>Delete</EnumLabel>\n          <EnumLabel>Home</EnumLabel>\n          <EnumLabel>End</EnumLabel>\n          <EnumLabel>PageUp</EnumLabel>\n          <EnumLabel>PageDown</EnumLabel>\n          <EnumLabel>Escape</EnumLabel>\n          <EnumLabel>Help</EnumLabel>\n          <EnumLabel>Pause</EnumLabel>\n          <EnumLabel>ScrollLock</EnumLabel>\n          <EnumLabel>F1</EnumLabel>\n          <EnumLabel>F2</EnumLabel>\n          <EnumLabel>F3</EnumLabel>\n          <EnumLabel>F4</EnumLabel>\n          <EnumLabel>F5</EnumLabel>\n          <EnumLabel>F6</EnumLabel>\n          <EnumLabel>F7</EnumLabel>\n          <EnumLabel>F8</EnumLabel>\n          <EnumLabel>F9</EnumLabel>\n          <EnumLabel>F10</EnumLabel>\n          <EnumLabel>F11</EnumLabel>\n          <EnumLabel>F12</EnumLabel>\n          <EnumLabel>F13</EnumLabel>\n          <EnumLabel>F14</EnumLabel>\n          <EnumLabel>F15</EnumLabel>\n          <EnumLabel>F16</EnumLabel>\n          <EnumLabel>F17</EnumLabel>\n          <EnumLabel>F18</EnumLabel>\n          <EnumLabel>F19</EnumLabel>\n          <EnumLabel>F20</EnumLabel>\n          <EnumLabel>F21</EnumLabel>\n          <EnumLabel>F22</EnumLabel>\n          <EnumLabel>F23</EnumLabel>\n          <EnumLabel>F24</EnumLabel>\n          <EnumLabel>Play</EnumLabel>\n          <EnumLabel>VolumeUp</EnumLabel>\n          <EnumLabel>VolumeDown</EnumLabel>\n          <EnumLabel>Mute</EnumLabel>\n          <EnumLabel>Two Byte Char</EnumLabel>\n          </TypeDesc><Label Text=\"eventvkey.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Bit7=\"1\" Label=\"ScanCode\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ],
+  "filterRefLabel": "VIRef",
+  "controlVariant": {
+   "spec": {
+    "source": "3",
+    "regFlags": "1",
+    "eSource": "0",
+    "type": "-2147483638",
+    "eFlags": "4"
+   },
+   "sourceKind": "control",
+   "refLabel": "CtlRef",
+   "fields": [
+    "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Char\" />",
+    "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"VKey\"><EnumLabel>ASCII</EnumLabel>\n          <EnumLabel>Enter</EnumLabel>\n          <EnumLabel>Return</EnumLabel>\n          <EnumLabel>Shift</EnumLabel>\n          <EnumLabel>Ctrl</EnumLabel>\n          <EnumLabel>Alt</EnumLabel>\n          <EnumLabel>Cmd</EnumLabel>\n          <EnumLabel>Opt</EnumLabel>\n          <EnumLabel>Caps</EnumLabel>\n          <EnumLabel>NumLock</EnumLabel>\n          <EnumLabel>Clear</EnumLabel>\n          <EnumLabel>Break</EnumLabel>\n          <EnumLabel>Up</EnumLabel>\n          <EnumLabel>Down</EnumLabel>\n          <EnumLabel>Left</EnumLabel>\n          <EnumLabel>Right</EnumLabel>\n          <EnumLabel>Insert</EnumLabel>\n          <EnumLabel>Delete</EnumLabel>\n          <EnumLabel>Home</EnumLabel>\n          <EnumLabel>End</EnumLabel>\n          <EnumLabel>PageUp</EnumLabel>\n          <EnumLabel>PageDown</EnumLabel>\n          <EnumLabel>Escape</EnumLabel>\n          <EnumLabel>Help</EnumLabel>\n          <EnumLabel>Pause</EnumLabel>\n          <EnumLabel>ScrollLock</EnumLabel>\n          <EnumLabel>F1</EnumLabel>\n          <EnumLabel>F2</EnumLabel>\n          <EnumLabel>F3</EnumLabel>\n          <EnumLabel>F4</EnumLabel>\n          <EnumLabel>F5</EnumLabel>\n          <EnumLabel>F6</EnumLabel>\n          <EnumLabel>F7</EnumLabel>\n          <EnumLabel>F8</EnumLabel>\n          <EnumLabel>F9</EnumLabel>\n          <EnumLabel>F10</EnumLabel>\n          <EnumLabel>F11</EnumLabel>\n          <EnumLabel>F12</EnumLabel>\n          <EnumLabel>F13</EnumLabel>\n          <EnumLabel>F14</EnumLabel>\n          <EnumLabel>F15</EnumLabel>\n          <EnumLabel>F16</EnumLabel>\n          <EnumLabel>F17</EnumLabel>\n          <EnumLabel>F18</EnumLabel>\n          <EnumLabel>F19</EnumLabel>\n          <EnumLabel>F20</EnumLabel>\n          <EnumLabel>F21</EnumLabel>\n          <EnumLabel>F22</EnumLabel>\n          <EnumLabel>F23</EnumLabel>\n          <EnumLabel>F24</EnumLabel>\n          <EnumLabel>Play</EnumLabel>\n          <EnumLabel>VolumeUp</EnumLabel>\n          <EnumLabel>VolumeDown</EnumLabel>\n          <EnumLabel>Mute</EnumLabel>\n          <EnumLabel>Two Byte Char</EnumLabel>\n          </TypeDesc><Label Text=\"eventvkey.ctl\" />\n        </TypeDesc>",
+    "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"ScanCode\" />",
+    "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+    "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+    "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />",
+    "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+   ],
+   "filterFields": [
+    "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Char\" />",
+    "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"VKey\"><EnumLabel>ASCII</EnumLabel>\n          <EnumLabel>Enter</EnumLabel>\n          <EnumLabel>Return</EnumLabel>\n          <EnumLabel>Shift</EnumLabel>\n          <EnumLabel>Ctrl</EnumLabel>\n          <EnumLabel>Alt</EnumLabel>\n          <EnumLabel>Cmd</EnumLabel>\n          <EnumLabel>Opt</EnumLabel>\n          <EnumLabel>Caps</EnumLabel>\n          <EnumLabel>NumLock</EnumLabel>\n          <EnumLabel>Clear</EnumLabel>\n          <EnumLabel>Break</EnumLabel>\n          <EnumLabel>Up</EnumLabel>\n          <EnumLabel>Down</EnumLabel>\n          <EnumLabel>Left</EnumLabel>\n          <EnumLabel>Right</EnumLabel>\n          <EnumLabel>Insert</EnumLabel>\n          <EnumLabel>Delete</EnumLabel>\n          <EnumLabel>Home</EnumLabel>\n          <EnumLabel>End</EnumLabel>\n          <EnumLabel>PageUp</EnumLabel>\n          <EnumLabel>PageDown</EnumLabel>\n          <EnumLabel>Escape</EnumLabel>\n          <EnumLabel>Help</EnumLabel>\n          <EnumLabel>Pause</EnumLabel>\n          <EnumLabel>ScrollLock</EnumLabel>\n          <EnumLabel>F1</EnumLabel>\n          <EnumLabel>F2</EnumLabel>\n          <EnumLabel>F3</EnumLabel>\n          <EnumLabel>F4</EnumLabel>\n          <EnumLabel>F5</EnumLabel>\n          <EnumLabel>F6</EnumLabel>\n          <EnumLabel>F7</EnumLabel>\n          <EnumLabel>F8</EnumLabel>\n          <EnumLabel>F9</EnumLabel>\n          <EnumLabel>F10</EnumLabel>\n          <EnumLabel>F11</EnumLabel>\n          <EnumLabel>F12</EnumLabel>\n          <EnumLabel>F13</EnumLabel>\n          <EnumLabel>F14</EnumLabel>\n          <EnumLabel>F15</EnumLabel>\n          <EnumLabel>F16</EnumLabel>\n          <EnumLabel>F17</EnumLabel>\n          <EnumLabel>F18</EnumLabel>\n          <EnumLabel>F19</EnumLabel>\n          <EnumLabel>F20</EnumLabel>\n          <EnumLabel>F21</EnumLabel>\n          <EnumLabel>F22</EnumLabel>\n          <EnumLabel>F23</EnumLabel>\n          <EnumLabel>F24</EnumLabel>\n          <EnumLabel>Play</EnumLabel>\n          <EnumLabel>VolumeUp</EnumLabel>\n          <EnumLabel>VolumeDown</EnumLabel>\n          <EnumLabel>Mute</EnumLabel>\n          <EnumLabel>Two Byte Char</EnumLabel>\n          </TypeDesc><Label Text=\"eventvkey.ctl\" />\n        </TypeDesc>",
+    "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Bit7=\"1\" Label=\"ScanCode\" />",
+    "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+    "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+    "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />",
+    "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+   ],
+   "measuredOn": "provisional - the VI's fields; replace with --from-probe"
+  }
+ },
+ "Load Finished": {
+  "classes": {
+   "htmlControl": 3
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"URL\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Status\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Error\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 3
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741912"
+  },
+  "vi": "<labview>\\examples\\Controls and Indicators\\Web Browser\\Notify and Filter Events.vi"
+ },
+ "Menu Selection (App)": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "2": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemTag\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemPath\" />"
+  ],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "-2147483647": 1
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "regFlags": "-2147483647",
+   "source": "5",
+   "type": "1073741851"
+  },
+  "vi": "<labview>\\examples\\Structures\\Event Structure\\Handling Common User Interface Events.vi"
+ },
+ "Menu Selection (User)": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "2": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemTag\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemPath\" />"
+  ],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "-2147483647": 1
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "regFlags": "-2147483647",
+   "source": "5",
+   "type": "1073741829"
+  },
+  "vi": "<labview>\\examples\\Dialog and User Interface\\Menu\\Customizing the Menubar\\Customizing the Menubar.vi"
+ },
+ "Mouse Down": {
+  "classes": {
+   "listbox": 1,
+   "scenegraphdisplay": 1,
+   "stdGraph": 1,
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 4
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 4
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741842"
+  },
+  "vi": "<labview>\\examples\\Dialog and User Interface\\Menu\\Customizing Shortcut Menus\\Customizing Shortcut Menus.vi"
+ },
+ "Mouse Enter": {
+  "classes": {
+   "stdGraph": 1,
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 2
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 2
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741839"
+  },
+  "vi": "_TimeFrequencySpectrogramConfig.llb\\Configure TimeFrequencySpectrogram.vi"
+ },
+ "Mouse Leave": {
+  "classes": {
+   "stdGraph": 2,
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 3
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741838"
+  },
+  "vi": "<labview>\\examples\\Structures\\Event Structure\\Drag and Drop - Initiating a Custom Drag.vi"
+ },
+ "Mouse Move": {
+  "classes": {
+   "LV.Picture": 0
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>"
+  ],
+  "from": "dynamic",
+  "refLabel": "CtlRef",
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741833"
+  },
+  "vi": "<labview>\\resource\\plugins\\NIIconEditor\\Miscellaneous\\Buffer for lossless tracking.vi"
+ },
+ "Mouse Up": {
+  "classes": {
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741832"
+  },
+  "vi": "_TimeFrequencySpectrogramConfig.llb\\Configure TimeFrequencySpectrogram.vi"
+ },
+ "Mouse Wheel": {
+  "classes": {
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Delta\" />",
+   "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Orientation\"><EnumLabel>Horizontal</EnumLabel>\n        <EnumLabel>Vertical</EnumLabel>\n        </TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"ButtonMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Left button pressed\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Middle button pressed\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Right button pressed\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483648": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "-2147483648",
+   "source": "3",
+   "type": "1073741905"
+  },
+  "vi": "<labview>\\examples\\Structures\\Event Structure\\Handling Mouse Wheel Events.vi"
+ },
+ "Panel Close?": {
+  "classes": {
+   "null": 18
+  },
+  "eFlagsSeen": {
+   "2": 18
+  },
+  "fields": [
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "-2147483647": 2,
+   "1": 16
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "5",
+   "type": "-2147483645"
+  },
+  "vi": "<labview>\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Basic Demo\\Basic Demo\\Actor Core.vi",
+  "filterFields": [
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ],
+  "filterRefLabel": "VIRef"
+ },
+ "Shortcut Menu Activation?": {
+  "classes": {
+   "listbox": 1,
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 2
+  },
+  "fields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0006\" HasItem=\"0\" Format=\"inline\" Label=\"SubObj\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 2
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "-2147483597"
+  },
+  "vi": "<labview>\\examples\\Dialog and User Interface\\Menu\\Customizing Shortcut Menus\\Customizing Shortcut Menus.vi",
+  "filterFields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Bit7=\"1\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Bit7=\"1\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0006\" HasItem=\"0\" Format=\"inline\" Bit7=\"1\" Label=\"SubObj\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ],
+  "filterRefLabel": "CtlRef"
+ },
+ "Shortcut Menu Selection (User)": {
+  "classes": {
+   "indArr": 1,
+   "listbox": 1,
+   "stdPict": 1
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Bit7=\"1\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemTag\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemPath\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0006\" HasItem=\"0\" Format=\"inline\" Label=\"SubObj\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483647": 2,
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "-2147483647",
+   "source": "3",
+   "type": "1073741876"
+  },
+  "vi": "<labview>\\examples\\Dialog and User Interface\\Menu\\Customizing Shortcut Menus\\Customizing Shortcut Menus.vi"
+ },
+ "URL Navigation?": {
+  "classes": {
+   "htmlControl": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"URL\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "-2147483561"
+  },
+  "vi": "<labview>\\examples\\Controls and Indicators\\Web Browser\\Notify and Filter Events.vi",
+  "filterFields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"URL\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ],
+  "filterRefLabel": "CtlRef"
+ },
+ "VI Activation": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "1": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"VIName\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"VIWindow\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0001\" HasItem=\"0\" Format=\"inline\" Label=\"VIAppRef\" />"
+  ],
+  "from": "static",
+  "refLabel": "AppRef",
+  "regFlagsSeen": {
+   "0": 1
+  },
+  "sourceKind": "application",
+  "spec": {
+   "eFlags": "1",
+   "eSource": "0",
+   "regFlags": "0",
+   "source": "4",
+   "type": "1073741857"
+  },
+  "vi": "<labview>\\examples\\Application Control\\VI Scripting\\Selected Objects and the Clipboard\\Using the VI Activation Event for VI Scripting.vi"
+ },
+ "Autoscale Range Change": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Kind\"><EnumLabel>X-Scale</EnumLabel>\n        <EnumLabel>Y-Scale</EnumLabel>\n        <EnumLabel>Z-Scale</EnumLabel>\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Index\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x002A\" HasItem=\"0\" Format=\"inline\" Label=\"ScaleRef\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"NewRange\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Minimum\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Maximum\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Increment\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Minor Increment\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Start\" /></TypeDesc><Label Text=\"LVRangeTypeDef.ctl\" />\n        </TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741900"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Plot Attribute Change": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PlotIdx\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0025\" HasItem=\"0\" Format=\"inline\" Label=\"PlotRef\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"OldAttrib\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Color\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"PointStyle\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LineStyle\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Interp\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LineWidth\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"BarPlotStyle\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"FillTo\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"XScaleIdx\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"YScaleIdx\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Anti-Aliased\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LabelFormat\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"TransitionType\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"TransitionLocation\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"DigitalLineStyle\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"NewAttrib\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Color\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"PointStyle\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LineStyle\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Interp\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LineWidth\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"BarPlotStyle\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"FillTo\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"XScaleIdx\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"YScaleIdx\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Anti-Aliased\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"LabelFormat\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"TransitionType\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"TransitionLocation\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"DigitalLineStyle\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741862"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Scale Range Change": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Kind\"><EnumLabel>X-Scale</EnumLabel>\n        <EnumLabel>Y-Scale</EnumLabel>\n        <EnumLabel>Z-Scale</EnumLabel>\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Index\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x002A\" HasItem=\"0\" Format=\"inline\" Label=\"ScaleRef\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"NewRange\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Minimum\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Maximum\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Increment\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Minor Increment\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Start\" /></TypeDesc><Label Text=\"LVRangeTypeDef.ctl\" />\n        </TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741861"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Cursor Grab": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"CursIdx\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0026\" HasItem=\"0\" Format=\"inline\" Label=\"CursRef\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PlotIdx\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PointIdx\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"CursLoc\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741864"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Cursor Move": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"CursIdx\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0026\" HasItem=\"0\" Format=\"inline\" Label=\"CursRef\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PlotIdx\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PointIdx\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"CursLoc\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741865"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Cursor Release": {
+  "classes": {
+   "stdGraph": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"CursIdx\" />",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0026\" HasItem=\"0\" Format=\"inline\" Label=\"CursRef\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PlotIdx\" />",
+   "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"PointIdx\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"CursLoc\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483647": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "-2147483647",
+   "source": "3",
+   "type": "1073741866"
+  },
+  "measuredOn": "examples/Controls and Indicators/Graphs and Charts/Graphs - General/Graph Events.vi (one frame with all six); fields from LabVIEW's save of tests/t130_graph_specific_events.xml"
+ },
+ "Key Down": {
+  "classes": {
+   "string": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Char\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"VKey\"><EnumLabel>ASCII</EnumLabel>\n          <EnumLabel>Enter</EnumLabel>\n          <EnumLabel>Return</EnumLabel>\n          <EnumLabel>Shift</EnumLabel>\n          <EnumLabel>Ctrl</EnumLabel>\n          <EnumLabel>Alt</EnumLabel>\n          <EnumLabel>Cmd</EnumLabel>\n          <EnumLabel>Opt</EnumLabel>\n          <EnumLabel>Caps</EnumLabel>\n          <EnumLabel>NumLock</EnumLabel>\n          <EnumLabel>Clear</EnumLabel>\n          <EnumLabel>Break</EnumLabel>\n          <EnumLabel>Up</EnumLabel>\n          <EnumLabel>Down</EnumLabel>\n          <EnumLabel>Left</EnumLabel>\n          <EnumLabel>Right</EnumLabel>\n          <EnumLabel>Insert</EnumLabel>\n          <EnumLabel>Delete</EnumLabel>\n          <EnumLabel>Home</EnumLabel>\n          <EnumLabel>End</EnumLabel>\n          <EnumLabel>PageUp</EnumLabel>\n          <EnumLabel>PageDown</EnumLabel>\n          <EnumLabel>Escape</EnumLabel>\n          <EnumLabel>Help</EnumLabel>\n          <EnumLabel>Pause</EnumLabel>\n          <EnumLabel>ScrollLock</EnumLabel>\n          <EnumLabel>F1</EnumLabel>\n          <EnumLabel>F2</EnumLabel>\n          <EnumLabel>F3</EnumLabel>\n          <EnumLabel>F4</EnumLabel>\n          <EnumLabel>F5</EnumLabel>\n          <EnumLabel>F6</EnumLabel>\n          <EnumLabel>F7</EnumLabel>\n          <EnumLabel>F8</EnumLabel>\n          <EnumLabel>F9</EnumLabel>\n          <EnumLabel>F10</EnumLabel>\n          <EnumLabel>F11</EnumLabel>\n          <EnumLabel>F12</EnumLabel>\n          <EnumLabel>F13</EnumLabel>\n          <EnumLabel>F14</EnumLabel>\n          <EnumLabel>F15</EnumLabel>\n          <EnumLabel>F16</EnumLabel>\n          <EnumLabel>F17</EnumLabel>\n          <EnumLabel>F18</EnumLabel>\n          <EnumLabel>F19</EnumLabel>\n          <EnumLabel>F20</EnumLabel>\n          <EnumLabel>F21</EnumLabel>\n          <EnumLabel>F22</EnumLabel>\n          <EnumLabel>F23</EnumLabel>\n          <EnumLabel>F24</EnumLabel>\n          <EnumLabel>Play</EnumLabel>\n          <EnumLabel>VolumeUp</EnumLabel>\n          <EnumLabel>VolumeDown</EnumLabel>\n          <EnumLabel>Mute</EnumLabel>\n          <EnumLabel>Two Byte Char</EnumLabel>\n          </TypeDesc><Label Text=\"eventvkey.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"ScanCode\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741847"
+  },
+  "viVariant": {
+   "spec": {
+    "eFlags": "2",
+    "eSource": "0",
+    "regFlags": "1",
+    "source": "5",
+    "type": "1073741847"
+   },
+   "sourceKind": "vi",
+   "refLabel": "VIRef",
+   "fields": [
+    "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Char\" />",
+    "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"VKey\"><EnumLabel>ASCII</EnumLabel>\n          <EnumLabel>Enter</EnumLabel>\n          <EnumLabel>Return</EnumLabel>\n          <EnumLabel>Shift</EnumLabel>\n          <EnumLabel>Ctrl</EnumLabel>\n          <EnumLabel>Alt</EnumLabel>\n          <EnumLabel>Cmd</EnumLabel>\n          <EnumLabel>Opt</EnumLabel>\n          <EnumLabel>Caps</EnumLabel>\n          <EnumLabel>NumLock</EnumLabel>\n          <EnumLabel>Clear</EnumLabel>\n          <EnumLabel>Break</EnumLabel>\n          <EnumLabel>Up</EnumLabel>\n          <EnumLabel>Down</EnumLabel>\n          <EnumLabel>Left</EnumLabel>\n          <EnumLabel>Right</EnumLabel>\n          <EnumLabel>Insert</EnumLabel>\n          <EnumLabel>Delete</EnumLabel>\n          <EnumLabel>Home</EnumLabel>\n          <EnumLabel>End</EnumLabel>\n          <EnumLabel>PageUp</EnumLabel>\n          <EnumLabel>PageDown</EnumLabel>\n          <EnumLabel>Escape</EnumLabel>\n          <EnumLabel>Help</EnumLabel>\n          <EnumLabel>Pause</EnumLabel>\n          <EnumLabel>ScrollLock</EnumLabel>\n          <EnumLabel>F1</EnumLabel>\n          <EnumLabel>F2</EnumLabel>\n          <EnumLabel>F3</EnumLabel>\n          <EnumLabel>F4</EnumLabel>\n          <EnumLabel>F5</EnumLabel>\n          <EnumLabel>F6</EnumLabel>\n          <EnumLabel>F7</EnumLabel>\n          <EnumLabel>F8</EnumLabel>\n          <EnumLabel>F9</EnumLabel>\n          <EnumLabel>F10</EnumLabel>\n          <EnumLabel>F11</EnumLabel>\n          <EnumLabel>F12</EnumLabel>\n          <EnumLabel>F13</EnumLabel>\n          <EnumLabel>F14</EnumLabel>\n          <EnumLabel>F15</EnumLabel>\n          <EnumLabel>F16</EnumLabel>\n          <EnumLabel>F17</EnumLabel>\n          <EnumLabel>F18</EnumLabel>\n          <EnumLabel>F19</EnumLabel>\n          <EnumLabel>F20</EnumLabel>\n          <EnumLabel>F21</EnumLabel>\n          <EnumLabel>F22</EnumLabel>\n          <EnumLabel>F23</EnumLabel>\n          <EnumLabel>F24</EnumLabel>\n          <EnumLabel>Play</EnumLabel>\n          <EnumLabel>VolumeUp</EnumLabel>\n          <EnumLabel>VolumeDown</EnumLabel>\n          <EnumLabel>Mute</EnumLabel>\n          <EnumLabel>Two Byte Char</EnumLabel>\n          </TypeDesc><Label Text=\"eventvkey.ctl\" />\n        </TypeDesc>",
+    "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"ScanCode\" />",
+    "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+    "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+    "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />"
+   ]
+  },
+  "measuredOn": "<labview>\\examples\\Structures\\Event Structure\\Handling Common User Interface Events.vi (one frame with Key Down and Key Repeat)"
+ },
+ "Key Repeat": {
+  "classes": {
+   "string": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Char\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"VKey\"><EnumLabel>ASCII</EnumLabel>\n          <EnumLabel>Enter</EnumLabel>\n          <EnumLabel>Return</EnumLabel>\n          <EnumLabel>Shift</EnumLabel>\n          <EnumLabel>Ctrl</EnumLabel>\n          <EnumLabel>Alt</EnumLabel>\n          <EnumLabel>Cmd</EnumLabel>\n          <EnumLabel>Opt</EnumLabel>\n          <EnumLabel>Caps</EnumLabel>\n          <EnumLabel>NumLock</EnumLabel>\n          <EnumLabel>Clear</EnumLabel>\n          <EnumLabel>Break</EnumLabel>\n          <EnumLabel>Up</EnumLabel>\n          <EnumLabel>Down</EnumLabel>\n          <EnumLabel>Left</EnumLabel>\n          <EnumLabel>Right</EnumLabel>\n          <EnumLabel>Insert</EnumLabel>\n          <EnumLabel>Delete</EnumLabel>\n          <EnumLabel>Home</EnumLabel>\n          <EnumLabel>End</EnumLabel>\n          <EnumLabel>PageUp</EnumLabel>\n          <EnumLabel>PageDown</EnumLabel>\n          <EnumLabel>Escape</EnumLabel>\n          <EnumLabel>Help</EnumLabel>\n          <EnumLabel>Pause</EnumLabel>\n          <EnumLabel>ScrollLock</EnumLabel>\n          <EnumLabel>F1</EnumLabel>\n          <EnumLabel>F2</EnumLabel>\n          <EnumLabel>F3</EnumLabel>\n          <EnumLabel>F4</EnumLabel>\n          <EnumLabel>F5</EnumLabel>\n          <EnumLabel>F6</EnumLabel>\n          <EnumLabel>F7</EnumLabel>\n          <EnumLabel>F8</EnumLabel>\n          <EnumLabel>F9</EnumLabel>\n          <EnumLabel>F10</EnumLabel>\n          <EnumLabel>F11</EnumLabel>\n          <EnumLabel>F12</EnumLabel>\n          <EnumLabel>F13</EnumLabel>\n          <EnumLabel>F14</EnumLabel>\n          <EnumLabel>F15</EnumLabel>\n          <EnumLabel>F16</EnumLabel>\n          <EnumLabel>F17</EnumLabel>\n          <EnumLabel>F18</EnumLabel>\n          <EnumLabel>F19</EnumLabel>\n          <EnumLabel>F20</EnumLabel>\n          <EnumLabel>F21</EnumLabel>\n          <EnumLabel>F22</EnumLabel>\n          <EnumLabel>F23</EnumLabel>\n          <EnumLabel>F24</EnumLabel>\n          <EnumLabel>Play</EnumLabel>\n          <EnumLabel>VolumeUp</EnumLabel>\n          <EnumLabel>VolumeDown</EnumLabel>\n          <EnumLabel>Mute</EnumLabel>\n          <EnumLabel>Two Byte Char</EnumLabel>\n          </TypeDesc><Label Text=\"eventvkey.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"ScanCode\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741848"
+  },
+  "viVariant": {
+   "spec": {
+    "eFlags": "2",
+    "eSource": "0",
+    "regFlags": "1",
+    "source": "5",
+    "type": "1073741848"
+   },
+   "sourceKind": "vi",
+   "refLabel": "VIRef",
+   "fields": [
+    "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Char\" />",
+    "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"VKey\"><EnumLabel>ASCII</EnumLabel>\n          <EnumLabel>Enter</EnumLabel>\n          <EnumLabel>Return</EnumLabel>\n          <EnumLabel>Shift</EnumLabel>\n          <EnumLabel>Ctrl</EnumLabel>\n          <EnumLabel>Alt</EnumLabel>\n          <EnumLabel>Cmd</EnumLabel>\n          <EnumLabel>Opt</EnumLabel>\n          <EnumLabel>Caps</EnumLabel>\n          <EnumLabel>NumLock</EnumLabel>\n          <EnumLabel>Clear</EnumLabel>\n          <EnumLabel>Break</EnumLabel>\n          <EnumLabel>Up</EnumLabel>\n          <EnumLabel>Down</EnumLabel>\n          <EnumLabel>Left</EnumLabel>\n          <EnumLabel>Right</EnumLabel>\n          <EnumLabel>Insert</EnumLabel>\n          <EnumLabel>Delete</EnumLabel>\n          <EnumLabel>Home</EnumLabel>\n          <EnumLabel>End</EnumLabel>\n          <EnumLabel>PageUp</EnumLabel>\n          <EnumLabel>PageDown</EnumLabel>\n          <EnumLabel>Escape</EnumLabel>\n          <EnumLabel>Help</EnumLabel>\n          <EnumLabel>Pause</EnumLabel>\n          <EnumLabel>ScrollLock</EnumLabel>\n          <EnumLabel>F1</EnumLabel>\n          <EnumLabel>F2</EnumLabel>\n          <EnumLabel>F3</EnumLabel>\n          <EnumLabel>F4</EnumLabel>\n          <EnumLabel>F5</EnumLabel>\n          <EnumLabel>F6</EnumLabel>\n          <EnumLabel>F7</EnumLabel>\n          <EnumLabel>F8</EnumLabel>\n          <EnumLabel>F9</EnumLabel>\n          <EnumLabel>F10</EnumLabel>\n          <EnumLabel>F11</EnumLabel>\n          <EnumLabel>F12</EnumLabel>\n          <EnumLabel>F13</EnumLabel>\n          <EnumLabel>F14</EnumLabel>\n          <EnumLabel>F15</EnumLabel>\n          <EnumLabel>F16</EnumLabel>\n          <EnumLabel>F17</EnumLabel>\n          <EnumLabel>F18</EnumLabel>\n          <EnumLabel>F19</EnumLabel>\n          <EnumLabel>F20</EnumLabel>\n          <EnumLabel>F21</EnumLabel>\n          <EnumLabel>F22</EnumLabel>\n          <EnumLabel>F23</EnumLabel>\n          <EnumLabel>F24</EnumLabel>\n          <EnumLabel>Play</EnumLabel>\n          <EnumLabel>VolumeUp</EnumLabel>\n          <EnumLabel>VolumeDown</EnumLabel>\n          <EnumLabel>Mute</EnumLabel>\n          <EnumLabel>Two Byte Char</EnumLabel>\n          </TypeDesc><Label Text=\"eventvkey.ctl\" />\n        </TypeDesc>",
+    "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"ScanCode\" />",
+    "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+    "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+    "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />"
+   ]
+  },
+  "measuredOn": "<labview>\\examples\\Structures\\Event Structure\\Handling Common User Interface Events.vi (one frame with Key Down and Key Repeat)"
+ },
+ "Key Up": {
+  "classes": {
+   "string": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"ScanCode\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "3",
+   "type": "1073741836"
+  },
+  "viVariant": {
+   "spec": {
+    "eFlags": "2",
+    "eSource": "0",
+    "regFlags": "1",
+    "source": "5",
+    "type": "1073741836"
+   },
+   "sourceKind": "vi",
+   "refLabel": "VIRef",
+   "fields": [
+    "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"ScanCode\" />",
+    "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Num Pad\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+    "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+    "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0024\" HasItem=\"0\" Format=\"inline\" Label=\"FocusObj\" />"
+   ]
+  },
+  "measuredOn": "number: resource picktime.vi, named by NI's exporter; fields: LabVIEW's own save of tests/t137_key_notify_events.xml"
+ },
+ "Application Instance Close": {
+  "classes": {
+   "null": 6
+  },
+  "eFlagsSeen": {
+   "1": 6
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "AppRef",
+  "regFlagsSeen": {
+   "1": 3,
+   "-2147483648": 3
+  },
+  "sourceKind": "application",
+  "spec": {
+   "eFlags": "1",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "4",
+   "type": "1073741850"
+  },
+  "vi": "<labview>\\resource\\dialog\\BookmarkManager\\managers\\Default\\BMark_MainWindow.vi",
+  "measuredOn": "<labview>\\resource\\dialog\\BookmarkManager\\managers\\Default\\BMark_MainWindow.vi (one frame with this one event; named by NI's exporter)"
+ },
+ "Application Instance Close?": {
+  "classes": {
+   "null": 2
+  },
+  "eFlagsSeen": {
+   "1": 2
+  },
+  "fields": [
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"SilentShutdown\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "AppRef",
+  "regFlagsSeen": {
+   "1": 2
+  },
+  "sourceKind": "application",
+  "spec": {
+   "eFlags": "1",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "4",
+   "type": "-2147483644"
+  },
+  "vi": "<labview>\\project\\_Profile Buffer Allocation.vi",
+  "measuredOn": "<labview>\\project\\_Profile Buffer Allocation.vi (one frame with this one event; named by NI's exporter)",
+  "filterFields": [
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"SilentShutdown\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ]
+ },
+ "Bookmark Info Change": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "1": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Paths\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Path\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Names\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "App Ref",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "application",
+  "spec": {
+   "eFlags": "1",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "4",
+   "type": "1073741906"
+  },
+  "vi": "<labview>\\resource\\dialog\\BookmarkManager\\managers\\Default\\BMark_MainWindow.vi",
+  "measuredOn": "<labview>\\resource\\dialog\\BookmarkManager\\managers\\Default\\BMark_MainWindow.vi (one frame with this one event; named by NI's exporter)"
+ },
+ "Double Click [treeControl]": {
+  "classes": {
+   "treeControl": 21
+  },
+  "eFlagsSeen": {
+   "4": 21
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Tag\" />",
+   "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"CellPart\"><EnumLabel>Text</EnumLabel>\n        <EnumLabel>Background</EnumLabel>\n        <EnumLabel>Item Symbol</EnumLabel>\n        <EnumLabel>Open/Close Symbol</EnumLabel>\n        <EnumLabel>Hierarchy Lines</EnumLabel>\n        <EnumLabel>Right Border</EnumLabel>\n        <EnumLabel>Bottom Border</EnumLabel>\n        <EnumLabel>Bottom Right Corner</EnumLabel>\n        <EnumLabel>Unknown Part</EnumLabel>\n        </TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 15,
+   "-2147483647": 4,
+   "0": 2
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "1073741846",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_Block Builder Wizard.vi",
+  "measuredOn": "<labview>\\project\\_Block Builder Wizard.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events"
+ },
+ "Panel Close": {
+  "classes": {
+   "null": 47
+  },
+  "eFlagsSeen": {
+   "2": 47
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "0": 7,
+   "1": 27,
+   "-2147483647": 13
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "source": "5",
+   "type": "1073741849",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\Control and Simulation\\_Fuzzy Logic Designer\\Edit Description.vi",
+  "measuredOn": "<labview>\\project\\Control and Simulation\\_Fuzzy Logic Designer\\Edit Description.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events"
+ },
+ "Item Close": {
+  "classes": {
+   "treeControl": 13
+  },
+  "eFlagsSeen": {
+   "4": 13
+  },
+  "fields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Tag\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 13
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "1073741855",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_VI Analyzer\\analyzerui.llb\\VIAnUI  Analyzer UI.vi",
+  "measuredOn": "<labview>\\project\\_VI Analyzer\\analyzerui.llb\\VIAnUI  Analyzer UI.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events",
+  "onlyClasses": [
+   "treeControl"
+  ]
+ },
+ "Drag Starting": {
+  "classes": {
+   "listbox": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Data\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"data name\" /><TypeDesc Type=\"LVVariant\" Format=\"inline\" Label=\"drag data\" /></TypeDesc></TypeDesc>",
+   "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Drag Mode\"><EnumLabel>copy or move</EnumLabel>\n        <EnumLabel>copy only</EnumLabel>\n        <EnumLabel>move only</EnumLabel>\n        </TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483647": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "1073741867",
+   "regFlags": "-2147483647"
+  },
+  "vi": "<labview>\\resource\\plugins\\PopupMenus\\edit time panel and diagram\\Rearrange Cases.llb\\Execute Rearrange Cases.vi",
+  "measuredOn": "<labview>\\resource\\plugins\\PopupMenus\\edit time panel and diagram\\Rearrange Cases.llb\\Execute Rearrange Cases.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events"
+ },
+ "Drag Ended": {
+  "classes": {
+   "listbox": 4
+  },
+  "eFlagsSeen": {
+   "4": 4
+  },
+  "fields": [
+   "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Result\"><EnumLabel>Drop Cancel</EnumLabel>\n        <EnumLabel>Drop Move</EnumLabel>\n        <EnumLabel>Drop Copy</EnumLabel>\n        </TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 4
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "1073741869",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_LLBMgr User Interface.vi",
+  "measuredOn": "<labview>\\project\\_LLBMgr User Interface.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events"
+ },
+ "Data Change": {
+  "classes": {
+   "null": 4
+  },
+  "eFlagsSeen": {
+   "2": 4
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "1": 4
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "source": "5",
+   "type": "1073741871",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_ProfileBufferAllocations.llb\\TS Facade.vi",
+  "measuredOn": "<labview>\\project\\_ProfileBufferAllocations.llb\\TS Facade.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events",
+  "onlyInFacade": true,
+  "refClass": "0x004F"
+ },
+ "Direction Change": {
+  "classes": {
+   "null": 4
+  },
+  "eFlagsSeen": {
+   "2": 4
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "1": 4
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "source": "5",
+   "type": "1073741872",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_ProfileBufferAllocations.llb\\TS Facade.vi",
+  "measuredOn": "<labview>\\project\\_ProfileBufferAllocations.llb\\TS Facade.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events",
+  "onlyInFacade": true,
+  "refClass": "0x004F"
+ },
+ "Display State Change": {
+  "classes": {
+   "null": 4
+  },
+  "eFlagsSeen": {
+   "2": 4
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "1": 4
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "source": "5",
+   "type": "1073741873",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_ProfileBufferAllocations.llb\\TS Facade.vi",
+  "measuredOn": "<labview>\\project\\_ProfileBufferAllocations.llb\\TS Facade.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events",
+  "onlyInFacade": true,
+  "refClass": "0x004F"
+ },
+ "Exec State Change": {
+  "classes": {
+   "null": 4
+  },
+  "eFlagsSeen": {
+   "2": 4
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "1": 4
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "source": "5",
+   "type": "1073741874",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_ProfileBufferAllocations.llb\\TS Facade.vi",
+  "measuredOn": "<labview>\\project\\_ProfileBufferAllocations.llb\\TS Facade.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events",
+  "onlyInFacade": true,
+  "refClass": "0x004F"
+ },
+ "Shortcut Menu Selection (App)": {
+  "classes": {
+   "treeControl": 4
+  },
+  "eFlagsSeen": {
+   "4": 4
+  },
+  "fields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Bit7=\"1\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemTag\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemPath\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0006\" HasItem=\"0\" Format=\"inline\" Label=\"SubObj\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 4
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "1073741878",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\resource\\Framework\\Providers\\Builds\\AppBuilder\\AB_UI_Page_Source_Files.vi",
+  "measuredOn": "<labview>\\resource\\Framework\\Providers\\Builds\\AppBuilder\\AB_UI_Page_Source_Files.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events"
+ },
+ "Pane Size": {
+  "classes": {
+   "null": 25
+  },
+  "eFlagsSeen": {
+   "4": 25
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"OldBnds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"NewBnds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "PaneRef",
+  "regFlagsSeen": {
+   "1": 18,
+   "-2147483647": 6,
+   "260": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "1073741884",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_ProfileBufferAllocations.llb\\TS Facade.vi",
+  "measuredOn": "<labview>\\project\\_ProfileBufferAllocations.llb\\TS Facade.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events",
+  "refused": "its source is a PANE, which an AIXML selector cannot name"
+ },
+ "Drag Leave": {
+  "classes": {
+   "listbox": 2
+  },
+  "eFlagsSeen": {
+   "4": 2
+  },
+  "fields": [
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Available Data Names\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 2
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "1073741885",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_LLBMgr User Interface.vi",
+  "measuredOn": "<labview>\\project\\_LLBMgr User Interface.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events"
+ },
+ "Application Activation": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "1": 1
+  },
+  "fields": [],
+  "from": "measured",
+  "refLabel": "AppRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "application",
+  "spec": {
+   "eFlags": "1",
+   "eSource": "0",
+   "source": "4",
+   "type": "1073741888",
+   "regFlags": "1"
+  },
+  "measuredOn": "number: LabVIEW's own VIs, named by NI's exporter; no fields of its own, confirmed identical on LabVIEW's own save of a probe",
+  "by": "add_scanned_events"
+ },
+ "Operate Menu Dismissed": {
+  "classes": {
+   "stdRing": 1
+  },
+  "eFlagsSeen": {
+   "4": 1
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "1073741891",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\resource\\Framework\\Providers\\Builds\\Installer\\Pages\\IB_UI_Page_Registry.vi",
+  "measuredOn": "<labview>\\resource\\Framework\\Providers\\Builds\\Installer\\Pages\\IB_UI_Page_Registry.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events",
+  "onlyClasses": [
+   "stdRing"
+  ]
+ },
+ "Shortcut Menu Dismissed": {
+  "classes": {
+   "stdBool": 5
+  },
+  "eFlagsSeen": {
+   "4": 5
+  },
+  "fields": [],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 4,
+   "-2147483647": 1
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "1073741892",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\resource\\Framework\\Providers\\Builds\\Package\\Common\\Pages\\Advanced\\Page.vi",
+  "measuredOn": "<labview>\\resource\\Framework\\Providers\\Builds\\Package\\Common\\Pages\\Advanced\\Page.vi (one frame with this one event; named by NI's exporter)",
+  "by": "add_scanned_events"
+ },
+ "Menu Selection? (App)": {
+  "classes": {
+   "null": 3
+  },
+  "eFlagsSeen": {
+   "2": 3
+  },
+  "fields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemTag\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"ItemPath\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "-2147483647": 1,
+   "1": 2
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "source": "5",
+   "type": "-2147483642",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_Example Documentation Tool.llb\\NIPREPEX_Documentation Tool Clipboard.vi",
+  "measuredOn": "<labview>\\project\\_Example Documentation Tool.llb\\NIPREPEX_Documentation Tool Clipboard.vi (one frame with this one event; named by NI's exporter)",
+  "filterFields": [
+   "<TypeDesc Type=\"Refnum\" RefType=\"Menu\" Format=\"inline\" Bit7=\"1\" Label=\"MenuRef\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Bit7=\"1\" Label=\"ItemTag\" />",
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Bit7=\"1\" Label=\"ItemPath\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ],
+  "by": "add_scanned_events"
+ },
+ "Mouse Down?": {
+  "classes": {
+   "listbox": 28
+  },
+  "eFlagsSeen": {
+   "4": 28
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483647": 3,
+   "1": 25
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "-2147483641",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_LLBMgr User Interface.vi",
+  "measuredOn": "<labview>\\project\\_LLBMgr User Interface.vi (one frame with this one event; named by NI's exporter)",
+  "filterFields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Bit7=\"1\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ],
+  "by": "add_scanned_events"
+ },
+ "Item Open?": {
+  "classes": {
+   "treeControl": 9
+  },
+  "eFlagsSeen": {
+   "4": 9
+  },
+  "fields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Tag\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "-2147483647": 1,
+   "1": 8
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "-2147483632",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\resource\\Framework\\Providers\\Builds\\Installer\\Pages\\IB_UI_Page_Source.vi",
+  "measuredOn": "<labview>\\resource\\Framework\\Providers\\Builds\\Installer\\Pages\\IB_UI_Page_Source.vi (one frame with this one event; named by NI's exporter)",
+  "filterFields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Bit7=\"1\" Label=\"Tag\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ],
+  "by": "add_scanned_events",
+  "onlyClasses": [
+   "treeControl"
+  ]
+ },
+ "Item Close?": {
+  "classes": {
+   "treeControl": 3
+  },
+  "eFlagsSeen": {
+   "4": 3
+  },
+  "fields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Tag\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 3
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "-2147483631",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\resource\\Framework\\Providers\\Builds\\AppBuilder\\AB_UI_Page_Source_Files.vi",
+  "measuredOn": "<labview>\\resource\\Framework\\Providers\\Builds\\AppBuilder\\AB_UI_Page_Source_Files.vi (one frame with this one event; named by NI's exporter)",
+  "filterFields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Bit7=\"1\" Label=\"Tag\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ],
+  "by": "add_scanned_events",
+  "onlyClasses": [
+   "treeControl"
+  ]
+ },
+ "Edit Cell?": {
+  "classes": {
+   "listbox": 6
+  },
+  "eFlagsSeen": {
+   "4": 6
+  },
+  "fields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"String\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "static",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 6
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "-2147483593",
+   "regFlags": "1"
+  },
+  "vi": "<labview>\\project\\_LLBMgr User Interface.vi",
+  "measuredOn": "<labview>\\project\\_LLBMgr User Interface.vi (one frame with this one event; named by NI's exporter)",
+  "filterFields": [
+   "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"String\" />",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Bit7=\"1\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Label=\"Discard?\" />"
+  ],
+  "by": "add_scanned_events",
+  "onlyClasses": [
+   "listbox"
+  ]
+ },
+ "Drag Over": {
+  "classes": {
+   "null": 2
+  },
+  "eFlagsSeen": {
+   "4": 2
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Available Data Names\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit7=\"1\" Label=\"Accepted?\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "from": "measured",
+  "refLabel": "CtlRef",
+  "regFlagsSeen": {
+   "1": 2
+  },
+  "sourceKind": "control",
+  "spec": {
+   "eFlags": "4",
+   "eSource": "0",
+   "source": "3",
+   "type": "-1610612678",
+   "regFlags": "1"
+  },
+  "measuredOn": "number: LabVIEW's own VIs, named by NI's exporter; Drag Enter's fields, confirmed identical on LabVIEW's own save of a probe on a waveform graph",
+  "filterFields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Bit7=\"1\" Label=\"Coords\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>",
+   "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" Bit7=\"1\" Label=\"Button\" />",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Bit7=\"1\" Label=\"Mods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Double Click\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Menu Key\" /></TypeDesc>",
+   "<TypeDesc Type=\"Cluster\" Format=\"inline\" Bit7=\"1\" Label=\"PlatMods\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Shift\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Ctrl\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Alt\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Cmd\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Opt\" /></TypeDesc>",
+   "<TypeDesc Type=\"Array\" Format=\"inline\" Bit7=\"1\" Label=\"Available Data Names\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Accepted?\" />",
+   "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
+  ],
+  "by": "add_scanned_events"
+ }
+}

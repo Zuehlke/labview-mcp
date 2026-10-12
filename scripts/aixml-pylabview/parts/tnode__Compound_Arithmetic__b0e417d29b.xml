@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Compound_Arithmetic/b0e417d29b" source="&lt;labview&gt;\project\Delacor\DQMH\_DQMH Remove Do Something\Query Library for Do Something Info.vi" node="Compound Arithmetic" ins="value|value#1|value#2" outs="result" mode="inversions= ,i, , ;operation=OR" nodeFlags="720896"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Boolean" Format="inline" /></types><heap><SL__arrayElement class="cpdArith" uid="2916">
+        <objFlags>720896</objFlags>
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="2925" aixml="result">
+            <objFlags>64</objFlags>
+            <dco class="cpdArithDCO" uid="2926">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(30)</typeDesc>
+              <termBounds>(0, 12, 25, 24)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2928" aixml="value">
+            <objFlags>32832</objFlags>
+            <dco class="cpdArithDCO" uid="2929">
+              <objFlags>327680</objFlags>
+              <typeDesc>TypeID(31)</typeDesc>
+              <termBounds>(0, 0, 8, 12)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2931" aixml="value#1">
+            <objFlags>32832</objFlags>
+            <dco class="cpdArithDCO" uid="2932">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(32)</typeDesc>
+              <termBounds>(8, 0, 16, 12)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2951" aixml="value#2">
+            <objFlags>32832</objFlags>
+            <dco class="cpdArithDCO" uid="2950">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(33)</typeDesc>
+              <termBounds>(16, 0, 24, 12)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(36, 294, 61, 318)</bounds>
+        <shortCount>10</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="3">
+          <SL__arrayElement uid="2929" />
+          <SL__arrayElement uid="2932" />
+          <SL__arrayElement uid="2950" />
+          </dcoList>
+        <dcoAgg uid="2926" />
+        </SL__arrayElement>
+      </heap></part>

@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.SceneObject/Light%2EGet Light" source="&lt;labview&gt;\vi.lib\Native 3D Graph\update_lights.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene:New Object" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene:New Object" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Get Light" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x006A" HasItem="0" Format="inline" Label="Get Light" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="index" /><TypeDesc Type="Void" Format="inline" Label="index" /></types><heap><SL__arrayElement class="invokeNode" uid="334">
+                        <objFlags>66176</objFlags>
+                        <termList elements="8">
+                          <SL__arrayElement class="term" uid="342">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="542">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(70)</typeDesc>
+                              <termBounds>(0, 0, 9, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="546">
+                            <dco class="hGrowCItem" uid="547">
+                              <objFlags>262145</objFlags>
+                              <typeDesc>TypeID(71)</typeDesc>
+                              <termBounds>(0, 93, 9, 106)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="549">
+                            <objFlags>1</objFlags>
+                            <dco class="hGrowCItem" uid="550">
+                              <objFlags>131072</objFlags>
+                              <typeDesc>TypeID(72)</typeDesc>
+                              <termBounds>(9, 0, 18, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="552">
+                            <dco class="hGrowCItem" uid="555">
+                              <objFlags>524289</objFlags>
+                              <typeDesc>TypeID(73)</typeDesc>
+                              <termBounds>(9, 93, 18, 106)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="557">
+                            <objFlags>1</objFlags>
+                            <dco class="invokeItem" uid="558">
+                              <objFlags>196608</objFlags>
+                              <typeDesc>TypeID(74)</typeDesc>
+                              <termBounds>(18, 0, 34, 53)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="561">
+                            <objFlags>1</objFlags>
+                            <dco class="invokeItem" uid="562">
+                              <objFlags>65537</objFlags>
+                              <typeDesc>TypeID(75)</typeDesc>
+                              <termBounds>(18, 53, 34, 106)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="565">
+                            <objFlags>32769</objFlags>
+                            <dco class="invokeItem" uid="566">
+                              <typeDesc>TypeID(76)</typeDesc>
+                              <termBounds>(34, 0, 50, 53)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="569">
+                            <dco class="invokeItem" uid="570">
+                              <objFlags>131073</objFlags>
+                              <typeDesc>TypeID(77)</typeDesc>
+                              <termBounds>(34, 53, 50, 106)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(29, 51, 80, 157)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>458755</clumpNum>
+                        <dcoList elements="4">
+                          <SL__arrayElement uid="558" />
+                          <SL__arrayElement uid="562" />
+                          <SL__arrayElement uid="566" />
+                          <SL__arrayElement uid="570" />
+                          </dcoList>
+                        <permDCOList elements="4">
+                          <SL__arrayElement uid="542" />
+                          <SL__arrayElement uid="547" />
+                          <SL__arrayElement uid="550" />
+                          <SL__arrayElement uid="555" />
+                          </permDCOList>
+                        <nodeName>"SceneObject"</nodeName>
+                        <oMId>0007</oMId>
+                        <methName>"Light.Get Light"</methName>
+                        <methCode>763851818</methCode>
+                        <invokeFlags>08</invokeFlags>
+                        <propList elements="0" />
+                        <privDataList elements="0" />
+                        </SL__arrayElement>
+                      </heap></part>

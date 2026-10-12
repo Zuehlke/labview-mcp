@@ -342,19 +342,23 @@ jobs:
           Write-Host "OK: run-time data files staged at bin/docs/"
 
       # 5b2. The pylabview AIXML composer ships as bin/scripts/aixml-pylabview (since 2026-10-12),
-      #      carried by the scripts/* copy above. AixmlComposer.Locate() requires these three files;
-      #      without them backend=pylabview answers backendNotAvailable on every plugin install. Its
-      #      PARTS are deliberately not shipped (FINDINGS §6a), so they are not asserted here.
-      - name: Assert the AIXML composer is staged
+      #      code AND parts, carried by the scripts/* copy above. AixmlComposer.Locate() requires
+      #      the three modules and parts/skeleton/skeleton.xml; without either, backend=pylabview
+      #      answers backendNotAvailable on every plugin install.
+      - name: Assert the AIXML composer and its parts are staged
         shell: pwsh
         run: |
-          foreach ($name in @('aixml2vi.py', 'vi2aixml.py', 'lvheap.py')) {
+          foreach ($name in @('aixml2vi.py', 'vi2aixml.py', 'lvheap.py', 'parts/skeleton/skeleton.xml')) {
             $path = "staging/bin/scripts/aixml-pylabview/$name"
             if (-not (Test-Path $path)) {
               throw "$path is missing - backend=pylabview could not be located on a plugin install"
             }
           }
-          Write-Host "OK: the AIXML composer is staged at bin/scripts/aixml-pylabview/"
+          $parts = (Get-ChildItem 'staging/bin/scripts/aixml-pylabview/parts' -Recurse -File).Count
+          if ($parts -lt 1000) {
+            throw "only $parts files in bin/scripts/aixml-pylabview/parts - the composer would refuse most VIs"
+          }
+          Write-Host "OK: the AIXML composer is staged at bin/scripts/aixml-pylabview/ with $parts parts"
 
       # 5c. The pylabview bundle: present, locatable, and PATCHED.
       #     The last of those is the one worth a step of its own. Patches are applied when the

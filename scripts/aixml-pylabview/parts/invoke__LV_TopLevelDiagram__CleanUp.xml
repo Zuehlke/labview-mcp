@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TopLevelDiagram/CleanUp" source="&lt;labview&gt;\vi.lib\ErrorRing\XSFP_ReplaceSelfWithGenCode.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4027" HasItem="0" Format="inline" Label="Scratchpad Diagram (Contains XNode)" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4027" HasItem="0" Format="inline" Label="Scratchpad Diagram (Contains XNode)" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Relayout" /><TypeDesc Type="Void" Format="inline" Label="Relayout" /><TypeDesc Type="Cluster" Format="inline" Label="Alignment"><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="Alignment"><EnumLabel>Left</EnumLabel>
+        <EnumLabel>Right</EnumLabel>
+        <EnumLabel>Hybrid</EnumLabel>
+        <EnumLabel>Center</EnumLabel>
+        <EnumLabel>Gravity</EnumLabel>
+        </TypeDesc><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="Rules"><EnumLabel>Strict</EnumLabel>
+        <EnumLabel>Allow Wires Under Labels</EnumLabel>
+        <EnumLabel>Allow Wires Under Lead Nodes</EnumLabel>
+        <EnumLabel>Allow Wires Under Wide Blocks</EnumLabel>
+        </TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Max Heuristic Iterations" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Max Simplex Iterations" /><TypeDesc Type="Cluster" Format="inline" Label="Block Padding"><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Horizontal" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Vertical" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Wire Padding"><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Horizontal" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Vertical" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="Auto-Tune by Topology" /><TypeDesc Type="Boolean" Format="inline" Label="Fine-Tune Y Positions" /><TypeDesc Type="Boolean" Format="inline" Label="Align All Controls on Left" /><TypeDesc Type="Boolean" Format="inline" Label="Align All Indicators on Right" /><TypeDesc Type="Boolean" Format="inline" Label="Use Array Dimension Heuristics" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Alignment" /></types><heap><SL__arrayElement class="invokeNode" uid="973">
+                    <objFlags>640</objFlags>
+                    <termList elements="8">
+                      <SL__arrayElement class="term" uid="1370">
+                        <objFlags>32768</objFlags>
+                        <dco class="hGrowCItem" uid="1371">
+                          <objFlags>65536</objFlags>
+                          <typeDesc>TypeID(35)</typeDesc>
+                          <termBounds>(0, 0, 9, 13)</termBounds>
+                          </dco>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="term" uid="1373">
+                        <dco class="hGrowCItem" uid="1374">
+                          <objFlags>262145</objFlags>
+                          <typeDesc>TypeID(36)</typeDesc>
+                          <termBounds>(0, 85, 9, 98)</termBounds>
+                          </dco>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="term" uid="1376">
+                        <objFlags>32768</objFlags>
+                        <dco class="hGrowCItem" uid="1377">
+                          <objFlags>131072</objFlags>
+                          <typeDesc>TypeID(37)</typeDesc>
+                          <termBounds>(9, 0, 18, 13)</termBounds>
+                          </dco>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="term" uid="1379">
+                        <dco class="hGrowCItem" uid="1380">
+                          <objFlags>524289</objFlags>
+                          <typeDesc>TypeID(38)</typeDesc>
+                          <termBounds>(9, 85, 18, 98)</termBounds>
+                          </dco>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="term" uid="1382">
+                        <dco class="invokeItem" uid="1383">
+                          <objFlags>196608</objFlags>
+                          <typeDesc>TypeID(39)</typeDesc>
+                          <termBounds>(18, 0, 34, 49)</termBounds>
+                          <privDataList elements="0" />
+                          </dco>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="term" uid="1386">
+                        <dco class="invokeItem" uid="1387">
+                          <objFlags>196609</objFlags>
+                          <typeDesc>TypeID(40)</typeDesc>
+                          <termBounds>(18, 49, 34, 98)</termBounds>
+                          <privDataList elements="0" />
+                          </dco>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="term" uid="1390">
+                        <dco class="invokeItem" uid="1391">
+                          <objFlags>262144</objFlags>
+                          <typeDesc>TypeID(41)</typeDesc>
+                          <termBounds>(34, 0, 50, 49)</termBounds>
+                          <privDataList elements="0" />
+                          </dco>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="term" uid="1394">
+                        <dco class="invokeItem" uid="1395">
+                          <objFlags>393217</objFlags>
+                          <typeDesc>TypeID(42)</typeDesc>
+                          <termBounds>(34, 49, 50, 98)</termBounds>
+                          <privDataList elements="0" />
+                          </dco>
+                        </SL__arrayElement>
+                      </termList>
+                    <bounds>(33, 42, 84, 140)</bounds>
+                    <shortCount>2</shortCount>
+                    <clumpNum>1638403</clumpNum>
+                    <dcoList elements="4">
+                      <SL__arrayElement uid="1383" />
+                      <SL__arrayElement uid="1387" />
+                      <SL__arrayElement uid="1391" />
+                      <SL__arrayElement uid="1395" />
+                      </dcoList>
+                    <permDCOList elements="4">
+                      <SL__arrayElement uid="1371" />
+                      <SL__arrayElement uid="1374" />
+                      <SL__arrayElement uid="1377" />
+                      <SL__arrayElement uid="1380" />
+                      </permDCOList>
+                    <nodeName>"TopLvlDiag"</nodeName>
+                    <oMId>000A</oMId>
+                    <methName>"CleanUp"</methName>
+                    <methCode>1830275073</methCode>
+                    <invokeFlags>08</invokeFlags>
+                    <propList elements="0" />
+                    <privDataList elements="0" />
+                    </SL__arrayElement>
+                  </heap></part>

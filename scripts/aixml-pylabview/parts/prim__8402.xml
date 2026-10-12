@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8402" source="P3 ni lvai_discuss.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="xml string" /><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="4278">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="4937">
+            <dco class="parm" uid="4935">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(15)</typeDesc>
+              <termBounds>(8, 16, 16, 32)</termBounds>
+              <primIndex>153</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4940">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="4938">
+              <typeDesc>TypeID(16)</typeDesc>
+              <termBounds>(8, 0, 16, 16)</termBounds>
+              <primIndex>153</primIndex>
+              <parmIndex>6</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(142, 1487, 174, 1519)</bounds>
+        <shortCount>38</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>8402</primResID>
+        <primIndex>153</primIndex>
+        </SL__arrayElement>
+      </heap></part>

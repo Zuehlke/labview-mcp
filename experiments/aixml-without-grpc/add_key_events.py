@@ -21,7 +21,8 @@ import sys
 import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TABLE = os.path.join(HERE, "parts", "static-events.json")
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer and its parts, since 2026-10-12
+TABLE = os.path.join(COMPOSER, "parts", "static-events.json")
 
 
 def labview_frame(text, n):

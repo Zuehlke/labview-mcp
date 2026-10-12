@@ -29,7 +29,7 @@ import lvheap  # noqa: E402
 import vi2aixml  # noqa: E402
 
 CACHE = os.path.join(os.path.expanduser("~"), ".labviewmcp", "cache", "aixml")
-OUT = os.path.join(HERE, "parts", "property-export-names.json")
+OUT = os.path.join(COMPOSER, "parts", "property-export-names.json")
 
 
 def main(argv):

@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1052" source="&lt;labview&gt;\examples\Controls and Indicators\Numeric\Numeric with Units.vi"><types><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline"><PhysUnit Val1="3" Val2="2" />
+        </TypeDesc><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline" Label="focus distance"><PhysUnit Val1="3" Val2="1" />
+        </TypeDesc><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline"><PhysUnit Val1="3" Val2="1" />
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="138">
+        <objFlags>65536</objFlags>
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="174">
+            <dco class="overridableParm" uid="192">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(79)</typeDesc>
+              <dcoFiller>515</dcoFiller>
+              <termBounds>(0, 10, 21, 21)</termBounds>
+              <primIndex>105</primIndex>
+              <inplace>3</inplace>
+              <maxWordLength>64</maxWordLength>
+              <override>3</override>
+              <overflow>2</overflow>
+              <quantize>3</quantize>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="175">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="193">
+              <typeDesc>TypeID(80)</typeDesc>
+              <termBounds>(10, 0, 21, 10)</termBounds>
+              <primIndex>105</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="176">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="203">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(81)</typeDesc>
+              <termBounds>(0, 0, 10, 10)</termBounds>
+              <primIndex>105</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(298, 449, 330, 481)</bounds>
+        <shortCount>26</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1052</primResID>
+        <primIndex>105</primIndex>
+        </SL__arrayElement>
+      </heap></part>

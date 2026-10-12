@@ -422,6 +422,7 @@ class Harvester:
                 self.props_new += 1
 
     def harvest(self, main_xml, source):
+        source = lvheap.portable_source(source)   # the parts ship: no local path in them
         b = lvheap.Bundle(main_xml)
         self.bundle = b     # save() reads the donor's embedded images (DSIM) from it
         fpdco_ind = {}

@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1735" source="&lt;labview&gt;\examples\Data Communication\Protocols\TLS\TLS Client and Server with Self-Signed Server Certificate.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="36" Format="inline" Label="TLS configuration out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="certificate chain"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Array" Format="inline" Label="certificate"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Array" Format="inline" Label="private key"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Refnum" RefType="36" Format="inline" Label="TLS configuration" /></types><heap><SL__arrayElement class="prim" uid="364">
+                <objFlags>512</objFlags>
+                <termList elements="6">
+                  <SL__arrayElement class="term" uid="366">
+                    <dco class="parm" uid="367">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(146)</typeDesc>
+                      <termBounds>(24, 24, 32, 32)</termBounds>
+                      <primIndex>594</primIndex>
+                      <inplace>3</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="369">
+                    <dco class="parm" uid="370">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(147)</typeDesc>
+                      <termBounds>(0, 24, 8, 32)</termBounds>
+                      <primIndex>594</primIndex>
+                      <parmIndex>3</parmIndex>
+                      <inplace>6</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="372">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="373">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(148)</typeDesc>
+                      <termBounds>(24, 0, 32, 8)</termBounds>
+                      <primIndex>594</primIndex>
+                      <parmIndex>8</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="375">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="376">
+                      <typeDesc>TypeID(149)</typeDesc>
+                      <termBounds>(16, 0, 24, 8)</termBounds>
+                      <primIndex>594</primIndex>
+                      <parmIndex>9</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="378">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="379">
+                      <typeDesc>TypeID(150)</typeDesc>
+                      <termBounds>(8, 0, 16, 8)</termBounds>
+                      <primIndex>594</primIndex>
+                      <parmIndex>10</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="381">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="382">
+                      <typeDesc>TypeID(151)</typeDesc>
+                      <termBounds>(0, 0, 8, 8)</termBounds>
+                      <primIndex>594</primIndex>
+                      <parmIndex>11</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(376, 474, 408, 506)</bounds>
+                <shortCount>16</shortCount>
+                <clumpNum>917513</clumpNum>
+                <primResID>1735</primResID>
+                <primIndex>594</primIndex>
+                </SL__arrayElement>
+              </heap></part>

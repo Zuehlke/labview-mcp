@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TopLevelDiagram/Make Selection" source="&lt;labview&gt;\examples\Application Control\VI Scripting\Selected Objects and the Clipboard\Select Multiple Objects.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4027" HasItem="0" Format="inline" Label="Diagram" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4027" HasItem="0" Format="inline" Label="Diagram" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Make Selection" /><TypeDesc Type="Void" Format="inline" Label="Make Selection" /><TypeDesc Type="Array" Format="inline" Label="Objects"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0024" HasItem="0" Format="inline" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Objects" /></types><heap><SL__arrayElement class="invokeNode" uid="4111">
+        <objFlags>131712</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="4113">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="4114">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(19)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4116">
+            <dco class="hGrowCItem" uid="4117">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(20)</typeDesc>
+              <termBounds>(0, 117, 9, 130)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4119">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="4120">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(21)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4122">
+            <dco class="hGrowCItem" uid="4123">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(22)</typeDesc>
+              <termBounds>(9, 117, 18, 130)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4125">
+            <dco class="invokeItem" uid="4126">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(23)</typeDesc>
+              <termBounds>(18, 0, 34, 65)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4129">
+            <dco class="invokeItem" uid="4130">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(24)</typeDesc>
+              <termBounds>(18, 65, 34, 130)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4133">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="4134">
+              <typeDesc>TypeID(25)</typeDesc>
+              <termBounds>(34, 0, 50, 65)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4137">
+            <dco class="invokeItem" uid="4138">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(26)</typeDesc>
+              <termBounds>(34, 65, 50, 130)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(87, 302, 138, 432)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="4126" />
+          <SL__arrayElement uid="4130" />
+          <SL__arrayElement uid="4134" />
+          <SL__arrayElement uid="4138" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="4114" />
+          <SL__arrayElement uid="4117" />
+          <SL__arrayElement uid="4120" />
+          <SL__arrayElement uid="4123" />
+          </permDCOList>
+        <nodeName>"TopLevelDiagram"</nodeName>
+        <oMId>0005</oMId>
+        <methName>"Make Selection"</methName>
+        <methCode>104108034</methCode>
+        <invokeFlags>1008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

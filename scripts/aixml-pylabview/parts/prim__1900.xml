@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1900" source="GetID.xml"><types><TypeDesc Type="SubArray" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="554">
+        <objFlags>16777216</objFlags>
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="1018">
+            <dco class="parm" uid="1016">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(8)</typeDesc>
+              <termBounds>(0, 16, 23, 32)</termBounds>
+              <primIndex>206</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1021">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1019">
+              <typeDesc>TypeID(9)</typeDesc>
+              <termBounds>(0, 0, 23, 16)</termBounds>
+              <primIndex>206</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(233, 662, 265, 694)</bounds>
+        <shortCount>10</shortCount>
+        <clumpNum>196611</clumpNum>
+        <primResID>1900</primResID>
+        <primIndex>206</primIndex>
+        </SL__arrayElement>
+      </heap></part>

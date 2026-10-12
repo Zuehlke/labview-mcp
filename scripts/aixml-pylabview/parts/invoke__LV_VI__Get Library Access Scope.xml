@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.VI/Get Library Access Scope" source="&lt;labview&gt;\vi.lib\AppBuilder\AB_Classes\Source\ExportedAssemblyVI\AB_ExportedAssemblyVI_Define_VI_Prototype.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="eng_reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="eng_reference" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Get Library Access Scope" /><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="Get Library Access Scope"><EnumLabel>invalid scope</EnumLabel>
+        <EnumLabel>public</EnumLabel>
+        <EnumLabel>private</EnumLabel>
+        <EnumLabel>protected</EnumLabel>
+        <EnumLabel>community</EnumLabel>
+        </TypeDesc></types><heap><SL__arrayElement class="invokeNode" uid="1813">
+                        <objFlags>33555072</objFlags>
+                        <termList elements="6">
+                          <SL__arrayElement class="term" uid="1822">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="1823">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(292)</typeDesc>
+                              <termBounds>(0, 0, 9, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1825">
+                            <dco class="hGrowCItem" uid="1826">
+                              <objFlags>262145</objFlags>
+                              <typeDesc>TypeID(293)</typeDesc>
+                              <termBounds>(0, 125, 9, 138)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1829">
+                            <dco class="hGrowCItem" uid="1831">
+                              <objFlags>131072</objFlags>
+                              <typeDesc>TypeID(294)</typeDesc>
+                              <termBounds>(9, 0, 18, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1833">
+                            <dco class="hGrowCItem" uid="1835">
+                              <objFlags>524289</objFlags>
+                              <typeDesc>TypeID(295)</typeDesc>
+                              <termBounds>(9, 125, 18, 138)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1837">
+                            <dco class="invokeItem" uid="1838">
+                              <objFlags>196608</objFlags>
+                              <typeDesc>TypeID(296)</typeDesc>
+                              <termBounds>(18, 0, 34, 69)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1846">
+                            <dco class="invokeItem" uid="1847">
+                              <objFlags>65537</objFlags>
+                              <typeDesc>TypeID(297)</typeDesc>
+                              <termBounds>(18, 69, 34, 138)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(59, 63, 94, 201)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>1179654</clumpNum>
+                        <dcoList elements="2">
+                          <SL__arrayElement uid="1838" />
+                          <SL__arrayElement uid="1847" />
+                          </dcoList>
+                        <permDCOList elements="4">
+                          <SL__arrayElement uid="1823" />
+                          <SL__arrayElement uid="1826" />
+                          <SL__arrayElement uid="1831" />
+                          <SL__arrayElement uid="1835" />
+                          </permDCOList>
+                        <nodeName>"VI"</nodeName>
+                        <oMId>0015</oMId>
+                        <methName>"Get Library Access Scope"</methName>
+                        <methCode>1179</methCode>
+                        <invokeFlags>201008</invokeFlags>
+                        <propList elements="0" />
+                        <privDataList elements="0" />
+                        </SL__arrayElement>
+                      </heap></part>

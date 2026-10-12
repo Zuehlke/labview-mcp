@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1734" source="&lt;labview&gt;\examples\Data Communication\Protocols\TLS\TLS Client and Server with Self-Signed Server Certificate.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="certificates"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Array" Format="inline" Label="certificate"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="format"><EnumLabel>X.509 (PEM)</EnumLabel>
+        </TypeDesc><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="path to certificates" /></types><heap><SL__arrayElement class="prim" uid="421">
+                <objFlags>640</objFlags>
+                <termList elements="5">
+                  <SL__arrayElement class="term" uid="423">
+                    <dco class="parm" uid="424">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(166)</typeDesc>
+                      <termBounds>(24, 24, 32, 32)</termBounds>
+                      <primIndex>593</primIndex>
+                      <inplace>3</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="426">
+                    <dco class="parm" uid="427">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(167)</typeDesc>
+                      <termBounds>(0, 24, 8, 32)</termBounds>
+                      <primIndex>593</primIndex>
+                      <parmIndex>3</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="429">
+                    <dco class="parm" uid="430">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(168)</typeDesc>
+                      <termBounds>(24, 0, 32, 8)</termBounds>
+                      <primIndex>593</primIndex>
+                      <parmIndex>8</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="432">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="433">
+                      <typeDesc>TypeID(169)</typeDesc>
+                      <termBounds>(8, 0, 16, 8)</termBounds>
+                      <primIndex>593</primIndex>
+                      <parmIndex>10</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="435">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="436">
+                      <typeDesc>TypeID(170)</typeDesc>
+                      <termBounds>(0, 0, 8, 8)</termBounds>
+                      <primIndex>593</primIndex>
+                      <parmIndex>11</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(539, 182, 571, 214)</bounds>
+                <shortCount>10</shortCount>
+                <clumpNum>786436</clumpNum>
+                <primResID>1734</primResID>
+                <primIndex>593</primIndex>
+                </SL__arrayElement>
+              </heap></part>

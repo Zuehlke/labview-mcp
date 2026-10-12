@@ -68,7 +68,7 @@ def main(argv):
             row["fieldsByClass"] = {c: [ET.tostring(f, encoding="unicode") for f in fs] for c, (_, fs) in per_class.items()}
         out[ev] = row
     # control events the survey never saw static: from the dynamic table
-    ce = json.load(open(os.path.join(HERE, "parts", "control-events.json"), encoding="utf-8"))
+    ce = json.load(open(os.path.join(COMPOSER, "parts", "control-events.json"), encoding="utf-8"))
     for key, r in ce["kinds"].items():
         cls, ev = key.split("|", 1)
         if ev in out or ev == "Value Change" or not r.get("data") or not r["code"].startswith("0C66"):

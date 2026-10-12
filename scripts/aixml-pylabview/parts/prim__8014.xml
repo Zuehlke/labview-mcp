@@ -1,0 +1,115 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8014" source="&lt;labview&gt;\examples\Application Control\VI Scripting\Creating VIs\Creating New VI From Template.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="vi refnum" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="password" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="not connected" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="vi type (standard vi)"><EnumLabel>invalid VI type</EnumLabel>
+        <EnumLabel>Standard VI</EnumLabel>
+        <EnumLabel>Control VI</EnumLabel>
+        <EnumLabel>Global VI</EnumLabel>
+        <EnumLabel>Polymorphic VI</EnumLabel>
+        <EnumLabel>Configuration VI</EnumLabel>
+        <EnumLabel>SubSystem</EnumLabel>
+        <EnumLabel>Facade VI</EnumLabel>
+        <EnumLabel>Method VI</EnumLabel>
+        <EnumLabel>Statechart Diagram VI</EnumLabel>
+        </TypeDesc><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Path" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="application refnum" /></types><heap><SL__arrayElement class="prim" uid="267">
+        <objFlags>640</objFlags>
+        <termList elements="9">
+          <SL__arrayElement class="term" uid="273">
+            <dco class="parm" uid="274">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(86)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>369</primIndex>
+              <inplace>6</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="276">
+            <dco class="parm" uid="277">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(87)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>369</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="279">
+            <dco class="parm" uid="280">
+              <typeDesc>TypeID(88)</typeDesc>
+              <termBounds>(0, 16, 16, 24)</termBounds>
+              <primIndex>369</primIndex>
+              <parmIndex>5</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="282">
+            <dco class="parm" uid="283">
+              <typeDesc>TypeID(89)</typeDesc>
+              <termBounds>(16, 8, 32, 16)</termBounds>
+              <primIndex>369</primIndex>
+              <parmIndex>6</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="285">
+            <dco class="parm" uid="286">
+              <typeDesc>TypeID(90)</typeDesc>
+              <termBounds>(0, 8, 16, 16)</termBounds>
+              <primIndex>369</primIndex>
+              <parmIndex>7</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="288">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="289">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(91)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>369</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="291">
+            <dco class="parm" uid="292">
+              <typeDesc>TypeID(92)</typeDesc>
+              <termBounds>(16, 0, 24, 8)</termBounds>
+              <primIndex>369</primIndex>
+              <parmIndex>9</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="294">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="295">
+              <typeDesc>TypeID(93)</typeDesc>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <primIndex>369</primIndex>
+              <parmIndex>10</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="297">
+            <dco class="parm" uid="298">
+              <typeDesc>TypeID(94)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>369</primIndex>
+              <parmIndex>11</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="390">
+          <objFlags>1507658</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-17, 0, 0, 40)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"New VI"</text>
+            <bgColor>01000000</bgColor>
+            </textRec>
+          </label>
+        <bounds>(8, -166, 40, -134)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>8014</primResID>
+        <primIndex>369</primIndex>
+        </SL__arrayElement>
+      </heap></part>

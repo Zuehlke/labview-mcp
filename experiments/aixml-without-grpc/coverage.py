@@ -50,7 +50,7 @@ def main(argv):
     rows = []
     tsv = argv[argv.index("--tsv") + 1] if "--tsv" in argv else None
     for f in files:
-        c = aixml2vi.Composer(os.path.join(HERE, "parts"))
+        c = aixml2vi.Composer(os.path.join(COMPOSER, "parts"))
         # a call is resolved as from the ORIGINAL VI's place: siblings and relative links
         meta = f[:-4] + ".json"
         if os.path.exists(meta):

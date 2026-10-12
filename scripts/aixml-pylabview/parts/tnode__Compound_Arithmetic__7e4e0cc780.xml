@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Compound_Arithmetic/7e4e0cc780" source="&lt;labview&gt;\examples\Mathematics\Fitting\B Spline Fitting Demo.vi" node="Compound Arithmetic" ins="value|value#1|value#2" outs="result" mode="inversions= , , , ;operation=Add" nodeFlags="524288"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="uniform white noise"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="y-offset (b)" /></types><heap><SL__arrayElement class="cpdArith" uid="2082">
+                <objFlags>524288</objFlags>
+                <termList elements="4">
+                  <SL__arrayElement class="term" uid="2094" aixml="result">
+                    <objFlags>64</objFlags>
+                    <dco class="cpdArithDCO" uid="2092">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(268)</typeDesc>
+                      <termBounds>(0, 12, 25, 24)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2088" aixml="value">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="2086">
+                      <objFlags>262144</objFlags>
+                      <typeDesc>TypeID(269)</typeDesc>
+                      <termBounds>(0, 0, 8, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2091" aixml="value#1">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="2089">
+                      <objFlags>262144</objFlags>
+                      <typeDesc>TypeID(270)</typeDesc>
+                      <termBounds>(8, 0, 16, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1338" aixml="value#2">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="1336">
+                      <typeDesc>TypeID(271)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(16, 0, 24, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(110, 412, 135, 436)</bounds>
+                <shortCount>24</shortCount>
+                <clumpNum>1638415</clumpNum>
+                <dcoList elements="3">
+                  <SL__arrayElement uid="2086" />
+                  <SL__arrayElement uid="2089" />
+                  <SL__arrayElement uid="1336" />
+                  </dcoList>
+                <dcoAgg uid="2092" />
+                </SL__arrayElement>
+              </heap></part>

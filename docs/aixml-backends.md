@@ -111,26 +111,41 @@ reads it.
 |---|---|
 | interpreter | the pylabview bundle — `LABVIEWMCP_PYLABVIEW`, next to the exe, `tools\pylabview\runtime` in a checkout |
 | composer | `LABVIEWMCP_AIXML_COMPOSER`, else `scripts\aixml-pylabview` of a checkout above the exe (read live, so a Python edit needs no rebuild), else `scripts\aixml-pylabview` beside the exe |
-| parts | `LABVIEWMCP_AIXML_PARTS`, else `<composer>\parts`, else a checkout's `experiments\aixml-without-grpc\parts`, else `aixml-parts` in the cache directory |
+| parts | `LABVIEWMCP_AIXML_PARTS`, else `<composer>\parts` (what ships), else `aixml-parts` in the cache directory |
 
-**THE CODE SHIPS, THE PARTS DO NOT - since 2026-10-12.** The composer and reader moved from
-`experiments\aixml-without-grpc` to `scripts\aixml-pylabview`, so both lists of what ships (the
-`.csproj` glob and `release.yml`'s staging) carry them to `bin\scripts\aixml-pylabview` with no
-entry of their own: `aixml2vi.py`, `vi2aixml.py` and the five modules they import, plus the three
-name tables of their own. The measurement scripts, the test suite, the probes and FINDINGS stayed
-in `experiments\`. The Python finds the rest of a plugin's layout by itself - `pylabview.cmd` beside
-the interpreter that runs it, `primitive-names.tsv` and `terminal-names.tsv` in the bundle's
-`app\` (byte-identical to `experiments\pylabview`'s), `docs\` two levels up - measured by composing
-and reading `t01_add.xml` in a copy of that layout with no checkout above it: same AIXML back, byte
-for byte.
+**EVERYTHING THE BACKEND NEEDS SHIPS - since 2026-10-12, the user's decision.** The composer, the
+reader and their parts moved from `experiments\aixml-without-grpc` to `scripts\aixml-pylabview`, so
+both lists of what ships (the `.csproj` glob and `release.yml`'s staging) carry them to
+`bin\scripts\aixml-pylabview` with no entry of their own: `aixml2vi.py`, `vi2aixml.py` and the five
+modules they import, their three name tables, and `parts\` - 1 242 files, about 16 MB. A ZIP user
+needs nothing from `experiments\`, which keeps only what develops and measures the backend: the
+measurement scripts, the test suite, the probes and FINDINGS. `release.yml` asserts the modules,
+the skeleton and the part count. The Python finds the rest of a plugin's layout by itself -
+`pylabview.cmd` beside the interpreter that runs it, `primitive-names.tsv` and `terminal-names.tsv`
+in the bundle's `app\` (byte-identical to `experiments\pylabview`'s), `docs\` two levels up -
+measured by composing and reading `t01_add.xml` in a copy of that layout with no checkout above it:
+same AIXML back, byte for byte.
 
-**The parts stayed in `experiments\aixml-without-grpc\parts`**, and that is deliberate. Most of
-them are fragments cut from NI's own VIs, and whether a release ships them or harvests them on the
-user's machine is an open decision (FINDINGS §6a). So a binary install answers
-`backendNotAvailable` for `pylabview` until `LABVIEWMCP_AIXML_PARTS` names a parts folder, naming
-every place it looked. The composer's OWN tables in there - hotpoints, event codes, property and
-refnum names, `lvheap.own_parts()` - are read beside the code first, so the day they move next to
-it nothing in the code changes.
+**What a part is, and why shipping it was a decision.** The composer cannot write the binary form
+of a numeric control or an Add node from nothing; it copies a finished piece out of an existing VI
+and gives it its name, type, value and wires. Most of those pieces are cut from VIs NI ships with
+LabVIEW (`vi.lib`, the examples), the rest from NI's converter run on our own probes and helper
+AIXML. The alternative to shipping them was harvesting them on the user's machine from the user's
+own installation (FINDINGS §6a); the user chose to ship, so a ZIP is complete.
+
+**The helper parts joined the committed ones the same day.** Fifteen parts and 36 property and
+method rows that only the server's own helper VIs need had lived in a `%TEMP%` harvest; merged in
+with `merge_props.py`, every helper document composes - 80 of 83, the other three being the LUnit
+templates whose `{{TYPE}}` the tool fills in first - and all 80 load executable over ActiveX, against
+24 with the parts as committed before.
+
+**A part's PROVENANCE ships too, so it names no workstation.** `source` on every part and `source`,
+`vi`, `measuredOn` and `long` in the tables read `<labview>\…` for the installation and a bare file
+name for anything else (`lvheap.portable_source`, applied to 2 939 values and at the entry of every
+harvest), and `The_shipped_parts_carry_no_absolute_path` fails on one that slips through. Only
+provenance was touched; the diff of every part outside those fields is empty. The repair scripts
+that re-read a donor through `source` (`backfill_strs.py`, `attach_images.py`,
+`repair_nested_types.py`) have done their job; a re-run needs `<labview>` expanded first.
 
 ## Measured, 2026-10-10
 
@@ -415,15 +430,15 @@ fourth output tunnel sat across its border - `Insane Tunnel {graphics}`, visible
 LabVIEW, because one session logs a repeated insanity once. `experiments/aixml-without-grpc/FINDINGS.md`
 §7a, "Graphs and their events".
 
-**The harvested parts are not committed** - they come from NI's converter run on our AIXML, and
-where a release gets its parts is the user's open decision. `lvai_create_class` was the first tool
+**The harvested helper parts are committed and ship since 2026-10-12** - they come from NI's
+converter run on our own helper AIXML (fifteen parts and 36 property and method rows), and until
+that day they lived only in a `%TEMP%` copy that `LABVIEWMCP_AIXML_PARTS` had to name. `lvai_create_class` was the first tool
 to run its helpers over ActiveX (2026-10-10), and it answered the instance question: in LabVIEW's
 main instance NI's class provider found the active project and built the same class. The whole
-class-and-test chain followed on 2026-10-11 - next section. **All of it needs the harvested parts**
-- with the parts as committed the helpers are not composable and a call answers
-`helperNotComposable` - so until the parts decision it runs with `LABVIEWMCP_AIXML_PARTS` pointing at
-a harvested copy. Composed helpers are cached in `%TEMP%\LabVIEWMCP\helpers-pylabview`, apart from
-NI's, and rebuilt when their AIXML or the parts in use change.
+class-and-test chain followed on 2026-10-11 - next section. All of it needs those parts: without
+them a call answers `helperNotComposable`. Composed helpers are cached in
+`%TEMP%\LabVIEWMCP\helpers-pylabview`, apart from NI's, and rebuilt when their AIXML or the parts in
+use change.
 `experiments/aixml-without-grpc/FINDINGS.md` §7a has the per-kind table (source tree only).
 
 ## A class, an interface and Caraya tests with NI's service unreachable (measured 2026-10-11)

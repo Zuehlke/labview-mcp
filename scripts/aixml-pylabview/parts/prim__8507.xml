@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8507" source="&lt;labview&gt;\examples\Mathematics\Linear Algebra\Matrix to a Power.vi"><types><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Array" Nested="True" Format="inline" Label="Real Matrix A"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+          <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+          <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Real Matrix Element" /></TypeDesc><Label Text="NI_Matrix.lvlib" />
+        <Label Text="RealMatrix.ctl" />
+        </TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="number of columns" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="matrix" /></types><heap><SL__arrayElement class="prim" uid="2890">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="2899">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="2900">
+                      <typeDesc>TypeID(17)</typeDesc>
+                      <termBounds>(0, 0, 22, 16)</termBounds>
+                      <primIndex>541</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2902">
+                    <dco class="parm" uid="2903">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(18)</typeDesc>
+                      <termBounds>(0, 16, 11, 32)</termBounds>
+                      <primIndex>541</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="2905">
+                    <dco class="parm" uid="2906">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(19)</typeDesc>
+                      <termBounds>(11, 16, 22, 32)</termBounds>
+                      <primIndex>541</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <label class="label" uid="2878">
+                  <objFlags>1507650</objFlags>
+                  <partID>16</partID>
+                  <howGrow>4096</howGrow>
+                  <bounds>(-17, 0, 0, 59)</bounds>
+                  <image class="Image">
+                    <ImageResID>-619</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <mode>82948</mode>
+                    <text>"Matrix Size"</text>
+                    <bgColor>01000000</bgColor>
+                    </textRec>
+                  </label>
+                <bounds>(310, 84, 342, 116)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>8507</primResID>
+                <primIndex>541</primIndex>
+                </SL__arrayElement>
+              </heap></part>

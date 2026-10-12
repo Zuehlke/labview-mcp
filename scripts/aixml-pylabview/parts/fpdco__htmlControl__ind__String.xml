@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/htmlControl/ind/String" source="&lt;labview&gt;\examples\Controls and Indicators\Web Browser\Simple Canvas Chart Using JavaScript.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Web Browser Control" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Web Browser Control" /></types><heap><SL__arrayElement class="fPDCO" uid="126">
+          <objFlags>1</objFlags>
+          <typeDesc>TypeID(3)</typeDesc>
+          <ddo class="htmlControl" uid="515">
+            <objFlags>1</objFlags>
+            <bounds>(165, 25, 556, 721)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="530">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 0, 17, 115)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <mode>17412</mode>
+                  <text>"Web Browser Control"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="533">
+                <objFlags>2355</objFlags>
+                <partID>28</partID>
+                <masterPart>9</masterPart>
+                <howGrow>240</howGrow>
+                <bounds>(22, 3, 388, 693)</bounds>
+                <image class="Image">
+                  <ImageResID>-239</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="536">
+                <objFlags>2327</objFlags>
+                <partID>9</partID>
+                <howGrow>240</howGrow>
+                <bounds>(19, 0, 391, 696)</bounds>
+                <image class="Image">
+                  <ImageResID>-300</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="80">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>3</hGrowNodeListLength>
+                <rsrcID>11595</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(4)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>-1</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

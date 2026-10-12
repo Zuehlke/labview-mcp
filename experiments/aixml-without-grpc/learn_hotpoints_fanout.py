@@ -157,7 +157,7 @@ def main(argv):
     for k in sorted(seen, key=lambda k: -seen[k])[:40]:
         print("  %-36s %-10s %4d of %4d %s" % (k, known[k], hit[k], seen[k], "EXACT" if k in exact else ""))
     if "--write" in argv:
-        p = os.path.join(HERE, "parts", "hotpoints.json")
+        p = os.path.join(COMPOSER, "parts", "hotpoints.json")
         cur = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
         # every learned kind, (0, 0) included: a fine key's zero must shadow a coarse key's offset
         learned = {k: list(v) for k, v in known.items()}
@@ -165,7 +165,7 @@ def main(argv):
         cur.update(learned)
         json.dump(cur, open(p, "w", encoding="utf-8"), indent=1, sort_keys=True)
         print("merged into parts/hotpoints.json: %d new or changed, %d in all" % (changed, len(cur)))
-        ex = os.path.join(HERE, "parts", "hotpoints_exact.json")
+        ex = os.path.join(COMPOSER, "parts", "hotpoints_exact.json")
         json.dump(exact, open(ex, "w", encoding="utf-8"), indent=1)
         print("wrote parts/hotpoints_exact.json: %d kinds" % len(exact))
 

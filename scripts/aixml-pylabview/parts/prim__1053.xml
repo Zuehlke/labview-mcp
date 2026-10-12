@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1053" source="&lt;labview&gt;\examples\Controls and Indicators\Graphs and Charts\Math Plots - 3D\3D Comet Graph.vi"><types><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="y" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="414">
+                <objFlags>65536</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="416">
+                    <objFlags>1</objFlags>
+                    <dco class="overridableParm" uid="417">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(22)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>106</primIndex>
+                      <maxWordLength>64</maxWordLength>
+                      <override>3</override>
+                      <overflow>2</overflow>
+                      <quantize>-125</quantize>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="419">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="420">
+                      <typeDesc>TypeID(23)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(10, 0, 21, 10)</termBounds>
+                      <primIndex>106</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="422">
+                    <objFlags>294912</objFlags>
+                    <dco class="parm" uid="423">
+                      <typeDesc>TypeID(24)</typeDesc>
+                      <dsw>1024</dsw>
+                      <termBounds>(0, 0, 10, 10)</termBounds>
+                      <primIndex>106</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(32, 106, 64, 138)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>262147</clumpNum>
+                <primResID>1053</primResID>
+                <primIndex>106</primIndex>
+                </SL__arrayElement>
+              </heap></part>

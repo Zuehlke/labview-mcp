@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1929" source="&lt;labview&gt;\examples\Instrument IO\VISA\PXI\PXI - Reserve Trigger.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="VisaRef" Ident="PXI Backplane" FirstClient="1" Format="inline" Label="PXI Backplane VISA resource name"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="VISArsrcName" Format="inline"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="NumUInt16" Prop1="0" Format="inline" Label="protocol (default:  0)" /><TypeDesc Type="Refnum" RefType="VisaRef" Ident="PXI Backplane" FirstClient="1" Format="inline" Label="PXI Backplane VISA resource name"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="VISArsrcName" Format="inline"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="817">
+                        <objFlags>640</objFlags>
+                        <termList elements="5">
+                          <SL__arrayElement class="term" uid="1276">
+                            <dco class="parm" uid="1280">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(60)</typeDesc>
+                              <termBounds>(24, 24, 32, 32)</termBounds>
+                              <primIndex>269</primIndex>
+                              <inplace>3</inplace>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1282">
+                            <dco class="parm" uid="1284">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(61)</typeDesc>
+                              <termBounds>(0, 24, 8, 32)</termBounds>
+                              <primIndex>269</primIndex>
+                              <parmIndex>3</parmIndex>
+                              <inplace>5</inplace>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1291">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="1292">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(62)</typeDesc>
+                              <termBounds>(24, 0, 32, 8)</termBounds>
+                              <primIndex>269</primIndex>
+                              <parmIndex>8</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1294">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="1297">
+                              <typeDesc>TypeID(63)</typeDesc>
+                              <termBounds>(8, 0, 16, 8)</termBounds>
+                              <primIndex>269</primIndex>
+                              <parmIndex>10</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1329">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="1332">
+                              <typeDesc>TypeID(64)</typeDesc>
+                              <termBounds>(0, 0, 8, 8)</termBounds>
+                              <primIndex>269</primIndex>
+                              <parmIndex>11</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <label class="label" uid="1150">
+                          <objFlags>1507658</objFlags>
+                          <partID>16</partID>
+                          <howGrow>4096</howGrow>
+                          <bounds>(-17, 0, 0, 103)</bounds>
+                          <image class="Image">
+                            <ImageResID>-619</ImageResID>
+                            </image>
+                          <fgColor>01000000</fgColor>
+                          <bgColor>01000000</bgColor>
+                          <textRec class="textHair">
+                            <mode>82948</mode>
+                            <text>"VISA Assert Trigger"</text>
+                            <bgColor>01000000</bgColor>
+                            </textRec>
+                          </label>
+                        <bounds>(136, 357, 168, 389)</bounds>
+                        <shortCount>4</shortCount>
+                        <clumpNum>262147</clumpNum>
+                        <primResID>1929</primResID>
+                        <primIndex>269</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

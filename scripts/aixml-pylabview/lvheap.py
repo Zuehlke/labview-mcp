@@ -38,15 +38,26 @@ def _pylabview_cmd():
 PYLABVIEW_CMD = _pylabview_cmd()
 
 
+_LABVIEW_ROOT = re.compile(r"[A-Za-z]:[\\/](?:[^\\/]*[\\/])*?National Instruments[\\/]LabVIEW [^\\/]+[\\/]")
+_ABSOLUTE_FILE = re.compile(r"[A-Za-z]:[\\/](?:[^\\/\"<>]*[\\/])*?([^\\/\"<>]+?\.(?:vim?|vit|ctl|xml|llb|lvclass|lvlib))\b",
+                            re.IGNORECASE)
+
+
+def portable_source(text):
+    """A part's PROVENANCE as it ships: the LabVIEW installation as `<labview>\\`, any other
+    absolute path cut to its file name - a donor in %TEMP% or a scratch folder is nobody else's
+    path, and the parts are published with the code since 2026-10-12. Only provenance goes
+    through this; a path that is DATA in a part is never touched."""
+    text = _LABVIEW_ROOT.sub(lambda m: "<labview>\\", text)
+    return _ABSOLUTE_FILE.sub(lambda m: m.group(1), text)
+
+
 def own_parts():
     """The folder of the composer's OWN tables - hotpoints, event codes, property and refnum
     names, learned from what LabVIEW does - as opposed to the donor parts `--parts` names, which
-    may be harvested elsewhere and carry none of them. Beside the code when they ship with it;
-    in a source checkout still experiments\\aixml-without-grpc\\parts, which did not move with
-    the code on 2026-10-12 (where a release gets its parts is the user's open decision)."""
-    for d in (os.path.join(HERE, "parts"),
-              os.path.join(REPO, "experiments", "aixml-without-grpc", "parts"),
-              os.environ.get(PARTS_VARIABLE, "")):
+    may be harvested elsewhere and carry none of them. They ship beside the code, in parts\\, since
+    2026-10-12 (the user's decision: the release carries everything the backend needs)."""
+    for d in (os.path.join(HERE, "parts"), os.environ.get(PARTS_VARIABLE, "")):
         if d and os.path.isdir(d):
             return d
     return os.path.join(HERE, "parts")

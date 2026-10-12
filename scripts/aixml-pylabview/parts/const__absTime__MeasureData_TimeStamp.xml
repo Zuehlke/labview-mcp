@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/absTime/MeasureData.TimeStamp" source="pclean.xml" clean="1"><types><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="timestamp k" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="timestamp k" /></types><heap><SL__arrayElement class="term" uid="10094">
+            <objFlags>131136</objFlags>
+            <dco class="bDConstDCO" uid="10092">
+              <typeDesc>TypeID(624)</typeDesc>
+              <dsw>4096</dsw>
+              <ddo class="absTime" uid="5750">
+                <objFlags>458752</objFlags>
+                <bounds>(1069, 2, 1099, 137)</bounds>
+                <partsList elements="4">
+                  <SL__arrayElement class="label" uid="10091">
+                    <objFlags>1507650</objFlags>
+                    <partID>16</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>4096</howGrow>
+                    <bounds>(7, 0, 22, 65)</bounds>
+                    <image class="Image">
+                      <ImageResID>-619</ImageResID>
+                      </image>
+                    <fgColor>01000000</fgColor>
+                    <bgColor>01000000</bgColor>
+                    <textRec class="textHair">
+                      <mode>82948</mode>
+                      <text>"timestamp k"</text>
+                      <bgColor>01000000</bgColor>
+                      <fr elements="1">
+                        <SL__arrayElement class="fontRun">
+                          <fontid>1</fontid>
+                          </SL__arrayElement>
+                        </fr>
+                      </textRec>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="numLabel" uid="10088">
+                    <objFlags>1444146</objFlags>
+                    <partID>10</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>240</howGrow>
+                    <bounds>(1, 66, 29, 134)</bounds>
+                    <image class="Image">
+                      <ImageResID>-11</ImageResID>
+                      </image>
+                    <fgColor>01000000</fgColor>
+                    <bgColor>00FFFFFF</bgColor>
+                    <textRec class="textHair">
+                      <mode>8930306</mode>
+                      <bgColor>00FFFFFF</bgColor>
+                      </textRec>
+                    <format>"%&lt;%.3X
+%x&gt;T"</format>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="10089">
+                    <objFlags>2355</objFlags>
+                    <partID>9</partID>
+                    <bounds>(0, 65, 30, 135)</bounds>
+                    <image class="Image">
+                      <ImageResID>-17</ImageResID>
+                      </image>
+                    <fgColor>00893000</fgColor>
+                    <bgColor>00FFFFFF</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="annex" uid="10090">
+                    <partID>66</partID>
+                    <rsrcID>2068</rsrcID>
+                    </SL__arrayElement>
+                  </partsList>
+                <typeDesc>TypeID(625)</typeDesc>
+                <MouseWheelSupport>0</MouseWheelSupport>
+                </ddo>
+              <ConstValue>0000000000000000000000000000000000</ConstValue>
+              </dco>
+            </SL__arrayElement>
+          </heap></part>

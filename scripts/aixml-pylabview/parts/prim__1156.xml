@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1156" source="&lt;labview&gt;\examples\Strings\Unflatten From JSON.vi"><types><TypeDesc Type="NumUInt64" Prop1="0" Format="inline" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="74">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="80">
+            <dco class="parm" uid="81">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(123)</typeDesc>
+              <termBounds>(0, 12, 11, 25)</termBounds>
+              <primIndex>61</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="3796">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="3797">
+              <typeDesc>TypeID(124)</typeDesc>
+              <termBounds>(0, 0, 11, 12)</termBounds>
+              <primIndex>61</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(-10, 59, 22, 91)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1156</primResID>
+        <primIndex>61</primIndex>
+        </SL__arrayElement>
+      </heap></part>

@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Merge_Errors/6fbc72a74f" source="&lt;labview&gt;\examples\File IO\Binary\Endian Considerations\Endian Considerations with Binary Files.vi" node="Merge Errors" ins="error in|error in#1|error in#2|error in#3" outs="error out" mode="" nodeFlags="0"><types><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="mergeErrors" uid="2371">
+        <termList elements="5">
+          <SL__arrayElement class="term" uid="2821" aixml="error out">
+            <objFlags>64</objFlags>
+            <dco class="mergeErrorsDCO" uid="2822">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(85)</typeDesc>
+              <termBounds>(0, 16, 34, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2824" aixml="error in">
+            <objFlags>32832</objFlags>
+            <dco class="mergeErrorsDCO" uid="2825">
+              <typeDesc>TypeID(86)</typeDesc>
+              <termBounds>(1, 0, 9, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2827" aixml="error in#1">
+            <objFlags>32832</objFlags>
+            <dco class="mergeErrorsDCO" uid="2828">
+              <typeDesc>TypeID(87)</typeDesc>
+              <termBounds>(9, 0, 17, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2871" aixml="error in#2">
+            <objFlags>32832</objFlags>
+            <dco class="mergeErrorsDCO" uid="2869">
+              <typeDesc>TypeID(88)</typeDesc>
+              <termBounds>(17, 0, 25, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2876" aixml="error in#3">
+            <objFlags>32832</objFlags>
+            <dco class="mergeErrorsDCO" uid="2875">
+              <typeDesc>TypeID(89)</typeDesc>
+              <termBounds>(25, 0, 33, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(-12, 260, 22, 292)</bounds>
+        <shortCount>38</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="2825" />
+          <SL__arrayElement uid="2828" />
+          <SL__arrayElement uid="2869" />
+          <SL__arrayElement uid="2875" />
+          </dcoList>
+        <dcoAgg uid="2822" />
+        </SL__arrayElement>
+      </heap></part>

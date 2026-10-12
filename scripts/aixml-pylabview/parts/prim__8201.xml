@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8201" source="&lt;labview&gt;\examples\JKI\EasyXML\Read RSS Feed.vi"><types><TypeDesc Type="LVVariant" Format="inline" Label="Variant" /><TypeDesc Type="Cluster" Format="inline" Label="rss"><TypeDesc Type="Cluster" Format="inline" Label="#attributes"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="version" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="channel"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="title" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="link" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="description" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="pubDate" /><TypeDesc Type="Array" Format="inline" Label="item"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="Cluster"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="title" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="link" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="description" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="guid" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="pubDate" /></TypeDesc></TypeDesc></TypeDesc></TypeDesc></types><heap><SL__arrayElement class="prim" uid="275">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="595">
+            <dco class="parm" uid="589">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(22)</typeDesc>
+              <termBounds>(0, 13, 11, 26)</termBounds>
+              <primIndex>368</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="599">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="596">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(23)</typeDesc>
+              <termBounds>(0, 0, 11, 13)</termBounds>
+              <primIndex>368</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(585, 557, 617, 589)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>8201</primResID>
+        <primIndex>368</primIndex>
+        </SL__arrayElement>
+      </heap></part>

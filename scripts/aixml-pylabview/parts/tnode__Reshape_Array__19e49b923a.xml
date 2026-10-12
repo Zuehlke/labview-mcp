@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Reshape_Array/19e49b923a" source="&lt;labview&gt;\examples\Mathematics\Interpolation\Scattered 2D Interpolation.vi" node="Reshape Array" ins="array|dimension size" outs="output array" mode="" nodeFlags="0"><types><TypeDesc Type="Array" Format="inline" Label="X"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Numeric" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="X"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Numeric" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="aReshape" uid="168">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="963" aixml="array">
+                    <objFlags>32832</objFlags>
+                    <dco class="aReshapeDCO" uid="964">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(140)</typeDesc>
+                      <termBounds>(0, 0, 18, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="966" aixml="output array">
+                    <objFlags>64</objFlags>
+                    <dco class="aReshapeDCO" uid="968">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(141)</typeDesc>
+                      <termBounds>(0, 16, 27, 32)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="970" aixml="dimension size">
+                    <objFlags>32832</objFlags>
+                    <dco class="aReshapeDCO" uid="971">
+                      <typeDesc>TypeID(142)</typeDesc>
+                      <termBounds>(18, 0, 26, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(47, 270, 74, 302)</bounds>
+                <shortCount>12</shortCount>
+                <clumpNum>327684</clumpNum>
+                <dcoList elements="1">
+                  <SL__arrayElement uid="971" />
+                  </dcoList>
+                <dcoAgg uid="968" />
+                <srcDCO uid="964" />
+                </SL__arrayElement>
+              </heap></part>

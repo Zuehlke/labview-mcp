@@ -136,20 +136,68 @@ public sealed class AixmlBackendTests
 
     /// <summary>
     /// Every test below SKIPS when the composer is not found, so a locator that lost it would
-    /// leave this whole half green. The code moved from experiments\aixml-without-grpc to
-    /// scripts\aixml-pylabview on 2026-10-12, its parts did not: in a checkout with the bundle
-    /// both must still be found, the code in the CHECKOUT (live) rather than the build's copy.
+    /// leave this whole half green. Code and parts moved from experiments\aixml-without-grpc to
+    /// scripts\aixml-pylabview on 2026-10-12 so that they ship: in a checkout with the bundle
+    /// both must be found there, in the CHECKOUT (live) rather than in the build's copy - unless
+    /// the environment names a parts folder of its own, which wins by design.
     /// </summary>
     [Fact]
-    public void A_checkout_with_the_bundle_finds_the_composer_in_scripts_and_its_parts_in_experiments()
+    public void A_checkout_with_the_bundle_finds_the_composer_and_its_parts_in_scripts()
     {
-        if (PyLabview.Locate() is null) return;   // a fresh checkout: the runtime is not committed
+        if (PyLabview.Locate() is null) return;   // no interpreter bundle in this checkout
         var setup = AixmlComposer.Locate(out var missing);
         Assert.True(setup is not null, missing);
-        Assert.Equal(Path.GetFullPath(RepoTree.Path("scripts", AixmlComposer.ComposerFolder)),
-                     Path.GetFullPath(setup!.ComposerDirectory));
-        Assert.Equal(Path.GetFullPath(RepoTree.Path("experiments", "aixml-without-grpc", "parts")),
-                     Path.GetFullPath(setup.PartsDirectory));
+        var composer = Path.GetFullPath(RepoTree.Path("scripts", AixmlComposer.ComposerFolder));
+        Assert.Equal(composer, Path.GetFullPath(setup!.ComposerDirectory));
+        if (Environment.GetEnvironmentVariable(AixmlComposer.PartsVariable) is { Length: > 0 }) return;
+        Assert.Equal(Path.Combine(composer, "parts"), Path.GetFullPath(setup.PartsDirectory));
+    }
+
+    /// <summary>
+    /// What ships must not name this workstation: a part's provenance is `&lt;labview&gt;\…` or a bare
+    /// file name since 2026-10-12, and the harvester writes it that way. An absolute path in a
+    /// part or a table is either a provenance the normaliser missed or a new harvest that did
+    /// not go through it.
+    /// </summary>
+    [Fact]
+    public void The_shipped_parts_carry_no_absolute_path()
+    {
+        var parts = RepoTree.Path("scripts", AixmlComposer.ComposerFolder, "parts");
+        Assert.True(Directory.Exists(parts), parts);
+        var absolute = new System.Text.RegularExpressions.Regex(@"[A-Za-z]:(\\\\|\\|/)[A-Za-z]");
+        var offenders = Directory.EnumerateFiles(parts, "*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith(".xml") || f.EndsWith(".json") || f.EndsWith(".tsv"))
+            .Where(f => absolute.IsMatch(File.ReadAllText(f)))
+            .Select(Path.GetFileName)
+            .ToList();
+        Assert.True(offenders.Count == 0, "absolute paths in: " + string.Join(", ", offenders.Take(10)));
+    }
+
+    /// <summary>
+    /// Every shipped part PARSES. Measured 2026-10-12: the provenance rewrite first wrote a raw
+    /// `&lt;labview&gt;` into 856 `source` attributes, which no XML parser accepts - the absolute-path
+    /// test above stayed green, and the composer died on the first such part it opened.
+    /// </summary>
+    [Fact]
+    public void Every_shipped_part_is_well_formed()
+    {
+        var parts = RepoTree.Path("scripts", AixmlComposer.ComposerFolder, "parts");
+        var broken = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(parts, "*", SearchOption.AllDirectories))
+        {
+            try
+            {
+                // from a STREAM: XDocument.Load(string) takes a URI and decodes the %2E that
+                // part names use for a dot, so `…__%2ENET%2ELoad Assembly.xml` is "not found"
+                if (file.EndsWith(".xml")) { using var s = File.OpenRead(file); System.Xml.Linq.XDocument.Load(s); }
+                else if (file.EndsWith(".json")) System.Text.Json.JsonDocument.Parse(File.ReadAllText(file)).Dispose();
+            }
+            catch (Exception e) when (e is System.Xml.XmlException or System.Text.Json.JsonException)
+            {
+                broken.Add(Path.GetFileName(file) + ": " + e.Message);
+            }
+        }
+        Assert.True(broken.Count == 0, string.Join("\n", broken.Take(10)));
     }
 
     [Fact]

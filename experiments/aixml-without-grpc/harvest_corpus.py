@@ -59,7 +59,7 @@ def main(argv):
         for k in sorted(wants):
             print("%-40s %6d %s" % (k, wants[k][0], wants[k][1]))
         return
-    harvest_parts.main([os.path.join(HERE, "parts")] + donors)
+    harvest_parts.main([os.path.join(COMPOSER, "parts")] + donors)
 
 
 if __name__ == "__main__":

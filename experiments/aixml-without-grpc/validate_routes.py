@@ -37,7 +37,7 @@ def main(argv):
     # backslashes: LabVIEW's COM opens nothing at a C:/... path (Git Bash hands over forward ones)
     work, tests = os.path.normpath(os.path.abspath(argv[0])), argv[1:]
     os.makedirs(work, exist_ok=True)
-    hp = wire_route.Hotpoints(os.path.join(HERE, "parts"))
+    hp = wire_route.Hotpoints(os.path.join(COMPOSER, "parts"))
     for name in tests:
         src = os.path.join(HERE, "tests", name + ".xml")
         gen_vi = os.path.join(work, name + " generic.vi")

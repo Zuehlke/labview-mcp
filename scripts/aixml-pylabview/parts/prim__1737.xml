@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1737" source="&lt;labview&gt;\examples\Data Communication\Protocols\TLS\Connect to TLS Server.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="36" Format="inline" Label="immutable TLS configuration" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="36" Format="inline" Label="TLS configuration" /></types><heap><SL__arrayElement class="prim" uid="856">
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="870">
+            <dco class="parm" uid="871">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(5)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>596</primIndex>
+              <inplace>3</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="873">
+            <dco class="parm" uid="874">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(6)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>596</primIndex>
+              <parmIndex>3</parmIndex>
+              <inplace>4</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="876">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="877">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(7)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>596</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="879">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="880">
+              <typeDesc>TypeID(8)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>596</primIndex>
+              <parmIndex>11</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(232, 245, 264, 277)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1737</primResID>
+        <primIndex>596</primIndex>
+        </SL__arrayElement>
+      </heap></part>

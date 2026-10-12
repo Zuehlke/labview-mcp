@@ -1,0 +1,73 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Wire/RemoveLooseEnds" source="&lt;labview&gt;\resource\Framework\Providers\MessageMakerProvider\_Message Maker\_support\Special Replace of SubVI Node.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4037" HasItem="0" Format="inline" Label="Wire" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4037" HasItem="0" Format="inline" Label="Wire" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="RemoveLooseEnds" /><TypeDesc Type="Void" Format="inline" Label="RemoveLooseEnds" /></types><heap><SL__arrayElement class="invokeNode" uid="1720">
+                        <objFlags>640</objFlags>
+                        <termList elements="6">
+                          <SL__arrayElement class="term" uid="1728">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="1729">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(150)</typeDesc>
+                              <termBounds>(0, 0, 9, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1734">
+                            <dco class="hGrowCItem" uid="1735">
+                              <objFlags>262145</objFlags>
+                              <typeDesc>TypeID(151)</typeDesc>
+                              <termBounds>(0, 95, 9, 108)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1739">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="1740">
+                              <objFlags>131072</objFlags>
+                              <typeDesc>TypeID(152)</typeDesc>
+                              <termBounds>(9, 0, 18, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1742">
+                            <dco class="hGrowCItem" uid="1743">
+                              <objFlags>524289</objFlags>
+                              <typeDesc>TypeID(153)</typeDesc>
+                              <termBounds>(9, 95, 18, 108)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1745">
+                            <dco class="invokeItem" uid="1748">
+                              <objFlags>196608</objFlags>
+                              <typeDesc>TypeID(154)</typeDesc>
+                              <termBounds>(18, 0, 34, 54)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1751">
+                            <dco class="invokeItem" uid="1752">
+                              <objFlags>196609</objFlags>
+                              <typeDesc>TypeID(155)</typeDesc>
+                              <termBounds>(18, 54, 34, 108)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(71, 345, 106, 453)</bounds>
+                        <shortCount>8</shortCount>
+                        <clumpNum>524291</clumpNum>
+                        <dcoList elements="2">
+                          <SL__arrayElement uid="1748" />
+                          <SL__arrayElement uid="1752" />
+                          </dcoList>
+                        <permDCOList elements="4">
+                          <SL__arrayElement uid="1729" />
+                          <SL__arrayElement uid="1735" />
+                          <SL__arrayElement uid="1740" />
+                          <SL__arrayElement uid="1743" />
+                          </permDCOList>
+                        <nodeName>"Wire"</nodeName>
+                        <oMId>000A</oMId>
+                        <methName>"RemoveLooseEnds"</methName>
+                        <methCode>104270856</methCode>
+                        <invokeFlags>08</invokeFlags>
+                        <propList elements="0" />
+                        <privDataList elements="0" />
+                        </SL__arrayElement>
+                      </heap></part>

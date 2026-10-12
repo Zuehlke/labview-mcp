@@ -101,6 +101,13 @@ public class DqmhKnowledgeTests
         // cannot be renamed. Narrow on purpose: this file and this token only.
         ("aixml2vi.py", "eol"),
 
+        // NI's own App Builder provider resource\Framework\Providers\Builds\AppBuilder\
+        // AB_Is_Not_EOL_Device.vi - "end of life" device - named as the PROVENANCE of one
+        // harvested invoke part and its property row, since the parts ship (2026-10-12). It is
+        // NI's file name, so it cannot be renamed. Narrow on purpose: these two files only.
+        ("invoke__LV_TargetItem__Get Tag.xml", "eol"),
+        ("vi-server-props.json", "eol"),
+
         // The GdevCon7 talk shows a TestStand sequence tree whose main sequence is named after
         // the end-of-line test it runs - "EOL" there is the industry's standard term for that
         // test stage, not the customer's product. Released by the author on 2026-09-21 after

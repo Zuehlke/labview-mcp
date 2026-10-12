@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.SceneObject/Light%2ELight Count" source="&lt;labview&gt;\vi.lib\Native 3D Graph\update_lights.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene:New Object" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0069" HasItem="0" Format="inline" Label="Scene:New Object" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Light Count" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Light Count" /></types><heap><SL__arrayElement class="invokeNode" uid="709">
+        <objFlags>66176</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="715">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="716">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(92)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="719">
+            <dco class="hGrowCItem" uid="720">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(93)</typeDesc>
+              <termBounds>(0, 93, 9, 106)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="723">
+            <objFlags>1</objFlags>
+            <dco class="hGrowCItem" uid="724">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(94)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="726">
+            <dco class="hGrowCItem" uid="727">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(95)</typeDesc>
+              <termBounds>(9, 93, 18, 106)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="730">
+            <objFlags>1</objFlags>
+            <dco class="invokeItem" uid="731">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(96)</typeDesc>
+              <termBounds>(18, 0, 34, 53)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="735">
+            <objFlags>1</objFlags>
+            <dco class="invokeItem" uid="736">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(97)</typeDesc>
+              <termBounds>(18, 53, 34, 106)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(66, 127, 101, 233)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="731" />
+          <SL__arrayElement uid="736" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="716" />
+          <SL__arrayElement uid="720" />
+          <SL__arrayElement uid="724" />
+          <SL__arrayElement uid="727" />
+          </permDCOList>
+        <nodeName>"SceneObject"</nodeName>
+        <oMId>0007</oMId>
+        <methName>"Light.Light Count"</methName>
+        <methCode>763851822</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

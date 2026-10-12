@@ -1,0 +1,154 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="struct" key="struct/inplace" source="ptypes.xml" clean="1"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /></types><heap><SL__arrayElement class="decomposeRecomposeStructure" uid="4300">
+        <objFlags>2048</objFlags>
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="4936">
+            <objFlags>32768</objFlags>
+            <dco uid="4922" />
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4937">
+            <dco uid="4933" />
+            </SL__arrayElement>
+          </termList>
+        <bounds>(228, 273, 318, 374)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <contRect>(232, 277, 314, 370)</contRect>
+        <tunnelList elements="0" />
+        <diagramList elements="1">
+          <SL__arrayElement class="diag" uid="4912">
+            <objFlags>2048</objFlags>
+            <zPlaneList elements="1">
+              <SL__arrayElement class="prim" uid="4320">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="4943">
+                    <dco class="overridableParm" uid="4941">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(59)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>34</primIndex>
+                      <inplace>2</inplace>
+                      <maxWordLength>64</maxWordLength>
+                      <override>3</override>
+                      <overflow>2</overflow>
+                      <quantize>3</quantize>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4946">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="4944">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(60)</typeDesc>
+                      <termBounds>(0, 0, 21, 10)</termBounds>
+                      <primIndex>34</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(14, 34, 46, 66)</bounds>
+                <shortCount>4</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1057</primResID>
+                <primIndex>34</primIndex>
+                </SL__arrayElement>
+              </zPlaneList>
+            <nodeList elements="4">
+              <SL__arrayElement class="sRN" uid="4916">
+                <termList elements="0" />
+                <bounds>(-228, -273, -228, -273)</bounds>
+                <shortCount>1</shortCount>
+                <clumpNum>196611</clumpNum>
+                </SL__arrayElement>
+              <SL__arrayElement class="decomposeMatchNode" uid="4310">
+                <objFlags>65536</objFlags>
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="4924">
+                    <objFlags>64</objFlags>
+                    <dco class="decomposeDCO" uid="4922">
+                      <objFlags>8388608</objFlags>
+                      <termList elements="2">
+                        <SL__arrayElement uid="4924" />
+                        <SL__arrayElement uid="4936" />
+                        </termList>
+                      <typeDesc>TypeID(61)</typeDesc>
+                      <termBounds>(2, 0, 12, 8)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4927">
+                    <objFlags>64</objFlags>
+                    <dco class="decomposeDCO" uid="4925">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(62)</typeDesc>
+                      <termBounds>(2, 8, 12, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(23, 0, 35, 16)</bounds>
+                <shortCount>2</shortCount>
+                <poser uid="4919" />
+                <tagDLLPath uid="4922" />
+                <tagDLLName uid="4925">[NULL]</tagDLLName>
+                </SL__arrayElement>
+              <SL__arrayElement class="decomposeMatchNode" uid="4330">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="4932">
+                    <objFlags>32832</objFlags>
+                    <dco class="decomposeDCO" uid="4930">
+                      <typeDesc>TypeID(63)</typeDesc>
+                      <termBounds>(2, 0, 12, 8)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4935">
+                    <objFlags>64</objFlags>
+                    <dco class="decomposeDCO" uid="4933">
+                      <objFlags>8388609</objFlags>
+                      <termList elements="2">
+                        <SL__arrayElement uid="4935" />
+                        <SL__arrayElement uid="4937" />
+                        </termList>
+                      <typeDesc>TypeID(64)</typeDesc>
+                      <termBounds>(2, 8, 12, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(23, 85, 35, 101)</bounds>
+                <shortCount>6</shortCount>
+                <poser uid="4919" />
+                <tagDLLPath uid="4930" />
+                <tagDLLName uid="4933">[NULL]</tagDLLName>
+                </SL__arrayElement>
+              <SL__arrayElement uid="4320" />
+              </nodeList>
+            <signalList elements="2">
+              <SL__arrayElement class="signal" uid="4928">
+                <termList elements="2">
+                  <SL__arrayElement uid="4943" />
+                  <SL__arrayElement uid="4932" />
+                  </termList>
+                <state>1</state>
+                <compressedWireTable>0208</compressedWireTable>
+                <lastSignalKind>266</lastSignalKind>
+                </SL__arrayElement>
+              <SL__arrayElement class="signal" uid="4947">
+                <termList elements="2">
+                  <SL__arrayElement uid="4927" />
+                  <SL__arrayElement uid="4946" />
+                  </termList>
+                <state>1</state>
+                <compressedWireTable>0208</compressedWireTable>
+                <lastSignalKind>266</lastSignalKind>
+                </SL__arrayElement>
+              </signalList>
+            <bgColor>00FFFFFF</bgColor>
+            <firstNodeIdx>3</firstNodeIdx>
+            </SL__arrayElement>
+          </diagramList>
+        <structColor>00FFFFCC</structColor>
+        <multiSegPipeFlange2Size elements="1">
+          <SL__arrayElement class="matchPoserInterface" uid="4919">
+            <multiSegPipeFlange1Depth uid="4310" />
+            <multiSegPipeFlange2Depth uid="4330" />
+            </SL__arrayElement>
+          </multiSegPipeFlange2Size>
+        </SL__arrayElement>
+      </heap></part>

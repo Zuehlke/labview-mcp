@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/24206" source="&lt;labview&gt;\examples\Connectivity\Python\PythonNode_AddTwoIntegers.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="python version" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="python path" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="35" Format="inline" Label="session out" /><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="238">
+        <objFlags>640</objFlags>
+        <termList elements="5">
+          <SL__arrayElement class="term" uid="254">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="247">
+              <typeDesc>TypeID(20)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>577</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="259">
+            <dco class="parm" uid="255">
+              <typeDesc>TypeID(21)</typeDesc>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <primIndex>577</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="263">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="260">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(22)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>577</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="273">
+            <dco class="parm" uid="266">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(23)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>577</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="282">
+            <dco class="parm" uid="276">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(24)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>577</primIndex>
+              <parmIndex>11</parmIndex>
+              <inplace>3</inplace>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(228, 240, 260, 272)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>24206</primResID>
+        <primIndex>577</primIndex>
+        </SL__arrayElement>
+      </heap></part>

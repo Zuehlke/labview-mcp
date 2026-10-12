@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TopLevelDiagram/EncloseSelection2" source="&lt;labview&gt;\examples\Application Control\VI Scripting\Moving Objects\Enclose Selection And Move.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4027" HasItem="0" Format="inline" Label="Diagram" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4027" HasItem="0" Format="inline" Label="Diagram" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="EncloseSelection2" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4014" HasItem="0" Format="inline" Label="EncloseSelection2" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4014" HasItem="0" Format="inline" Label="EnclosureType" /><TypeDesc Type="Void" Format="inline" Label="EnclosureType" /></types><heap><SL__arrayElement class="invokeNode" uid="261">
+        <objFlags>131712</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="267">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="268">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(59)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="270">
+            <dco class="hGrowCItem" uid="271">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(60)</typeDesc>
+              <termBounds>(0, 117, 9, 130)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="273">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="274">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(61)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="276">
+            <dco class="hGrowCItem" uid="277">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(62)</typeDesc>
+              <termBounds>(9, 117, 18, 130)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="279">
+            <dco class="invokeItem" uid="280">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(63)</typeDesc>
+              <termBounds>(18, 0, 34, 65)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="283">
+            <dco class="invokeItem" uid="284">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(64)</typeDesc>
+              <termBounds>(18, 65, 34, 130)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="321">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="319">
+              <typeDesc>TypeID(65)</typeDesc>
+              <termBounds>(34, 0, 50, 65)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="327">
+            <dco class="invokeItem" uid="325">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(66)</typeDesc>
+              <termBounds>(34, 65, 50, 130)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(239, 584, 290, 714)</bounds>
+        <shortCount>14</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="280" />
+          <SL__arrayElement uid="284" />
+          <SL__arrayElement uid="319" />
+          <SL__arrayElement uid="325" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="268" />
+          <SL__arrayElement uid="271" />
+          <SL__arrayElement uid="274" />
+          <SL__arrayElement uid="277" />
+          </permDCOList>
+        <nodeName>"TopLevelDiagram"</nodeName>
+        <oMId>0009</oMId>
+        <methName>"EncloseSelection2"</methName>
+        <methCode>104108048</methCode>
+        <invokeFlags>200008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

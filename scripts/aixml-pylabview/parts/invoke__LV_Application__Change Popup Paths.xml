@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/Change Popup Paths" source="&lt;labview&gt;\vi.lib\AppBuilder\Engine\AB_Engine_Update_CustCtl_Paths.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="buildContext in" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="buildContext in" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Change Popup Paths" /><TypeDesc Type="Void" Format="inline" Label="Change Popup Paths" /><TypeDesc Type="Array" Format="inline" Label="OldPaths"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="OldPaths" /><TypeDesc Type="Array" Format="inline" Label="NewPaths"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="NewPaths" /></types><heap><SL__arrayElement class="invokeNode" uid="472">
+                        <objFlags>33555072</objFlags>
+                        <termList elements="10">
+                          <SL__arrayElement class="term" uid="480">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="481">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(45)</typeDesc>
+                              <termBounds>(0, 0, 9, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="483">
+                            <dco class="hGrowCItem" uid="484">
+                              <objFlags>262145</objFlags>
+                              <typeDesc>TypeID(46)</typeDesc>
+                              <termBounds>(0, 107, 9, 120)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="486">
+                            <objFlags>32768</objFlags>
+                            <dco class="hGrowCItem" uid="487">
+                              <objFlags>131072</objFlags>
+                              <typeDesc>TypeID(47)</typeDesc>
+                              <termBounds>(9, 0, 18, 13)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="489">
+                            <dco class="hGrowCItem" uid="490">
+                              <objFlags>524289</objFlags>
+                              <typeDesc>TypeID(48)</typeDesc>
+                              <termBounds>(9, 107, 18, 120)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="492">
+                            <dco class="invokeItem" uid="493">
+                              <objFlags>196608</objFlags>
+                              <typeDesc>TypeID(49)</typeDesc>
+                              <termBounds>(18, 0, 34, 60)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="496">
+                            <dco class="invokeItem" uid="497">
+                              <objFlags>196609</objFlags>
+                              <typeDesc>TypeID(50)</typeDesc>
+                              <termBounds>(18, 60, 34, 120)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="516">
+                            <objFlags>32768</objFlags>
+                            <dco class="invokeItem" uid="514">
+                              <typeDesc>TypeID(51)</typeDesc>
+                              <termBounds>(34, 0, 50, 60)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="522">
+                            <dco class="invokeItem" uid="520">
+                              <objFlags>131073</objFlags>
+                              <typeDesc>TypeID(52)</typeDesc>
+                              <termBounds>(34, 60, 50, 120)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="526">
+                            <objFlags>32768</objFlags>
+                            <dco class="invokeItem" uid="524">
+                              <typeDesc>TypeID(53)</typeDesc>
+                              <termBounds>(50, 0, 66, 60)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="530">
+                            <dco class="invokeItem" uid="528">
+                              <objFlags>131073</objFlags>
+                              <typeDesc>TypeID(54)</typeDesc>
+                              <termBounds>(50, 60, 66, 120)</termBounds>
+                              <privDataList elements="0" />
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(205, 244, 272, 364)</bounds>
+                        <shortCount>4</shortCount>
+                        <clumpNum>262147</clumpNum>
+                        <dcoList elements="6">
+                          <SL__arrayElement uid="493" />
+                          <SL__arrayElement uid="497" />
+                          <SL__arrayElement uid="514" />
+                          <SL__arrayElement uid="520" />
+                          <SL__arrayElement uid="524" />
+                          <SL__arrayElement uid="528" />
+                          </dcoList>
+                        <permDCOList elements="4">
+                          <SL__arrayElement uid="481" />
+                          <SL__arrayElement uid="484" />
+                          <SL__arrayElement uid="487" />
+                          <SL__arrayElement uid="490" />
+                          </permDCOList>
+                        <nodeName>"App"</nodeName>
+                        <oMId>0004</oMId>
+                        <methName>"Change Popup Paths"</methName>
+                        <methCode>2426</methCode>
+                        <invokeFlags>1408</invokeFlags>
+                        <propList elements="0" />
+                        <privDataList elements="0" />
+                        </SL__arrayElement>
+                      </heap></part>

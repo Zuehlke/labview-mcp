@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/2073" source="&lt;labview&gt;\examples\Collections\Map Collection - Comparing Test Results_Generate.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="measurement"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="name" /><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline" Label="amount"><PhysUnit Val1="3" Val2="65533" />
+        <PhysUnit Val1="4" Val2="1" />
+        </TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="UserEvent" Format="inline" Label="measurement"><TypeDesc Type="Cluster" Format="inline" Label="measurement"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="name" /><TypeDesc Type="UnitFloat64" Prop1="0" Format="inline" Label="amount"><PhysUnit Val1="3" Val2="65533" />
+        <PhysUnit Val1="4" Val2="1" />
+        </TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="43">
+        <objFlags>512</objFlags>
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="45">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="46">
+              <typeDesc>TypeID(42)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>495</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="48">
+            <dco class="parm" uid="49">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(43)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>495</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="51">
+            <dco class="parm" uid="52">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(44)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>495</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="54">
+            <dco class="parm" uid="55">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(45)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>495</primIndex>
+              <parmIndex>11</parmIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(408, 689, 440, 721)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>2073</primResID>
+        <primIndex>495</primIndex>
+        </SL__arrayElement>
+      </heap></part>

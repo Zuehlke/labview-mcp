@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1083" source="&lt;labview&gt;\examples\Signal Processing\Filters\Online Filtering.vi"><types><TypeDesc Type="Boolean" Format="inline" Label="initialize: T/F" /></types><heap><SL__arrayElement class="prim" uid="218">
+                <objFlags>768</objFlags>
+                <termList elements="1">
+                  <SL__arrayElement class="term" uid="220">
+                    <dco class="parm" uid="221">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(71)</typeDesc>
+                      <termBounds>(0, 0, 14, 14)</termBounds>
+                      <primIndex>380</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(84, 213, 116, 245)</bounds>
+                <shortCount>12</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1083</primResID>
+                <primIndex>380</primIndex>
+                </SL__arrayElement>
+              </heap></part>

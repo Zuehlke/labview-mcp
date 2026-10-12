@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1327" source="&lt;labview&gt;\examples\Mathematics\Differential Equations - ODE\DAE Simple Pendulum Simulation.vi"><types><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="millisecond timer value" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="millisecond multiple" /></types><heap><SL__arrayElement class="prim" uid="724">
+                <objFlags>640</objFlags>
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="728">
+                    <dco class="parm" uid="726">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(94)</typeDesc>
+                      <termBounds>(0, 16, 32, 32)</termBounds>
+                      <primIndex>166</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="731">
+                    <objFlags>294912</objFlags>
+                    <dco class="parm" uid="729">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(95)</typeDesc>
+                      <dsw>2048</dsw>
+                      <termBounds>(0, 0, 32, 16)</termBounds>
+                      <primIndex>166</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(27, 106, 59, 138)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>983043</clumpNum>
+                <primResID>1327</primResID>
+                <primIndex>166</primIndex>
+                </SL__arrayElement>
+              </heap></part>

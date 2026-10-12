@@ -18,11 +18,11 @@ namespace LabVIEWMcp.Infra;
 ///   the interpreter   the pylabview bundle (PyLabview.Locate)
 ///   the composer      LABVIEWMCP_AIXML_COMPOSER, else scripts\aixml-pylabview of a source checkout
 ///                     (read live, so a Python edit needs no rebuild), else the one beside the exe
-///   the parts         LABVIEWMCP_AIXML_PARTS, else &lt;composer&gt;\parts, else a checkout's
-///                     experiments\aixml-without-grpc\parts, else the cache's aixml-parts
-/// The CODE ships since 2026-10-12, under scripts\ like every other helper; the PARTS do not -
-/// most are cut from NI's VIs, and where a release gets them is the user's open decision
-/// (FINDINGS §6a). Until then a binary install needs LABVIEWMCP_AIXML_PARTS.
+///   the parts         LABVIEWMCP_AIXML_PARTS, else &lt;composer&gt;\parts, else the cache's aixml-parts
+/// Code AND parts ship since 2026-10-12, as scripts\aixml-pylabview under scripts\ like every
+/// other helper - the user's decision that the release carries everything the backend needs,
+/// the helper parts NI's converter built from our own AIXML included. Nothing of it is in
+/// experiments\ any more; that folder keeps only what develops and measures it.
 /// </summary>
 internal static class AixmlComposer
 {
@@ -56,8 +56,8 @@ internal static class AixmlComposer
         {
             missing = "The composer's parts were not found - a folder holding skeleton\\skeleton.xml. " +
                       "Searched: " + string.Join("; ", PartsCandidates(composer).Where(c => c.Length > 0)) +
-                      $". Set {PartsVariable} to it. A binary install does not carry them yet: they " +
-                      "are in experiments\\aixml-without-grpc\\parts of a source checkout.";
+                      $". Set {PartsVariable} to it. They ship as scripts\\{ComposerFolder}\\parts " +
+                      "beside the exe, so their absence means an incomplete install.";
             return null;
         }
 
@@ -111,8 +111,6 @@ internal static class AixmlComposer
     {
         yield return Environment.GetEnvironmentVariable(PartsVariable) ?? "";
         yield return Path.Combine(composer, "parts");
-        foreach (var dir in Ancestors())
-            yield return Path.Combine(dir, "experiments", "aixml-without-grpc", "parts");
         yield return Path.Combine(CacheDirectory.Root, "aixml-parts");
     }
 

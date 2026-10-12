@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1147" source="&lt;labview&gt;\examples\Signal Processing\Transforms\Generalized Fourier Spectrum.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="793">
+                                <termList elements="2">
+                                  <SL__arrayElement class="term" uid="804">
+                                    <dco class="parm" uid="799">
+                                      <objFlags>1</objFlags>
+                                      <typeDesc>TypeID(119)</typeDesc>
+                                      <termBounds>(0, 13, 11, 26)</termBounds>
+                                      <primIndex>63</primIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="819">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="811">
+                                      <typeDesc>TypeID(120)</typeDesc>
+                                      <termBounds>(0, 0, 11, 13)</termBounds>
+                                      <primIndex>63</primIndex>
+                                      <parmIndex>1</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </termList>
+                                <bounds>(61, 24, 93, 56)</bounds>
+                                <shortCount>2</shortCount>
+                                <clumpNum>720899</clumpNum>
+                                <primResID>1147</primResID>
+                                <primIndex>63</primIndex>
+                                </SL__arrayElement>
+                              </heap></part>

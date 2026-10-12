@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1062" source="&lt;labview&gt;\examples\Application Control\VI Server\Exporting VIs\Exporting VIs.vi"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="Stop" /><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="1100">
+                <objFlags>327680</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="1107">
+                    <dco class="parm" uid="1108">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(116)</typeDesc>
+                      <dcoFiller>770</dcoFiller>
+                      <termBounds>(0, 10, 16, 22)</termBounds>
+                      <primIndex>96</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1110">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="1111">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(117)</typeDesc>
+                      <termBounds>(8, 0, 16, 10)</termBounds>
+                      <primIndex>96</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1113">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="1115">
+                      <typeDesc>TypeID(118)</typeDesc>
+                      <termBounds>(0, 0, 8, 10)</termBounds>
+                      <primIndex>96</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(237, 440, 269, 472)</bounds>
+                <shortCount>4</shortCount>
+                <clumpNum>393219</clumpNum>
+                <primResID>1062</primResID>
+                <primIndex>96</primIndex>
+                </SL__arrayElement>
+              </heap></part>

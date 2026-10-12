@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8207" source="&lt;labview&gt;\examples\Waveform\Support VIs\Acquire Waveform (simulated).vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="replaced" /><TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="channel #" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="name" /><TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="313">
+        <termList elements="7">
+          <SL__arrayElement class="term" uid="318">
+            <dco class="parm" uid="315">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(30)</typeDesc>
+              <termBounds>(24, 16, 32, 32)</termBounds>
+              <primIndex>377</primIndex>
+              <inplace>4</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="319">
+            <objFlags>1</objFlags>
+            <dco class="parm" uid="323">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(31)</typeDesc>
+              <termBounds>(8, 16, 16, 32)</termBounds>
+              <primIndex>377</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="321">
+            <dco class="parm" uid="322">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(32)</typeDesc>
+              <termBounds>(0, 16, 8, 32)</termBounds>
+              <primIndex>377</primIndex>
+              <parmIndex>3</parmIndex>
+              <inplace>7</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="325">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="326">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(33)</typeDesc>
+              <termBounds>(24, 0, 32, 16)</termBounds>
+              <primIndex>377</primIndex>
+              <parmIndex>4</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="328">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="334">
+              <typeDesc>TypeID(34)</typeDesc>
+              <termBounds>(16, 0, 24, 16)</termBounds>
+              <primIndex>377</primIndex>
+              <parmIndex>5</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="329">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="330">
+              <typeDesc>TypeID(35)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(8, 0, 16, 16)</termBounds>
+              <primIndex>377</primIndex>
+              <parmIndex>6</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="332">
+            <objFlags>32769</objFlags>
+            <dco class="parm" uid="336">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(36)</typeDesc>
+              <termBounds>(0, 0, 8, 16)</termBounds>
+              <primIndex>377</primIndex>
+              <parmIndex>7</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(123, 504, 155, 536)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>8207</primResID>
+        <primIndex>377</primIndex>
+        </SL__arrayElement>
+      </heap></part>

@@ -37,7 +37,7 @@ def donor_main(source, cache):
 
 
 def main(argv):
-    d = argv[0] if argv else os.path.join(HERE, "parts")
+    d = argv[0] if argv else os.path.join(COMPOSER, "parts")
     cache = {}
     for fn in sorted(os.listdir(d)):
         if not fn.endswith(".xml"):

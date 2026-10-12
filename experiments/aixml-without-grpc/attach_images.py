@@ -31,7 +31,7 @@ def donor_path(source):
 
 
 def main(argv):
-    d = argv[0] if argv else os.path.join(HERE, "parts")
+    d = argv[0] if argv else os.path.join(COMPOSER, "parts")
     bundles, fixed, missing = {}, 0, []
     for p in sorted(glob.glob(os.path.join(d, "*.xml"))):
         root = ET.parse(p).getroot() if p.endswith(".xml") else None

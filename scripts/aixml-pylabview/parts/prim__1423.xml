@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1423" source="&lt;labview&gt;\project\Delacor\DQMH\_DQMH New Module\Check if OK to Proceed.vi"><types><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="path" /><TypeDesc Type="Boolean" Format="inline" Label="relative" /><TypeDesc Type="Array" Format="inline" Label="array of strings"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="910">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="916">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="917">
+                      <typeDesc>TypeID(109)</typeDesc>
+                      <termBounds>(0, 0, 11, 7)</termBounds>
+                      <primIndex>197</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="919">
+                    <dco class="parm" uid="920">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(110)</typeDesc>
+                      <termBounds>(0, 7, 11, 17)</termBounds>
+                      <primIndex>197</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="922">
+                    <dco class="parm" uid="923">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(111)</typeDesc>
+                      <termBounds>(0, 17, 11, 25)</termBounds>
+                      <primIndex>197</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(129, 30, 161, 62)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>1966083</clumpNum>
+                <primResID>1423</primResID>
+                <primIndex>197</primIndex>
+                </SL__arrayElement>
+              </heap></part>

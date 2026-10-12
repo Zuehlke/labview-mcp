@@ -1,0 +1,104 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/ternaryDDO/ctl/UnitUInt8" source="&lt;labview&gt;\examples\Controls and Indicators\Boolean\System Mixed Checkbox.vi"><types><TypeDesc Type="UnitUInt8" Prop1="0" Format="inline" Label="Test Result"><EnumLabel>False</EnumLabel>
+        <EnumLabel>True</EnumLabel>
+        <EnumLabel>Mixed</EnumLabel>
+        </TypeDesc><TypeDesc Type="UnitUInt8" Prop1="0" Format="inline" Label="Test Result"><EnumLabel>False</EnumLabel>
+        <EnumLabel>True</EnumLabel>
+        <EnumLabel>Mixed</EnumLabel>
+        </TypeDesc></types><heap><SL__arrayElement class="fPDCO" uid="124">
+          <objFlags>64</objFlags>
+          <typeDesc>TypeID(7)</typeDesc>
+          <ddo class="ternaryDDO" uid="1678">
+            <objFlags>65536</objFlags>
+            <bounds>(400, 324, 417, 386)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="1691">
+                <objFlags>1507662</objFlags>
+                <partID>16</partID>
+                <masterPart>111</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(-18, 0, -1, 60)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <flags>512</flags>
+                  <mode>17412</mode>
+                  <text>"Test Result"</text>
+                  <bgColor>01000000</bgColor>
+                  <fr elements="1">
+                    <SL__arrayElement class="fontRun">
+                      <fontcolor>0100000C</fontcolor>
+                      </SL__arrayElement>
+                    </fr>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="multiLabel" uid="1692">
+                <objFlags>395622</objFlags>
+                <partID>110</partID>
+                <masterPart>111</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 18, 17, 62)</bounds>
+                <image class="Image">
+                  <ImageResID>0</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <flags>512</flags>
+                  <mode>17412</mode>
+                  <text>"Passed?"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                <buf>(1)"Passed?"</buf>
+                </SL__arrayElement>
+              <SL__arrayElement class="multiCosm" uid="1693">
+                <objFlags>2356</objFlags>
+                <partID>111</partID>
+                <bounds>(1, 0, 14, 13)</bounds>
+                <table elements="9">
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-296</ImageResID>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-297</ImageResID>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-706</ImageResID>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-299</ImageResID>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-298</ImageResID>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-707</ImageResID>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-685</ImageResID>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-686</ImageResID>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-756</ImageResID>
+                    </SL__arrayElement>
+                  </table>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="121">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>21333</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(8)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>-1</conNum>
+          <termListLength>2</termListLength>
+          </SL__arrayElement>
+        </heap></part>

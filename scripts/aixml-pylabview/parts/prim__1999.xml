@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1999" source="&lt;labview&gt;\vi.lib\addons\_JKI Toolkits\Caraya\classes\Test\Define Test.vi"><types><TypeDesc Type="Array" Format="inline" Label="call chain"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="217">
+        <termList elements="1">
+          <SL__arrayElement class="term" uid="297">
+            <dco class="parm" uid="298">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(120)</typeDesc>
+              <termBounds>(0, 0, 26, 26)</termBounds>
+              <primIndex>305</primIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(706, 201, 738, 233)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1999</primResID>
+        <primIndex>305</primIndex>
+        </SL__arrayElement>
+      </heap></part>

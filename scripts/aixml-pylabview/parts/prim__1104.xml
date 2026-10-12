@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1104" source="&lt;labview&gt;\examples\Mathematics\Linear Algebra\Matrix to a Power.vi"><types><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="norm" /></types><heap><SL__arrayElement class="prim" uid="110">
+                        <objFlags>65536</objFlags>
+                        <termList elements="3">
+                          <SL__arrayElement class="term" uid="327">
+                            <objFlags>1</objFlags>
+                            <dco class="parm" uid="235">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(97)</typeDesc>
+                              <termBounds>(0, 10, 21, 21)</termBounds>
+                              <primIndex>111</primIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="393">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="330">
+                              <typeDesc>TypeID(98)</typeDesc>
+                              <termBounds>(10, 0, 21, 10)</termBounds>
+                              <primIndex>111</primIndex>
+                              <parmIndex>1</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="397">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="395">
+                              <typeDesc>TypeID(99)</typeDesc>
+                              <termBounds>(0, 0, 10, 10)</termBounds>
+                              <primIndex>111</primIndex>
+                              <parmIndex>2</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(286, 313, 318, 345)</bounds>
+                        <shortCount>14</shortCount>
+                        <clumpNum>917508</clumpNum>
+                        <primResID>1104</primResID>
+                        <primIndex>111</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1809" source="&lt;labview&gt;\examples\File IO\TDMS\Advanced Read and Write\Asynchronous Read and Write\TDMS Advanced Asynchronous Write.vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Array" Format="inline" Label="channel name(s)"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="341">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="1392">
+            <dco class="parm" uid="1393">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(4)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 16, 21, 32)</termBounds>
+              <primIndex>139</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1395">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1396">
+              <typeDesc>TypeID(5)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 21, 16)</termBounds>
+              <primIndex>139</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(80, -149, 112, -117)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>262147</clumpNum>
+        <primResID>1809</primResID>
+        <primIndex>139</primIndex>
+        </SL__arrayElement>
+      </heap></part>

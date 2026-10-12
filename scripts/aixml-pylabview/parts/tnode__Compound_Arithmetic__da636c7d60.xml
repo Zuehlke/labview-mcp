@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Compound_Arithmetic/da636c7d60" source="&lt;labview&gt;\examples\Signal Processing\Point by Point\Moving Histogram PtByPt.vi" node="Compound Arithmetic" ins="value|value#1|value#2" outs="result" mode="inversions= , , , ;operation=Multiply" nodeFlags="65536"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="milliseconds to wait" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="y" /></types><heap><SL__arrayElement class="cpdArith" uid="933">
+                <objFlags>65536</objFlags>
+                <termList elements="4">
+                  <SL__arrayElement class="term" uid="945" aixml="result">
+                    <objFlags>64</objFlags>
+                    <dco class="cpdArithDCO" uid="943">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(78)</typeDesc>
+                      <termBounds>(0, 12, 25, 24)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="994" aixml="value">
+                    <objFlags>294976</objFlags>
+                    <dco class="cpdArithDCO" uid="993">
+                      <typeDesc>TypeID(79)</typeDesc>
+                      <dsw>5120</dsw>
+                      <termBounds>(0, 0, 8, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="939" aixml="value#1">
+                    <objFlags>294976</objFlags>
+                    <dco class="cpdArithDCO" uid="937">
+                      <typeDesc>TypeID(80)</typeDesc>
+                      <dsw>1024</dsw>
+                      <termBounds>(8, 0, 16, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="942" aixml="value#2">
+                    <objFlags>32832</objFlags>
+                    <dco class="cpdArithDCO" uid="940">
+                      <typeDesc>TypeID(81)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(16, 0, 24, 12)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(138, 138, 163, 162)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>196611</clumpNum>
+                <dcoList elements="3">
+                  <SL__arrayElement uid="993" />
+                  <SL__arrayElement uid="937" />
+                  <SL__arrayElement uid="940" />
+                  </dcoList>
+                <dcoAgg uid="943" />
+                </SL__arrayElement>
+              </heap></part>

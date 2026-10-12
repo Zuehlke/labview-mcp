@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="tnode" key="tnode/Reshape_Array/5c37b348ac" source="&lt;labview&gt;\examples\Mathematics\Linear Algebra\QR decomposition update by Givens rotation.vi" node="Reshape Array" ins="array|dimension size|dimension size#1" outs="output array" mode="" nodeFlags="0"><types><TypeDesc Type="Array" Format="inline" Label="uniform white noise"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="uniform white noise"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="aReshape" uid="71">
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="225" aixml="array">
+            <objFlags>32832</objFlags>
+            <dco class="aReshapeDCO" uid="226">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(192)</typeDesc>
+              <termBounds>(0, 0, 18, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="275" aixml="output array">
+            <objFlags>65</objFlags>
+            <dco class="aReshapeDCO" uid="328">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(193)</typeDesc>
+              <termBounds>(0, 16, 35, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="354" aixml="dimension size">
+            <objFlags>32832</objFlags>
+            <dco class="aReshapeDCO" uid="365">
+              <typeDesc>TypeID(194)</typeDesc>
+              <termBounds>(18, 0, 26, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="66" aixml="dimension size#1">
+            <objFlags>32832</objFlags>
+            <dco class="aReshapeDCO" uid="65">
+              <typeDesc>TypeID(195)</typeDesc>
+              <termBounds>(26, 0, 34, 16)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(403, 114, 438, 146)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="2">
+          <SL__arrayElement uid="365" />
+          <SL__arrayElement uid="65" />
+          </dcoList>
+        <dcoAgg uid="328" />
+        <srcDCO uid="226" />
+        </SL__arrayElement>
+      </heap></part>

@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1210" source="&lt;labview&gt;\examples\Signal Processing\Waveform Measurements\Nyquist Plot of a Filter.vi"><types><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Numeric" /></TypeDesc><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Numeric" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="686">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="689">
+                    <dco class="parm" uid="691">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(130)</typeDesc>
+                      <termBounds>(0, 16, 32, 32)</termBounds>
+                      <primIndex>51</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="687">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="690">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(131)</typeDesc>
+                      <termBounds>(0, 0, 32, 16)</termBounds>
+                      <primIndex>51</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(216, 409, 248, 441)</bounds>
+                <shortCount>18</shortCount>
+                <clumpNum>262147</clumpNum>
+                <primResID>1210</primResID>
+                <primIndex>51</primIndex>
+                </SL__arrayElement>
+              </heap></part>
