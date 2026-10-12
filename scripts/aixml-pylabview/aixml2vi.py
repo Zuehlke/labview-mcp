@@ -37,8 +37,14 @@ import resolve  # noqa: E402
 import wire_route  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TABLES = os.path.join(lvheap.REPO, "experiments", "pylabview")
+# primitive-names.tsv and terminal-names.tsv: a checkout's experiments\pylabview, else the copies
+# the pylabview bundle carries in app\ (provision.ps1 puts them there, byte-identical)
+TABLES = next((d for d in (os.path.join(lvheap.REPO, "experiments", "pylabview"),
+                           os.path.join(os.path.dirname(lvheap.PYLABVIEW_CMD), "app"))
+               if os.path.exists(os.path.join(d, "primitive-names.tsv"))),
+              os.path.join(lvheap.REPO, "experiments", "pylabview"))
 DOCS = os.path.join(lvheap.REPO, "docs")
+OWN_PARTS = lvheap.own_parts()
 
 INDEX_SHIFT = 3   # consolidated 1 and 2 are the two connector-pane Function types
 
@@ -251,7 +257,7 @@ def control_events():
     global _CONTROL_EVENTS
     if _CONTROL_EVENTS is None:
         _CONTROL_EVENTS = {}
-        p = os.path.join(HERE, "parts", "control-events.json")
+        p = os.path.join(OWN_PARTS, "control-events.json")
         if os.path.exists(p):
             with open(p, encoding="utf-8") as f:
                 _CONTROL_EVENTS = json.load(f)
@@ -269,7 +275,7 @@ def static_event(event, ctl=None):
     a source `ctl` (add_key_events.py, measured on LabVIEW's own save)."""
     global _STATIC_EVENTS
     if _STATIC_EVENTS is None:
-        p = os.path.join(HERE, "parts", "static-events.json")
+        p = os.path.join(OWN_PARTS, "static-events.json")
         _STATIC_EVENTS = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
     r = _STATIC_EVENTS.get(event)
     if r is not None and ctl is not None and r.get("sourceKind") != "control" and r.get("controlVariant"):
@@ -318,7 +324,7 @@ def refnum_type(inner, plain_class=False):
     global _REF_CLASSES
     if _REF_CLASSES is None:
         _REF_CLASSES = {}
-        with open(os.path.join(HERE, "parts", "refnum-classes.tsv"), encoding="utf-8") as f:
+        with open(os.path.join(OWN_PARTS, "refnum-classes.tsv"), encoding="utf-8") as f:
             for line in f:
                 row = line.rstrip("\r\n").split("\t")
                 if line.startswith("#") or row[0] == "class" or not line.strip():
@@ -2175,7 +2181,7 @@ class Composer:
             # and the pairs no class tables both of: a property only LabVIEW's own VIs use, under
             # the short name their node shows (`UpdtWhileTyping`), where AIXML writes the long one
             # (`Update While Typing?`) - parts/property-names.json, each pair measured by its code
-            p = os.path.join(HERE, "parts", "property-names.json")
+            p = os.path.join(OWN_PARTS, "property-names.json")
             if os.path.exists(p):
                 for long_, r in json.load(open(p, encoding="utf-8")).items():
                     if isinstance(r, dict) and r.get("short"):
@@ -6626,7 +6632,7 @@ class Composer:
 
 
 def main(argv):
-    parts = os.path.join(HERE, "parts")
+    parts = OWN_PARTS
     keep = None
     search = []
     args = []

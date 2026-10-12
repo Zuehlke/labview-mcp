@@ -14,6 +14,8 @@ import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 import lvheap  # noqa: E402
 
 PY = sys.executable
@@ -34,7 +36,7 @@ def main(argv):
     open(src, "w", encoding="utf-8").write("\n".join(lines))
     vi = os.path.join(work, tag + ".vi")
     bundle = os.path.join(work, tag + ".bundle")
-    subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), src, vi, "--keep", bundle], check=True,
+    subprocess.run([PY, os.path.join(COMPOSER, "aixml2vi.py"), src, vi, "--keep", bundle], check=True,
                    capture_output=True, stdin=subprocess.DEVNULL)
     # place each pair: constant at (40 + 120*i, 40), indicator's terminal at constant + offset
     bd_path = glob.glob(os.path.join(bundle, "*_BDHb.xml"))[0]

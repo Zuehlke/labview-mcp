@@ -15,6 +15,8 @@ import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 import lvheap  # noqa: E402
 import wire_tree  # noqa: E402
 
@@ -42,7 +44,7 @@ def main(argv):
             '  <Indicator _name="b" type="%s" uid="4220" uid_parent="root" value="%s" inputs="value:4200.value"/>\n'
             '</VI>\n' % (tag, typ, value, typ, value, typ, value))
         bundle = os.path.join(work, tag + ".bundle")
-        r = subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), src, vi, "--keep", bundle], capture_output=True, text=True,
+        r = subprocess.run([PY, os.path.join(COMPOSER, "aixml2vi.py"), src, vi, "--keep", bundle], capture_output=True, text=True,
                            env=dict(os.environ, AIXML2VI_GENERIC_WIRES="1"))
         if not os.path.exists(vi):
             print(spec, "NOT COMPOSED", (r.stdout + r.stderr).strip().splitlines()[-1:])

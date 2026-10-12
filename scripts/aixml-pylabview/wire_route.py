@@ -20,9 +20,9 @@ LabVIEW's own fan-outs (parts/hotpoints_exact.json), and the calibrated constant
 import json
 import os
 
+import lvheap
 import wire_tree
 
-HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def _len(v):
@@ -251,7 +251,7 @@ class Hotpoints:
         # then - the offsets are LabVIEW's, not a donor's
         def find(name):
             p = os.path.join(parts_dir, name)
-            return p if os.path.exists(p) else os.path.join(HERE, "parts", name)
+            return p if os.path.exists(p) else os.path.join(lvheap.own_parts(), name)
         self.corr = {}
         p = find("hotpoints.json")
         if os.path.exists(p):

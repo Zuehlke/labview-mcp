@@ -16,6 +16,8 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 import graph_probe  # noqa: E402
 
 CACHE = os.path.join(os.path.expanduser("~"), ".labviewmcp", "cache", "aixml")
@@ -46,7 +48,7 @@ def main(argv):
     counts = {"loads": 0, "broken": 0, "hang": 0, "refused": 0}
     for i, (x, name) in enumerate(picked):
         vi = os.path.join(out, "g%03d.vi" % i)
-        r = subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), x, vi], capture_output=True, text=True)
+        r = subprocess.run([PY, os.path.join(COMPOSER, "aixml2vi.py"), x, vi], capture_output=True, text=True)
         graphs = len(re.findall(r"Indicator .* <- .*stdGraph|Control .* <- .*stdGraph", r.stdout))
         if not os.path.exists(vi):
             counts["refused"] += 1

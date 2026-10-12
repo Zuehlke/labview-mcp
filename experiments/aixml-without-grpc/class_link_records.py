@@ -14,6 +14,8 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+COMPOSER = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 import lvheap  # noqa: E402
 import vi2aixml  # noqa: E402
 

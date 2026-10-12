@@ -24,6 +24,8 @@ import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 from aixml2vi import event_items, unescape  # noqa: E402
 import event_frame_data  # noqa: E402
 
@@ -62,7 +64,7 @@ def main(argv):
         n += 1
     vi = os.path.join(out, "%s %d.vi" % (base, n))
     saved = os.path.join(out, "%s %d saved.vi" % (base, n))
-    r = subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), src, vi], capture_output=True, text=True)
+    r = subprocess.run([PY, os.path.join(COMPOSER, "aixml2vi.py"), src, vi], capture_output=True, text=True)
     if not os.path.exists(vi):
         print("NOT COMPOSED:", (r.stderr or r.stdout).strip().splitlines()[-1:])
         return 1

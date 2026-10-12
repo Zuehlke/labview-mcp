@@ -250,7 +250,7 @@ def ref_class(tree):
         return None
     if _REF_CLASS_BY_FLAGS is None:
         _REF_CLASS_BY_FLAGS = {}
-        tsv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "parts", "refnum-classes.tsv")
+        tsv = os.path.join(lvheap.own_parts(), "refnum-classes.tsv")
         for line in open(tsv, encoding="utf-8"):
             row = line.rstrip("\r\n").split("\t")
             if line.startswith("#") or row[0] == "class" or len(row) < 2:

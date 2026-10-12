@@ -16,6 +16,7 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # since 2026-10-12
 PY = sys.executable
 
 
@@ -43,7 +44,7 @@ def main(argv):
         env = dict(os.environ)
         if "--no-graphs" not in argv:
             env["AIXML2VI_GRAPHS"] = "1"
-        r = subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), src, vi], capture_output=True, text=True, env=env)
+        r = subprocess.run([PY, os.path.join(COMPOSER, "aixml2vi.py"), src, vi], capture_output=True, text=True, env=env)
         print("\n".join(l for l in (r.stdout + r.stderr).splitlines() if "style" in l or "UNSUPPORTED" in l or "wrote" in l))
         if not os.path.exists(vi):
             return 1

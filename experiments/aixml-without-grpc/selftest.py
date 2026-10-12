@@ -24,6 +24,8 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 PY = sys.executable
 
 
@@ -31,7 +33,7 @@ def compose(src, vi, search=()):
     """`search`: folders under tests/ a test's Call targets live in (expect.json `search`) - a
     class fixture, which the composer cannot build itself and so is committed."""
     extra = [a for d in search for a in ("--search", os.path.join(HERE, "tests", d))]
-    r = subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), src, vi, "--keep", vi[:-3] + ".bundle"] + extra,
+    r = subprocess.run([PY, os.path.join(COMPOSER, "aixml2vi.py"), src, vi, "--keep", vi[:-3] + ".bundle"] + extra,
                        capture_output=True, text=True, stdin=subprocess.DEVNULL)
     return r.returncode, (r.stdout + r.stderr).strip()
 

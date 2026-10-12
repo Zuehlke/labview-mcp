@@ -14,6 +14,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 import selftest as stt  # noqa: E402
 
 PY = sys.executable
@@ -31,7 +33,7 @@ def main(argv):
             # its own VI name, or LabVIEW serves the first from memory for the second
             open(src, "w", encoding="utf-8").write(re.sub(r'(<VI _name=")([^"]*?)(\.vi")', r"\g<1>\g<2> %s\g<3>" % tag, text, count=1))
             vi = os.path.join(work, "%s %s.vi" % (name, tag))
-            r = subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), src, vi], capture_output=True, text=True,
+            r = subprocess.run([PY, os.path.join(COMPOSER, "aixml2vi.py"), src, vi], capture_output=True, text=True,
                                env=dict(os.environ, **env))
             lines = (r.stdout + r.stderr).splitlines()
             vis[tag] = vi if any(l.startswith("wrote") for l in lines) else None

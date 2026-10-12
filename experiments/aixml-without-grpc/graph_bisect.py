@@ -15,6 +15,8 @@ import xml.etree.ElementTree as ET
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 import graph_probe  # noqa: E402
 
 
@@ -39,7 +41,7 @@ def main(argv):
         xml = os.path.join(out, re.sub(r"\W+", "_", name) + ".xml")
         ET.ElementTree(doc).write(xml, encoding="utf-8")
         vi = xml[:-4] + ".vi"
-        r = subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), xml, vi], capture_output=True, text=True, env=env)
+        r = subprocess.run([PY, os.path.join(COMPOSER, "aixml2vi.py"), xml, vi], capture_output=True, text=True, env=env)
         if not os.path.exists(vi):
             print("%-10s %-24s COMPOSE FAILED %s" % (name, ind.get("style"), r.stderr.strip()[-120:]), flush=True)
             continue

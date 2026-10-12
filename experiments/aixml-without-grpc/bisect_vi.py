@@ -14,6 +14,8 @@ import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 import aixml2vi  # noqa: E402
 import selftest  # noqa: E402
 
@@ -64,7 +66,7 @@ def main(argv):
         vi = x[:-4] + ".vi"
         if near:
             import subprocess
-            r = subprocess.run([selftest.PY, os.path.join(HERE, "aixml2vi.py"), x, vi, "--search", os.path.dirname(near)],
+            r = subprocess.run([selftest.PY, os.path.join(COMPOSER, "aixml2vi.py"), x, vi, "--search", os.path.dirname(near)],
                                capture_output=True, text=True, stdin=subprocess.DEVNULL)
             code, log = r.returncode, (r.stdout + r.stderr).strip()
         else:

@@ -95,6 +95,12 @@ public class DqmhKnowledgeTests
         // the reference unusable. Narrow on purpose: this document and this token only.
         ("aixml-reference.md", "eol"),
 
+        // The same constant in the composer's FIXED table (AIXML name -> the bDFixed `cnst`
+        // code), which reached the scripts scan when the composer moved to
+        // scripts/aixml-pylabview on 2026-10-12. It is the _name a <FixedConst> carries, so it
+        // cannot be renamed. Narrow on purpose: this file and this token only.
+        ("aixml2vi.py", "eol"),
+
         // The GdevCon7 talk shows a TestStand sequence tree whose main sequence is named after
         // the end-of-line test it runs - "EOL" there is the industry's standard term for that
         // test stage, not the customer's product. Released by the author on 2026-09-21 after

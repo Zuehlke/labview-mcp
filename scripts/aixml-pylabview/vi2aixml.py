@@ -44,7 +44,7 @@ def ref_class_name(flags):
     global _REF_BY_FLAGS
     if _REF_BY_FLAGS is None:
         _REF_BY_FLAGS = {}
-        tsv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "parts", "refnum-classes.tsv")
+        tsv = os.path.join(aixml2vi.OWN_PARTS, "refnum-classes.tsv")
         for line in open(tsv, encoding="utf-8"):
             row = line.rstrip("\r\n").split("\t")
             if line.startswith("#") or row[0] == "class" or len(row) < 2:
@@ -521,7 +521,7 @@ def template_names(cls):
     if _TEMPLATES is None:
         import glob
         _TEMPLATES = {}
-        for f in glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), "parts", "tnode__*.xml")):
+        for f in glob.glob(os.path.join(aixml2vi.OWN_PARTS, "tnode__*.xml")):
             try:
                 node = ET.parse(f).getroot().find("heap")[0]
             except Exception:
@@ -1211,8 +1211,7 @@ class Reader:
         '?' - NI's Graph Events.vi as six of them in one frame."""
         if cls._event_kinds is None:
             kinds = dict(cls.EVENT_KINDS)
-            here = os.path.dirname(os.path.abspath(__file__))
-            p = os.path.join(here, "parts", "static-events.json")
+            p = os.path.join(aixml2vi.OWN_PARTS, "static-events.json")
             if os.path.exists(p):
                 with open(p, encoding="utf-8") as f:
                     for name, row in json.load(f).items():
@@ -1222,7 +1221,7 @@ class Reader:
             # and the numbers the installation scan found in LabVIEW's own VIs, named by NI's
             # exporter (scan_static_specs.py, name_static_specs.py) - events the composer cannot
             # write yet (Mouse Down?, Drag Over, Pane Size, ...) but the reader can name
-            p = os.path.join(here, "parts", "event-type-names.json")
+            p = os.path.join(aixml2vi.OWN_PARTS, "event-type-names.json")
             if os.path.exists(p):
                 with open(p, encoding="utf-8") as f:
                     for typ, row in json.load(f).items():
@@ -1749,7 +1748,7 @@ class Reader:
         refnum-classes.tsv lacks (XYGraph 0x0053, Scrollbar 0x005A, Pane 0x004B ...), and the
         class of a node with NO reference input by its own name (`WFChart` -> LV.WaveformChart)."""
         if cls._LEARNED_CLASSES is None:
-            p = os.path.join(aixml2vi.HERE, "parts", "class-ids-learned.json")
+            p = os.path.join(aixml2vi.OWN_PARTS, "class-ids-learned.json")
             cls._LEARNED_CLASSES = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
         return cls._LEARNED_CLASSES
 
@@ -1809,7 +1808,7 @@ class Reader:
         writes for it, learned off its exports of whole VIs (parts/property-export-names.json,
         learn_prop_names.py) - only codes every pair agreed on."""
         if cls._EXPORT_PROP_NAMES is None:
-            p = os.path.join(aixml2vi.HERE, "parts", "property-export-names.json")
+            p = os.path.join(aixml2vi.OWN_PARTS, "property-export-names.json")
             cls._EXPORT_PROP_NAMES = json.load(open(p, encoding="utf-8")).get("names", {}) if os.path.exists(p) else {}
         return cls._EXPORT_PROP_NAMES
 
@@ -1827,7 +1826,7 @@ class Reader:
                     row = line.rstrip("\r\n").split("\t")
                     if len(row) > 1 and row[0].startswith("{LV."):
                         cat.add((row[0][1:-1], row[1]))
-            path = os.path.join(aixml2vi.HERE, "parts", "vi-server-props.json")
+            path = os.path.join(aixml2vi.OWN_PARTS, "vi-server-props.json")
             props = json.load(open(path, encoding="utf-8"))["props"] if os.path.exists(path) else {}
             by_code = {}
             for k, rows in props.items():

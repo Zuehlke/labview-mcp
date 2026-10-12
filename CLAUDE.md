@@ -1174,8 +1174,12 @@ itself, which pylabview could only read after a patch for LabVIEW 2026's 8 extra
 took 172 s. A class constant's flattened name is padded to 4 - `Rectangle.lvclass` hid it, the
 `Box` fixture showed it. Still only with the harvested parts
 (`LABVIEWMCP_AIXML_PARTS`). Run answers over ActiveX carry LabVIEW's flattened XML now, so a parser
-written for the gRPC shape reads both. A binary install has no composer yet: where its NI-derived
-parts come from is the user's open decision. `docs/aixml-backends.md`.
+written for the gRPC shape reads both. **The composer's CODE lives in `scripts\aixml-pylabview`
+since 2026-10-12 and ships with every build; its PARTS stayed in
+`experiments\aixml-without-grpc\parts` and do not** - where a release gets those NI-derived parts is
+the user's open decision, so a binary install needs `LABVIEWMCP_AIXML_PARTS` until then. The
+measurement scripts and the suite stayed in `experiments\` too and import the code from its new
+place. `docs/aixml-backends.md`.
 
 **THERE IS A FIFTH DOOR AND IT IS NAILED SHUT: `lvai_apply_aixml_to_vi` IS NOT CALLED. EVER —
 unless the user asks for it by name, in that session.** The user's standing instruction of

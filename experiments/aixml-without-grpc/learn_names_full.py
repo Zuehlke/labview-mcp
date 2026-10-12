@@ -21,6 +21,8 @@ import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 import aixml2vi  # noqa: E402
 import lvheap  # noqa: E402
 import vi2aixml  # noqa: E402
@@ -98,7 +100,7 @@ def main(argv):
     for r_ in rows[:40]:
         print("  %s %s %s (%d)" % r_)
     if "--write" in argv:
-        path = os.path.join(HERE, "terminal-names-learned.tsv")
+        path = os.path.join(COMPOSER, "terminal-names-learned.tsv")
         have = set()
         for line in open(path, encoding="utf-8"):
             parts = line.rstrip("\r\n").split("\t")

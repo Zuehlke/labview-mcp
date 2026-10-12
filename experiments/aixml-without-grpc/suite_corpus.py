@@ -17,6 +17,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 import selftest as stt  # noqa: E402
 
 PY = sys.executable
@@ -32,7 +34,7 @@ def main(argv):
     done = 0
     for name in names:
         vi = os.path.join(work, name + ".vi")
-        r = subprocess.run([PY, os.path.join(HERE, "aixml2vi.py"), os.path.join(HERE, "tests", name + ".xml"), vi],
+        r = subprocess.run([PY, os.path.join(COMPOSER, "aixml2vi.py"), os.path.join(HERE, "tests", name + ".xml"), vi],
                            capture_output=True, text=True, env=dict(os.environ, AIXML2VI_GENERIC_WIRES="1"))
         if not any(l.startswith("wrote") for l in (r.stdout + r.stderr).splitlines()):
             print("%-34s not composed" % name, flush=True)

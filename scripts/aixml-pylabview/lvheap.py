@@ -15,11 +15,41 @@ import copy
 import os
 import re
 import subprocess
+import sys
 import xml.etree.ElementTree as ET
 
+# scripts\aixml-pylabview since 2026-10-12 (experiments\aixml-without-grpc before), so REPO is the
+# source checkout - or, shipped, the folder holding the exe, scripts\, docs\ and pylabview\
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.normpath(os.path.join(HERE, "..", ".."))
-PYLABVIEW_CMD = os.path.join(REPO, "tools", "pylabview", "runtime", "pylabview.cmd")
+PARTS_VARIABLE = "LABVIEWMCP_AIXML_PARTS"
+
+
+def _pylabview_cmd():
+    """The launcher of the bundle this interpreter belongs to - the server runs the composer with
+    the bundled python.exe - else the shipped layout's pylabview\\ or a checkout's runtime."""
+    for d in (os.path.dirname(sys.executable), os.path.join(REPO, "pylabview"),
+              os.path.join(REPO, "tools", "pylabview", "runtime")):
+        if os.path.exists(os.path.join(d, "pylabview.cmd")):
+            return os.path.join(d, "pylabview.cmd")
+    return os.path.join(REPO, "tools", "pylabview", "runtime", "pylabview.cmd")
+
+
+PYLABVIEW_CMD = _pylabview_cmd()
+
+
+def own_parts():
+    """The folder of the composer's OWN tables - hotpoints, event codes, property and refnum
+    names, learned from what LabVIEW does - as opposed to the donor parts `--parts` names, which
+    may be harvested elsewhere and carry none of them. Beside the code when they ship with it;
+    in a source checkout still experiments\\aixml-without-grpc\\parts, which did not move with
+    the code on 2026-10-12 (where a release gets its parts is the user's open decision)."""
+    for d in (os.path.join(HERE, "parts"),
+              os.path.join(REPO, "experiments", "aixml-without-grpc", "parts"),
+              os.environ.get(PARTS_VARIABLE, "")):
+        if d and os.path.isdir(d):
+            return d
+    return os.path.join(HERE, "parts")
 
 TYPEID_RE = re.compile(r"TypeID\((\d+)\)")
 

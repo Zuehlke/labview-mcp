@@ -7,7 +7,7 @@ not to replace one with the other.
 | backend | what does the work | needs |
 |---|---|---|
 | `grpc` (default) | NI's `ValidateAIXML`, `ConvertAIXMLToVI`, `ConvertVIToAIXML`, and helper VIs run by `RunVIAsTopLevel` | LabVIEW with its AI assistant (Nigel) running |
-| `pylabview` | FILES: `aixml2vi.py` / `vi2aixml.py` from `experiments/aixml-without-grpc`, run by the bundled interpreter. A RUNNING LabVIEW, where a question needs one: LabVIEW's **ActiveX** server | the pylabview bundle, the composer and its parts — **no NI service**; LabVIEW only for executability, runs and renders |
+| `pylabview` | FILES: `aixml2vi.py` / `vi2aixml.py` from `scripts/aixml-pylabview`, run by the bundled interpreter. A RUNNING LabVIEW, where a question needs one: LabVIEW's **ActiveX** server | the pylabview bundle, the composer and its parts — **no NI service**; LabVIEW only for executability, runs and renders |
 
 **Why ActiveX.** Writing and reading a VI needs no LabVIEW at all, but three questions only a
 running LabVIEW can answer: is the VI executable, what does it compute, how big does its diagram
@@ -110,13 +110,27 @@ reads it.
 | piece | search order |
 |---|---|
 | interpreter | the pylabview bundle — `LABVIEWMCP_PYLABVIEW`, next to the exe, `tools\pylabview\runtime` in a checkout |
-| composer | `LABVIEWMCP_AIXML_COMPOSER`, else `experiments\aixml-without-grpc` walking up from the exe |
-| parts | `LABVIEWMCP_AIXML_PARTS`, else `<composer>\parts`, else `aixml-parts` in the cache directory |
+| composer | `LABVIEWMCP_AIXML_COMPOSER`, else `scripts\aixml-pylabview` of a checkout above the exe (read live, so a Python edit needs no rebuild), else `scripts\aixml-pylabview` beside the exe |
+| parts | `LABVIEWMCP_AIXML_PARTS`, else `<composer>\parts`, else a checkout's `experiments\aixml-without-grpc\parts`, else `aixml-parts` in the cache directory |
 
-**A binary install has no composer yet.** The parts are fragments of NI's own VIs, and whether a
-release ships them or harvests them on the user's machine is an open decision (FINDINGS §6a), so
-shipping the composer is a separate step from this switch. Until then `pylabview` answers
-`backendNotAvailable` there, naming every place it looked.
+**THE CODE SHIPS, THE PARTS DO NOT - since 2026-10-12.** The composer and reader moved from
+`experiments\aixml-without-grpc` to `scripts\aixml-pylabview`, so both lists of what ships (the
+`.csproj` glob and `release.yml`'s staging) carry them to `bin\scripts\aixml-pylabview` with no
+entry of their own: `aixml2vi.py`, `vi2aixml.py` and the five modules they import, plus the three
+name tables of their own. The measurement scripts, the test suite, the probes and FINDINGS stayed
+in `experiments\`. The Python finds the rest of a plugin's layout by itself - `pylabview.cmd` beside
+the interpreter that runs it, `primitive-names.tsv` and `terminal-names.tsv` in the bundle's
+`app\` (byte-identical to `experiments\pylabview`'s), `docs\` two levels up - measured by composing
+and reading `t01_add.xml` in a copy of that layout with no checkout above it: same AIXML back, byte
+for byte.
+
+**The parts stayed in `experiments\aixml-without-grpc\parts`**, and that is deliberate. Most of
+them are fragments cut from NI's own VIs, and whether a release ships them or harvests them on the
+user's machine is an open decision (FINDINGS §6a). So a binary install answers
+`backendNotAvailable` for `pylabview` until `LABVIEWMCP_AIXML_PARTS` names a parts folder, naming
+every place it looked. The composer's OWN tables in there - hotpoints, event codes, property and
+refnum names, `lvheap.own_parts()` - are read beside the code first, so the day they move next to
+it nothing in the code changes.
 
 ## Measured, 2026-10-10
 

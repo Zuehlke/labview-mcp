@@ -5,6 +5,15 @@ can LabVIEWMCP read and write **AIXML** without NI's gRPC service (Nigel), by us
 as the serialiser? Everything below was measured on LabVIEW 2026 Q3 (32-bit, 26.3.1f1) with the
 gRPC service **not running at all** — Nigel was never opened in this session.
 
+**WHERE THE CODE IS NOW (2026-10-12).** `aixml2vi.py`, `vi2aixml.py`, `lvheap.py`, `resolve.py`,
+`wire_route.py`, `wire_tree.py`, `harvest_parts.py` and the three name tables of their own moved to
+`scripts/aixml-pylabview`, so the server ships them. Everything else here - the measurement
+scripts, `tests/`, `probes/`, this file and `parts/` - stayed; the scripts put that folder on
+`sys.path` as `COMPOSER`. A file name below without a folder means the moved module where it is one
+of those. The parts did not move because most are cut from NI's VIs and shipping them is the
+user's open decision (§6a); `lvheap.own_parts()` reads the composer's own tables beside the code
+first, then here.
+
 ## 1. Answer
 
 **Yes, for a real and growing subset, in both directions.**

@@ -16,10 +16,13 @@ namespace LabVIEWMcp.Infra;
 /// Three things are located, and each answers "not available" with the places searched rather than
 /// throwing - the same contract as <see cref="PyLabview.Locate"/>:
 ///   the interpreter   the pylabview bundle (PyLabview.Locate)
-///   the composer      LABVIEWMCP_AIXML_COMPOSER, else experiments\aixml-without-grpc in a checkout
-///   the parts         LABVIEWMCP_AIXML_PARTS, else &lt;composer&gt;\parts, else the cache's aixml-parts
-/// A binary install has no composer yet: where its parts come from is an open decision
-/// (FINDINGS §6a), so shipping it is a separate step from this switch.
+///   the composer      LABVIEWMCP_AIXML_COMPOSER, else scripts\aixml-pylabview of a source checkout
+///                     (read live, so a Python edit needs no rebuild), else the one beside the exe
+///   the parts         LABVIEWMCP_AIXML_PARTS, else &lt;composer&gt;\parts, else a checkout's
+///                     experiments\aixml-without-grpc\parts, else the cache's aixml-parts
+/// The CODE ships since 2026-10-12, under scripts\ like every other helper; the PARTS do not -
+/// most are cut from NI's VIs, and where a release gets them is the user's open decision
+/// (FINDINGS §6a). Until then a binary install needs LABVIEWMCP_AIXML_PARTS.
 /// </summary>
 internal static class AixmlComposer
 {
@@ -43,9 +46,8 @@ internal static class AixmlComposer
         {
             missing = "The pylabview AIXML composer was not found. Searched: " +
                       string.Join("; ", ComposerCandidates().Where(c => c.Length > 0)) +
-                      $". Set {ComposerVariable} to the folder holding aixml2vi.py. It lives in " +
-                      "experiments\\aixml-without-grpc of a source checkout and is not part of a " +
-                      "binary install yet.";
+                      $". Set {ComposerVariable} to the folder holding aixml2vi.py. It ships as " +
+                      $"scripts\\{ComposerFolder} beside the exe and lives there in a source checkout.";
             return null;
         }
 
@@ -54,7 +56,8 @@ internal static class AixmlComposer
         {
             missing = "The composer's parts were not found - a folder holding skeleton\\skeleton.xml. " +
                       "Searched: " + string.Join("; ", PartsCandidates(composer).Where(c => c.Length > 0)) +
-                      $". Set {PartsVariable} to it.";
+                      $". Set {PartsVariable} to it. A binary install does not carry them yet: they " +
+                      "are in experiments\\aixml-without-grpc\\parts of a source checkout.";
             return null;
         }
 
@@ -87,19 +90,38 @@ internal static class AixmlComposer
     private static bool IsParts(string dir) =>
         dir.Length > 0 && File.Exists(Path.Combine(dir, "skeleton", "skeleton.xml"));
 
+    /// <summary>The composer's folder under scripts\ - experiments\aixml-without-grpc until 2026-10-12.</summary>
+    internal const string ComposerFolder = "aixml-pylabview";
+
+    /// <summary>
+    /// A checkout's live copy before the one the build copied beside the exe: an edit to the Python
+    /// then takes effect without a rebuild, which is how the composer has always been developed.
+    /// The walk starts ABOVE the exe's folder, whose own scripts\ is that copy - and in a plugin
+    /// install the only one there is.
+    /// </summary>
     private static IEnumerable<string> ComposerCandidates()
     {
         yield return Environment.GetEnvironmentVariable(ComposerVariable) ?? "";
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
-            yield return Path.Combine(dir.FullName, "experiments", "aixml-without-grpc");
+        foreach (var dir in Ancestors())
+            yield return Path.Combine(dir, "scripts", ComposerFolder);
+        yield return Path.Combine(AppContext.BaseDirectory, "scripts", ComposerFolder);
     }
 
     private static IEnumerable<string> PartsCandidates(string composer)
     {
         yield return Environment.GetEnvironmentVariable(PartsVariable) ?? "";
         yield return Path.Combine(composer, "parts");
+        foreach (var dir in Ancestors())
+            yield return Path.Combine(dir, "experiments", "aixml-without-grpc", "parts");
         yield return Path.Combine(CacheDirectory.Root, "aixml-parts");
+    }
+
+    /// <summary>The folders above the exe's, nearest first - where a source checkout would be.</summary>
+    private static IEnumerable<string> Ancestors()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory).Parent;
+        for (var i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
+            yield return dir.FullName;
     }
 
     /// <summary>

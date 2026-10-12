@@ -134,6 +134,24 @@ public sealed class AixmlBackendTests
 
     private static bool ComposerHere() => AixmlComposer.Locate(out _) is not null;
 
+    /// <summary>
+    /// Every test below SKIPS when the composer is not found, so a locator that lost it would
+    /// leave this whole half green. The code moved from experiments\aixml-without-grpc to
+    /// scripts\aixml-pylabview on 2026-10-12, its parts did not: in a checkout with the bundle
+    /// both must still be found, the code in the CHECKOUT (live) rather than the build's copy.
+    /// </summary>
+    [Fact]
+    public void A_checkout_with_the_bundle_finds_the_composer_in_scripts_and_its_parts_in_experiments()
+    {
+        if (PyLabview.Locate() is null) return;   // a fresh checkout: the runtime is not committed
+        var setup = AixmlComposer.Locate(out var missing);
+        Assert.True(setup is not null, missing);
+        Assert.Equal(Path.GetFullPath(RepoTree.Path("scripts", AixmlComposer.ComposerFolder)),
+                     Path.GetFullPath(setup!.ComposerDirectory));
+        Assert.Equal(Path.GetFullPath(RepoTree.Path("experiments", "aixml-without-grpc", "parts")),
+                     Path.GetFullPath(setup.PartsDirectory));
+    }
+
     [Fact]
     public async Task Pylabview_converts_with_no_RPC_and_writes_a_source_only_VI()
     {

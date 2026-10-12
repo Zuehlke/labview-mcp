@@ -27,6 +27,8 @@ import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+COMPOSER = os.path.normpath(os.path.join(HERE, "..", "..", "scripts", "aixml-pylabview"))  # the composer's modules, since 2026-10-12
+sys.path.insert(1, COMPOSER)
 import aixml2vi  # noqa: E402
 import lvheap  # noqa: E402
 import vi2aixml  # noqa: E402
@@ -140,7 +142,7 @@ def main(argv):
     for k in ("els", "vals", "edges"):
         print("  %-6s %d of %d" % (k, totals[k][0], totals[k][1]))
     if learn is not None:
-        path = os.path.join(HERE, "terminal-names-learned.tsv")
+        path = os.path.join(COMPOSER, "terminal-names-learned.tsv")
         names, _ = aixml2vi.load_names()
         # MERGE with what an earlier run learned: names already learned load into the
         # composer's table, so a second run finds no ?parmN for them and would otherwise
