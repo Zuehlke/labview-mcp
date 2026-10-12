@@ -913,7 +913,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
         Json.Error("backendNotAvailable", missing,
                    new { backend = choice.Name, backendSource = choice.Source });
 
-    private static string ComposerAnswer(AixmlComposer.Result result, AixmlBackend.Choice choice,
+    internal static string ComposerAnswer(AixmlComposer.Result result, AixmlBackend.Choice choice,
                                          IEnumerable<(string Key, JsonNode? Value)> facts)
     {
         var o = new JsonObject
@@ -927,6 +927,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
         foreach (var (key, value) in facts) o[key] = value;
         if (result.Report.Length > 0)
             o["composerReport"] = new JsonArray([.. result.Report.Select(r => (JsonNode)r)]);
+        if (result.Warning is { } warning) o["versionWarning"] = warning;
         o["elapsedMs"] = result.ElapsedMs;
         return o.ToJsonString(Indented);
     }

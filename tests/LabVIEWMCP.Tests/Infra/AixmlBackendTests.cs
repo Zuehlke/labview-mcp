@@ -125,19 +125,35 @@ public sealed class AixmlBackendTests
     }
 
     /// <summary>
-    /// The composer writes files of its parts' release, and LabVIEW opens no file of a later
-    /// version - so for an older LabVIEW it refuses rather than writing an unloadable VI.
+    /// A composed VI carries the skeleton's version stamp, and LabVIEW opens no file of a later
+    /// version - whether an older LabVIEW really refuses one is unmeasured, so the composer WARNS
+    /// and still writes (the user's correction of 2026-10-12; it refused until then).
     /// </summary>
     [Fact]
-    public void The_composer_refuses_to_write_for_a_LabVIEW_older_than_its_parts()
+    public void The_composer_warns_for_a_LabVIEW_older_than_its_skeleton_and_says_it_is_unmeasured()
     {
-        var why = AixmlComposer.RefusalForOlderLabView(2025, 2026);
+        var why = AixmlComposer.WarningForOlderLabView(2025, 2026);
         Assert.NotNull(why);
         Assert.Contains("LabVIEW 2025", why);
         Assert.Contains("LabVIEW 2026", why);
-        Assert.Null(AixmlComposer.RefusalForOlderLabView(2026, 2026));
-        Assert.Null(AixmlComposer.RefusalForOlderLabView(null, 2026));
-        Assert.Null(AixmlComposer.RefusalForOlderLabView(2025, null));
+        Assert.Contains("not measured", why);
+        Assert.Null(AixmlComposer.WarningForOlderLabView(2026, 2026));
+        Assert.Null(AixmlComposer.WarningForOlderLabView(null, 2026));
+        Assert.Null(AixmlComposer.WarningForOlderLabView(2025, null));
+    }
+
+    [Fact]
+    public void A_composer_warning_reaches_the_answer_and_the_VI_still_counts_as_written()
+    {
+        var choice = new AixmlBackend.Choice(AixmlBackend.PyLabview, "test");
+        var warned = AixmlTools.ComposerAnswer(
+            new AixmlComposer.Result(true, false, "No Error", [], 5, 0, Warning: "older LabVIEW"), choice, []);
+        var plain = AixmlTools.ComposerAnswer(
+            new AixmlComposer.Result(true, false, "No Error", [], 5, 0), choice, []);
+
+        Assert.Equal(0, Res.Int(warned, "errorCode"));
+        Assert.Equal("older LabVIEW", Res.Str(warned, "versionWarning"));
+        Assert.DoesNotContain("versionWarning", plain);
     }
 
     /// <summary>The shipped parts are LabVIEW 2026 parts - read off the skeleton, not assumed.</summary>

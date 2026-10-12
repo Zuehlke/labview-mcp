@@ -1210,8 +1210,12 @@ never a workstation path - `lvheap.portable_source`, also at every harvest, and 
 absolute path. `experiments\` keeps the measurement scripts, the suite and FINDINGS, which import
 the code from its new place. **A LabVIEW OLDER THAN 2026 in use makes `pylabview` the default** (the
 user's rule of 2026-10-12, below an explicit call, flag or variable) - even 2025, which has NI's
-service - **and the composer then REFUSES TO WRITE**: its parts are 2026 files, which an older
-LabVIEW cannot open. Unmeasured on an older LabVIEW, none being installed here. `docs/aixml-backends.md`.
+service - **and the composer then WARNS (`versionWarning`) and still writes.** It refused until
+the user's correction the same day, on a claim that its parts are 2026 files. What is release-bound
+is the composed VI's VERSION STAMP, inherited from the skeleton LabVIEW 2026 saved, and LabVIEW
+opens no file of a later version; whether that stamp alone stops an older LabVIEW, and whether the
+parts - heap fragments carrying no version - are bound at all, is NOT measured, none being
+installed here. `docs/aixml-backends.md`.
 
 **THERE IS A FIFTH DOOR AND IT IS NAILED SHUT: `lvai_apply_aixml_to_vi` IS NOT CALLED. EVER —
 unless the user asks for it by name, in that session.** The user's standing instruction of

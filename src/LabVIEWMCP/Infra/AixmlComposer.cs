@@ -78,7 +78,7 @@ internal static class AixmlComposer
             ["composerDirectory"] = setup?.ComposerDirectory,
             ["partsDirectory"] = setup?.PartsDirectory,
             // the two releases the older-LabVIEW rules compare: below 2026 pylabview is the
-            // default, and the composer refuses to write for a LabVIEW older than its parts
+            // default, and a compose for a LabVIEW older than the skeleton's stamp WARNS
             ["labviewInUse"] = AixmlBackend.LabViewInUse(),
             ["partsRelease"] = setup is null ? null : PartsRelease(setup.PartsDirectory),
             ["missing"] = setup is null ? missing : null,
@@ -132,7 +132,7 @@ internal static class AixmlComposer
     /// traceback.
     /// </summary>
     internal sealed record Result(bool Written, bool Refused, string Message, string[] Report,
-                                  long ElapsedMs, int ExitCode)
+                                  long ElapsedMs, int ExitCode, string? Warning = null)
     {
         public int ErrorCode => Written ? 0 : Refused ? 2 : 1;
         public string Kind => Written ? "" : Refused ? "composerRefused" : "composerFailed";
@@ -146,9 +146,15 @@ internal static class AixmlComposer
                                                   IReadOnlyList<string> searchFolders,
                                                   int timeoutSeconds, CancellationToken ct)
     {
-        if (RefusalForOlderLabView(AixmlBackend.LabViewInUse(), PartsRelease(setup.PartsDirectory)) is { } tooOld)
-            return new Result(false, true, tooOld, [], 0, 2);
+        var warning = WarningForOlderLabView(AixmlBackend.LabViewInUse(), PartsRelease(setup.PartsDirectory));
+        return (await ComposeCoreAsync(setup, aixmlPath, viPath, searchFolders, timeoutSeconds, ct))
+            with { Warning = warning };
+    }
 
+    private static async Task<Result> ComposeCoreAsync(Setup setup, string aixmlPath, string viPath,
+                                                       IReadOnlyList<string> searchFolders,
+                                                       int timeoutSeconds, CancellationToken ct)
+    {
         var target = Path.GetFullPath(viPath);
         if (Path.GetDirectoryName(target) is { Length: > 0 } folder) Directory.CreateDirectory(folder);
 
@@ -209,18 +215,23 @@ internal static class AixmlComposer
         });
 
     /// <summary>
-    /// The composer's refusal for a LabVIEW OLDER than its parts, or null. LabVIEW opens no file of a
-    /// later version, so a VI composed from 2026 parts is unloadable in LabVIEW 2025 - and a file the
-    /// station cannot open is worse than a call that declines to write one (the same rule as
-    /// <see cref="LabViewVersionStamp"/>). Since 2026-10-12 an older LabVIEW makes pylabview the
-    /// DEFAULT (<see cref="AixmlBackend.FirstGrpcRelease"/>), so this is what such a station meets.
-    /// Not measured on an older LabVIEW: none is installed where this was written.
+    /// A WARNING for a LabVIEW OLDER than the skeleton's version stamp, or null - it was a refusal
+    /// until the user's correction of 2026-10-12. What is release-bound is the STAMP: every
+    /// composed VI inherits the `vers` block of `parts\skeleton\skeleton.xml`, which LabVIEW 2026
+    /// saved, and LabVIEW opens no file of a later version. Whether the PARTS themselves are bound
+    /// to a release is not established - they are heap fragments and carry no version - and
+    /// neither is whether the stamp alone stops an older LabVIEW: none is installed where this was
+    /// written. Release-specific encodings the composer does write are known (LabVIEW 2026's longer
+    /// link-cache records, the empty variant's flattened stamp), so the warning names the doubt
+    /// instead of blocking a write nobody has seen fail.
     /// </summary>
-    internal static string? RefusalForOlderLabView(int? labviewInUse, int? partsRelease) =>
+    internal static string? WarningForOlderLabView(int? labviewInUse, int? partsRelease) =>
         labviewInUse is { } lv && partsRelease is { } parts && lv < parts
-            ? $"the composer writes LabVIEW {parts} files - its parts were cut from LabVIEW {parts} - " +
-              $"and LabVIEW {lv}, the one in use, cannot open a file of a later version. Nothing was " +
-              $"written. Composing for LabVIEW {lv} needs parts harvested from that installation."
+            ? $"LabVIEW {lv} is in use and the composed VI carries the LabVIEW {parts} version stamp " +
+              $"of the composer's skeleton. LabVIEW opens no file of a later version, so LabVIEW {lv} " +
+              "may refuse this VI - not measured: no older LabVIEW has been tried, and whether the " +
+              "parts themselves are release-bound is unknown. If it does not load, compose it with " +
+              "backend grpc on that station."
             : null;
 
     /// <summary>VI -> AIXML, written to <paramref name="aixmlPath"/>.</summary>

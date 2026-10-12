@@ -253,9 +253,11 @@ Text you write **into** LabVIEW code is English by default, whatever language th
 The server converts AIXML two ways: NI's gRPC service (`grpc`, the default) and our own pylabview
 composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAULT
 (`LABVIEWMCP_AIXML_BACKEND`, `--aixml-backend`); you do not pick one on your own. **A LabVIEW
-OLDER than 2026 in use makes `pylabview` the default by itself** - and there every compose is
-refused (`composerRefused`), because the composer's parts are LabVIEW 2026 files that an older
-LabVIEW cannot open; rule 4 below applies. **Read which one is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
+OLDER than 2026 in use makes `pylabview` the default by itself** - and there every compose WARNS
+(`versionWarning`): the VI carries the composer's LabVIEW 2026 version stamp, which an older
+LabVIEW may refuse to open - not measured. It is still written; quote the warning in your
+report, and if the VI does not load there while NI's service is up, compose it again with
+`backend: "grpc"` and say so. **Read which one is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
 `pylabviewAvailable` without LabVIEW, and every answer of a backend-aware tool names `backend` and
 `backendSource`.
 

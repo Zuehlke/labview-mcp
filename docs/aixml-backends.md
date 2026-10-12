@@ -52,16 +52,19 @@ INSTALLED one - the one `lvai_ensure_labview` would start; with neither readable
 apply. It is asked only when rules 1-3 are silent, and only for a tool the client called, like rules
 2-3. `pylv_status` shows both releases it compares, `labviewInUse` and `partsRelease`.
 
-**AND THE COMPOSER STILL REFUSES TO WRITE FOR SUCH A LabVIEW.** Its parts are cut from LabVIEW 2026
-- `partsRelease` is read off the skeleton's `vers` block, not assumed - and LabVIEW opens no file
-of a later version, so a VI composed from them would not load in 2025. Every compose therefore
-answers `composerRefused`, naming both releases and writing nothing (`RefusalForOlderLabView`) - the
-same rule as `LabViewVersionStamp`: a file the station cannot open is worse than a call that
-declines to write one. What does NOT compose there: every write, the scratch compose a validation
-is, and every helper a route tool composes. **Neither half is measured on an older LabVIEW** - none
-is installed here; the rule and the refusal are unit-tested, the ActiveX route and the reader on an
-older release are not. Writing for an older release needs parts harvested from that installation
-(`harvest_parts.py`), which is the follow-up.
+**AND THE COMPOSER WARNS FOR SUCH A LabVIEW - it REFUSED until the user's correction the same day.**
+Every compose there still writes and answers `versionWarning` naming both releases
+(`WarningForOlderLabView`). The refusal rested on "its parts are LabVIEW 2026 files", and that
+was an inference stated as a fact. What the check reads is the skeleton's `vers` block
+(`partsRelease`): every composed VI inherits that VERSION STAMP, LabVIEW 2026's, and LabVIEW
+opens no file of a later version. The parts themselves are heap fragments that carry no version,
+and the composer does write a few release-specific encodings (LabVIEW 2026's longer link-cache
+records, the empty variant's flattened stamp) - so whether an older LabVIEW loads a composed VI,
+with that stamp or with its own, is open. **Nothing of this is measured on an older LabVIEW** -
+none is installed here; the rule and the warning are unit-tested, the ActiveX route and the reader
+on an older release are not. The measurement that settles it: compose with the older release's
+stamp and load the VI there. If a VI does not load, NI's service (`backend: "grpc"`) writes one
+for that station.
 
 A server registered with the composer as its default:
 

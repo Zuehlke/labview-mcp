@@ -10,8 +10,9 @@ namespace LabVIEWMcp.Infra;
 ///   2. `--aixml-backend` on the server's command line
 ///   3. the LABVIEWMCP_AIXML_BACKEND environment variable
 ///   4. pylabview when the LabVIEW in use is OLDER than 2026 - the user's rule of 2026-10-12, which
-///      holds even where NI's service exists (LabVIEW 2025 has one). The composer itself still
-///      refuses to WRITE for such a LabVIEW: its parts are 2026 files (<see cref="AixmlComposer"/>)
+///      holds even where NI's service exists (LabVIEW 2025 has one). The composer WARNS there
+///      (`versionWarning`): its skeleton stamps every VI LabVIEW 2026, which an older LabVIEW may
+///      refuse - unmeasured (<see cref="AixmlComposer.WarningForOlderLabView"/>)
 ///   5. grpc
 ///
 /// THE SERVER DEFAULT REACHES ONLY A TOOL THE CLIENT CALLED ITSELF. About forty places in this
