@@ -7114,6 +7114,15 @@ class Composer:
         vctp = m.find("VCTP")
         vctp.remove(vctp.find("Section"))
         vctp.append(self.types.vctp_section())
+        # The password hash is salted with the terminal counts of the CPC2 interface, which BDPW
+        # names by its FLAT type id - the skeleton's 2 named whatever landed there. LabVIEW 2026
+        # let that pass on its own 26 files; a 25-stamped VI with a pane was "Another user tampered
+        # with the VI password" (t01). A VI LabVIEW 2025 saved has CPC2 -> consolidated 2 -> flat 5,
+        # and SaltFlatTypeID 5 (2026-10-12).
+        flat = {t.get("Index"): t.get("FlatTypeID") for t in vctp.find("Section/TopLevel")}
+        pw = m.find("BDPW/Section/Password")
+        if pw is not None and flat.get("2") is not None:
+            pw.set("SaltFlatTypeID", flat["2"])
         sl = m.find("DTHP/Section/TypeDescSlice")
         sl.set("IndexShift", str(INDEX_SHIFT))
         sl.set("Count", str(heap_count))
@@ -7159,15 +7168,58 @@ class Composer:
         return main_xml
 
 
+def retarget_version(bdir, base, major):
+    """Stamp a composed bundle as a LabVIEW `major` file (25 for LabVIEW 2025).
+
+    LabVIEW 2025 refuses a composed VI with Error 1125, "File version is later than the current
+    LabVIEW version" - measured on a user's station 2026-10-12 - because every VI inherits the
+    skeleton's LabVIEW 2026 stamps. Three places carry the version:
+      - LVSR's Version (the FILE FORMAT, 26.0) - pylabview reads it too and writes the
+        version-dependent records to match (the 8 extra class-link bytes only from 26 on);
+      - vers (the application, 26.3.1);
+      - the version word a flattened variant starts with, 0x26008000 - the VITS block's
+        NI.LV.All.SourceOnly tag, an empty variant constant, a waveform's attribute variant.
+    What else LabVIEW 2026 writes differently is not known: the parts are heap fragments cut from
+    2026 VIs, and whether an older LabVIEW reads every one of them needs that LabVIEW."""
+    word_old, word_new = "26008000", "%02d008000" % major
+    main_xml = os.path.join(bdir, base + ".xml")
+    m = ET.parse(main_xml)
+    for path in ("LVSR/Section/Version", "vers/Section/Version"):
+        v = m.getroot().find(path)
+        if v is not None:
+            v.set("Major", str(major))
+            v.set("Minor", "0")
+            v.set("Bugfix", "0")
+            v.set("Build", "0")
+            if v.get("Info") is not None:
+                v.set("Info", "%d.0" % major)
+    m.write(main_xml, encoding="utf-8", xml_declaration=True)
+    for f in os.listdir(bdir):
+        p = os.path.join(bdir, f)
+        if f.endswith("Hb.xml"):
+            text = open(p, encoding="utf-8").read()
+            # only a variant's header: the version word, then its flags word
+            new = re.sub(word_old + "(0000000)", word_new + r"\1", text)
+            if new != text:
+                open(p, "w", encoding="utf-8").write(new)
+        elif f.endswith("_VITS.bin"):
+            data = open(p, "rb").read()
+            open(p, "wb").write(data.replace(bytes.fromhex(word_old + "0000"), bytes.fromhex(word_new + "0000")))
+
+
 def main(argv):
     parts = OWN_PARTS
     keep = None
     search = []
     args = []
+    target = None
     i = 0
     while i < len(argv):
         if argv[i] == "--parts":
             parts = argv[i + 1]; i += 2
+        elif argv[i] == "--lv-version":
+            # the LabVIEW major version to write for (25 for 2025); the skeleton's own otherwise
+            target = int(argv[i + 1]); i += 2
         elif argv[i] == "--keep":
             keep = argv[i + 1]; i += 2
         elif argv[i] == "--search":
@@ -7191,6 +7243,8 @@ def main(argv):
     bdir = keep or tempfile.mkdtemp(prefix="aixml2vi_")
     try:
         main_xml = c.write(bdir, base)
+        if target is not None:
+            retarget_version(bdir, base, target)
         lvheap.rebuild(main_xml, out_vi)
     finally:
         if not keep:

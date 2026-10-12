@@ -146,19 +146,35 @@ internal static class AixmlComposer
                                                   IReadOnlyList<string> searchFolders,
                                                   int timeoutSeconds, CancellationToken ct)
     {
-        var warning = WarningForOlderLabView(AixmlBackend.LabViewInUse(), PartsRelease(setup.PartsDirectory));
-        return (await ComposeCoreAsync(setup, aixmlPath, viPath, searchFolders, timeoutSeconds, ct))
-            with { Warning = warning };
+        var inUse = AixmlBackend.LabViewInUse();
+        var parts = PartsRelease(setup.PartsDirectory);
+        var targetRelease = TargetRelease(inUse, parts);
+        return (await ComposeCoreAsync(setup, aixmlPath, viPath, searchFolders, targetRelease,
+                                       timeoutSeconds, ct))
+            with { Warning = WarningForOlderLabView(inUse, parts) };
     }
+
+    /// <summary>
+    /// The LabVIEW release to write files FOR: the one in use when it is older than the parts,
+    /// else null (the parts' own). LabVIEW 2025 refused every composed VI with Error 1125, "File
+    /// version is later than the current LabVIEW version" - measured on a user's station
+    /// 2026-10-12 - so for such a LabVIEW the composer stamps the file as that release
+    /// (aixml2vi.py --lv-version: LVSR, vers, the variants' version word) and pylabview writes
+    /// the release's own records.
+    /// </summary>
+    internal static int? TargetRelease(int? labviewInUse, int? partsRelease) =>
+        labviewInUse is { } lv && partsRelease is { } parts && lv < parts && lv >= 2020 ? lv : null;
 
     private static async Task<Result> ComposeCoreAsync(Setup setup, string aixmlPath, string viPath,
                                                        IReadOnlyList<string> searchFolders,
+                                                       int? targetRelease,
                                                        int timeoutSeconds, CancellationToken ct)
     {
         var target = Path.GetFullPath(viPath);
         if (Path.GetDirectoryName(target) is { Length: > 0 } folder) Directory.CreateDirectory(folder);
 
         var args = new List<string> { "--parts", setup.PartsDirectory };
+        if (targetRelease is { } release) { args.Add("--lv-version"); args.Add((release - 2000).ToString(System.Globalization.CultureInfo.InvariantCulture)); }
         foreach (var search in searchFolders) { args.Add("--search"); args.Add(search); }
         // LabVIEW's project\ folder LAST: vendor toolkits install their scriptable VIs there -
         // Delacor's DQMH libraries among them, three levels down - and NI's converter resolves
@@ -215,23 +231,22 @@ internal static class AixmlComposer
         });
 
     /// <summary>
-    /// A WARNING for a LabVIEW OLDER than the skeleton's version stamp, or null - it was a refusal
-    /// until the user's correction of 2026-10-12. What is release-bound is the STAMP: every
-    /// composed VI inherits the `vers` block of `parts\skeleton\skeleton.xml`, which LabVIEW 2026
-    /// saved, and LabVIEW opens no file of a later version. Whether the PARTS themselves are bound
-    /// to a release is not established - they are heap fragments and carry no version - and
-    /// neither is whether the stamp alone stops an older LabVIEW: none is installed where this was
-    /// written. Release-specific encodings the composer does write are known (LabVIEW 2026's longer
-    /// link-cache records, the empty variant's flattened stamp), so the warning names the doubt
-    /// instead of blocking a write nobody has seen fail.
+    /// A NOTE for a LabVIEW OLDER than the parts, or null. Since 2026-10-12 such a VI is written AS
+    /// that release (<see cref="TargetRelease"/>): LabVIEW 2026 loads and runs the suite composed
+    /// as 2020, 2021, 2023, 2024 and 2025 files, and a VI LabVIEW 2025 itself saved carries the
+    /// same stamps. The parts are still heap fragments cut from LabVIEW 2026 VIs, and that the
+    /// older LabVIEW itself reads every one of them has not been measured on that LabVIEW.
     /// </summary>
     internal static string? WarningForOlderLabView(int? labviewInUse, int? partsRelease) =>
         labviewInUse is { } lv && partsRelease is { } parts && lv < parts
-            ? $"LabVIEW {lv} is in use and the composed VI carries the LabVIEW {parts} version stamp " +
-              $"of the composer's skeleton. LabVIEW opens no file of a later version, so LabVIEW {lv} " +
-              "may refuse this VI - not measured: no older LabVIEW has been tried, and whether the " +
-              "parts themselves are release-bound is unknown. If it does not load, compose it with " +
-              "backend grpc on that station."
+            ? TargetRelease(lv, parts) is null
+                ? $"LabVIEW {lv} is in use and the composer writes files for LabVIEW 2020 and later " +
+                  $"only, so this VI carries the LabVIEW {parts} stamp, which LabVIEW {lv} refuses " +
+                  "(Error 1125). Compose it with backend grpc on that station."
+                : $"LabVIEW {lv} is in use, so the VI was written as a LabVIEW {lv} file - version " +
+                  "stamps and version-dependent records rewritten. Its parts were cut from LabVIEW " +
+                  $"{parts} VIs; if LabVIEW {lv} still refuses it, quote its error and compose it " +
+                  "with backend grpc on that station."
             : null;
 
     /// <summary>VI -> AIXML, written to <paramref name="aixmlPath"/>.</summary>

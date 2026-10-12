@@ -622,7 +622,7 @@ class LinkObjBase:
 
         self.apiLinkContent = readLStr(bldata, 1, self.po)
         self.appendPrintMapEntry(bldata.tell(), 4+len(self.apiLinkContent), 1, "UDClassAPILinkCache.Content")
-        if isGreaterOrEqVersion(ver, 26):
+        if isGreaterOrEqVersion(ver, 20):
             self.apiLinkExtra = bldata.read(8)
             self.appendPrintMapEntry(bldata.tell(), 8, 1, "UDClassAPILinkCache.Extra")
             if (bldata.tell() % 2) > 0:
@@ -652,7 +652,7 @@ class LinkObjBase:
             data_buf += int(self.apiLinkCallParentNodes).to_bytes(1, byteorder='big', signed=False)
 
         data_buf += prepareLStr(self.apiLinkContent, 1, self.po)
-        if isGreaterOrEqVersion(ver, 26):
+        if isGreaterOrEqVersion(ver, 20):
             data_buf += (bytes(self.apiLinkExtra) + b'\0' * 8)[:8]
             if (start_offs+len(data_buf)) % 2 > 0:
                 data_buf += b'\0' # Padding bytes

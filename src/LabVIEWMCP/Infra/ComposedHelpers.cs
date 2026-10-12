@@ -34,7 +34,10 @@ internal static class ComposedHelpers
         var aixml = Path.Combine(scripts, aixmlFileName);
         var vi = Path.Combine(Folder, Path.ChangeExtension(aixmlFileName, ".vi"));
         var stamp = vi + ".parts";
-        var partsInUse = PartsStamp(setup.PartsDirectory);
+        // a helper composed for one LabVIEW release is not one for another (Error 1125 in 2025)
+        var partsInUse = PartsStamp(setup.PartsDirectory) + "|" +
+                         AixmlComposer.TargetRelease(AixmlBackend.LabViewInUse(),
+                                                     AixmlComposer.PartsRelease(setup.PartsDirectory));
         var stale = !File.Exists(vi) || HelperCache.NeedsRebuild(aixml, vi)
                     || !File.Exists(stamp) || File.ReadAllText(stamp) != partsInUse;
         if (!stale) return (vi, null);

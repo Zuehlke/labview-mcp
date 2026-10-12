@@ -1212,12 +1212,16 @@ never a workstation path - `lvheap.portable_source`, also at every harvest, and 
 absolute path. `experiments\` keeps the measurement scripts, the suite and FINDINGS, which import
 the code from its new place. **A LabVIEW OLDER THAN 2026 in use makes `pylabview` the default** (the
 user's rule of 2026-10-12, below an explicit call, flag or variable) - even 2025, which has NI's
-service - **and the composer then WARNS (`versionWarning`) and still writes.** It refused until
-the user's correction the same day, on a claim that its parts are 2026 files. What is release-bound
-is the composed VI's VERSION STAMP, inherited from the skeleton LabVIEW 2026 saved, and LabVIEW
-opens no file of a later version; whether that stamp alone stops an older LabVIEW, and whether the
-parts - heap fragments carrying no version - are bound at all, is NOT measured, none being
-installed here. `docs/aixml-backends.md`.
+service - **and the composer WRITES THE FILE AS THAT RELEASE, set at compose time, the parts
+untouched.** Measured on the user's LabVIEW 2025 station the same day: every composed VI was
+`Error 1125, File version is later than the current LabVIEW version`, because each inherits the
+skeleton's 2026 stamps. `aixml2vi.py --lv-version N` (the server passes it for LabVIEW 2020 and
+later) rewrites `LVSR`, `vers` and the variants' version word in the composed bundle, and
+pylabview then writes that release's records - checked against a VI LabVIEW 2025 saved. Two
+defects only that stamp showed: the password salt named the skeleton's type 2 instead of the
+pane's (`VI password tampered`), and the 8 class-link bytes the pylabview patch wrote from 26 on
+exist since LabVIEW 2020 (`data structure corrupt`). LabVIEW 2026 loads the suite composed as
+2020-2025 files; a load in LabVIEW 2025 itself is the user's test. `docs/aixml-backends.md`.
 
 **THERE IS A FIFTH DOOR AND IT IS NAILED SHUT: `lvai_apply_aixml_to_vi` IS NOT CALLED. EVER —
 unless the user asks for it by name, in that session.** The user's standing instruction of

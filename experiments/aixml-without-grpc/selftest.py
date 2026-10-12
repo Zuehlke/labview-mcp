@@ -33,6 +33,10 @@ def compose(src, vi, search=()):
     """`search`: folders under tests/ a test's Call targets live in (expect.json `search`) - a
     class fixture, which the composer cannot build itself and so is committed."""
     extra = [a for d in search for a in ("--search", os.path.join(HERE, "tests", d))]
+    # --lv-version N: compose every test as a LabVIEW N file (25 for 2025), as the server does
+    # for an older LabVIEW - LabVIEW 2026 still loads one, which checks the older format's records
+    if "--lv-version" in sys.argv:
+        extra += ["--lv-version", sys.argv[sys.argv.index("--lv-version") + 1]]
     r = subprocess.run([PY, os.path.join(COMPOSER, "aixml2vi.py"), src, vi, "--keep", vi[:-3] + ".bundle"] + extra,
                        capture_output=True, text=True, stdin=subprocess.DEVNULL)
     return r.returncode, (r.stdout + r.stderr).strip()
@@ -172,7 +176,8 @@ def main(argv):
         # a run then read "BROKEN (ExecState None)" (2026-10-12)
         out_arg = argv[argv.index("--out") + 1]
         out_dir = os.path.abspath(out_arg)
-    flt = [a for a in argv if not a.startswith("--") and a != out_arg]
+    lv_arg = argv[argv.index("--lv-version") + 1] if "--lv-version" in argv else None
+    flt = [a for a in argv if not a.startswith("--") and a not in (out_arg, lv_arg)]
     os.makedirs(out_dir, exist_ok=True)
     expect = json.load(open(os.path.join(HERE, "tests", "expect.json"), encoding="utf-8"))
     stamp = time.strftime("%H%M%S")

@@ -52,7 +52,24 @@ INSTALLED one - the one `lvai_ensure_labview` would start; with neither readable
 apply. It is asked only when rules 1-3 are silent, and only for a tool the client called, like rules
 2-3. `pylv_status` shows both releases it compares, `labviewInUse` and `partsRelease`.
 
-**AND THE COMPOSER WARNS FOR SUCH A LabVIEW - it REFUSED until the user's correction the same day.**
+**AND THE COMPOSER WRITES FOR SUCH A LabVIEW AS THAT RELEASE - since the same evening, after the
+user's LabVIEW 2025 station refused every composed VI with `Error 1125, File version is later
+than the current LabVIEW version`.** The server passes `--lv-version <N>` for a LabVIEW in use
+older than the parts and not older than 2020 (`AixmlComposer.TargetRelease`); the composer then
+rewrites, in the composed bundle only, `LVSR`'s and `vers`'s version and the version word a
+flattened variant starts with (`VITS`'s SourceOnly tag, variant constants), and pylabview writes
+that release's own records. A VI LabVIEW 2025 saved (`ArrayNoDups_String.vi`) carries exactly
+these stamps: `LVSR` 25.0, `vers` 25.1.1, `25 00 80 00`. Two defects only the older stamp showed,
+both fixed: the password salt (`BDPW` `SaltFlatTypeID`) named the skeleton's flat type 2 instead
+of the connector pane's - LabVIEW 2026 let that pass on its own files and called a 25-stamped VI
+with a pane `Another user tampered with the VI password` - and the 8 class-link bytes the
+pylabview patch wrote only from version 26 exist since version 20: composed as 20, 21, 23, 24 and
+25 files a class-calling VI loads and runs with them and is `Memory or data structure corrupt`
+without (19 fails either way). Composed helpers are cached per target release. Measured in
+LabVIEW 2026 only; a load in LabVIEW 2025 itself is the user's test. The text below records the
+WARNING stage before that, which was itself replacing a refusal.
+
+**THE COMPOSER WARNED FOR SUCH A LabVIEW - it REFUSED until the user's correction the same day.**
 Every compose there still writes and answers `versionWarning` naming both releases
 (`WarningForOlderLabView`). The refusal rested on "its parts are LabVIEW 2026 files", and that
 was an inference stated as a fact. What the check reads is the skeleton's `vers` block

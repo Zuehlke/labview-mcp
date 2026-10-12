@@ -136,11 +136,25 @@ public sealed class AixmlBackendTests
         Assert.NotNull(why);
         Assert.Contains("LabVIEW 2025", why);
         Assert.Contains("LabVIEW 2026", why);
-        Assert.Contains("not measured", why);
+        Assert.Contains("written as a LabVIEW 2025 file", why);
         Assert.Null(AixmlComposer.WarningForOlderLabView(2026, 2026));
         Assert.Null(AixmlComposer.WarningForOlderLabView(null, 2026));
         Assert.Null(AixmlComposer.WarningForOlderLabView(2025, null));
     }
+
+    /// <summary>
+    /// LabVIEW 2025 refused every composed VI with Error 1125 until the composer wrote files AS the
+    /// release in use; from 2020 on, the first release whose class-link records it writes.
+    /// </summary>
+    [Theory]
+    [InlineData(2025, 2026, 2025)]
+    [InlineData(2020, 2026, 2020)]
+    [InlineData(2019, 2026, null)]
+    [InlineData(2026, 2026, null)]
+    [InlineData(null, 2026, null)]
+    [InlineData(2025, null, null)]
+    public void The_composer_writes_for_an_older_LabVIEW_from_2020_on(int? inUse, int? parts, int? expected) =>
+        Assert.Equal(expected, AixmlComposer.TargetRelease(inUse, parts));
 
     [Fact]
     public void A_composer_warning_reaches_the_answer_and_the_VI_still_counts_as_written()
