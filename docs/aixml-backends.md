@@ -103,6 +103,38 @@ things went wrong, each handled now:
   (LabVIEW's own 2025 save of the crashing VI, the control), both linking `..\Sensor\Sensor.lvclass`.
   If the control aborts too, the composer's file is not what LabVIEW 2025 fails on.
 
+  **The user's third test answered that, and moved the question from the FILE to the RENDER.**
+  In LabVIEW 2025 both files load (`execState 1`), show their diagram in the IDE and print as
+  HTML from the IDE's own File - Print - and the server's render of the composed one still
+  aborted. So the layout was not the cause either. Two things were then measured in LabVIEW 2026
+  on the server's own route (`PrintVIToHTML` over ActiveX on a VI never shown):
+
+  - **It drew NOTHING for every composed diagram that ends above y 143** - t07, t77, t85, t86,
+    t94 and the user's minimal repro came back as an empty image of the right size, without an
+    error, while NI's own 40 px and 94 px diagrams and NI's conversion of t07 drew. The block
+    diagram window's `dBounds` - the region of the diagram it shows, which NI's converter and
+    every LabVIEW save put over the objects - stayed at the skeleton's `(143, 162, 419, 677)`
+    while the composer lays out from `(40, 40)`; moved over the objects, the same t07 drew.
+    `Composer.fit_diagram_view` does that for every composed VI since. An empty region is the
+    kind of inconsistency that LabVIEW 2026 draws as nothing and LabVIEW 2025 may abort on -
+    which would fit the minimal repro (48 px tall), not the class tests (they reach y 506 and
+    916), so it is not the whole answer.
+  - **The render printed format 4, COMPLETE**, which also draws the hierarchy and every subVI's
+    icon - the class's and its methods' for a class caller; the IDE print the user ran was the
+    diagram. `diagramSize` reads only the diagram, so `LabViewCom.PrintToHtmlAsync` prints format
+    1, STANDARD (connector pane, panel, diagram), since. Whether either change stops LabVIEW
+    2025's abort is the user's test.
+
+  And a render that killed LabVIEW answered `ok: true` with "could not be rendered". The step
+  now says `labviewDied: true` and leads its note with it when a LabVIEW that ran before the
+  render is gone after it.
+
+  **A separate render crash in LabVIEW 2026 itself, OPEN**: t74 (string, boolean and
+  cluster-array CONSTANTS) kills LabVIEW in the same print - 45 `Unable to create DIB Section`,
+  then gone - with or without the `dBounds` change, rendered alone. Its cluster-in-array element
+  carries `minPaneSize (-258, -508)` and `origin (-262, -512)`, values the part's donor - a VI
+  NI's converter built - carries too; not yet established as the cause.
+
   The report's second lead - "LabVIEW 2025 writes no 8 cache bytes, `Launcher.vi` cannot be read
   with them" - does not hold: the Sensor accessors LabVIEW 2025 (25.3.5) saved carry them (`VIPI`
   `0000000000000000`, `DDPI` `0000000065000000`) and parse clean, and LabVIEW 2026's OWN

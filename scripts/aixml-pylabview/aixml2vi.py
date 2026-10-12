@@ -7045,6 +7045,50 @@ class Composer:
             if pane.find("minPaneSize") is not None:
                 pane.find("minPaneSize").text = "(%d, %d)" % (oh + 4, ov + 4)
 
+    DIAGRAM_VIEW_MARGIN = 20
+
+    def fit_diagram_view(self):
+        """The block diagram window's dBounds over the diagram's top-left corner, its size kept.
+        dBounds is the region of the diagram the window shows, in diagram coordinates - NI's
+        converter and every LabVIEW save put it where the objects are - and the skeleton's
+        (143, 162, 419, 677) stayed put while the composer lays out from (40, 40). Print.VI To HTML
+        draws NOTHING of a diagram outside that region: every composed diagram ending above y 143
+        rendered as an empty image in LabVIEW 2026 (t07, t77, t85, t86, t94 - all under 103 px
+        tall), the same VI drew once dBounds covered it, and NI's own 40 px diagrams draw. LabVIEW
+        2025 aborted that render, `bad image in ValidateImage` (the user's bug report, 2026-10-12)
+        while the IDE - which recomputes the view when it shows the diagram - printed the same
+        file. Overlap is what decides: t157, 779 x 234 and only partly inside, drew whole."""
+        view = self.bd.find("dBounds")
+        root = self.bd.find("root")
+        if view is None or root is None:
+            return
+        tops, lefts = [], []
+
+        def add(text):
+            t, l, b, r = lvheap.parse_bounds(text)
+            if b > t or r > l:
+                tops.append(t)
+                lefts.append(l)
+
+        nodes = root.find("nodeList")
+        for node in (nodes if nodes is not None else []):
+            if node.get("class") == "sRN":
+                terms = node.find("termList")
+                for term in (terms if terms is not None else []):
+                    if term.find("bounds") is not None:
+                        add(term.findtext("bounds"))
+            elif node.find("bounds") is not None:
+                add(node.findtext("bounds"))
+        z = root.find("zPlaneList")
+        for deco in (z if z is not None else []):
+            if deco.get("class") and deco.find("bounds") is not None:
+                add(deco.findtext("bounds"))
+        if not tops:
+            return
+        t, l, b, r = lvheap.parse_bounds(view.text)
+        top, left = min(tops) - self.DIAGRAM_VIEW_MARGIN, min(lefts) - self.DIAGRAM_VIEW_MARGIN
+        view.text = "(%d, %d, %d, %d)" % (top, left, top + b - t, left + r - l)
+
     def write(self, out_dir, base):
         os.makedirs(out_dir, exist_ok=True)
         for f in os.listdir(self.skel):
@@ -7094,6 +7138,7 @@ class Composer:
         for c in conns:
             self.cons.append(c)
         self.renumber_piccs()
+        self.fit_diagram_view()
         pane = next((e for e in self.fp.iter() if e.get("class") == "pane"), None)
         if getattr(self, "facade_lib", None) and pane is not None and pane.find("paneFlags") is not None:
             # a facade's panel pane as LabVIEW's template for a new facade has it - paneFlags

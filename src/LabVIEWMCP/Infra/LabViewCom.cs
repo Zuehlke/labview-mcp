@@ -126,17 +126,43 @@ internal static class LabViewCom
                          timeoutSeconds, ct);
 
     /// <summary>
-    /// Print.VI To HTML over ActiveX - the same documentation print NI's render helper drives, so
-    /// the same `&lt;base&gt;d.png` for the top-level diagram lands in <paramref name="imageDirectory"/>.
-    /// Format 4 is Complete, image format 0 PNG, depth 24. Measured 2026-10-10: 44 ms on a small VI.
+    /// Print.VI To HTML over ActiveX, so the top-level diagram lands as `&lt;base&gt;d.png` in
+    /// <paramref name="imageDirectory"/>. Format 1 is STANDARD - connector pane, front panel, block
+    /// diagram and nothing else; image format 0 PNG, depth 24. Measured 2026-10-10: 44 ms on a
+    /// small VI.
+    ///
+    /// It printed format 4, COMPLETE, until 2026-10-12, which also draws the VI's position in the
+    /// hierarchy and every subVI's icon - the class and its methods' icons for a VI that calls a
+    /// class. LabVIEW 2025 aborted that print of composed class callers (`bad image in
+    /// ValidateImage`, the user's bug reports) while its IDE printed the same files; only the
+    /// diagram is ever read here, so the rest is not printed.
     /// </summary>
     public static Task<bool> PrintToHtmlAsync(string viPath, string htmlPath, string imageDirectory,
                                               int timeoutSeconds, CancellationToken ct) =>
         WithLabViewAsync(app => WithVi(app, viPath, vi =>
         {
-            Call(vi, "PrintVIToHTML", htmlPath, false, 4, 0, 24, imageDirectory);
+            Call(vi, "PrintVIToHTML", htmlPath, false, PrintFormatStandard, 0, 24, imageDirectory);
             return true;
         }), timeoutSeconds, ct);
+
+    /// <summary>Print.VI To HTML's Format: {Custom, Standard, Using Panel, Using SubVI, Complete}.</summary>
+    internal const int PrintFormatStandard = 1;
+
+    /// <summary>The ids of every running LabVIEW - taken before a call that may kill one.</summary>
+    public static IReadOnlySet<int> RunningPids()
+    {
+        var ids = new HashSet<int>();
+        foreach (var p in global::LabVIEWMcp.Grpc.LabViewLocator.RunningInstances())
+        {
+            try { ids.Add(p.Id); }
+            catch (InvalidOperationException) { }
+        }
+        return ids;
+    }
+
+    /// <summary>Whether a LabVIEW running before (<paramref name="before"/>) is gone now.</summary>
+    public static bool AnyGone(IReadOnlySet<int> before) =>
+        before.Count > 0 && !before.IsSubsetOf(RunningPids());
 
     /// <summary>One control to set: its name, the value already converted, and the text it came from.</summary>
     internal sealed record Input(string Name, object Value, string Text);

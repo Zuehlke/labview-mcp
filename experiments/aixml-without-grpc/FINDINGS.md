@@ -1412,6 +1412,51 @@ NOT taking the 8 bytes, which the patch does below version 20, so the field may 
 8 bytes - its layout is not decoded. The composer reads none of these; `vi2aixml.py` falls back to
 raw for such blocks.
 
+**The user's third LabVIEW 2025 test moved the question from the file to the render.** Both
+`ProbeC_lv25layout.vi` and LabVIEW's own 2025 save of the crashing VI load, show their diagram
+and print to HTML from LabVIEW 2025's IDE; the server's render of the composed one still aborted.
+
+### Print.VI To HTML draws nothing of a diagram outside its window's dBounds (2026-10-12)
+
+Measured in LabVIEW 2026 over the server's own route - `PrintVIToHTML` over ActiveX, format 4,
+PNG, 24 bit, on a VI loaded only through `GetVIReference` (scratch `render_ink.ps1`, ink = pixels
+darker than 240):
+
+| VI | diagram image | ink |
+|---|---|---|
+| composed t07, t77, t85, t86, t94, the user's minimal repro | right size | **0** |
+| the same t07 resaved by LabVIEW (`SaveInstrument`), or rendered after its panel was opened | 234 x 78 | 0 |
+| NI's conversion of the same t07 document | 137 x 35 | 1 445 |
+| NI's `Is Error Cluster.vi` (40 px tall), `Get Color with Maximum Contrast Ratio.vi` (94 px) | | 3 423, 3 946 |
+| composed t157, t162, t128 and every composed diagram reaching below y 143 | | drawn |
+| composed t07 with the BD `dBounds` moved to `(0, 0, 276, 515)` | 234 x 78 | **1 625**, complete |
+
+`dBounds` of the block diagram's `oHExt` is the region of the diagram the window shows: in
+LabVIEW's saves it lies over the objects, NI's converter moves it there (t07: objects from y 251,
+`dBounds (121, 141, 416, 686)`), and the skeleton's `(143, 162, 419, 677)` stayed put while the
+composer lays out from (40, 40). Every blank one ends above y 143; overlap is what decides - t157,
+779 x 234 and only partly inside, drew whole. `Composer.fit_diagram_view` puts `dBounds`' top-left
+20 px above and left of the topmost and leftmost object, size kept: all five blank suite VIs drew,
+t157 unchanged. This explains a blank render; the user's class tests reach y 506 and 916, so it
+is not the whole LabVIEW 2025 abort. The whole suite with it: 131 PASS and 5 LOADS of 136 - but LabVIEW's log was
+already saturated by the render crashes, so the insanity check saw nothing that run. Accepted over
+raw stdio: `lvai_generate_vi` (pylabview, `measureDiagram`) on the minimal repro measured 259 x 48
+and the PNG shows the class constant, the call and the indicator, where it was blank before.
+
+**Format 4 is COMPLETE** - it adds the hierarchy image and every subVI's icon (the class's and
+its methods', `Sensor_lvclass_Read_Gaini.png`), which a print "with block diagram" in the IDE
+does not. Format 1, STANDARD, writes `docc`, `docp` and `docd` only; `diagramSize` reads only
+`docd`, so the ActiveX render prints format 1 since. Format enum: Custom, Standard, Using Panel,
+Using SubVI, Complete (`scripts/lvdoc_print.xml`).
+
+**t74 kills LabVIEW 2026 in the same print, OPEN.** Rendered after ~30 others in one scan, and
+again ALONE after a restart with `dBounds` fitted: 17, then 45 `Unable to create DIB Section`
+(`image.cpp`) with `Unable to delete IGetMesaBuffer bitmap`, then the process is gone. Its array
+constants include a cluster array, whose element cluster carries `minPaneSize (-258, -508)` and
+`origin (-262, -512)` - the values of the part's donor (`parr2.vi`, a VI NI's converter built) -
+against `docBounds` the composer recomputed. Not established as the cause; NI's conversion of t74
+has not been rendered. GDI objects per render: +1 to +15, not a leak that explains it.
+
 **Measured.** A hand-written caller (constant -> Write Width -> Read Width) returned 3.5 and 7.25;
 `t128_dynamic_class_call` against the committed fixture `tests/fixtures/Box` (built without NI's
 service) passes 2 of 2; the NewWay test VIs composed this way are `execState 1` in a FRESH LabVIEW,

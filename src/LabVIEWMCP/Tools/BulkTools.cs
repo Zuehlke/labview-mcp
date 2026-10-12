@@ -561,11 +561,23 @@ internal sealed class BulkTools(LvaiConnection connection)
         DiagramSize.ChainResult? chain = null;
         try { chain = DiagramSize.Chain(await File.ReadAllTextAsync(aixmlPath, ct)); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        var running = LabViewCom.RunningPids();
         var (measured, png) = await (MeasureDiagram?.Invoke(viPath, timeoutSeconds, ct)
             ?? (overCom
                 ? RenderTools.TopLevelSizeOverComAsync(viPath, timeoutSeconds, ct)
                 : new RenderTools(connection).TopLevelSizeAsync(viPath, timeoutSeconds, ct)));
         var step = DiagramSize.Step(measured, chain);
+        // A RENDER THAT KILLED LabVIEW read as "could not be rendered" beside `ok: true` - the
+        // user's bug report of 2026-10-12, where LabVIEW 2025 died in exactly this step and
+        // nothing in the answer said so.
+        if (measured is null && LabViewCom.AnyGone(running))
+        {
+            step["labviewDied"] = true;
+            step["note"] = " LabVIEW DIED DURING THIS RENDER - a LabVIEW process that ran before " +
+                           "it is gone. The VI is written; every later call needs LabVIEW started " +
+                           "again. Its own log (%TEMP%\\LabVIEW_*_cur.txt) is overwritten on the " +
+                           "next start - copy it first." + step["note"]?.GetValue<string>();
+        }
         step["png"] = png;
         step["elapsedMs"] = watch.ElapsedMilliseconds;
         return step;
