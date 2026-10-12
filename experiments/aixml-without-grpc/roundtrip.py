@@ -68,7 +68,10 @@ def main(argv):
             continue
         verdicts = []
         for case in expect[name].get("cases", []):
-            state, got, raw = selftest.lvcom(vi2, case.get("inputs", ""), list(case["outputs"]))
+            # a live case's window messages too (Panel Close?, Key Down? fired for real) - without
+            # them t133, t138, t139 and t142 failed here while passing in selftest.py
+            state, got, raw = selftest.lvcom(vi2, case.get("inputs", ""), list(case["outputs"]),
+                                             post=case.get("post"), post_after_ms=case.get("postAfterMs"))
             ok = all(selftest.same(v, got.get(k)) for k, v in case["outputs"].items())
             verdicts.append("%s %s" % ("ok" if ok else "FAIL", ", ".join("%s=%s" % (k, got.get(k)) for k in case["outputs"])))
         rows.append((name, "PASS" if all(v.startswith("ok") for v in verdicts) else "FAIL", "; ".join(verdicts)))
