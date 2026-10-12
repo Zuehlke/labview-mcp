@@ -593,12 +593,16 @@ loaded at all. What it lacked was the writing side, and that is now measured and
   `0x8000`, `Infra/PaneDispatch.cs`): the LVSR flag is not set on a wizard-made accessor.
 - **Its links are four record kinds, all decoded from 22 records in four LabVIEW-saved test VIs:**
   `VIPI` in LIvi for the class (first, content 0) and for each method called (its name NESTED -
-  `01`, length, name - its content its OWN 0-based INDEX in LIvi, the VIVI records before it
-  counted); `DyOM` in LIbd per method, content = that `VIPI`'s index, its cache list the call
-  nodes' `dynLink` uids; `FPPI` and `DDPI` per class constant, their cache list the constants'
-  `ddo` uids. **This said "1-based position" until 2026-10-12**, and the composer wrote one past the
-  record: LabVIEW loaded that with up to five methods called and refused six as `Memory or data
-  structure corrupt`. LabVIEW's own saves read 3..8 on records 4..9; `t157_six_dynamic_calls`.
+  `01`, length, name - its content an id unique among the method links, which we write as its OWN
+  0-based INDEX in LIvi, the VIVI records before it counted); `DyOM` in LIbd per method, content =
+  that `VIPI`'s content, its cache list the call nodes' `dynLink` uids; `FPPI` and `DDPI` per class
+  constant, their cache list the constants' `ddo` uids. **The content is not a position LabVIEW
+  checks** - NI's converter writes the 0-based index, LabVIEW resaving our VI wrote one higher, both
+  load. What made a VI calling eight methods (a Caraya test: six) `Memory or data structure corrupt`,
+  Error 74, until 2026-10-12 was the ENCODING of contents 9 and 10: pylabview writes TAB and LF raw
+  and unescapes `&#xNN;` only for the other control bytes, so a written `&#x09;` stayed six
+  characters long. An earlier correction the same day blamed the numbering and only moved the fault
+  from the sixth method to the eighth. `t162_ten_class_links` carries both values.
 - **pylabview could not read those records at all** - LabVIEW 2026 writes 8 more bytes into every
   class link cache (0 in a `VIPI`, `00000000ff000000` elsewhere) and upstream's parser then
   misread the offset list and left the whole block binary. `tools/pylabview/patches/patches.json`,

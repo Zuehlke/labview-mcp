@@ -1,0 +1,23 @@
+<VI _name="T162 Ten Class Links.vi" description="Two classes, eight distinct methods and one vi.lib call: the method links carry contents 9 and 10 - a TAB and a line feed. Written as literal character references they stayed six characters long in the file, and LabVIEW refused the VI with Error 74 until 2026-10-12.">
+  <Constant _name="gauge" type="ref{UDClassInst}" uid="4200" uid_parent="root" value="" outputs="value:4200.value"/>
+  <Constant _name="box" type="ref{UDClassInst}" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="name" type="string" uid="4210" uid_parent="root" value="" outputs="value:4210.value"/>
+  <Control _name="gain" type="double" uid="4211" uid_parent="root" value="0" outputs="value:4211.value"/>
+  <Control _name="offset" type="double" uid="4212" uid_parent="root" value="0" outputs="value:4212.value"/>
+  <Control _name="width" type="double" uid="4213" uid_parent="root" value="0" outputs="value:4213.value"/>
+  <Control _name="text" type="string" uid="4214" uid_parent="root" value="" outputs="value:4214.value"/>
+  <Call target="Trim Whitespace (string).vi" uid="4245" uid_parent="root" inputs="string:4214.value" outputs="trimmed string:4245.t"/>
+  <Call target="Gauge.lvclass:Write Name.vi" uid="4230" uid_parent="root" inputs="Gauge in:4200.value,Name:4210.value" outputs="Gauge out:4230.Gauge out"/>
+  <Call target="Gauge.lvclass:Write Gain.vi" uid="4231" uid_parent="root" inputs="Gauge in:4230.Gauge out,Gain:4211.value" outputs="Gauge out:4231.Gauge out"/>
+  <Call target="Gauge.lvclass:Write Offset.vi" uid="4232" uid_parent="root" inputs="Gauge in:4231.Gauge out,Offset:4212.value" outputs="Gauge out:4232.Gauge out"/>
+  <Call target="Gauge.lvclass:Read Name.vi" uid="4240" uid_parent="root" inputs="Gauge in:4232.Gauge out" outputs="Gauge out:4240.Gauge out,Name:4240.Name"/>
+  <Call target="Gauge.lvclass:Read Gain.vi" uid="4241" uid_parent="root" inputs="Gauge in:4240.Gauge out" outputs="Gauge out:4241.Gauge out,Gain:4241.Gain"/>
+  <Call target="Gauge.lvclass:Read Offset.vi" uid="4242" uid_parent="root" inputs="Gauge in:4241.Gauge out" outputs="Offset:4242.Offset"/>
+  <Call target="Box.lvclass:Write Width.vi" uid="4243" uid_parent="root" inputs="Box in:4201.value,Width:4213.value" outputs="Box out:4243.Box out"/>
+  <Call target="Box.lvclass:Read Width.vi" uid="4244" uid_parent="root" inputs="Box in:4243.Box out" outputs="Width:4244.Width"/>
+  <Indicator _name="name out" type="string" uid="4250" uid_parent="root" value="" inputs="value:4240.Name"/>
+  <Indicator _name="gain out" type="double" uid="4251" uid_parent="root" value="0" inputs="value:4241.Gain"/>
+  <Indicator _name="offset out" type="double" uid="4252" uid_parent="root" value="0" inputs="value:4242.Offset"/>
+  <Indicator _name="width out" type="double" uid="4253" uid_parent="root" value="0" inputs="value:4244.Width"/>
+  <Indicator _name="trimmed" type="string" uid="4254" uid_parent="root" value="" inputs="value:4245.t"/>
+</VI>

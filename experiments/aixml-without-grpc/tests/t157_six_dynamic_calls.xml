@@ -1,4 +1,4 @@
-<VI _name="T157 Six Dynamic Calls.vi" description="A class constant through all six dynamic-dispatch accessors of Gauge: three writes, three reads. Six distinct methods made the method links' content index run one past LIvi until 2026-10-12 - five loaded, six were Memory or data structure corrupt.">
+<VI _name="T157 Six Dynamic Calls.vi" description="A class constant through all six dynamic-dispatch accessors of Gauge: three writes, three reads. Six distinct methods, contents 1 to 6. t162 carries the contents 9 and 10 that were Memory or data structure corrupt until 2026-10-12.">
   <Constant _name="gauge" type="ref{UDClassInst}" uid="4200" uid_parent="root" value="" outputs="value:4200.value"/>
   <Control _name="name" type="string" uid="4210" uid_parent="root" value="" outputs="value:4210.value"/>
   <Control _name="gain" type="double" uid="4211" uid_parent="root" value="0" outputs="value:4211.value"/>

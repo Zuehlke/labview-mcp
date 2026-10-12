@@ -1321,15 +1321,28 @@ Width.vi`) and `APILinkCacheList`, the binary fallback (kept for an unpatched bu
 | record | block | names | content | cache list |
 |---|---|---|---|---|
 | `VIPI` (class) | LIvi, first | class, `07 00` | 0 | - |
-| `VIPI` (method) | LIvi | class, NESTED name `01 <len> <name>` | its OWN 0-based index in LIvi, VIVI records counted | - |
-| `DyOM` | LIbd | as its `VIPI` | that `VIPI`'s index | the call nodes' `dynLink` uids |
+| `VIPI` (method) | LIvi | class, NESTED name `01 <len> <name>` | an id unique among the method links; we write its OWN 0-based index in LIvi, VIVI records counted | - |
+| `DyOM` | LIbd | as its `VIPI` | that `VIPI`'s content | the call nodes' `dynLink` uids |
 
-**Corrected 2026-10-12: the content is the 0-based INDEX.** This table said "1-based position" and the
-composer wrote it so - one past the record. LabVIEW loaded that with up to five methods called and
-refused SIX, any six, as `Memory or data structure corrupt` (`linker info inconsistent` in its log):
-the gRPC-built `Test Sensor.vi` of the demo, saved by LabVIEW, carries content 3..8 on LIvi records
-4..9, and its `Main.vi` 1..3 on 2..4. Why five passed is not established - Box's two methods (t128)
-were off the end too. `t157_six_dynamic_calls` against the `Gauge` fixture (six accessors) pins it.
+**Corrected TWICE on 2026-10-12, and the second correction retracts the first.** This table said
+"1-based position" and the composer wrote it so. LabVIEW refused SIX methods in a Caraya test as
+`Memory or data structure corrupt` (`linker info inconsistent` in its log), and the first correction
+read the cause as the numbering: NI's converter writes content = the 0-based index (the GrpcDemo
+`Test Sensor.vi` carries 3..8 on LIvi records 3..8, its `Main.vi` 1..3 on 1..3), the composer was
+switched to that, and six loaded. **The numbering was never the cause.** LabVIEW RESAVING two of our
+VIs (`lvai_set_vi_icon`) wrote content = index + 1 - 4..9 on records 3..8, 2..4 on 1..3 - so LabVIEW's
+own output carries both, and both load: the content is an id the `DyOM` points at, not a position
+LabVIEW checks. The defect was the ENCODING of the two values 9 and 10. The composer wrote every
+control byte as pylabview's literal `&#xNN;`, but pylabview escapes - and therefore unescapes - only
+the control bytes OTHER than TAB and LF (`LVxml.escape_cdata_control_chars`); it writes 9 as a raw
+TAB, and a written `&#x09;` stayed six characters long in the file. A Caraya test has two VIVI
+records before its methods, so its sixth method got content 9 under the 1-based numbering - exactly
+"five load, six do not" - and the 0-based numbering only moved the fault to the EIGHTH method, which
+is what the user's bug report hit (8 Sensor methods, Error 74; 7 loaded). `Composer._lit` writes TAB
+and LF raw now, and a byte above 0x7E as its MacRoman character, as pylabview reads it.
+`t162_ten_class_links` carries contents 9 and 10 (two classes, eight methods, one VIVI): the
+committed composer refused it as Error 74, the fixed one loads and runs it - an A/B on one document.
+`t157_six_dynamic_calls` against the `Gauge` fixture (six accessors) stays.
 | `FPPI`, `DDPI` | LIbd | class, `07 00` | 0 | the class constants' `ddo` uids |
 
 Path: the `.lvclass`, relative to the caller file. Version: the class's version as four uint16 -

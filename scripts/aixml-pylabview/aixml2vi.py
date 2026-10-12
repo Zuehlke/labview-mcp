@@ -4124,8 +4124,24 @@ class Composer:
 
     @staticmethod
     def _lit(data):
-        """Bytes as pylabview writes an unprintable string: `&#xNN;` per byte, literally."""
-        return "".join("&#x%02X;" % b if b < 0x20 or b > 0x7E else chr(b) for b in data)
+        """Bytes as pylabview reads a string back: a control byte as the literal text `&#xNN;` -
+        EXCEPT TAB and LF, which pylabview neither escapes nor unescapes (LVxml's control-char
+        list leaves out 0x09 and 0x0A), so those go in RAW - and a byte above 0x7E as its
+        MacRoman character, the file's encoding. Written as `&#x09;` / `&#x0A;` they stayed six
+        characters long in the file: a class-link content of 9 or 10 - the eighth method a VI
+        calls - and LabVIEW refused the VI, `linker info inconsistent`, Error 74 (the user's
+        bug report, 2026-10-12). A nested method name's length byte goes through here too."""
+        out = []
+        for b in data:
+            if b in (0x09, 0x0A):
+                out.append(chr(b))
+            elif b < 0x20:
+                out.append("&#x%02X;" % b)
+            elif b > 0x7E:
+                out.append(bytes([b]).decode("mac_roman"))
+            else:
+                out.append(chr(b))
+        return "".join(out)
 
     def write_class_links(self, lvin, bdhp, path_ref):
         """The links of a CLASS a VI uses, as LabVIEW 2026 saves them - read off its own saves of
@@ -4133,18 +4149,21 @@ class Composer:
         only with pylabview patched for that version's 8 extra link-cache bytes (patches.json,
         class-link-cache-extra).
           LIvi  VIPI per class, FIRST, second name 07 00, content 0;
-                VIPI per method called, its name NESTED (01, length, name), content = its OWN
-                0-based INDEX among LIvi's records, the VIVI records before it counted
-          LIbd  DyOM per method called: the same names, content = that method's VIPI index,
+                VIPI per method called, its name NESTED (01, length, name), content = an id
+                unique among the method links - written as the record's own 0-based index
+                among LIvi's records, the VIVI records before it counted
+          LIbd  DyOM per method called: the same names, content = that method's VIPI content,
                 its cache list the call nodes' dynLink uids
                 FPPI and DDPI per class with constants: cache list the constants' ddo uids
         The 8 bytes after the content are 0 in a VIPI and 00000000ff000000 in the others, in
         every one of the 22 records measured; what they mean is not established.
-        The content was written 1-based until 2026-10-12 - one past the record. LabVIEW loaded
-        that with up to five methods called and refused six (`Memory or data structure corrupt`,
-        any six); why five passed is not established. The 0-based index is read off three of
-        LabVIEW's own saves - content 3..8 on LIvi records 4..9, 1..3 on records 2..4 - and loads
-        and runs with six."""
+        The content is NOT strictly a position: NI's converter writes the 0-based index (content
+        3..8 on LIvi records 3..8 of a Caraya test), and LabVIEW resaving one of our VIs wrote it
+        one higher (4..9 on records 3..8) - both LabVIEW's own output, and both load. What
+        broke the 1-based form until 2026-10-12 was the ENCODING: a content of 9 or 10 went into
+        the file as six literal characters (`_lit`), so the sixth method of a Caraya test - two
+        VIVI records before it - and the eighth of any VI were `Memory or data structure
+        corrupt`, Error 74. t162_ten_class_links carries both values."""
         classes = {}
         for link in self.dyn_links.values():
             classes.setdefault(link["owner"], {"qual": link["qual"][:1], "lib_ref": link["lib_ref"]})

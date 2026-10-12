@@ -1776,5 +1776,32 @@
     }
    }
   ]
+ },
+ "t162_ten_class_links": {
+  "search": [
+   "fixtures"
+  ],
+  "cases": [
+   {
+    "inputs": "name=PT-100;gain=2.5;offset=-0.75;width=12.5;text=  pad ",
+    "outputs": {
+     "name out": "PT-100",
+     "gain out": 2.5,
+     "offset out": -0.75,
+     "width out": 12.5,
+     "trimmed": "pad"
+    }
+   },
+   {
+    "inputs": "name=X;gain=-4;offset=8;width=-1;text=x",
+    "outputs": {
+     "name out": "X",
+     "gain out": -4,
+     "offset out": 8,
+     "width out": -1,
+     "trimmed": "x"
+    }
+   }
+  ]
  }
 }
