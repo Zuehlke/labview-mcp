@@ -1,4 +1,4 @@
-<VI _name="lvai_add_class_method.vi" description="Make an AIXML-generated VI a MEMBER of a LabVIEW class\2C retype its class-typed connector pane terminals\2C and set the ones that should dispatch to DYNAMIC DISPATCH - all in ONE run.\0A\0AWHY ONE RUN. Measured 2026-09-02 over a four-method DAQmx class\3A driving the retype\2C the membership and the wire rules as separate helpers cost about 105 s of wall clock for 3.3 s inside LabVIEW\2C and a misdiagnosis on top of that cost 70 s more. The sequence never varies\2C which is the signature of a step that should be a tool.\0A\0AORDER MATTERS AND IS NOT THE OBVIOUS ONE. Replace the terminals\2C then AddItemFromMemory\2C then SetWireRule\2C then the VI's own Save.Instrument\2C then the class Save. Saving the VI before it is a member writes it with no owning-library link\2C LabVIEW then sees library and VI disagree\2C marks the LIBRARY broken\2C and the library blocks EVERY VI it owns - which reads as Error 1003 on unrelated members.\0A\0ASAVE.INSTRUMENT ALONE DOES NOT PERSIST A REPLACE ON A CLASS MEMBER. The owning class must be saved in the SAME run\3B measured 2026-09-02\2C a run that saved only the VI reported success and left the on-disk file unretyped\2C which then read back as a healthy VI through every file-level check.\0A\0AAND THE REPLACE IS A SILENT NO-OP OUTSIDE THE IDE'S OWN APPLICATION INSTANCE. Run from the addon's local instance it answers 'terminals retyped' with every error cluster zero and changes nothing. That is why this opens everything through Project\3AActive Project -> Application\2C and why A PROJECT MUST BE OPEN AND ACTIVE\3A with none open that hop answers Error 1055.\0A\0ATERMINALS ARE FOUND BY NAME\2C NEVER BY INDEX. Controls[] order is front-panel creation order for a generated VI and error-clusters-first for a template-built one\2C so an index is not portable. The Case Structure is there because Search 1D Array answers -1 for a miss and Index Array then CLAMPS TO ELEMENT 0 - which would silently retype the error cluster instead. 'terminals retyped' is the check\3A it must equal the number of names asked for.\0A\0AEVERY REFNUM IS CLOSED. Leaking the refnum a class open returns keeps the class in LabVIEW's memory past a project close\2C so the next run binds to a stale copy.\0A\0ARE-RUNNING THIS OVER AN EXISTING MEMBER IS IDEMPOTENT\2C AND THAT TOOK A REPAIR. AddItemFromMemory answers Error 56002 when the VI is already a member\2C and until 2026-09-07 that error travelled straight down the chain - SetWireRule\2C Save.Instrument and the class Save were all skipped\2C so the RETYPE WAS DISCARDED while the freshly converted diagram had already been written to disk\2C leaving the member in a WORSE state than before the call. TWO codes are now filtered out immediately after the node and reported as 'member already existed'\2C so a second run retypes\2C rewires and saves exactly as the first did\3A 56002 (the VI is already a LOOSE PROJECT ITEM\2C which is what an open project during the convert produces) and 1004 (the VI is already a MEMBER\2C which is what a plain re-run produces - measured 2026-09-07\2C where a filter on 56002 alone left the common case broken).\0A\0ATHE FILTER IS GATED ON THE 'member exists' INPUT\2C AND THAT GATE IS THE WHOLE POINT. 1004 has at least two causes - the VI is already a member\2C or the Name input was given a full path where a bare name belongs (section 3.0) - so filtering it blindly would mask a real bug. The caller reads the .lvclass itself\2C which is plain XML and needs no LabVIEW\2C and passes '1' only when the file already lists this VI. So the tolerance applies exactly where re-adding is a no-op and nowhere else. Every other code still stops the chain.\0A\0APER-STAGE ERROR INDICATORS ARE DELIBERATE\3A a merged error chain names only the invoke node\2C and this diagram has many.">
+<VI _name="lvai_add_class_method.vi" description="Make an AIXML-generated VI a MEMBER of a LabVIEW class\2C retype its class-typed connector pane terminals\2C and set the ones that should dispatch to DYNAMIC DISPATCH - all in ONE run.\0A\0AWHY ONE RUN. Measured 2026-09-02 over a four-method DAQmx class\3A driving the retype\2C the membership and the wire rules as separate helpers cost about 105 s of wall clock for 3.3 s inside LabVIEW\2C and a misdiagnosis on top of that cost 70 s more. The sequence never varies\2C which is the signature of a step that should be a tool.\0A\0AORDER MATTERS AND IS NOT THE OBVIOUS ONE. Replace the terminals\2C then AddItemFromMemory\2C then SetWireRule\2C then the VI's own Save.Instrument\2C then the class Save. Saving the VI before it is a member writes it with no owning-library link\2C LabVIEW then sees library and VI disagree\2C marks the LIBRARY broken\2C and the library blocks EVERY VI it owns - which reads as Error 1003 on unrelated members.\0A\0ASAVE.INSTRUMENT ALONE DOES NOT PERSIST A REPLACE ON A CLASS MEMBER. The owning class must be saved in the SAME run\3B measured 2026-09-02\2C a run that saved only the VI reported success and left the on-disk file unretyped\2C which then read back as a healthy VI through every file-level check.\0A\0AAND THE REPLACE IS A SILENT NO-OP OUTSIDE THE IDE'S OWN APPLICATION INSTANCE. Run from the addon's local instance it answers 'terminals retyped' with every error cluster zero and changes nothing. That is why this opens everything through Project\3AActive Project -> Application\2C and why A PROJECT MUST BE OPEN AND ACTIVE\3A with none open that hop answers Error 1055.\0A\0ATERMINALS ARE FOUND BY NAME\2C NEVER BY INDEX. Controls[] order is front-panel creation order for a generated VI and error-clusters-first for a template-built one\2C so an index is not portable. The Case Structure is there because Search 1D Array answers -1 for a miss and Index Array then CLAMPS TO ELEMENT 0 - which would silently retype the error cluster instead. 'terminals retyped' is the check\3A it must equal the number of names asked for - and it counts only Replace calls that answered NO ERROR. Until 2026-10-12 it counted names FOUND and the Replace's own error out was left unwired\2C so a refused Replace read as retyped. 'replace error codes' has one entry per name asked for (-1 means the name is not on the panel)\2C and 'classes after replace' re-reads the panel AFTER the loop\2C so a Replace that answered 0 and changed nothing in memory is visible before the saves.\0A\0AEVERY REFNUM IS CLOSED. Leaking the refnum a class open returns keeps the class in LabVIEW's memory past a project close\2C so the next run binds to a stale copy.\0A\0ARE-RUNNING THIS OVER AN EXISTING MEMBER IS IDEMPOTENT\2C AND THAT TOOK A REPAIR. AddItemFromMemory answers Error 56002 when the VI is already a member\2C and until 2026-09-07 that error travelled straight down the chain - SetWireRule\2C Save.Instrument and the class Save were all skipped\2C so the RETYPE WAS DISCARDED while the freshly converted diagram had already been written to disk\2C leaving the member in a WORSE state than before the call. TWO codes are now filtered out immediately after the node and reported as 'member already existed'\2C so a second run retypes\2C rewires and saves exactly as the first did\3A 56002 (the VI is already a LOOSE PROJECT ITEM\2C which is what an open project during the convert produces) and 1004 (the VI is already a MEMBER\2C which is what a plain re-run produces - measured 2026-09-07\2C where a filter on 56002 alone left the common case broken).\0A\0ATHE FILTER IS GATED ON THE 'member exists' INPUT\2C AND THAT GATE IS THE WHOLE POINT. 1004 has at least two causes - the VI is already a member\2C or the Name input was given a full path where a bare name belongs (section 3.0) - so filtering it blindly would mask a real bug. The caller reads the .lvclass itself\2C which is plain XML and needs no LabVIEW\2C and passes '1' only when the file already lists this VI. So the tolerance applies exactly where re-adding is a no-op and nowhere else. Every other code still stops the chain.\0A\0APER-STAGE ERROR INDICATORS ARE DELIBERATE\3A a merged error chain names only the invoke node\2C and this diagram has many.">
   <Control _name="vi path" type="string" uid="10" uid_parent="root" value="" outputs="value:10.value"/>
   <Control _name="class path" type="string" uid="11" uid_parent="root" value="" outputs="value:11.value"/>
   <Control _name="class terminal names" type="string" uid="12" uid_parent="root" value="" outputs="value:12.value"/>
@@ -36,19 +36,33 @@
 
   <Structure _name="For Loop" count="" maxin="" maxout="" uid="50" uid_parent="root">
     <Tunnel _id="In1" inputs="value:32.array" mode="index" outputs="value:51.value" uid="51" uid_parent="50"/>
-    <Tunnel _id="In2" inputs="value:44.value" outputs="value:52.value" uid="52" uid_parent="50"/>
-    <Tunnel _id="In3" inputs="value:39.controls" outputs="value:53.value" uid="53" uid_parent="50"/>
-    <Tunnel _id="In4" inputs="value:25.array" mode="index" outputs="value:54.value" uid="54" uid_parent="50"/>
+    <Tunnel _id="In2" inputs="value:25.array" mode="index" outputs="value:54.value" uid="54" uid_parent="50"/>
+    <ShiftReg uid="300" uid_parent="50">
+      <Left inputs="value:36.vi reference" outputs="value:301.vi" uid="302" uid_parent="300"/>
+      <Right inputs="value:301.vi" outputs="value:303.vi" uid="304" uid_parent="300"/>
+    </ShiftReg>
+    <ShiftReg uid="330" uid_parent="50">
+      <Left inputs="value:39.error out" outputs="value:331.err" uid="332" uid_parent="330"/>
+      <Right inputs="value:331.err" outputs="value:333.err" uid="334" uid_parent="330"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:301.vi" outputs="Front Panel:340.panel,reference out:340.reference out,error out:340.error out" uid="340" uid_parent="50"/>
+    <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:340.panel" outputs="Controls[]:341.controls,reference out:341.reference out,error out:341.error out" uid="341" uid_parent="50"/>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="345" uid_parent="50">
+      <Tunnel _id="In1" inputs="value:341.controls" mode="index" outputs="value:346.value" uid="346" uid_parent="345"/>
+      <Node _name="Property Node" fields="read+Terminal" type="{LV.Control}" inputs="reference:346.value" outputs="Terminal:347.term,reference out:347.reference out,error out:347.error out" uid="347" uid_parent="345"/>
+      <Node _name="Property Node" fields="read+Name" type="{LV.Terminal}" inputs="reference:347.term" outputs="Name:348.name,reference out:348.reference out,error out:348.error out" uid="348" uid_parent="345"/>
+      <Tunnel _id="Out1" inputs="value:348.name" mode="index" outputs="value:349.value" uid="349" uid_parent="345"/>
+    </Structure>
     <Node _name="String To Path" inputs="string:54.value" outputs="path:58.path" uid="58" uid_parent="50"/>
-    <Node _name="Search 1D Array" inputs="1D array:52.value,element:51.value,start index (0):" outputs="index of element:55.index of element" uid="55" uid_parent="50"/>
+    <Node _name="Search 1D Array" inputs="1D array:349.value,element:51.value,start index (0):" outputs="index of element:55.index of element" uid="55" uid_parent="50"/>
     <Constant _name="zero" outputs="value:56.value" type="int32" uid="56" uid_parent="50" value="0"/>
     <Node _name="Greater Or Equal?" inputs="x:55.index of element,y:56.value" outputs="x &gt;= y?:57.x &gt;= y?" uid="57" uid_parent="50"/>
     <Structure _name="Case Structure" selectin="57.x &gt;= y?" uid="60" uid_parent="50">
-      <Tunnel _id="In1" inputs="value:53.value" uid="61" uid_parent="60"/>
+      <Tunnel _id="In1" inputs="value:341.controls" uid="61" uid_parent="60"/>
       <Tunnel _id="In2" inputs="value:55.index of element" uid="62" uid_parent="60"/>
       <Tunnel _id="In3" inputs="value:58.path" uid="63" uid_parent="60"/>
       <CaseFrame selector="False" selectout="" uid="64" uid_parent="60">
-        <Constant _name="none" outputs="value:65.value" type="int32" uid="65" uid_parent="64" value="0"/>
+        <Constant _name="not on the panel" outputs="value:65.value" type="int32" uid="65" uid_parent="64" value="-1"/>
         <Tunnel _id="Out1" inputs="value:65.value" uid="66" uid_parent="64"/>
       </CaseFrame>
       <CaseFrame selector="True" selectout="" uid="70" uid_parent="60">
@@ -56,20 +70,42 @@
         <Tunnel _id="In2" outputs="value:72.value" uid="72" uid_parent="70"/>
         <Tunnel _id="In3" outputs="value:73.value" uid="73" uid_parent="70"/>
         <Node _name="Index Array" inputs="array:71.value,index:72.value" outputs="element:74.element" uid="74" uid_parent="70"/>
-        <Node _name="Invoke Node" target="Replace" type="{LV.Control}" inputs="reference:74.element,Path:73.value" outputs="reference out:,error out:," uid="75" uid_parent="70"/>
-        <Constant _name="one" outputs="value:76.value" type="int32" uid="76" uid_parent="70" value="1"/>
-        <Tunnel _id="Out1" inputs="value:76.value" uid="77" uid_parent="70"/>
+        <Node _name="Invoke Node" target="Replace" type="{LV.Control}" inputs="reference:74.element,Path:73.value" outputs="reference out:,error out:75.error out" uid="75" uid_parent="70"/>
+        <Node _name="Unbundle By Name" fields="code" inputs="input cluster:75.error out" outputs="code:76.code" uid="76" uid_parent="70"/>
+        <Tunnel _id="Out1" inputs="value:76.code" uid="77" uid_parent="70"/>
       </CaseFrame>
       <Tunnel _id="Out1" outputs="value:78.value" uid="78" uid_parent="60"/>
     </Structure>
-    <Tunnel _id="Out1" inputs="value:78.value" mode="index" outputs="value:79.value" uid="79" uid_parent="50"/>
+    <Node _name="Equal?" inputs="x:78.value,y:56.value" outputs="x = y?:305.eq" uid="305" uid_parent="50"/>
+    <Constant _name="one" outputs="value:306.value" type="int32" uid="306" uid_parent="50" value="1"/>
+    <Node _name="Select" inputs="t:306.value,s:305.eq,f:56.value" outputs="s? t\3Af:307.sel" uid="307" uid_parent="50"/>
+    <Tunnel _id="Out1" inputs="value:307.sel" mode="index" outputs="value:79.value" uid="79" uid_parent="50"/>
+    <Tunnel _id="Out2" inputs="value:78.value" mode="index" outputs="value:308.value" uid="308" uid_parent="50"/>
   </Structure>
 
   <Node _name="Add Array Elements" inputs="numeric array:79.value" outputs="sum:80.sum" uid="80" uid_parent="root"/>
   <Indicator _name="terminals retyped" inputs="value:80.sum" type="int32" uid="81" uid_parent="root" value="0"/>
+  <Indicator _name="replace error codes" inputs="value:308.value" type="array{int32}" uid="309" uid_parent="root" value="[]"/>
   <Indicator _name="terminal names seen" inputs="value:44.value" type="array{string}" uid="82" uid_parent="root" value="[]"/>
 
-  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:22.app,Path:35.path,error in (no error):39.error out" outputs="reference out:,error out:85.error out,LVClass.Open:85.LVClass.Open" uid="85" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:303.vi,error in (no error):333.err" outputs="Front Panel:350.panel,reference out:350.reference out,error out:350.error out" uid="350" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:350.panel,error in (no error):350.error out" outputs="Controls[]:310.controls,reference out:310.reference out,error out:310.error out" uid="310" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="320" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:310.controls" mode="index" outputs="value:321.value" uid="321" uid_parent="320"/>
+    <ShiftReg uid="360" uid_parent="320">
+      <Left inputs="value:310.error out" outputs="value:361.err" uid="362" uid_parent="360"/>
+      <Right inputs="value:361.err" outputs="value:363.err" uid="364" uid_parent="360"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="read+Class Name" type="{LV.Control}" inputs="reference:321.value" outputs="Class Name:322.cls,reference out:322.reference out,error out:322.error out" uid="322" uid_parent="320"/>
+    <Node _name="Property Node" fields="read+Terminal" type="{LV.Control}" inputs="reference:322.reference out" outputs="Terminal:323.term,reference out:323.reference out,error out:323.error out" uid="323" uid_parent="320"/>
+    <Node _name="Property Node" fields="read+Name" type="{LV.Terminal}" inputs="reference:323.term" outputs="Name:324.name,reference out:324.reference out,error out:324.error out" uid="324" uid_parent="320"/>
+    <Tunnel _id="Out1" inputs="value:322.cls" mode="index" outputs="value:325.value" uid="325" uid_parent="320"/>
+    <Tunnel _id="Out2" inputs="value:324.name" mode="index" outputs="value:326.value" uid="326" uid_parent="320"/>
+  </Structure>
+  <Indicator _name="classes after replace" inputs="value:325.value" type="array{string}" uid="327" uid_parent="root" value="[]"/>
+  <Indicator _name="names after replace" inputs="value:326.value" type="array{string}" uid="328" uid_parent="root" value="[]"/>
+
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:22.app,Path:35.path,error in (no error):363.err" outputs="reference out:,error out:85.error out,LVClass.Open:85.LVClass.Open" uid="85" uid_parent="root"/>
   <Indicator _name="class open error" inputs="value:85.error out" type="cluster{bool.status,int32.code,string.source}" uid="86" uid_parent="root" value="[false,0,]"/>
 
   <Node _name="Invoke Node" target="AddItemFromMemory" type="{LV.LVClassLibrary}" inputs="reference:85.LVClass.Open,Name:13.value,error in (no error):85.error out" outputs="reference out:,error out:90.error out" uid="90" uid_parent="root"/>
