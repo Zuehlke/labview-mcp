@@ -1505,20 +1505,50 @@ class Reader:
     HGROW = {0x10000: ("reference", True), 0x40001: ("reference out", False),
              0x20000: ("error in (no error)", True), 0x80001: ("error out", False)}
 
+    _LEARNED_CLASSES = None
+
+    @classmethod
+    def learned_classes(cls):
+        """parts/class-ids-learned.json (learn_node_classes.py): CtlFlags -> class for the classes
+        refnum-classes.tsv lacks (XYGraph 0x0053, Scrollbar 0x005A, Pane 0x004B ...), and the
+        class of a node with NO reference input by its own name (`WFChart` -> LV.WaveformChart)."""
+        if cls._LEARNED_CLASSES is None:
+            p = os.path.join(aixml2vi.HERE, "parts", "class-ids-learned.json")
+            cls._LEARNED_CLASSES = json.load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
+        return cls._LEARNED_CLASSES
+
     def _vi_server_class(self, node):
+        """The class NI's export writes on a property or invoke node, read off its reference
+        input's refnum - each rule taken from NI's exports by learn_node_classes.py: a user-
+        defined TAG refnum is `GenClassTag.<node name>.<TypeName>` (a DAQmx Task's Trigger
+        properties: `GenClassTag.DAQmx Trigger.NIDAQ`), a user-defined refnum
+        `GenClass.<Ident>.<TypeName>`, ActiveX `ActiveX`, .NET `DotNet`, .NET Core (refnum type
+        39) `DotNetCore`, VISA `Visa.<Ident>`."""
+        learned = self.learned_classes()
+        node_name = (node.findtext("nodeName") or "").strip('"')
         for t in node.find("termList"):
             d = t.find("dco")
             if d is not None and d.get("class") == "hGrowCItem" and int(d.findtext("objFlags") or 0) == 0x10000:
                 tree = self.tid_tree(t)
-                if tree is not None and tree.get("RefType") == "LVObjCtl":
-                    return ref_class_name(tree.get("CtlFlags"))
-                if tree is not None and tree.get("RefType") == "UDClassInst":
+                if tree is None:
+                    return None
+                rt = tree.get("RefType")
+                if rt == "LVObjCtl":
+                    return ref_class_name(tree.get("CtlFlags")) or \
+                        learned.get("classes", {}).get((tree.get("CtlFlags") or "").upper())
+                if rt == "UDClassInst":
                     return "UDClassInst"
-                if tree is not None and tree.get("RefType") == "VisaRef":
+                if rt == "VisaRef":
                     # a VISA session's properties: NI exports the node as type="{Visa.Instr}"
                     # (Simple Serial.vi), the class from the refnum's Ident
                     return "Visa." + (tree.get("Ident") or "Instr")
-        return None
+                if rt == "UsrDefndTag" and node_name and tree.get("TypeName"):
+                    return "GenClassTag.%s.%s" % (node_name, tree.get("TypeName"))
+                if rt == "UsrDefined" and tree.get("Ident") and tree.get("TypeName"):
+                    return "GenClass.%s.%s" % (tree.get("Ident"), tree.get("TypeName"))
+                return {"AutoRef": "ActiveX", "DotNet": "DotNet", "39": "DotNetCore"}.get(rt)
+        # no reference input: an implicit node on a control, This VI, the application
+        return learned.get("nodeNames", {}).get(node_name.replace(" (strict)", ""))
 
     _PROP_NAMES = None
     _EXPORT_PROP_NAMES = None

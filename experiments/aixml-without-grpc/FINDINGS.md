@@ -15,7 +15,7 @@ State of 2026-10-10, 05:00 (the night's work is §4d and the second half of §4)
 |---|---|---|
 | AIXML → VI | `aixml2vi.py` | **88 test VIs** (`tests/`), each loaded and RUN over COM against expected outputs - 86 run, 2 load (an event loop, graphs) - with **no insanity and no log event** beyond LabVIEW's own wire-geometry repair, on a gate that now counts every DWarn |
 | AIXML → VI, NI's code | `coverage.py`, `parity.py`, `cov_load.py` | **252 of 792** of NI's own exports compose (31.8 %; 159 in the morning, 19 on 2026-10-09), **216 of them executable** in LabVIEW (86 %), none crashing it. 176 more are refused for reasons NI's converter shares (class data, Express VIs and XNodes, subVIs that do not resolve, incomplete exports, Timed Loops); of the 616 it could at best rebuild, this composer rebuilds **40.9 %** |
-| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **216 of 747** - elements 96.6 %, attributes 93.3 %, wires 88.6 % - on 2026-10-12, 23 stale cache entries also left out with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
+| VI → AIXML | `vi2aixml.py` | over **all 768** cached NI exports, nested structures included (`compare_full.py`, 2026-10-11): **143 identical in every fact**, elements 93.4 %, constant values 94.9 %, wires 87.3 %, attributes 81.7 % - against 109 / 92.8 / 94.9 / 82.7 / 79.8 for the reader before it learned binary link blocks and dynamic-dispatch calls, on the same corpus (§4); **145** with pylabview patched for LabVIEW 2026's class link records (§7a); **147** - attributes 84.0 % - once it read every static event kind, `;` between a frame's events, Event Filter Nodes and unlabelled event fields (§7a, "Graphs and their events", "Filter events"); **223 of 747** - elements 97.0 %, attributes 93.3 %, wires 88.6 % - on 2026-10-12, 23 stale cache entries also left out with 40 LOCKED VIs left out, whose NI export holds no diagram (§7a, "Typed control refnums, notifiers and named uids") |
 | both | `roundtrip.py` | AIXML → VI → AIXML (reader) → VI, the second VI RUN against the same expectations: **87 of 89 pass** (the other 2 call composed callees and are skipped); **111 of 130** on 2026-10-12, 4 skipped - the 15 failures (user events, control references as event sources, a class constant, the live-event tests) fail identically with the reader before that night's fixes |
 
 The earlier tables, kept for the record: 2026-10-09, 28 of 28 tests and the reader on the
@@ -2136,6 +2136,19 @@ ONE frame has no `<Diagram>` in NI's export - the content sits on the structure,
 property node on a VISA session: NI types it `{Visa.Instr}`, read off the refnum's `Ident`. Over the
 747: **216 identical** (206), elements 96.6 %, wires 88.6 %, tunnel facts wrong 212 (711); the
 round trip unchanged.
+
+**A property or invoke node's CLASS came out `{?}` 110 times.** The reader knew LabVIEW object
+refnums from `refnum-classes.tsv`, classes and VISA. `learn_node_classes.py` set the heap's
+evidence beside NI's class over 309 VIs, and every rule came out unanimous: a user-defined TAG
+refnum is `GenClassTag.<node name>.<TypeName>` - the CLASS is the node's `nodeName`, not the
+refnum's, since a DAQmx Task's Trigger properties are `GenClassTag.DAQmx Trigger.NIDAQ` on a `Task`
+refnum - a user-defined refnum `GenClass.<Ident>.<TypeName>`, ActiveX (`AutoRef`) `ActiveX`, .NET
+`DotNet`, refnum type 39 `DotNetCore`. Eight LabVIEW classes were missing from the table (XYGraph
+0x0053, Scrollbar 0x005A, Pane 0x004B, MixedSignalGraph, DigitalGraph, SceneGraphDisplay,
+SceneMesh, TimeFlatSequence 0x406F), and a node with NO reference input - implicit on a control,
+This VI, the application - has only its own name (`WFChart (strict)` is `LV.WaveformChart`, `Tbl`
+`LV.Table`): `parts/class-ids-learned.json` holds both. Over the 747: **223 identical** (216), elements 97.0 %;
+the round trip unchanged.
 
 ## 8. Files
 

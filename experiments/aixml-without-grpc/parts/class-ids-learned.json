@@ -1,0 +1,26 @@
+{
+ "_doc": "VI Server class of a property/invoke node, learned by learn_node_classes.py from NI's exports: by CtlFlags for classes refnum-classes.tsv lacks, and by the node's own name where it has no reference input",
+ "classes": {
+  "0X004B": "LV.Pane",
+  "0X0053": "LV.XYGraph",
+  "0X005A": "LV.Scrollbar",
+  "0X005C": "LV.MixedSignalGraph",
+  "0X0064": "LV.SceneGraphDisplay",
+  "0X0076": "LV.SceneMesh",
+  "0X0079": "LV.DigitalGraph",
+  "0X406F": "LV.TimeFlatSequence"
+ },
+ "nodeNames": {
+  "App": "LV.Application",
+  "MCListbox": "LV.MulticolumnListbox",
+  "Picture": "LV.Picture",
+  "Ring": "LV.Ring",
+  "Slide": "LV.Slide",
+  "SubPanel": "LV.SubPanel",
+  "Tbl": "LV.Table",
+  "TreeControl": "LV.TreeControl",
+  "VI": "LV.VI",
+  "WFChart": "LV.WaveformChart",
+  "WFGraph": "LV.WaveformGraph"
+ }
+}
