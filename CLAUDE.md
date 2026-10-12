@@ -3117,7 +3117,11 @@ powershell -ExecutionPolicy Bypass -File .githooks/run-tests.ps1
 
 Use the second one rather than a bare `dotnet test`: a running MCP server holds an OS lock on the
 exe, and the script stops it first. After either command the `lvai_*` tools are gone from the
-current session until the client is restarted — nothing is lost, but plan the restart.
+current session until the client is restarted — nothing is lost, but plan the restart. **That
+holds only for a server running from THIS tree's `src\LabVIEWMCP\bin`**: both scripts stop no
+other, so an installed plugin, or a server built in another worktree, keeps running. Until
+2026-10-10 both stopped every `LabVIEWMCP` on the machine, which killed a plugin serving another
+session.
 
 **THE PRE-PUSH GATE USED TO TEST THE WRONG TREE FROM A WORKTREE, and reported PASS for it.**
 Measured 2026-09-11. `run-tests.ps1` derived the tree under test from its own location, and

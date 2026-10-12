@@ -8,15 +8,27 @@ Versioned Git hooks for this repo.
 pass**. The suite needs no LabVIEW, no hardware and no network, and finishes in about ten
 seconds, so the gate is cheap.
 
-Before testing it **stops any running MCP server**. It has to: there is a single configuration
-and a single artifact (README section 3), and `dotnet test` rebuilds the main project as a
-dependency — into the very file the running server holds open. Without the stop the build fails
-with `MSB3027`, but only when the sources actually changed, which makes it an intermittent
-mystery rather than an error.
+Before testing it **stops an MCP server running from this tree's own build output**
+(`src\LabVIEWMCP\bin`). It has to: there is a single configuration and a single artifact (README
+section 3), and `dotnet test` rebuilds the main project as a dependency — into the very file the
+running server holds open. Without the stop the build fails with `MSB3027`, but only when the
+sources actually changed, which makes it an intermittent mystery rather than an error.
+
+**A server running from anywhere else is left alone, and named.** Until 2026-10-10 the gate stopped
+every process called `LabVIEWMCP` on the machine, and that killed an INSTALLED plugin serving
+another Claude session, which then reported the server as "failed to connect" until its client was
+restarted. Only an exe under this tree's `bin` can lock this tree's build output, so only those are
+stopped; a process whose path cannot be read is left alone too. `-ShowStopPlan` prints what would be
+stopped and what left, and exits without stopping or testing anything.
 
 Stopping is safe — no state lives in the process — but the Claude client does **not** restart a
 killed MCP server inside a session, so the `lvai_*` tools stay gone until the client is
 restarted. Prefer running this script over a bare `dotnet test` so the stop is deterministic.
+
+**The suite runs with its own `TEMP`**, `%TEMP%\LabVIEWMCP-pre-push`, set only in the gate's own
+process. Measured the same day: a test run left a 14-byte stub `lvai_run_and_read_typed.vi` in
+`%TEMP%\LabVIEWMCP\helpers`, the helper cache trusts file times, and every runner call of an
+installed server on the same machine then answered `1059`.
 
 > Ported from the TestStandMCP hook. That one stops processes because its integration tests
 > need exclusive access to the TestStand COM engine; here the reason is the file lock on the

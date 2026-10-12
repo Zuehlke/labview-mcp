@@ -18,6 +18,10 @@
     rather than a bare `dotnet test`, so the stop happens deterministically instead of the
     build failing with MSB3027 only when sources happened to change.
 
+    Only a server running from THIS tree's src\LabVIEWMCP\bin is stopped. One running from
+    anywhere else - an installed plugin, another worktree - holds a different file and is
+    left alone.
+
     Stopping is safe — no state lives in the process — but note the client does not
     restart a killed MCP server inside a session: the lvai_* tools stay gone until the
     Claude client is restarted.
@@ -92,7 +96,17 @@ Write-Host '================================================='
 if (-not $VerifyOnly) {
 
 # --- 1. free the file -------------------------------------------------------
-$running = @(Get-Process -Name 'LabVIEWMCP' -ErrorAction SilentlyContinue)
+# ONLY THIS TREE'S OWN BUILD, the same rule as .githooks\run-tests.ps1. Stopping every
+# process named LabVIEWMCP also killed an INSTALLED plugin serving another Claude session;
+# only an exe under this tree's src\LabVIEWMCP\bin can lock the file this build writes.
+$buildOutput = Join-Path $repo 'src\LabVIEWMCP\bin'
+$all = @(Get-Process -Name 'LabVIEWMCP' -ErrorAction SilentlyContinue)
+$running = @($all | Where-Object {
+    $_.Path -and ([IO.Path]::GetFullPath($_.Path)).StartsWith($buildOutput + '\', [System.StringComparison]::OrdinalIgnoreCase)
+})
+foreach ($p in @($all | Where-Object { $running -notcontains $_ })) {
+    Write-Host ("leaving pid {0} alone: not this tree's build ({1})" -f $p.Id, $p.Path) -ForegroundColor DarkGray
+}
 if ($running.Count -gt 0) {
     if ($NoKill) {
         Write-Host ''
