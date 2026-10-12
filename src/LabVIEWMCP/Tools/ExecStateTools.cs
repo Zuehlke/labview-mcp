@@ -12,7 +12,13 @@ namespace LabVIEWMcp.Tools;
 /// <c>Execution:State</c>: 0 eBad, 1 eIdle, 2 eRunTopLevel, 3 eRunning - and -1 for "the reference
 /// never opened", which is NOT the same thing and must never be reported as broken.
 /// </param>
-internal sealed record ExecStateReading(int State, string LinkerErrors, int Code, string Source)
+/// <param name="LinkerErrorsRead">
+/// False when <paramref name="LinkerErrors"/> is empty because nothing READ them - the pylabview
+/// route's direct ActiveX fallback, which has no such property - rather than because the VI has
+/// none. Kept apart so "not looked at" is never reported as "clean".
+/// </param>
+internal sealed record ExecStateReading(int State, string LinkerErrors, int Code, string Source,
+                                        bool LinkerErrorsRead = true)
 {
     /// <summary>The VI is not executable. Only 0 means this.</summary>
     internal bool Broken => State == 0;
@@ -55,6 +61,9 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         3 eRunning. And -1 means the REFERENCE NEVER OPENED, which is not a verdict about the VI at
         all: read `code` and `source` for why. Those two are kept apart on purpose, because a failed
         open leaves the state property unread at 0 and would otherwise read as eBad.
+        LINKER ERRORS NAME THE CAUSE of a missing link - `Missing subVI X.vi in VI Y.vi.` - as
+        LabVIEW's flattened XML of the string; an empty `<Val>` means none. Both backends read them
+        with the same helper VI; on pylabview `linkerErrorsAvailable` says whether they were read.
         WHEN TO REACH FOR IT: after any pylv_apply retarget, after generating a VI that calls
         project-local code, and whenever a chain of green answers still leaves you unsure. Measured:
         pylv_apply reported ok with every callTarget correct over a caller that was Error 1003.
@@ -72,9 +81,12 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         bool regenerateHelper = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview the state is read over LabVIEW's ActiveX server instead of NI's service:
-            no helper VI, no linker errors (ActiveX has no such property), and LabVIEW must already
-            be running - this never starts it.
+             On pylabview the SAME helper is COMPOSED into %TEMP%\LabVIEWMCP\helpers-pylabview and
+            run over LabVIEW's ActiveX server instead of NI's service, so linker errors are named
+            there too. Only when that helper cannot be composed or run is the state read directly
+            over ActiveX, which has no linker-error property: the answer then says
+            `linkerErrorsAvailable: false` and why. LabVIEW must already be running - this never
+            starts it.
             """)]
         string? backend = null,
         CancellationToken ct = default)
@@ -106,6 +118,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             couldNotOpen = reading.CouldNotOpen,
             meaning = Meaning(reading.State),
             linkerErrors = reading.LinkerErrors,
+            linkerErrorsAvailable = true,
             code = reading.Code,
             source = reading.Source,
             note = reading.CouldNotOpen
@@ -122,35 +135,195 @@ internal sealed class ExecStateTools(LvaiConnection connection)
     }
 
     /// <summary>
-    /// The state over ActiveX - the pylabview backend's road to a running LabVIEW. Same answer shape
-    /// as the helper route, minus what ActiveX does not expose: linker errors, and the open's own
-    /// error code (a failed open is a refusal here, never a state).
+    /// The pylabview backend's answer: the SAME helper as the grpc route - lvai_exec_state.xml,
+    /// composed by our composer and run over LabVIEW's ActiveX server - so linker errors are named
+    /// here too. Until 2026-10-12 this read <c>ExecState</c> directly over ActiveX and answered
+    /// <c>linkerErrors: null</c> for every VI, broken or not, because ActiveX has no linker-error
+    /// property; the direct read is now only the fallback, and the answer then says so.
     /// </summary>
     internal static async Task<string> ExecStateOverComAsync(string viPath, int timeoutSeconds,
                                                              CancellationToken ct)
     {
-        int state;
-        try { state = await LabViewCom.ExecStateAsync(viPath, timeoutSeconds, ct); }
+        ComReading read;
+        try { read = await ReadOverComAsync(viPath, timeoutSeconds, ct); }
         catch (LabViewCom.ComException e)
         {
             return Json.Error(e.Kind, e.Message, new { viPath, via = "ActiveX" });
         }
+        return ComAnswer(viPath, read);
+    }
+
+    /// <summary>The tool's answer for one ActiveX reading - the grpc answer's fields, plus how it was read.</summary>
+    internal static string ComAnswer(string viPath, ComReading read)
+    {
+        var r = read.Reading;
         return Json.Object(new
         {
             ok = true,
             viPath,
-            execState = state,
-            broken = state == 0,
-            couldNotOpen = false,
-            meaning = Meaning(state),
+            execState = r.State,
+            broken = r.Broken,
+            couldNotOpen = r.CouldNotOpen,
+            meaning = Meaning(r.State),
             via = "ActiveX",
-            linkerErrors = (string?)null,
-            note = state == 0
-                ? "eBad: the VI is NOT executable. Read over ActiveX, which has no linker-error " +
-                  "property - the grpc backend names the cause."
-                : "Executable, read over ActiveX. This says LabVIEW can run it, not that it does " +
-                  "the right thing.",
+            route = read.Route,
+            helperViPath = read.HelperViPath,
+            linkerErrors = r.LinkerErrorsRead ? r.LinkerErrors : null,
+            linkerErrorsAvailable = r.LinkerErrorsRead,
+            linkerErrorsUnavailableBecause = read.WhyNoHelper,
+            code = r.Code,
+            source = r.Source,
+            note = r.CouldNotOpen
+                ? "The reference never opened, so this says NOTHING about the VI - read code and " +
+                  "source. It is reported as -1 rather than 0 precisely so it cannot be mistaken " +
+                  "for eBad."
+                : r.Broken
+                    ? r.LinkerErrorsRead
+                        ? "eBad: the VI is NOT executable. linkerErrors names a missing link " +
+                          "(`Missing subVI ...`); an empty <Val> there means LabVIEW reported no " +
+                          "link error, so look at the diagram and its subVIs."
+                        : "eBad: the VI is NOT executable. Its linker errors were NOT read (see " +
+                          "linkerErrorsUnavailableBecause): the state came from ActiveX directly, " +
+                          "which has no linker-error property."
+                    : "Executable, read over ActiveX. This says LabVIEW can run it, not that it " +
+                      "does the right thing.",
         });
+    }
+
+    /// <summary>How an ActiveX reading was taken.</summary>
+    /// <param name="Route">"helper" - the composed helper ran; "direct" - ExecState read over ActiveX.</param>
+    /// <param name="WhyNoHelper">Why the direct read was taken, or null when the helper answered.</param>
+    internal sealed record ComReading(ExecStateReading Reading, string Route, string? HelperViPath,
+                                      string? WhyNoHelper);
+
+    /// <summary>The seams of the ActiveX route - LabVIEW and the composer in production, fakes in a test.</summary>
+    internal sealed record ComRoute(
+        Func<int, CancellationToken, Task<(string? Vi, string? Problem)>> ComposeHelper,
+        Func<string, IReadOnlyList<LabViewCom.Input>, IReadOnlyList<string>, int, CancellationToken,
+             Task<LabViewCom.RunResult>> RunHelper,
+        Func<string, int, CancellationToken, Task<int>> ReadDirect)
+    {
+        public static readonly ComRoute Live = new(
+            (timeout, ct) => ComposedHelpers.EnsureAsync(HelperAixmlFileName, timeout, ct),
+            (vi, inputs, names, timeout, ct) => LabViewCom.RunAsync(vi, inputs, names, 0, timeout, ct),
+            LabViewCom.ExecStateAsync);
+    }
+
+    /// <summary>The helper's input - the target's path as a string.</summary>
+    internal const string HelperInput = "vi path";
+
+    /// <summary>
+    /// What is read back after the run: the four indicators, and the INPUT again - the composed
+    /// helper is one VI shared by every server process on this LabVIEW, so a second caller can
+    /// set its control between our set and our run. A path that came back changed means the
+    /// answer may be about another VI, and the reading is then not trusted.
+    /// </summary>
+    internal static readonly string[] HelperReadBack =
+        ["exec state", "linker errors xml", "code", "source", HelperInput];
+
+    /// <summary>One helper run at a time in this process - its control is the only input it has.</summary>
+    private static readonly SemaphoreSlim HelperGate = new(1, 1);
+
+    /// <summary>
+    /// Failures that end the call rather than falling back to the direct read: LabVIEW is not
+    /// there to read anything from, or a COM call hung behind a dialog - a direct read would
+    /// wait behind the same dialog.
+    /// </summary>
+    private static bool Fatal(LabViewCom.ComException e) =>
+        e.Kind is "labviewNotRunning" or "comCallTimedOut" or "activeXNotRegistered" or "notWindows";
+
+    /// <summary>One VI's executability over ActiveX, through the composed helper where it runs.</summary>
+    internal static Task<ComReading> ReadOverComAsync(string viPath, int timeoutSeconds, CancellationToken ct) =>
+        LabViewCom.NotReady() is { } why
+            ? throw new LabViewCom.ComException("labviewNotRunning", why)
+            : ReadOverComAsync(viPath, timeoutSeconds, ComRoute.Live, ct);
+
+    /// <summary>
+    /// The helper first; the direct ActiveX read only when the helper could not be composed, did
+    /// not run, or answered something this cannot trust. Throws <see cref="LabViewCom.ComException"/>
+    /// only when nothing could be read at all - a VI LabVIEW refused to open is a reading (-1).
+    /// </summary>
+    internal static async Task<ComReading> ReadOverComAsync(string viPath, int timeoutSeconds,
+                                                            ComRoute route, CancellationToken ct)
+    {
+        var full = Path.GetFullPath(viPath);
+        var (helper, problem) = await route.ComposeHelper(timeoutSeconds, ct);
+        string why;
+        if (helper is null)
+            why = "the lvai_exec_state helper could not be composed: " + problem;
+        else
+        {
+            await HelperGate.WaitAsync(ct);
+            try
+            {
+                var run = await route.RunHelper(helper, [new LabViewCom.Input(HelperInput, full, full)],
+                                                HelperReadBack, timeoutSeconds, ct);
+                var (reading, notTrusted) = FromHelperRun(run, full);
+                if (reading is not null) return new ComReading(reading, "helper", helper, null);
+                why = notTrusted!;
+            }
+            catch (LabViewCom.ComException e) when (!Fatal(e))
+            {
+                why = $"the composed helper did not run ({e.Kind}): {e.Message}";
+            }
+            finally { HelperGate.Release(); }
+        }
+
+        try
+        {
+            var state = await route.ReadDirect(full, timeoutSeconds, ct);
+            return new ComReading(new ExecStateReading(state, "", 0, "", LinkerErrorsRead: false),
+                                  "direct", helper, why);
+        }
+        // the -1 contract holds on this route too: a VI LabVIEW refused to open is "could not
+        // look", with LabVIEW's code and text, never eBad
+        catch (LabViewCom.ComException e) when (e.Kind == LabViewCom.ViNotOpened)
+        {
+            return new ComReading(new ExecStateReading(-1, "", LabViewCom.ErrorCodeOf(e.Message),
+                                                       e.Message.TrimEnd('.'), LinkerErrorsRead: false),
+                                  "direct", helper, why);
+        }
+    }
+
+    /// <summary>
+    /// The helper's answer as a reading, or null with the reason it is not trusted. Pure, so the
+    /// rules are tested without LabVIEW: a helper that is itself broken, did not finish, could
+    /// not be set, could not be read, or came back holding another caller's path is no answer.
+    /// </summary>
+    internal static (ExecStateReading? Reading, string? NotTrusted) FromHelperRun(
+        LabViewCom.RunResult run, string viPath)
+    {
+        if (run.ExecState == 0)
+            return (null, "the composed lvai_exec_state helper is itself not executable (execState 0)");
+        if (run.SetProblems.Count > 0)
+            return (null, "LabVIEW refused the helper's input: " + string.Join("; ", run.SetProblems));
+        if (!run.Finished)
+            return (null, "the composed helper did not finish within the budget and was aborted");
+
+        var values = run.Values.GroupBy(v => v.Name, StringComparer.Ordinal)
+                               .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        string? Read(string name) =>
+            values.TryGetValue(name, out var v) && v.Problem is null ? v.Value : null;
+
+        var unread = HelperReadBack.Where(n => Read(n) is null).ToList();
+        if (unread.Count > 0)
+            return (null, "the helper's answer could not be read back: " + string.Join(", ", unread));
+        if (!string.Equals(Read(HelperInput), viPath, StringComparison.Ordinal))
+            return (null, "the helper's input changed during the run - another caller was using " +
+                          "the same helper VI - so its answer may be about a different VI");
+        if (!int.TryParse(Read("exec state"), System.Globalization.NumberStyles.Integer,
+                          System.Globalization.CultureInfo.InvariantCulture, out var state))
+            return (null, $"the helper answered an exec state that is not a number: '{Read("exec state")}'");
+
+        // LF, as the grpc route answers: over ActiveX the same flattened XML arrives with CRLF line
+        // ends (measured 2026-10-12 on one VI, both backends), and a parser written for one
+        // backend must read the other
+        return (new ExecStateReading(
+            state,
+            Read("linker errors xml")!.ReplaceLineEndings("\n"),
+            int.TryParse(Read("code"), System.Globalization.NumberStyles.Integer,
+                         System.Globalization.CultureInfo.InvariantCulture, out var code) ? code : 0,
+            Read("source")!.ReplaceLineEndings("\n")), null);
     }
 
     /// <summary>Human-readable name for an Execution:State value.</summary>
@@ -172,23 +345,14 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         string viPath, string? helperAixmlPath, string? helperViPath, bool regenerateHelper,
         int timeoutSeconds, CancellationToken ct)
     {
-        // a route on pylabview reads the state over ActiveX, as lvai_exec_state does there: no
-        // helper VI, and so no linker errors either
+        // a route on pylabview reads it as lvai_exec_state does there: the composed helper over
+        // ActiveX, linker errors included, and the direct ActiveX read only as its fallback.
+        // A VI LabVIEW REFUSED TO OPEN is a reading - CouldNotOpen, with LabVIEW's code and text -
+        // not a missing one: as null it reached the caller as "could not be read", and a composed
+        // test LabVIEW refused as Error 74 came back with no reason (bug report of 2026-10-12).
         if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
         {
-            try
-            {
-                return new ExecStateReading(
-                    await LabViewCom.ExecStateAsync(Path.GetFullPath(viPath), timeoutSeconds, ct), "", 0, "");
-            }
-            // a VI LabVIEW REFUSED TO OPEN is a reading - CouldNotOpen, with LabVIEW's code and
-            // text - not a missing one: as null it reached the caller as "could not be read", and
-            // a composed test LabVIEW refused as Error 74 came back with no reason (bug report of
-            // 2026-10-12)
-            catch (LabViewCom.ComException e) when (e.Kind == LabViewCom.ViNotOpened)
-            {
-                return new ExecStateReading(-1, "", LabViewCom.ErrorCodeOf(e.Message), e.Message.TrimEnd('.'));
-            }
+            try { return (await ReadOverComAsync(viPath, timeoutSeconds, ct)).Reading; }
             catch (LabViewCom.ComException) { return null; }
         }
 
