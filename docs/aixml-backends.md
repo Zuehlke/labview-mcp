@@ -122,8 +122,9 @@ things went wrong, each handled now:
   - **The render printed format 4, COMPLETE**, which also draws the hierarchy and every subVI's
     icon - the class's and its methods' for a class caller; the IDE print the user ran was the
     diagram. `diagramSize` reads only the diagram, so `LabViewCom.PrintToHtmlAsync` prints format
-    1, STANDARD (connector pane, panel, diagram), since. Whether either change stops LabVIEW
-    2025's abort is the user's test.
+    1, STANDARD (connector pane, panel, diagram), since. **The user confirmed it on LabVIEW 2025
+    the same evening: with both changes the server's render works there.** Which of the two
+    stopped the abort - the fitted `dBounds` or the narrower format - was not separated.
 
   And a render that killed LabVIEW answered `ok: true` with "could not be rendered". The step
   now says `labviewDied: true` and leads its note with it when a LabVIEW that ran before the

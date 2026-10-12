@@ -1442,6 +1442,9 @@ is not the whole LabVIEW 2025 abort. The whole suite with it: 131 PASS and 5 LOA
 already saturated by the render crashes, so the insanity check saw nothing that run. Accepted over
 raw stdio: `lvai_generate_vi` (pylabview, `measureDiagram`) on the minimal repro measured 259 x 48
 and the PNG shows the class constant, the call and the indicator, where it was blank before.
+**Confirmed on LabVIEW 2025 by the user the same evening: with the fitted `dBounds` and the
+STANDARD print (below) the server's render works there.** The two changes shipped together, so
+which one stopped the `bad image in ValidateImage` abort is not separated.
 
 **Format 4 is COMPLETE** - it adds the hierarchy image and every subVI's icon (the class's and
 its methods', `Sensor_lvclass_Read_Gaini.png`), which a print "with block diagram" in the IDE
