@@ -17,7 +17,8 @@
 tests/LabVIEWMCP.Tests/Fixtures/pane/thrall/*.xml  text eol=lf
 
 # Byte copies of LabVIEW-saved project files. Their BOM and line endings ARE the data under
-# test (LvTextFileTests), so git must store and check them out unconverted -
+# test (LvTextFileTests; ExecStateInterfaceOverrideTests also pins NI's Basic Interfaces
+# copies to the install byte for byte), so git must store and check them out unconverted -
 # core.autocrlf=true would otherwise normalise them, and an assertion would test git, not us.
 tests/LabVIEWMCP.Tests/Fixtures/**/*.lvproj   -text
 tests/LabVIEWMCP.Tests/Fixtures/**/*.lvclass  -text

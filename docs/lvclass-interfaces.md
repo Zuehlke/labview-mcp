@@ -497,6 +497,16 @@ string "Require Descendant Classes to Override This VI" is not greppable in LabV
 **Isolating it needs an ordinary class as the parent**, where a missing override is legal — that is
 the next experiment, not a conclusion.
 
+**A FILE-LEVEL OBSERVATION THAT DOES NOT FIT, 2026-10-12 — unmeasured in LabVIEW.** In the same
+`Basic Interfaces` example, `Prying Tool.lvclass` links `Lever` and lists **no** `Multiply Force.vi`
+(its children `Bottle Opener` and `Prybar` do), while `Lever`'s `Multiply Force.vi` is dynamic by
+its pane. Whether LabVIEW calls `Prying Tool` executable was not run; if it does, the rule in this
+section is narrower than its heading. `lvai_exec_state` reports `missingInterfaceOverrides` for a
+broken class member on that account as CANDIDATES, each with the interface's own
+`NI.ClassItem.MustOverride` (NI writes it on `Pounding Tool`'s `Multiply Force.vi`, not on
+`Lever`'s) — the cheap next experiment is `lvai_exec_state` on a VI that calls `Prying Tool`, or
+on a copy of it given one member.
+
 Also unexplained: LabVIEW writes `NI.ClassItem.Flags = 33554432` (`0x2000000`) onto generated
 overrides by itself. NI's own overrides in `Basic Interfaces` carry `0`. No observed consequence.
 

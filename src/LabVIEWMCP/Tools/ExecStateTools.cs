@@ -83,6 +83,13 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         Opening and closing a VI REFERENCE does not burn the path for a later regeneration - only
         lvai_open_file does that - and the helper opens WITHOUT an application instance, so this
         also answers while pylv_apply has the project closed.
+        A BROKEN CLASS MEMBER ALSO GETS `missingInterfaceOverrides`, read from the files with no
+        LabVIEW: every dynamic-dispatch method of every interface the owning .lvclass implements
+        that the class does not override by name, with the interface's own `mustOverride` flag. A
+        missing override broke EVERY member of its class in this repository's measurements, and
+        the broken VI does not name it. Members whose dispatch cannot be read are listed under
+        `dispatchUnknown`, never as missing; a VI in no class, or a class with no interface, gets
+        null with `missingInterfaceOverridesReason`. An executable VI skips the check.
         """)]
     public async Task<string> ExecStateAsync(
         [Description("Absolute path to the .vi to interrogate")] string viPath,
@@ -111,7 +118,19 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         if (!AixmlBackend.TryResolve(backend, "lvai_exec_state", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
         if (choice.Name == AixmlBackend.PyLabview)
-            return AixmlTools.WithBackend(await ExecStateOverComAsync(full, timeoutSeconds, ct), choice);
+        {
+            // THE SAME CLASS CHECK ON BOTH BACKENDS: it reads files and, at most, a pane through
+            // pylabview - nothing on it belongs to NI's service, so the ActiveX answer carries it too.
+            var com = await ExecStateOverComAsync(full, timeoutSeconds, ct);
+            if (JsonNode.Parse(com) is JsonObject comAnswer && comAnswer["ok"]?.GetValue<bool>() == true)
+            {
+                await AttachInterfaceOverridesAsync(comAnswer, full,
+                    comAnswer["broken"]?.GetValue<bool>() == true,
+                    comAnswer["couldNotOpen"]?.GetValue<bool>() == true, timeoutSeconds, ct);
+                com = Json.Document(comAnswer);
+            }
+            return AixmlTools.WithBackend(com, choice);
+        }
 
         var reading = await ReadAsync(full, helperAixmlPath, helperViPath, regenerateHelper,
             timeoutSeconds, ct: ct);
@@ -122,7 +141,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                 "about this VI. That is not a clean bill of health.",
                 new { viPath = full });
 
-        return Json.Object(new
+        var answer = JsonNode.Parse(Json.Object(new
         {
             ok = true,
             viPath = full,
@@ -147,7 +166,41 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                       "export are both green in that state.")
                     : "Executable. This says nothing about whether it does the right thing; it " +
                       "says LabVIEW can run it.",
-        });
+        }))!.AsObject();
+
+        await AttachInterfaceOverridesAsync(answer, full, reading.Broken, reading.CouldNotOpen,
+                                            timeoutSeconds, ct);
+        return Json.Document(answer);
+    }
+
+    /// <summary>
+    /// ONLY A BROKEN VI PAYS FOR THE CLASS CHECK. It is file reads plus, for an interface member
+    /// that records no IsStaticMethod, one pylabview read of its pane - no LabVIEW, but not free,
+    /// and an executable VI has nothing for it to explain. Shared by both backends' answers.
+    /// </summary>
+    private static async Task AttachInterfaceOverridesAsync(JsonObject answer, string full, bool broken,
+                                                            bool couldNotOpen, int timeoutSeconds,
+                                                            CancellationToken ct)
+    {
+        if (broken)
+        {
+            var bundle = PyLabview.Locate();
+            var report = await InterfaceOverridesAsync(full, async vi => bundle is null
+                ? null
+                : (await PaneDispatch.ReadAsync(bundle, vi, Rpc.ClampToolWait(timeoutSeconds), ct))
+                    ?.DynamicDispatch);
+            foreach (var (key, value) in DescribeInterfaceOverrides(report).ToList())
+                answer[key] = value?.DeepClone();
+            if (bundle is null && report.DispatchUnknown.Count > 0)
+                answer["dispatchUnknownWhy"] = PyLabview.NotProvisionedMessage();
+        }
+        else
+        {
+            answer["missingInterfaceOverrides"] = null;
+            answer["missingInterfaceOverridesReason"] = couldNotOpen
+                ? "notChecked: the reference never opened, so nothing is known to explain."
+                : "notChecked: the VI is executable.";
+        }
     }
 
     /// <summary>
@@ -438,6 +491,186 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                   "the cause is in a subVI or a missing link. " + otherwise
                 : "eBad: the VI is NOT executable. The Error List's lines were NOT read (errorsRead " +
                   "false); lvai_error_list reads them for a VI open in LabVIEW. " + otherwise;
+
+    // ------------------------------------------------------------------ missing interface overrides
+
+    /// <summary>One interface method the owning class does not override.</summary>
+    internal sealed record MissingOverride(string Interface, string Member, bool? MustOverride);
+
+    /// <summary>One interface member whose dispatch could not be read, so it was not judged.</summary>
+    internal sealed record DispatchUnknownMember(string Interface, string Member, string Why);
+
+    /// <summary>What the file-only check of a broken VI's owning class found.</summary>
+    /// <param name="Missing">Null when nothing could be checked - <see cref="Reason"/> says why.</param>
+    internal sealed record InterfaceOverrideReport(
+        string? OwningClass, IReadOnlyList<string> InterfacesChecked,
+        IReadOnlyList<MissingOverride>? Missing, IReadOnlyList<DispatchUnknownMember> DispatchUnknown,
+        IReadOnlyList<string> UnresolvedLinks, string? Reason);
+
+    /// <summary>
+    /// WHICH INTERFACE METHODS A BROKEN VI'S CLASS DOES NOT OVERRIDE, read from the FILES.
+    ///
+    /// WHY. Measured 2026-09-15 on a cold build (docs/cold-build-filterbench.md section 2): a class
+    /// implementing an interface whose override had not been written yet had a method answer
+    /// execState 0 while every file-level check was green - and the broken VI does not name the
+    /// cause, because the fault belongs to the CLASS, not to the VI. The same VI went 0 to 1 the
+    /// moment the override landed. So a broken class member is the moment to look.
+    ///
+    /// HOW. The owning class is the .lvclass beside the VI (or up to two folders up) that lists
+    /// it. Its parent links are classified by opening each linked file (LvClass.Read - the URL is
+    /// relative to the .lvclass treated as a directory). For every INTERFACE, and every interface
+    /// that one inherits, each VI member's dispatch comes from the interface file's
+    /// `NI.ClassItem.IsStaticMethod` where recorded, else from the member's own connector pane
+    /// (<paramref name="paneDispatch"/>, the pylabview read lvai_describe_class uses).
+    /// `NI.ClassItem.Flags` is NOT read: it is not a dispatch field (CLAUDE.md). A dynamic member
+    /// that neither the class nor an ancestor CLASS implementing the same interface lists by name
+    /// is missing; a member whose dispatch cannot be read goes to DispatchUnknown and is never
+    /// called missing.
+    ///
+    /// A CANDIDATE, NOT A VERDICT, and the reason is NI's own example: `Prying Tool.lvclass` in
+    /// examples\Object-Oriented Programming\Basic Interfaces implements `Lever` and does not
+    /// override its dynamic `Multiply Force.vi` (read 2026-10-12 from the files; whether LabVIEW
+    /// calls Prying Tool broken was not measured). `mustOverride` reports the interface's own
+    /// `NI.ClassItem.MustOverride` for the member - null where it is not recorded.
+    /// </summary>
+    internal static async Task<InterfaceOverrideReport> InterfaceOverridesAsync(
+        string viPath, Func<string, Task<bool?>> paneDispatch)
+    {
+        var owner = AfOverrideTools.OwningClass(Path.GetFullPath(viPath));
+        if (owner is null)
+            return new(null, [], null, [], [],
+                "notAClassMember: no .lvclass beside the VI or up to two folders up lists it.");
+        if (owner.IsInterface)
+            return new(owner.Path, [], null, [], [],
+                "ownerIsAnInterface: an interface implements nothing, so it overrides nothing.");
+
+        // The owning class and every ancestor CLASS - an override inherited from an ancestor that
+        // implements the same interface satisfies it.
+        var chain = new List<LvClass.ClassInfo> { owner };
+        var seenClasses = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { owner.Path };
+        var current = owner;
+        while (current.BaseClass?.ResolvedPath is { Length: > 0 } parent
+               && File.Exists(parent) && seenClasses.Add(Path.GetFullPath(parent)))
+        {
+            try { current = LvClass.Read(parent); }
+            catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException or IOException)
+            { break; }
+            chain.Add(current);
+        }
+
+        var unresolved = owner.ParentLinks.Where(l => l.Kind == LvClass.ParentLink.Unresolved)
+            .Select(l => $"{l.Name}: {l.ResolvedPath}").ToList();
+
+        // Every interface reachable from the class's own interface links.
+        var queue = new Queue<LvClass.ParentLink>(owner.Interfaces);
+        var interfaces = new List<LvClass.ClassInfo>();
+        var seenInterfaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        while (queue.Count > 0)
+        {
+            var link = queue.Dequeue();
+            if (link.ResolvedPath is not { Length: > 0 } path || !seenInterfaces.Add(path)) continue;
+            LvClass.ClassInfo info;
+            try { info = LvClass.Read(path); }
+            catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException or IOException)
+            {
+                unresolved.Add($"{link.Name}: {path} could not be read ({e.Message})");
+                continue;
+            }
+            interfaces.Add(info);
+            foreach (var inherited in info.Interfaces) queue.Enqueue(inherited);
+        }
+
+        if (interfaces.Count == 0)
+            return new(owner.Path, [], null, [], unresolved,
+                unresolved.Count == 0
+                    ? "noInterfaces: the class implements no interface."
+                    : "noReadableInterfaces: every interface link is unresolved - see unresolvedInterfaceLinks.");
+
+        var missing = new List<MissingOverride>();
+        var unknown = new List<DispatchUnknownMember>();
+        foreach (var iface in interfaces)
+        {
+            var overridden = chain
+                .Where(c => ReferenceEquals(c, owner) || c.Interfaces.Any(i => string.Equals(
+                    i.ResolvedPath, iface.Path, StringComparison.OrdinalIgnoreCase)))
+                .SelectMany(c => c.Members).Select(m => m.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var member in iface.Members.Where(m => m.Type == "VI"))
+            {
+                var memberPath = Path.GetFullPath(Path.Combine(iface.Path, member.Url));
+                var dynamic = member.DynamicDispatch
+                              ?? (File.Exists(memberPath) ? await paneDispatch(memberPath) : null);
+                if (dynamic is null)
+                {
+                    unknown.Add(new(iface.ClassName + ".lvclass", member.Name,
+                        File.Exists(memberPath)
+                            ? "the interface records no IsStaticMethod and the member's connector " +
+                              "pane could not be read"
+                            : $"the member's file is not there: {memberPath}"));
+                    continue;
+                }
+                if (dynamic == false || overridden.Contains(member.Name)) continue;
+                missing.Add(new(iface.ClassName + ".lvclass", member.Name,
+                                MustOverride(iface.Path, member.Name)));
+            }
+        }
+
+        return new(owner.Path, [.. interfaces.Select(i => i.Path)], missing, unknown, unresolved,
+                   null);
+    }
+
+    /// <summary>The interface's own `NI.ClassItem.MustOverride` for a member, or null.</summary>
+    private static bool? MustOverride(string interfacePath, string memberName)
+    {
+        try
+        {
+            var item = System.Xml.Linq.XDocument.Load(interfacePath).Descendants("Item")
+                .FirstOrDefault(i => string.Equals((string?)i.Attribute("Name"), memberName,
+                                                   StringComparison.OrdinalIgnoreCase));
+            var value = item?.Elements("Property")
+                .FirstOrDefault(p => (string?)p.Attribute("Name") == "NI.ClassItem.MustOverride")
+                ?.Value;
+            return value is null
+                ? null
+                : string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception e) when (e is System.Xml.XmlException or IOException) { return null; }
+    }
+
+    /// <summary>The report as the answer's fields.</summary>
+    internal static JsonObject DescribeInterfaceOverrides(InterfaceOverrideReport report) => new()
+    {
+        ["owningClass"] = report.OwningClass,
+        ["interfacesChecked"] =
+            new JsonArray([.. report.InterfacesChecked.Select(i => (JsonNode)i)]),
+        ["missingInterfaceOverrides"] = report.Missing is null
+            ? null
+            : new JsonArray([.. report.Missing.Select(m => (JsonNode)new JsonObject
+            {
+                ["interface"] = m.Interface,
+                ["member"] = m.Member,
+                ["mustOverride"] = m.MustOverride,
+            })]),
+        ["dispatchUnknown"] = new JsonArray([.. report.DispatchUnknown.Select(u =>
+            (JsonNode)new JsonObject
+            {
+                ["interface"] = u.Interface,
+                ["member"] = u.Member,
+                ["why"] = u.Why,
+            })]),
+        ["unresolvedInterfaceLinks"] =
+            new JsonArray([.. report.UnresolvedLinks.Select(l => (JsonNode)l)]),
+        ["missingInterfaceOverridesReason"] = report.Reason,
+        ["missingInterfaceOverridesNote"] = report.Missing is { Count: > 0 }
+            ? "A MISSING OVERRIDE ALONE BROKE EVERY MEMBER OF ITS CLASS in this repository's " +
+              "measurements (docs/cold-build-filterbench.md section 2), and the broken VI does " +
+              "not name it, because the fault is the class's. Write the override " +
+              "(lvai_add_class_method) and read execState again. A candidate, not a verdict: " +
+              "NI's own Basic Interfaces example has Prying Tool implement Lever without " +
+              "overriding Multiply Force.vi; `mustOverride` is the interface's own flag."
+            : null,
+    };
 
     /// <summary>Human-readable name for an Execution:State value.</summary>
     internal static string Meaning(int state) => state switch
