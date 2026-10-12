@@ -96,7 +96,7 @@ public class BulkGenerateViTests
 
         // a folder that does not exist yet: a save-time Error 7 here would leave an orphan
         var viPath = Path.Combine(Path.GetDirectoryName(server.TempPath("x"))!, "new", "Out.vi");
-        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp }
+        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp }
             .GenerateViAsync(CallerAixml(server), viPath, measurePane: false);
 
         Assert.True(Res.Bool(result, "ok"));
@@ -290,7 +290,7 @@ public class BulkGenerateViTests
         server.Service.ViFileContent = "a generated VI";
         var asked = new List<string>();
 
-        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp }
+        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp }
             .GenerateViAsync(CallerAixml(server), server.TempPath("Out.vi"), measurePane: false);
 
         Assert.True(Res.Bool(result, "ok"));

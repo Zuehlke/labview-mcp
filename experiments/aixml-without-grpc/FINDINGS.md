@@ -1416,6 +1416,17 @@ composes (the part was harvested) and builds through NI's converter; both saves 
 on a composed VI and on one NI converted with nothing loaded. The six-method test came out 760 px
 wide instead of 980, each case one row.
 
+**And Clean Up Panel on every VI that is not a main VI** (the user's rule, same day). The IDE's
+plugin `resource\plugins\Call Clean Up Panel.vi` asks in a dialog whether Nigel or an algorithm
+should do it; the algorithm is `resource\dialog\QuickDrop\plugins\_Arrange VIWin SubVIs\Arrange
+VIWin - Arrange FP.vi` (`VI` in, `error in`, `error out`), which `scripts\lvai_cleanup_panel.xml`
+opens by path and runs with the target's reference, then saves. That VI answers a panel holding a
+tab control or a splitter with a MODAL One Button Dialog, so the helper counts both with Traverse
+for GObjects first and leaves such a panel alone. Measured on both routes: a five-terminal subject
+came out arranged (inputs left, outputs right, the error pair at the bottom) and source-only, 7025
+-> 6953 bytes composed over ActiveX and 7025 -> 6958 through NI's converter; NI's `Simulation - Tank
+Level.vi`, which has a tab control, answered `arranged` false, no dialog, the file byte-identical.
+
 ### Graphs and their events (2026-10-11)
 
 **Graphs compose by default** (§3, "Graphs and charts"), and their events with them. A static

@@ -129,13 +129,22 @@ internal sealed class BulkTools(LvaiConnection connection)
             again. A failed clean-up does not fail the call - the VI is as generated, and the
             cleanUpDiagram step says why.
             """)]
-        bool? cleanUpDiagram = null)
+        bool? cleanUpDiagram = null,
+        [Description("""
+            Arrange the FRONT PANEL with the algorithm behind LabVIEW's Edit - Clean Up Panel and
+            save in place - the user's rule for every VI that is NOT the application's MAIN VI,
+            whose panel is the user interface and laid out on purpose: pass false for that one.
+            Omit it to follow cleanUpDiagram. A panel holding a tab control or a splitter is left
+            alone (the algorithm answers it with a modal dialog), reported as skipped.
+            """)]
+        bool? cleanUpPanel = null)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_generate_vi", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
+        var cleanDiagram = cleanUpDiagram ?? measureDiagram;
         var answer = AixmlTools.WithBackend(await GenerateViCoreAsync(
             aiXmlFilePath, viPath, openVI, measurePane, panePattern, timeoutSeconds, measureDiagram,
-            choice, cleanUpDiagram ?? measureDiagram, ct), choice);
+            choice, cleanDiagram, cleanUpPanel ?? cleanDiagram, ct), choice);
         return choice.Name == AixmlBackend.PyLabview ? WithUnmeasuredExecutability(answer) : answer;
     }
 
@@ -160,7 +169,7 @@ internal sealed class BulkTools(LvaiConnection connection)
     private async Task<string> GenerateViCoreAsync(
         string aiXmlFilePath, string viPath, bool openVI, bool measurePane, int? panePattern,
         int timeoutSeconds, bool measureDiagram, AixmlBackend.Choice choice, bool cleanUp,
-        CancellationToken ct) =>
+        bool cleanUpPanel, CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
             var total = Stopwatch.StartNew();
@@ -458,14 +467,25 @@ internal sealed class BulkTools(LvaiConnection connection)
             // diagramSize measures the diagram the caller gets. The user's recommendation of
             // 2026-10-12, for both backends; a failure leaves the VI as generated and is reported.
             var cleanNote = "";
+            if (cleanUpPanel && !openVI)
+            {
+                // the FRONT PANEL first, for every VI but the main one (the user's rule of
+                // 2026-10-12); a LabVIEW save like the diagram's, so it too precedes the size
+                var arranged = await (CleanUpPanel?.Invoke(viPath, choice.Name, timeoutSeconds, ct)
+                    ?? new DiagramCleanup(connection).RunPanelAsync(viPath, choice.Name, timeoutSeconds, ct));
+                steps.Add(arranged);
+                if (arranged["ok"]?.GetValue<bool>() != true)
+                    cleanNote += " The front panel was NOT cleaned up - it is as generated: " +
+                                 arranged["note"]?.GetValue<string>();
+            }
             if (cleanUp && !openVI)
             {
                 var cleaned = await (CleanUp?.Invoke(viPath, choice.Name, timeoutSeconds, ct)
                     ?? new DiagramCleanup(connection).RunAsync(viPath, choice.Name, timeoutSeconds, ct));
                 steps.Add(cleaned);
                 if (cleaned["ok"]?.GetValue<bool>() != true)
-                    cleanNote = " The block diagram was NOT cleaned up - the VI is as generated: " +
-                                cleaned["note"]?.GetValue<string>();
+                    cleanNote += " The block diagram was NOT cleaned up - the VI is as generated: " +
+                                 cleaned["note"]?.GetValue<string>();
             }
 
             // THE SIZE, after any pane repair (a render loads the VI, and a pylabview rebuild
@@ -555,6 +575,12 @@ internal sealed class BulkTools(LvaiConnection connection)
     /// <summary>Test seam for the `cleanUpDiagram` step (viPath, backend); null in production, where
     /// <see cref="DiagramCleanup"/> runs LabVIEW's own Clean Up Diagram.</summary>
     internal Func<string, string, int, CancellationToken, Task<JsonObject>>? CleanUp
+    {
+        get; init;
+    }
+
+    /// <summary>Test seam for the `cleanUpPanel` step (viPath, backend); null in production.</summary>
+    internal Func<string, string, int, CancellationToken, Task<JsonObject>>? CleanUpPanel
     {
         get; init;
     }

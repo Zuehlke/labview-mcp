@@ -537,6 +537,16 @@ and carriers skip it; `lvai_generate_vi_with_events` and `lvai_wire_dynamic_even
 their successful end. A save that brings compiled code into a source-only VI is stripped again. A
 failed clean-up is reported in the `cleanUpDiagram` step and does not fail the call.
 
+**AND THE FRONT PANEL OF EVERY VI THAT IS NOT THE MAIN VI GOES THROUGH CLEAN UP PANEL - the user's
+rule of the same day.** `cleanUpPanel` in `lvai_generate_vi`, default as `cleanUpDiagram`; pass
+`false` for the application's main VI, whose panel is the user interface. The IDE's own plugin
+(`resource\plugins\Call Clean Up Panel.vi`) chooses between Nigel and an algorithm IN A DIALOG, so
+`scripts\lvai_cleanup_panel.xml` calls the algorithm directly - `Arrange VIWin - Arrange FP.vi` under
+`resource\dialog\QuickDrop`, by path - and first counts tab controls and splitters, on which that
+algorithm opens a MODAL One Button Dialog; such a panel is left alone and reported `skipped`.
+Measured on both backends: arranged and source-only, and NI's tab-control example left
+byte-identical with no dialog.
+
 **When any output is not a string, run it with `lvai_run_vi_and_read_values` instead.** That is
 almost every real VI: a boolean, a cluster, an array or a waveform all come back blank from the
 plain call. The tool sets the inputs, runs the target and reads every control and indicator back

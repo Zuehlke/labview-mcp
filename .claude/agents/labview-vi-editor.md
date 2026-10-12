@@ -784,6 +784,14 @@ now, with two numbers and a fixed procedure:
    wrote. Every case adds its own row of calls and assertions - measured 2026-09-26, a thirteen-case
    method test came out 4345 x 4084 px, about 310 px of height per case - so plan about THREE cases
    per test VI and list them all in one runner. `withinBudget: false` on a test VI means split it.
+5. **LabVIEW's own clean-ups run inside `lvai_generate_vi`** (the user's rules of 2026-10-12):
+   `cleanUpDiagram` (Clean Up Diagram) on every deliverable, BEFORE `diagramSize` is measured, and
+   `cleanUpPanel` (the algorithm behind Edit - Clean Up Panel) on every VI that is NOT the
+   application's MAIN VI. **Pass `cleanUpPanel: false` when you generate the main VI** - its panel
+   is the user interface and laid out on purpose - and never run either on a GRAFTED supplied
+   panel. Both default from `measureDiagram`, so helpers skip them. A panel with a tab control or a
+   splitter is skipped by design (the algorithm would open a modal dialog); a failed clean-up
+   leaves the VI as generated and is named in the note, not a reason to regenerate.
 
 **A repeated operation becomes ONE generic subVI taking an ARRAY.** Six property nodes that differ
 only in which control they point at is the canonical case: one call taking the group and one value

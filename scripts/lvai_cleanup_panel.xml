@@ -1,0 +1,44 @@
+<VI _name="lvai_cleanup_panel.vi" description="Runs the algorithm behind LabVIEW's Edit \2D Clean Up Panel on one VI and saves it in place. The IDE's own plugin (resource\5Cplugins\5CCall Clean Up Panel.vi) chooses between Nigel and an algorithm in a dialog\2C so this calls the algorithm directly: Arrange VIWin \2D Arrange FP.vi\2C opened by path and run with the VI's reference. That VI answers a front panel holding a tab control or a splitter with a modal One Button Dialog\2C so such a panel is counted first and left alone: arranged is false then.">
+  <FreeLabel comment="Arrange the panel, then save in place" uid="4200" uid_parent="root"/>
+  <Control _name="vi path" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]" outputs="value:4202.value"/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4205.path" uid="4205" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4205.path,error in (no error):4202.value" outputs="vi reference:4210.vi,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Constant _name="Tab Class" type="string" uid="4215" uid_parent="root" value="TabControl" outputs="value:4215.value"/>
+  <Constant _name="Splitter Class" type="string" uid="4216" uid_parent="root" value="Splitter" outputs="value:4216.value"/>
+  <Constant _name="Traverse Target" type="uint16{FP,BD,Other}" uid="4217" uid_parent="root" value="0" outputs="value:4217.value"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:4210.vi,Class Name:4215.value,error in (no error):4210.err,Traverse Target:4217.value,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:,References:,# of Refs:4220.n,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:4210.vi,Class Name:4216.value,error in (no error):4220.err,Traverse Target:4217.value,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:,References:,# of Refs:4225.n,error out:4225.err" uid="4225" uid_parent="root"/>
+  <Node _name="Add" inputs="x:4220.n,y:4225.n" outputs="x+y:4230.sum" uid="4230" uid_parent="root"/>
+  <Constant _name="none" type="int32" uid="4231" uid_parent="root" value="0" outputs="value:4231.value"/>
+  <Node _name="Equal?" inputs="x:4230.sum,y:4231.value" outputs="x = y?:4235.eq" uid="4235" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4235.eq" uid="4240" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4210.vi" uid="4241" uid_parent="4240"/>
+    <Tunnel _id="In2" inputs="value:4225.err" uid="4242" uid_parent="4240"/>
+    <CaseFrame selector="True" selectout="" uid="4250" uid_parent="4240">
+      <Tunnel _id="In1" outputs="value:4251.value" uid="4251" uid_parent="4250"/>
+      <Tunnel _id="In2" outputs="value:4252.value" uid="4252" uid_parent="4250"/>
+      <Node _name="Property Node" fields="read+Application\3ADirectory Path" type="{LV.Application}" inputs="error in (no error):4252.value" outputs="Application\3ADirectory Path:4255.dir,reference out:,error out:4255.err" uid="4255" uid_parent="4250"/>
+      <Constant _name="Arrange FP" type="string" uid="4256" uid_parent="4250" value="resource\5Cdialog\5CQuickDrop\5Cplugins\5C_Arrange VIWin SubVIs\5CArrange VIWin - Arrange FP.vi" outputs="value:4256.value"/>
+      <Node _name="Build Path" inputs="base path:4255.dir,name or relative path:4256.value" outputs="appended path:4257.path" uid="4257" uid_parent="4250"/>
+      <Node _name="Open VI Reference" inputs="vi path:4257.path,error in (no error):4255.err" outputs="vi reference:4260.vi,error out:4260.err" uid="4260" uid_parent="4250"/>
+      <Node _name="To Variant" inputs="anything:4251.value" outputs="Variant:4261.Variant" uid="4261" uid_parent="4250"/>
+      <Constant _name="VI Control" type="string" uid="4262" uid_parent="4250" value="VI" outputs="value:4262.value"/>
+      <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:4260.vi,error in (no error):4260.err,Control Name:4262.value,Value:4261.Variant" outputs="reference out:,error out:4265.err" uid="4265" uid_parent="4250"/>
+      <Constant _name="Wait until done" type="bool" uid="4266" uid_parent="4250" value="true" outputs="value:4266.value"/>
+      <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:4260.vi,error in (no error):4265.err,Wait until done:4266.value" outputs="reference out:,error out:4270.err" uid="4270" uid_parent="4250"/>
+      <Node _name="Close Reference" inputs="reference:4260.vi,error in (no error):4270.err" outputs="error out:4275.err" uid="4275" uid_parent="4250"/>
+      <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4251.value,error in (no error):4275.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4280.err" uid="4280" uid_parent="4250"/>
+      <Tunnel _id="Out1" inputs="value:4280.err" uid="4281" uid_parent="4250"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="4290" uid_parent="4240">
+      <Tunnel _id="In1" outputs="value:4291.value" uid="4291" uid_parent="4290"/>
+      <Tunnel _id="In2" outputs="value:4292.value" uid="4292" uid_parent="4290"/>
+      <Tunnel _id="Out1" inputs="value:4292.value" uid="4293" uid_parent="4290"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4295.err" uid="4295" uid_parent="4240"/>
+  </Structure>
+  <Node _name="Close Reference" inputs="reference:4210.vi,error in (no error):4295.err" outputs="error out:4298.err" uid="4298" uid_parent="root"/>
+  <Indicator _name="arranged" conIdx="4" connection="recommended" type="bool" uid="4299" uid_parent="root" value="false" inputs="value:4235.eq"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4300" uid_parent="root" value="[false,0,]" inputs="value:4298.err"/>
+</VI>

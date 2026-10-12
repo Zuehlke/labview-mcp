@@ -147,6 +147,7 @@ public sealed class DiagramSizeTests
         {
             MeasureDiagram = (_, _, _) => Task.FromResult<((int, int)?, string?)>(((4152, 1023), @"C:\x\d.png")),
             CleanUp = LabVIEWMcp.Tests.Tools.BulkGenerateViTests.NoCleanUp,
+            CleanUpPanel = LabVIEWMcp.Tests.Tools.BulkGenerateViTests.NoCleanUp,
         };
 
         var result = await tools.GenerateViAsync(Aixml(server), server.TempPath("Out.vi"), measurePane: false);
@@ -179,7 +180,7 @@ public sealed class DiagramSizeTests
     // ---- LabVIEW's own Clean Up Diagram, the user's recommendation of 2026-10-12
 
     private static (BulkTools Tools, List<(string Vi, string Backend)> Asked) Cleaning(
-        LvaiTestServer server, bool ok = true)
+        LvaiTestServer server, bool ok = true, List<string>? panels = null)
     {
         var asked = new List<(string, string)>();
         var tools = new BulkTools(server.Connection)
@@ -195,9 +196,45 @@ public sealed class DiagramSizeTests
                     ["note"] = ok ? "cleaned" : "LabVIEW answered error 1003 to the clean-up",
                 });
             },
+            CleanUpPanel = (vi, _, _, _) =>
+            {
+                panels?.Add(vi);
+                return Task.FromResult(new JsonObject { ["step"] = "cleanUpPanel", ["ok"] = true });
+            },
         };
         return (tools, asked);
     }
+
+    [Fact]
+    public async Task The_front_panel_is_cleaned_up_first_and_not_on_the_main_VI()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "a generated VI";
+        var panels = new List<string>();
+        var (tools, asked) = Cleaning(server, panels: panels);
+        var sub = server.TempPath("Sub.vi");
+
+        var result = await tools.GenerateViAsync(Aixml(server), sub, measurePane: false);
+        // the application's main VI: its panel is the user interface, laid out on purpose
+        await tools.GenerateViAsync(Aixml(server), server.TempPath("Main.vi"), measurePane: false,
+                                    cleanUpPanel: false);
+
+        Assert.Equal([sub], panels);
+        Assert.Equal(2, asked.Count);           // the diagram is cleaned up on both
+        var names = Res.Obj(result)["steps"]!.AsArray().Select(s => s!["step"]!.GetValue<string>()).ToList();
+        Assert.True(names.IndexOf("cleanUpPanel") >= 0 && names.IndexOf("cleanUpPanel") < names.IndexOf("cleanUpDiagram"),
+                    string.Join(", ", names));
+    }
+
+    [Theory]
+    [InlineData("true", true)]
+    [InlineData("FALSE", false)]
+    [InlineData("0", false)]
+    public void The_panel_helpers_arranged_flag_is_read_off_either_backend(string literal, bool expected) =>
+        Assert.Equal(expected, DiagramCleanup.Arranged(new JsonObject
+        {
+            ["arranged"] = new JsonObject { ["literal"] = literal },
+        }));
 
     [Fact]
     public async Task A_deliverable_is_cleaned_up_before_its_size_is_measured()

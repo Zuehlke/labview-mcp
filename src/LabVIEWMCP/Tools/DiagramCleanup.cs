@@ -26,32 +26,62 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
 {
     internal const string HelperFileName = "lvai_cleanup_diagram.xml";
 
+    /// <summary>
+    /// THE FRONT PANEL'S counterpart, the user's request of 2026-10-12 for every VI that is not a
+    /// main VI: the algorithm behind Edit - Clean Up Panel. The IDE's own plugin
+    /// (resource\plugins\Call Clean Up Panel.vi) first chooses between Nigel and that algorithm in
+    /// a dialog, so the helper calls the algorithm directly - Arrange VIWin - Arrange FP.vi under
+    /// resource\dialog\QuickDrop, by path, with the VI's reference. It answers a panel holding a
+    /// tab control or a splitter with a MODAL One Button Dialog, which stops everything behind it,
+    /// so the helper counts both first and leaves such a panel alone (`arranged` false).
+    /// </summary>
+    internal const string PanelHelperFileName = "lvai_cleanup_panel.xml";
+
+    private sealed record Kind(string Step, string Helper, string What, string Done);
+
+    private static readonly Kind Diagram = new("cleanUpDiagram", HelperFileName, "diagram",
+        "LabVIEW's Clean Up Diagram ran and the VI was saved in place");
+
+    private static readonly Kind Panel = new("cleanUpPanel", PanelHelperFileName, "front panel",
+        "LabVIEW's Clean Up Panel algorithm (Arrange FP) ran and the VI was saved in place");
+
     /// <summary>The `cleanUpDiagram` step for one VI. Never throws for a LabVIEW refusal: the
     /// answer's `ok` says whether the diagram was cleaned and saved.</summary>
-    public async Task<JsonObject> RunAsync(string viPath, string backend, int timeoutSeconds,
-                                           CancellationToken ct)
+    public Task<JsonObject> RunAsync(string viPath, string backend, int timeoutSeconds,
+                                     CancellationToken ct) =>
+        RunAsync(Diagram, viPath, backend, timeoutSeconds, ct);
+
+    /// <summary>The `cleanUpPanel` step for one VI; `skipped` when its panel holds a tab control
+    /// or a splitter, which the algorithm would answer with a modal dialog.</summary>
+    public Task<JsonObject> RunPanelAsync(string viPath, string backend, int timeoutSeconds,
+                                          CancellationToken ct) =>
+        RunAsync(Panel, viPath, backend, timeoutSeconds, ct);
+
+    private async Task<JsonObject> RunAsync(Kind kind, string viPath, string backend, int timeoutSeconds,
+                                            CancellationToken ct)
     {
         var full = Path.GetFullPath(viPath);
-        var step = new JsonObject { ["step"] = "cleanUpDiagram", ["backend"] = backend };
+        var step = new JsonObject { ["step"] = kind.Step, ["backend"] = backend };
         if (!File.Exists(full)) return Fail(step, "There is no VI at " + full + " to clean up.");
 
         var compiledBefore = BulkTools.ContainsCompiledCode(full);
         var writtenBefore = File.GetLastWriteTimeUtc(full);
+        var helperFile = kind.Helper;
 
         string helperVi;
         if (backend == AixmlBackend.PyLabview)
         {
-            var (composed, problem) = await ComposedHelpers.EnsureAsync(HelperFileName, timeoutSeconds, ct);
+            var (composed, problem) = await ComposedHelpers.EnsureAsync(helperFile, timeoutSeconds, ct);
             if (composed is null) return Fail(step, "The clean-up helper could not be composed: " + problem);
             helperVi = composed;
         }
         else
         {
             var source = StatusTools.ScriptsDirectory() is { } scripts
-                ? Path.Combine(scripts, HelperFileName) : null;
+                ? Path.Combine(scripts, helperFile) : null;
             if (source is null || !File.Exists(source))
-                return Fail(step, $"{HelperFileName} was not found in the scripts folder beside the server.");
-            helperVi = Path.Combine(AixmlBackend.HelperFolder(), Path.ChangeExtension(HelperFileName, ".vi"));
+                return Fail(step, $"{helperFile} was not found in the scripts folder beside the server.");
+            helperVi = Path.Combine(AixmlBackend.HelperFolder(), Path.ChangeExtension(helperFile, ".vi"));
             Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
             if (HelperCache.NeedsRebuild(source, helperVi))
             {
@@ -75,11 +105,19 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
         step["helperErrorCode"] = code;
         step["helperErrorSource"] = error?["source"]?.GetValue<string>();
         step["saved"] = saved;
+        if (kind == Panel && code is 0 && Arranged(run?["values"] as JsonObject) is false)
+        {
+            step["ok"] = true;
+            step["skipped"] = true;
+            step["note"] = "The front panel holds a tab control or a splitter, on which LabVIEW's " +
+                           "arrangement answers with a modal dialog, so it was left as generated.";
+            return step;
+        }
         if (code is not 0 || !saved)
         {
             step["run"] = run;
             return Fail(step, code is null
-                ? "The clean-up helper's error out could not be read, so nothing says the diagram " +
+                ? $"The clean-up helper's error out could not be read, so nothing says the {kind.What} " +
                   "was cleaned up. The VI is as it was generated."
                 : code != 0
                     ? $"LabVIEW answered error {code} to the clean-up; the VI is as it was generated."
@@ -94,14 +132,30 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
             var strip = await StripCompiledAsync(full, timeoutSeconds, ct);
             step["compiledCodeStripped"] = strip;
             if (BulkTools.ContainsCompiledCode(full))
-                return Fail(step, "The diagram was cleaned up and saved, and LabVIEW's save wrote " +
+                return Fail(step, $"The {kind.What} was cleaned up and saved, and LabVIEW's save wrote " +
                                   "COMPILED CODE into a VI that had none; stripping it again failed. " +
                                   "Read compiledCodeStripped.");
         }
         step["ok"] = true;
-        step["note"] = "LabVIEW's Clean Up Diagram ran and the VI was saved in place" +
+        step["note"] = kind.Done +
                        (compiledBefore ? " (it carried compiled code before, and still does)." : ", source only.");
         return step;
+    }
+
+    /// <summary>The panel helper's `arranged` boolean, read off either backend's answer; null when
+    /// it is not there.</summary>
+    internal static bool? Arranged(JsonObject? values)
+    {
+        if (values?["arranged"] is not JsonObject entry) return null;
+        var text = (entry["literal"] ?? entry["value"])?.ToString()?.Trim().ToLowerInvariant();
+        return text switch
+        {
+            "true" or "1" => true,
+            "false" or "0" => false,
+            _ => entry["xml"]?.GetValue<string>() is { } xml
+                ? xml.Contains("<Val>1</Val>") || xml.Contains("<Val>TRUE</Val>")
+                : null,
+        };
     }
 
     /// <summary>Extract, pylv-strip-compiled.py, rebuild - the same three steps pylv_apply ends with.</summary>
