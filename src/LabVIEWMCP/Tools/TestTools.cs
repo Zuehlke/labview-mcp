@@ -449,11 +449,7 @@ internal sealed class TestTools(LvaiConnection connection)
             steps.Add(await ListInProjectAsync(project, testFolderName, [testViPath],
                                                timeoutSeconds, ct, reopen: false));
         else
-        {
-            var close = await new CloseTools(connection).CloseActiveProjectAsync(
-                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
-            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(close) });
-        }
+            steps.Add(await ReleaseProjectAsync(project, timeoutSeconds, ct));
 
         if (NotResolved(answer))
             return (null, "The subject was opened through its project and still did not resolve " +
@@ -995,9 +991,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
         async Task<string?> CloseAsync()
         {
-            var closed = await new CloseTools(connection).CloseActiveProjectAsync(
-                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
-            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) });
+            steps.Add(await ReleaseProjectAsync(project, timeoutSeconds, ct));
             return null;
         }
 
@@ -1636,6 +1630,73 @@ internal sealed class TestTools(LvaiConnection connection)
         return step;
     }
 
+    /// <summary>
+    /// Release the project a test generator's direct route opened: its `closeProject` step. ON
+    /// PYLABVIEW that route opened nothing, so LabVIEW's active project is closed only when it IS
+    /// <paramref name="project"/> - see <see cref="KeepActiveProjectReason"/>.
+    /// </summary>
+    internal async Task<JsonObject> ReleaseProjectAsync(string project, int timeoutSeconds,
+                                                        CancellationToken ct)
+    {
+        if (await KeepActiveProjectAsync(project, timeoutSeconds, ct) is { } keep)
+            return new JsonObject { ["step"] = "closeProject", ["skipped"] = true, ["reason"] = keep };
+        var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+            projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
+        return new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) };
+    }
+
+    /// <summary>
+    /// <see cref="KeepActiveProjectReason"/> with LabVIEW asked which project is active - only on
+    /// pylabview, so the grpc routes pay nothing.
+    /// </summary>
+    private async Task<string?> KeepActiveProjectAsync(string project, int timeoutSeconds,
+                                                      CancellationToken ct)
+    {
+        var backend = AixmlBackend.Inherited.Value?.Name;
+        if (backend != AixmlBackend.PyLabview) return null;
+        var (active, _, activePath) = await new ActionTools(connection)
+            .ProjectIsActiveAsync(timeoutSeconds, ct, AixmlBackend.PyLabview);
+        return KeepActiveProjectReason(backend, active, activePath, project);
+    }
+
+    /// <summary>
+    /// Why the active project must be LEFT OPEN, or null when closing it is this route's business.
+    ///
+    /// THE DIRECT ROUTES CLOSE "THE ACTIVE PROJECT", and on grpc that is the one they opened. ON
+    /// PYLABVIEW THEY OPEN NOTHING - the composer finds the subject, the class and the setup VIs by
+    /// FILE (2026-10-11) - so the same close, run over ActiveX, closed whatever project LabVIEW
+    /// had active: another agent's, the user's. Found 2026-10-12 while preparing a pylabview
+    /// acceptance run on a LabVIEW shared with other agents, where closing a project is forbidden.
+    /// So on pylabview the close runs only when the active project IS the one this call lists the
+    /// test in - then LabVIEW holds it and a file edit would be lost on its next save. Anything
+    /// else - another project, none, a check that could not run - is left alone, and the listing
+    /// is a file edit with LabVIEW uninvolved.
+    /// </summary>
+    internal static string? KeepActiveProjectReason(string? backend, bool? active, string? activePath,
+                                                    string project)
+    {
+        if (backend != AixmlBackend.PyLabview) return null;
+        if (active is true && activePath is { Length: > 0 } &&
+            string.Equals(SafeFullPath(activePath), SafeFullPath(project), StringComparison.OrdinalIgnoreCase))
+            return null;
+        return active switch
+        {
+            true => $"pylabview backend: nothing was opened, and LabVIEW's active project is " +
+                    $"'{(activePath is { Length: > 0 } ? activePath : "(path not reported)")}', not " +
+                    "this one - it is not this call's to close.",
+            false => "pylabview backend: nothing was opened and no project is active - nothing to close.",
+            null => "pylabview backend: nothing was opened, and which project LabVIEW has active " +
+                    "could not be read - left alone rather than closing an unknown one.",
+        };
+
+        static string SafeFullPath(string path)
+        {
+            try { return Path.GetFullPath(path); }
+            catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException)
+            { return path; }
+        }
+    }
+
     internal async Task<JsonObject> ListInProjectAsync(
         string projectPath, string folderName, IReadOnlyList<string> viPaths, int timeoutSeconds,
         CancellationToken ct, bool reopen = true, bool moveTargetLevel = false)
@@ -1651,9 +1712,19 @@ internal sealed class TestTools(LvaiConnection connection)
             // same reason since 2026-08-28; this route did not, and that is half of the defect.
             var listedBefore = LvClass.ListedVis(projectPath);
 
-            var closed = await new CloseTools(connection)
-                .CloseActiveProjectAsync(null, null, false, timeoutSeconds: timeoutSeconds, ct: ct);
-            step["closed"] = Read(closed);
+            // ON PYLABVIEW ONLY THIS PROJECT IS CLOSED, never whatever else is active - see
+            // KeepActiveProjectReason.
+            if (await KeepActiveProjectAsync(projectPath, timeoutSeconds, ct) is { } keep)
+            {
+                step["closed"] = null;
+                step["closeSkipped"] = keep;
+            }
+            else
+            {
+                var closed = await new CloseTools(connection)
+                    .CloseActiveProjectAsync(null, null, false, timeoutSeconds: timeoutSeconds, ct: ct);
+                step["closed"] = Read(closed);
+            }
 
             // A VI THAT IS NOT ON DISK IS REFUSED RATHER THAN LISTED. It used to be added, counted
             // in `added`, and then swept straight back out by the tidy pass's dangling check - so

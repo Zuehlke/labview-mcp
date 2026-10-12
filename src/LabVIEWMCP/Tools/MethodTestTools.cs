@@ -375,7 +375,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                 available = check.PaneOutputs.ToArray(),
                                 check = check.ToJson(),
                             });
-                    var match = terminals.PaneOutputs
+                    var match = terminals!.PaneOutputs
                         .First(t => t.Name.Equals(wanted, StringComparison.Ordinal));
 
                     outputType ??= match.Type;
@@ -841,12 +841,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                               "so they are not known to be loaded - read the openClass step.");
         }
 
-        async Task CloseAsync()
-        {
-            var closed = await new CloseTools(connection).CloseActiveProjectAsync(
-                projectPath: project, timeoutSeconds: timeoutSeconds, ct: ct);
-            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) });
-        }
+        async Task CloseAsync() =>
+            steps.Add(await tests.ReleaseProjectAsync(project, timeoutSeconds, ct));
 
         // 4. author against the real members and generate. `execState` failing HERE is expected
         //    and is not a failure: the seeds are still paths wired into class inputs.
