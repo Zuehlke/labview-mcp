@@ -5746,6 +5746,7 @@ class	property	access
 {LV.Tunnel}	Position:Top	read
 {LV.Tunnel}	Selected	read
 {LV.Tunnel}	Total Bounds Rect	read
+{LV.Tunnel}	Use Default if Unwired	read/write
 {LV.TypeCast}	Bounds	read
 {LV.TypeCast}	Bounds:Area Height	read
 {LV.TypeCast}	Bounds:Area Width	read

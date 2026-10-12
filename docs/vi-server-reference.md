@@ -131,6 +131,18 @@ the source VI and only 44 for writing, so almost everything reads `read`. That s
 happened to be set up, **not** whether the property is writable. Use `write+` when you need to
 write and let LabVIEW reject it if it is read-only.
 
+**One row was added by hand, and it is the one row AIXML cannot use: `{LV.Tunnel}` `Use Default
+if Unwired`, `read/write`.** Added 2026-10-12. It was not harvested from a node like every other
+row, because there is no node to harvest it from: the AIXML generator refuses it on a Property
+Node with `Invalid property`. That it exists is the string in LabVIEW's `resource\lvserver.rsc`;
+`read/write` is the IDE's own behaviour (a right-click setting on any output tunnel), not a
+measurement through VI Server, and `{LV.Tunnel}`'s generic `SetProperty` / `GetProperty` methods
+are unmeasured as a route to it. It is listed so a search for it finds this paragraph instead of
+nothing. **What works is the heap flag**: `0x200000` in a Case Structure output `selTun`'s
+`objFlags`, set in a pylabview bundle by `scripts/pylv-set-use-default.py` - the route
+`lvai_wire_dynamic_events` takes for the tunnel its right-side wire creates
+(`docs/labview-vit-templates.md` §5a).
+
 **Method names have two spellings and both work.** The same file contains `Print VI To HTML` and
 `Print.VI To Printer` — space and dot for what is the same `Category Method` shape. Verified:
 feeding the space form to `ConvertAIXMLToVI` produces a working VI, and exporting that VI back

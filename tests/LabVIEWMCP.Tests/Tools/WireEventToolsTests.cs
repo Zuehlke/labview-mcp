@@ -303,6 +303,154 @@ public sealed class WireEventToolsTests
         Assert.Contains("value=\"diagram\"", text);
     }
 
+    // ------------------------------------------------------------------ right side
+
+    [Fact]
+    public void NoUnregisterNodeIsASkipNamedTheWayTheAnswerSpellsIt()
+    {
+        var right = WireEventTools.ClassifyRightSide(true, unregisterNodes: 0, sourceFound: true,
+            wiredBefore: false, attempted: false, code: 0, endsAfter: 0, broken: false);
+
+        Assert.Equal("skipped", right.Status);
+        Assert.Equal("noUnregisterForEvents", right.Reason);
+        Assert.False(right.Failed);
+        Assert.False(right.MayHaveCreatedTunnels);
+
+        // The shape the caller reads: rightSide: {skipped: "noUnregisterForEvents"}.
+        var json = right.ToJson(0, false, false, 0, "", 0, false);
+        Assert.Equal("noUnregisterForEvents", json["skipped"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public void SeveralUnregisterNodesAreRefusedWithTheCount()
+    {
+        var right = WireEventTools.ClassifyRightSide(true, unregisterNodes: 2, sourceFound: true,
+            wiredBefore: false, attempted: false, code: 0, endsAfter: 0, broken: false);
+
+        Assert.Equal("refused", right.Status);
+        Assert.Equal("multipleUnregisterForEvents", right.Reason);
+        Assert.Contains("2 nodes", right.Note);
+        Assert.False(right.Failed);   // a refusal is reported, it does not fail the left side
+
+        var json = right.ToJson(2, false, false, 0, "", 0, false);
+        Assert.Equal("multipleUnregisterForEvents", json["refused"]?.GetValue<string>());
+        Assert.Equal(2, json["unregisterNodes"]?.GetValue<int>());
+    }
+
+    [Fact]
+    public void AnAlreadyWiredUnregisterInputIsANoOp()
+    {
+        // The usual generated shape: AIXML wires Register For Events straight into Unregister.
+        var right = WireEventTools.ClassifyRightSide(true, unregisterNodes: 1, sourceFound: true,
+            wiredBefore: true, attempted: false, code: 0, endsAfter: 0, broken: false);
+
+        Assert.Equal("alreadyWired", right.Status);
+        Assert.False(right.Failed);
+        Assert.False(right.MayHaveCreatedTunnels);
+        Assert.Contains("no-op", right.Note);
+    }
+
+    [Fact]
+    public void ALandedRightWireIsWiredAndMayHaveMadeTunnels()
+    {
+        var right = WireEventTools.ClassifyRightSide(true, unregisterNodes: 1, sourceFound: true,
+            wiredBefore: false, attempted: true, code: 0, endsAfter: 2, broken: false);
+
+        Assert.Equal("wired", right.Status);
+        Assert.False(right.Failed);
+        Assert.True(right.MayHaveCreatedTunnels);   // this is what gates the Use Default step
+    }
+
+    [Theory]
+    [InlineData(1062, 0, false, "failed")]
+    [InlineData(0, 0, false, "didNotLand")]
+    [InlineData(0, 2, true, "broken")]
+    public void AnAttemptedRightWireThatDidNotLandIsAFailure(int code, int ends, bool broken,
+                                                             string status)
+    {
+        var right = WireEventTools.ClassifyRightSide(true, unregisterNodes: 1, sourceFound: true,
+            wiredBefore: false, attempted: true, code: code, endsAfter: ends, broken: broken);
+
+        Assert.Equal(status, right.Status);
+        Assert.True(right.Failed);
+    }
+
+    [Fact]
+    public void UnreadableRightSideIndicatorsAreUnknownAndStillLetTheBundleStepLook()
+    {
+        // RunVIAsTopLevel's Error 91 read-back artefact: nothing came back. The Use Default step
+        // is gated on its own uid diff, so letting it look costs an extract and cannot patch a
+        // tunnel this call did not make.
+        var right = WireEventTools.ClassifyRightSide(true, null, null, null, null, null, null, null);
+
+        Assert.Equal("unknown", right.Status);
+        Assert.False(right.Failed);
+        Assert.True(right.MayHaveCreatedTunnels);
+    }
+
+    [Fact]
+    public void NotRequestedTouchesNothing()
+    {
+        var right = WireEventTools.ClassifyRightSide(false, 1, true, false, false, 0, 0, false);
+
+        Assert.Equal("notRequested", right.Reason);
+        Assert.False(right.MayHaveCreatedTunnels);
+    }
+
+    [Fact]
+    public void ParsesTheUseDefaultScriptsLastTwoLines()
+    {
+        var (result, uids) = WireEventTools.ParseUseDefault(
+            "selTun before: 13, after: 15, new: 528,560\n" +
+            "   case 4310 output selTun 560 flags 0x100801 -> 0x300801 (unwired inner terminal(s) 566)\n" +
+            "USE_DEFAULT_SET: 560\nRESULT: changed\n");
+
+        Assert.Equal("changed", result);
+        Assert.Equal(new[] { "560" }, uids);
+
+        var (refused, none) = WireEventTools.ParseUseDefault(
+            "REFUSED: 1 tunnel uid(s) ...\r\nUSE_DEFAULT_SET: \r\nRESULT: refused\r\n");
+        Assert.Equal("refused", refused);
+        Assert.Empty(none);
+
+        Assert.Null(WireEventTools.ParseUseDefault(null).Result);
+    }
+
+    [Fact]
+    public void TheBundleNoteSaysWhichJobChangedTheFileAndThatTheProjectWasClosed()
+    {
+        var note = WireEventTools.BundleStepNote(userEvents: false, useDefault: true, executable: true);
+
+        Assert.Contains("Use Default if Unwired", note);
+        Assert.Contains("EXECUTABLE", note);
+        Assert.Contains("CLOSED", note);
+        Assert.DoesNotContain("user-event", note);
+    }
+
+    [Fact]
+    public void TheShippedHelperWiresTheRightSideOnItsOwnErrorBranch()
+    {
+        var aixml = Path.Combine(RepoRoot(), "scripts", WireEventTools.HelperAixmlFileName);
+        if (!File.Exists(aixml)) return;   // binary-only checkout
+        var text = File.ReadAllText(aixml);
+
+        // the input the tool sets, and the Unregister search: Traverse for Function, filtered on
+        // the EXACT class and on a SINK named in lower case
+        Assert.Contains("_name=\"wire right side\"", text);
+        Assert.Contains("value=\"Function\"", text);
+        Assert.Contains("value=\"event registration refnum\"", text);
+
+        // the conditional wire, and the save fed by the LEFT error passed through the case - the
+        // right side's own error must not reach Save.Instrument
+        Assert.Contains("<Structure _name=\"Case Structure\" selectin=\"4750.go\"", text);
+        Assert.Contains("error in (no error):4850.err", text);
+        Assert.DoesNotContain("error in (no error):4851.rightErr", text);
+
+        foreach (var name in new[] { "unregister nodes", "right attempted", "right code",
+                                     "right wire ends", "right wired before" })
+            Assert.Contains($"_name=\"{name}\"", text);
+    }
+
     // This walk was already worktree-correct; it now shares one implementation with the rest,
     // so there is a single place to fix and a single place tested. See RepoTree.
     private static string RepoRoot() => RepoTree.Root;

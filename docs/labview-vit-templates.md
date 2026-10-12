@@ -1278,6 +1278,53 @@ difference is not the downcast: it is that the earlier loop also read **`Connect
 terminal that had none. One property node per reference, and no `Connected Wire` on a terminal you
 have not established as wired.
 
+#### The RIGHT side, and the tunnel it leaves unwired - added 2026-10-12
+
+**`wireRightSide` (default true) wires the other end too**: the structure's SOURCE-side
+`Event Registration Refnum` terminal (`Is Source?` TRUE) to the `event registration refnum` input
+of `Unregister For Events`, `Auto Wire` and `Auto Route` TRUE, LabVIEW making the tunnels on the
+way out. The shape is the one a helper measured on an Actor Framework helper loop; it is new in
+this tool and its first LabVIEW run is the acceptance. `Unregister For Events` has no class of its
+own - it is a plain `Function` - so it is found by `Traverse` with `Class Name` `Function`, kept
+only when its `Class Name` is EXACTLY `Function` (whatever Traverse matches on) and it carries a
+SINK named `event registration refnum` in lower case. `Register For Events` carries a sink of that
+name too, and is class `RegisterForEvents`, which is why the exact-class filter is there.
+`rightSide` reports: `{skipped: "noUnregisterForEvents"}` for none, `{refused:
+"multipleUnregisterForEvents"}` with `unregisterNodes` for more than one (`Flush Event Queue` is
+spelled the same way, unmeasured), `alreadyWired` when the input carries a wire from anywhere -
+the usual generated shape, `Register For Events` wired straight into `Unregister` - and `wired`
+with `wireEndsAfter`. The right side runs on its OWN error branch inside a Case Structure: the
+left side's error passes through the case untouched and feeds `Save.Instrument`, so a right-side
+failure (`errorKind: rightSideNotWired`) never throws the left wire away.
+
+**The tunnel that wire creates on an enclosing Case Structure is UNWIRED in every other frame,
+and an output tunnel with no value in a frame breaks the VI.** That is the Actor Framework helper
+loop exactly: the Event Structure sits in the No Error frame of a Case Structure, and the Error
+frame has nothing to give the new output tunnel. The IDE answer is the tunnel's `Use Default if
+Unwired`, and AIXML refuses that property on a Property Node (`Invalid property`) -
+`docs/vi-server-reference.md` records the row and why it was added by hand. So it is set in the
+pylabview bundle: `scripts/pylv-set-use-default.py` ORs `0x200000` into the `selTun`'s `objFlags`
+(a plain output tunnel reads `0x801`, one LabVIEW has seen unwired in a frame `0x100801`, a
+use-default one `0x300801` - read off a wizard-generated accessor and off the run that patched it).
+
+**Only tunnels this call created, and that is decided by a BASELINE, not by a shape.** The tool
+extracts the VI before the helper saves over it, and the script touches a Case Structure (`select`)
+output tunnel only if its uid is absent from that baseline, it lacks the flag, and one of its inner
+terminals (every `termList` uid but the last, one per frame) lacks the WIRED bit `0x8000`. A tunnel
+the user already had is never changed, even one broken the same way - that would change what their
+code does. "Absent from the baseline" is only sound while LabVIEW keeps the uids of what existed;
+observed on one VI (generated structure uids survived LabVIEW's load, a `Connect Wire` and a save,
+while the new tunnels got low LabVIEW-assigned uids), not established as a rule. So the script
+also REFUSES, patching nothing, when any baseline tunnel uid is missing afterwards - a wire
+addition removes no tunnel. Run against the real bundle of that run, its output was byte-identical
+to the file that run patched by hand. `useDefaultSet` names what was set.
+
+**It is ONE round trip with the user-event step**, not a second one: extract, finish the
+user-event specs, set the flags, strip the compiled code, CLOSE THE ACTIVE PROJECT (saving it),
+rebuild, `execState`. It runs when either half has something to do and is skipped entirely -
+project left open - when neither has. `projectClosed` and `projectClosedFor`
+(`userEvents`, `useDefault`) say whether and why.
+
 #### Superseded, kept for the process lesson: "the renderer draws no wire"
 
 For an hour this section said the branch could not be drawn at all, and listed two candidate
