@@ -1785,3 +1785,42 @@ wrong wire with no error. `ok` is false (`errorKind: constantLabelAmbiguous`, or
 still replaced and the VI saved. The swap's cached helper VI is rebuilt when its AIXML is newer
 (`HelperCache`), because this site used to key on existence alone and would otherwise keep running
 a helper with neither new output.
+
+### Clearing broken wires after a swap, a bind or a method add - 2026-10-11, NOT YET MEASURED
+
+The user's rule: **a VI at state 0 with a broken-wire text gets Remove Bad Wires before any
+rebuild.** Every `Replace` these tools make re-types the wires it can; one it cannot is left
+broken, the VI reads `execState 0`, and the answer was green. A regeneration to fix it throws away
+the swaps, the binds and the icon. `lvai_af_remove_hook` and `lvai_graft_diagram` already ran
+`BD.Remove Bad Wires` inside their own helpers; the three Replace-based tools now end with it as one
+shared step, `Tools/BadWireCleanup.cs` driving `scripts/lvbd_remove_bad_wires.xml`, behind the
+parameter `removeBadWires` (default true, the user's decision).
+
+The helper opens the VI in the IDE's instance (`Project:Active Project` -> `Application` ->
+`Open VI Reference`) and:
+
+1. traverses every `Wire` (as `lvbd_broken_wires.xml` does) and keeps the broken ones. **None: the
+   VI is neither changed nor saved.**
+2. records each broken wire's END TERMINALS - `Name`, owner `Class Name`, `Is Source?` - then runs
+   `BD.Remove Bad Wires` and `Save.Instrument`.
+3. reads `Connected Wire` back on every recorded SINK of a broken wire that had at least one
+   SOURCE, each read on its own error path. Not A Refnum afterwards is a **lost connection**; a
+   read that errors goes to `Inputs Unchecked` instead, because a failed read is no evidence.
+
+| answer field (`badWireCleanup`) | meaning |
+|---|---|
+| `brokenWires`, `brokenWiresRemoved` | how many, and each as `src @ owner -> sink @ owner, sink @ owner`; `(no source)` marks a loose fragment |
+| `inputsLeftUnwired` | sinks that had a wire from a source and none afterwards - **non-empty fails the calling tool's `ok`**, `errorKind: badWireCleanupLostConnection` |
+| `inputsUnchecked` | sinks whose read errored |
+| `saved`, `execStateAfter` | the save, and `lvai_exec_state` read after a removal (not read when nothing was removed) |
+| `errorKind: noActiveProject` | Error 1055 - nothing removed; a warning on the calling tool, never a verdict |
+
+Where it runs: in `lvai_swap_subvis` after a SAVED swap and before the verify export, so
+`callTargets` describe the diagram as left; in `lvai_bind_typedef_constants` after the binds and
+before the verifying sweep; in `lvai_add_class_method` per method after the on-disk verify, in the
+phase-two window where the project is still open and active (`methodsWithLostConnections` names the
+methods). **Unmeasured on a class member**: `Save.Instrument` alone does not commit a `Replace` there
+(section 1d), and whether it commits a Remove Bad Wires is not established - read the member cold
+with `lvai_exec_state` after a run that removed something. Also unmeasured: that a terminal
+reference recorded before `BD.Remove Bad Wires` still answers `Connected Wire` after it - if it does
+not, the sinks land in `inputsUnchecked`, which gates nothing.

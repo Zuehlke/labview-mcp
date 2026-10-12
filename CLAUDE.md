@@ -2239,6 +2239,21 @@ THAN ONE constant carries is REFUSED** (the user's decision of 2026-10-11): it i
 constantLabelAmbiguous`, and every label that matched exactly once is still replaced and saved. So
 name every seed constant `_name`-uniquely. `docs/class-method-tooling.md` "Constants at any depth".
 
+**A VI AT STATE 0 WITH A BROKEN-WIRE TEXT GETS REMOVE BAD WIRES BEFORE ANY REBUILD** - the user's
+rule of 2026-10-11. A `Replace` (subVI, constant, pane control) re-types the wires it can and leaves
+the rest BROKEN, and one broken wire is enough for `execState 0`; regenerating for that throws away
+the swaps, the binds and the icon to fix what `{LV.VI}` `BD.Remove Bad Wires` clears in one call.
+So `lvai_swap_subvis`, `lvai_bind_typedef_constants` and `lvai_add_class_method` end with it as a
+shared step, `removeBadWires` (default true), through `scripts/lvbd_remove_bad_wires.xml` in the
+IDE's instance with the project active. **It says exactly what went**: `badWireCleanup` lists every
+removed wire as `terminal @ owner -> terminal @ owner`, and every sink of a broken wire that HAD a
+source is read back - one with no wire afterwards is a lost connection (two sources on one input,
+a wrong-type source), named in `inputsLeftUnwired`, and the calling tool's `ok` turns false
+(`errorKind: badWireCleanupLostConnection`). A wire with no source is a loose fragment: cleared,
+reported, gates nothing. A VI with no broken wire is not touched or saved. NOT MEASURED against
+LabVIEW yet, and on a class member it is not established that `Save.Instrument` alone persists the
+removal - read the method cold. `docs/class-method-tooling.md` "Clearing broken wires".
+
 **THE PYLABVIEW FALLBACK IS NOT AN ANSWER FOR THIS, and it fails LOUDLY only on the second look.**
 `pylv_apply {"op":"retarget"}` reaches a nested node — it edits link records and never walks a
 diagram — and on the same VI it produced `callTargets` naming all five real subVIs, a clean AIXML

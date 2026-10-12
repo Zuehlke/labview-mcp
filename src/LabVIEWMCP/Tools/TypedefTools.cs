@@ -102,6 +102,9 @@ internal sealed class TypedefTools(LvaiConnection connection)
         run and nothing should be concluded.
         Nothing is read back from the constant after the Replace: that method invalidates the
         reference it was called on (error 1055) and its return value cannot be consumed either.
+        THE LAST STEP CLEARS BROKEN WIRES (`removeBadWires`, default true): a Replace that cannot
+        re-type a wire leaves it broken, and the VI then reads state 0. Every removed wire is listed
+        under `badWireCleanup`; a sink that lost its wire from a source makes `ok` false.
         """)]
     public async Task<string> BindTypedefConstantsAsync(
         [Description(@"Absolute path to the .vi whose constants should be bound")] string viPath,
@@ -138,6 +141,13 @@ internal sealed class TypedefTools(LvaiConnection connection)
         bool regenerateHelper = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        [Description("""
+            After the binds, clear the BROKEN wires left on the diagram (BD.Remove Bad Wires, in the
+            IDE's instance) and list each under `badWireCleanup`. Default true. A sink that had a
+            wire from a source and has none afterwards fails `ok`
+            (`errorKind: badWireCleanupLostConnection`). A VI with no broken wire is not touched.
+            """)]
+        bool removeBadWires = true,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_bind_typedef_constants", async () =>
         {
@@ -238,10 +248,18 @@ internal sealed class TypedefTools(LvaiConnection connection)
             // subVI twice its dot reading described the wrong node: measured, it reported
             // `alreadyClean` for constants it had in fact just replaced. A sweep before and after
             // covers every node and is the only honest proof.
+            // THE CLEANUP RUNS BEFORE THE SWEEP, so the sweep reads the diagram as it is left.
+            var cleanup = removeBadWires
+                ? await new BadWireCleanup(connection).RunAsync(viPath, timeoutSeconds, ct)
+                : BadWireCleanup.Skipped("removeBadWires was false.");
+
             var after = await CoercedTerminalsAsync(viPath, timeoutSeconds, ct: ct);
 
-            return Describe(answers, wanted, viPath, subViName, helperVi, aixml, helperGenerated,
-                            before, after, resolution);
+            var described = Describe(answers, wanted, viPath, subViName, helperVi, aixml,
+                                     helperGenerated, before, after, resolution);
+            if (JsonNode.Parse(described) is not JsonObject result) return described;
+            BadWireCleanup.Attach(result, cleanup);
+            return Json.Document(result);
         }));
 
     /// <summary>
