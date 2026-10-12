@@ -471,8 +471,8 @@ def label_text(ddo):
     for part in (parts if parts is not None else []):
         if part.get("class") == "label" and part.findtext("partID") == "16":
             t = part.findtext("textRec/text")
-            if t and t.startswith('"') and t.endswith('"'):
-                t = t[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+            if t and len(t) > 1 and t.startswith('"') and t.endswith('"'):
+                t = t[1:-1]          # raw inside the quotes - pylabview escapes nothing
             # pylabview writes an unquoted [NULL] for a label with no text at all, and a NUL
             # BYTE as the literal text `&#x00;` - NI's export of DW Test Change Info.vi has an
             # empty label there
@@ -505,9 +505,17 @@ def set_sublabel(el, diag):
         el.set("label", "".join("\\%02X" % ord(c) if c in ",:\\" or ord(c) < 0x20 else c for c in t))
 
 
+def name_attr(s):
+    """A label as a `_name` attribute, as NI's exporter writes one: a backslash DOUBLED - it writes
+    `delimiter (\\\\t)` for the label `delimiter (\\t)` - so the composer's unescape cannot read a
+    backslash and two hex digits that follow it as one character."""
+    return s.replace("\\", "\\\\")
+
+
 def unquote(t):
-    if t and t.startswith('"') and t.endswith('"'):
-        return t[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+    """A heap string's text: RAW between its quotes - pylabview escapes nothing inside them."""
+    if t and len(t) > 1 and t.startswith('"') and t.endswith('"'):
+        return t[1:-1]
     return t or ""
 
 
@@ -866,7 +874,7 @@ class Reader:
             ind = int(fpdco.findtext("objFlags") or 0) & 1
             tree = self.tid_tree(fpdco)
             t = aixml_type(tree)
-            el = ET.Element("Indicator" if ind else "Control", {"_name": label_text(ddo)})
+            el = ET.Element("Indicator" if ind else "Control", {"_name": name_attr(label_text(ddo))})
             if t is None:
                 el.set("type", "?" + (lvheap.type_key(tree) or ""))
                 self.notes.append("front-panel %s %r: type %s not mapped" % (ddo.get("class"), label_text(ddo), lvheap.type_key(tree)))
@@ -1042,7 +1050,7 @@ class Reader:
         el = ET.Element("Constant")
         name = label_text(ddo)
         if name:
-            el.set("_name", name)
+            el.set("_name", name_attr(name))
         el.set("type", t or "?" + lvheap.type_key(tree))
         el.set("uid", ddo.get("uid"))
         el.set("uid_parent", parent_uid)

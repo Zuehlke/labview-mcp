@@ -440,6 +440,10 @@ greyed zeros from the diagram's origin to the array. A CLUSTER constant is laid 
 out - fields stacked with their labels hidden, the pane's frame parts, `docBounds` and `origin`
 computed from its size - where it used to be drawn as an empty frame; nested clusters and array
 fields included, and its wire attaches exactly. FINDINGS, "Constants as LabVIEW draws them".
+**A front-panel label too**: the text's advances + 4 px (296 labels of NI's examples measured
++3..4), with the object's own box widened to its visible label as NI's converter writes it -
+outside that box LabVIEW cut it - and the text written raw, since pylabview escapes nothing
+between the quotes. A front-panel CLUSTER's pane still cuts its last field (FINDINGS).
 
 **A structure's SUBDIAGRAM LABEL composes since the same day** - `label=` on the `<Structure>`,
 `<CaseFrame>` or `<Diagram>` that holds the subdiagram, as NI's exporter writes it and NI's

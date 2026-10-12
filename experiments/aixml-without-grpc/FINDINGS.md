@@ -1388,6 +1388,24 @@ parts from 0. A diagram terminal's label is `(0, -(W + 3), 15, 0)` on a control 
 wire router now attaches a string or numeric constant at the middle of its value box, which is the
 calibrated 7 px from the right on the old 13 px box and NI's own 7..14 on text-sized ones.
 
+**A FRONT-PANEL label is sized to its text too, and the object's box takes it in.** The panel
+font is the diagram's (`FPFont "0" 13`, Segoe UI): over 296 labels of NI's examples a panel
+label is the text's advances + 3..4 px (`FP_LABEL_PAD` 4). The donor's box was kept until then -
+`sample count` showed as `sample`, `source` as `sourc`, `a much longer ...` as `a much`
+(`t161_fp_labels`, rendered before and after). Widening the label alone was not enough: NI's
+converter writes an indicator whose numeric is 54 px wide with a 74 px box, the LABEL's width -
+an object's `bounds` include its visible label, and what lies outside them is cut, in the panel
+print and in a cluster's pane, which is sized from its fields' boxes. So `_set_label` widens the
+object's box to its label unless the label is hidden (objFlags bit 8, an array element's, which
+must fit its cell). And the label text is written RAW between the quotes: pylabview escapes
+nothing inside them (LVheap's string node), so the `\"` the composer wrote showed as `\"` -
+`say \"hi\"` for `say "hi"` - and vi2aixml stripped escapes LabVIEW never wrote.
+
+**Still open: a front-panel CLUSTER's pane cuts its last field.** Not a label - the same render
+before the change shows it: `error out`'s `source` string is cut at the bottom and the frame at
+the right, where NI's converter shows the whole cluster. The pane keeps the donor's `origin` and
+`docBounds` while its fields are re-stacked.
+
 **Cluster constants are drawn as NI draws them** (closed the same day; it was an open finding
 until then: frames drawn empty, the pane's parts at the donor's size while the pane grew, field
 labels shown where NI hides them). Read off NI's conversion of the same four constants

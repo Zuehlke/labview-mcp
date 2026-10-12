@@ -1764,5 +1764,17 @@
  },
  "t160_event_labels": {
   "cases": []
+ },
+ "t161_fp_labels": {
+  "cases": [
+   {
+    "inputs": "sample count=2.5;source=abcd;a much longer control label than any donor box=true",
+    "outputs": {
+     "sample count plus one": 3.5,
+     "source length": 4,
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

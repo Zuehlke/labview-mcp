@@ -1,0 +1,12 @@
+<VI _name="T161 Front Panel Labels.vi" description="Front-panel labels sized to their text: short and long names that the donor parts' boxes cut off, and a name with quotes and a backslash that must reach LabVIEW unescaped.">
+  <Control _name="sample count" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="source" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value=""/>
+  <Control _name="a much longer control label than any donor box" outputs="value:4202.value" type="bool" uid="4202" uid_parent="root" value="false"/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4203.value" type="cluster{bool.status,int32.code,string.source}" uid="4203" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Increment" inputs="x:4200.value" outputs="x+1:4210.x+1" uid="4210" uid_parent="root"/>
+  <Node _name="String Length" inputs="string:4201.value" outputs="length:4211.length" uid="4211" uid_parent="root"/>
+  <Indicator _name="sample count plus one" inputs="value:4210.x+1" type="double" uid="4220" uid_parent="root" value="0"/>
+  <Indicator _name="source length" inputs="value:4211.length" type="int32" uid="4221" uid_parent="root" value="0"/>
+  <Indicator _name="say &quot;hi&quot; \5C bye" inputs="value:4202.value" type="bool" uid="4222" uid_parent="root" value="false"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4203.value" type="cluster{bool.status,int32.code,string.source}" uid="4223" uid_parent="root" value="[false,0,]"/>
+</VI>

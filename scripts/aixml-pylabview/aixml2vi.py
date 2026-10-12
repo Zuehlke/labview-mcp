@@ -3172,7 +3172,7 @@ class Composer:
         # local read "pseq.vi"; the control's name there was an insane GRefDCO {sub} and a crash
         lab = node.find("label/textRec/text")
         if lab is not None:
-            lab.text = '"%s"' % self.vi_name.replace("\\", "\\\\").replace('"', '\\"')
+            lab.text = '"%s"' % self.vi_name           # raw: pylabview escapes nothing
         self.ends[(el.get("uid"), name)] = (term.get("uid"), diag)
         for _, net in outs:
             if net:
@@ -5992,6 +5992,11 @@ class Composer:
         return sorted(f[:-4].replace("__", "/") for f in os.listdir(self.parts.d)
                       if f.startswith(pre) and f.endswith(".xml"))
 
+    # A FRONT-PANEL label is as wide as LabVIEW draws its text plus 3-4 px - 296 labels of NI's
+    # examples, the panel font being the diagram's (LabVIEW.ini FPFont "0" 13, Segoe UI). The donor's
+    # box was kept until 2026-10-12, so `sample count` showed as `sample` and `source` as `sourc`.
+    FP_LABEL_PAD = 4
+
     @staticmethod
     def _set_label(ddo, name):
         for part in ddo.find("partsList"):
@@ -6001,7 +6006,24 @@ class Composer:
                 if txt is None:
                     txt = ET.Element("text")
                     tr.insert(1, txt)
-                txt.text = '"%s"' % name.replace("\\", "\\\\").replace('"', '\\"')
+                # RAW between the quotes: pylabview takes everything inside them as the text and
+                # escapes nothing (LVheap's string node) - a \" written here was shown as \" by
+                # LabVIEW, measured on a subdiagram label the same day
+                txt.text = '"%s"' % name
+                b = part.find("bounds")
+                if name and b is not None:
+                    t, l, bt, _ = lvheap.parse_bounds(b.text)
+                    w = int(-(-text_width(name) // 1)) + Composer.FP_LABEL_PAD
+                    b.text = lvheap.fmt_bounds((t, l, bt, l + w))
+                    # and the OBJECT's box takes a visible label in: NI's converter writes an
+                    # indicator 74 px wide for a 54 px numeric whose label is 74 (t161), and what
+                    # lies outside the box is cut - in the panel print and in a cluster's pane,
+                    # which is sized from its fields' boxes. A hidden label (objFlags bit 8, an
+                    # array element's) stays out: an element must fit its cell.
+                    ob = ddo.find("bounds")
+                    if ob is not None and not int(part.findtext("objFlags") or 0) & 8:
+                        o = lvheap.parse_bounds(ob.text)
+                        ob.text = lvheap.fmt_bounds((o[0], o[1], o[2], max(o[3], o[1] + l + w)))
                 return
 
     # ---- wiring, layout, pane -------------------------------------------------------------
