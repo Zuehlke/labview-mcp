@@ -93,21 +93,120 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     /// Null when the document cannot be read, and then nothing is gated on the count.
     /// </summary>
     internal static int? GenuinePathTerminals(string aixmlPath,
-                                              IReadOnlyCollection<ClassTerminal> classTerminals)
+                                              IReadOnlyCollection<ClassTerminal> classTerminals) =>
+        ExpectedPathObjects(aixmlPath, classTerminals)?.Total;
+
+    /// <summary>
+    /// The <c>stdPath</c> objects the saved front-panel heap SHOULD hold, split by where they sit.
+    /// <see cref="TopLevel"/> counts the method's own genuine <c>path</c> terminals;
+    /// <see cref="InsideClusters"/> counts <c>path</c> ELEMENTS inside a cluster or array type
+    /// literal of any Control or Indicator.
+    /// </summary>
+    internal sealed record PathExpectation(int TopLevel, int InsideClusters)
+    {
+        public int Total => TopLevel + InsideClusters;
+    }
+
+    /// <summary>
+    /// What <see cref="GenuinePathTerminals"/> totals. A PATH INSIDE A CLUSTER IS A HEAP OBJECT OF
+    /// ITS OWN: the heap check counts the substring <c>class="stdPath"</c>, and a cluster
+    /// element is written as <c>&lt;SL__arrayElement class="stdPath"&gt;</c> nested in the
+    /// cluster's <c>stdClust</c> - read 2026-10-12 off NI's own `Find Broken VIs in Project.vi`
+    /// (vi.lib\Utility\EditLVProj) with the bundled pylabview, whose array of clusters carries a
+    /// `Path` element exactly that way. So a method with a <c>cluster{path.protocol}</c> control -
+    /// a typedef cluster whose class element is authored as a path stand-in, retyped afterwards by
+    /// lvai_bind_pane_typedef - answered `ok: false`, "stand-ins still on the pane", for a correct
+    /// VI, three times in one field run. This tool retypes TOP-LEVEL terminals only, so such an
+    /// element is expected to remain a path here, whatever it stands in for.
+    ///
+    /// Null when the document cannot be read, and then nothing is gated on the count.
+    /// </summary>
+    internal static PathExpectation? ExpectedPathObjects(
+        string aixmlPath, IReadOnlyCollection<ClassTerminal> classTerminals)
     {
         try
         {
             var standIns = classTerminals.Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
-            return root(aixmlPath).DescendantsAndSelf()
+            var terminals = XElement.Load(aixmlPath).DescendantsAndSelf()
                 .Where(e => e.Name.LocalName is "Control" or "Indicator")
+                .ToList();
+
+            var topLevel = terminals
                 .Where(e => (string?)e.Attribute("type") == "path")
                 .Count(e => (string?)e.Attribute("_name") is { } name && !standIns.Contains(name));
+            var inside = terminals
+                .Select(e => (string?)e.Attribute("type") ?? "")
+                .Where(t => t != "path")
+                .Sum(PathsInTypeLiteral);
+            return new PathExpectation(topLevel, inside);
         }
         catch (IOException) { return null; }
         catch (System.Xml.XmlException) { return null; }
         catch (UnauthorizedAccessException) { return null; }
+    }
 
-        static XElement root(string path) => XElement.Load(path);
+    /// <summary>
+    /// How many <c>path</c> elements an AIXML type literal holds that become front-panel heap
+    /// objects - descending into <c>cluster{TYPE.Name,...}</c> and <c>array{TYPE}</c> /
+    /// <c>array.N{TYPE}</c> only (docs/aixml-reference.md section 5). A refnum's payload
+    /// (<c>ref{Queue}{path}</c>) is a TYPE, not a control on the panel, and an enum's braces hold
+    /// labels, so neither is entered; a FIELD NAME that happens to read `path`
+    /// (<c>string.path</c>) is not a type and is not counted.
+    /// </summary>
+    internal static int PathsInTypeLiteral(string type)
+    {
+        type = type.Trim();
+        var head = type;
+        var stop = type.IndexOfAny(['{', '.', ',', '}']);
+        if (stop >= 0) head = type[..stop];
+
+        if (head == "path") return 1;
+        if (head is not ("array" or "cluster")) return 0;
+
+        var open = type.IndexOf('{');
+        if (open < 0) return 0;
+        // array.N{...}: anything between the head and the brace must be the dimension infix.
+        if (open != head.Length &&
+            !(head == "array" && type[head.Length] == '.' &&
+              type[(head.Length + 1)..open].All(char.IsDigit)))
+            return 0;
+
+        var close = MatchingBrace(type, open);
+        if (close < 0) return 0;
+        var inner = type[(open + 1)..close];
+
+        return head == "array"
+            ? PathsInTypeLiteral(inner)
+            : TopLevelSplit(inner).Sum(PathsInTypeLiteral);
+    }
+
+    private static int MatchingBrace(string text, int open)
+    {
+        var depth = 0;
+        for (var i = open; i < text.Length; i++)
+        {
+            if (text[i] == '{') depth++;
+            else if (text[i] == '}' && --depth == 0) return i;
+        }
+        return -1;
+    }
+
+    /// <summary>A cluster's element list split at its depth-0 commas.</summary>
+    private static IEnumerable<string> TopLevelSplit(string inner)
+    {
+        var depth = 0;
+        var start = 0;
+        for (var i = 0; i < inner.Length; i++)
+        {
+            if (inner[i] == '{') depth++;
+            else if (inner[i] == '}') depth--;
+            else if (inner[i] == ',' && depth == 0)
+            {
+                yield return inner[start..i];
+                start = i + 1;
+            }
+        }
+        if (start < inner.Length) yield return inner[start..];
     }
 
     /// <summary>The four numbers to write for a class member on this pattern, read off its own
@@ -180,7 +279,10 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         opened once for every retype. Getting that backwards is Error 56002 on one side and a
         silent no-op on the other.
         VERIFIED FROM THE SAVED FILE, with pylabview and no LabVIEW: each retyped terminal must show
-        as `class="udClassDDO"` in the front panel heap and no `stdPath` stand-in may remain. A run
+        as `class="udClassDDO"` in the front panel heap and no `stdPath` stand-in may remain beyond
+        the method's own path terminals and the `path` ELEMENTS inside its cluster or array
+        controls (`cluster{path.protocol}`) - those are counted from the AIXML, reported as
+        `pathsInsideClusters`, and left for lvai_bind_pane_typedef where they stand in for a class. A run
         that reported four working methods from `Execution:State = 1` was reading an in-memory copy
         that never reached disk; this check is what caught it, so `ok` is false without it.
         """)]
@@ -741,11 +843,15 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     // is the sibling method with no path payload, which answered 0 in the same run.
                     // The expectation comes from the AUTHORING AIXML, which is the only thing that
                     // knows which path terminals were meant to be stand-ins.
-                    var genuinePaths = method.Aixml is { } authored
-                        ? GenuinePathTerminals(authored, method.ClassTerminals)
+                    // A path ELEMENT inside a cluster control is a `stdPath` heap object too, and
+                    // this tool never retypes one - see ExpectedPathObjects.
+                    var expectedPaths = method.Aixml is { } authored
+                        ? ExpectedPathObjects(authored, method.ClassTerminals)
                         : null;
+                    var genuinePaths = expectedPaths?.Total;
                     evidence = await VerifyOnDiskAsync(viPath, method.ClassTerminals.Count,
-                                                       genuinePaths, timeoutSeconds, ct: ct);
+                                                       genuinePaths, expectedPaths?.InsideClusters,
+                                                       timeoutSeconds, ct: ct);
                     // AND THE CLASS FILE LISTS IT. A method can come out class-typed on disk and
                     // still not be a member: measured 2026-10-12, an orphan re-run answered ok
                     // with both terminals udClassDDO while the .lvclass named no such item and the
@@ -802,6 +908,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     ["verifiedOnDisk"] = verify,
                     ["sourceOnly"] = ClassTools.CompiledBlocks(viPath).Count == 0,
                     ["memberAlreadyExisted"] = alreadyMember,
+                    ["pathsInsideClusters"] = evidence?["pathsInsideClusters"]?.DeepClone(),
+                    ["pathsInsideClustersNote"] = evidence?["pathsInsideClustersNote"]?.DeepClone(),
                     ["steps"] = steps,
                 });
             }
@@ -841,7 +949,33 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     /// </summary>
     private static async Task<JsonObject> VerifyOnDiskAsync(string viPath, int expected,
                                                             int? genuinePaths,
+                                                            int? pathsInsideClusters,
                                                             int timeoutSeconds, CancellationToken ct)
+    {
+        var evidence = await ReadHeapAsync(viPath, expected, genuinePaths, timeoutSeconds, ct);
+        AnnotatePathsInsideClusters(evidence, pathsInsideClusters);
+        return evidence;
+    }
+
+    /// <summary>
+    /// Report the path elements inside cluster controls on their own. They are part of
+    /// `expectedPathStandInsLeft` - the heap counts them as `stdPath` like any other - and are
+    /// named apart because they are the ones a LATER step may still have to resolve.
+    /// </summary>
+    internal static void AnnotatePathsInsideClusters(JsonObject evidence, int? pathsInsideClusters)
+    {
+        evidence["pathsInsideClusters"] = pathsInsideClusters;
+        if (pathsInsideClusters is > 0)
+            evidence["pathsInsideClustersNote"] =
+                $"{pathsInsideClusters} `path` element(s) sit INSIDE a cluster or array control " +
+                "and are counted as expected: this tool retypes top-level class terminals only. " +
+                "If such an element stands in for a class inside a typedef cluster, " +
+                "lvai_bind_pane_typedef is the step that resolves it.";
+    }
+
+    private static async Task<JsonObject> ReadHeapAsync(string viPath, int expected,
+                                                        int? genuinePaths,
+                                                        int timeoutSeconds, CancellationToken ct)
     {
         var bundle = PyLabview.Locate();
         if (bundle is null)
@@ -1163,11 +1297,13 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         var left = evidence["pathStandInsLeft"]?.GetValue<int>() ?? -1;
         var want = evidence["expectedPathStandInsLeft"]?.GetValue<int?>();
         var listed = evidence["listedInClassFile"]?.GetValue<bool>();
+        var inside = evidence["pathsInsideClusters"]?.GetValue<int?>();
         return new JsonObject
         {
             ["classTypedTerminals"] = typed,
             ["pathStandInsLeft"] = left,
             ["expectedPathStandInsLeft"] = want,
+            ["pathsInsideClusters"] = inside,
             ["expected"] = expected,
             ["listedInClassFile"] = listed,
             ["ran"] = evidence["ran"]?.GetValue<bool>() ?? true,
@@ -1188,6 +1324,9 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     ? $"{left - (want ?? 0)} `path` stand-in(s) are still on the pane"
                       + (want is { } p and > 0
                             ? $", over the {p} the document declares as real path terminals"
+                              + (inside is { } c and > 0
+                                    ? $" ({c} of them elements inside cluster or array controls)"
+                                    : "")
                             : "")
                       + ". Either a terminal was left out of classTerminals, or its name is "
                       + "spelled differently there than on the pane - compare with `terminal "

@@ -124,4 +124,101 @@ public class ClassMethodPathTerminalTests
         var broken = doc.Write("broken.xml", "<VI _name=\"x.vi\"");
         Assert.Null(ClassMethodTools.GenuinePathTerminals(broken, Terminals("Pump in")));
     }
+
+    // ---- a path INSIDE a cluster control ----
+    //
+    // The heap check counts the substring class="stdPath", and a cluster ELEMENT is a heap object
+    // of its own - <SL__arrayElement class="stdPath"> nested in the cluster's stdClust, read
+    // 2026-10-12 off NI's `Find Broken VIs in Project.vi` with the bundled pylabview. So a method
+    // carrying `cluster{path.protocol}` answered ok: false, "stand-ins still on the pane", for a
+    // correct VI, three times in one field run.
+
+    /// <summary>The field case: a typedef cluster whose class element is a path stand-in.</summary>
+    [Fact]
+    public void A_path_element_inside_a_cluster_control_is_expected_and_reported_apart()
+    {
+        using var doc = new Doc();
+        var aixml = doc.Write("Konfigurieren.xml", """
+            <VI _name="Konfigurieren.vi" description="Configures the logger.">
+              <Control _name="Logger in" conIdx="11" connection="recommended" type="path" uid="4210" uid_parent="root" value="" outputs="value:"/>
+              <Control _name="Protocol" conIdx="10" connection="recommended" type="cluster{path.protocol}" uid="4211" uid_parent="root" value="[]" outputs="value:"/>
+              <Control _name="Setup" conIdx="9" connection="recommended" type="cluster{path.hardware,uint32.intervalMs}" uid="4212" uid_parent="root" value="[,0]" outputs="value:"/>
+              <Control _name="error in" conIdx="8" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4213" uid_parent="root" value="[false,0,]" outputs="value:"/>
+              <Indicator _name="Logger out" conIdx="3" connection="recommended" type="path" uid="4270" uid_parent="root" value="" inputs="value:"/>
+            </VI>
+            """);
+
+        var expected = ClassMethodTools.ExpectedPathObjects(aixml, Terminals("Logger in", "Logger out"));
+
+        Assert.NotNull(expected);
+        Assert.Equal(0, expected.TopLevel);
+        Assert.Equal(2, expected.InsideClusters);
+        Assert.Equal(2, ClassMethodTools.GenuinePathTerminals(aixml, Terminals("Logger in", "Logger out")));
+    }
+
+    [Theory]
+    [InlineData("path", 1)]
+    [InlineData("cluster{path.protocol}", 1)]
+    [InlineData("cluster{path.hardware,uint32.intervalMs}", 1)]
+    [InlineData("cluster{path.a,cluster{path.b,array{path}.c}.inner}", 3)]
+    [InlineData("array{path}", 1)]
+    [InlineData("array.2{path.Files}", 1)]
+    [InlineData("array{cluster{path.p,string.s}}", 1)]
+    [InlineData("cluster{bool.status,int32.code,string.source}", 0)]
+    // A FIELD NAMED `path` is not a path type.
+    [InlineData("cluster{string.path,int32.count}", 0)]
+    // A refnum's payload is a type, not a control on the panel; an enum's braces hold labels.
+    [InlineData("ref{Queue}{path}", 0)]
+    [InlineData("cluster{ref{Queue}{path}.q}", 0)]
+    [InlineData("uint8{path,file}", 0)]
+    [InlineData("string", 0)]
+    [InlineData("", 0)]
+    public void Path_elements_are_counted_where_they_become_panel_objects(string type, int paths) =>
+        Assert.Equal(paths, ClassMethodTools.PathsInTypeLiteral(type));
+
+    [Fact]
+    public void The_verify_evidence_names_the_cluster_paths_and_the_step_that_resolves_them()
+    {
+        var evidence = new System.Text.Json.Nodes.JsonObject();
+
+        ClassMethodTools.AnnotatePathsInsideClusters(evidence, 2);
+
+        Assert.Equal(2, evidence["pathsInsideClusters"]!.GetValue<int>());
+        Assert.Contains("lvai_bind_pane_typedef",
+                        evidence["pathsInsideClustersNote"]!.GetValue<string>());
+    }
+
+    /// <summary>The control arm: no cluster paths, no note.</summary>
+    [Fact]
+    public void A_method_with_no_cluster_paths_carries_no_cluster_note()
+    {
+        var evidence = new System.Text.Json.Nodes.JsonObject();
+
+        ClassMethodTools.AnnotatePathsInsideClusters(evidence, 0);
+
+        Assert.Equal(0, evidence["pathsInsideClusters"]!.GetValue<int>());
+        Assert.Null(evidence["pathsInsideClustersNote"]);
+    }
+
+    /// <summary>
+    /// The gate itself: three `stdPath` objects with two of them cluster elements is NOT a leftover
+    /// stand-in when the AIXML declares one real path plus two cluster paths - and four still is.
+    /// </summary>
+    [Fact]
+    public void A_stand_in_beyond_the_cluster_paths_still_fails_and_says_how_many_were_expected()
+    {
+        var detail = ClassMethodTools.VerifyFailureDetail(new System.Text.Json.Nodes.JsonObject
+        {
+            ["ran"] = true,
+            ["classTypedTerminals"] = 2,
+            ["pathStandInsLeft"] = 4,
+            ["expectedPathStandInsLeft"] = 3,
+            ["pathsInsideClusters"] = 2,
+        }, expected: 2);
+
+        var hint = detail["hint"]!.GetValue<string>();
+        Assert.Contains("1 `path` stand-in(s)", hint);
+        Assert.Contains("2 of them elements inside cluster", hint);
+        Assert.Equal(2, detail["pathsInsideClusters"]!.GetValue<int>());
+    }
 }
