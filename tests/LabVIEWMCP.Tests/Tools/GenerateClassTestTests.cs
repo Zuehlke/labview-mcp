@@ -628,16 +628,4 @@ public sealed class GenerateClassTestTests
         Assert.Equal("int32", full[0].Type);
         Assert.Equal("drei Phasen", full[0].Label);
     }
-
-    // A render of a composed class test aborted LabVIEW 2025 (bug report of 2026-10-12) and the fix
-    // is not confirmed there: an omitted measureDiagram renders only with LabVIEW 2026 or newer.
-    [Theory]
-    [InlineData(null, 2026, true)]
-    [InlineData(null, 2025, false)]
-    [InlineData(null, 2020, false)]
-    [InlineData(null, null, true)]
-    [InlineData(true, 2025, true)]
-    [InlineData(false, 2026, false)]
-    public void TheTestVIIsRenderedByDefaultOnlyFrom2026(bool? asked, int? labviewInUse, bool rendered) =>
-        Assert.Equal(rendered, TestTools.MeasureTestDiagram(asked, labviewInUse));
 }

@@ -122,12 +122,11 @@ internal sealed class TestTools(LvaiConnection connection)
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
-        [Description(MeasureTestDiagramDescription)] bool? measureDiagram = null) =>
+        [Description(MeasureTestDiagramDescription)] bool measureDiagram = true) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!AixmlBackend.TryResolve(backend, "lvai_generate_test", out _, out var badBackend))
                 return AixmlBackend.Refusal(badBackend);
-            var measure = MeasureTestDiagram(measureDiagram);
             if (!File.Exists(viPath))
                 return Json.Error("badArguments", $"No file at viPath '{viPath}'.");
 
@@ -162,7 +161,7 @@ internal sealed class TestTools(LvaiConnection connection)
             {
                 var (done, fallback) = await DirectAsync(viPath, testViPath, subjectName, cases,
                                                          projectPath, testFolderName, steps, total,
-                                                         route, measure, timeoutSeconds, ct);
+                                                         route, measureDiagram, timeoutSeconds, ct);
                 if (done is not null) return done;
                 route["route"] = "placeholder";
                 route["reason"] = fallback;
@@ -207,7 +206,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
             var generated = await new BulkTools(connection).GenerateViAsync(
                 aixmlPath, testViPath, openVI: false, measurePane: true, panePattern: null,
-                timeoutSeconds, ct: ct, measureDiagram: measure);
+                timeoutSeconds, ct: ct, measureDiagram: measureDiagram);
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
 
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
@@ -628,12 +627,11 @@ internal sealed class TestTools(LvaiConnection connection)
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
-        [Description(MeasureTestDiagramDescription)] bool? measureDiagram = null) =>
+        [Description(MeasureTestDiagramDescription)] bool measureDiagram = true) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!AixmlBackend.TryResolve(backend, "lvai_generate_class_test", out _, out var badBackend))
                 return AixmlBackend.Refusal(badBackend);
-            var measure = MeasureTestDiagram(measureDiagram);
             if (!File.Exists(lvclassPath))
                 return Json.Error("badArguments", $"No .lvclass at '{lvclassPath}'.");
 
@@ -724,7 +722,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 var (done, fallback) = await DirectClassTestAsync(
                     lvclassPath, className, testViPath, cases, projectPath, testFolderName,
                     alsoListInProject, scratch, keepAixml, verbose, steps, total, route,
-                    measure, timeoutSeconds, ct);
+                    measureDiagram, timeoutSeconds, ct);
                 if (done is not null) return done;
                 route["route"] = "sockets";
                 route["reason"] = fallback;
@@ -788,7 +786,7 @@ internal sealed class TestTools(LvaiConnection connection)
 
             var generated = await new BulkTools(connection).GenerateViAsync(
                 testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
-                timeoutSeconds, ct: ct, measureDiagram: measure);
+                timeoutSeconds, ct: ct, measureDiagram: measureDiagram);
             steps.Add(new JsonObject
             { ["step"] = "generate", ["answer"] = Json.Slim(Read(generated), verbose) });
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
@@ -3381,22 +3379,10 @@ internal sealed class TestTools(LvaiConnection connection)
 
     /// <summary>The `measureDiagram` switch of the three Caraya test generators.</summary>
     internal const string MeasureTestDiagramDescription = """
-        Render the test VI to report its `diagramSize`, after LabVIEW's Clean Up Diagram, because a
-        test VI has the same 1920 x 1080 budget as any other. Omitted, it is ON with LabVIEW 2026
-        and OFF with an older LabVIEW in use: LabVIEW 2025 aborted rendering composed test VIs with
-        a class constant (bug report of 2026-10-12, image2.cpp 262, `bad image in ValidateImage`),
-        and the cause is not established. False skips the render AND the clean-up; true forces both.
+        Render the test VI to report its `diagramSize`, after LabVIEW's Clean Up Diagram - on by
+        default, because a test VI has the same 1920 x 1080 budget as any other. False skips the
+        render AND the clean-up.
         """;
-
-    /// <summary>
-    /// Whether a Caraya test generator renders its test VI: what the caller asked, else on - unless
-    /// the LabVIEW in use is older than 2026, where a render of a composed class test aborted
-    /// LabVIEW 2025 (bug report of 2026-10-12) and the fix is not confirmed there.
-    /// </summary>
-    internal static bool MeasureTestDiagram(bool? asked) => MeasureTestDiagram(asked, AixmlBackend.LabViewInUse());
-
-    internal static bool MeasureTestDiagram(bool? asked, int? labviewInUse) =>
-        asked ?? !(labviewInUse is { } release && release < AixmlBackend.FirstGrpcRelease);
 
     /// <summary>What to do when a generated test VI is over the size budget, or "" when it is not.</summary>
     internal static string TestSizeNote(JsonObject? size) =>

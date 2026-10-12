@@ -192,12 +192,11 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
-        [Description(TestTools.MeasureTestDiagramDescription)] bool? measureDiagram = null) =>
+        [Description(TestTools.MeasureTestDiagramDescription)] bool measureDiagram = true) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!AixmlBackend.TryResolve(backend, "lvai_generate_method_test", out _, out var badBackend))
                 return AixmlBackend.Refusal(badBackend);
-            var measure = TestTools.MeasureTestDiagram(measureDiagram);
             if (!File.Exists(lvclassPath))
                 return Json.Error("badArguments", $"No .lvclass at '{lvclassPath}'.");
             if (projectPath is { Length: > 0 } && !File.Exists(projectPath))
@@ -408,7 +407,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             {
                 var (done, fallback) = await DirectMethodTestAsync(
                     lvclassPath, className, testViPath, cases, methodShapes, projectPath,
-                    testFolderName, scratch, keepAixml, steps, total, route, measure,
+                    testFolderName, scratch, keepAixml, steps, total, route, measureDiagram,
                     timeoutSeconds, ct);
                 if (done is not null) return done;
                 route["route"] = "sockets";
@@ -469,7 +468,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
 
             var generated = await new BulkTools(connection).GenerateViAsync(
                 testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
-                timeoutSeconds, ct: ct, measureDiagram: measure);
+                timeoutSeconds, ct: ct, measureDiagram: measureDiagram);
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
                 return Outcome(false, "generate", steps, total, testViPath, testAixml,

@@ -83,10 +83,9 @@ things went wrong, each handled now:
   1 of the 17 797 objects in every part. `Composer.instantiate` clears that bit on any label since.
   **The user's retest REFUTED it as the cause**: a VI with the bit clear aborted the same way, in
   the same call (bug report 2). The bit stays cleared - it is the majority value - but it is not
-  the fix. The three Caraya test generators take `measureDiagram`, which skips (false) or forces
-  (true) the render AND the clean-up; omitted, it is off while the LabVIEW in use is older than
-  2026 (`TestTools.MeasureTestDiagram`), so a test build there never renders until the abort is
-  understood.
+  the fix. The three Caraya test generators take `measureDiagram` (default true); false skips
+  the render AND the clean-up. For a few hours it defaulted to OFF on a LabVIEW older than 2026;
+  that went back once the user confirmed the render works on LabVIEW 2025 (below).
 
   **What LabVIEW itself writes for 2025 is now known, and the CLASS LINKS differ.** LabVIEW 2026's
   own `Save for Previous` (`{LV.VI}` `Save.For Previous`, over ActiveX `SaveForPrevious(path,
