@@ -227,7 +227,10 @@ ones stay in `helpers`, so neither backend runs or overwrites the other's.
 | `lvai_generate_class_test`, `lvai_generate_method_test` | the DIRECT route, as on grpc, with NOTHING OPENED: the composer resolves the class's accessors and methods by FILE (the class's folder is passed as a search folder, `AixmlComposer.ExtraSearch`), writes the dynamic-dispatch calls itself, and composes the seeds as CLASS CONSTANTS - so the `{LV.Constant}` Replace step is skipped as well (next sections). The socket route stays as the fallback |
 | `lvai_generate_test` | the DIRECT route too: the subject (and any setup VI) found by file, no project opened. Its PLACEHOLDER fallback points the call at the subject with LabVIEW's own `{LV.SubVI}` Replace - not the pylabview retarget, which answered ok here and left a test one folder below its subject failing with Error 7 Bad Linkage - one swap per case, because every case calls the same stub |
 | `lvai_swap_subvis` | the same helper, composed and run over ActiveX - in LabVIEW's main instance, so `{LV.SubVI}` Replace works with no project open. Verified against the READER's export of the saved file, and the answer says so |
-| `lvai_generate_caraya_test_runner`, `lvai_run_caraya_tests` | the runner composed; the run over ActiveX, the JUnit report read as on grpc |
+| `lvai_generate_caraya_test_runner`, `lvai_run_caraya_tests` | the runner composed; the run over ActiveX, the JUnit report read as on grpc. The run's answer names `backend` and `backendSource` since 2026-10-12 - it took the parameter and named neither until then |
+| `lvai_vi_terminals` | the export is the READER's (`vi2aixml.py`), no LabVIEW at all; never served from the export cache and never written into it, which holds NI's output only. A text answer, so `backend` and `backendSource` are its last line |
+| `lvai_connector_pane` | with `viPath`: the pattern read from the FILE (`pylv-conpane.py`, the route `lvai_generate_vi`'s pane step takes), the terminals from the reader's export, the slot positions from the measured pattern table - the probe's own verdict code over those three, so the answer has the grpc shape. The one reading that is not this VI's own is the orientation: the table holds the majority one, and the answer says so for the 8 patterns seen in two. Falls back to `pylv-conpane.py`'s own verdict when the reader or the table cannot help. A pattern or the full list needs no backend and names none |
+| `lvai_render_diagrams` | LabVIEW's own Print.VI To HTML over ActiveX per VI - the `diagramSize` step's route - with no helper VI; same answer shape, `renderedBy` instead of the helper fields, a refused print named per VI, `labviewDied` when a LabVIEW that ran before is gone after. Format Standard, so no hierarchy picture - every diagram and case frame still comes back |
 | `lvai_placeholder_subvi`, `lvai_add_vis_to_project` | the stub composed from the reader's export; the listing is a file edit and never needed NI |
 | `lvai_set_vi_icon` | the icon helper composed and run over ActiveX, judged by the same read-back file. Until 2026-10-11 it took the parameter and still called NI's `RunVIAsTopLevel` |
 | `lvai_exec_state` | `ExecState` over ActiveX — no helper VI; no linker errors, which ActiveX does not expose |
@@ -237,7 +240,10 @@ Before either backend: `lvai_check_aixml`'s pre-checks, and the refusal of a pro
 category dropped (`propertyNameWouldCrashLabview`) — that document is wrong whichever converter
 reads it.
 
-**These 22 are the whole list, and every agent knows it since 2026-10-12.** Every other tool that
+**These 25 are the whole list, and every agent knows it since 2026-10-12.** It was 22 until a
+backend comparison the same day found the Caraya agent's two `lvai_vi_terminals` calls going
+through NI's `ConvertVIToAIXML` in the pylabview arm, so that arm was not NI-free; `lvai_vi_terminals`,
+`lvai_connector_pane` and `lvai_render_diagrams` joined then. Every other tool that
 reaches LabVIEW has no `backend` and still goes through NI's service - `lvai_generate_vi_with_events`,
 `lvai_wire_dynamic_events`, `lvai_set_event_data_fields`, `lvai_graft_diagram`, the DQMH and LUnit
 tools among them. The eight `labview-*` agents carry one shared section, "The AIXML backend - grpc
@@ -730,12 +736,55 @@ loaded at all. What it lacked was the writing side, and that is now measured and
 STATIC class member on the dynamic record kinds (a static member in a library - Caraya's - links as
 before, through `IUVI`), and a class control on a FRONT PANEL (`LIfp` records).
 
+## Terminals, pane and render with NI's service unreachable (measured 2026-10-12)
+
+The backend comparison of 2026-10-12 ran a Caraya agent on each backend and found the pylabview arm
+was NOT NI-free: its two `lvai_vi_terminals` calls went through NI's `ConvertVIToAIXML`, because the
+tool had no `backend` and its cache miss called the RPC. `lvai_connector_pane` with `viPath` and
+`lvai_render_diagrams` had the same gap, and `lvai_run_caraya_tests` took `backend` but named it in
+no answer. All four were closed the same day (tool table above).
+
+Accepted over raw stdio against the built server, on copies of the comparison's own VIs -
+`Sensor Event Demo.vi` (a user-event producer/consumer), the class accessors `Scaled Value.vi` and
+`Write Gain.vi` - plus a copy of NI's `State Machine Fundamentals.vi`. The pylabview arm ran with
+`LABVIEW_GRPC_PORT=1`, so any call reaching NI's service would have failed; the control call
+(`lvai_status`) did fail, naming port 1.
+
+| | pylabview (NI dead) | grpc |
+|---|---|---|
+| `lvai_vi_terminals`, 3 VIs | every name, type, `conIdx` and `connection` equal to NI's, terminal order included - after the reader fix below | NI's export, the reference |
+| `lvai_connector_pane`, 3 VIs | pattern 4815 / 4815 / 4833, the same slot map, the same "Nothing to change" | the same |
+| `lvai_render_diagrams`, 3 VIs | 1 + 1 + 8 diagrams (top level and 7 case frames), every PNG the same width and height | the same |
+| `lvai_run_caraya_tests` | `backend: pylabview`, `backendSource: call` on the answer (a missing runner - running a suite is not a read, and LabVIEW was shared) | `backend: grpc` |
+| time | terminals 1.0-1.1 s (2.9 s for the first, interpreter cold), pane 1.8-1.9 s, render 0.6 s for three | 0.05-0.24 s, 0.10-0.32 s, 0.45 s |
+
+The served `tools/list` of that build carries `backend` on exactly 25 tools, the table above.
+
+**The one difference the comparison found was the READER's, and it is fixed**: on a class accessor
+NI's export writes the class terminals `connection="dynamic"`, and `vi2aixml.py` wrote `required`
+(the input) and `recommended` (the output) - it decoded the wire rule and ignored the dynamic
+dispatch bit beside it (`0x8000` on the pane slot, the bit `Infra/PaneDispatch.cs` reads). So the
+pylabview `lvai_vi_terminals` printed "create a constant for the required input Sensor in" where
+NI's answer says none is required, and `lvai_generate_method_test` on pylabview could not tell the
+dispatch input among several class-typed ones. The composer is unchanged: it never sets the dynamic
+bit (a loose VI may not carry one), and `lvai_placeholder_subvi` already maps `dynamic` back to
+`required`/`recommended` for its sockets, as it does for NI's exports.
+
+Two notes for reading the answers. **The pylabview pane is slower and says where its slots came
+from** - three interpreter starts, and a slot map "from the MEASURED PATTERN TABLE". And **the
+pylabview render prints format Standard where NI's helper prints Complete**: no hierarchy picture
+and no control glyphs beside the diagrams, which nothing reads; the diagrams themselves were
+pixel-size identical.
+
 ## Not covered, and not measured
 
 - **ActiveX is Windows only and needs a running LabVIEW**; it never starts one, so with no LabVIEW
   the pylabview backend writes and reads VIs and reports executability as not measured.
-- **`lvai_render_diagrams` and `lvai_connector_pane` are not switched** — `lvai_generate_vi` uses
-  the pylabview routes internally, the standalone tools still run NI's helpers.
+- **`lvai_connector_pane` on pylabview does not MEASURE the pane's orientation** - the slot
+  positions come from the pattern table, where the probe reads the VI's own `Terminal Bounds[]`.
+  For the 8 patterns found in two orientations (4815 among them, so every class member) the answer
+  says so; a rotated pane there is only seen on `grpc`. `lvai_render_diagrams` and
+  `lvai_connector_pane` follow the switch since 2026-10-12 (previous section).
 - **Still on gRPC**: the DQMH, graft, typedef, LUnit, mock and malleable tools, `lvai_add_class_field`,
   and the batch export `lvai_convert_vis_to_aixml`, whose cache holds NI's output. The class
   creation, method, accessor, Caraya test, swap, placeholder, runner and icon tools take `backend`
