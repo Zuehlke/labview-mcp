@@ -1316,6 +1316,28 @@ byte-identical sections (25 to 49 per VI, `pylabview -d`), and `compare_full.py`
 145 of 768 with nothing worse. The reader's XML path reads the nested names (`&#x01;&#x0E;Write
 Width.vi`) and `APILinkCacheList`, the binary fallback (kept for an unpatched bundle) the same.
 
+**Corrected 2026-10-12 - the 8 bytes are a variable-length tail.** Walking every class link record
+of NI's 509 class-linked examples (1249 records, file versions 17, 20, 26) with pylabview's own
+alignment: after the content LStr come `u32 N`, N x (qualified name, PTH0, `u8`) - the class's
+ancestors, nearest first, the byte 1 in every sample; one `u8`; and from version 20 `u32 M`, M x
+(qualified name, PTH0, `u32 K`, K x (qualified name, PTH0)) - classes with their parents, filled only
+in `TCPI` (LabVIEW.exe: `HeapTypeCastToUDClassAPILinkRef`, the link of a To More Specific Class to
+its class; heap layout, offset list after). Packed, no padding: a `VIPI` can end on an odd offset.
+An empty PTH0 is 12 bytes (tp and count after length 0), which `LVPath0` already reads. The lone
+`u8` is 0 in `VIPI`, 0/1 in `TCPI`, and ASCII-looking garbage in heap records (`ff 20 61 6e 74 75`).
+The old reading (8 bytes, pad to even) equals N=0, the byte and M=0 only by luck of an even content
+length - every VI built here, and none of the 140 LIvi / 138 LIbd blocks of NI's examples where a
+class has a parent. Version bounds bracketed by composing t128 under each stamp and loading it in
+LabVIEW 2026, both arms each: tail - 15 PASS without / BROKEN with, 16 BROKEN without / PASS with;
+M - 19 PASS without / BROKEN with, 20 BROKEN without / PASS with; 14 BROKEN both ways (another
+cause). Save for Previous could not help: LabVIEW 2026 saves back to 2025 only, every older version
+string gave the same 2025 file. Result: `class-link-tail-*` and `class-link-tcpi-*` in
+`patches.json`; 497 of 509 examples extract all LI blocks as XML and rebuild them byte-identical
+(the rest are three 8.2 files upstream fails on too); t115/t128/t157/t162 compose byte-identical
+to the old patch's output at stamps 20, 25, 26 (BDPW, LVSR, RTSG differ between any two builds) and
+pass; `compare_full.py` over the 52 cached Actor Framework/MGI/LUnit/LMock exports +1 element,
++1 attribute, nothing worse.
+
 **The records** (`class_link_records.py` dumps them):
 
 | record | block | names | content | cache list |

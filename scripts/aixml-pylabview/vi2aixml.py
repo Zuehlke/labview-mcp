@@ -668,7 +668,7 @@ class Reader:
             pref = rec.find("LinkSavePathRef")
             path = (int(pref.get("TpVal") or 0), [s.text or "" for s in pref.findall("String")]) if pref is not None else None
             # a class link record (DyOM, FPPI, DDPI) keeps its uids in APILinkCacheList - read
-            # once pylabview parses LabVIEW 2026's layout (patches.json, class-link-cache-extra)
+            # once pylabview parses the link cache's tail (patches.json, class-link-tail)
             for off in rec.findall("LinkOffsetList/Offset") + rec.findall("APILinkCacheList/Offset"):
                 try:
                     k = str(int(off.text, 16))

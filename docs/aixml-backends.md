@@ -147,7 +147,9 @@ things went wrong, each handled now:
   977`. That is a READER gap, version-independent: over NI's 509 class-linked examples, 140
   2026-format files stop after a `VIPI` in LIvi and 138 meet an `LIbd` record class pylabview does
   not know, `TCPI` - so a `VIPI` is sometimes longer than the 8 bytes, and the reader falls back to
-  raw for those blocks. The composer never reads them.
+  raw for those blocks. The composer never reads them. **Closed the same day**: the "8 bytes" are a
+  decoded tail now (ancestors, one byte, a class hierarchy) and `TCPI` is read - see "pylabview
+  could not read those records" below.
 - **Eight class methods were `Memory or data structure corrupt`, Error 74** - the encoding of
   link contents 9 and 10, under "Calling a class DIRECTLY" below; nothing version-specific.
 - **An OLDER CARAYA names Assert Equal Value_Variant's inputs `X` and `Y`**, and every test
@@ -701,6 +703,17 @@ loaded at all. What it lacked was the writing side, and that is now measured and
   `class-link-cache-extra-*`, reads and writes them: LIvi, LIfp and LIbd of seven class-linked VIs
   now extract as XML and rebuild to byte-identical sections. That is what made the records
   writable as XML - and it raised the reader's comparison to 145 of 768 VIs identical.
+  **Corrected 2026-10-12: they are not 8 bytes.** From file version 16 the content is followed by
+  `u32 N` and N ancestors (qualified name, path, byte - every Actor Framework actor names `Actor`),
+  one byte (0 in a `VIPI`, uninitialised in heap records - LabVIEW wrote a different one on every
+  save), and from version 20 `u32 M` classes, each with its parents - filled only by a type cast's
+  `TCPI`, a record upstream did not know. Nothing is aligned and nothing pads. The fixed 8 bytes
+  plus a pad were right only while N and M were 0. `class-link-tail-*` and `class-link-tcpi-*`
+  replace the old entries: 497 of NI's 509 class-linked examples extract every LI block as XML and
+  rebuild it byte-identical (all but three 8.2 files), and our composed class callers come out
+  byte-identical to before. The composer writes `APILinkTailByte` (0 or 255) and no ancestors -
+  every caller loaded and ran without them. Bounds bracketed in LabVIEW 2026 with both arms each:
+  15 loads only without the tail, 16 only with it; 19 only without M, 20 only with it.
 - **A class constant** (`<Constant type="ref{UDClassInst}">`, NI's own export spelling, which
   names no class) takes its class from the class terminal it feeds - as NI's converter must, since
   its export does not say either. Its value is the class's flattened default: `uint32 1`, the

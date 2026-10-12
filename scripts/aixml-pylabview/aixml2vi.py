@@ -4246,8 +4246,8 @@ class Composer:
     def write_class_links(self, lvin, bdhp, path_ref):
         """The links of a CLASS a VI uses, as LabVIEW 2026 saves them - read off its own saves of
         four test VIs that call a class's accessors and methods (2026-10-11), and readable as XML
-        only with pylabview patched for that version's 8 extra link-cache bytes (patches.json,
-        class-link-cache-extra).
+        only with pylabview patched for the tail LabVIEW writes after a link cache's content
+        (patches.json, class-link-tail).
           LIvi  VIPI per class, FIRST, second name 07 00, content 0;
                 VIPI per method called, its name NESTED (01, length, name), content = an id
                 unique among the method links - written as the record's own 0-based index
@@ -4255,8 +4255,12 @@ class Composer:
           LIbd  DyOM per method called: the same names, content = that method's VIPI content,
                 its cache list the call nodes' dynLink uids
                 FPPI and DDPI per class with constants: cache list the constants' ddo uids
-        The 8 bytes after the content are 0 in a VIPI and 00000000ff000000 in the others, in
-        every one of the 22 records measured; what they mean is not established.
+        That tail is the class's ancestors, one byte, and a list of classes with their parents
+        (decoded 2026-10-12 over NI's examples): written here with NO ancestors and an empty
+        list, and the byte 0 in a VIPI and ff in the others, as LabVIEW wrote it in every one of
+        the 22 records measured here - in heap records it is an uninitialised byte, not a field.
+        LabVIEW itself lists a class's parent there (every Actor Framework actor names Actor);
+        every composed caller loaded and ran without, so it is not written.
         The content is NOT strictly a position: NI's converter writes the 0-based index (content
         3..8 on LIvi records 3..8 of a Caraya test), and LabVIEW resaving one of our VIs wrote it
         one higher (4..9 on records 3..8) - both LabVIEW's own output, and both load. What
@@ -4272,12 +4276,12 @@ class Composer:
         if not classes:
             return
 
-        def record(holder, tag, owner, second, content, extra, cache=None, at=None):
+        def record(holder, tag, owner, second, content, tail, cache=None, at=None):
             c = classes[owner]
             rec = ET.Element(tag, {"LinkSaveFlag": "0",
                                    "APILinkLibVersion": str(self._class_version(owner)),
                                    "APILinkIsInternal": "0", "APILinkBool2": "1",
-                                   "APILinkCallParentNodes": "0", "APILinkExtra": extra})
+                                   "APILinkCallParentNodes": "0", "APILinkTailByte": str(tail)})
             qual = ET.SubElement(rec, "LinkSaveQualName")
             ET.SubElement(qual, "String").text = c["qual"][0]
             ET.SubElement(qual, "String").text = second
@@ -4293,14 +4297,13 @@ class Composer:
                 holder.insert(at, rec)
             return rec
 
-        zero, heap_extra = "0000000000000000", "00000000ff000000"
+        zero, heap_tail = 0, 255
         if self.target_major is not None and self.target_major < 26:
             # A FILE FOR AN OLDER LabVIEW GETS THE OLDER LAYOUT, read off LabVIEW 2026's own Save
             # for Previous of three composed callers (2025, and 2024 and 2020 answered the same):
             # NO VIPI in LIvi at all, NO DDPI, a DyOM's content the method's 1-based place among
-            # the DyOMs, and the 8 bytes not 00000000ff000000 - LabVIEW wrote a different fifth
-            # byte on every save (00, 10, 58, 70, 80, a0, e0, f8), so they are not a field and
-            # are written zero here. The 2026 layout under a 2025 stamp loaded and ran in
+            # the DyOMs, and the tail byte not ff - LabVIEW wrote a different one on every save
+            # (00, 10, 58, 70, 80, a0, e0, f8): it is uninitialised memory, written zero here. The 2026 layout under a 2025 stamp loaded and ran in
             # LabVIEW 2025 and aborted its diagram render, `bad image in ValidateImage` (the
             # user's bug report, 2026-10-12, image2.cpp 262).
             for n, link in enumerate(self.dyn_links.values(), 1):
@@ -4318,10 +4321,10 @@ class Composer:
             rec = record(lvin, "VIPI", link["owner"], nested, 0, zero)
             index = list(lvin).index(rec)
             rec.find("APILinkContent").text = self._lit(index.to_bytes(2, "big"))
-            record(bdhp, "DyOM", link["owner"], nested, index, heap_extra, cache=link["offsets"])
+            record(bdhp, "DyOM", link["owner"], nested, index, heap_tail, cache=link["offsets"])
         for owner, c in self.class_consts.items():
             for tag in ("FPPI", "DDPI"):
-                record(bdhp, tag, owner, self._lit(b"\x07\x00"), 0, heap_extra, cache=c["uids"])
+                record(bdhp, tag, owner, self._lit(b"\x07\x00"), 0, heap_tail, cache=c["uids"])
 
     def add_case(self, el):
         frames_el = [f for f in el if isinstance(f.tag, str) and f.tag == "CaseFrame"]

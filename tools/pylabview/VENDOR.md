@@ -39,13 +39,16 @@ production codebase at **32 of 900 VIs**, all from this one cause, all of them D
 which is why NI's own example corpus never hit it. `patches.json` carries the reasoning and the
 measurement; the crash is in cosmetic code, so no content was ever beyond reach.
 
-`class-link-cache-extra-*` (five entries in `LVlinkinfo.py`, 2026-10-11): LabVIEW 2026 writes 8
-more bytes into every class link record's API link cache, and upstream then misreads the record
-and leaves the WHOLE link block binary - every VI that calls a class method dynamically, and every
-class member. With the fix those blocks extract as XML and rebuild to byte-identical sections,
-measured on seven class-linked VIs; it is what lets the composer write class calls at all
-(`docs/aixml-backends.md`, "Calling a class DIRECTLY"). Only version 26 is measured, so the
-condition is that version.
+`class-link-tail-*` and `class-link-tcpi-*` (`LVlinkinfo.py`, 2026-10-12, replacing the
+`class-link-cache-extra-*` entries of 2026-10-11): from file version 16 LabVIEW writes a tail after
+every class link record's API link cache content - the class's ancestors, one byte, and from
+version 20 a list of classes with their parents - and LIbd holds `TCPI` records (a type cast's link
+to a class) that upstream does not know. Upstream then leaves the WHOLE link block binary. The old
+entries read a fixed 8 bytes, which was right only for a class with no parent. With the fix 497 of
+NI's 509 class-linked examples (all but three LabVIEW 8.2 files) extract every LI block as XML and
+rebuild it byte-identical; it is also what lets the composer write class calls at all
+(`docs/aixml-backends.md`, "Calling a class DIRECTLY"). Both version bounds are bracketed by
+loading composed files in LabVIEW 2026 with and without each part.
 
 **The failure mode the mechanism is built against is silence.** A Find/Replace against a line of
 upstream source stops matching when upstream edits that line - and then the bundle assembles
