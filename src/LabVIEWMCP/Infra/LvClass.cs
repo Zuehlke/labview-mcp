@@ -910,6 +910,73 @@ internal static class LvClass
         .Elements("Property")
         .FirstOrDefault(p => (string?)p.Attribute("Name") == name)?.Value;
 
+    // ------------------------------------------------------------------ source-only projects
+
+    /// <summary>The project-scope property behind "Separate compiled code from new project items".</summary>
+    internal const string SourceOnlyProperty = "NI.LV.All.SourceOnly";
+
+    private static readonly System.Text.RegularExpressions.Regex SourceOnlyLine = new(
+        "<Property Name=\"NI\\.LV\\.All\\.SourceOnly\" Type=\"Bool\">(true|false)</Property>",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// The project's own <c>NI.LV.All.SourceOnly</c> - true, false, or null when the project
+    /// scope does not carry it (LabVIEW then treats new items as NOT separated: a hand-written
+    /// project without it gave the accessor wizard's VIs compiled code, 2026-10-12).
+    /// Only a property ahead of the first <c>&lt;Item</c> counts: that is project scope.
+    /// </summary>
+    public static bool? ProjectSourceOnly(string projectText)
+    {
+        var firstItem = projectText.IndexOf("<Item", StringComparison.Ordinal);
+        var match = SourceOnlyLine.Match(projectText);
+        if (!match.Success || (firstItem >= 0 && match.Index > firstItem)) return null;
+        return match.Groups[1].Value == "true";
+    }
+
+    /// <summary>
+    /// The same project text with <c>NI.LV.All.SourceOnly</c> = true at project scope: an
+    /// existing <c>false</c> flipped in place, or a line inserted right after the <c>&lt;Project</c>
+    /// element - TEXT, not XML, for the reason <see cref="AddToProject"/> gives (a round trip
+    /// rewrites a file LabVIEW owns). The file's own line ending and indentation are kept.
+    /// Returns the action taken: "alreadyTrue", "flippedFalseToTrue" or "inserted"; null when the
+    /// text has no <c>&lt;Project</c> element to insert under, and then nothing changes.
+    /// </summary>
+    public static (string Text, string? Action) WithProjectSourceOnly(string projectText)
+    {
+        switch (ProjectSourceOnly(projectText))
+        {
+            case true:
+                return (projectText, "alreadyTrue");
+            case false:
+                var at = SourceOnlyLine.Match(projectText);
+                return (projectText[..at.Index] +
+                        $"<Property Name=\"{SourceOnlyProperty}\" Type=\"Bool\">true</Property>" +
+                        projectText[(at.Index + at.Length)..], "flippedFalseToTrue");
+        }
+
+        var open = System.Text.RegularExpressions.Regex.Match(projectText, "<Project\\b[^>]*>");
+        if (!open.Success) return (projectText, null);
+        var newline = projectText.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var insert = $"{newline}\t<Property Name=\"{SourceOnlyProperty}\" Type=\"Bool\">true</Property>";
+        var end = open.Index + open.Length;
+        return (projectText[..end] + insert + projectText[end..], "inserted");
+    }
+
+    /// <summary>
+    /// <see cref="WithProjectSourceOnly"/> applied to a FILE, keeping its BOM. THE PROJECT MUST BE
+    /// CLOSED - LabVIEW's own save writes its in-memory copy back over an edit made under it.
+    /// </summary>
+    public static string? SetProjectSourceOnly(string projectPath)
+    {
+        var bytes = File.ReadAllBytes(projectPath);
+        var bom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
+        var text = new UTF8Encoding(false).GetString(bytes, bom ? 3 : 0, bytes.Length - (bom ? 3 : 0));
+        var (changed, action) = WithProjectSourceOnly(text);
+        if (action is null or "alreadyTrue") return action;
+        File.WriteAllText(projectPath, changed, new UTF8Encoding(bom));
+        return action;
+    }
+
     // ------------------------------------------------------------------ the project entry
 
     /// <summary>
@@ -953,7 +1020,12 @@ internal static class LvClass
         var text = new StringBuilder();
         text.Append("<?xml version='1.0' encoding='UTF-8'?>\r\n");
         text.Append($"<Project Type=\"Project\" LVVersion=\"{lvVersion}\">\r\n");
-        text.Append("\t<Property Name=\"NI.LV.All.SourceOnly\" Type=\"Bool\">false</Property>\r\n");
+        // TRUE - "Separate compiled code from new project items". It decides whether NI's accessor
+        // wizard writes compiled code into every accessor it creates: measured 2026-10-12 as a
+        // clean A/B in one LabVIEW, the same class built twice through lvai_create_accessors - with
+        // `false` all six accessors carried VICD, TM80, DFDS and CCST, with `true` none did, and
+        // all six were executable either way. It was `false` here until then.
+        text.Append($"\t<Property Name=\"{SourceOnlyProperty}\" Type=\"Bool\">true</Property>\r\n");
         text.Append("\t<Property Name=\"NI.Project.Description\" Type=\"Str\"></Property>\r\n");
         text.Append("\t<Item Name=\"My Computer\" Type=\"My Computer\">\r\n");
         foreach (var (name, type, value) in TargetProperties)

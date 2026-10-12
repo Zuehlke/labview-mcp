@@ -1970,6 +1970,14 @@ internal sealed class ClassTools(LvaiConnection connection)
         RUN IT ONCE PER CLASS ON A CLEAN MEMORY. An earlier failed run leaves accessors in memory
         unsaved, and then the next run names them "Read X 2.vi" and the class file never gets its
         member list. Restart LabVIEW or close the project first.
+        EVERY ACCESSOR COMES OUT SOURCE-ONLY - no VICD, TM80, DFDS or CCST - and `sourceOnly` says
+        so per VI, read from each saved file. The wizard decides that from the PROJECT's
+        NI.LV.All.SourceOnly ("Separate compiled code from new project items"): measured
+        2026-10-12, false gave all six accessors all four blocks, true gave none. So with
+        projectPath this call sets it first when the project lacks it - closing the project if
+        LabVIEW holds it, because it is a file edit - and reports that as `projectSourceOnly`;
+        compiled code in an accessor after that is `ok: false`. Without projectPath nothing can be
+        set, and `sourceOnlyNote` says why the accessors carry compiled code.
         """)]
     public async Task<string> CreateAccessorsAsync(
         [Description(@"Absolute path to the .lvclass whose fields need accessors")]
@@ -2180,6 +2188,19 @@ internal sealed class ClassTools(LvaiConnection connection)
             // 23 % of a class build. projectPath was already a parameter here; it was just unused
             // until the very end.
             var callWall = Stopwatch.StartNew();
+
+            // SOURCE-ONLY ACCESSORS, BY LabVIEW's OWN SETTING. NI's wizard saves every accessor it
+            // creates, and whether that file carries compiled code (VICD, TM80, DFDS, CCST) is the
+            // PROJECT's "Separate compiled code from new project items" - NI.LV.All.SourceOnly.
+            // Measured 2026-10-12 as a clean A/B in one LabVIEW: the same class built twice, flag
+            // false - all six accessors carried all four blocks; flag true - none did, all six
+            // executable. No pylabview edit and no extra save, so the wizard's own files are what
+            // ships. The flag is a FILE edit, so the project is closed first if LabVIEW holds it.
+            JsonObject? projectSourceOnly = null;
+            if (projectPath is { Length: > 0 } && File.Exists(projectPath))
+                projectSourceOnly = await MakeProjectSourceOnlyAsync(
+                    Path.GetFullPath(projectPath), timeoutSeconds, ct, choice.Name);
+
             JsonNode? projectOpened = null;
             if (projectPath is { Length: > 0 })
             {
@@ -2191,6 +2212,7 @@ internal sealed class ClassTools(LvaiConnection connection)
             }
 
             var slices = new JsonArray();
+            var createdPaths = new List<string>();
             var wall = Stopwatch.StartNew();
             var sliceStartMs = 0L;
             var moreToDo = false;
@@ -2232,6 +2254,7 @@ internal sealed class ClassTools(LvaiConnection connection)
 
                 verdict = DescribeAccessorRun(answer, lvclassPath, pdcName, helperVi, aixml,
                     fromField, membersBefore, helperGenerated);
+                createdPaths.AddRange(CreatedAccessorPaths(verdict, lvclassPath));
                 var thisSliceMs = wall.ElapsedMilliseconds - sliceStartMs;
                 slices.Add(new JsonObject
                 {
@@ -2315,6 +2338,28 @@ internal sealed class ClassTools(LvaiConnection connection)
                 final["memberNames"] = MemberNamesOnDisk(lvclassPath);
                 final["dispatchFlags"] = DispatchFlagsOnDisk(lvclassPath);
 
+                // SOURCE-ONLY, READ FROM EACH SAVED FILE - the user's standing rule is that every
+                // VI this server writes is source-only, asserted rather than assumed.
+                var sourceOnly = AccessorSourceOnly(createdPaths);
+                final["projectSourceOnly"] = projectSourceOnly;
+                final["sourceOnly"] = sourceOnly.PerVi;
+                final["accessorsSourceOnly"] = sourceOnly.All;
+                if (sourceOnly.All is false)
+                {
+                    // GATED only where this call set the project up for it: then compiled code in
+                    // a wizard file means the mechanism did not hold, which is a failure. Without
+                    // projectPath there was nothing to set, and the answer says how to get it.
+                    if (projectSourceOnly is not null) final["ok"] = false;
+                    final["sourceOnlyNote"] = projectSourceOnly is not null
+                        ? "The project was set to separate compiled code from new items and the " +
+                          "wizard STILL wrote compiled code into " +
+                          string.Join(", ", sourceOnly.NotSourceOnly.Select(Path.GetFileName)) +
+                          " - see projectSourceOnly for what was done to the project first."
+                        : "These accessors carry compiled code because no projectPath was given, so " +
+                          "the project's NI.LV.All.SourceOnly could not be set before the wizard " +
+                          "ran. Pass projectPath; the setting decides it (measured 2026-10-12).";
+                }
+
                 // THE SAFETY NET, whatever the cause. NI's wizard renames around a collision rather
                 // than failing, so a class can come out with `Read Bio 2.vi` in it while every
                 // per-step errorCode is 0. One run did exactly that and answered ok: true with
@@ -2349,6 +2394,121 @@ internal sealed class ClassTools(LvaiConnection connection)
             return await TidyProjectAsync(verdict, lvclassPath, helperVi, projectPath,
                 closeProject, timeoutSeconds, ct: ct, backend: choice.Name);
         }), choice);
+    }
+
+    /// <summary>The four blocks a VI saved WITH compiled code carries, and a source-only one does not.</summary>
+    internal static readonly string[] CompiledBlockTags = ["VICD", "TM80", "DFDS", "CCST"];
+
+    /// <summary>
+    /// Which of <see cref="CompiledBlockTags"/> a saved VI carries - searched as the four ASCII
+    /// bytes, the way <c>ContainsCompiledCode</c> asks for VICD: the resource map names each block
+    /// by its type. Measured 2026-10-12 on wizard accessors: all four or none, never a mix.
+    /// </summary>
+    internal static List<string> CompiledBlocks(string viPath)
+    {
+        if (!File.Exists(viPath)) return [];
+        var bytes = File.ReadAllBytes(viPath);
+        return [.. CompiledBlockTags.Where(t => bytes.AsSpan().IndexOf(System.Text.Encoding.ASCII.GetBytes(t)) >= 0)];
+    }
+
+    /// <summary>Every accessor VI one slice's answer reports as saved, as full paths.</summary>
+    internal static IEnumerable<string> CreatedAccessorPaths(string verdict, string lvclassPath)
+    {
+        if (Parsed(verdict) is not JsonObject root || root["created"] is not JsonArray created) yield break;
+        var folder = Path.GetDirectoryName(Path.GetFullPath(lvclassPath))!;
+        foreach (var entry in created.OfType<JsonObject>())
+            foreach (var (pathKey, nameKey) in new[] { ("readPath", "readVi"), ("writePath", "writeVi") })
+            {
+                var path = entry[pathKey]?.GetValue<string>();
+                var name = entry[nameKey]?.GetValue<string>();
+                if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(name)) continue;
+                yield return !string.IsNullOrWhiteSpace(path) && Path.IsPathRooted(path)
+                    ? Path.GetFullPath(path)
+                    : Path.Combine(folder, Path.GetFileName(string.IsNullOrWhiteSpace(path) ? name! : path));
+            }
+    }
+
+    /// <summary>The per-VI source-only report: null All when nothing was created.</summary>
+    internal static (JsonArray PerVi, bool? All, List<string> NotSourceOnly) AccessorSourceOnly(
+        IEnumerable<string> viPaths)
+    {
+        var perVi = new JsonArray();
+        var notSourceOnly = new List<string>();
+        foreach (var vi in viPaths.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var blocks = CompiledBlocks(vi);
+            if (blocks.Count > 0 || !File.Exists(vi)) notSourceOnly.Add(vi);
+            perVi.Add(new JsonObject
+            {
+                ["vi"] = vi,
+                ["sourceOnly"] = File.Exists(vi) ? blocks.Count == 0 : null,
+                ["compiledBlocks"] = new JsonArray([.. blocks.Select(b => (JsonNode)b!)]),
+            });
+        }
+        return (perVi, perVi.Count == 0 ? null : notSourceOnly.Count == 0, notSourceOnly);
+    }
+
+    /// <summary>
+    /// Set the project's <c>NI.LV.All.SourceOnly</c> before NI's wizard runs - a FILE edit, so
+    /// LabVIEW must not hold the project: the active project is saved and closed if it is this one,
+    /// otherwise this one is saved and closed BY PATH (a project loaded but not active is out of
+    /// reach of the ordinary close, and LabVIEW's next save would undo the edit). Already true:
+    /// nothing is touched. The answer says what was done, because it changes a project setting
+    /// the user owns - for items created in that project from now on.
+    /// </summary>
+    private async Task<JsonObject> MakeProjectSourceOnlyAsync(string project, int timeoutSeconds,
+                                                              CancellationToken ct, string backend)
+    {
+        string text;
+        try { text = File.ReadAllText(project); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return new JsonObject { ["action"] = "notChanged", ["why"] = e.Message };
+        }
+        var before = LvClass.ProjectSourceOnly(text);
+        if (before is true)
+            return new JsonObject { ["before"] = true, ["action"] = "alreadyTrue" };
+
+        var actions = new ActionTools(connection);
+        var (active, _, activePath) = await actions.ProjectIsActiveAsync(timeoutSeconds, ct, backend);
+        var result = new JsonObject { ["before"] = before };
+        if (active == true && activePath is { Length: > 0 }
+            && string.Equals(Path.GetFullPath(activePath), project, StringComparison.OrdinalIgnoreCase))
+        {
+            var closed = Parsed(await new CloseTools(connection).CloseActiveProjectAsync(
+                helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
+                timeoutSeconds: timeoutSeconds, ct: ct, backend: backend)) as JsonObject;
+            result["closedActiveProject"] = closed?["closed"]?.GetValue<bool>() == true;
+        }
+        else
+        {
+            var byPath = await actions.CloseProjectByPathAsync(project, timeoutSeconds, ct);
+            result["closedByPath"] = byPath;
+            if (byPath["ran"]?.GetValue<bool>() != true)
+            {
+                result["action"] = "notChanged";
+                result["why"] = "LabVIEW could not be made to let go of the project, and an edit " +
+                                "under a project it holds is undone by its next save - so the " +
+                                "accessors are created with the project's setting as it is.";
+                return result;
+            }
+        }
+
+        string? action;
+        try { action = LvClass.SetProjectSourceOnly(project); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            result["action"] = "notChanged";
+            result["why"] = e.Message;
+            return result;
+        }
+        result["action"] = action ?? "notChanged";
+        result["after"] = LvClass.ProjectSourceOnly(File.ReadAllText(project));
+        result["why"] = "NI.LV.All.SourceOnly is the project's \"Separate compiled code from new " +
+                        "project items\", and it decides whether NI's wizard writes compiled code " +
+                        "into the accessors it saves (measured 2026-10-12). It applies to items " +
+                        "created in this project from now on.";
+        return result;
     }
 
     /// <summary>

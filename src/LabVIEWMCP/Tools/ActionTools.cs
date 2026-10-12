@@ -618,6 +618,33 @@ internal sealed class ActionTools(LvaiConnection connection)
     internal const string CloseProjectHelperAixmlFileName = "lvai_close_project.xml";
 
     /// <summary>
+    /// Save and close the project at <paramref name="projectPath"/> whether or not it is the active
+    /// one - the composed <c>lvai_close_project</c> helper over ActiveX, LabVIEW's main instance,
+    /// which is where projects are opened on either backend. Used before a FILE edit of a project
+    /// LabVIEW may hold loaded but inactive, which no "close the active project" reaches. A project
+    /// LabVIEW does not hold is opened, saved and closed again - harmless, a few seconds.
+    /// </summary>
+    internal async Task<JsonObject> CloseProjectByPathAsync(string projectPath, int timeoutSeconds,
+                                                            CancellationToken ct)
+    {
+        var (closer, problem) = await ComposedHelpers.EnsureAsync(
+            CloseProjectHelperAixmlFileName, timeoutSeconds, ct);
+        if (closer is null) return new JsonObject { ["ran"] = false, ["reason"] = problem };
+
+        var closed = JsonNode.Parse(await new RunTools(connection).RunViAndReadValuesAsync(
+            closer, new JsonObject { ["project path"] = projectPath }.ToJsonString(),
+            timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview, ct: ct)) as JsonObject;
+        var xml = closed?["values"]?["error out"]?["xml"]?.GetValue<string>() ?? "";
+        var code = System.Text.RegularExpressions.Regex.Match(xml, @"<Name>code</Name>\s*<Val>(-?\d+)");
+        return new JsonObject
+        {
+            ["ran"] = closed?["ok"]?.GetValue<bool>() == true,
+            ["errorCode"] = code.Success ? int.Parse(code.Groups[1].Value) : null,
+            ["via"] = "ActiveX",
+        };
+    }
+
+    /// <summary>
     /// Whether a project is active, by reading <c>Project:Active Project</c> and closing the
     /// reference again. <c>Error 1055</c> is the ANSWER - no project active - and not a fault.
     ///
