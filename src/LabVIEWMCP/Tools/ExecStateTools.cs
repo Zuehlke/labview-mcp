@@ -50,6 +50,12 @@ internal sealed class ExecStateTools(LvaiConnection connection)
     /// <summary>Name of the helper's AIXML source inside the scripts folder.</summary>
     internal const string HelperAixmlFileName = "lvai_exec_state.xml";
 
+    /// <summary>
+    /// The ActiveX route a pylabview route's <see cref="ReadAsync"/> takes in place of the live one -
+    /// set by a test only, which then needs neither LabVIEW nor the composer.
+    /// </summary>
+    internal ComRoute? ComRouteOverride { get; init; }
+
     [McpServerTool(Name = "lvai_exec_state", ReadOnly = true, OpenWorld = true,
                    Title = "Is this VI executable?")]
     [Description("""
@@ -350,9 +356,18 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         // A VI LabVIEW REFUSED TO OPEN is a reading - CouldNotOpen, with LabVIEW's code and text -
         // not a missing one: as null it reached the caller as "could not be read", and a composed
         // test LabVIEW refused as Error 74 came back with no reason (bug report of 2026-10-12).
+        // Measured 2026-10-12, interleaved on one LabVIEW: a median 67 ms per call through the
+        // helper against 20 ms direct on an intact caller (grpc: 68 ms), and 178 ms against 119 ms
+        // on one whose subVI was missing (grpc: 171 ms) - where the cause is what a route needs.
+        // Composing the helper costs about 1.1 s, once per parts change.
         if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
         {
-            try { return (await ReadOverComAsync(viPath, timeoutSeconds, ct)).Reading; }
+            try
+            {
+                return (await (ComRouteOverride is { } route
+                    ? ReadOverComAsync(viPath, timeoutSeconds, route, ct)
+                    : ReadOverComAsync(viPath, timeoutSeconds, ct))).Reading;
+            }
             catch (LabViewCom.ComException) { return null; }
         }
 

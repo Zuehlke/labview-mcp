@@ -224,6 +224,49 @@ public sealed class ExecStateComRouteTests
         Assert.False(read.Reading.Broken);
     }
 
+    /// <summary>
+    /// A ROUTE on pylabview - lvai_generate_test, lvai_add_class_method - reads executability
+    /// through ReadAsync, and gets the linker errors the same way the tool does.
+    /// </summary>
+    [Fact]
+    public async Task A_pylabview_route_reads_linker_errors_through_the_helper_too()
+    {
+        var fake = new Fake { Run = () => Ran("0", MissingSubViOverCom) };
+        var before = AixmlBackend.Inherited.Value;
+        AixmlBackend.Inherited.Value = new AixmlBackend.Choice(AixmlBackend.PyLabview, "inherited from a test");
+        try
+        {
+            var reading = await new ExecStateTools(null!) { ComRouteOverride = fake.Route }.ReadAsync(
+                Vi, helperAixmlPath: null, helperViPath: null, regenerateHelper: false, 30, default);
+
+            Assert.True(reading!.Broken);
+            Assert.True(reading.LinkerErrorsRead);
+            Assert.Equal(MissingSubViOverGrpc, reading.LinkerErrors);
+            Assert.Equal(1, fake.RunCalls);
+            Assert.Equal(0, fake.DirectCalls);
+        }
+        finally { AixmlBackend.Inherited.Value = before; }
+    }
+
+    /// <summary>On a route a fallback is still a reading - marked as one whose linker errors nobody read.</summary>
+    [Fact]
+    public async Task A_pylabview_route_falls_back_and_marks_the_linker_errors_unread()
+    {
+        var fake = new Fake { Composed = (null, "not composable"), Direct = () => 1 };
+        var before = AixmlBackend.Inherited.Value;
+        AixmlBackend.Inherited.Value = new AixmlBackend.Choice(AixmlBackend.PyLabview, "inherited from a test");
+        try
+        {
+            var reading = await new ExecStateTools(null!) { ComRouteOverride = fake.Route }.ReadAsync(
+                Vi, helperAixmlPath: null, helperViPath: null, regenerateHelper: false, 30, default);
+
+            Assert.Equal(1, reading!.State);
+            Assert.False(reading.LinkerErrorsRead);
+            Assert.Equal("", reading.LinkerErrors);
+        }
+        finally { AixmlBackend.Inherited.Value = before; }
+    }
+
     // ------------------------------------------------------------ the answer
 
     [Fact]
