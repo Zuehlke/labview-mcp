@@ -69,6 +69,34 @@ without (19 fails either way). Composed helpers are cached per target release. M
 LabVIEW 2026 only; a load in LabVIEW 2025 itself is the user's test. The text below records the
 WARNING stage before that, which was itself replacing a refusal.
 
+**THE USER'S LabVIEW 2025 RUN, 2026-10-12 (bug report): composed VIs LOAD AND RUN there** - a
+Caraya suite over a class, 11 of 11 green, a negative control failing exactly once - and three
+things went wrong, each handled now:
+
+- **LabVIEW 2025 ABORTED RENDERING a composed VI with a class constant** - `image2.cpp(262) :
+  DAbort: bad image in ValidateImage`, four times, on the diagram render behind `diagramSize` and
+  the clean-up; the same VIs converted, loaded and ran without a render. Not reproducible on
+  LabVIEW 2026, which draws them. Every image the class constant names is a resource id LabVIEW
+  2013-saved examples carry too (`-619`, `0`, `-3002`, annex `3457`); what is singular is the
+  constant's LABEL `objFlags`, `538378570` - bit 29 set - copied from its donor, `Launcher.vi`.
+  It is 1 of 192 class constants in NI's examples (the 191 others read `1507658` / `1507650`) and
+  1 of the 17 797 objects in every part. `Composer.instantiate` clears that bit on any label since.
+  **That this was the cause is NOT measured** - no LabVIEW 2025 here; the user's test is
+  `ProbeA_flag.vi` (bit set) against `ProbeB_fixed.vi` (cleared). And the three Caraya test
+  generators take `measureDiagram: false`, which skips the render AND the clean-up.
+- **Eight class methods were `Memory or data structure corrupt`, Error 74** - the encoding of
+  link contents 9 and 10, under "Calling a class DIRECTLY" below; nothing version-specific.
+- **An OLDER CARAYA names Assert Equal Value_Variant's inputs `X` and `Y`**, and every test
+  generator wrote `Expected`/`Actual`: `composerRefused ... has no input 'Expected'`. The
+  generators read the installed VI's inputs now (one export per file state, `CarayaAssert`) and
+  write `X`/`Y` where that is what it has.
+
+And the report's two silences: a composed VI LabVIEW could not OPEN answered `ok: null`, the reason
+only in `executableNote`, and `lvai_generate_class_test` stopped at `execState` with none. LabVIEW
+refusing a file is a verdict, not a missing measurement: `lvai_convert_aixml_to_vi` answers
+`ok: false`, `executable: false` and `openError` with LabVIEW's text, `lvai_generate_vi` stops at
+`convert` naming it, and the test generators' `execState` step carries the code and the text.
+
 **THE COMPOSER WARNED FOR SUCH A LabVIEW - it REFUSED until the user's correction the same day.**
 Every compose there still writes and answers `versionWarning` naming both releases
 (`WarningForOlderLabView`). The refusal rested on "its parts are LabVIEW 2026 files", and that

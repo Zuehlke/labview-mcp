@@ -181,6 +181,14 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                 return new ExecStateReading(
                     await LabViewCom.ExecStateAsync(Path.GetFullPath(viPath), timeoutSeconds, ct), "", 0, "");
             }
+            // a VI LabVIEW REFUSED TO OPEN is a reading - CouldNotOpen, with LabVIEW's code and
+            // text - not a missing one: as null it reached the caller as "could not be read", and
+            // a composed test LabVIEW refused as Error 74 came back with no reason (bug report of
+            // 2026-10-12)
+            catch (LabViewCom.ComException e) when (e.Kind == LabViewCom.ViNotOpened)
+            {
+                return new ExecStateReading(-1, "", LabViewCom.ErrorCodeOf(e.Message), e.Message.TrimEnd('.'));
+            }
             catch (LabViewCom.ComException) { return null; }
         }
 

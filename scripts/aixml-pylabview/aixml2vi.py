@@ -48,6 +48,9 @@ OWN_PARTS = lvheap.own_parts()
 
 INDEX_SHIFT = 3   # consolidated 1 and 2 are the two connector-pane Function types
 
+# a label objFlags bit only one donor carries - Composer.instantiate clears it
+LABEL_FLAG_DONOR_ONLY = 0x20000000
+
 SCALARS = {
     "double": ("NumFloat64", "stdNum"), "single": ("NumFloat32", "stdNum"),
     "int8": ("NumInt8", "stdNum"), "int16": ("NumInt16", "stdNum"),
@@ -1149,6 +1152,17 @@ class Composer:
             return None
         heap, types, source = got
         lvheap.renumber(heap, self.alloc)
+        for label in heap.iter():
+            # A LABEL's objFlags bit 29 is the donor's, never ours: Launcher.vi's class constant
+            # carries it (538378570) - 1 of the 192 class constants in NI's examples, and 1 of the
+            # 17 797 objects in every part - and the 191 others read 1507658 / 1507650 with the
+            # bit clear. LabVIEW 2025 aborted rendering a composed VI carrying it, "bad image in
+            # ValidateImage" (image2.cpp 262), the user's bug report of 2026-10-12; LabVIEW 2026
+            # draws it either way.
+            if label.get("class") == "label" and label.findtext("objFlags"):
+                flags = int(label.findtext("objFlags"))
+                if flags & LABEL_FLAG_DONOR_ONLY:
+                    label.find("objFlags").text = str(flags & ~LABEL_FLAG_DONOR_ONLY)
         if heap.get("_images"):
             # Images EMBEDDED in the donor (DSIM sections, positive ImageResIDs) come along under
             # numbers free in this VI: a waveform control without them was "Could not load the

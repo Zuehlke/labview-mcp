@@ -991,11 +991,20 @@ internal sealed class AixmlTools(LvaiConnection connection)
         // leaves a dialog behind), so with no LabVIEW running the state is reported unmeasured.
         int? execState = null;
         string? execNote = null;
+        // A VI LabVIEW CANNOT OPEN is a verdict, not a missing measurement: LabVIEW was reached and
+        // refused the file. It answered `ok: null` with the reason only in executableNote until
+        // 2026-10-12 - the user's bug report, a composed test calling eight class methods that
+        // LabVIEW refused as `Memory or data structure corrupt` (Error 74).
+        string? openError = null;
         if (checkExecutable && result.Written)
         {
             try
             {
                 execState = await LabViewCom.ExecStateAsync(viPath, timeoutSeconds, ct);
+            }
+            catch (LabViewCom.ComException e) when (e.Kind == LabViewCom.ViNotOpened)
+            {
+                openError = e.Message.TrimEnd('.');
             }
             catch (LabViewCom.ComException e)
             {
@@ -1005,6 +1014,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
         }
 
         var broken = execState == 0;
+        var unopenable = openError is not null;
         var compiled = result.Written && File.Exists(viPath) && ContainsCompiledCode(viPath);
         return ComposerAnswer(result, choice,
             [.. SymbolicFacts(symbolic),
@@ -1014,15 +1024,22 @@ internal sealed class AixmlTools(LvaiConnection connection)
              ("viBytes", JsonValue.Create(File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
              ("sourceOnly", result.Written ? JsonValue.Create(!compiled) : null),
              ("execState", execState is null ? null : JsonValue.Create(execState.Value)),
-             ("executable", execState is null or < 0 ? null : JsonValue.Create(execState.Value != 0)),
-             ("ok", checkExecutable && result.Written && execState is >= 0
-                 ? JsonValue.Create(!broken) : null),
+             ("executable", unopenable ? JsonValue.Create(false)
+                 : execState is null or < 0 ? null : JsonValue.Create(execState.Value != 0)),
+             ("ok", unopenable ? JsonValue.Create(false)
+                 : checkExecutable && result.Written && execState is >= 0
+                     ? JsonValue.Create(!broken) : null),
+             ("openError", unopenable ? JsonValue.Create(openError) : null),
              ("executableNote", execNote is null ? null : JsonValue.Create(execNote)),
              ("warning", broken
                  ? JsonValue.Create("The VI was WRITTEN but is BROKEN (execState 0). The composer " +
                      "does not type-check wiring; compare with the grpc backend on the same " +
                      "document, whose validation names the node.")
-                 : null),
+                 : unopenable
+                     ? JsonValue.Create("The VI was WRITTEN and LabVIEW could NOT OPEN it - " +
+                         openError + ". A file LabVIEW refuses to load is broken, not unmeasured; " +
+                         "convert the same document with backend grpc to compare.")
+                     : null),
              ("openVINote", openVI
                  ? JsonValue.Create("Not opened: the pylabview backend writes the file and has no " +
                                     "road into the IDE. Open it with lvai_open_file.")

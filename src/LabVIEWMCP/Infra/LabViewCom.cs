@@ -35,6 +35,18 @@ internal static class LabViewCom
         public string Kind { get; } = kind;
     }
 
+    /// <summary>The kind for a VI LabVIEW was reached and refused to open - a verdict on the file.</summary>
+    public const string ViNotOpened = "viNotOpened";
+
+    /// <summary>
+    /// LabVIEW's error code out of a refusal's text - `LabVIEW: (Hex 0x4A) Memory or data
+    /// structure corrupt.` is 74 - or 0 when the text carries none.
+    /// </summary>
+    public static int ErrorCodeOf(string message) =>
+        System.Text.RegularExpressions.Regex.Match(message, @"\(Hex 0x([0-9A-Fa-f]+)\)") is { Success: true } m
+            ? Convert.ToInt32(m.Groups[1].Value, 16) : 0;
+
+
     /// <summary>Why COM must not be used now, or null when a running LabVIEW can be attached.</summary>
     public static string? NotReady()
     {
@@ -214,9 +226,9 @@ internal static class LabViewCom
         try { vi = Call(app, "GetVIReference", Path.GetFullPath(viPath)); }
         catch (Exception e) when (e is TargetInvocationException or COMException)
         {
-            throw new ComException("viNotOpened", $"LabVIEW could not open '{viPath}': {Inner(e)}");
+            throw new ComException(ViNotOpened, $"LabVIEW could not open '{viPath}': {Inner(e)}");
         }
-        if (vi is null) throw new ComException("viNotOpened", $"LabVIEW returned no VI for '{viPath}'.");
+        if (vi is null) throw new ComException(ViNotOpened, $"LabVIEW returned no VI for '{viPath}'.");
         try { return body(vi); }
         finally { Release(vi); }
     }

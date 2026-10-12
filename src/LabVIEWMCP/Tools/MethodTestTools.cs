@@ -191,7 +191,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         bool directCall = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
-        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        [Description(TestTools.MeasureTestDiagramDescription)] bool measureDiagram = true) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!AixmlBackend.TryResolve(backend, "lvai_generate_method_test", out _, out var badBackend))
@@ -406,7 +407,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             {
                 var (done, fallback) = await DirectMethodTestAsync(
                     lvclassPath, className, testViPath, cases, methodShapes, projectPath,
-                    testFolderName, scratch, keepAixml, steps, total, route, timeoutSeconds, ct);
+                    testFolderName, scratch, keepAixml, steps, total, route, measureDiagram,
+                    timeoutSeconds, ct);
                 if (done is not null) return done;
                 route["route"] = "sockets";
                 route["reason"] = fallback;
@@ -461,11 +463,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             // ---- 2. the suite
             var testAixml = Path.Combine(scratch,
                 Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
-            await File.WriteAllTextAsync(testAixml, MethodTestAixml(testViPath, className, cases), ct);
+            await File.WriteAllTextAsync(testAixml, await CarayaAssert.AdaptToInstalledAsync(
+                connection, MethodTestAixml(testViPath, className, cases), timeoutSeconds, ct), ct);
 
             var generated = await new BulkTools(connection).GenerateViAsync(
                 testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
-                timeoutSeconds, ct: ct);
+                timeoutSeconds, ct: ct, measureDiagram: measureDiagram);
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
                 return Outcome(false, "generate", steps, total, testViPath, testAixml,
@@ -679,7 +682,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         string lvclassPath, string className, string testViPath, List<MethodCase> cases,
         List<(DirectMethodCall? Call, string? Why)> methodShapes, string? projectPath,
         string testFolderName, string scratch, bool keepAixml, JsonArray steps, Stopwatch total,
-        JsonObject route, int timeoutSeconds, CancellationToken ct)
+        JsonObject route, bool measureDiagram, int timeoutSeconds, CancellationToken ct)
     {
         if (methodShapes.FirstOrDefault(s => s.Call is null).Why is { } unrecognised)
             return (null, unrecognised);
@@ -844,12 +847,13 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         //    and is not a failure: the seeds are still paths wired into class inputs.
         var testAixml = Path.Combine(scratch,
             Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
-        await File.WriteAllTextAsync(testAixml,
+        await File.WriteAllTextAsync(testAixml, await CarayaAssert.AdaptToInstalledAsync(connection,
             MethodTestAixml(testViPath, className, cases, methods, accessors, seedCalls, setups,
-                            classSeeds: composed), ct);
+                            classSeeds: composed),
+            timeoutSeconds, ct), ct);
         var generated = await new BulkTools(connection).GenerateViAsync(
             testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
-            timeoutSeconds, ct: ct);
+            timeoutSeconds, ct: ct, measureDiagram: measureDiagram);
         steps.Add(TestTools.GenerateStepBeforeSeeds(Read(generated)));
         var answer = Read(generated) as JsonObject;
 

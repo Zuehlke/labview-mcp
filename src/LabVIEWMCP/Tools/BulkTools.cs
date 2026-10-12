@@ -321,6 +321,11 @@ internal sealed class BulkTools(LvaiConnection connection)
                     Field(convert, "errorMessage") + ". The composer covers a subset of what NI's " +
                     "converter does (docs/aixml-backends.md); generate the same document with " +
                     "backend grpc to compare.");
+            if (composed && Field(convert, "openError") is { Length: > 0 } openError)
+                return Outcome(false, "convert", steps, total, viPath, null,
+                    "THE VI WAS WRITTEN by the pylabview composer and LabVIEW could NOT OPEN it - " +
+                    openError + ". A file LabVIEW refuses to load is broken, not unmeasured; " +
+                    "generate the same document with backend grpc to compare.");
             if (composed && Parsed(convert)?["executable"]?.GetValue<bool>() == false)
                 return Outcome(false, "convert", steps, total, viPath, null,
                     "THE VI WAS WRITTEN by the pylabview composer and LabVIEW reports it NOT " +

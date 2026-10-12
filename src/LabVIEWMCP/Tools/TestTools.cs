@@ -121,7 +121,8 @@ internal sealed class TestTools(LvaiConnection connection)
         string testFolderName = "Tests",
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
-        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        [Description(MeasureTestDiagramDescription)] bool measureDiagram = true) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!AixmlBackend.TryResolve(backend, "lvai_generate_test", out _, out var badBackend))
@@ -160,7 +161,7 @@ internal sealed class TestTools(LvaiConnection connection)
             {
                 var (done, fallback) = await DirectAsync(viPath, testViPath, subjectName, cases,
                                                          projectPath, testFolderName, steps, total,
-                                                         route, timeoutSeconds, ct);
+                                                         route, measureDiagram, timeoutSeconds, ct);
                 if (done is not null) return done;
                 route["route"] = "placeholder";
                 route["reason"] = fallback;
@@ -199,12 +200,13 @@ internal sealed class TestTools(LvaiConnection connection)
             var aixmlPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
                                          Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
             Directory.CreateDirectory(Path.GetDirectoryName(aixmlPath)!);
-            await File.WriteAllTextAsync(
-                aixmlPath, TestAixml(testViPath, subjectName, stubName, cases, terminals), ct);
+            await File.WriteAllTextAsync(aixmlPath, await CarayaAssert.AdaptToInstalledAsync(
+                connection, TestAixml(testViPath, subjectName, stubName, cases, terminals),
+                timeoutSeconds, ct), ct);
 
             var generated = await new BulkTools(connection).GenerateViAsync(
                 aixmlPath, testViPath, openVI: false, measurePane: true, panePattern: null,
-                timeoutSeconds, ct: ct);
+                timeoutSeconds, ct: ct, measureDiagram: measureDiagram);
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
 
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
@@ -303,7 +305,7 @@ internal sealed class TestTools(LvaiConnection connection)
     private async Task<(string? Done, string? Fallback)> DirectAsync(
         string viPath, string testViPath, string subjectName, List<Case> cases,
         string? projectPath, string testFolderName, JsonArray steps, Stopwatch total,
-        JsonObject route, int timeoutSeconds, CancellationToken ct)
+        JsonObject route, bool measureDiagram, int timeoutSeconds, CancellationToken ct)
     {
         // 1. the project that owns the subject
         string project;
@@ -425,13 +427,13 @@ internal sealed class TestTools(LvaiConnection connection)
         // 4. author the test against the subject's own name, and generate
         var aixmlPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
                                      Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
-        await File.WriteAllTextAsync(aixmlPath,
+        await File.WriteAllTextAsync(aixmlPath, await CarayaAssert.AdaptToInstalledAsync(connection,
             TestAixml(testViPath, subjectName, subject.ViName.Replace(":", @"\3A"), cases, terminals,
                       setups),
-            ct);
+            timeoutSeconds, ct), ct);
         var generated = await new BulkTools(connection).GenerateViAsync(
             aixmlPath, testViPath, openVI: false, measurePane: true, panePattern: null,
-            timeoutSeconds, ct: ct);
+            timeoutSeconds, ct: ct, measureDiagram: measureDiagram);
         steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Read(generated) });
         var answer = Read(generated) as JsonObject;
 
@@ -624,7 +626,8 @@ internal sealed class TestTools(LvaiConnection connection)
         bool directCall = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
-        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        [Description(MeasureTestDiagramDescription)] bool measureDiagram = true) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!AixmlBackend.TryResolve(backend, "lvai_generate_class_test", out _, out var badBackend))
@@ -719,7 +722,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 var (done, fallback) = await DirectClassTestAsync(
                     lvclassPath, className, testViPath, cases, projectPath, testFolderName,
                     alsoListInProject, scratch, keepAixml, verbose, steps, total, route,
-                    timeoutSeconds, ct);
+                    measureDiagram, timeoutSeconds, ct);
                 if (done is not null) return done;
                 route["route"] = "sockets";
                 route["reason"] = fallback;
@@ -778,12 +781,12 @@ internal sealed class TestTools(LvaiConnection connection)
             // 2. the test itself, against those sockets
             var testAixml = Path.Combine(scratch,
                 Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
-            await File.WriteAllTextAsync(
-                testAixml, ClassTestAixml(testViPath, className, cases), ct);
+            await File.WriteAllTextAsync(testAixml, await CarayaAssert.AdaptToInstalledAsync(
+                connection, ClassTestAixml(testViPath, className, cases), timeoutSeconds, ct), ct);
 
             var generated = await new BulkTools(connection).GenerateViAsync(
                 testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
-                timeoutSeconds, ct: ct);
+                timeoutSeconds, ct: ct, measureDiagram: measureDiagram);
             steps.Add(new JsonObject
             { ["step"] = "generate", ["answer"] = Json.Slim(Read(generated), verbose) });
             if ((Read(generated) as JsonObject)?["viExistsNow"]?.GetValue<bool>() is not true)
@@ -897,7 +900,7 @@ internal sealed class TestTools(LvaiConnection connection)
         string lvclassPath, string className, string testViPath, List<ClassCase> cases,
         string? projectPath, string testFolderName, string? alsoListInProject, string scratch,
         bool keepAixml, bool verbose, JsonArray steps, Stopwatch total, JsonObject route,
-        int timeoutSeconds, CancellationToken ct)
+        bool measureDiagram, int timeoutSeconds, CancellationToken ct)
     {
         // 1. the project that owns the class
         string project;
@@ -979,11 +982,12 @@ internal sealed class TestTools(LvaiConnection connection)
         //    and is not a failure: the seeds are still paths wired into class inputs.
         var testAixml = Path.Combine(scratch,
             Path.ChangeExtension(Path.GetFileName(testViPath), ".xml"));
-        await File.WriteAllTextAsync(testAixml,
-            ClassTestAixml(testViPath, className, cases, shapes, classSeeds: composed), ct);
+        await File.WriteAllTextAsync(testAixml, await CarayaAssert.AdaptToInstalledAsync(connection,
+            ClassTestAixml(testViPath, className, cases, shapes, classSeeds: composed),
+            timeoutSeconds, ct), ct);
         var generated = await new BulkTools(connection).GenerateViAsync(
             testAixml, testViPath, openVI: false, measurePane: true, panePattern: null,
-            timeoutSeconds, ct: ct);
+            timeoutSeconds, ct: ct, measureDiagram: measureDiagram);
         steps.Add(GenerateStepBeforeSeeds(Json.Slim(Read(generated), verbose)));
         var answer = Read(generated) as JsonObject;
 
@@ -3372,6 +3376,16 @@ internal sealed class TestTools(LvaiConnection connection)
              is JsonObject answer && answer["diagramSize"] is JsonObject size
             ? (JsonObject)size.DeepClone()
             : null;
+
+    /// <summary>The `measureDiagram` switch of the three Caraya test generators.</summary>
+    internal const string MeasureTestDiagramDescription = """
+        Render the test VI to report its `diagramSize`, after LabVIEW's Clean Up Diagram - on by
+        default, because a test VI has the same 1920 x 1080 budget as any other. False skips the
+        render AND the clean-up: the escape hatch for a LabVIEW that cannot draw what was
+        composed. LabVIEW 2025 aborted rendering a composed test VI with a class constant (bug
+        report of 2026-10-12, image2.cpp 262, `bad image in ValidateImage`); the composer has
+        cleared the label flag that VI carried since then.
+        """;
 
     /// <summary>What to do when a generated test VI is over the size budget, or "" when it is not.</summary>
     internal static string TestSizeNote(JsonObject? size) =>

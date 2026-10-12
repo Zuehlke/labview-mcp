@@ -1323,6 +1323,7 @@ Width.vi`) and `APILinkCacheList`, the binary fallback (kept for an unpatched bu
 | `VIPI` (class) | LIvi, first | class, `07 00` | 0 | - |
 | `VIPI` (method) | LIvi | class, NESTED name `01 <len> <name>` | an id unique among the method links; we write its OWN 0-based index in LIvi, VIVI records counted | - |
 | `DyOM` | LIbd | as its `VIPI` | that `VIPI`'s content | the call nodes' `dynLink` uids |
+| `FPPI`, `DDPI` | LIbd | class, `07 00` | 0 | the class constants' `ddo` uids |
 
 **Corrected TWICE on 2026-10-12, and the second correction retracts the first.** This table said
 "1-based position" and the composer wrote it so. LabVIEW refused SIX methods in a Caraya test as
@@ -1343,7 +1344,6 @@ and LF raw now, and a byte above 0x7E as its MacRoman character, as pylabview re
 `t162_ten_class_links` carries contents 9 and 10 (two classes, eight methods, one VIVI): the
 committed composer refused it as Error 74, the fixed one loads and runs it - an A/B on one document.
 `t157_six_dynamic_calls` against the `Gauge` fixture (six accessors) stays.
-| `FPPI`, `DDPI` | LIbd | class, `07 00` | 0 | the class constants' `ddo` uids |
 
 Path: the `.lvclass`, relative to the caller file. Version: the class's version as four uint16 -
 NI writes `LowestCompatibleVersion` (1.0.0.0) where we write `NI.Lib.Version` (1.0.0.1), and both
@@ -1357,6 +1357,20 @@ with the class refnum the Call's terminal carries - the AIXML `ref{UDClassInst}`
 and valued with the class's flattened default: `uint32 1`, name length, the Pascal strings and a
 `00`, **padded to 4**, 8 zero bytes. Padding to 2 was right for `Rectangle.lvclass` by accident
 (24 bytes) and left `Box.lvclass` (18) eBad, "VI has an error of type 200", until an A/B settled it.
+
+**The constant's LABEL carried a flag no other object does - and LabVIEW 2025 aborted drawing it**
+(the user's bug report, 2026-10-12: `image2.cpp(262) : DAbort: bad image in ValidateImage`, four
+times, always on a render of a composed VI holding a class constant; load and run were fine, and
+LabVIEW 2026 draws the same VIs). The images the constant names are LabVIEW resource ids that
+LabVIEW 2013-saved examples carry too - label `-619`, icon area `0`, frame `-3002`, annex `rsrcID`
+`3457`, tallied over the class constants of 434 example VIs (scratch `const_images_scan.py`). What
+is singular is the label's `objFlags`: `538378570`, bit 29 (`0x20000000`) set, in the part cut from
+`Launcher.vi` - 1 of the 192 class constants in NI's 2026-saved examples (123 read `1507658`, 68
+`1507650`, the bit clear in all) and 1 of the 17 797 `objFlags` in every part. `Composer.instantiate`
+clears it on any label (`LABEL_FLAG_DONOR_ONLY`); the constant then reads `1507658`, the majority.
+**Whether that was the crash is NOT measured** - there is no LabVIEW 2025 here. The user's test:
+`ProbeA_flag.vi` (the bug report's minimal document, bit set, LabVIEW 2025 stamp) against
+`ProbeB_fixed.vi` (cleared), both executable in LabVIEW 2026. What bit 29 means is not known.
 
 **Measured.** A hand-written caller (constant -> Write Width -> Read Width) returned 3.5 and 7.25;
 `t128_dynamic_class_call` against the committed fixture `tests/fixtures/Box` (built without NI's
