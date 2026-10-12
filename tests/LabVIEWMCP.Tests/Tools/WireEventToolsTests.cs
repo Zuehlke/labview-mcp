@@ -195,14 +195,41 @@ public sealed class WireEventToolsTests
     }
 
     [Fact]
-    public void AMissingEventStructureNamesTheSearchDepthRatherThanFailingBlankly()
+    public void AMissingEventStructureNamesTheSearchRatherThanFailingBlankly()
     {
         var outcome = WireEventTools.Classify(found: false, code: 0, sourceFrom: null,
                                               wiredBefore: null, endsAfter: null, broken: null);
 
         Assert.False(outcome.Ok);
         Assert.Equal("noEventStructureFound", outcome.Kind);
-        Assert.Contains("one level", outcome.Note);
+        // The search is Traverse now, so depth is no longer the explanation for a miss - and the
+        // note must not keep sending the reader there, which is what the two-level text did.
+        Assert.Contains("any depth", outcome.Note);
+        Assert.Contains("Traverse for GObjects", outcome.Note);
+        Assert.DoesNotContain("one level", outcome.Note);
+    }
+
+    [Fact]
+    public void SeveralEventStructuresAreNamedInTheNoteBecauseOnlyTheFirstIsWired()
+    {
+        var outcome = WireEventTools.Classify(found: true, code: 0, sourceFrom: "tunnel",
+                                              wiredBefore: false, endsAfter: 3, broken: false,
+                                              eventStructures: 2);
+
+        Assert.True(outcome.Ok);
+        Assert.Contains("2 Event Structures", outcome.Note);
+        Assert.Contains("FIRST", outcome.Note);
+    }
+
+    [Fact]
+    public void OneEventStructureAddsNoMultiplicityNote()
+    {
+        var outcome = WireEventTools.Classify(found: true, code: 0, sourceFrom: "tunnel",
+                                              wiredBefore: false, endsAfter: 3, broken: false,
+                                              eventStructures: 1);
+
+        Assert.True(outcome.Ok);
+        Assert.DoesNotContain("Event Structures were found", outcome.Note);
     }
 
     [Fact]
@@ -237,7 +264,7 @@ public sealed class WireEventToolsTests
     }
 
     [Fact]
-    public void TheShippedHelperWiresAutoRouteTrueAndSearchesTwoLevels()
+    public void TheShippedHelperWiresAutoRouteTrueAndSearchesAtAnyDepth()
     {
         var aixml = Path.Combine(RepoRoot(), "scripts", WireEventTools.HelperAixmlFileName);
         if (!File.Exists(aixml)) return;   // binary-only checkout
@@ -250,10 +277,17 @@ public sealed class WireEventToolsTests
         Assert.Contains("Auto Route? (F):", text);
         Assert.Contains("Auto Wire? (T):", text);
 
-        // And the classes the search descends into. A structure class missing from this list is
-        // not searched, which the tool reports as "not found" with the classes it did see.
+        // The search is NI's Traverse, in the spelling lvai_swap_subvis.xml already uses, for the
+        // structure AND for the fallback node. The hand-written two-level search listed container
+        // classes to descend into and missed an Event Structure in a Case frame in a While Loop;
+        // a container list reappearing here would be that search coming back.
+        Assert.Contains("VI Scripting - Traverse.lvlib\\3ATraverse for GObjects.vi", text);
+        Assert.Contains("value=\"EventStructure\"", text);
+        Assert.Contains("type=\"uint16{FP,BD,Other}\"", text);
+        Assert.Contains("Traverse Generated Code (F):", text);
         foreach (var container in new[] { "WhileLoop", "ForLoop", "TimedLoop", "CaseStructure" })
-            Assert.Contains($"value=\"{container}\"", text);
+            Assert.DoesNotContain($"value=\"{container}\"", text);
+        Assert.Contains("_name=\"event structures\"", text);
 
         // The name both ends answer to, and the reason no index is hardcoded.
         Assert.Contains($"value=\"{WireEventTools.RefnumTerminalName}\"", text);

@@ -77,10 +77,11 @@ internal sealed class WireEventTools(LvaiConnection connection)
         Render from a path LabVIEW has never loaded: a VI can be loaded twice, and a render of the
         just-edited path has been measured showing the PRE-EDIT diagram from the addon instance's
         own copy.
-        THE SEARCH IS TWO LEVELS DEEP - the block diagram, and the diagrams of every WhileLoop,
-        ForLoop, TimedLoop and CaseStructure on it. That covers a front-panel event loop as NI's
-        templates build one. Anything deeper is reported as not found, with the class names the
-        search did see.
+        THE SEARCH IS AT ANY DEPTH: NI's Traverse for GObjects.vi walks the whole block diagram
+        for the EventStructure and, for the fallback, the RegisterForEvents node - so an Event
+        Structure in a Case frame inside a While Loop (the Actor Framework helper-loop shape) is
+        found, where the earlier two-level search missed it. eventStructuresFound is the count;
+        with more than one the FIRST is wired and the note says so.
         It needs a project OPEN AND ACTIVE in the IDE: the VI is opened through
         Application:Project:Active Project so the edit lands in the copy the user is looking at.
         IT ALSO FINISHES A USER-EVENT FRAME, which nothing else can, and that is why a VI with one
@@ -217,6 +218,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
             var topClasses = Strings(Text(outputs, "top classes"));
             var terminalNames = Strings(Text(outputs, "terminal names"));
             var registrationNodes = Dimsize(Text(outputs, "registration nodes"));
+            var eventStructures = Number(outputs, "event structures");
 
             // Over ActiveX the helper's code IS read back - the 1055 of the Project:Active Project
             // read with no project open, everything after it skipped and the class list empty -
@@ -225,12 +227,14 @@ internal sealed class WireEventTools(LvaiConnection connection)
             var classifiedCode = BackendRoute.OnPyLabview && chainCode == 1055
                                  && topClasses.All(string.IsNullOrWhiteSpace) ? null : chainCode;
             var outcome = Classify(found, classifiedCode, sourceFrom, wiredBefore, endsAfter, broken,
-                                   chainSource, topClasses);
+                                   chainSource, topClasses, eventStructures);
 
             payload["ok"] = JsonValue.Create(outcome.Ok);
             payload["errorKind"] = outcome.Kind is null ? null : JsonValue.Create(outcome.Kind);
             payload["viPath"] = JsonValue.Create(Path.GetFullPath(viPath));
             payload["eventStructureFound"] = found is null ? null : JsonValue.Create(found);
+            payload["eventStructuresFound"] =
+                eventStructures is null ? null : JsonValue.Create(eventStructures);
             payload["alreadyWired"] = JsonValue.Create(outcome.AlreadyWired);
             payload["sourceFrom"] = sourceFrom is null ? null : JsonValue.Create(sourceFrom);
             payload["registrationNodesOnDiagram"] =
@@ -572,7 +576,8 @@ internal sealed class WireEventTools(LvaiConnection connection)
     internal static Outcome Classify(bool? found, int? code, string? sourceFrom,
                                      bool? wiredBefore, int? endsAfter, bool? broken,
                                      string? helperErrorSource = null,
-                                     IReadOnlyList<string>? topClasses = null)
+                                     IReadOnlyList<string>? topClasses = null,
+                                     int? eventStructures = null)
     {
         // MEASURED 2026-09-12 with the project deliberately closed: errorCode 91 out of the RPC,
         // helperErrorSource "Property Node in lvai_wire_dyn_events.vi", every array output empty,
@@ -580,8 +585,8 @@ internal sealed class WireEventTools(LvaiConnection connection)
         // `Project:Active Project` read, which answers Error 1055 when no project is active, and
         // everything downstream is skipped - which is why the class list comes back empty.
         //
-        // The source string alone does NOT identify it: the helper has 21 Property Nodes and
-        // LabVIEW names them all "Property Node in <vi>". So the EMPTY CLASS LIST is the
+        // The source string alone does NOT identify it: the helper has some twenty Property Nodes
+        // and LabVIEW names them all "Property Node in <vi>". So the EMPTY CLASS LIST is the
         // discriminator and this verdict is an inference, which the note says outright.
         if (LooksLikeNoActiveProject(code, helperErrorSource, topClasses))
             return new(false, "noActiveProject", false,
@@ -594,7 +599,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
                 "registrationNodesOnDiagram of 0 and an empty eventStructureTerminals are this " +
                 "failure talking, NOT a verdict that the diagram lacks an Event Structure. " +
                 "Inferred from the empty class list rather than read off the message - the helper " +
-                "has 21 Property Nodes and LabVIEW names them all alike.");
+                "has some twenty Property Nodes and LabVIEW names them all alike.");
 
         if (code is null || found is null)
             return new(false, "helperDidNotAnswer", false,
@@ -619,7 +624,8 @@ internal sealed class WireEventTools(LvaiConnection connection)
         if (code == 1057)
             return new(false, "downcastRefused", false,
                 "Error 1057, 'Object cannot be cast to the specified type' - an object the search " +
-                "took for a structure, a tunnel or a node was none of them. Read topLevelClasses.");
+                "took for a structure, a tunnel or a node was none of them. Read topLevelClasses " +
+                "and eventStructuresFound.");
 
         if (code != 0)
             return new(false, "helperReportedError", false,
@@ -628,9 +634,19 @@ internal sealed class WireEventTools(LvaiConnection connection)
 
         if (found == false)
             return new(false, "noEventStructureFound", false,
-                "No Event Structure was found on the block diagram or one level inside its loops " +
-                "and cases, which is as deep as the search goes. topLevelClasses is what it did " +
-                "see; a structure nested deeper needs the wire drawn another way.");
+                "No Event Structure was found anywhere on the block diagram: the search is NI's " +
+                "Traverse for GObjects.vi with Class Name EventStructure, which walks every " +
+                "structure at any depth. topLevelClasses lists what the TOP-LEVEL diagram holds. " +
+                "If the VI plainly has one, suspect the copy that was searched before the depth - " +
+                "the VI is opened in the active project's application instance.");
+
+        // Traverse lists every Event Structure; the wiring below takes the FIRST. Which one that
+        // is has not been measured, so a VI with several says so rather than looking settled.
+        var several = eventStructures > 1
+            ? $" NOTE: {eventStructures} Event Structures were found and only the FIRST that " +
+              "Traverse for GObjects listed was wired - which one that is has not been measured, " +
+              "so render the diagram to see which."
+            : "";
 
         var via = sourceFrom switch
         {
@@ -643,7 +659,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
         if (wiredBefore == true)
             return new(endsAfter >= 2 && broken != true, null, true,
                 "The dynamic event terminal ALREADY carried a wire, so this was a no-op. " +
-                "Re-running is safe; that is what makes the tool idempotent.");
+                "Re-running is safe; that is what makes the tool idempotent." + several);
 
         if (endsAfter is null || endsAfter < 2)
             return new(false, "branchDidNotLand", false,
@@ -661,7 +677,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
             $"Wired from {via}. The dynamic event terminal had no wire before and now carries one " +
             $"of {endsAfter} ends which is not broken, and the VI was saved. An end count of 3 is " +
             "a branch of an existing net; 2 is a fresh wire, which is what crossing the loop " +
-            "border produces.");
+            "border produces." + several);
     }
 
     /// <summary>

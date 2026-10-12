@@ -1253,9 +1253,18 @@ Measured end to end on fresh unwired copies of the template-derived VI. Tunnel r
 **two** ends on the terminal, and the render showing a NEW tunnel on the loop border with the wire
 running through it.
 
-**Two limits it reports rather than hides.** The search is **two levels** - the block diagram and
-the diagrams of every `WhileLoop`, `ForLoop`, `TimedLoop` and `CaseStructure` on it - and a miss
-comes back with the class names it did see. And the destination is the FIRST terminal named
+**Two limits it reports rather than hides.** The search is **NI's `Traverse for GObjects.vi`**
+(`VI Scripting - Traverse.lvlib`, `Class Name` = `EventStructure`, `Traverse Target` = 1), so it
+reaches an Event Structure at any depth; the fallback's `Register For Events` node is found the
+same way. Until 2026-10-12 it was a hand-written search two levels deep - the block diagram and the
+diagrams of every `WhileLoop`, `ForLoop`, `TimedLoop` and `CaseStructure` on it - and the standard
+Actor Framework helper-loop shape, an Event Structure in a Case frame in a While Loop, is THREE
+levels: that answered `noEventStructureFound` (or `helperDidNotAnswer`) and changed nothing.
+`Traverse` is the call `lvai_swap_subvis` already makes for `SubVI`, measured there reaching calls
+inside Case frames inside a loop; for `EventStructure` and `RegisterForEvents` it is not yet
+measured. `eventStructuresFound` is Traverse's count, and with more than one the FIRST is wired
+and the note says so - which one Traverse lists first is not measured. A miss still comes back
+with the TOP-LEVEL class names. And the destination is the FIRST terminal named
 `Event Registration Refnum` that is not a source: three terminals carry that name (the dynamic
 input, the dynamic output, the tunnel), `Is Source?` excludes the output - measured `true` for it -
 and the input is told from the tunnel by `Terminals[]` order, which mirrors the heap's term list.
