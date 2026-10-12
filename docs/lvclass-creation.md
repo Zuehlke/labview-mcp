@@ -1837,3 +1837,36 @@ it reads the class in MEMORY, which a save that did not reach the disk leaves ju
 (`{LV.Library}` `Modifications Bit Set` nonzero) is left alone, because its `Save` would write those
 changes too (`ownerHasUnsavedChanges`). An empty text is refused - an empty value does not survive
 the run helper's name/value pairing - so clearing a description is not supported.
+
+### 10b. `lvai_move_to_folder` - members into a virtual folder
+
+A virtual folder exists only in the `.lvclass` / `.lvlib` XML. Moving a member into one moves no
+file, changes no qualified name and relinks nothing, which is why the user called it routine on
+2026-10-12 ("can be done at will"). The route, measured on every member of 15 classes in the field
+run: `{LV.Library}` `AddItem` with Type `Folder` (empty path) creates the folder, `Get All
+Descendents` with Type `VI` lists the members, `{LV.ProjectItem}` `Name` names each, `{LV.ProjectItem}`
+`Move` with the folder item as `New Parent` moves one, `{LV.LVClassLibrary}` `Save` writes the class.
+The helpers are `scripts/lvai_move_to_folder_class.xml` and its `.lvlib` twin
+`scripts/lvai_move_to_folder_library.xml` (`Library.Open`, `{LV.Library}` `Save` with no path) -
+the twin is unmeasured.
+
+**Refused from the file, before LabVIEW:** a name that is not a member (the answer lists the
+members), the private data control, a `Property Definition`, an accessor INSIDE a property
+definition (taking it out of the definition is not measured, so it is not offered), items of more
+than one type in one call (the helper lists members with ONE `Get All Descendents` type), a folder
+name that occurs twice in the owner, a missing folder with `createFolder: false`, and a folder
+PATH such as `A/B`. The path is refused rather than half-honoured: the helper finds a folder by
+NAME and creates a missing one at the ROOT, so `A/B` would become a root folder called `B` - or
+land in a different `B`. An existing nested folder is reached by its own name when that name is
+unique. An item already in the folder is skipped (`alreadyThere`); a call where every item is
+already there answers `ok` without reaching LabVIEW.
+
+**All or nothing, new in the port and unmeasured.** The helper looks every requested name up
+first; if `Get All Descendents` did not list one (`itemsNotFoundByLabview`, e.g. if a `.ctl` member
+is not listed under Type `VI` - that is not measured either way), or the owner already carries
+unsaved changes (`ownerHasUnsavedChanges`), it creates no folder and moves nothing. A partial move
+would have left a modified, unsaved class in memory for the next save to write.
+
+**Verified from the saved owner:** each item's parent element in the re-read XML must be the
+folder, every member listed before the call must still be listed (`membersLost`), and no other file
+under the owner's folder may have changed (`otherFilesChanged`).
