@@ -291,3 +291,28 @@ iteration". The two designs that respect it:
 Either way `nodeIndex` stops being unique — an index into `All Objects[]` is per diagram — so the
 address becomes compound or a flat ordinal over a traversal both passes must walk identically.
 That contract, not the descent, is the bulk of the work.
+
+## The sweep read NOTHING while a project held the VI (2026-10-13)
+
+**Symptom.** With the caller's project open, `lvai_coercion_dots` answered `subViCalls: 0` on a
+caller that has one call, and so did both sweeps inside `lvai_bind_typedef_constants` - which
+NEEDS the project. Its name resolution then had nothing to resolve against (a misspelt
+`subViName` was not refused but passed on as given), and its verify step said it could not run
+while the bind had worked. Measured on one caller: with no project, three sweeps in a row read the
+call; with the project open, one did and two read nothing.
+
+**Two causes, one after the other.** The helper opened the VI with no application reference - a
+SECOND copy in the helper's own instance - while the IDE held the real one in the project's. It now
+opens the VI in `Project:Active Project` -> `Application` when a project is active (the route
+`lvbd_bind_constant.xml` always took) and in its own instance only when none is, which keeps the
+`pylv_apply` case, project closed, working. That made reads correct but not reliable: eight sweeps
+read `1 0 0 1 0 1 0 1` calls, every failure EMPTY and never wrong, and with the caller held open in
+the IDE the same eight read 1 each time. The VI is loaded and unloaded on each helper run and a run
+that catches it in between reads nothing - the "first open reads empty" trap CLAUDE.md records. So
+an empty run is retried, up to three tries (`TypedefTools.SweepAttempts`), and
+`lvai_coercion_dots` reports `retriedRuns`. Measured after both: sixteen sweeps with the project
+open all correct, at most one retry each; `Gibtsnicht.vi` refused as `subViNotOnDiagram`; the bind
+`ok: true` with `coercedBefore: 1`, `coercedAfter: 0`.
+
+`lvai_exec_state` opens its VI without an application reference too, and has not been measured
+against this.

@@ -447,8 +447,11 @@ internal sealed class TypedefTools(LvaiConnection connection)
     ///
     /// FAILS SOFT for the same reason <see cref="PaneTypedefsAsync"/> does: this annotates
     /// pylv_apply's verify step, and a probe that cannot run must not turn a sound retarget into a
-    /// reported failure. It needs no active project - the helper opens the VI without an
-    /// application instance, which matters because pylv_apply has just closed the project.
+    /// reported failure. It needs no active project - with none, the helper opens the VI in its
+    /// own instance, which matters because pylv_apply has just closed the project. With one, it
+    /// opens the VI in the PROJECT's instance: measured 2026-10-13, a second copy opened in the
+    /// helper's own instance read NO subVI calls while the project held the VI, so every sweep
+    /// inside lvai_bind_typedef_constants - which needs the project - came back empty.
     /// </summary>
     internal async Task<IReadOnlyList<string>?> CoercedTerminalsAsync(
         string viPath, int timeoutSeconds, CancellationToken ct) =>
@@ -492,11 +495,19 @@ internal sealed class TypedefTools(LvaiConnection connection)
             var runner = new RunTools(connection);
             var full = Path.GetFullPath(viPath);
 
-            async Task<JsonObject?> Run(int nodeIndex) => ValuesOf(
-                await runner.RunViAndReadValuesAsync(
-                    helperVi, Inputs(full, nodeIndex),
-                    includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-                    regenerateHelper: false, timeoutSeconds, ct: ct));
+            async Task<JsonObject?> Run(int nodeIndex)
+            {
+                JsonObject? values = null;
+                for (var attempt = 0; attempt < SweepAttempts; attempt++)
+                {
+                    values = ValuesOf(await runner.RunViAndReadValuesAsync(
+                        helperVi, Inputs(full, nodeIndex),
+                        includeRawXml: false, helperViPath: null, helperAixmlPath: null,
+                        regenerateHelper: false, timeoutSeconds, ct: ct));
+                    if (SweepRunRead(values, nodeIndex)) break;
+                }
+                return values;
+            }
 
             var first = await Run(EnumerateOnly);
             if (first is null) return null;
@@ -607,8 +618,10 @@ internal sealed class TypedefTools(LvaiConnection connection)
         `repairs`: a diagram CONSTANT is lvai_bind_typedef_constants, a front-panel CONTROL of
         the calling VI is lvai_bind_pane_typedef. This description named only the first until
         2026-09-18 and was measured sending a build at the tool that could not reach its case.
-        Needs no active project - it opens the VI without an application instance on purpose, so it
-        also works while pylv_apply has the project closed.
+        Needs no active project. With one active it opens the VI in that project's application
+        instance, where the IDE holds it; with none, in its own, so it also works while pylv_apply
+        has the project closed. It used to open the VI outside the project always, and measured
+        2026-10-13 that copy read NO subVI calls while the project held the VI.
         ONE ENTRY PER CALL NODE, not per subVI name. A diagram may call the same subVI several
         times and each call is wired separately, so each is reported on its own with the
         `nodeIndex` that identifies it. Omit subViName to sweep the whole diagram; pass it to
@@ -673,11 +686,21 @@ internal sealed class TypedefTools(LvaiConnection connection)
             var runner = new RunTools(connection);
             var full = Path.GetFullPath(viPath);
 
-            async Task<string> RunFor(int nodeIndex) =>
-                await runner.RunViAndReadValuesAsync(
-                    helperVi, Inputs(full, nodeIndex),
-                    includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-                    regenerateHelper: false, timeoutSeconds, ct: ct);
+            var retriedRuns = 0;
+            async Task<string> RunFor(int nodeIndex)
+            {
+                var answer = "";
+                for (var attempt = 0; attempt < SweepAttempts; attempt++)
+                {
+                    answer = await runner.RunViAndReadValuesAsync(
+                        helperVi, Inputs(full, nodeIndex),
+                        includeRawXml: false, helperViPath: null, helperAixmlPath: null,
+                        regenerateHelper: false, timeoutSeconds, ct: ct);
+                    if (SweepRunRead(ValuesOf(answer), nodeIndex)) break;
+                    if (attempt < SweepAttempts - 1) retriedRuns++;
+                }
+                return answer;
+            }
 
             // `subvis seen` is filled by an indexed output tunnel that runs whatever the node
             // index is, so one run with the enumerate-only index is the cheapest way to learn
@@ -707,8 +730,30 @@ internal sealed class TypedefTools(LvaiConnection connection)
             foreach (var node in matched)
                 answers.Add((node.Name, node.Index, await RunFor(node.Index)));
 
-            return DescribeDots(answers, viPath, helperVi, aixml, helperGenerated);
+            var described = DescribeDots(answers, viPath, helperVi, aixml, helperGenerated);
+            if (JsonNode.Parse(described) is not JsonObject result) return described;
+            result["retriedRuns"] = retriedRuns;
+            return Json.Document(result);
         }));
+
+    /// <summary>
+    /// How often one sweep run is tried. Measured 2026-10-13 with a project active and the caller
+    /// NOT held open in the IDE: eight sweeps in a row read 1, 0, 0, 1, 0, 1, 0, 1 calls - every
+    /// failure EMPTY, never wrong, and the same eight with the caller held open read 1 every time.
+    /// The VI is loaded and unloaded on each helper run, and a run that catches it mid-way reads
+    /// nothing (CLAUDE.md records the same for the first open of a VI). Two failures in a row
+    /// occurred, so three tries.
+    /// </summary>
+    internal const int SweepAttempts = 3;
+
+    /// <summary>
+    /// Whether one sweep run read its VI: the enumerate-only run saw at least one call, and a
+    /// node run found its subVI. A diagram that genuinely has no calls costs two extra runs.
+    /// </summary>
+    internal static bool SweepRunRead(JsonObject? values, int nodeIndex) =>
+        values is not null && (nodeIndex == EnumerateOnly
+            ? Nodes(values, subViName: null).Count > 0
+            : (Value(values, "subvi found") ?? "").Length > 0);
 
     /// <summary>
     /// Turn the per-subVI helper runs into this tool's answer. Separated from the RPC work so the
@@ -1433,7 +1478,7 @@ internal sealed class TypedefTools(LvaiConnection connection)
     /// The node index that addresses no call at all. The helper still fills `subvis seen` on such
     /// a run, so this is how the diagram is enumerated before anything is inspected.
     /// </summary>
-    private const int EnumerateOnly = -1;
+    internal const int EnumerateOnly = -1;
 
     /// <summary>
     /// How a coerced terminal is named for a human. The node index is only shown when the diagram

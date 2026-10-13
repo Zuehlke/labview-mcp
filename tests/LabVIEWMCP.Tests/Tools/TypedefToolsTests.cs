@@ -267,6 +267,27 @@ public class TypedefToolsTests
     /// Reproducing that shape here is the point - a test built on `value` would pass against an
     /// implementation that cannot read a single real answer.
     /// </summary>
+    /// <summary>
+    /// The retry test of one sweep run. Measured 2026-10-13 with a project active: a run read the
+    /// caller on alternate tries and came back EMPTY in between, so an empty enumeration or a
+    /// node run that found no subVI is retried, and a run that read the VI is not.
+    /// </summary>
+    [Fact]
+    public void ASweepRunThatReadNothingIsRetriedAndOneThatReadTheVIIsNot()
+    {
+        var enumerated = new JsonObject { ["subvis seen"] = Array("String", "", "Chan.lvclass:Write Mode.vi") };
+        var enumeratedNothing = new JsonObject { ["subvis seen"] = Array("String", "", "") };
+        var nodeRead = new JsonObject { ["subvi found"] = Scalar("String", "Chan.lvclass:Write Mode.vi") };
+        var nodeEmpty = new JsonObject { ["subvi found"] = Scalar("String", "") };
+
+        Assert.True(TypedefTools.SweepRunRead(enumerated, TypedefTools.EnumerateOnly));
+        Assert.False(TypedefTools.SweepRunRead(enumeratedNothing, TypedefTools.EnumerateOnly));
+        Assert.True(TypedefTools.SweepRunRead(nodeRead, 1));
+        Assert.False(TypedefTools.SweepRunRead(nodeEmpty, 1));
+        Assert.False(TypedefTools.SweepRunRead(null, 1));
+        Assert.True(TypedefTools.SweepAttempts >= 3);
+    }
+
     private static JsonObject Array(string element, params string[] vals)
     {
         var xml = $"<Array>\r\n  <Name>a</Name>\r\n  <Dimsize>{vals.Length}</Dimsize>\r\n" +

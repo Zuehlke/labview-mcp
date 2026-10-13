@@ -1,11 +1,37 @@
-<VI _name="lvbd_coercion_dots.vi" description="For ONE subVI call node on a VI's block diagram - addressed by its index in All Objects[] - report every terminal's Name\2C {LV.Terminal} Coercion Dot? and the type code in Type Descriptor[1] (0x53 in the low byte is a Variant\2C whose dot is an ordinary conversion)\2C and alongside it the VI Name of every diagram object (empty for anything that is not a subVI call). A coercion dot means the wired type is not identical to the terminal type\2C which is what the placeholder-plus-retarget route leaves behind when the real subVI's pane carries typedefs. ADDRESSED BY INDEX\2C NOT BY NAME\3A a diagram may call the same subVI several times\2C and matching on VI Name collapses them to one - measured\2C a caller with four coerced terminals across two nodes reported two\2C and could report clean while a second node still wore dots. The index is safe here because subvis seen is emitted in the same pass and resolved in the same session\3B nothing persists it. Pass node index -1 to enumerate only. TWO SEQUENTIAL LOOPS\2C never nested\3A a nested pair accumulating through shift registers was measured to keep only the LAST outer iteration. Opened WITHOUT an application instance on purpose - this has to work while pylv_apply has the project closed. Read only.">
+<VI _name="lvbd_coercion_dots.vi" description="For ONE subVI call node on a VI's block diagram - addressed by its index in All Objects[] - report every terminal's Name\2C {LV.Terminal} Coercion Dot? and the type code in Type Descriptor[1] (0x53 in the low byte is a Variant\2C whose dot is an ordinary conversion)\2C and alongside it the VI Name of every diagram object (empty for anything that is not a subVI call). A coercion dot means the wired type is not identical to the terminal type\2C which is what the placeholder-plus-retarget route leaves behind when the real subVI's pane carries typedefs. ADDRESSED BY INDEX\2C NOT BY NAME\3A a diagram may call the same subVI several times\2C and matching on VI Name collapses them to one - measured\2C a caller with four coerced terminals across two nodes reported two\2C and could report clean while a second node still wore dots. The index is safe here because subvis seen is emitted in the same pass and resolved in the same session\3B nothing persists it. Pass node index -1 to enumerate only. TWO SEQUENTIAL LOOPS\2C never nested\3A a nested pair accumulating through shift registers was measured to keep only the LAST outer iteration. Opened in the ACTIVE PROJECT's application instance when a project is active - a second copy opened in this instance reads NO subVI calls while the project holds the VI (measured 2026-10-13) - and in this instance when none is\2C so it still works while pylv_apply has the project closed. Read only.">
   <Control _name="vi path" conIdx="0" connection="required" outputs="value:10.value" type="string" uid="10" uid_parent="root" value=""/>
   <Control _name="node index" conIdx="1" connection="required" outputs="value:11.value" type="string" uid="11" uid_parent="root" value="-1"/>
 
   <Node _name="String To Path" inputs="string:10.value" outputs="path:14.path" uid="14" uid_parent="root"/>
   <Node _name="Decimal String To Number" inputs="string:11.value" outputs="number:15.number" uid="15" uid_parent="root"/>
 
-  <Node _name="Open VI Reference" inputs="vi path:14.path,error in (no error):" outputs="vi reference:24.vi reference,error out:24.error out" uid="24" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Project\3AActive Project:400.proj,reference out:,error out:400.error out" uid="400" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:400.proj,error in (no error):400.error out" outputs="Application:401.app,reference out:,error out:401.error out" uid="401" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status" inputs="input cluster:401.error out" outputs="status:402.status" uid="402" uid_parent="root"/>
+
+  <Structure _name="Case Structure" selectin="402.status" uid="410" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:401.app" uid="411" uid_parent="410"/>
+    <Tunnel _id="In2" inputs="value:14.path" uid="412" uid_parent="410"/>
+
+    <CaseFrame selector="False" selectout="" uid="420" uid_parent="410">
+      <Tunnel _id="In1" outputs="value:421.app" uid="421" uid_parent="420"/>
+      <Tunnel _id="In2" outputs="value:422.path" uid="422" uid_parent="420"/>
+      <Node _name="Open VI Reference" inputs="application reference (local):421.app,vi path:422.path,error in (no error):" outputs="vi reference:423.vi reference,error out:423.error out" uid="423" uid_parent="420"/>
+      <Tunnel _id="Out1" inputs="value:423.vi reference" uid="424" uid_parent="420"/>
+      <Tunnel _id="Out2" inputs="value:423.error out" uid="425" uid_parent="420"/>
+    </CaseFrame>
+
+    <CaseFrame selector="True" selectout="" uid="430" uid_parent="410">
+      <Tunnel _id="In1" outputs="value:" uid="431" uid_parent="430"/>
+      <Tunnel _id="In2" outputs="value:432.path" uid="432" uid_parent="430"/>
+      <Node _name="Open VI Reference" inputs="vi path:432.path,error in (no error):" outputs="vi reference:433.vi reference,error out:433.error out" uid="433" uid_parent="430"/>
+      <Tunnel _id="Out1" inputs="value:433.vi reference" uid="434" uid_parent="430"/>
+      <Tunnel _id="Out2" inputs="value:433.error out" uid="435" uid_parent="430"/>
+    </CaseFrame>
+
+    <Tunnel _id="Out1" outputs="value:24.vi reference" uid="24" uid_parent="410"/>
+    <Tunnel _id="Out2" outputs="value:24.error out" uid="413" uid_parent="410"/>
+  </Structure>
   <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:24.vi reference,error in (no error):24.error out" outputs="Block Diagram:26.bd,reference out:,error out:26.error out" uid="26" uid_parent="root"/>
   <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:26.bd,error in (no error):26.error out" outputs="All Objects[]:28.objs,reference out:,error out:28.error out" uid="28" uid_parent="root"/>
 
