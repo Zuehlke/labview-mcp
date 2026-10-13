@@ -108,7 +108,8 @@ internal sealed class WireEventTools(LvaiConnection connection)
         For Events, found at any depth by Traverse (class Function, exact, with a sink of that
         lower-case name), Auto Wire and Auto Route TRUE, LabVIEW making the tunnels. Read
         rightSide: no Unregister node is {skipped: "noUnregisterForEvents"}, more than one is
-        refused and named with the count, an input already wired is a no-op. It runs on its own
+        refused and named with the count, an input already wired is a no-op, and a helper that
+        stopped before searching (no active project) is {skipped: "notReached"}. It runs on its own
         error branch, so a right-side failure does not lose the left wire.
         A TUNNEL THAT WIRE CREATES ON AN ENCLOSING CASE STRUCTURE IS UNWIRED IN THE OTHER FRAMES
         AND BREAKS THE VI, so "Use Default if Unwired" is set on it - in the pylabview bundle,
@@ -274,7 +275,8 @@ internal sealed class WireEventTools(LvaiConnection connection)
                 attempted: Flag(outputs, "right attempted"),
                 code: Number(outputs, "right code"),
                 endsAfter: Number(outputs, "right wire ends"),
-                broken: Flag(outputs, "right wire broken"));
+                broken: Flag(outputs, "right wire broken"),
+                reached: outcome.Kind is not ("noActiveProject" or "helperDidNotAnswer"));
 
             payload["ok"] = JsonValue.Create(outcome.Ok);
             payload["errorKind"] = outcome.Kind is null ? null : JsonValue.Create(outcome.Kind);
@@ -316,6 +318,8 @@ internal sealed class WireEventTools(LvaiConnection connection)
             // was really there in that state (`wireEndsAfter` 3, the file rewritten), so step 3
             // must still run. `endsAfter >= 3` IS the evidence: a source plus two sinks is the
             // branch this tool makes. Unit tests could not see this; only the end-to-end run did.
+            // The Error 91 was found 2026-10-13: it hit every bool and int32 indicator, and they
+            // are strings (Flatten To XML) since then - see ParseFlag. The gate stays.
             var wired = outcome.Ok || endsAfter >= 3;
 
             payload["rightSide"] = right.ToJson(
@@ -785,15 +789,27 @@ internal sealed class WireEventTools(LvaiConnection connection)
     /// The right-side verdict from the helper's indicators. Pure, so it can be tested against the
     /// shapes the helper produces. `attempted` is the helper's own Case selector: requested, exactly
     /// one Unregister node, its input unwired, and the structure's source terminal found.
+    /// `reached` is false when the LEFT side stopped before the helper searched anything (no
+    /// active project, no answer): then every right-side indicator holds its default, and a 0
+    /// Unregister nodes would be read as a statement about the diagram.
     /// </summary>
     internal static RightSide ClassifyRightSide(bool requested, int? unregisterNodes,
                                                 bool? sourceFound, bool? wiredBefore,
                                                 bool? attempted, int? code, int? endsAfter,
-                                                bool? broken)
+                                                bool? broken, bool reached = true)
     {
         if (!requested)
             return new("skipped", "notRequested", false, false,
-                "wireRightSide was false, so the right side was not touched.");
+                "wireRightSide was false, so the right side was not touched." +
+                (unregisterNodes == 1 && wiredBefore == false
+                    ? " The Unregister For Events node's input stays UNWIRED, and that input is " +
+                      "required - the VI is not executable until it is wired."
+                    : ""));
+
+        if (!reached)
+            return new("skipped", "notReached", false, false,
+                "the helper stopped before it searched the diagram (see errorKind), so nothing is " +
+                "known about the right side.");
 
         if (attempted is null)
             return new("unknown", null, false, true,
@@ -885,14 +901,16 @@ internal sealed class WireEventTools(LvaiConnection connection)
 
     /// <summary>
     /// The measured signature of "no project is active": the helper's error chain names a Property
-    /// Node, its own error code never arrived, and the class list is empty or one empty string.
-    /// A failure further down the chain leaves that list POPULATED, because it is filled four
-    /// nodes after the project hop - which is what makes the emptiness the discriminator.
+    /// Node, its own error code is 1055 - or did not arrive, as it never did while the helper's
+    /// `code` indicator was an int32 (before 2026-10-13) - and the class list is empty or one empty
+    /// string. A failure further down the chain leaves that list POPULATED, because it is filled
+    /// four nodes after the project hop - which is what makes the emptiness the discriminator,
+    /// and what keeps a 1055 from the refnum search (noRefnumSourceFound) out of this verdict.
     /// </summary>
     internal static bool LooksLikeNoActiveProject(
         int? code, string? helperErrorSource, IReadOnlyList<string>? topClasses)
     {
-        if (code is not null) return false;
+        if (code is not null and not 1055) return false;
         if (helperErrorSource is null ||
             !helperErrorSource.Contains("Property Node", StringComparison.OrdinalIgnoreCase))
             return false;
@@ -1089,13 +1107,44 @@ internal sealed class WireEventTools(LvaiConnection connection)
         outputs.TryGetValue(name, out var value) ? value : null;
 
     private static bool? Flag(IDictionary<string, string> outputs, string name) =>
-        Text(outputs, name) is { Length: > 0 } text
-            ? text.Trim() is "1" or "T" or "TRUE" or "true" or "True"
-            : null;
+        ParseFlag(Text(outputs, name));
 
     private static int? Number(IDictionary<string, string> outputs, string name) =>
-        Text(outputs, name) is { Length: > 0 } text && int.TryParse(text.Trim(), out var n)
-            ? n : null;
+        ParseNumber(Text(outputs, name));
+
+    /// <summary>
+    /// A boolean out of the helper. Every boolean and number indicator of the helper is a STRING
+    /// holding LabVIEW's Flatten To XML of the value (&lt;Boolean&gt;…&lt;Val&gt;TRUE&lt;/Val&gt;…):
+    /// measured 2026-10-13, RunVIAsTopLevel answers Error 91 at Variant To Data for a bool or int32
+    /// indicator and returns it EMPTY, so `found`, `code` and the whole right side always read null
+    /// - the reason `rightSide` said "unknown" on every run and a re-run said helperDidNotAnswer.
+    /// A bare "TRUE"/"1" is still read, for an older helper.
+    /// </summary>
+    internal static bool? ParseFlag(string? text) =>
+        FlattenedScalar(text) is { Length: > 0 } value
+            ? value is "1" or "T" or "TRUE" or "true" or "True"
+            : null;
+
+    /// <summary>A number out of the helper; see <see cref="ParseFlag"/>.</summary>
+    internal static int? ParseNumber(string? text) =>
+        FlattenedScalar(text) is { Length: > 0 } value && int.TryParse(value, out var n) ? n : null;
+
+    /// <summary>The &lt;Val&gt; of a flattened scalar, or the trimmed text when it is not XML.</summary>
+    private static string? FlattenedScalar(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var trimmed = text.Trim();
+        if (!trimmed.StartsWith('<')) return trimmed;
+        try
+        {
+            return XElement.Parse(trimmed).Elements()
+                .FirstOrDefault(e => e.Name.LocalName == "Val")?.Value.Trim();
+        }
+        catch (System.Xml.XmlException)
+        {
+            return null;
+        }
+    }
 
     private static string? DefaultHelperAixmlPath() =>
         StatusTools.ScriptsDirectory() is { } scripts

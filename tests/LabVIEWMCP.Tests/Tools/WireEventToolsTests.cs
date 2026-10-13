@@ -395,6 +395,21 @@ public sealed class WireEventToolsTests
 
         Assert.Equal("notRequested", right.Reason);
         Assert.False(right.MayHaveCreatedTunnels);
+        // measured 2026-10-13: the VI then stays not executable, and the note must say why
+        Assert.Contains("UNWIRED", right.Note);
+    }
+
+    [Fact]
+    public void ARightSideTheHelperNeverReachedIsNotReadAsNoUnregisterNode()
+    {
+        // Measured 2026-10-13 with no project active: every right-side indicator holds its
+        // default, and 0 Unregister nodes was reported as noUnregisterForEvents.
+        var right = WireEventTools.ClassifyRightSide(true, 0, false, false, false, 0, 0, false,
+                                                     reached: false);
+
+        Assert.Equal("notReached", right.Reason);
+        Assert.False(right.Failed);
+        Assert.False(right.MayHaveCreatedTunnels);
     }
 
     [Fact]
@@ -498,12 +513,80 @@ public sealed class WireEventToolsTests
         Assert.Equal("helperDidNotAnswer", outcome.Kind);
     }
 
-    /// <summary>A helper that reported its OWN code is a different failure and keeps its verdict.</summary>
+    /// <summary>
+    /// Since 2026-10-13 the helper's `code` ARRIVES, so a missing project now reads 1055 rather
+    /// than null. The empty class list still decides it; a 1055 with classes read is the refnum
+    /// search failing, which keeps its own verdict.
+    /// </summary>
+    [Fact]
+    public void A1055WithNoClassesReadIsStillNoActiveProject()
+    {
+        var noProject = WireEventTools.Classify(
+            found: false, code: 1055, sourceFrom: "", wiredBefore: false, endsAfter: null,
+            broken: false, helperErrorSource: "Property Node in lvai_wire_dyn_events.vi",
+            topClasses: [""]);
+        var noRefnum = WireEventTools.Classify(
+            found: true, code: 1055, sourceFrom: "", wiredBefore: false, endsAfter: null,
+            broken: false, helperErrorSource: "Property Node in lvai_wire_dyn_events.vi",
+            topClasses: ["WhileLoop"]);
+
+        Assert.Equal("noActiveProject", noProject.Kind);
+        Assert.Equal("noRefnumSourceFound", noRefnum.Kind);
+    }
+
+    /// <summary>
+    /// MEASURED 2026-10-13: RunVIAsTopLevel answered Error 91 at Variant To Data and returned every
+    /// bool and int32 indicator EMPTY, so the right side read "unknown" on every run and a re-run
+    /// read helperDidNotAnswer. Those indicators are Flatten To XML strings now; these are the
+    /// shapes LabVIEW writes.
+    /// </summary>
+    [Theory]
+    [InlineData("<Boolean>\r\n<Name>found</Name>\r\n<Val>TRUE</Val>\r\n</Boolean>\r\n", true)]
+    [InlineData("<Boolean>\n<Name></Name>\n<Val>FALSE</Val>\n</Boolean>\n", false)]
+    [InlineData("TRUE", true)]
+    public void AFlattenedBooleanIsRead(string text, bool expected) =>
+        Assert.Equal(expected, WireEventTools.ParseFlag(text));
+
+    [Theory]
+    [InlineData("<I32>\r\n<Name>code</Name>\r\n<Val>1055</Val>\r\n</I32>\r\n", 1055)]
+    [InlineData("<I32>\n<Name></Name>\n<Val>-3</Val>\n</I32>\n", -3)]
+    [InlineData("7", 7)]
+    public void AFlattenedNumberIsRead(string text, int expected) =>
+        Assert.Equal(expected, WireEventTools.ParseNumber(text));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("<Boolean><Name></Name></Boolean>")]
+    [InlineData("<not xml")]
+    public void AnUnreadableValueIsNull(string? text)
+    {
+        Assert.Null(WireEventTools.ParseFlag(text));
+        Assert.Null(WireEventTools.ParseNumber(text));
+    }
+
+    [Fact]
+    public void EveryHelperIndicatorIsAString()
+    {
+        // A bool or int32 indicator comes back empty from RunVIAsTopLevel (Error 91), so the
+        // helper must not grow one again.
+        var text = File.ReadAllText(Path.Combine(RepoRoot(), "scripts", "lvai_wire_dyn_events.xml"));
+        var indicators = System.Text.RegularExpressions.Regex.Matches(text, "<Indicator [^>]*>");
+
+        Assert.NotEmpty(indicators);
+        Assert.All(indicators, m => Assert.Contains("type=\"string\"", m.Value));
+    }
+
+    /// <summary>
+    /// A helper that reported a code OTHER than 1055 is a different failure and keeps its verdict.
+    /// (This asserted 1055 too while `code` never arrived; it arrives since 2026-10-13, and a
+    /// missing project now reads 1055 - see A1055WithNoClassesReadIsStillNoActiveProject.)
+    /// </summary>
     [Fact]
     public void AnAnsweringHelperIsNeverReadAsAMissingProject()
     {
         Assert.False(WireEventTools.LooksLikeNoActiveProject(
-            code: 1055, helperErrorSource: "Property Node in lvai_wire_dyn_events.vi",
+            code: 7, helperErrorSource: "Property Node in lvai_wire_dyn_events.vi",
             topClasses: [""]));
     }
 

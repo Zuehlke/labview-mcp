@@ -1136,6 +1136,18 @@ upgrades `ok`, because it is stronger evidence than the diagnostics that failed 
 **Five unit tests and three script-level measurements all passed while this was broken**, because
 every one of them tested a piece rather than the composition.
 
+**THE ERROR 91 WAS NOT AN ARTEFACT TO LIVE WITH - it had a cause, found 2026-10-13.** It is
+`Variant To Data` inside `RunVIAsTopLevel`, and it hits every `bool` and `int32` indicator: those
+come back EMPTY, while every `string` indicator arrives. So `found`, `code`, `wired before` and the
+whole right side read null on EVERY run - which is why `rightSide` said `unknown` every time, and why
+a RE-RUN said `helperDidNotAnswer`: with the VI already wired the bundle step has nothing to change,
+so nothing upgraded `ok`. Every bool and int32 indicator of the helper is now a `string` fed by
+`Flatten To XML` (as `wire ends after` always was), and the tool reads the `<Val>`. Measured after
+the change: RPC `errorCode 0`, a first run `ok: true` on its own with `rightSide.status: wired`, the
+re-run `ok: true` with `alreadyWired`, and no project active answering `noActiveProject` from a real
+`code: 1055` with the class list empty. `scripts/lvai_wire_dyn_events.xml` must not grow a non-string
+indicator again; a unit test holds it to that.
+
 **`dynIndex` is the registration item's position and only `1` is measured** - a structure fed
 several user events needs the real one. Which of `regFlags`, `type` and `dynIndex` is decisive is
 also not isolated; they were changed together from `0 / 0 / 2`. `type 1000` is `0x03E8` and equals
@@ -1289,7 +1301,8 @@ own - it is a plain `Function` - so it is found by `Traverse` with `Class Name` 
 only when its `Class Name` is EXACTLY `Function` (whatever Traverse matches on) and it carries a
 SINK named `event registration refnum` in lower case. `Register For Events` carries a sink of that
 name too, and is class `RegisterForEvents`, which is why the exact-class filter is there.
-`rightSide` reports: `{skipped: "noUnregisterForEvents"}` for none, `{refused:
+`rightSide` reports: `{skipped: "notReached"}` when the helper stopped before it searched (no
+active project), `{skipped: "noUnregisterForEvents"}` for none, `{refused:
 "multipleUnregisterForEvents"}` with `unregisterNodes` for more than one (`Flush Event Queue` is
 spelled the same way, unmeasured), `alreadyWired` when the input carries a wire from anywhere -
 the usual generated shape, `Register For Events` wired straight into `Unregister` - and `wired`
