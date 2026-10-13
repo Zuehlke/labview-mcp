@@ -100,7 +100,7 @@ internal static class CommandLine
                                             and reopen the project. Does NOT save the project
 
           --port <n>        pin LabVIEW's gRPC port instead of discovering it
-          --aixml-backend <b>  which converter the AIXML tools use when a call names none:
+          --aixml-backend <b>  which route the tools that reach LabVIEW take when a call names none:
                             grpc (NI's service in LabVIEW), pylabview (our own composer, no
                             NI service needed) or auto. Overrides "aixmlBackend" in
                             %USERPROFILE%\.labviewmcp\settings.json, the usual place to choose

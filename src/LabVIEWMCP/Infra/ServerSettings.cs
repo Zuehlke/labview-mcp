@@ -52,9 +52,11 @@ internal static class ServerSettings
           // rewrites this file, so your edits and these comments stay. Read on every tool call - an
           // edit takes effect without restarting anything.
 
-          // aixmlBackend - which converter the AIXML tools use (lvai_generate_vi, lvai_generate_vis,
-          // lvai_convert_aixml_to_vi, lvai_convert_vi_to_aixml, lvai_validate_aixml, lvai_exec_state,
-          // lvai_run_vi_and_read_values) when a call does not name one itself.
+          // aixmlBackend - which route every tool that reaches LabVIEW takes when a call does not
+          // name one itself: the AIXML tools (generate, convert, validate), running and rendering
+          // VIs, and the class, test, DQMH, Actor Framework, LMock, typedef and graft tools. NI's
+          // own assistant RPCs (lvai_discuss_file, lvai_monitor_*, the search-candidate filters)
+          // always use NI's service.
           //
           //   "grpc"       NI's AI service inside LabVIEW (Nigel). Needs LabVIEW 2026 or later with
           //                the AI add-on running. NI's own converter: the reference behaviour.
