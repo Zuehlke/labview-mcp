@@ -187,7 +187,24 @@ public class ClassMembershipToolsTests
         var answer = JsonNode.Parse(ClassMembershipTools.ClassifyAdd(plan, Added(1), null, [])!)!;
 
         Assert.Equal("addFailed", answer["errorKind"]!.GetValue<string>());
+        Assert.Null(answer["detail"]!["classLocked"]);
         Assert.Null(ClassMembershipTools.ClassifyAdd(plan, Added(0), null, []));
+    }
+
+    [Fact]
+    public void A1562IsNamedAsALockedClassNotAsAnUnsavedChange()
+    {
+        // Measured 2026-10-13: AddItem answered 1562 after a caller holding the class had been opened
+        // loose in the IDE, and the old answer told the reader to revert unsaved changes.
+        using var tree = new Tree();
+        var plan = ClassMembershipTools.Plan(tree.Class, Paths(tree.Loose), tree.Project, null, true, null, false);
+
+        var answer = JsonNode.Parse(ClassMembershipTools.ClassifyAdd(plan, Added(1562), null, [])!)!;
+
+        Assert.Equal("addFailed", answer["errorKind"]!.GetValue<string>());
+        Assert.Contains("restart LabVIEW", answer["detail"]!["classLocked"]!.GetValue<string>());
+        Assert.Contains("locked", answer["error"]!.GetValue<string>());
+        Assert.DoesNotContain("revert", answer["error"]!.GetValue<string>());
     }
 
     [Fact]

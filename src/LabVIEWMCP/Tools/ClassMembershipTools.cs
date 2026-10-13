@@ -382,6 +382,21 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
         return parsed;
     }
 
+    /// <summary>LabVIEW's "the specified project or library is locked".</summary>
+    internal const string ClassLockedCode = "1562";
+
+    /// <summary>
+    /// What a 1562 from AddItem has been measured to mean. Not an unsaved change, which the old
+    /// answer suggested: measured 2026-10-13, it came after a caller holding the class had been
+    /// opened loose in the IDE, and the same call succeeded in a fresh LabVIEW. Earlier runs met
+    /// it right after lvai_create_class in the same session (docs/labview-lunit-testing.md §5).
+    /// </summary>
+    internal const string ClassLockedHint =
+        "LabVIEW holds the class locked, most likely because it is loaded somewhere else - a caller " +
+        "opened loose in the IDE (measured), or the class created earlier in this LabVIEW session. " +
+        "Close what holds it; when nothing visibly does, restart LabVIEW and call again. The class " +
+        "was not saved.";
+
     /// <summary>The add helper's verdict; null when it reported no failure and the saves may run.</summary>
     internal static string? ClassifyAdd(AddPlan plan, IReadOnlyList<LvValuesXml.Value>? values,
                                         string? helperError, JsonArray steps)
@@ -403,17 +418,25 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
         var codes = HousekeepingHelpers.Strings(values, "add codes");
         var failedItems = plan.Items.Where((_, i) => i < codes.Count && codes[i] != "0").ToList();
         if (HousekeepingHelpers.FirstFailure(values, "save error", "error out") is { } stage || failedItems.Count > 0)
+        {
+            var locked = codes.Contains(ClassLockedCode);
+            var answer = new JsonObject
+            {
+                ["addCodes"] = Names(codes),
+                ["failedItems"] = Names(failedItems),
+                ["steps"] = steps,
+            };
+            if (locked) answer["classLocked"] = ClassLockedHint;
             return Json.Error(failedItems.Count > 0 ? "addFailed" : "saveFailed",
                 "The add helper stopped" + (failedItems.Count > 0
                     ? $" at {string.Join(", ", failedItems.Select(Path.GetFileName))}" : "") +
-                ". The class save is skipped when an AddItem fails, so the class may hold an UNSAVED change " +
-                "in memory - revert it in the IDE before trying again. No caller was saved.",
-                new JsonObject
-                {
-                    ["addCodes"] = Names(codes),
-                    ["failedItems"] = Names(failedItems),
-                    ["steps"] = steps,
-                });
+                (locked
+                    ? $". Error {ClassLockedCode} is LabVIEW's 'library is locked': {ClassLockedHint}"
+                    : ". The class save is skipped when an AddItem fails, so the class may hold an UNSAVED " +
+                      "change in memory - revert it in the IDE before trying again.") +
+                " No caller was saved.",
+                answer);
+        }
         return null;
     }
 

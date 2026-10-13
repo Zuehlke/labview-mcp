@@ -3307,8 +3307,8 @@ class	property	access	source
 {LV.LeftShiftRegister}	Right Shift Register	read
 {LV.LeftShiftRegister}	Selected	read
 {LV.LeftShiftRegister}	Total Bounds Rect	read
-{LV.Library}	Description	read	UNMEASURED - helper scripts/lvai_set_library_description.xml; lvserver.rsc ActiveX type library lists the property (propget)
-{LV.Library}	Description	write	UNMEASURED - helper scripts/lvai_set_library_description.xml; lvserver.rsc ActiveX type library lists the property (propget)
+{LV.Library}	Description	read	acceptance run 2026-10-13 on one library; helper scripts/lvai_set_library_description.xml
+{LV.Library}	Description	write	acceptance run 2026-10-13 on one library; helper scripts/lvai_set_library_description.xml
 {LV.Library}	Help:Document Path	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
 {LV.Library}	Help:Document Tag	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it
 {LV.Library}	Localized Name	read	lvserver.rsc ActiveX type library (propget) - name not yet used in AIXML; validate before relying on it

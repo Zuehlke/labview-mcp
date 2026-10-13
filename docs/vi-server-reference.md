@@ -185,7 +185,8 @@ export" described above. Two sources, never mixed in one row:
 |---|---|---|
 | `helper scripts/<file>.xml (+N more)` | the node exactly as a helper this repository ships wires it, with every parameter and return name it uses | the spelling generates and runs in that helper; it is not proof of the parameters the helper leaves out |
 | `field run 2026-10-11/12 on 15 classes; helper …` | the same, and the route was measured end to end on 15 classes before it was ported | measured |
-| `UNMEASURED - helper …` | used by a ported helper that no run has executed yet (`{LV.Library}` `Description`) | a candidate |
+| `acceptance run 2026-10-13 on one library; helper …` | the same, measured on one library through the shipped tool (`{LV.Library}` `Description`) | measured, on a smaller sample |
+| `UNMEASURED - helper …` | used by a ported helper that no run has executed yet (none at present) | a candidate |
 | `lvserver.rsc ActiveX type library (propget) …` | a property NAME read out of the ActiveX type library embedded in LabVIEW's `resource\lvserver.rsc` (`interface _IProject`, `_IProjectItem`, `_ILibrary`), with `read` access because that library declares only `propget` | a candidate name: the ActiveX names have matched the AIXML ones wherever both were seen (`Application`, `Name`, `Path`, `Description`), but none of these was validated - and an invented name has crashed the validator, so do not probe blind |
 
 **Methods were NOT taken from the type library**, on purpose: it names them by C identifier

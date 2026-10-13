@@ -28,8 +28,11 @@ namespace LabVIEWMcp.Tools;
 ///   that never reached the disk would leave just as correct. <c>verified</c> comes from the
 ///   SAVED FILE, re-read as XML.
 ///
+/// - LINE BREAKS ARE SENT LF. The Save writes each LF as CRLF, a CRLF included: sent CRLF, a
+///   two-line text reached the file as CR CR LF (measured 2026-10-13 on a class and a library).
+///
 /// The .lvlib arm is the class route's twin through <c>Library.Open</c> and <c>{LV.Library}</c>,
-/// and is NOT measured: no run has written <c>{LV.Library}</c> <c>Description</c> yet.
+/// measured 2026-10-13 on one library.
 /// </summary>
 [McpServerToolType]
 internal sealed class OwnerDescriptionTools(LvaiConnection connection)
@@ -52,7 +55,9 @@ internal sealed class OwnerDescriptionTools(LvaiConnection connection)
         outside CP1252 - and any control character other than TAB, CR and LF - is REFUSED before
         LabVIEW is touched (errorKind textNotCp1252), each one named with its position and an
         ASCII replacement where one is obvious ("->" for an arrow); suggestedText carries the whole
-        text rewritten when every offender has one. Line breaks are written CRLF, as LabVIEW does.
+        text rewritten when every offender has one. Line breaks are SENT as LF: LabVIEW's Save
+        writes each LF as CRLF, and a CRLF sent in reached the file as CR CR LF (measured
+        2026-10-13), a blank line per break. The file ends up CRLF either way.
         AN OWNER WITH UNSAVED CHANGES IS LEFT ALONE (errorKind ownerHasUnsavedChanges): its Save
         would write those changes too. Save or revert it first.
         VERIFIED FROM THE SAVED FILE: the .lvclass/.lvlib is re-read as XML and its
@@ -60,8 +65,8 @@ internal sealed class OwnerDescriptionTools(LvaiConnection connection)
         comes from LabVIEW's own read-back, which reads memory. `filesChanged` lists every file
         under the owner's folder whose write time or length changed, so "only that file was
         saved" is checked rather than assumed.
-        The .lvclass route is measured (a field run, 15 classes); the .lvlib route is its twin
-        through {LV.Library} and is not measured yet. An empty text is refused: an empty value
+        The .lvclass route is measured (a field run, 15 classes); the .lvlib route, its twin
+        through {LV.Library}, on one library (2026-10-13). An empty text is refused: an empty value
         cannot travel to the helper, so clearing a description is not supported here.
         """)]
     public async Task<string> SetClassDescriptionAsync(
@@ -83,7 +88,7 @@ internal sealed class OwnerDescriptionTools(LvaiConnection connection)
             if (Precheck(ownerPath, text) is { } refusal) return refusal;
             var owner = Path.GetFullPath(ownerPath);
             var isClass = owner.EndsWith(".lvclass", StringComparison.OrdinalIgnoreCase);
-            var wanted = AnsiText.CrLf(text);
+            var wanted = AnsiText.Lf(text);
 
             var helpers = new HousekeepingHelpers(connection);
             var steps = new JsonArray();

@@ -66,6 +66,13 @@ public class OwnerHousekeepingTests
         Assert.Equal(AnsiText.Comparable("a\r\nb"), AnsiText.Comparable("a\nb"));
     }
 
+    [Fact]
+    public void AClassOrLibraryDescriptionIsSentLf()
+    {
+        // LabVIEW's class and library Save writes each LF as CRLF, a CRLF included (CR CR LF).
+        Assert.Equal("a\nb\nc\nd", AnsiText.Lf("a\nb\r\nc\rd"));
+    }
+
     // ---------------------------------------------------------------- OwnerFile
 
     [Fact]

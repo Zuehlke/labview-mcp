@@ -121,6 +121,16 @@ internal static class AnsiText
         text.Replace("\r\n", "\n").Replace('\r', '\n').Replace("\n", "\r\n");
 
     /// <summary>
+    /// The text with every line break written LF - what a CLASS or LIBRARY description must be
+    /// SENT as. LabVIEW's own {LV.LVClassLibrary}/{LV.Library} Save writes each LF as CRLF, and it
+    /// does so to a CRLF as well: measured 2026-10-13, a description sent CRLF reached the
+    /// .lvclass and the .lvlib as CR CR LF, which an XML reader hands back as a blank line per
+    /// break. The file still ends up CRLF, as LabVIEW writes it; the VI route keeps <see cref="CrLf"/>.
+    /// </summary>
+    internal static string Lf(string text) =>
+        text.Replace("\r\n", "\n").Replace('\r', '\n');
+
+    /// <summary>
     /// The form two descriptions are compared in: line breaks as LF. An XML reader hands every
     /// CRLF back as LF anyway (XML end-of-line handling), so comparing raw strings would report a
     /// multi-line description as wrong on every read-back.
