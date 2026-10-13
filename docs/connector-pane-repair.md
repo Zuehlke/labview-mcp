@@ -71,6 +71,18 @@ everything else edits the bundle in place, so `pylv_rebuild` afterwards — and 
 `pylv_rebuild` answering `ok` verifies nothing. Measure the result with `lvai_connector_pane`
 once LabVIEW has loaded the rebuilt VI.
 
+**A SLOT CAN CARRY CONTENT OF ITS OWN, and until 2026-10-13 the script refused every such pane.**
+A class-typed output tied to its class input - an LUnit test method's `Test Case Out`, a class
+method's `obj out` - is written by pylabview as
+`<TypeDesc TypeID="43" Flags="0x0D0B"><ThrallSources>  11</ThrallSources></TypeDesc>` rather than
+self-closing, with `HasThrall` on the Function type. The script ended the Function at the FIRST
+`</TypeDesc>` and counted self-closing slots only, so it read 3 slots of 12 and stopped with
+`pane disagrees with itself: 12 heap slots, 3 type slots` - seen through `pylv_apply`'s `conpane`
+op on an LUnit test method. The slots are now matched one by one, either shape, and a slot's
+content is written back verbatim: `ThrallSources` names a conIdx, and the script never moves one.
+Measured on that method's real bundle: 4815 -> 4833 -> 4815 comes back byte-identical
+(`ConpaneThrallTests`, whose fixture is that bundle).
+
 ## Moving terminals kills LabVIEW, so the script does not offer it
 
 An earlier version had two more modes: `--reindex`, which permuted the assignment into NI's order,

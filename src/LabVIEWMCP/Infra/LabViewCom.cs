@@ -119,6 +119,20 @@ internal static class LabViewCom
         }
     }
 
+    /// <summary>
+    /// Open a VI's front panel in LabVIEW's editor - the ActiveX counterpart of opening it with
+    /// lvai_open_file, for a route that needs the VI open THERE (a scripting call that ends the
+    /// session on a VI the editor does not hold). The open panel keeps the VI in memory after the
+    /// reference is released. Answers whether the panel reads open afterwards.
+    /// </summary>
+    public static Task<bool> OpenFrontPanelAsync(string viPath, int timeoutSeconds, CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, viPath, vi =>
+        {
+            vi.GetType().InvokeMember("FPWinOpen", BindingFlags.SetProperty, null, vi, [true],
+                                      CultureInfo.InvariantCulture);
+            return Get(vi, "FPWinOpen") is true;
+        }), timeoutSeconds, ct);
+
     /// <summary>A VI's Execution State: 0 eBad, 1 eIdle, 2 eRunTopLevel, 3 eRunning.</summary>
     public static Task<int> ExecStateAsync(string viPath, int timeoutSeconds, CancellationToken ct) =>
         WithLabViewAsync(app => WithVi(app, viPath, vi => Convert.ToInt32(Get(vi, "ExecState"),

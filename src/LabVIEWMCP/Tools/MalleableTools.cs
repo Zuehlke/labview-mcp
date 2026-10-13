@@ -67,8 +67,9 @@ internal sealed class MalleableTools(LvaiConnection connection)
             """)]
         bool keepBundle = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_make_malleable", async () =>
         {
             var total = Stopwatch.StartNew();
             var steps = new JsonArray();
@@ -94,7 +95,8 @@ internal sealed class MalleableTools(LvaiConnection connection)
 
             // ---------------------------------------------------------------- 1. the ordinary VI
             var generate = await new BulkTools(connection)
-                .GenerateViAsync(aiXmlFilePath, intermediate, timeoutSeconds: timeoutSeconds, ct: ct, measureDiagram: false);
+                .GenerateViAsync(aiXmlFilePath, intermediate, timeoutSeconds: timeoutSeconds, ct: ct, measureDiagram: false,
+                                  cleanUpDiagram: true);
             steps.Add(new JsonObject { ["step"] = "generate", ["answer"] = Parse(generate) });
             if (Parse(generate)?["ok"]?.GetValue<bool>() != true)
                 return Outcome(false, "generate", steps, total, vim, intermediate, targetExisted,
@@ -195,7 +197,7 @@ internal sealed class MalleableTools(LvaiConnection connection)
                       + "read staleReadRisk first - this check may be reading the copy LabVIEW "
                       + "still holds rather than the file just written.",
                 keepBundle ? bundleDirectory : null);
-        });
+        }));
 
     private static JsonNode? Parse(string answer)
     {

@@ -63,6 +63,14 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
         var full = Path.GetFullPath(viPath);
         var step = new JsonObject { ["step"] = kind.Step, ["backend"] = backend };
         if (!File.Exists(full)) return Fail(step, "There is no VI at " + full + " to clean up.");
+        if (IsDqmhMain(full))
+        {
+            step["ok"] = true;
+            step["skipped"] = true;
+            step["note"] = "This is a DQMH module's Main.vi, which is never cleaned up - its layout is " +
+                           "Delacor's, and the DQMH tools rely on it (the user's rule of 2026-10-13).";
+            return step;
+        }
 
         var compiledBefore = BulkTools.ContainsCompiledCode(full);
         var writtenBefore = File.GetLastWriteTimeUtc(full);
@@ -140,6 +148,20 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
         step["note"] = kind.Done +
                        (compiledBefore ? " (it carried compiled code before, and still does)." : ", source only.");
         return step;
+    }
+
+    /// <summary>
+    /// A DQMH module's Main.vi: named Main.vi, beside the two event clusters every module folder
+    /// carries. The DQMH tools never clean up at all; this guards every other route to the same file.
+    /// </summary>
+    internal static bool IsDqmhMain(string viPath)
+    {
+        if (!string.Equals(Path.GetFileName(viPath), "Main.vi", StringComparison.OrdinalIgnoreCase))
+            return false;
+        var folder = Path.GetDirectoryName(viPath);
+        return folder is not null &&
+               File.Exists(Path.Combine(folder, "Request Events--cluster.ctl")) &&
+               File.Exists(Path.Combine(folder, "Broadcast Events--cluster.ctl"));
     }
 
     /// <summary>The panel helper's `arranged` boolean, read off either backend's answer; null when

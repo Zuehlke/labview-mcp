@@ -132,7 +132,19 @@ examples broke even a one-wire pass-through VI: a boolean "Stop" push button fro
 from `Comparison Functions.vi`. Parts cut from **AIXML-generated** VIs are marked `clean="1"`,
 the composer prefers them over an exact type match from an example, adapts numeric parts across
 representations, and flips a part's direction when needed (an LED indicator flipped to a control
-works). `parts/denylist.json` holds the measured exclusions. **A productised harvest should
+works). `parts/denylist.json` holds the measured exclusions.
+
+**A boolean CONTROL is NI's oval push button since 2026-10-13, not the flipped LED - the user's
+request.** NI's converter writes `type="bool"` on a `<Control>` as a 60 x 41 px push button
+(images -406/-407) and on an `<Indicator>` as the round LED; with the Stop-button part denied, the
+composer had only the LED and every boolean control came out a small round light. The new
+`fpdco/stdBool/ctl/Boolean` is cut from a VI NI's converter built from a two-element AIXML (a bool
+control passed to a bool indicator), so it is marked `clean="1"` - without that mark the clean LED
+still won `pick`'s ranking over the exact direction, measured: the first compose with the part in
+place still rendered the LED. Its denylist entry, which named the OTHER donor (`Sample Main.vi`),
+is gone. Measured on the case that entry was written for: the pass-through composes `execState 1`,
+`true` in gives `true` out, a latched Stop composes executable, and the panel render is NI's
+button. **A productised harvest should
 QUALIFY every part** — compose a minimal VI around it and check `ExecState` — rather than trust
 the donor.
 

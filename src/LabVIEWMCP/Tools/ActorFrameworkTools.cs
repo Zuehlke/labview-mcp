@@ -115,8 +115,9 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it exists")] bool regenerateHelper = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_create_message_class", async () =>
         {
             if (!File.Exists(actorClassPath))
                 throw new FileNotFoundException($"No .lvclass at '{actorClassPath}'.",
@@ -214,13 +215,11 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                 Directory.CreateDirectory(folder);
 
             var steps = new JsonArray();
-            var helperGenerated = false;
-            if (regenerateHelper || HelperCache.NeedsRebuild(aixml, helperVi))
-            {
-                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct) is { } failure)
-                    return failure;
-                helperGenerated = true;
-            }
+            var (builtVi, failure, helperGenerated) = await BackendRoute.HelperAsync(aixml, helperVi,
+                regenerateHelper, () => GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct),
+                timeoutSeconds, ct);
+            if (failure is not null) return failure;
+            helperVi = builtVi;
 
             if (projectPath is { Length: > 0 })
             {
@@ -256,6 +255,9 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                 helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
 
             steps.Add(new JsonObject { ["step"] = "messageMaker", ["answer"] = Read(answer) });
+            if (BackendRoute.RunRefusal(answer) is { } refusal)
+                return Json.Error(refusal, "The Message Maker helper did not run - `steps` holds why.",
+                    new JsonObject { ["steps"] = steps });
 
             var values = Values(answer);
 
@@ -332,7 +334,7 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                     : "Every stage reported 0 but no .lvclass is at the expected path, so nothing " +
                       "can be verified. Treat this as a failure.",
             });
-        });
+        }));
 
     /// <summary>The helper's stages, in the order its diagram runs them.</summary>
     private static readonly (string Indicator, string Label)[] Stages =

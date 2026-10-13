@@ -28,11 +28,24 @@ internal static class ComposedHelpers
         if (StatusTools.ScriptsDirectory() is not { } scripts
             || !File.Exists(Path.Combine(scripts, aixmlFileName)))
             return (null, $"{aixmlFileName} was not found in the scripts folder beside the server.");
+        return await EnsurePathAsync(Path.Combine(scripts, aixmlFileName), null, timeoutSeconds, ct);
+    }
+
+    /// <summary>
+    /// The same for an AIXML file ANYWHERE - a tool's `helperAixmlPath` override, or a document a
+    /// tool wrote itself. The VI goes to <paramref name="viName"/> (default: the document's name)
+    /// in <see cref="Folder"/>, and is rebuilt on the same rules.
+    /// </summary>
+    public static async Task<(string? Vi, string? Problem)> EnsurePathAsync(
+        string aixmlPath, string? viName, int timeoutSeconds, CancellationToken ct)
+    {
+        var aixml = Path.GetFullPath(aixmlPath);
+        if (!File.Exists(aixml)) return (null, $"No helper AIXML at '{aixml}'.");
         if (AixmlComposer.Locate(out var missing) is not { } setup)
             return (null, missing);
+        var scripts = StatusTools.ScriptsDirectory() ?? Path.GetDirectoryName(aixml)!;
 
-        var aixml = Path.Combine(scripts, aixmlFileName);
-        var vi = Path.Combine(Folder, Path.ChangeExtension(aixmlFileName, ".vi"));
+        var vi = Path.Combine(Folder, viName ?? Path.ChangeExtension(Path.GetFileName(aixml), ".vi"));
         var stamp = vi + ".parts";
         // a helper composed for one LabVIEW release is not one for another (Error 1125 in 2025)
         var partsInUse = PartsStamp(setup.PartsDirectory) + "|" +
@@ -47,7 +60,7 @@ internal static class ComposedHelpers
                                                         timeoutSeconds, ct);
         if (!composed.Written)
             return (null, $"the pylabview composer {(composed.Refused ? "refuses" : "failed on")} " +
-                          $"{aixmlFileName}: {composed.Message}");
+                          $"{Path.GetFileName(aixml)}: {composed.Message}");
         await File.WriteAllTextAsync(stamp, partsInUse, ct);
         return (vi, null);
     }

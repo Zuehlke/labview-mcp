@@ -191,6 +191,134 @@ public sealed class AixmlBackendTests
         Assert.Equal("pylabview", Resolve(" PyLabVIEW ").Name);
     }
 
+    // ------------------------------------------------------------ the settings file (2026-10-13)
+
+    private static AixmlBackend.Choice ResolveFile(ServerSettings.BackendEntry? entry, int? labviewInUse = 2026,
+                                                   string? flag = null, string? environment = null,
+                                                   string? clientTool = Tool)
+    {
+        Assert.True(AixmlBackend.TryResolve(null, Tool, clientTool, flag, environment, null,
+                                            () => entry, () => labviewInUse, out var choice, out var error), error);
+        return choice;
+    }
+
+    private static ServerSettings.BackendEntry Entry(string? value) =>
+        new(@"C:\u\.labviewmcp\settings.json", value, null);
+
+    /// <summary>
+    /// The user's decision of 2026-10-13: the choice is an entry in a file. It sits BELOW the call,
+    /// the flag and the variable, which stay overrides, and ABOVE the older-LabVIEW rule, which
+    /// only "auto" leaves in force.
+    /// </summary>
+    [Fact]
+    public void The_settings_file_chooses_below_the_overrides_and_above_the_automatic_rules()
+    {
+        var fromFile = ResolveFile(Entry("pylabview"));
+        Assert.Equal("pylabview", fromFile.Name);
+        Assert.Equal(@"settings file C:\u\.labviewmcp\settings.json", fromFile.Source);
+
+        Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Variable),
+                     ResolveFile(Entry("pylabview"), environment: "grpc"));
+        Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Flag),
+                     ResolveFile(Entry("pylabview"), flag: "grpc"));
+
+        // "grpc" in the file holds even on a LabVIEW older than 2026 - only "auto" lets that rule decide
+        Assert.Equal("grpc", ResolveFile(Entry("grpc"), labviewInUse: 2025).Name);
+        Assert.Equal("pylabview", ResolveFile(Entry("auto"), labviewInUse: 2025).Name);
+        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveFile(Entry("auto")));
+        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveFile(Entry(null)));
+        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveFile(null));
+
+        // and it is a SERVER default: an internal call still stays on NI's converter
+        Assert.Equal("grpc", ResolveFile(Entry("pylabview"), clientTool: "lvai_create_class").Name);
+    }
+
+    [Fact]
+    public void Auto_in_the_flag_or_the_variable_makes_no_choice()
+    {
+        Assert.Equal("pylabview", ResolveFile(Entry("pylabview"), flag: "auto").Name);
+        Assert.Equal("pylabview", ResolveFile(Entry("pylabview"), environment: "AUTO").Name);
+        Assert.Equal("pylabview", ResolveFile(Entry("auto"), labviewInUse: 2025, flag: "auto", environment: "auto").Name);
+    }
+
+    [Fact]
+    public void A_bad_settings_entry_is_refused_by_name_rather_than_ignored()
+    {
+        Assert.False(AixmlBackend.TryResolve(null, Tool, Tool, null, null, null,
+                                             () => Entry("nigel"), () => 2026, out _, out var unknown));
+        Assert.Contains("nigel", unknown);
+        Assert.Contains(@"C:\u\.labviewmcp\settings.json", unknown);
+        Assert.Contains("grpc, pylabview, auto", unknown);
+
+        var broken = new ServerSettings.BackendEntry("x.json", null, "x.json is not valid JSON (eof).");
+        Assert.False(AixmlBackend.TryResolve(null, Tool, Tool, null, null, null,
+                                             () => broken, () => 2026, out _, out var unreadable));
+        Assert.Contains("not valid JSON", unreadable);
+
+        // a call that names its backend never reads the file, so a broken file cannot stop it
+        Assert.True(AixmlBackend.TryResolve("grpc", Tool, Tool, null, null, null,
+                                            () => broken, () => 2026, out var named, out _));
+        Assert.Equal("call", named.Source);
+    }
+
+    /// <summary>
+    /// The user's requirement: the FILE shows which values exist and what each one means. So the
+    /// template must parse with its comments, carry the entry, and explain every accepted value.
+    /// </summary>
+    [Fact]
+    public void A_new_settings_file_explains_every_value_and_starts_on_auto()
+    {
+        var dir = Directory.CreateTempSubdirectory("lvmcp-settings-").FullName;
+        try
+        {
+            var path = Path.Combine(dir, "sub", "settings.json");
+            Assert.True(ServerSettings.EnsureExists(path));
+            var entry = ServerSettings.ReadBackend(path);
+            Assert.Null(entry.Error);
+            Assert.Equal("auto", entry.Value);
+
+            var text = File.ReadAllText(path);
+            foreach (var value in AixmlBackend.SettingNames)
+                Assert.Matches($"//\\s+\"{value}\"\\s+\\S", text);   // each value on a comment line WITH its meaning
+            Assert.Contains(AixmlBackend.Variable, text);              // and what still overrides it
+
+            // never rewritten once it exists: the user's edit and comments stay
+            File.WriteAllText(path, "{ // mine\n \"aixmlBackend\": \"pylabview\" }");
+            Assert.False(ServerSettings.EnsureExists(path));
+            Assert.Equal("pylabview", ServerSettings.ReadBackend(path).Value);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_settings_file_without_the_entry_makes_no_choice_and_a_wrong_type_is_an_error()
+    {
+        var dir = Directory.CreateTempSubdirectory("lvmcp-settings-").FullName;
+        try
+        {
+            var path = Path.Combine(dir, "settings.json");
+            Assert.Equal(new ServerSettings.BackendEntry(path, null, null), ServerSettings.ReadBackend(path));
+
+            File.WriteAllText(path, "{ \"other\": 1, }");
+            Assert.Equal(new ServerSettings.BackendEntry(path, null, null), ServerSettings.ReadBackend(path));
+
+            File.WriteAllText(path, "{ \"aixmlBackend\": 3 }");
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(1));   // past the write-time cache
+            Assert.Contains("must be a string", ServerSettings.ReadBackend(path).Error);
+
+            File.WriteAllText(path, "{ \"aixmlBackend\": ");
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(2));
+            Assert.Contains("not valid JSON", ServerSettings.ReadBackend(path).Error);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     [Fact]
     public void The_flag_is_known_to_the_command_line()
     {

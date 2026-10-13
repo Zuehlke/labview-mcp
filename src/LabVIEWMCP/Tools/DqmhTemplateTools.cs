@@ -62,8 +62,9 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
         bool copyToLabviewData = true,
         [Description("Replace an existing template of the same name")] bool overwrite = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_create_module_template", async () =>
         {
             if (string.IsNullOrWhiteSpace(libraryPath))
                 return Json.Error("badArguments", "libraryPath is required.");
@@ -102,21 +103,15 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
                     "Template Folders--constant.vi did not answer its two folders.",
                     new { helperError = foldersError });
 
-            var export = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", $"dqmh-template.{Guid.NewGuid():N}.xml");
-            Directory.CreateDirectory(Path.GetDirectoryName(export)!);
-            var exported = await connection.InvokeAsync((c, t) =>
-                c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest
-                {
-                    ViPath = paths[1],
-                    AiXMLFilePath = export,
-                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-            var template = exported.ErrorCode == 0 && File.Exists(export)
-                ? MetadataTemplate(File.ReadAllText(export)) : null;
-            if (File.Exists(export)) File.Delete(export);
+            // our reader reads Delacor's locked Create Template Core.vi too, the constant included
+            // in the same escaped spelling - measured 2026-10-13
+            var (exported, exportErrorCode, exportMessage) = await new DqmhHeadless(connection)
+                .ExportAsync(paths[1], "dqmh-template", timeoutSeconds, ct);
+            var template = exported is null ? null : MetadataTemplate(exported);
             if (template is null)
                 return Json.Error("metadataTemplateUnreadable",
                     "Could not read the `Meta Data XML Template` constant from Create Template Core.vi.",
-                    new { exportErrorCode = exported.ErrorCode, exported.ErrorMessage });
+                    new { exportErrorCode, ErrorMessage = exportMessage });
             if (Regex.Matches(template, "%s").Count != 6 || template.Replace("%s", "").Contains('%'))
                 return Json.Error("metadataTemplateChanged",
                     "This DQMH version's metadata template is not the six-%s template measured on " +
@@ -188,7 +183,7 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
                     : "The files were written but Delacor's catalogue does not list the template - " +
                       "read `catalogue` before using it.",
             });
-        });
+        }));
 
     // ------------------------------------------------------------------ pure helpers, tested
 

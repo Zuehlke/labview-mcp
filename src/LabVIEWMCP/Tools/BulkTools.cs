@@ -1125,8 +1125,9 @@ internal sealed class BulkTools(LvaiConnection connection)
             would break the one workflow this tool exists to serve.
             """)]
         bool gateOnExecState = true,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "pylv_apply", async () =>
         {
             if (!File.Exists(viPath))
                 return Json.Error("badArguments", $"No file at viPath '{viPath}'.");
@@ -1273,7 +1274,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                     : "Rebuilt. NOTHING HERE CONFIRMS THE EDIT - verify was false, so LabVIEW has " +
                       "not read the file back, and its executability was not measured either. " +
                       "Export it yourself before believing this.");
-        });
+        }));
 
     /// <summary>
     /// The close, as a step rather than a precondition. An unreachable LabVIEW is reported as a
@@ -1405,7 +1406,9 @@ internal sealed class BulkTools(LvaiConnection connection)
     internal static bool ContainsCompiledCode(string viPath)
     {
         if (!File.Exists(viPath)) return false;
-        return File.ReadAllBytes(viPath).AsSpan().IndexOf("VICD"u8) >= 0;
+        // The file's OWN resource map, not its bytes: a caller of a .vim embeds each instance as a
+        // whole VI with its own VICD (RsrcMap).
+        return RsrcMap.Lists(File.ReadAllBytes(viPath), "VICD");
     }
 
     private static string PyOutcome(bool ok, string? failedAt, JsonArray steps, Stopwatch total,

@@ -161,4 +161,43 @@ public sealed class ComValuesTests
         Assert.Equal(["false", "0", ""], ComValues.Literal("[false,0,]"));
         Assert.Null(ComValues.Literal("1,2"));
     }
+
+    // ---------------------------------------------------------------- LabVIEW's own XML as input
+
+    /// <summary>
+    /// The gRPC run helper takes an array or cluster as LabVIEW's flattened XML, and tools hand it
+    /// that way (lvai_graft_diagram's rewire lists). The ActiveX route refused it as "not an array
+    /// literal" until 2026-10-13; the same text now converts on both routes.
+    /// </summary>
+    [Fact]
+    public void A_string_array_in_LabVIEW_XML_becomes_a_typed_array()
+    {
+        var value = Convert("<Array><Name>Originals</Name><Dimsize>2</Dimsize>"
+                            + "<String><Name></Name><Val>x</Val></String>"
+                            + "<String><Name></Name><Val>error in</Val></String></Array>", "array{string}");
+        Assert.Equal(["x", "error in"], Assert.IsType<string[]>(value));
+    }
+
+    [Fact]
+    public void A_numeric_array_and_a_cluster_in_LabVIEW_XML_convert_element_by_element()
+    {
+        Assert.Equal([1, 2], Assert.IsType<int[]>(Convert(
+            "<Array><Name>n</Name><Dimsize>2</Dimsize><I32><Name></Name><Val>1</Val></I32>"
+            + "<I32><Name></Name><Val>2</Val></I32></Array>", "array{int32}")));
+        var cluster = Assert.IsType<object?[]>(Convert(
+            "<LvVariant><Name>v</Name><Cluster><Name>e</Name><NumElts>3</NumElts>"
+            + "<Boolean><Name>status</Name><Val>1</Val></Boolean><I32><Name>code</Name><Val>7</Val></I32>"
+            + "<String><Name>source</Name><Val>here</Val></String></Cluster></LvVariant>",
+            "cluster{bool.status,int32.code,string.source}"));
+        Assert.Equal([true, 7, "here"], cluster);
+    }
+
+    /// <summary>Dimsize decides the length - an empty array still flattens one template element.</summary>
+    [Fact]
+    public void An_empty_array_in_LabVIEW_XML_is_empty_despite_its_template_element()
+    {
+        Assert.Empty(Assert.IsType<string[]>(Convert(
+            "<Array><Name>a</Name><Dimsize>0</Dimsize><String><Name></Name><Val></Val></String></Array>",
+            "array{string}")));
+    }
 }

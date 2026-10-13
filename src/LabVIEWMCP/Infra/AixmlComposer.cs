@@ -74,6 +74,10 @@ internal static class AixmlComposer
         {
             ["serverDefault"] = serverDefault.Name,
             ["serverDefaultSource"] = serverDefault.Source,
+            // where the choice is made: the settings file explains every value beside the entry
+            ["settingsFile"] = ServerSettings.FilePath,
+            ["settingsFileExists"] = File.Exists(ServerSettings.FilePath),
+            ["settingsAixmlBackend"] = ServerSettings.ReadBackend().Value,
             ["pylabviewAvailable"] = setup is not null,
             ["composerDirectory"] = setup?.ComposerDirectory,
             ["partsDirectory"] = setup?.PartsDirectory,

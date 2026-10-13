@@ -62,8 +62,9 @@ internal sealed class BindReferenceTools(LvaiConnection connection)
         [Description("""JSON object, stand-in label -> control label, e.g. {"WB Ref":"Web Browser Control"}""")]
         string bindingsJson,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_bind_control_references", async () =>
         {
             // ---- 0. arguments
             if (string.IsNullOrWhiteSpace(viPath) || string.IsNullOrWhiteSpace(bindingsJson))
@@ -153,7 +154,7 @@ internal sealed class BindReferenceTools(LvaiConnection connection)
                     : "A check above failed - read execState, leftoverStandIns and mismatches. The VI " +
                       "on disk is the edited one; backupPath holds the version from before the call.",
             });
-        });
+        }));
 
     internal sealed record Binding(string StandIn, string Control);
 

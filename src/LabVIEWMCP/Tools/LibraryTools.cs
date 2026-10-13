@@ -98,8 +98,9 @@ internal sealed class LibraryTools(LvaiConnection connection)
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it exists")] bool regenerateHelper = false,
         [Description("Local budget in seconds, per item")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_add_to_library", async () =>
         {
             if (!File.Exists(libraryPath))
                 return Json.Error("libraryMissing",
@@ -200,13 +201,11 @@ internal sealed class LibraryTools(LvaiConnection connection)
                 Directory.CreateDirectory(helperFolder);
 
             var steps = new JsonArray();
-            var helperGenerated = false;
-            if (regenerateHelper || HelperCache.NeedsRebuild(aixml, helperVi))
-            {
-                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct) is { } failure)
-                    return failure;
-                helperGenerated = true;
-            }
+            var (builtVi, failure, helperGenerated) = await BackendRoute.HelperAsync(aixml, helperVi,
+                regenerateHelper, () => GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct),
+                timeoutSeconds, ct);
+            if (failure is not null) return failure;
+            helperVi = builtVi;
 
             if (projectPath is { Length: > 0 })
             {
@@ -240,6 +239,11 @@ internal sealed class LibraryTools(LvaiConnection connection)
                     ["name"] = item.Name,
                     ["answer"] = Read(answer),
                 });
+
+                if (BackendRoute.RunRefusal(answer) is { } refusal)
+                    return Json.Error(refusal, $"The helper did not run for '{item.Name}' - `steps` " +
+                        "holds the refusal. Items before it are in the library and saved.",
+                        new JsonObject { ["itemsAdded"] = added.DeepClone(), ["steps"] = steps });
 
                 if (ErrorCode(Values(answer)) is { } code && code != 0)
                     return Json.Document(new JsonObject
@@ -316,7 +320,7 @@ internal sealed class LibraryTools(LvaiConnection connection)
                       "an item did not land in the folder that was asked for. Treat this as a " +
                       "failure and read verify.missing and verify.notInRequestedFolder.",
             });
-        });
+        }));
 
     private sealed record Item(string Path, string Name, string? Type);
 

@@ -1542,8 +1542,9 @@ class Composer:
         if is_enum(tree):
             self._set_enum(ddo, tree)
         if prefix == "fpdco":
-            # an LED indicator flipped to a control was measured working; a field of a cluster
-            # follows the cluster's direction
+            # an LED indicator flipped to a control was measured working (a plain boolean control
+            # has its own part since 2026-10-13, NI's push button); a field of a cluster follows
+            # the cluster's direction
             self._direction(ddo, is_ind)
         self._set_label(ddo, name)
         # the object's own type is retyped; what it holds inside (a waveform control's t0, dt and

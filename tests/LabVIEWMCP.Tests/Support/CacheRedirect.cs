@@ -27,5 +27,12 @@ internal static class CacheRedirect
         var directory = Path.Combine(Path.GetTempPath(), "lvmcp-test-cache");
         Directory.CreateDirectory(directory);
         Environment.SetEnvironmentVariable(CacheDirectory.OverrideVariable, directory);
+
+        // The developer's own settings file chooses the AIXML backend for every tool call, so a
+        // user who set "pylabview" there would reroute every test that expects NI's converter. The
+        // suite reads a settings file that does not exist - "no choice" - unless a test points the
+        // variable at one of its own.
+        Environment.SetEnvironmentVariable(ServerSettings.PathVariable,
+                                           Path.Combine(directory, "no-settings", "settings.json"));
     }
 }

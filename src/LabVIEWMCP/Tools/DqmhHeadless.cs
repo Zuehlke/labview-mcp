@@ -61,6 +61,25 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
             .ToList();
         if (chain.FirstOrDefault(h => !File.Exists(h.Aixml)) is { Name: { } missing })
             return Json.Error("scriptsMissing", $"{missing}.xml was not found in the scripts folder.");
+
+        if (DqmhTools.OnPyLabview)
+        {
+            // NOTHING IS OPENED: the composer resolves a Call by FILE - Delacor's VIs under
+            // LabVIEW's project\ folder, our sub-helpers in the folder they are composed into - so
+            // composing the sub-helpers first is the whole of the ordering. Measured 2026-10-13:
+            // all 17 lvdqmh_*.xml compose that way and load executable over ActiveX.
+            foreach (var (name, _, _) in chain)
+            {
+                var (vi, problem) = await ComposedHelpers.EnsureAsync(name + ".xml", timeoutSeconds, ct);
+                steps.Add(new JsonObject { ["step"] = "composeWrapper", ["helper"] = name, ["helperVi"] = vi,
+                                           ["problem"] = problem });
+                if (vi is null)
+                    return Json.Error("wrapperGenerationFailed",
+                        $"{name} could not be composed: {problem}", new { steps });
+            }
+            return null;
+        }
+
         if (!chain.Any(h => HelperCache.NeedsRebuild(h.Aixml, h.Vi))) return null;
 
         var opened = await OpenTargetsAsync(targets, projectPath, timeoutSeconds, ct);
@@ -223,7 +242,7 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
     /// </summary>
     internal static List<string> AdoptedHelpers(string lvproj) =>
         [.. Regex.Matches(lvproj,
-                "<Item Name=\"([^\"]+)\"[^>]*URL=\"[^\"]*LabVIEWMCP/(?:helpers|dqmh-carriers)/[^\"]*\"")
+                "<Item Name=\"([^\"]+)\"[^>]*URL=\"[^\"]*LabVIEWMCP/(?:helpers|helpers-pylabview|dqmh-carriers)/[^\"]*\"")
             .Select(m => m.Groups[1].Value)];
 
     internal static List<string> AdoptedHelpersOf(string? projectPath) =>
@@ -586,13 +605,13 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
                     "The run helper stopped before the wrapper ran - an input could not be set; " +
                     "nothing was scripted.", new { helperError = runHelperError, steps });
         }
-        catch (RpcException e) when (e.StatusCode is StatusCode.DeadlineExceeded)
+        catch (Exception e) when (DqmhTools.IsTimeout(e))
         {
             return Json.Error("scriptingTimedOut",
                 "The scripted run did not return. Script New Event.vi reports a scripting error " +
-                "through Simple Error Handler's MODAL dialog, which stops the gRPC service until " +
-                "someone dismisses it - look at LabVIEW for an open error dialog before calling " +
-                "anything else.",
+                "through Simple Error Handler's MODAL dialog, which stops the run until someone " +
+                "dismisses it - look at LabVIEW for an open error dialog before calling anything " +
+                "else.",
                 Merge(detail, new JsonObject
                 {
                     ["visibleWindows"] = Array(DqmhTools.Win32.VisibleTitles()),
@@ -741,18 +760,20 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
     internal async Task<(List<string> Frames, int ExportErrorCode)> MainViCaseNamesAsync(
         string mainVi, int timeoutSeconds, CancellationToken ct)
     {
-        var export = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", $"dqmh-main.{Guid.NewGuid():N}.xml");
-        var exported = await connection.InvokeAsync((c, t) =>
-            c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest
-            {
-                ViPath = mainVi,
-                AiXMLFilePath = export,
-            }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-        var frames = exported.ErrorCode == 0 && File.Exists(export)
-            ? CaseNames(File.ReadAllText(export)) : [];
-        if (File.Exists(export)) File.Delete(export);
-        return (frames, exported.ErrorCode);
+        var (aixml, errorCode, _) = await ExportAsync(mainVi, "dqmh-main", timeoutSeconds, ct);
+        return (aixml is null ? [] : CaseNames(aixml), errorCode);
     }
+
+    /// <summary>
+    /// A VI's AIXML, as text - NI's ConvertVIToAIXML on grpc, our reader (vi2aixml.py) on
+    /// pylabview. The reader writes a case frame's selector in NI's spelling
+    /// (`&amp;quot;Initialize&amp;quot;`), measured 2026-10-13 on a DQMH Main.vi, and reads
+    /// Delacor's locked VIs as well, constants included. Null text with the error code and message
+    /// when the export failed.
+    /// </summary>
+    internal Task<(string? Aixml, int ErrorCode, string Message)> ExportAsync(
+        string vi, string tag, int timeoutSeconds, CancellationToken ct) =>
+        BackendRoute.ExportAsync(connection, vi, tag, timeoutSeconds, ct);
 
     internal const string ProjectHygieneNote =
         "This call's helpers stay in memory in the project's application instance, and LabVIEW " +
@@ -776,6 +797,12 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         var fillVi = Path.Combine(DqmhTools.HelperDirectory(), FillHelper + ".vi");
         if (!File.Exists(fillXml) || !File.Exists(Path.Combine(scripts, TesterHelper + ".xml")))
             return $"{FillHelper}.xml or {TesterHelper}.xml is missing from the scripts folder";
+        if (DqmhTools.OnPyLabview)
+            // the fill helper composed first, so the tester helper's Call finds it by file
+            return await EnsureWrapperAsync(scripts, TesterHelper, [], projectPath, steps,
+                timeoutSeconds, ct, subHelpers: [FillHelper]) is { } composeFailure
+                ? $"{TesterHelper} could not be composed - {composeFailure}"
+                : null;
         if (HelperCache.NeedsRebuild(fillXml, fillVi))
         {
             var generated = await GenerateAsync(FillHelper, fillXml, fillVi, timeoutSeconds, ct);

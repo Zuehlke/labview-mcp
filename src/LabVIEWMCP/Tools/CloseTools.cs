@@ -86,8 +86,9 @@ internal sealed class CloseTools(LvaiConnection connection)
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_close_vi", async () =>
         {
             if (!File.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
@@ -105,7 +106,7 @@ internal sealed class CloseTools(LvaiConnection connection)
                 Directory.CreateDirectory(directory);
 
             var helperGenerated = false;
-            if (regenerateHelper || !File.Exists(helperVi))
+            if (regenerateHelper || HelperCache.NeedsRebuild(aixml, helperVi))
             {
                 if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return failure;
@@ -123,7 +124,7 @@ internal sealed class CloseTools(LvaiConnection connection)
                 regenerateHelper: false, timeoutSeconds, ct: ct);
 
             return Describe(answer, viPath, helperVi, aixml, helperGenerated);
-        });
+        }));
 
     /// <summary>Name of the project helper's AIXML source inside the scripts folder.</summary>
     internal const string ProjectHelperAixmlFileName = "lvai_close_active_project.xml";
@@ -203,7 +204,7 @@ internal sealed class CloseTools(LvaiConnection connection)
                 if (composed is null) return Json.Error("helperNotComposable", problem!);
                 helperVi = composed;
             }
-            else if (regenerateHelper || !File.Exists(helperVi))
+            else if (regenerateHelper || HelperCache.NeedsRebuild(aixml, helperVi))
             {
                 if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
                     is { } failure) return failure;
@@ -524,6 +525,14 @@ internal sealed class CloseTools(LvaiConnection connection)
     private async Task<string?> GenerateHelperAsync(
         string aixml, string helperVi, int timeoutSeconds, CancellationToken ct)
     {
+        // ON PYLABVIEW the helper is COMPOSED, into the path the caller chose - which
+        // AixmlBackend.HelperFolder() already puts in helpers-pylabview on that route
+        if (BackendRoute.OnPyLabview)
+            return await BackendRoute.ConvertAsync(connection, aixml, helperVi, timeoutSeconds, ct)
+                is { } refused
+                ? Json.Error("helperNotComposable", refused, new { aiXmlPath = Path.GetFullPath(aixml) })
+                : null;
+
         var validation = await connection.InvokeAsync((c, t) =>
             c.ValidateAIXMLAsync(new ValidateAIXMLRequest { AiXMLFilePath = aixml },
                 deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);

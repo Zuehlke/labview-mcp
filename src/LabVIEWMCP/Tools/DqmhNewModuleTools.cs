@@ -60,17 +60,21 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
         [Description("Answer within this many seconds; past it the module is still scripted in the " +
                      "server and the SAME call again collects the answer (the client gives up at 60 s)")]
         int answerWithinSeconds = 45,
-        CancellationToken ct = default)
-    {
-        var key = string.Join("|", (moduleName ?? "").Trim(), (moduleType ?? "").Trim(),
-            includeDoSomething, (saveFolder ?? "").Trim());
-        return await ResumableCall.RunAsync(Helper, key, TimeSpan.FromSeconds(answerWithinSeconds),
-            () => CreateAsync(moduleName, moduleType, includeDoSomething, saveFolder, timeoutSeconds),
-            "Call lvai_dqmh_new_module again with the SAME arguments: it waits for this run and " +
-            "returns its answer. Do not start other LabVIEW work meanwhile, and do not take a " +
-            "moduleExists refusal on a new call as a failure - the module may be the one this run wrote.",
-            ct);
-    }
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
+        CancellationToken ct = default) =>
+        // The backend is resolved BEFORE the detached run starts, so the run inherits it.
+        await DqmhTools.WithBackendAsync(backend, "lvai_dqmh_new_module", () =>
+        {
+            var key = string.Join("|", (moduleName ?? "").Trim(), (moduleType ?? "").Trim(),
+                includeDoSomething, (saveFolder ?? "").Trim(),
+                DqmhTools.OnPyLabview ? AixmlBackend.PyLabview : AixmlBackend.Grpc);
+            return ResumableCall.RunAsync(Helper, key, TimeSpan.FromSeconds(answerWithinSeconds),
+                () => CreateAsync(moduleName, moduleType, includeDoSomething, saveFolder, timeoutSeconds),
+                "Call lvai_dqmh_new_module again with the SAME arguments: it waits for this run and " +
+                "returns its answer. Do not start other LabVIEW work meanwhile, and do not take a " +
+                "moduleExists refusal on a new call as a failure - the module may be the one this run wrote.",
+                ct);
+        });
 
     /// <summary>
     /// The whole creation, run detached from the request (CancellationToken.None): a client that
@@ -80,7 +84,7 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
         bool includeDoSomething, string? saveFolder, int timeoutSeconds)
     {
         var ct = CancellationToken.None;
-        return await Rpc.GuardAsync(async () =>
+        return await Rpc.GuardAsync(() => DqmhTools.Routed(async () =>
         {
             var name = (moduleName ?? "").Trim();
             if (name.EndsWith(".lvlib", StringComparison.OrdinalIgnoreCase)) name = name[..^6];
@@ -203,7 +207,7 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
                         "The run helper stopped before the wrapper ran; nothing was scripted.",
                         new { helperError = runHelperError, steps });
             }
-            catch (RpcException e) when (e.StatusCode is StatusCode.DeadlineExceeded)
+            catch (Exception e) when (DqmhTools.IsTimeout(e))
             {
                 return Json.Error("scriptingTimedOut",
                     "The scripted run did not return. Script New Module.vi reports non-critical " +
@@ -284,7 +288,7 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
             foreach (var (key, value) in detail)
                 answer[key] = value?.DeepClone();
             return Json.Document(answer);
-        });
+        }));
     }
 
     /// <summary>Get Module Type Info lists Singleton and Cloneable first, templates after them.</summary>

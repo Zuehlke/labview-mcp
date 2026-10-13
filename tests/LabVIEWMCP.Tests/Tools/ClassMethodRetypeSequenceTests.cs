@@ -106,7 +106,7 @@ public class ClassMethodRetypeSequenceTests
         Assert.Single(reads);
     }
 
-    private static bool DependsOnStructureIn(XElement tree, XElement target, string uid)
+    internal static bool DependsOnStructureIn(XElement tree, XElement target, string uid)
     {
         static string[] Nets(string? spec) => spec is null ? [] :
             [.. spec.Split(',').Select(p => p[(p.LastIndexOf(':') + 1)..]).Where(n => n.Length > 0)];

@@ -223,7 +223,13 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             A pylabview "validation" is a scratch compose, not NI's wiring check. helperViPath is
             ignored there. LabVIEW must already be running.
             """)]
-        string? backend = null)
+        string? backend = null,
+        [Description("""
+            Run LabVIEW's own Clean Up Diagram on each method once it is a verified member, and
+            save it in place (the cleanUpDiagram step). Reported, never gating: a refused clean-up
+            leaves the method as converted and still ok.
+            """)]
+        bool cleanUpDiagram = true)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_add_class_method", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
@@ -750,12 +756,25 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     continue;
                 }
 
+                // AFTER the verify, so the file it read is the converted one; the clean-up's own
+                // save keeps the class typing, which the class save has already committed.
+                bool? cleanedUp = null;
+                if (cleanUpDiagram)
+                {
+                    var cleaned = await new DiagramCleanup(connection).RunAsync(
+                        viPath, choice.Name, timeoutSeconds, ct);
+                    steps.Add(cleaned);
+                    cleanedUp = cleaned["ok"]?.GetValue<bool>() == true
+                                && cleaned["skipped"]?.GetValue<bool>() != true;
+                }
+
                 added++;
                 results.Add(new JsonObject
                 {
                     ["method"] = Path.GetFileNameWithoutExtension(viPath),
                     ["vi"] = viPath,
                     ["ok"] = true,
+                    ["diagramCleanedUp"] = cleanedUp,
                     ["terminalsRetyped"] = retyped,
                     ["dynamicDispatchTerminals"] = new JsonArray([.. (indices ?? []).Select(i => (JsonNode)i)]),
                     ["verifiedOnDisk"] = verify,

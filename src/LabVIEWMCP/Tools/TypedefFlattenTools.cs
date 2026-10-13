@@ -142,8 +142,9 @@ internal sealed class TypedefFlattenTools(LvaiConnection connection)
             """)]
         string route = "flag",
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_flatten_typedefs", async () =>
         {
             if (!File.Exists(viPath))
                 return Json.Error("badArguments", $"No file at viPath '{viPath}'.");
@@ -155,7 +156,7 @@ internal sealed class TypedefFlattenTools(LvaiConnection connection)
 
             var answer = await FlattenIntoAsync(viPath, subjectPath, parsed, timeoutSeconds, ct);
             return Json.Document(answer);
-        });
+        }));
 
     /// <summary>
     /// The route name as data. Refused by name rather than folded onto a default, because silently
@@ -419,10 +420,30 @@ internal sealed class TypedefFlattenTools(LvaiConnection connection)
         answer["installed"] = installed;
         if (skipped.Count > 0) answer["skipped"] = skipped;
 
-        var open = Read(await new ActionTools(connection).OpenFileAsync(
-            viPath: stubPath, viName: Path.GetFileName(stubPath), projectPath: null,
-            projectName: null, checkActive: false, timeoutSeconds: timeoutSeconds, ct: ct));
-        var opened = open?["errorCode"]?.GetValue<int>() is 0;
+        // ON PYLABVIEW lvai_open_file opens projects only, so the stub's panel is opened over
+        // ActiveX instead - the same editor, LabVIEW's main application instance
+        JsonNode? open;
+        bool opened;
+        if (BackendRoute.OnPyLabview)
+        {
+            try
+            {
+                opened = await LabViewCom.OpenFrontPanelAsync(stubPath, timeoutSeconds, ct);
+                open = new JsonObject { ["via"] = "ActiveX", ["frontPanelOpen"] = opened };
+            }
+            catch (LabViewCom.ComException e)
+            {
+                opened = false;
+                open = new JsonObject { ["via"] = "ActiveX", ["errorKind"] = e.Kind, ["error"] = e.Message };
+            }
+        }
+        else
+        {
+            open = Read(await new ActionTools(connection).OpenFileAsync(
+                viPath: stubPath, viName: Path.GetFileName(stubPath), projectPath: null,
+                projectName: null, checkActive: false, timeoutSeconds: timeoutSeconds, ct: ct));
+            opened = open?["errorCode"]?.GetValue<int>() is 0;
+        }
         answer["stubOpenedInEditor"] = opened;
         answer["stubOpenedNote"] =
             "This route opens the stub in the LabVIEW editor, because Discon Typedef on a VI that " +

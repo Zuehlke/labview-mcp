@@ -104,8 +104,9 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
         [Description("Project folder to list the .ctl under")] string folderName = "Typedefs",
         [Description("Replace an existing .ctl at ctlPath. Off by default")] bool overwrite = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_create_typedef", async () =>
         {
             var total = Stopwatch.StartNew();
             var steps = new JsonArray();
@@ -255,7 +256,7 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
                 try { Directory.Delete(work, recursive: true); }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
             }
-        });
+        }));
 
     // ------------------------------------------------------------------ arguments
 
@@ -465,6 +466,8 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
         var aixml = Path.Combine(scripts, fileName);
         if (!File.Exists(aixml))
             return (null, Json.Error("helperMissing", $"No helper AIXML at '{aixml}'."));
+        if (BackendRoute.OnPyLabview)
+            return (await BackendRoute.ComposedHelperAsync(aixml, timeoutSeconds, ct), null);
         var vi = Path.Combine(AixmlBackend.HelperFolder(),
                               Path.ChangeExtension(fileName, ".vi"));
         Directory.CreateDirectory(Path.GetDirectoryName(vi)!);
@@ -480,6 +483,11 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
     private async Task<object?> GenerateAsync(string aixml, string vi, string what,
                                               int timeoutSeconds, CancellationToken ct)
     {
+        if (BackendRoute.OnPyLabview)
+            return await BackendRoute.ConvertAsync(connection, aixml, vi, timeoutSeconds, ct) is { } refused
+                ? new { what, step = "compose", ErrorCode = 1, ErrorMessage = refused }
+                : null;
+
         var validation = await connection.InvokeAsync((c, t) =>
             c.ValidateAIXMLAsync(new ValidateAIXMLRequest { AiXMLFilePath = aixml },
                 deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);

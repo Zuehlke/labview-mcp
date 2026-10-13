@@ -2041,8 +2041,11 @@ internal sealed class ClassTools(LvaiConnection connection)
             """)]
         bool closeProject = false,
         [Description("""
-            The .lvproj to tidy. Omit and the nearest one at or above the class directory is used;
-            the answer says which file was chosen and how many items were removed.
+            The class's .lvproj. It is opened first, its "Separate compiled code from new project
+            items" is set so NI's wizard writes SOURCE-ONLY accessors, and it is the one tidied.
+            Omit it and the ACTIVE project is used - the one the wizard works on - else the nearest
+            .lvproj above the class that lists it; `projectPathFrom` says which. Until 2026-10-13
+            an omitted projectPath skipped the setting, and the accessors carried compiled code.
             """)]
         string? projectPath = null,
         [Description("""
@@ -2196,6 +2199,24 @@ internal sealed class ClassTools(LvaiConnection connection)
             // false - all six accessors carried all four blocks; flag true - none did, all six
             // executable. No pylabview edit and no extra save, so the wizard's own files are what
             // ships. The flag is a FILE edit, so the project is closed first if LabVIEW holds it.
+            //
+            // WITHOUT projectPath THE PROJECT IS FOUND, not skipped - reported 2026-10-13 from a
+            // pylabview build: the first four accessors carried compiled code because the call
+            // named no project, the flag was never set, and stripping it again cost about 30 s;
+            // the grpc arm of the same build passed projectPath and wrote none. The wizard works
+            // on the ACTIVE project, so that one is taken first; else the nearest .lvproj above
+            // the class that lists it. `projectPathFrom` says which.
+            string projectPathFrom = projectPath is { Length: > 0 } ? "argument" : "none";
+            if (projectPath is not { Length: > 0 })
+            {
+                var (activeNow, _, activePath) = await new ActionTools(connection)
+                    .ProjectIsActiveAsync(timeoutSeconds, ct, choice.Name);
+                if (activeNow == true && activePath is { Length: > 0 } && File.Exists(activePath))
+                    (projectPath, projectPathFrom) = (activePath, "activeProject");
+                else if (FindProjectNear(lvclassPath) is { } near && ListsFile(near, lvclassPath))
+                    (projectPath, projectPathFrom) = (near, "nearestProjectListingTheClass");
+            }
+
             JsonObject? projectSourceOnly = null;
             if (projectPath is { Length: > 0 } && File.Exists(projectPath))
                 projectSourceOnly = await MakeProjectSourceOnlyAsync(
@@ -2342,6 +2363,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // VI this server writes is source-only, asserted rather than assumed.
                 var sourceOnly = AccessorSourceOnly(createdPaths);
                 final["projectSourceOnly"] = projectSourceOnly;
+                final["projectPathFrom"] = projectPathFrom;
                 final["sourceOnly"] = sourceOnly.PerVi;
                 final["accessorsSourceOnly"] = sourceOnly.All;
                 if (sourceOnly.All is false)
@@ -2355,8 +2377,9 @@ internal sealed class ClassTools(LvaiConnection connection)
                           "wizard STILL wrote compiled code into " +
                           string.Join(", ", sourceOnly.NotSourceOnly.Select(Path.GetFileName)) +
                           " - see projectSourceOnly for what was done to the project first."
-                        : "These accessors carry compiled code because no projectPath was given, so " +
-                          "the project's NI.LV.All.SourceOnly could not be set before the wizard " +
+                        : "These accessors carry compiled code because no project could be found - " +
+                          "none was given, none was active and no single .lvproj above the class " +
+                          "lists it - so NI.LV.All.SourceOnly could not be set before the wizard " +
                           "ran. Pass projectPath; the setting decides it (measured 2026-10-12).";
                 }
 
@@ -2400,15 +2423,15 @@ internal sealed class ClassTools(LvaiConnection connection)
     internal static readonly string[] CompiledBlockTags = ["VICD", "TM80", "DFDS", "CCST"];
 
     /// <summary>
-    /// Which of <see cref="CompiledBlockTags"/> a saved VI carries - searched as the four ASCII
-    /// bytes, the way <c>ContainsCompiledCode</c> asks for VICD: the resource map names each block
-    /// by its type. Measured 2026-10-12 on wizard accessors: all four or none, never a mix.
+    /// Which of <see cref="CompiledBlockTags"/> a saved VI carries, read off the file's OWN resource
+    /// map (<see cref="RsrcMap"/>) - a byte search also finds the VICD of every embedded .vim
+    /// instance. Measured 2026-10-12 on wizard accessors: all four or none, never a mix.
     /// </summary>
     internal static List<string> CompiledBlocks(string viPath)
     {
         if (!File.Exists(viPath)) return [];
         var bytes = File.ReadAllBytes(viPath);
-        return [.. CompiledBlockTags.Where(t => bytes.AsSpan().IndexOf(System.Text.Encoding.ASCII.GetBytes(t)) >= 0)];
+        return [.. CompiledBlockTags.Where(t => RsrcMap.Lists(bytes, t))];
     }
 
     /// <summary>Every accessor VI one slice's answer reports as saved, as full paths.</summary>
@@ -2784,6 +2807,33 @@ internal sealed class ClassTools(LvaiConnection connection)
     private static string NameOf(string itemXml) =>
         System.Text.RegularExpressions.Regex.Match(itemXml, "Name=\"(?<n>[^\"]*)\"")
             is { Success: true } m ? m.Groups["n"].Value : itemXml.Trim();
+
+    /// <summary>
+    /// Whether a .lvproj lists <paramref name="file"/> - by its own entry or through a .lvlib it
+    /// lists that names it. Read as text, both files plain XML; no LabVIEW.
+    /// </summary>
+    internal static bool ListsFile(string projectPath, string file)
+    {
+        try
+        {
+            var name = Path.GetFileName(file);
+            var text = File.ReadAllText(projectPath);
+            if (text.Contains($"\"{name}\"", StringComparison.OrdinalIgnoreCase)) return true;
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(
+                         text, "URL=\"([^\"<]+\\.lvlib)\""))
+            {
+                // a URL is relative to the FILE, treated as a directory
+                var lib = Path.GetFullPath(Path.Combine(projectPath, m.Groups[1].Value.Replace('/', '\\')));
+                if (File.Exists(lib) && File.ReadAllText(lib).Contains($"\"{name}\"", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return false;
+        }
+    }
 
     /// <summary>The nearest .lvproj at or above a class file, or null when there is no single one.</summary>
     private static string? FindProjectNear(string lvclassPath)

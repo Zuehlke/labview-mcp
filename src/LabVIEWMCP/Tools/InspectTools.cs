@@ -34,9 +34,27 @@ internal sealed class InspectTools(LvaiConnection connection)
         [Description("Local budget in seconds")] int timeoutSeconds = 120,
         [Description("Truncate each message's infoJson to this many characters (0 = unlimited)")]
         int maxContentChars = 0,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview the answer is built from the FILE by our reader, in the same shape and
+            with NI's keys: viXml is the reader's AIXML, controlsIndicators and subvisInfo are read
+            from it, owningProjectPath is the nearest .lvproj listing the VI itself; viImage stays
+            empty (`warnings` says so). No running LabVIEW is needed.
+            """)]
+        string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_describe_vi", async () =>
         {
+            if (BackendRoute.OnPyLabview)
+            {
+                if (!File.Exists(viPath))
+                    return Json.Error("viNotFound", $"No file at '{viPath}'.", new { viPath });
+                var (aixml, code, message) = await BackendRoute.ExportAsync(
+                    connection, viPath, "describe-vi", timeoutSeconds, ct);
+                return FileDescriptions.Envelope(
+                    FileDescriptions.DescribeVi(viPath, aixml, code, aixml is null ? message : ""),
+                    maxMessages, maxContentChars);
+            }
+
             // Opened AND drained inside InvokeAsync so a stale channel is re-discovered: a
             // stream cannot be handed a client up front and survive a LabVIEW restart. Safe to
             // retry because this is a read.
@@ -55,7 +73,7 @@ internal sealed class InspectTools(LvaiConnection connection)
                 // as one string - so that is the field a context budget has to be able to cap.
                 return Json.Stream(items, reason, maxMessages, maxContentChars, "infoJson");
             }, ct);
-        });
+        }));
 
     [McpServerTool(Name = "lvai_vi_terminals", ReadOnly = true,
                    Title = "Terminal names a Call to this VI needs")]
@@ -226,9 +244,21 @@ internal sealed class InspectTools(LvaiConnection connection)
         [Description("Optional project name; usually leave empty")] string? projectName = null,
         [Description("Max stream messages to collect")] int maxMessages = 10,
         [Description("Local budget in seconds")] int timeoutSeconds = 120,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview the answer is read from the .lvproj and the .lvlib files it lists, in
+            NI's shape: targets with their libraries (every item with its effective scope),
+            classes, VIs, other files, missing files and build specifications. A target's address
+            is not in the file and stays empty (`warnings` says so). No running LabVIEW is needed.
+            """)]
+        string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_describe_project", async () =>
         {
+            if (BackendRoute.OnPyLabview)
+                return File.Exists(projectPath)
+                    ? FileDescriptions.Envelope(FileDescriptions.DescribeProject(projectPath), maxMessages)
+                    : Json.Error("fileNotFound", $"No .lvproj at '{projectPath}'.", new { projectPath });
+
             return await connection.InvokeAsync(async (client, t) =>
             {
                 using var call = client.GetDescribeProjectPromptInfo(
@@ -242,7 +272,7 @@ internal sealed class InspectTools(LvaiConnection connection)
                     call.ResponseStream, maxMessages, timeoutSeconds, t);
                 return Json.Stream(items, reason, maxMessages);
             }, ct);
-        });
+        }));
 
     [McpServerTool(Name = "lvai_search_info_cache", ReadOnly = true, Title = "Search the LabVIEW info cache")]
     [Description("""

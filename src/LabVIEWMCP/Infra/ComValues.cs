@@ -80,6 +80,13 @@ internal static class ComValues
             return null;
         }
 
+        // LabVIEW's OWN XML for an array or a cluster - what NI's run helper takes and what the
+        // gRPC route's answers carry, so a tool (or a caller) that writes it reaches either route.
+        // Found 2026-10-13: lvai_graft_diagram's rewire helper is handed its name lists that way,
+        // and on the ActiveX route they were refused as "not an array literal".
+        if (text.TrimStart().StartsWith('<') && Braces(type) is { Head: "array" or "cluster" })
+            return FromLabviewXml(text, type, out problem);
+
         if (Braces(type) is { Head: "array" } array)
             return ArrayFromText(text, array.Body.Trim(), out problem);
 
@@ -143,6 +150,77 @@ internal static class ComValues
             _ when Integers.ContainsKey(element) => values.Select(v => Convert.ToInt32(v, Invariant)).ToArray(),
             _ => Refuse(out problem, $"an array of {element} cannot be set over COM by this server yet"),
         };
+    }
+
+    /// <summary>
+    /// LabVIEW's flattened XML (`&lt;Array&gt;`, `&lt;Cluster&gt;`, optionally inside
+    /// `&lt;LvVariant&gt;`) -> the value SetControlValue takes for <paramref name="type"/>: a typed
+    /// array of scalars, an object[] for a cluster. Element values go through
+    /// <see cref="FromText"/>, so they convert exactly as a literal's would.
+    /// </summary>
+    public static object? FromLabviewXml(string xml, string type, out string? problem)
+    {
+        problem = null;
+        System.Xml.Linq.XElement root;
+        try { root = System.Xml.Linq.XElement.Parse(xml.Trim()); }
+        catch (System.Xml.XmlException e)
+        {
+            problem = $"not well-formed XML: {e.Message}";
+            return null;
+        }
+        if (root.Name.LocalName == "LvVariant")
+            root = root.Elements().FirstOrDefault(e => e.Name.LocalName != "Name") ?? root;
+        return FromXmlElement(root, type.Trim(), out problem);
+    }
+
+    private static object? FromXmlElement(System.Xml.Linq.XElement element, string type, out string? problem)
+    {
+        problem = null;
+        if (Braces(type) is { Head: "array" } array)
+        {
+            if (element.Name.LocalName != "Array")
+                return Refuse(out problem, $"<{element.Name.LocalName}> given for {type}");
+            var elementType = FieldType(array.Body.Trim());
+            if (elementType.StartsWith("array{", StringComparison.Ordinal))
+                return Refuse(out problem, "a 2D array cannot be set over COM by this server yet");
+            var size = int.TryParse((string?)element.Element("Dimsize"), out var n) ? n : 0;
+            var values = new List<object?>();
+            foreach (var child in element.Elements()
+                         .Where(e => e.Name.LocalName is not ("Name" or "Dimsize")).Take(size))
+            {
+                values.Add(FromXmlElement(child, elementType, out problem));
+                if (problem is not null) return Refuse(out problem, $"array element: {problem}");
+            }
+            return elementType switch
+            {
+                "string" or "path" => values.Cast<string>().ToArray(),
+                "bool" => values.Cast<bool>().ToArray(),
+                _ when Floats.Contains(elementType) => values.Select(v => Convert.ToDouble(v, Invariant)).ToArray(),
+                _ when Integers.ContainsKey(elementType) => values.Select(v => Convert.ToInt32(v, Invariant)).ToArray(),
+                _ when Braces(elementType) is { Head: "cluster" } => values.ToArray(),
+                _ => Refuse(out problem, $"an array of {elementType} cannot be set over COM by this server yet"),
+            };
+        }
+        if (Braces(type) is { Head: "cluster" } cluster)
+        {
+            if (element.Name.LocalName != "Cluster")
+                return Refuse(out problem, $"<{element.Name.LocalName}> given for {type}");
+            var fields = SplitTop(cluster.Body);
+            var children = element.Elements().Where(e => e.Name.LocalName is not ("Name" or "NumElts")).ToList();
+            if (children.Count != fields.Count)
+                return Refuse(out problem, $"the cluster has {fields.Count} elements and the XML gives {children.Count}");
+            var values = new object?[fields.Count];
+            for (var i = 0; i < fields.Count; i++)
+            {
+                values[i] = FromXmlElement(children[i], FieldType(fields[i]), out problem);
+                if (problem is not null) return Refuse(out problem, $"element {i} ({fields[i]}): {problem}");
+            }
+            return values;
+        }
+        // a scalar: its <Val>, with LabVIEW's 0/1 for a boolean
+        var text = (string?)element.Element("Val") ?? "";
+        if (type == "bool") text = text.Trim() is "1" or "TRUE" or "true" ? "true" : "false";
+        return FromText(text, type, out problem);
     }
 
     private static object? ClusterFromText(string text, string body, out string? problem)

@@ -1437,3 +1437,29 @@ the fourth** - the first three each still left another frame's input open. The A
 `Start Module` answered no error where it had answered 1003, and a signalled card insertion
 enabled `User Input` and `Enter`. `lvai_dqmh_new_event` names this cause in `completionNeeded`
 now instead of blaming a Broadcast that a reply-only module does not have.
+
+### 9i. Every DQMH tool on the pylabview backend - no NI service, measured 2026-10-13
+
+The user asked for a DQMH demo with NO gRPC, and every `lvai_dqmh_*` tool but the reference takes
+`backend` since. `grpc` is the route described above, unchanged. On `pylabview` the same wrappers
+are COMPOSED by our composer instead of converted by NI's, and run over LabVIEW's ActiveX server
+in its MAIN application instance instead of through `RunVIAsTopLevel`:
+
+- **Nothing is opened first.** The "open the targets through the project" step of section 9 exists
+  because NI's converter resolves a `Call` to a project-library member only while it is LOADED. The
+  composer resolves by FILE and searches LabVIEW's `project\` folder, so Delacor's scripters are
+  found where they are installed, and the refnums of `Module Info` still live as long as the one
+  wrapper that calls the parse and the scripter - the shape is the same, only the builder changed.
+- **Delacor's own VIs that the tools run DIRECTLY** (`Template Folders--constant.vi`, `Validate
+  DQMH Module (Headless).vi`) need their panel listed, which ActiveX cannot do; pylabview's reader
+  lists it from the file although DQMH's source is locked. The template tool's metadata constant
+  is read the same way.
+- **The answers are the same shape**: a composed helper's indicators are turned into the flattened
+  XML the gRPC run helper writes, so every check this document describes - dirty members, the
+  catalogue by name, `Scripted?`, the error cluster - reads both routes alike.
+
+Acceptance, raw stdio, `LABVIEW_GRPC_PORT=1` so that a call still reaching NI fails: a Singleton
+module without Do Something and one event of each of the four types, validator `PASS`, 112.7 s
+end to end (`docs/aixml-backends.md`, "Not covered, and not measured"). The `Save changes before
+closing?` watch is the same Win32 watch on both routes; whether it ANSWERED a dialog over ActiveX
+was not recorded in that run.

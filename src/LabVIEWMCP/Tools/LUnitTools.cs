@@ -158,8 +158,14 @@ internal sealed class LUnitTools(LvaiConnection connection)
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        CancellationToken ct = default,
+        [Description("""
+            Run LabVIEW's own Clean Up Diagram on each test method once it is a verified member,
+            and save it in place (the cleanUpDiagram step). Reported, never gating.
+            """)]
+        bool cleanUpDiagram = true) =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_lunit_add_test_method", async () =>
         {
             if (!File.Exists(classPath))
                 return Json.Error("badArguments", $"No file at classPath '{classPath}'.");
@@ -207,7 +213,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
 
             var prologue = new JsonArray();
             var helperGenerated = false;
-            if (regenerateHelper || !File.Exists(helperVi))
+            if (regenerateHelper || HelperCache.NeedsRebuild(aixmlSource, helperVi))
             {
                 var built = await new BulkTools(connection).GenerateViAsync(
                     aixmlSource, helperVi, openVI: false, measurePane: false, panePattern: null,
@@ -452,6 +458,10 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     verifiedDetail["memberAlreadyExisted"] =
                         Scalar(values, "member already existed") == "1";
 
+                if (verifiedOk && cleanUpDiagram)
+                    perMethod.Add(await new DiagramCleanup(connection).RunAsync(
+                        viPath, BackendRoute.Current, timeoutSeconds, ct));
+
                 if (verifiedOk) added++;
                 else stoppedAt ??= "verify";
                 results.Add(Result(method, viPath, verifiedOk, verifiedOk ? null : "verify",
@@ -475,7 +485,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 ["totalElapsedMs"] = total.ElapsedMilliseconds,
                 ["note"] = AddNote(ok, added, methods.Count, stoppedAt, verify),
             });
-        });
+        }));
 
     /// <summary>What went wrong at the membership step, in the words that name the actual cause.</summary>
     private static string Hint(string? stage, int code, int retyped, string[] wanted,
@@ -541,8 +551,13 @@ internal sealed class LUnitTools(LvaiConnection connection)
         var isMember = xml.Contains($"_name=\"{qualified}\"", StringComparison.Ordinal);
         var classTerminals = System.Text.RegularExpressions.Regex
             .Matches(xml, "type=\"ref\\{UDClassInst\\}\"").Count;
+        // IN EITHER ATTRIBUTE ORDER: NI's export writes conIdx before type, our reader (the
+        // pylabview backend's verify) type before conIdx, and the one-order pattern counted 0
+        // stand-ins on a pane that still had two (2026-10-13)
         var standInsLeft = System.Text.RegularExpressions.Regex
-            .Matches(xml, "conIdx=\"(?:11|3)\"[^>]*type=\"path\"").Count;
+            .Matches(xml, "<(?:Control|Indicator)\\b[^>]*>")
+            .Count(m => System.Text.RegularExpressions.Regex.IsMatch(m.Value, "\\bconIdx=\"(?:11|3)\"")
+                        && m.Value.Contains("type=\"path\"", StringComparison.Ordinal));
 
         ok = isMember && classTerminals >= expectedClassTerminals && standInsLeft == 0;
         return new JsonObject
@@ -653,8 +668,9 @@ internal sealed class LUnitTools(LvaiConnection connection)
             """)]
         string? testMethodDirectory = null,
         [Description("Local budget in seconds, per placeholder")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_lunit_scaffold_class_tests", async () =>
         {
             if (!File.Exists(classPath))
                 return Json.Error("badArguments", $"No file at classPath '{classPath}'.");
@@ -913,7 +929,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
                     "YOURS: nothing here checks that they are distinct or non-default, and a suite " +
                     "of six green tests over default values pins nothing.",
             });
-        });
+        }));
 
     /// <summary>`{field, value}` pairs, refusing the shapes that would silently test nothing.</summary>
     private static Dictionary<string, string> ParseValues(string? json)
@@ -1013,8 +1029,9 @@ internal sealed class LUnitTools(LvaiConnection connection)
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_run_lunit_tests", async () =>
         {
             if (!File.Exists(testPath))
                 return Json.Error("badArguments", $"No file at testPath '{testPath}'.");
@@ -1051,7 +1068,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 Directory.CreateDirectory(helperFolder);
 
             var helperGenerated = false;
-            if (regenerateHelper || !File.Exists(helperVi))
+            if (regenerateHelper || HelperCache.NeedsRebuild(aixmlSource, helperVi))
             {
                 var built = await new BulkTools(connection).GenerateViAsync(
                     aixmlSource, helperVi, openVI: false, measurePane: false, panePattern: null,
@@ -1159,7 +1176,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
                 ["totalElapsedMs"] = total.ElapsedMilliseconds,
                 ["note"] = RunNote(ok, allPassed, tests, failures, runError, siblings, reportRead),
             });
-        });
+        }));
 
     private static string RunNote(bool ok, bool allPassed, int tests, int failures, int runError,
                                   List<string> siblings, bool reportRead)

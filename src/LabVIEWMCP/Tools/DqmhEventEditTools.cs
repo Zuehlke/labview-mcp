@@ -79,11 +79,13 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
         [Description("DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
         [Description("Event to remove, e.g. 'Do Something' or 'Do Something.vi'")] string eventName,
         [Description("Local budget in seconds")] int timeoutSeconds = 600,
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(() => RunAsync(new EditAction(
+        await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_remove_event",
+            () => RunAsync(new EditAction(
             "remove", "lvdqmh_remove_event", RemoveTargets, moduleName, eventName, [],
             ["Dependent Broadcast?", "Dependent Broadcast Name"], null,
-            SubHelpers: EventSubHelpers, Completion: RemoveCompletion), timeoutSeconds, ct));
+            SubHelpers: EventSubHelpers, Completion: RemoveCompletion), timeoutSeconds, ct)));
 
     [McpServerTool(Name = "lvai_dqmh_rename_event", Destructive = true, OpenWorld = true,
         Title = "Rename a DQMH event")]
@@ -101,8 +103,9 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
         [Description("Event to rename, e.g. 'Do Something' or 'Do Something.vi'")] string eventName,
         [Description("New event name, without .vi")] string newEventName,
         [Description("Local budget in seconds")] int timeoutSeconds = 600,
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_rename_event", async () =>
         {
             var newName = (newEventName ?? "").Trim();
             if (newName.EndsWith(".vi", StringComparison.OrdinalIgnoreCase)) newName = newName[..^3];
@@ -113,7 +116,7 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
                 new() { ["New Event Name"] = newName }, [],
                 ctx => RenameConflict(ctx, newName), SubHelpers: EventSubHelpers,
                 SaveLibrary: true, Completion: RenameCompletion), timeoutSeconds, ct);
-        });
+        }));
 
     [McpServerTool(Name = "lvai_dqmh_convert_event", Destructive = true, OpenWorld = true,
         Title = "Convert a DQMH request into Request and Wait for Reply")]
@@ -132,10 +135,12 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
         [Description("DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
         [Description("Plain Request to convert, e.g. 'Set Speed'")] string eventName,
         [Description("Local budget in seconds")] int timeoutSeconds = 600,
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(() => RunAsync(new EditAction(
+        await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_convert_event",
+            () => RunAsync(new EditAction(
             "convert", "lvdqmh_convert_event", ConvertTargets, moduleName, eventName, [], [],
-            null, SubHelpers: EventSubHelpers, Completion: ConvertCompletion), timeoutSeconds, ct));
+            null, SubHelpers: EventSubHelpers, Completion: ConvertCompletion), timeoutSeconds, ct)));
 
     [McpServerTool(Name = "lvai_dqmh_validate_module", ReadOnly = true, OpenWorld = true,
         Title = "Validate the DQMH modules of a project")]
@@ -148,8 +153,9 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     public async Task<string> ValidateModuleAsync(
         [Description("The .lvproj to validate; empty means the ACTIVE project")] string projectPath = "",
         [Description("Local budget in seconds")] int timeoutSeconds = 600,
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_validate_module", async () =>
         {
             if (StatusTools.ScriptsDirectory() is not { } scripts)
                 return Json.Error("scriptsMissing", "No scripts folder next to the exe.");
@@ -195,7 +201,7 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
                            "tagging. It answered PASS for a module whose Main.vi and tester were " +
                            "not executable (measured 2026-10-06), so read lvai_exec_state for that.",
             });
-        });
+        }));
 
     [McpServerTool(Name = "lvai_dqmh_rename_module", Destructive = true, OpenWorld = true,
         Title = "Rename a DQMH module")]
@@ -213,8 +219,9 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
         [Description("DQMH module to rename, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
         [Description("New module name, without .lvlib")] string newModuleName,
         [Description("Local budget in seconds")] int timeoutSeconds = 600,
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_rename_module", async () =>
         {
             var newName = (newModuleName ?? "").Trim();
             if (newName.EndsWith(".lvlib", StringComparison.OrdinalIgnoreCase)) newName = newName[..^6];
@@ -226,7 +233,7 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
                 ctx => Task.FromResult(LibraryNameTaken(ctx, newName)),
                 PostModuleName: newName + ".lvlib", SubHelpers: EventSubHelpers,
                 Completion: RenameModuleCompletion), timeoutSeconds, ct);
-        });
+        }));
 
     [McpServerTool(Name = "lvai_dqmh_create_rt_tester", Destructive = true, OpenWorld = true,
         Title = "Create a DQMH RT tester")]
@@ -243,11 +250,13 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     public async Task<string> CreateRtTesterAsync(
         [Description("Cloneable DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
         [Description("Local budget in seconds")] int timeoutSeconds = 600,
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(() => RunAsync(new EditAction(
+        await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_create_rt_tester",
+            () => RunAsync(new EditAction(
             "create RT tester", "lvdqmh_create_rt_tester", RtTesterTargets, moduleName, null, [],
             ["RT Tester Path"], ctx => Task.FromResult(RtTesterConflict(ctx)),
-            SubHelpers: TesterSubHelpers, Completion: RtTesterCompletion), timeoutSeconds, ct));
+            SubHelpers: TesterSubHelpers, Completion: RtTesterCompletion), timeoutSeconds, ct)));
 
     [McpServerTool(Name = "lvai_dqmh_remove_do_something", Destructive = true, OpenWorld = true,
         Title = "Remove a DQMH module's Do Something examples")]
@@ -262,11 +271,13 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     public async Task<string> RemoveDoSomethingAsync(
         [Description("DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
         [Description("Local budget in seconds")] int timeoutSeconds = 600,
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(() => RunAsync(new EditAction(
+        await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_remove_do_something",
+            () => RunAsync(new EditAction(
             "remove Do Something", "lvdqmh_remove_do_something", RemoveDoSomethingTargets,
             moduleName, null, [], [], ctx => Task.FromResult(DoSomethingAbsent(ctx)),
-            SubHelpers: TesterSubHelpers), timeoutSeconds, ct));
+            SubHelpers: TesterSubHelpers), timeoutSeconds, ct)));
 
     internal static readonly string[] RenameModuleTargets =
     [
@@ -496,11 +507,11 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
                     "The run helper stopped before the wrapper ran; nothing was scripted.",
                     new { helperError = runHelperError, steps });
         }
-        catch (RpcException e) when (e.StatusCode is StatusCode.DeadlineExceeded)
+        catch (Exception e) when (DqmhTools.IsTimeout(e))
         {
             return Json.Error("scriptingTimedOut",
                 "The scripted run did not return. A Delacor scripter reports some conditions " +
-                "through a MODAL dialog, which stops the gRPC service until someone dismisses it - " +
+                "through a MODAL dialog, which stops the run until someone dismisses it - " +
                 "look at LabVIEW for an open dialog before calling anything else.",
                 DqmhHeadless.Merge(detail, new JsonObject
                 {

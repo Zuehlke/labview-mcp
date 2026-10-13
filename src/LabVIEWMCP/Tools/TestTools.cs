@@ -1604,7 +1604,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 string.Join(",", group.Select(c => c.Terminal)),
                 string.Join(",", group.Select(c => c.ConstantLabel)),
                 helperViPath: null, helperAixmlPath: null, regenerateHelper: false,
-                timeoutSeconds, ct);
+                timeoutSeconds, ct: ct);
             var parsed = Read(answer) as JsonObject;
             replaced += parsed?["replaced"]?.GetValue<int>() ?? 0;
             foreach (var entry in (parsed?["stillCoerced"] as JsonArray ?? []).Select(e => e?.ToString() ?? ""))

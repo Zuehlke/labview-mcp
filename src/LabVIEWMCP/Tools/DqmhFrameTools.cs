@@ -58,8 +58,9 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         [Description("Absolute path of the handler subVI")] string handlerViPath,
         [Description("Report what would be wired and change nothing")] bool dryRun = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_place_handler", async () =>
         {
             var handler = Path.GetFullPath((handlerViPath ?? "").Trim());
             if (!File.Exists(handler))
@@ -209,7 +210,7 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
             if (plan.Warnings.Count > 0) answer["warnings"] = new JsonArray([.. plan.Warnings.Select(w => JsonValue.Create(w))]);
             foreach (var (key, value) in detail) answer[key] = value?.DeepClone();
             return Json.Document(answer);
-        });
+        }));
 
     // ------------------------------------------------------------------ pure, tested
 
@@ -314,22 +315,12 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
     private async Task<(List<string> Inputs, List<string> Outputs, string? Error)> HandlerTerminalsAsync(
         string vi, int timeoutSeconds, CancellationToken ct)
     {
-        var export = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", $"dqmh-handler.{Guid.NewGuid():N}.xml");
-        Directory.CreateDirectory(Path.GetDirectoryName(export)!);
-        var exported = await connection.InvokeAsync((c, t) =>
-            c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest { ViPath = vi, AiXMLFilePath = export },
-                deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-        try
-        {
-            if (exported.ErrorCode != 0 || !File.Exists(export)) return ([], [], exported.ErrorMessage);
-            var root = XDocument.Load(export).Root!;
-            static List<string> Names(XElement r, string kind) =>
-                [.. r.Elements(kind).Select(e => (string?)e.Attribute("_name")).OfType<string>()];
-            return (Names(root, "Control"), Names(root, "Indicator"), null);
-        }
-        finally
-        {
-            if (File.Exists(export)) File.Delete(export);
-        }
+        var (aixml, _, message) = await new DqmhHeadless(connection).ExportAsync(
+            vi, "dqmh-handler", timeoutSeconds, ct);
+        if (aixml is null) return ([], [], message);
+        var root = XDocument.Parse(aixml).Root!;
+        static List<string> Names(XElement r, string kind) =>
+            [.. r.Elements(kind).Select(e => (string?)e.Attribute("_name")).OfType<string>()];
+        return (Names(root, "Control"), Names(root, "Indicator"), null);
     }
 }

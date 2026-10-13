@@ -73,8 +73,9 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
         string eventName,
         [Description("Local budget in seconds; the scripting itself takes about a second")]
         int timeoutSeconds = 600,
+        [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_new_unit_test", async () =>
         {
             if (string.IsNullOrWhiteSpace(moduleName))
                 return Json.Error("badArguments", "moduleName is required.");
@@ -233,7 +234,7 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             foreach (var (key, value) in detail)
                 answer[key] = value?.DeepClone();
             return Json.Document(answer);
-        });
+        }));
 
     /// <summary>
     /// The names to retry with when the first run matched nothing only because of spelling, or

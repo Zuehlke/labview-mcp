@@ -41,16 +41,42 @@ Highest wins:
 | # | where | `backendSource` in the answer |
 |---|---|---|
 | 1 | `backend` argument of the call | `call` |
-| 2 | `--aixml-backend <grpc\|pylabview>` on the server's command line | `--aixml-backend` |
-| 3 | `LABVIEWMCP_AIXML_BACKEND` in the server's environment | `LABVIEWMCP_AIXML_BACKEND` |
-| 4 | the LabVIEW in use is OLDER than 2026 → `pylabview` | `LabVIEW <year> is older than 2026 - …` |
-| 5 | nothing set | `default` (grpc) |
+| 2 | `--aixml-backend <grpc\|pylabview\|auto>` on the server's command line | `--aixml-backend` |
+| 3 | `LABVIEWMCP_AIXML_BACKEND` in the server's environment (same three values) | `LABVIEWMCP_AIXML_BACKEND` |
+| 4 | **`"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json`** - THE place to choose | `settings file <path>` |
+| 5 | the LabVIEW in use is OLDER than 2026 → `pylabview` | `LabVIEW <year> is older than 2026 - …` |
+| 6 | nothing set | `default` (grpc) |
 
-**Rule 4 is the user's of 2026-10-12, and it holds even for LabVIEW 2025, which HAS NI's service**
+**The settings file is the user's decision of 2026-10-13: the choice is an entry that is ALWAYS in
+a file, with every allowed value and what it means written beside it.** The server creates the file
+on its first start - with `"aixmlBackend": "auto"`, today's behaviour - and never rewrites it, so an
+edit and its comments stay. It is read on EVERY call (cached by write time), so a change takes
+effect without a restart. The comments are JSON comments, read with comments skipped:
+
+```jsonc
+{
+  //   "grpc"       NI's AI service inside LabVIEW (Nigel). ...
+  //   "pylabview"  Our own composer and reader (scripts\aixml-pylabview). Needs NO NI service ...
+  //   "auto"       "grpc", except "pylabview" when the LabVIEW in use is older than 2026.
+  "aixmlBackend": "auto"
+}
+```
+
+It lives beside the cache under `%USERPROFILE%` rather than beside the exe: a plugin update replaces
+the exe's folder and would take the choice with it, and `%LOCALAPPDATA%` is redirected for a server
+the desktop app starts (`CacheDirectory`). `LABVIEWMCP_SETTINGS` points at another file - the test
+suite uses it to read none. **`auto` - in the file, the flag or the variable - makes NO choice**, so
+the rules below it decide; that is the only way rule 5 is reached. A file that does not parse, an
+entry that is not a string, or a value that is none of the three is REFUSED by name with the
+file's path, like an unknown name anywhere else. Rules 2 and 3 stay as overrides for a host that
+cannot edit the profile (CI, a shared registration); `pylv_status` shows the file's path, whether it
+exists, its entry and the default in force.
+
+**Rule 5 is the user's of 2026-10-12, and it holds even for LabVIEW 2025, which HAS NI's service**
 (`NI Nigel AI Advisor for LabVIEW 2025`). "In use" is the newest RUNNING LabVIEW, else the newest
 INSTALLED one - the one `lvai_ensure_labview` would start; with neither readable the rule does not
-apply. It is asked only when rules 1-3 are silent, and only for a tool the client called, like rules
-2-3. `pylv_status` shows both releases it compares, `labviewInUse` and `partsRelease`.
+apply. It is asked only when rules 1-4 are silent, and only for a tool the client called, like rules
+2-4. `pylv_status` shows both releases it compares, `labviewInUse` and `partsRelease`.
 
 **AND THE COMPOSER WRITES FOR SUCH A LabVIEW AS THAT RELEASE - since the same evening, after the
 user's LabVIEW 2025 station refused every composed VI with `Error 1125, File version is later
@@ -177,7 +203,9 @@ on an older release are not. The measurement that settles it: compose with the o
 stamp and load the VI there. If a VI does not load, NI's service (`backend: "grpc"`) writes one
 for that station.
 
-A server registered with the composer as its default:
+The composer as the default is one edit in `%USERPROFILE%\.labviewmcp\settings.json`,
+`"aixmlBackend": "pylabview"`, effective on the next call. The variable still works as an override
+in a server registration, where a file cannot be edited:
 
 ```json
 "labview": {
@@ -262,8 +290,12 @@ backend comparison the same day found the Caraya agent's two `lvai_vi_terminals`
 through NI's `ConvertVIToAIXML` in the pylabview arm, so that arm was not NI-free; `lvai_vi_terminals`,
 `lvai_connector_pane` and `lvai_render_diagrams` joined then. Every other tool that
 reaches LabVIEW has no `backend` and still goes through NI's service - `lvai_generate_vi_with_events`,
-`lvai_wire_dynamic_events`, `lvai_set_event_data_fields`, `lvai_graft_diagram`, the DQMH and LUnit
-tools among them. The eight `labview-*` agents carry one shared section, "The AIXML backend - grpc
+`lvai_wire_dynamic_events`, `lvai_set_event_data_fields`, `lvai_graft_diagram`, the LUnit
+tools among them. **That list was closed on 2026-10-13: 58 tools follow the switch now** - the
+twelve DQMH tools, then every other route tool (section "Every route tool without NI's service"
+below). What still has no `backend` either needs no LabVIEW, IS NI's service (Discuss, the
+monitors, the info cache, the search filters, palette find/drop, build specifications, usage
+log, `lvai_apply_aixml_to_vi`), or is the three-step gRPC event route the composer replaces. The eight `labview-*` agents carry one shared section, "The AIXML backend - grpc
 or pylabview": read the server default from `pylv_status` (now in every roster), compose an Event
 Structure in one `lvai_generate_vi` call instead of the three-step gRPC route, let a `Call` resolve
 by file instead of opening callees, treat `composerRefused` as a composer gap and repeat that one
@@ -813,6 +845,78 @@ turned out to be in the shared route, not in the composer; `docs/class-method-to
   "Separate compiled code from new project items" says, and the projects our tools write said
   `false`. They say `true` now, and `lvai_create_accessors` sets it on an existing project first.
 
+## Every route tool without NI's service (2026-10-13)
+
+The user's request after the DQMH switch: every tool that still went to NI's service alone. 21
+more tools take `backend` - `lvai_add_to_library`, `lvai_create_message_class`,
+`lvai_generate_mock_class`, the three LUnit tools, `lvai_make_malleable`, `lvai_create_typedef`,
+`lvai_bind_typedef_constants`, `lvai_coercion_dots`, `lvai_bind_pane_typedef`, `lvai_resave_ctl`,
+`lvai_flatten_typedefs`, `lvai_bind_class_fields`, `lvai_add_class_field`, `lvai_graft_diagram`,
+`lvai_bind_control_references`, `lvai_set_constant`, `lvai_close_vi`, `lvai_describe_vi`,
+`lvai_describe_project` - and `pylv_apply`, whose project close and verify export followed only an
+inherited choice. **58 of the server's 99 tools follow the switch now.**
+
+**ONE SHARED ROUTE, `Infra/BackendRoute.cs`**, taken out of the DQMH work: the choice is resolved
+once per call and inherited by every inner step, a helper is composed into `helpers-pylabview`
+(`ComposedHelpers.EnsurePathAsync`, any AIXML path) or NI-built when stale, an export is read by
+`vi2aixml.py` on pylabview, and a step the route cannot take is answered by its own `errorKind`
+rather than sent to NI. Most tools needed nothing else, because their inner calls - generate,
+convert, export, run, close, open a project - were switchable already and inherit the choice.
+
+**`lvai_describe_vi` and `lvai_describe_project` are answered from the FILES** on pylabview, in NI's
+stream shape with NI's keys (read off NI's answers for the same DQMH project and VI the same day):
+the VI from our reader's AIXML - `viXml`, `controlsIndicators` in NI's text form, `subvisInfo` from
+the Call targets, the nearest .lvproj listing the VI itself as `owningProjectPath`; the project
+from the .lvproj and every .lvlib it lists - targets, each library's items flattened with their
+EFFECTIVE scope (an item's own `NI.LibItem.Scope`, else its folder's, else public), classes, VIs,
+other and missing files, build specifications. A URL is resolved against the FILE as if it were a
+directory. What a file cannot say - a target's address, a panel image - stays empty and is named
+in `warnings`. `Infra/FileDescriptions.cs`.
+
+**What the acceptance found, all fixed and unit-tested:**
+
+- **LabVIEW XML as an input did not reach ActiveX.** `lvai_graft_diagram`'s rewire helper takes
+  its name lists as `<Array>…</Array>`, the shape NI's run helper reads; the ActiveX route refused
+  it as "not an array literal". `ComValues.FromLabviewXml` converts arrays and clusters of scalars
+  (`LvVariant` unwrapped, `Dimsize` honoured), and `FromText` hands it any value that starts with
+  `<` for an array or cluster control - so the same text works on both routes.
+- **`lvlu_add_test_method.xml` carried the retype race** `lvai_add_class_method`'s had until the
+  day before (`docs/class-method-tooling.md` section 4r): `LVClass.Open` hung off the `Controls[]`
+  read BEFORE the Replace loop. On pylabview every test method came out with both class terminals
+  still `path` while `terminals retyped` said 2. Ported the fix - VI reference and error on shift
+  registers, `Controls[]` read per Replace, the panel read back, `terminals retyped` counting only
+  Replaces that answered 0. `LUnitRetypeSequenceTests` pins the dataflow.
+- **The LUnit verify could not see a stand-in in the reader's export**: its pattern wanted `conIdx`
+  before `type`, NI's attribute order; the reader writes `type` first. Order-independent now.
+- **Five tools rebuilt their helper only when the VI was MISSING**, not when the AIXML was newer -
+  so the race fix above ran the old helper until the file was deleted by hand. The tools touched
+  here use `HelperCache.NeedsRebuild` now (LUnit x2, `lvai_close_vi`, the project close, the three
+  typedef tools, `lvai_bind_class_fields`). `lvai_exec_state`, `lvai_set_vi_icon`,
+  `lvai_connector_pane`, `lvai_render_diagrams` and `lvai_swap_subvis` still check existence only.
+- **`lvai_flatten_typedefs`' disconnect route needs the stub OPEN IN THE EDITOR**, and
+  `lvai_open_file` opens projects only on pylabview: the panel is opened over ActiveX
+  (`LabViewCom.OpenFrontPanelAsync`, `FPWinOpen`) instead. Measured: disconnect ok, typedefs gone.
+- **`lvai_create_accessors` WITHOUT `projectPath` wrote compiled code into the accessors** - the
+  user's report from a pylabview build, four accessors stripped afterwards at about 30 s. The
+  project's `NI.LV.All.SourceOnly` was only set when a project was named. The tool now finds it:
+  the ACTIVE project first (the one NI's wizard works on), else the nearest .lvproj above the class
+  that lists it, and says which in `projectPathFrom`. Measured on both backends: `activeProject`,
+  `accessorsSourceOnly: true`.
+
+**Accepted over raw stdio, `LABVIEW_GRPC_PORT=1`** so a call still reaching NI fails: an
+interface with a method and its LMock mock, two typedefs, a class field added, another bound to one,
+accessors with and without `projectPath`, a method whose pane control was bound to the typedef, its
+placeholder flattened by both routes, an actor class with an AF message, a VI added to a library,
+a constant set (`y` 4 -> 6), a malleable VI, a graft (`y = 2 x` from the scaffold in the supplied
+panel), both describes, and a whole LUnit suite - scaffold, four test methods, the swap and a run
+with **4 tests, 0 failures**. 157-191 s per run. The same script on `grpc` (85 s) agreed on
+everything this switch touched. Three things did not pass, none of them this switch:
+`lvai_close_vi` failed alike on both backends (the test VI was not a project member, which that tool
+requires); on `grpc` the LUnit methods stopped at `conpane` - NI's converter wrote them with
+compiled code (145 kB) that the strip refused, in a session that had not been restarted between
+class creation and members as the LUnit route documents; and a second run in the same LabVIEW
+answered `Error 1051` for a `Gain.ctl` of the first run still in memory - the tool named it.
+
 ## Not covered, and not measured
 
 - **ActiveX is Windows only and needs a running LabVIEW**; it never starts one, so with no LabVIEW
@@ -822,10 +926,43 @@ turned out to be in the shared route, not in the composer; `docs/class-method-to
   For the 8 patterns found in two orientations (4815 among them, so every class member) the answer
   says so; a rotated pane there is only seen on `grpc`. `lvai_render_diagrams` and
   `lvai_connector_pane` follow the switch since 2026-10-12 (previous section).
-- **Still on gRPC**: the DQMH, graft, typedef, LUnit, mock and malleable tools, `lvai_add_class_field`,
-  and the batch export `lvai_convert_vis_to_aixml`, whose cache holds NI's output. The class
-  creation, method, accessor, Caraya test, swap, placeholder, runner and icon tools take `backend`
-  (previous section).
+- **Still on gRPC**: the batch export `lvai_convert_vis_to_aixml`, whose cache holds NI's output,
+  `pylv_route` (its check A IS NI's validation), `lvai_run_vi_as_top_level` (NI's RPC;
+  `lvai_run_vi_and_read_values` is the switchable run), the three-step gRPC event route, and NI's
+  own assistant features. Every other tool that reaches LabVIEW takes `backend` since 2026-10-13
+  (the DQMH tools next, the rest in "Every route tool without NI's service").
+- **THE DQMH TOOLS RUN WITHOUT NI's SERVICE since 2026-10-13** - the user's request, for a DQMH
+  demo built with no gRPC at all. The gap was the C# routing, never the composer: all 17
+  `scripts\lvdqmh_*.xml` composed and loaded executable over ActiveX before a line changed
+  (`helper_coverage.py --skip-ni lvdqmh`, 84 s, 0 crashes). Every `lvai_dqmh_*` tool but the
+  reference takes `backend` now (`DqmhTools.WithBackendAsync`), and on `pylabview` the eight
+  places that called NI directly go elsewhere: the run helper becomes a direct ActiveX run whose
+  panel the reader lists, the wrappers and argument carriers are COMPOSED (no `ValidateAIXML`; the
+  composer's refusal names the bad type), Main.vi, the handler and Delacor's template VI are read by
+  `vi2aixml.py`, and NOTHING IS OPENED - the composer finds Delacor's VIs under `project\` by file,
+  where NI's converter needed them loaded through the project. A step the route cannot take is
+  refused by name (`helperNotComposable`, `panelNotRead`, `helperNotExecutable`), never sent to NI.
+  Two shapes needed a bridge, both unit-tested: a VARIANT indicator (the module-type catalogue)
+  crosses ActiveX as `string[]` with no panel type, so its type is read off the value; and
+  `lvai_dqmh_place_handler` writes its name lists as LabVIEW XML for the gRPC helper, which the
+  ActiveX route turns into the `string[]` it sets. **Delacor's LOCKED VIs read fine**: the reader
+  listed the panels of `Template Folders--constant.vi` and `Validate DQMH Module (Headless).vi` and
+  the `Meta Data XML Template` constant of `Create Template Core.vi`, in NI's escaped spelling.
+  **Accepted over raw stdio with `LABVIEW_GRPC_PORT=1`**, so any call still reaching NI would have
+  failed: a project opened, a Singleton module without Do Something (44.7 s, 50 files, Main.vi and
+  tester executable), one event of each type - Request 24.1 s, Broadcast 9.0 s, Request and Wait
+  for Reply 11.5 s, Round Trip 14.3 s, each with the files Delacor has always written - Delacor's
+  validator `PASS` (5.4 s), the project closed with nothing to sweep: 112.7 s end to end. Main.vi
+  went `0` after the Broadcast, as on grpc (its loose `#CodeNeeded` call, section 9c of
+  `docs/dqmh-scripting.md`). The helpers run in LabVIEW's MAIN application instance here, not the
+  add-on's. **The same build on `grpc` right after, as the control**, in a second project on the
+  same LabVIEW: every step green as well, 88.3 s (module 29.5 s, the four events 11.5/11.0/14.3/16.0
+  s, validator 2.7 s). The two differences: the gRPC route's close swept **7** of our helpers and
+  carriers LabVIEW had adopted into the `.lvproj` - it opens them through the project - where the
+  pylabview route's swept **0**, its helpers never being in the project's instance; and pylabview
+  was 24 s slower, most of it in the module and the first event. That arm ran FIRST and composed
+  its helpers and read their panels cold, while NI's helpers were cached from earlier sessions, so
+  the order was not separated from the route.
 - **Not measured yet**: the server default through a real Claude client (a new parameter is only
   visible after the client restarts), and the new `backend` parameters of the class and test tools
   likewise - they were measured over raw stdio only; and whether LabVIEW's ActiveX server is on by

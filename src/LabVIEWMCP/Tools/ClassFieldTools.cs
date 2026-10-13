@@ -87,8 +87,9 @@ internal sealed class ClassFieldTools(LvaiConnection connection)
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it exists")] bool regenerateHelper = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_add_class_field", async () =>
         {
             // EVERY CHECK BELOW RUNS BEFORE LABVIEW. This changes a class's private data under
             // however many members it already has, and there is no undo for a half-applied one.
@@ -296,7 +297,7 @@ internal sealed class ClassFieldTools(LvaiConnection connection)
                       "field means the provider REPLACED rather than appended, which would be a " +
                       "change in measured behaviour and is worth reporting.",
             });
-        });
+        }));
 
     /// <summary>
     /// How many members the class lists, read straight out of the `.lvclass` XML. It is here as a
@@ -324,6 +325,14 @@ internal sealed class ClassFieldTools(LvaiConnection connection)
     private async Task<string?> GenerateHelperAsync(
         string aixml, string helperVi, int timeoutSeconds, CancellationToken ct)
     {
+        // ON PYLABVIEW the helper is COMPOSED, into the path the caller chose - which
+        // AixmlBackend.HelperFolder() already puts in helpers-pylabview on that route
+        if (BackendRoute.OnPyLabview)
+            return await BackendRoute.ConvertAsync(connection, aixml, helperVi, timeoutSeconds, ct)
+                is { } refused
+                ? Json.Error("helperNotComposable", refused, new { aiXmlPath = Path.GetFullPath(aixml) })
+                : null;
+
         var validation = await connection.InvokeAsync((c, t) =>
             c.ValidateAIXMLAsync(new ValidateAIXMLRequest { AiXMLFilePath = aixml },
                 deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);

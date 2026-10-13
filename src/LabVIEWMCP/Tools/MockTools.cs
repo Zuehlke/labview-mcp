@@ -127,8 +127,9 @@ internal sealed class MockTools(LvaiConnection connection)
         bool regenerateHelper = false,
         [Description("Local budget in seconds - LMock costs about 31 s on a cold session")]
         int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_generate_mock_class", async () =>
         {
             if (Precheck(interfacePath, destinationPath, overwrite) is { } refusal) return refusal;
 
@@ -152,13 +153,11 @@ internal sealed class MockTools(LvaiConnection connection)
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
 
-            var helperGenerated = false;
-            if (regenerateHelper || HelperCache.NeedsRebuild(aixml, helperVi))
-            {
-                if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct)
-                    is { } failure) return failure;
-                helperGenerated = true;
-            }
+            var (builtVi, failure, helperGenerated) = await BackendRoute.HelperAsync(aixml, helperVi,
+                regenerateHelper, () => GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct),
+                timeoutSeconds, ct);
+            if (failure is not null) return failure;
+            helperVi = builtVi;
 
             // Paths cross as STRINGS and are converted on the helper's diagram: a VI Server
             // control value will not coerce a string into a path, and fails before the VI runs.
@@ -172,6 +171,9 @@ internal sealed class MockTools(LvaiConnection connection)
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputs, includeRawXml: false, helperViPath: null, helperAixmlPath: null,
                 regenerateHelper: false, timeoutSeconds, ct: ct);
+            if (BackendRoute.RunRefusal(answer) is { } runRefusal)
+                return Json.Error(runRefusal, "The LMock helper did not run.",
+                    new JsonObject { ["answer"] = JsonNode.Parse(answer) });
 
             // THE PROJECT ENTRY IS OURS TO WRITE, exactly as in lvai_create_class - LMock's own
             // addToProject terminal was MEASURED not to survive. Probe, 2026-09-15: a mock
@@ -212,7 +214,7 @@ internal sealed class MockTools(LvaiConnection connection)
 
             return Describe(answer, source, destination, addToProject, helperVi, aixml,
                             helperGenerated, wall.ElapsedMilliseconds, projectEntry);
-        });
+        }));
 
     // ------------------------------------------------------------------ the project entry
 

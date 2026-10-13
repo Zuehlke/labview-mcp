@@ -90,8 +90,9 @@ internal sealed class ClassBindTools(LvaiConnection connection)
         [Description("Where to keep the generated helper VIs")] string? helperDirectory = null,
         [Description("Regenerate the helper VIs even when they exist")] bool regenerateHelpers = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_bind_class_fields", async () =>
         {
             if (!File.Exists(lvclassPath))
                 return Json.Error("badArguments", $"No .lvclass at '{lvclassPath}'.");
@@ -203,7 +204,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                         "lvai_status reports as scriptsDirectory).");
 
                 var vi = Path.Combine(helperFolder, Path.ChangeExtension(name, ".vi"));
-                if (regenerateHelpers || !File.Exists(vi))
+                if (regenerateHelpers || HelperCache.NeedsRebuild(source, vi))
                 {
                     var built = await new BulkTools(connection).GenerateViAsync(
                         source, vi, openVI: false, measurePane: false, panePattern: null,
@@ -345,7 +346,7 @@ internal sealed class ClassBindTools(LvaiConnection connection)
                       "helper reported no error. That is the measured signature of a source .ctl " +
                       "that is not a typedef - check lvai_describe_ctl on each source.",
             });
-        });
+        }));
 
     // ------------------------------------------------------------------ running the helpers
 

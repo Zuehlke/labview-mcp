@@ -535,7 +535,12 @@ Message Maker makes, through `scripts\lvai_cleanup_diagram.xml`; before `diagram
 is the diagram the caller gets. `cleanUpDiagram` follows `measureDiagram` when omitted, so helpers
 and carriers skip it; `lvai_generate_vi_with_events` and `lvai_wire_dynamic_events` clean up at
 their successful end. A save that brings compiled code into a source-only VI is stripped again. A
-failed clean-up is reported in the `cleanUpDiagram` step and does not fail the call.
+failed clean-up is reported in the `cleanUpDiagram` step and does not fail the call. **Since
+2026-10-13 the routes that convert past `lvai_generate_vi` clean up too** - `lvai_add_class_method`
+and `lvai_lunit_add_test_method` after the verified membership, `lvai_swap_subvis` after a good
+swap (a `Replace` keeps positions while sizes change), `lvai_make_malleable` on its intermediate;
+each takes `cleanUpDiagram` (default true). **THE DQMH TOOLS NEVER CLEAN UP, and a DQMH module's
+`Main.vi` is skipped by `DiagramCleanup` itself on every route** - the user's rule of the same day.
 
 **AND THE FRONT PANEL OF EVERY VI THAT IS NOT THE MAIN VI GOES THROUGH CLEAN UP PANEL - the user's
 rule of the same day.** `cleanUpPanel` in `lvai_generate_vi`, default as `cleanUpDiagram`; pass
@@ -1126,7 +1131,9 @@ pylabview cannot author a VI from nothing. **AIXML creates and names; pylabview 
 composer - and the user's choice was to keep BOTH and switch, not replace.** `lvai_validate_aixml`,
 `lvai_convert_aixml_to_vi`, `lvai_convert_vi_to_aixml`, `lvai_generate_vi` and `lvai_generate_vis`
 take `backend`; without it the server default applies (`--aixml-backend`, then
-`LABVIEWMCP_AIXML_BACKEND`, then `grpc`), and **only to a tool the client itself called** - the
+`LABVIEWMCP_AIXML_BACKEND`, then **`"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json`** -
+the user's place to choose since 2026-10-13, created on the first start with every value explained
+in it, `grpc`, `pylabview` or `auto` - then `grpc`), and **only to a tool the client itself called** - the
 forty-odd internal callers (class tools, test generators, graft) depend on what only NI's
 converter does, so they stay on `grpc`. Every answer names `backend` and `backendSource`. On
 `pylabview` a validation is a scratch COMPOSE, not NI's wiring check. **What needs a RUNNING
@@ -2801,7 +2808,7 @@ literally it argued away 600 usable palette VIs.
 | How do I read or write AIXML? | `docs/aixml-reference.md` | `lvai_aixml_reference` |
 | What does `ValidateAIXML` NOT catch? | `docs/aixml-reference.md` | `lvai_check_aixml` |
 | How do I check AIXML with NO LabVIEW, before spending a round trip? | `docs/aixml-lint.md` | `scripts/aixml_lint.py` |
-| How do I convert, check or RUN a VI WITHOUT NI's gRPC service, or choose which route runs? | `docs/aixml-backends.md` | `backend` on the five AIXML tools, `lvai_exec_state` and `lvai_run_vi_and_read_values` (ActiveX for a running LabVIEW); `LABVIEWMCP_AIXML_BACKEND` / `--aixml-backend` for the server default; `pylv_status` shows it |
+| How do I convert, check or RUN a VI WITHOUT NI's gRPC service, or choose which route runs? | `docs/aixml-backends.md` | `backend` on the five AIXML tools, `lvai_exec_state` and `lvai_run_vi_and_read_values` (ActiveX for a running LabVIEW), and since 2026-10-13 on every tool that reaches LabVIEW but NI's own assistant features; `LABVIEWMCP_AIXML_BACKEND` / `--aixml-backend` for the server default; `pylv_status` shows it |
 | What is a DQMH module made of? | `docs/dqmh-patterns.md` | `lvai_dqmh_reference` |
 | How do I CREATE a DQMH module? | `docs/dqmh-scripting.md` §9f | `lvai_dqmh_new_module` - the type by NAME from the station's catalogue (every answer lists it), files into `<project>\Libraries\<Name>`, verified from the files |
 | How do I create a DQMH EVENT with no dialog, and what does it leave unfinished? | `docs/dqmh-scripting.md` §9c | `lvai_dqmh_new_event` - wires the tester's new inputs and saves what the scripting touched; a Broadcast with arguments leaves Main.vi broken until its `#CodeNeeded` call is placed |

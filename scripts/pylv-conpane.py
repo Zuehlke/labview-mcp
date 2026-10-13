@@ -229,10 +229,16 @@ def read_dco_names(fp_text):
     return names
 
 
-FUNC_RE = re.compile(
-    r'(?P<open><TypeDesc Type="Function"[^>]*Pattern="(?P<pattern>0x[0-9A-Fa-f]+)"[^>]*>)'
-    r'(?P<body>.*?)(?P<close></TypeDesc>)', re.S)
-CHILD_RE = re.compile(r'<TypeDesc TypeID="(?P<tid>\d+)" Flags="(?P<flags>0x[0-9A-Fa-f]+)" />')
+FUNC_OPEN_RE = re.compile(
+    r'<TypeDesc Type="Function"[^>]*Pattern="(?P<pattern>0x[0-9A-Fa-f]+)"[^>]*>')
+# A slot is either self-closing or carries content of its own - an output tied to an input (a
+# class out to its class in) holds `<ThrallSources>` naming that input's conIdx. Matching only the
+# self-closing form, and ending the Function at the FIRST `</TypeDesc>`, counted 3 slots of 12 on
+# a class-typed pane and refused it as "pane disagrees with itself" (2026-10-13).
+CHILD_RE = re.compile(
+    r'\s*<TypeDesc TypeID="(?P<tid>\d+)" Flags="(?P<flags>0x[0-9A-Fa-f]+)"'
+    r'(?: />|>(?P<inner>(?:(?!</?TypeDesc[\s>]).)*?)</TypeDesc>)', re.S)
+FUNC_CLOSE_RE = re.compile(r'\s*</TypeDesc>')
 
 
 def find_pane_type(main_text):
@@ -257,12 +263,22 @@ def locate_flat_function(main_text, flat_id):
     marker = re.search(r"<!-- FlatTypeID %d:[^>]*-->" % flat_id, main_text)
     if not marker:
         raise SystemExit("VCTP has no FlatTypeID %d" % flat_id)
-    func = FUNC_RE.search(main_text, marker.end())
+    func = FUNC_OPEN_RE.search(main_text, marker.end())
     if not func or func.start() > marker.end() + 200:
         raise SystemExit("FlatTypeID %d is not a Function type" % flat_id)
-    children = [(int(c.group("tid")), int(c.group("flags"), 0))
-                for c in CHILD_RE.finditer(func.group("body"))]
-    return func.start(), func.end(), int(func.group("pattern"), 0), children
+    children, pos = [], func.end()
+    while True:
+        child = CHILD_RE.match(main_text, pos)
+        if not child:
+            break
+        children.append((int(child.group("tid")), int(child.group("flags"), 0),
+                         child.group("inner")))
+        pos = child.end()
+    close = FUNC_CLOSE_RE.match(main_text, pos)
+    if not close:
+        raise SystemExit("FlatTypeID %d: unexpected content after slot %d of its Function type"
+                         % (flat_id, len(children)))
+    return func.start(), close.end(), int(func.group("pattern"), 0), children
 
 
 def void_type_id(main_text):
@@ -292,7 +308,7 @@ class Pane:
         rank = {uid: n for n, uid in enumerate(self.ddo_order)}
         out = []
         for idx in sorted(self.cons, key=lambda i: (rank.get(self.cons[i], 10_000), i)):
-            tid, flags = self.children[idx]
+            tid, flags, _ = self.children[idx]
             out.append((idx, self.names.get(self.cons[idx], "?"),
                         bool(flags & IS_OUTPUT), tid, flags))
         return out
@@ -452,8 +468,14 @@ def write_pane(bundle, pane, cons, children, con_id, pattern_code):
     head = old.split("\n", 1)[0]
     head = re.sub(r'Pattern="0x[0-9A-Fa-f]+"', 'Pattern="0x%X"' % pattern_code, head)
     rendered = [head]
-    for tid, flags in children:
-        rendered.append('        <TypeDesc TypeID="%d" Flags="0x%04X" />' % (tid, flags))
+    for tid, flags, inner in children:
+        if inner is None:
+            rendered.append('        <TypeDesc TypeID="%d" Flags="0x%04X" />' % (tid, flags))
+        else:
+            # Kept verbatim: a slot's own content (ThrallSources) names conIdx values, and the
+            # assignment is the identity, so it stays true.
+            rendered.append('        <TypeDesc TypeID="%d" Flags="0x%04X">%s</TypeDesc>'
+                            % (tid, flags, inner))
     rendered.append("        </TypeDesc>")
     bundle.main = bundle.main[:pane.start] + "\n".join(rendered) + bundle.main[pane.end:]
 
@@ -543,14 +565,13 @@ def main(argv):
 
     void = void_type_id(bundle.main)
     slot_count = len(slots)
-    cons, children = {}, [(void, 0x0000)] * slot_count
-    children = list(children)
-    permutation = {}
+    children = [(void, 0x0000, None)] * slot_count
+    cons, permutation = {}, {}
     for idx, name, _, tid, flags in terms:
         new = assignment[name]
         permutation[idx] = new
         cons[new] = pane.cons[idx]
-        children[new] = (tid, flags)
+        children[new] = (tid, flags, pane.children[idx][2])
 
     write_pane(bundle, pane, cons, children, target, pattern_code)
     bundle.save()

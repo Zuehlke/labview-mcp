@@ -40,6 +40,14 @@ public sealed class LUnitAddTestMethodHelperTests
         Assert.Single(vi.Descendants().Where(e => (string?)e.Attribute("_name") == name));
 
     /// <summary>
+    /// The filter's Select - on the TOP-LEVEL diagram. Since 2026-10-13 the Replace loop carries a
+    /// Select of its own (it counts only Replace calls that answered 0), the shape
+    /// lvai_add_class_method's helper has had since the retype race was fixed there.
+    /// </summary>
+    private static XElement TopLevelSelect(XElement vi) =>
+        vi.Elements("Node").Single(n => (string?)n.Attribute("_name") == "Select");
+
+    /// <summary>
     /// The <c>uid.terminal</c> a node reads one of its inputs from, e.g. <c>114.sel</c> for
     /// <c>error in (no error):114.sel</c>. Returns just the uid.
     /// </summary>
@@ -95,7 +103,7 @@ public sealed class LUnitAddTestMethodHelperTests
         var addMember = vi.Descendants("Node")
             .Single(n => (string?)n.Attribute("target") == "AddItemFromMemory");
         var rawUid = (string?)addMember.Attribute("uid");
-        var select = vi.Descendants("Node").Single(n => (string?)n.Attribute("_name") == "Select");
+        var select = TopLevelSelect(vi);
         var selectUid = (string?)select.Attribute("uid");
 
         var saveVi = vi.Descendants("Node")
@@ -122,7 +130,7 @@ public sealed class LUnitAddTestMethodHelperTests
     public void ReportsTheFilteredErrorAndWhetherTheMemberAlreadyExisted()
     {
         var vi = Load();
-        var select = vi.Descendants("Node").Single(n => (string?)n.Attribute("_name") == "Select");
+        var select = TopLevelSelect(vi);
         var selectUid = (string?)select.Attribute("uid");
 
         var reported = Named(vi, "add member error");
@@ -144,7 +152,7 @@ public sealed class LUnitAddTestMethodHelperTests
     public void TheFilterIsGatedOnTheCallersVerdictAndNotAppliedBlindly()
     {
         var vi = Load();
-        var select = vi.Descendants("Node").Single(n => (string?)n.Attribute("_name") == "Select");
+        var select = TopLevelSelect(vi);
 
         var selectorUid = Source(select, "s");
         var gate = vi.Descendants("Node")

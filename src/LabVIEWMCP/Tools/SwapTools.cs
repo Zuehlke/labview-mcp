@@ -164,13 +164,19 @@ internal sealed class SwapTools(LvaiConnection connection)
         string? editsJson = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
-        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null)
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        [Description("""
+            Run LabVIEW's own Clean Up Diagram on each VI after a successful swap and save it in
+            place (the cleanUpDiagram field) - a Replace keeps each node's position while its size
+            and terminals change. Reported, never gating; a DQMH module's Main.vi is never touched.
+            """)]
+        bool cleanUpDiagram = true)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_swap_subvis", out _, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
         if (editsJson is { Length: > 0 })
             return await ManyAsync(editsJson, verify, verbose, helperViPath, helperAixmlPath,
-                                   regenerateHelper, timeoutSeconds, ct: ct);
+                                   regenerateHelper, timeoutSeconds, cleanUpDiagram, ct: ct);
 
         // Now that `viPath` is optional in the schema, its absence has to be caught here - and
         // named, rather than arriving as a null-reference somewhere further down.
@@ -179,8 +185,29 @@ internal sealed class SwapTools(LvaiConnection connection)
                 "Give either `viPath` (one VI) or `editsJson` (several). Neither arrived.",
                 new { viPath, editsJson });
 
-        return await OneAsync(viPath, swapsJson, constantsJson, verify, verbose, helperViPath,
-                              helperAixmlPath, regenerateHelper, timeoutSeconds, ct: ct);
+        return await OneAndCleanAsync(viPath, swapsJson, constantsJson, verify, verbose, helperViPath,
+                                      helperAixmlPath, regenerateHelper, timeoutSeconds,
+                                      cleanUpDiagram, ct: ct);
+    }
+
+    /// <summary>
+    /// One swap, then LabVIEW's Clean Up Diagram on the saved VI when the swap was ok. The clean-up
+    /// is added to the answer as `cleanUpDiagram` and never changes its `ok`.
+    /// </summary>
+    private async Task<string> OneAndCleanAsync(string viPath, string? swapsJson, string? constantsJson,
+                                                bool verify, bool verbose, string? helperViPath,
+                                                string? helperAixmlPath, bool regenerateHelper,
+                                                int timeoutSeconds, bool cleanUpDiagram,
+                                                CancellationToken ct)
+    {
+        var answer = await OneAsync(viPath, swapsJson, constantsJson, verify, verbose, helperViPath,
+                                    helperAixmlPath, regenerateHelper, timeoutSeconds, ct: ct);
+        if (!cleanUpDiagram || Read(answer) is not JsonObject node
+            || node["ok"]?.GetValue<bool>() is not true)
+            return answer;
+        node["cleanUpDiagram"] = await new DiagramCleanup(connection).RunAsync(
+            viPath, BackendRoute.Current, timeoutSeconds, ct);
+        return Json.Document(node);
     }
 
     /// <summary>
@@ -194,7 +221,7 @@ internal sealed class SwapTools(LvaiConnection connection)
     private async Task<string> ManyAsync(string editsJson, bool verify, bool verbose,
                                          string? helperViPath, string? helperAixmlPath,
                                          bool regenerateHelper, int timeoutSeconds,
-                                         CancellationToken ct)
+                                         bool cleanUpDiagram, CancellationToken ct)
     {
         JsonNode? parsed;
         try { parsed = JsonNode.Parse(editsJson); }
@@ -232,9 +259,9 @@ internal sealed class SwapTools(LvaiConnection connection)
         string? stoppedAt = null;
         foreach (var edit in edits)
         {
-            var one = await OneAsync(edit.Vi, edit.Swaps, edit.Constants, verify, verbose,
-                                     helperViPath, helperAixmlPath, regenerateHelper,
-                                     timeoutSeconds, ct: ct);
+            var one = await OneAndCleanAsync(edit.Vi, edit.Swaps, edit.Constants, verify, verbose,
+                                             helperViPath, helperAixmlPath, regenerateHelper,
+                                             timeoutSeconds, cleanUpDiagram, ct: ct);
             var node = Read(one);
             answers.Add(new JsonObject { ["vi"] = edit.Vi, ["answer"] = node });
 
