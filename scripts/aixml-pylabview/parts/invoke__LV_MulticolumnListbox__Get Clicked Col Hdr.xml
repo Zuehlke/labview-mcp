@@ -1,91 +1,70 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="invoke" key="invoke/LV.MulticolumnListbox/Get Clicked Col Hdr" source="&lt;labview&gt;\vi.lib\DotNET\AssemblyVisualizationTool\AssemblyVisualizationWindow.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x002E" HasItem="0" Format="inline" Label="reference"><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x002E" HasItem="0" Format="inline" Label="reference out"><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Get Clicked Column Header" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Get Clicked Column Header" /></types><heap><SL__arrayElement class="invokeNode" uid="256">
-                                    <objFlags>167903872</objFlags>
-                                    <termList elements="6">
-                                      <SL__arrayElement class="term" uid="270">
-                                        <objFlags>8388608</objFlags>
-                                        <dco class="hGrowCItem" uid="271">
-                                          <objFlags>65536</objFlags>
-                                          <typeDesc>TypeID(380)</typeDesc>
-                                          <termBounds>(-9, 0, 0, 13)</termBounds>
-                                          </dco>
-                                        </SL__arrayElement>
-                                      <SL__arrayElement class="term" uid="273">
-                                        <objFlags>8388608</objFlags>
-                                        <dco class="hGrowCItem" uid="274">
-                                          <objFlags>262145</objFlags>
-                                          <typeDesc>TypeID(381)</typeDesc>
-                                          <termBounds>(-9, 141, 0, 154)</termBounds>
-                                          </dco>
-                                        </SL__arrayElement>
-                                      <SL__arrayElement class="term" uid="276">
-                                        <objFlags>32768</objFlags>
-                                        <dco class="hGrowCItem" uid="277">
-                                          <objFlags>131072</objFlags>
-                                          <typeDesc>TypeID(382)</typeDesc>
-                                          <termBounds>(0, 0, 9, 13)</termBounds>
-                                          </dco>
-                                        </SL__arrayElement>
-                                      <SL__arrayElement class="term" uid="279">
-                                        <dco class="hGrowCItem" uid="280">
-                                          <objFlags>524289</objFlags>
-                                          <typeDesc>TypeID(383)</typeDesc>
-                                          <termBounds>(0, 141, 9, 154)</termBounds>
-                                          </dco>
-                                        </SL__arrayElement>
-                                      <SL__arrayElement class="term" uid="282">
-                                        <dco class="invokeItem" uid="283">
-                                          <objFlags>196608</objFlags>
-                                          <typeDesc>TypeID(384)</typeDesc>
-                                          <termBounds>(9, 0, 25, 77)</termBounds>
-                                          <privDataList elements="0" />
-                                          </dco>
-                                        </SL__arrayElement>
-                                      <SL__arrayElement class="term" uid="286">
-                                        <dco class="invokeItem" uid="287">
-                                          <objFlags>65537</objFlags>
-                                          <typeDesc>TypeID(385)</typeDesc>
-                                          <termBounds>(9, 77, 25, 154)</termBounds>
-                                          <privDataList elements="0" />
-                                          </dco>
-                                        </SL__arrayElement>
-                                      </termList>
-                                    <label class="label" uid="261">
-                                      <objFlags>1114434</objFlags>
-                                      <partID>16</partID>
-                                      <howGrow>4096</howGrow>
-                                      <bounds>(-17, 15, 0, 122)</bounds>
-                                      <image class="Image">
-                                        <ImageResID>-619</ImageResID>
-                                        </image>
-                                      <fgColor>01000000</fgColor>
-                                      <bgColor>01000000</bgColor>
-                                      <textRec class="textHair">
-                                        <mode>82948</mode>
-                                        <text>"List Of Assemblies"</text>
-                                        <bgColor>01000000</bgColor>
-                                        </textRec>
-                                      </label>
-                                    <bounds>(75, 122, 101, 276)</bounds>
-                                    <shortCount>2</shortCount>
-                                    <clumpNum>1703939</clumpNum>
-                                    <dcoList elements="2">
-                                      <SL__arrayElement uid="283" />
-                                      <SL__arrayElement uid="287" />
-                                      </dcoList>
-                                    <permDCOList elements="4">
-                                      <SL__arrayElement uid="271" />
-                                      <SL__arrayElement uid="274" />
-                                      <SL__arrayElement uid="277" />
-                                      <SL__arrayElement uid="280" />
-                                      </permDCOList>
-                                    <nodeName>"MulticolumnListbox (strict)"</nodeName>
-                                    <oMId>0011</oMId>
-                                    <ddo uid="354" />
-                                    <methName>"Get Clicked Col Hdr"</methName>
-                                    <methCode>416912385</methCode>
-                                    <invokeFlags>08</invokeFlags>
-                                    <propList elements="0" />
-                                    <privDataList elements="0" />
-                                    </SL__arrayElement>
-                                  </heap></part>
+<part kind="invoke" key="invoke/LV.MulticolumnListbox/Get Clicked Col Hdr" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x002E" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x002E" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Get Clicked Column Header" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Get Clicked Column Header" /></types><heap><SL__arrayElement class="invokeNode" uid="33359">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="33360">
+            <dco class="hGrowCItem" uid="33362">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(21391)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="33363">
+            <dco class="hGrowCItem" uid="33365">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(21392)</typeDesc>
+              <termBounds>(0, 99, 9, 112)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="33370">
+            <dco class="hGrowCItem" uid="33364">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(21393)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="33367">
+            <dco class="hGrowCItem" uid="33366">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(21394)</typeDesc>
+              <termBounds>(9, 99, 18, 112)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="33371">
+            <dco class="invokeItem" uid="33375">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(21395)</typeDesc>
+              <termBounds>(18, 0, 34, 56)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="33374">
+            <dco class="invokeItem" uid="33373">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(21396)</typeDesc>
+              <termBounds>(18, 56, 34, 112)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1489, 7347, 1524, 7459)</bounds>
+        <shortCount>4346</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="33375" />
+          <SL__arrayElement uid="33373" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="33362" />
+          <SL__arrayElement uid="33365" />
+          <SL__arrayElement uid="33364" />
+          <SL__arrayElement uid="33366" />
+          </permDCOList>
+        <nodeName>"MCListbox"</nodeName>
+        <oMId>0036</oMId>
+        <methName>"Get Clicked Col Hdr"</methName>
+        <methCode>416912385</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

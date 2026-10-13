@@ -415,7 +415,12 @@ class Harvester:
             meth = (node.findtext("methName") or "").strip('"')
             if not meth:
                 return
-            self.save("invoke", "invoke/%s/%s" % (cname, meth_key(meth)), source, node, resolve_types(b, node))
+            # an IMPLICIT invoke node (linked to a front-panel object) names that object's ddo:
+            # the composer builds explicit nodes, and that dangling ddo made LabVIEW die on load
+            # ("Unswizzled references remain after loading heap", 2026-10-13). Its method row is
+            # still good - the code is the code - but no part is cut from it.
+            if node.find("ddo") is None:
+                self.save("invoke", "invoke/%s/%s" % (cname, meth_key(meth)), source, node, resolve_types(b, node))
             mt = self.props["methods"].setdefault(cname, {})
             if meth not in mt:
                 mt[meth] = {"code": int(node.findtext("methCode") or 0), "source": source}

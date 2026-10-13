@@ -1,89 +1,69 @@
 <?xml version='1.0' encoding='utf-8'?>
-<part kind="invoke" key="invoke/LV.String/Size to Text" source="&lt;labview&gt;\resource\Framework\Providers\LVClassLibrary\libpropPage_Inheritance.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001B" HasItem="0" Format="inline" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001B" HasItem="0" Format="inline" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Size to Text" /><TypeDesc Type="Void" Format="inline" Label="Size to Text" /></types><heap><SL__arrayElement class="invokeNode" uid="6915">
-        <objFlags>167772800</objFlags>
+<part kind="invoke" key="invoke/LV.String/Size to Text" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001B" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001B" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Size to Text" /><TypeDesc Type="Void" Format="inline" Label="Size to Text" /></types><heap><SL__arrayElement class="invokeNode" uid="46463">
+        <objFlags>644</objFlags>
         <termList elements="6">
-          <SL__arrayElement class="term" uid="6929">
-            <objFlags>8388608</objFlags>
-            <dco class="hGrowCItem" uid="6933">
+          <SL__arrayElement class="term" uid="46464">
+            <dco class="hGrowCItem" uid="46466">
               <objFlags>65536</objFlags>
-              <typeDesc>TypeID(80)</typeDesc>
-              <termBounds>(-9, 0, 0, 13)</termBounds>
-              </dco>
-            </SL__arrayElement>
-          <SL__arrayElement class="term" uid="6940">
-            <objFlags>8388608</objFlags>
-            <dco class="hGrowCItem" uid="6941">
-              <objFlags>262145</objFlags>
-              <typeDesc>TypeID(81)</typeDesc>
-              <termBounds>(-9, 57, 0, 70)</termBounds>
-              </dco>
-            </SL__arrayElement>
-          <SL__arrayElement class="term" uid="6943">
-            <dco class="hGrowCItem" uid="6944">
-              <objFlags>131072</objFlags>
-              <typeDesc>TypeID(82)</typeDesc>
+              <typeDesc>TypeID(18077)</typeDesc>
               <termBounds>(0, 0, 9, 13)</termBounds>
               </dco>
             </SL__arrayElement>
-          <SL__arrayElement class="term" uid="6948">
-            <dco class="hGrowCItem" uid="6949">
-              <objFlags>524289</objFlags>
-              <typeDesc>TypeID(83)</typeDesc>
+          <SL__arrayElement class="term" uid="46467">
+            <dco class="hGrowCItem" uid="46469">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(18078)</typeDesc>
               <termBounds>(0, 57, 9, 70)</termBounds>
               </dco>
             </SL__arrayElement>
-          <SL__arrayElement class="term" uid="6952">
-            <dco class="invokeItem" uid="6953">
+          <SL__arrayElement class="term" uid="46475">
+            <dco class="hGrowCItem" uid="46468">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(18079)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="46472">
+            <dco class="hGrowCItem" uid="46470">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(18080)</typeDesc>
+              <termBounds>(9, 57, 18, 70)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="46476">
+            <dco class="invokeItem" uid="46480">
               <objFlags>196608</objFlags>
-              <typeDesc>TypeID(84)</typeDesc>
-              <termBounds>(9, 0, 25, 35)</termBounds>
+              <typeDesc>TypeID(18081)</typeDesc>
+              <termBounds>(18, 0, 34, 35)</termBounds>
               <privDataList elements="0" />
               </dco>
             </SL__arrayElement>
-          <SL__arrayElement class="term" uid="6958">
-            <dco class="invokeItem" uid="6959">
+          <SL__arrayElement class="term" uid="46479">
+            <dco class="invokeItem" uid="46478">
               <objFlags>196609</objFlags>
-              <typeDesc>TypeID(85)</typeDesc>
-              <termBounds>(9, 35, 25, 70)</termBounds>
+              <typeDesc>TypeID(18082)</typeDesc>
+              <termBounds>(18, 35, 34, 70)</termBounds>
               <privDataList elements="0" />
               </dco>
             </SL__arrayElement>
           </termList>
-        <label class="label" uid="6921">
-          <objFlags>1507650</objFlags>
-          <partID>16</partID>
-          <howGrow>4096</howGrow>
-          <bounds>(-17, 0, 0, 75)</bounds>
-          <image class="Image">
-            <ImageResID>-619</ImageResID>
-            </image>
-          <fgColor>01000000</fgColor>
-          <bgColor>01000000</bgColor>
-          <textRec class="textHair">
-            <mode>82948</mode>
-            <text>"Italics Legend"</text>
-            <bgColor>01000000</bgColor>
-            </textRec>
-          </label>
-        <bounds>(101, -1948, 127, -1878)</bounds>
-        <shortCount>2</shortCount>
-        <clumpNum>393220</clumpNum>
+        <bounds>(1583, 9749, 1618, 9819)</bounds>
+        <shortCount>3580</shortCount>
         <dcoList elements="2">
-          <SL__arrayElement uid="6953" />
-          <SL__arrayElement uid="6959" />
+          <SL__arrayElement uid="46480" />
+          <SL__arrayElement uid="46478" />
           </dcoList>
         <permDCOList elements="4">
-          <SL__arrayElement uid="6933" />
-          <SL__arrayElement uid="6941" />
-          <SL__arrayElement uid="6944" />
-          <SL__arrayElement uid="6949" />
+          <SL__arrayElement uid="46466" />
+          <SL__arrayElement uid="46469" />
+          <SL__arrayElement uid="46468" />
+          <SL__arrayElement uid="46470" />
           </permDCOList>
         <nodeName>"Str"</nodeName>
-        <oMId>001A</oMId>
-        <ddo uid="6916" />
+        <oMId>0046</oMId>
         <methName>"Size to Text"</methName>
         <methCode>104092672</methCode>
-        <invokeFlags>01000008</invokeFlags>
+        <invokeFlags>08000001</invokeFlags>
         <propList elements="0" />
         <privDataList elements="0" />
         </SL__arrayElement>

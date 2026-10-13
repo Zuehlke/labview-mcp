@@ -2878,6 +2878,14 @@ class Composer:
         if got is None:
             raise Unsupported("Invoke Node %s: no invoke node %s.%s harvested yet" % (el.get("uid"), cls, meth))
         node, donor_types, src = got
+        if node.find("ddo") is not None:
+            # an IMPLICIT invoke node - linked to one of the DONOR's front-panel objects - names
+            # that object's ddo, which this VI does not have. Measured 2026-10-13: the shipped
+            # LV.String Get Nth Line part, cut from an implicit node, loaded as "Unswizzled
+            # references remain after loading heap" and LabVIEW died, twice on a fresh instance;
+            # the same method cut from an explicit node loads clean. Refused, never a crash.
+            raise Unsupported("Invoke Node %s: the %s.%s part is an implicit (front-panel-linked) node from %s"
+                              % (el.get("uid"), cls, meth, src))
         diag = self.diag_of(el)
         tel = lvheap.typeid_elements(node)
         if len(tel) != len(donor_types):
