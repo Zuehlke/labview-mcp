@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TreeControl/Double Click" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0042" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0042" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Double Click" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Double Click" /></types><heap><SL__arrayElement class="invokeNode" uid="50019">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="50020">
+            <dco class="hGrowCItem" uid="50022">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(17179)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50023">
+            <dco class="hGrowCItem" uid="50025">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(17180)</typeDesc>
+              <termBounds>(0, 65, 9, 78)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50030">
+            <dco class="hGrowCItem" uid="50024">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(17181)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50028">
+            <dco class="hGrowCItem" uid="50026">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(17182)</typeDesc>
+              <termBounds>(9, 65, 18, 78)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50031">
+            <dco class="invokeItem" uid="50035">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(17183)</typeDesc>
+              <termBounds>(18, 0, 34, 39)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50034">
+            <dco class="invokeItem" uid="50033">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(17184)</typeDesc>
+              <termBounds>(18, 39, 34, 78)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1768, 10347, 1803, 10425)</bounds>
+        <shortCount>3372</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="50035" />
+          <SL__arrayElement uid="50033" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="50022" />
+          <SL__arrayElement uid="50025" />
+          <SL__arrayElement uid="50024" />
+          <SL__arrayElement uid="50026" />
+          </permDCOList>
+        <nodeName>"Tree"</nodeName>
+        <oMId>004A</oMId>
+        <methName>"Double Click"</methName>
+        <methCode>1969895434</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

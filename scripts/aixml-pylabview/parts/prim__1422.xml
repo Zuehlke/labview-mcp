@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1422" source="&lt;labview&gt;\resource\Framework\Providers\Builds\Package\NIPKG\Utility\Split NIPKG Path.vi"><types><TypeDesc Type="Array" Format="inline" Label="array of strings"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="relative" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="path" /></types><heap><SL__arrayElement class="prim" uid="91">
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="93">
+            <objFlags>17072128</objFlags>
+            <dco class="parm" uid="94">
+              <typeDesc>TypeID(13)</typeDesc>
+              <dsw>18432</dsw>
+              <termBounds>(0, 0, 11, 7)</termBounds>
+              <primIndex>196</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="96">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="97">
+              <typeDesc>TypeID(14)</typeDesc>
+              <termBounds>(0, 7, 11, 17)</termBounds>
+              <primIndex>196</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="99">
+            <dco class="parm" uid="100">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(15)</typeDesc>
+              <termBounds>(0, 17, 11, 25)</termBounds>
+              <primIndex>196</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(174, 257, 206, 289)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1422</primResID>
+        <primIndex>196</primIndex>
+        </SL__arrayElement>
+      </heap></part>

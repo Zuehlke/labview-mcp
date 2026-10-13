@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1537" source="&lt;labview&gt;\resource\Framework\Providers\LVClassLibrary\NewAccessors\VIRetooler\CLSUIP_StripExtension.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="69">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="127">
+            <dco class="parm" uid="125">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(9)</typeDesc>
+              <termBounds>(0, 15, 13, 29)</termBounds>
+              <primIndex>27</primIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="130">
+            <objFlags>32769</objFlags>
+            <dco class="parm" uid="128">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(10)</typeDesc>
+              <termBounds>(0, 0, 13, 15)</termBounds>
+              <primIndex>27</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(292, 629, 324, 661)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1537</primResID>
+        <primIndex>27</primIndex>
+        </SL__arrayElement>
+      </heap></part>

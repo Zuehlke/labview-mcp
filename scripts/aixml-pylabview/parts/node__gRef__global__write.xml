@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/gRef/global/write" source="&lt;labview&gt;\examples\Synchronization\Occurrence\Simple Occurrence.vi"><types><TypeDesc Type="Boolean" Format="inline" Label="Loop Stop" /></types><heap><SL__arrayElement class="gRef" uid="1222">
+                    <objFlags>512</objFlags>
+                    <termList elements="1">
+                      <SL__arrayElement class="term" uid="1274">
+                        <objFlags>32768</objFlags>
+                        <dco class="gRefDCO" uid="1275">
+                          <typeDesc>TypeID(9)</typeDesc>
+                          <termBounds>(0, 0, 16, 80)</termBounds>
+                          </dco>
+                        </SL__arrayElement>
+                      </termList>
+                    <label class="label" uid="1272">
+                      <objFlags>2491723</objFlags>
+                      <partID>16</partID>
+                      <howGrow>4096</howGrow>
+                      <bounds>(-23, 24, -6, 202)</bounds>
+                      <image class="Image">
+                        <ImageResID>-619</ImageResID>
+                        </image>
+                      <fgColor>01000000</fgColor>
+                      <bgColor>01000000</bgColor>
+                      <textRec class="textHair">
+                        <mode>82948</mode>
+                        <text>"Global - Occurrence Loop Stop.vi"</text>
+                        <bgColor>01000000</bgColor>
+                        </textRec>
+                      </label>
+                    <bounds>(87, 73, 103, 153)</bounds>
+                    <shortCount>4</shortCount>
+                    <clumpNum>131075</clumpNum>
+                    <connectorTM>TypeID(10)</connectorTM>
+                    </SL__arrayElement>
+                  </heap></part>

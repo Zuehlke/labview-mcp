@@ -359,3 +359,109 @@ primResID	node	parmIndex	terminal
 8401	Unflatten From XML	6	xml string
 8401	Unflatten From XML	out	error out
 8402	Flatten To XML	6	anything
+1076	?	1	x
+1076	?	out	ceil(x): smallest int >= x
+1081	?	1	x
+1081	?	2	y
+1081	?	out	x << y
+1140	?	out	8bit integer
+1155	?	1	number
+1155	?	out	64bit integer
+1162	?	out	byte swapped
+1163	?	1	anything
+1164	?	11	anything
+1164	?	3	data string
+1181	?	out	hex integer string
+1308	?	1	is UTC (F)
+1308	?	2	date time rec
+1308	?	out	time stamp
+1309	?	1	to UTC (F)
+1309	?	2	time stamp (now)
+1309	?	out	date time rec
+1350	?	out	stop? (T)
+1353	?	1	Show
+1354	?	1	Show
+1421	?	1	path
+1422	?	1	relative
+1422	?	2	path
+1422	?	out	array of strings
+1608	String To Byte Array	out	unsigned byte array
+1700	Generate Occurrence	out	occurrence
+1712	TCP Wait On Listener	11	listener ID in
+1730	New TLS Configuration	out	error out
+1735	Add Private Key To TLS Configuration	11	TLS configuration
+1735	Add Private Key To TLS Configuration	3	TLS configuration out
+1735	Add Private Key To TLS Configuration	out	error out
+1908	?	1	first subarray
+1908	?	2	index
+1908	?	3	array
+1941	VISA Discard Events	11	VISA resource name
+1941	VISA Discard Events	8	error in (no error)
+2011	TDMS Read	8	channel name(s) out
+2023	TDMS Reserve File Size	3	tdms file out
+2023	TDMS Reserve File Size	out	error out
+2027	TDMS Configure Asynchronous Reads	3	tdms file out
+2027	TDMS Configure Asynchronous Reads	out	error out
+2028	TDMS Start Asynchronous Reads	11	tdms file
+2028	TDMS Start Asynchronous Reads	8	error in (no error)
+2031	TDMS Get Asynchronous Write Status	11	tdms file
+2031	TDMS Get Asynchronous Write Status	8	error in (no error)
+2158	TDMS In Memory Read Bytes	3	tdms file out
+2158	TDMS In Memory Read Bytes	out	error out
+23066	?	11	text
+23066	?	3	utf-8 text
+23067	?	11	utf-8 text
+23067	?	3	text
+2402	?	1	type
+2408	New Data Value Reference	3	data value reference
+2408	New Data Value Reference	7	data value
+2408	New Data Value Reference	out	error out
+2409	?	3	data value
+2409	?	7	data value reference
+2409	?	out	error out
+24135	?	3	refnum out
+24135	?	4	error in
+24135	?	5	byte order (0:big-endian, network order)
+24135	?	6	data in
+24135	?	7	refnum in
+24135	?	out	error out
+2452	Insert Into Set	3	set out
+8018	?	1	error out
+8018	?	2	target object
+8018	?	3	object in
+8018	?	4	error in
+8018	?	out	object out
+8053	?	8	error in
+8053	?	9	overwrite (F)
+8066	?	2	type
+8066	?	3	path out
+8066	?	7	path
+8074	?	3	refnum out
+8074	?	4	error in
+8074	?	6	size (in bytes)
+8074	?	7	file
+8074	?	out	error out
+8076	?	11	path
+8076	?	3	path out
+8076	?	7	permissions
+8078	Write to Binary File	3	refnum out
+8078	Write to Binary File	5	prepend array or string size? (T)
+8082	File/Directory Info	1	last mod
+8082	File/Directory Info	2	size
+8082	File/Directory Info	3	path out
+8082	File/Directory Info	5	directory
+8082	File/Directory Info	out	error out
+8205	Get Variant Attribute	4	error in
+9002	?	2	error in (no error)
+9002	?	3	enable (T)
+9002	?	4	menu reference
+9002	?	out	error out
+9006	Set Menu Item Info	6	checked
+9006	Set Menu Item Info	9	enabled
+9112	?	8	queue out
+9112	?	9	element
+9112	?	out	queue
+9114	Flush Queue	8	queue out
+9129	Enqueue Element At Opposite End	3	error in (no error)
+9129	Enqueue Element At Opposite End	8	queue out
+9154	Get Drag Drop Data	6	error in (no error)

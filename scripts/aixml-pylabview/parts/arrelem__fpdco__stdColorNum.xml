@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="arrelem" key="arrelem/fpdco/stdColorNum" source="&lt;labview&gt;\examples\OpenG\picture\examples\Read GIF File (Animated) Example.vi"><types><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Color Box" /></types><heap><ddo class="stdColorNum" uid="58">
+              <objFlags>524289</objFlags>
+              <bounds>(20, 35, 26, 41)</bounds>
+              <partsList elements="4">
+                <SL__arrayElement class="label" uid="59">
+                  <objFlags>1507662</objFlags>
+                  <partID>16</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>4096</howGrow>
+                  <bounds>(-18, 1, -1, 55)</bounds>
+                  <image class="Image">
+                    <ImageResID>-9</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <mode>17412</mode>
+                    <text>"Color Box"</text>
+                    <bgColor>01000000</bgColor>
+                    </textRec>
+                  </SL__arrayElement>
+                <SL__arrayElement class="cosm" uid="60">
+                  <objFlags>2354</objFlags>
+                  <partID>41</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>240</howGrow>
+                  <bounds>(0, 0, 6, 6)</bounds>
+                  <image class="Image">
+                    <ImageResID>-239</ImageResID>
+                    </image>
+                  </SL__arrayElement>
+                <SL__arrayElement class="cosm" uid="61">
+                  <objFlags>2391</objFlags>
+                  <partID>9</partID>
+                  <howGrow>240</howGrow>
+                  <bounds>(1, 1, 6, 6)</bounds>
+                  <image class="Image">
+                    <ImageResID>-412</ImageResID>
+                    </image>
+                  <fgColor>00B3B3B3</fgColor>
+                  <bgColor>00B3B3B3</bgColor>
+                  </SL__arrayElement>
+                <SL__arrayElement class="annex" uid="56">
+                  <partID>66</partID>
+                  <refListLength>0</refListLength>
+                  <hGrowNodeListLength>0</hGrowNodeListLength>
+                  <rsrcID>21019</rsrcID>
+                  </SL__arrayElement>
+                </partsList>
+              <typeDesc>TypeID(6)</typeDesc>
+              <MouseWheelSupport>0</MouseWheelSupport>
+              <StdNumMin>0</StdNumMin>
+              <StdNumMax>4294967295</StdNumMax>
+              <StdNumInc>0</StdNumInc>
+              </ddo>
+            </heap></part>

@@ -1,0 +1,108 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.VI/Set FP Scaling" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="SetScalingMode" /><TypeDesc Type="Void" Format="inline" Label="SetScalingMode" /><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline" Label="ScalingMode"><EnumLabel>No Scaling</EnumLabel>
+        <EnumLabel>Scale All Objects</EnumLabel>
+        <EnumLabel>Scale Single Object</EnumLabel>
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="ScalingMode" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0006" HasItem="0" Format="inline" Label="ScalableObj" /><TypeDesc Type="Void" Format="inline" Label="ScalableObj" /></types><heap><SL__arrayElement class="invokeNode" uid="97767">
+        <objFlags>33555076</objFlags>
+        <termList elements="10">
+          <SL__arrayElement class="term" uid="97769">
+            <dco class="hGrowCItem" uid="97771">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(5769)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97772">
+            <dco class="hGrowCItem" uid="97774">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(5770)</typeDesc>
+              <termBounds>(0, 71, 9, 84)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97780">
+            <dco class="hGrowCItem" uid="97773">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(5771)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97777">
+            <dco class="hGrowCItem" uid="97775">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(5772)</typeDesc>
+              <termBounds>(9, 71, 18, 84)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97781">
+            <dco class="invokeItem" uid="97785">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(5773)</typeDesc>
+              <termBounds>(18, 0, 34, 42)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97784">
+            <dco class="invokeItem" uid="97783">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(5774)</typeDesc>
+              <termBounds>(18, 42, 34, 84)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97731">
+            <dco class="invokeItem" uid="97671">
+              <typeDesc>TypeID(5775)</typeDesc>
+              <termBounds>(34, 0, 50, 42)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97733">
+            <dco class="invokeItem" uid="97736">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(5776)</typeDesc>
+              <termBounds>(34, 42, 50, 84)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97753">
+            <dco class="invokeItem" uid="97805">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(5777)</typeDesc>
+              <termBounds>(50, 0, 66, 42)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97765">
+            <dco class="invokeItem" uid="97764">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(5778)</typeDesc>
+              <termBounds>(50, 42, 66, 84)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(4480, 22767, 4547, 22851)</bounds>
+        <shortCount>970</shortCount>
+        <dcoList elements="6">
+          <SL__arrayElement uid="97785" />
+          <SL__arrayElement uid="97783" />
+          <SL__arrayElement uid="97671" />
+          <SL__arrayElement uid="97736" />
+          <SL__arrayElement uid="97805" />
+          <SL__arrayElement uid="97764" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="97771" />
+          <SL__arrayElement uid="97774" />
+          <SL__arrayElement uid="97773" />
+          <SL__arrayElement uid="97775" />
+          </permDCOList>
+        <nodeName>"VI"</nodeName>
+        <oMId>0009</oMId>
+        <methName>"Set FP Scaling"</methName>
+        <methCode>1028</methCode>
+        <invokeFlags>10000008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

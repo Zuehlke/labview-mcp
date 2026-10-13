@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1074" source="&lt;labview&gt;\resource\plugins\ExternalEditors\StateDiagramEditor\StateDiagramEditor\NI_SDE_PointRectToAngle.vi"><types><TypeDesc Type="NumInt16" Prop1="0" Format="inline" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="236">
+        <objFlags>65536</objFlags>
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="302">
+            <dco class="parm" uid="304">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(25)</typeDesc>
+              <dcoFiller>2</dcoFiller>
+              <termBounds>(0, 10, 21, 21)</termBounds>
+              <primIndex>107</primIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="303">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="306">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(26)</typeDesc>
+              <termBounds>(10, 0, 21, 10)</termBounds>
+              <primIndex>107</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="305">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="307">
+              <typeDesc>TypeID(27)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(0, 0, 10, 10)</termBounds>
+              <primIndex>107</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(175, 327, 207, 359)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1074</primResID>
+        <primIndex>107</primIndex>
+        </SL__arrayElement>
+      </heap></part>

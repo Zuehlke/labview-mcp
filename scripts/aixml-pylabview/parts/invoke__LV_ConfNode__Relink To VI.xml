@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.ConfNode/Relink To VI" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4045" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4045" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Relink To VI" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4011" HasItem="0" Format="inline" Label="Relink To VI" /></types><heap><SL__arrayElement class="invokeNode" uid="110341">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="110346">
+            <dco class="hGrowCItem" uid="110344">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(4727)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="110349">
+            <dco class="hGrowCItem" uid="110347">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(4728)</typeDesc>
+              <termBounds>(0, 83, 9, 96)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="110353">
+            <dco class="hGrowCItem" uid="110351">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(4729)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="110356">
+            <dco class="hGrowCItem" uid="110354">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(4730)</typeDesc>
+              <termBounds>(9, 83, 18, 96)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="110363">
+            <dco class="invokeItem" uid="110360">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(4731)</typeDesc>
+              <termBounds>(18, 0, 34, 48)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="110367">
+            <dco class="invokeItem" uid="110364">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(4732)</typeDesc>
+              <termBounds>(18, 48, 34, 96)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1138, 18747, 1173, 18843)</bounds>
+        <shortCount>794</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="110360" />
+          <SL__arrayElement uid="110364" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="110344" />
+          <SL__arrayElement uid="110347" />
+          <SL__arrayElement uid="110351" />
+          <SL__arrayElement uid="110354" />
+          </permDCOList>
+        <nodeName>"ConfNode"</nodeName>
+        <oMId>0082</oMId>
+        <methName>"Relink To VI"</methName>
+        <methCode>104194048</methCode>
+        <invokeFlags>1000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

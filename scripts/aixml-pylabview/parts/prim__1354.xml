@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1354" source="&lt;labview&gt;\resource\plugins\ExternalEditors\StateDiagramEditor\StateDiagramEditor.vit"><types><TypeDesc Type="Cluster" Format="inline" Label="Top Left Corner"><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="Horizontal" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="Vertical" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="Show" /></types><heap><SL__arrayElement class="prim" uid="11598">
+                        <objFlags>640</objFlags>
+                        <termList elements="2">
+                          <SL__arrayElement class="term" uid="11602">
+                            <dco class="parm" uid="11604">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(170)</typeDesc>
+                              <termBounds>(15, 0, 30, 30)</termBounds>
+                              <primIndex>307</primIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="11603">
+                            <dco class="parm" uid="11605">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(171)</typeDesc>
+                              <termBounds>(0, 0, 15, 30)</termBounds>
+                              <primIndex>307</primIndex>
+                              <parmIndex>1</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(72, 197, 104, 229)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>720900</clumpNum>
+                        <primResID>1354</primResID>
+                        <primIndex>307</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

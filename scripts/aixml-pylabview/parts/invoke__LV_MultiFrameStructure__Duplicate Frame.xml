@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.MultiFrameStructure/Duplicate Frame" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4016" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4016" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Duplicate Frame" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4000" HasItem="0" Format="inline" Label="Duplicate Frame" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Frame Index" /><TypeDesc Type="Void" Format="inline" Label="Frame Index" /></types><heap><SL__arrayElement class="invokeNode" uid="77133">
+        <objFlags>644</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="77135">
+            <dco class="hGrowCItem" uid="77137">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(10779)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="77138">
+            <dco class="hGrowCItem" uid="77140">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(10780)</typeDesc>
+              <termBounds>(0, 83, 9, 96)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="77146">
+            <dco class="hGrowCItem" uid="77139">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(10781)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="77143">
+            <dco class="hGrowCItem" uid="77141">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(10782)</typeDesc>
+              <termBounds>(9, 83, 18, 96)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="77147">
+            <dco class="invokeItem" uid="77151">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(10783)</typeDesc>
+              <termBounds>(18, 0, 34, 48)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="77150">
+            <dco class="invokeItem" uid="77149">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(10784)</typeDesc>
+              <termBounds>(18, 48, 34, 96)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="76999">
+            <dco class="invokeItem" uid="77030">
+              <typeDesc>TypeID(10785)</typeDesc>
+              <termBounds>(34, 0, 50, 48)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="77051">
+            <dco class="invokeItem" uid="77053">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(10786)</typeDesc>
+              <termBounds>(34, 48, 50, 96)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1127, 17697, 1178, 17793)</bounds>
+        <shortCount>2022</shortCount>
+        <dcoList elements="4">
+          <SL__arrayElement uid="77151" />
+          <SL__arrayElement uid="77149" />
+          <SL__arrayElement uid="77030" />
+          <SL__arrayElement uid="77053" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="77137" />
+          <SL__arrayElement uid="77140" />
+          <SL__arrayElement uid="77139" />
+          <SL__arrayElement uid="77141" />
+          </permDCOList>
+        <nodeName>"MFStruct"</nodeName>
+        <oMId>007B</oMId>
+        <methName>"Duplicate Frame"</methName>
+        <methCode>104215554</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

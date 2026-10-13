@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdRefNum/ctl/Refnum.UsrDefined" source="&lt;labview&gt;\resource\Framework\Providers\Builds\Package\NIPKG\Shortcuts\NIPKG\Add to Instructions File.vi"><types><TypeDesc Type="Refnum" RefType="UsrDefined" Ident="XML_Node" FirstClient="0" TypeName="DOMUserDefRef" Format="inline" Label="node in"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Refnum" RefType="UsrDefined" Ident="XML_Node" FirstClient="0" TypeName="DOMUserDefRef" Format="inline" Label="node in"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc></types><heap><SL__arrayElement class="fPDCO" uid="207">
+          <objFlags>65664</objFlags>
+          <typeDesc>TypeID(7)</typeDesc>
+          <ddo class="stdRefNum" uid="6">
+            <bounds>(162, 10, 207, 54)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="191">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 1, 17, 44)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <flags>512</flags>
+                  <mode>17412</mode>
+                  <text>"node in"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="192">
+                <objFlags>2097</objFlags>
+                <partID>1</partID>
+                <masterPart>9</masterPart>
+                <bounds>(27, 1, 43, 32)</bounds>
+                <image class="Image">
+                  <ImageResID>-2098</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="198">
+                <objFlags>3383</objFlags>
+                <partID>9</partID>
+                <howGrow>32</howGrow>
+                <bounds>(19, 0, 45, 34)</bounds>
+                <image class="Image">
+                  <ImageResID>-276</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="200">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>3428</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <description class="cLStrObj" uid="189">
+              <strings elements="1">
+                <SL__arrayElement>"&lt;B&gt;node&lt;/B&gt; is the XML Parser Node class refnum that you want to close."</SL__arrayElement>
+                </strings>
+              </description>
+            <typeDesc>TypeID(8)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>9</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

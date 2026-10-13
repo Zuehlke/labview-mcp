@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.WaveformGraph/RemoveDataSocket" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0018" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0018" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Remove DataSocket" /><TypeDesc Type="Void" Format="inline" Label="Remove DataSocket" /></types><heap><SL__arrayElement class="invokeNode" uid="26823">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="26824">
+            <dco class="hGrowCItem" uid="26826">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(23019)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="26827">
+            <dco class="hGrowCItem" uid="26829">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(23020)</typeDesc>
+              <termBounds>(0, 101, 9, 114)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="26835">
+            <dco class="hGrowCItem" uid="26828">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(23021)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="26832">
+            <dco class="hGrowCItem" uid="26830">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(23022)</typeDesc>
+              <termBounds>(9, 101, 18, 114)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="26836">
+            <dco class="invokeItem" uid="26841">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(23023)</typeDesc>
+              <termBounds>(18, 0, 34, 57)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="26839">
+            <dco class="invokeItem" uid="26837">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(23024)</typeDesc>
+              <termBounds>(18, 57, 34, 114)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1421, 6148, 1456, 6262)</bounds>
+        <shortCount>4722</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="26841" />
+          <SL__arrayElement uid="26837" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="26826" />
+          <SL__arrayElement uid="26829" />
+          <SL__arrayElement uid="26828" />
+          <SL__arrayElement uid="26830" />
+          </permDCOList>
+        <nodeName>"WFGraph"</nodeName>
+        <oMId>002E</oMId>
+        <methName>"RemoveDataSocket"</methName>
+        <methCode>104012807</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

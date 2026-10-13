@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TreeControl/Navigate Tree%3AGet Next" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0042" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0042" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Navigate Tree:Get Next Item" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Navigate Tree:Get Next Item" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Tag" /><TypeDesc Type="Void" Format="inline" Label="Tag" /></types><heap><SL__arrayElement class="invokeNode" uid="50338">
+        <objFlags>644</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="50339">
+            <dco class="hGrowCItem" uid="50341">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(17079)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50342">
+            <dco class="hGrowCItem" uid="50344">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(17080)</typeDesc>
+              <termBounds>(0, 115, 9, 128)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50350">
+            <dco class="hGrowCItem" uid="50343">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(17081)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50347">
+            <dco class="hGrowCItem" uid="50345">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(17082)</typeDesc>
+              <termBounds>(9, 115, 18, 128)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50351">
+            <dco class="invokeItem" uid="50355">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(17083)</typeDesc>
+              <termBounds>(18, 0, 34, 64)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50354">
+            <dco class="invokeItem" uid="50353">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(17084)</typeDesc>
+              <termBounds>(18, 64, 34, 128)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50207">
+            <dco class="invokeItem" uid="50272">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(17085)</typeDesc>
+              <termBounds>(34, 0, 50, 64)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50274">
+            <dco class="invokeItem" uid="50293">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(17086)</typeDesc>
+              <termBounds>(34, 64, 50, 128)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(2415, 10349, 2466, 10477)</bounds>
+        <shortCount>3356</shortCount>
+        <dcoList elements="4">
+          <SL__arrayElement uid="50355" />
+          <SL__arrayElement uid="50353" />
+          <SL__arrayElement uid="50272" />
+          <SL__arrayElement uid="50293" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="50341" />
+          <SL__arrayElement uid="50344" />
+          <SL__arrayElement uid="50343" />
+          <SL__arrayElement uid="50345" />
+          </permDCOList>
+        <nodeName>"Tree"</nodeName>
+        <oMId>004A</oMId>
+        <methName>"Navigate Tree:Get Next"</methName>
+        <methCode>1969895424</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

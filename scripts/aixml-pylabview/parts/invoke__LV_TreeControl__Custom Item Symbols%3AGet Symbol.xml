@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TreeControl/Custom Item Symbols%3AGet Symbol" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0042" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0042" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Custom Glyphs:Get Glyph " /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Custom Glyphs:Get Glyph "><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="image type" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="image depth" /><TypeDesc Type="Array" Format="inline" Label="image"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="mask"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt8" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="colors"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Rectangle"><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="left" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="top" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="right" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="bottom" /></TypeDesc></TypeDesc><Label Text="imagedata.ctl" />
+        </TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="index" /><TypeDesc Type="Void" Format="inline" Label="index" /></types><heap><SL__arrayElement class="invokeNode" uid="49846">
+        <objFlags>644</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="49847">
+            <dco class="hGrowCItem" uid="49849">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(17223)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49850">
+            <dco class="hGrowCItem" uid="49852">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(17224)</typeDesc>
+              <termBounds>(0, 169, 9, 182)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49858">
+            <dco class="hGrowCItem" uid="49851">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(17225)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49855">
+            <dco class="hGrowCItem" uid="49853">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(17226)</typeDesc>
+              <termBounds>(9, 169, 18, 182)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49859">
+            <dco class="invokeItem" uid="49864">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(17227)</typeDesc>
+              <termBounds>(18, 0, 34, 91)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49862">
+            <dco class="invokeItem" uid="49860">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(17228)</typeDesc>
+              <termBounds>(18, 91, 34, 182)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49552">
+            <dco class="invokeItem" uid="49723">
+              <typeDesc>TypeID(17229)</typeDesc>
+              <termBounds>(34, 0, 50, 91)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49754">
+            <dco class="invokeItem" uid="49727">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(17230)</typeDesc>
+              <termBounds>(34, 91, 50, 182)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1489, 10344, 1540, 10526)</bounds>
+        <shortCount>3384</shortCount>
+        <dcoList elements="4">
+          <SL__arrayElement uid="49864" />
+          <SL__arrayElement uid="49860" />
+          <SL__arrayElement uid="49723" />
+          <SL__arrayElement uid="49727" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="49849" />
+          <SL__arrayElement uid="49852" />
+          <SL__arrayElement uid="49851" />
+          <SL__arrayElement uid="49853" />
+          </permDCOList>
+        <nodeName>"Tree"</nodeName>
+        <oMId>004A</oMId>
+        <methName>"Custom Item Symbols:Get Symbol"</methName>
+        <methCode>1969895439</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

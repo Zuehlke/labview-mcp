@@ -1,0 +1,365 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdRefNum/ind/Refnum.LVObjCtl.0x001D" source="&lt;labview&gt;\resource\Framework\Providers\ProjectFindDlg\subGetMRUStrings.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001D" HasItem="0" Format="inline" Label="MRU dup" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001D" HasItem="0" Format="inline" Label="MRU dup" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Combo Box" /></types><heap><SL__arrayElement class="fPDCO" uid="158">
+          <objFlags>66049</objFlags>
+          <typeDesc>TypeID(11)</typeDesc>
+          <ddo class="stdRefNum" uid="131">
+            <objFlags>1</objFlags>
+            <bounds>(63, 343, 128, 397)</bounds>
+            <partsList elements="5">
+              <SL__arrayElement class="label" uid="133">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 1, 17, 54)</bounds>
+                <image class="Image">
+                  <ImageResID>-619</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <flags>1536</flags>
+                  <mode>17412</mode>
+                  <text>"MRU dup"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="134">
+                <objFlags>2097</objFlags>
+                <partID>83</partID>
+                <masterPart>9</masterPart>
+                <bounds>(30, 2, 62, 34)</bounds>
+                <image class="Image">
+                  <ImageResID>0</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="multiCosm" uid="135">
+                <objFlags>2359</objFlags>
+                <partID>9</partID>
+                <howGrow>240</howGrow>
+                <bounds>(17, 0, 65, 36)</bounds>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                <table elements="2">
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-276</ImageResID>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="Image">
+                    <ImageResID>-240</ImageResID>
+                    </SL__arrayElement>
+                  </table>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="136">
+                <objFlags>2363</objFlags>
+                <partID>28</partID>
+                <masterPart>9</masterPart>
+                <howGrow>240</howGrow>
+                <bounds>(22, 5, 60, 31)</bounds>
+                <image class="Image">
+                  <ImageResID>-239</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="137">
+                <partID>66</partID>
+                <rsrcID>3419</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(12)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            <ddo class="stdComboBox" uid="138">
+              <objFlags>61</objFlags>
+              <howGrow>240</howGrow>
+              <bounds>(22, 5, 43, 168)</bounds>
+              <partsList elements="8">
+                <SL__arrayElement class="label" uid="140">
+                  <objFlags>1507658</objFlags>
+                  <partID>16</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>4096</howGrow>
+                  <bounds>(-19, 0, -2, 65)</bounds>
+                  <image class="Image">
+                    <ImageResID>-9</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <mode>1028</mode>
+                    <text>"Combo Box"</text>
+                    <bgColor>01000000</bgColor>
+                    </textRec>
+                  </SL__arrayElement>
+                <SL__arrayElement class="multiCosm" uid="261">
+                  <objFlags>2362</objFlags>
+                  <partID>15</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>4104</howGrow>
+                  <bounds>(3, 4, 15, 10)</bounds>
+                  <fgColor>00D9DADC</fgColor>
+                  <bgColor>007586A0</bgColor>
+                  <table elements="4">
+                    <SL__arrayElement class="Image">
+                      <ImageResID>-2104</ImageResID>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="Image">
+                      <ImageResID>-2105</ImageResID>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="Image">
+                      <ImageResID>-2106</ImageResID>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="Image">
+                      <ImageResID>-2107</ImageResID>
+                      </SL__arrayElement>
+                    </table>
+                  </SL__arrayElement>
+                <SL__arrayElement class="multiCosm" uid="141">
+                  <objFlags>2354</objFlags>
+                  <partID>79</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>194</howGrow>
+                  <bounds>(2, 144, 19, 161)</bounds>
+                  <bgColor>00B3B3B3</bgColor>
+                  <table elements="2">
+                    <SL__arrayElement class="Image">
+                      <ImageResID>-373</ImageResID>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="Image">
+                      <ImageResID>-374</ImageResID>
+                      </SL__arrayElement>
+                    </table>
+                  </SL__arrayElement>
+                <SL__arrayElement class="selLabel" uid="142">
+                  <objFlags>2099506</objFlags>
+                  <partID>11</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>240</howGrow>
+                  <bounds>(2, 6, 19, 143)</bounds>
+                  <image class="Image">
+                    <ImageResID>-10</ImageResID>
+                    </image>
+                  <fgColor>00B3B3B3</fgColor>
+                  <bgColor>00B3B3B3</bgColor>
+                  <textRec class="textHair">
+                    <mode>8389636</mode>
+                    <bgColor>00B3B3B3</bgColor>
+                    </textRec>
+                  <nVisItems>7</nVisItems>
+                  </SL__arrayElement>
+                <SL__arrayElement class="bigMultiCosm" uid="143">
+                  <objFlags>3379</objFlags>
+                  <partID>43</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>4288</howGrow>
+                  <bounds>(2, 2, 17, 4)</bounds>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <table elements="2">
+                    <SL__arrayElement class="SubCosm">
+                      <Bounds>(0, 0, 15, 2)</Bounds>
+                      <FGColor>01000000</FGColor>
+                      <BGColor>01000000</BGColor>
+                      <Image class="Image">
+                        <ImageResID>0</ImageResID>
+                        </Image>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="SubCosm">
+                      <Bounds>(0, 0, 15, 2)</Bounds>
+                      <FGColor>00FFFFFF</FGColor>
+                      <BGColor>00FFFFFF</BGColor>
+                      <Image class="Image">
+                        <ImageResID>-14</ImageResID>
+                        </Image>
+                      </SL__arrayElement>
+                    </table>
+                  </SL__arrayElement>
+                <SL__arrayElement class="cosm" uid="144">
+                  <objFlags>2323</objFlags>
+                  <partID>9</partID>
+                  <howGrow>240</howGrow>
+                  <bounds>(0, 0, 21, 163)</bounds>
+                  <image class="Image">
+                    <ImageResID>-9</ImageResID>
+                    </image>
+                  <fgColor>00B3B3B3</fgColor>
+                  <bgColor>00B3B3B3</bgColor>
+                  </SL__arrayElement>
+                <SL__arrayElement class="listbox" uid="145">
+                  <objFlags>2228492</objFlags>
+                  <partID>8004</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>240</howGrow>
+                  <bounds>(20, 0, 152, 163)</bounds>
+                  <partsList elements="7">
+                    <SL__arrayElement class="grid" uid="147">
+                      <objFlags>2232628</objFlags>
+                      <partID>100</partID>
+                      <masterPart>9</masterPart>
+                      <howGrow>240</howGrow>
+                      <bounds>(3, 3, 129, 144)</bounds>
+                      <partsList elements="1">
+                        <SL__arrayElement class="cosm" uid="149">
+                          <objFlags>2423</objFlags>
+                          <partID>28</partID>
+                          <howGrow>240</howGrow>
+                          <bounds>(0, 0, 126, 141)</bounds>
+                          <image class="Image">
+                            <ImageResID>-239</ImageResID>
+                            </image>
+                          <bgColor>00B3B3B3</bgColor>
+                          </SL__arrayElement>
+                        </partsList>
+                      <label class="label" uid="150">
+                        <objFlags>2364</objFlags>
+                        <partID>11</partID>
+                        <bounds>(-18, -3, -5, 17)</bounds>
+                        <image class="Image">
+                          <ImageResID>0</ImageResID>
+                          </image>
+                        <fgColor>00B3B3B3</fgColor>
+                        <bgColor>00B3B3B3</bgColor>
+                        <textRec class="textHair">
+                          <mode>8389632</mode>
+                          <bgColor>00B3B3B3</bgColor>
+                          </textRec>
+                        </label>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="cosm" uid="151">
+                      <objFlags>3446</objFlags>
+                      <partID>39</partID>
+                      <masterPart>9</masterPart>
+                      <howGrow>194</howGrow>
+                      <bounds>(3, 144, 129, 161)</bounds>
+                      <image class="Image">
+                        <ImageResID>-9</ImageResID>
+                        </image>
+                      <bgColor>00B3B3B3</bgColor>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="cosm" uid="152">
+                      <objFlags>3454</objFlags>
+                      <partID>38</partID>
+                      <masterPart>9</masterPart>
+                      <howGrow>56</howGrow>
+                      <bounds>(112, 3, 129, 144)</bounds>
+                      <image class="Image">
+                        <ImageResID>-9</ImageResID>
+                        </image>
+                      <bgColor>00B3B3B3</bgColor>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="cosm" uid="153">
+                      <objFlags>3447</objFlags>
+                      <partID>44</partID>
+                      <masterPart>9</masterPart>
+                      <howGrow>10</howGrow>
+                      <bounds>(112, 144, 128, 157)</bounds>
+                      <image class="Image">
+                        <ImageResID>-11</ImageResID>
+                        </image>
+                      <fgColor>00B3B3B3</fgColor>
+                      <bgColor>00B3B3B3</bgColor>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="cosm" uid="154">
+                      <objFlags>2389</objFlags>
+                      <partID>9</partID>
+                      <howGrow>240</howGrow>
+                      <bounds>(0, 0, 132, 163)</bounds>
+                      <image class="Image">
+                        <ImageResID>-33</ImageResID>
+                        </image>
+                      <fgColor>00B3B3B3</fgColor>
+                      <bgColor>00B3B3B3</bgColor>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="label" uid="155">
+                      <objFlags>1507598</objFlags>
+                      <partID>16</partID>
+                      <masterPart>9</masterPart>
+                      <howGrow>4096</howGrow>
+                      <bounds>(-19, 0, -2, 9)</bounds>
+                      <image class="Image">
+                        <ImageResID>-9</ImageResID>
+                        </image>
+                      <fgColor>01000000</fgColor>
+                      <bgColor>01000000</bgColor>
+                      <textRec class="textHair">
+                        <mode>1028</mode>
+                        <text>"&amp;#x00;"</text>
+                        <bgColor>01000000</bgColor>
+                        </textRec>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="annex" uid="156">
+                      <partID>66</partID>
+                      <rsrcID>21821</rsrcID>
+                      </SL__arrayElement>
+                    </partsList>
+                  <typeDesc>TypeID(13)</typeDesc>
+                  <MouseWheelSupport>3</MouseWheelSupport>
+                  <tableFlags>11792</tableFlags>
+                  <selectionColor>000000FF</selectionColor>
+                  <Tag027D>00EEEEEE</Tag027D>
+                  <attributeList elements="2">
+                    <SL__arrayElement class="TableAttribute">
+                      <cellPosRow>-2</cellPosRow>
+                      <cellPosCol>-2</cellPosCol>
+                      <font>0</font>
+                      <mode>0</mode>
+                      <fgColor>00000007</fgColor>
+                      <bgColor>00FFFFFF</bgColor>
+                      <width>51</width>
+                      <height>16</height>
+                      <flags>191</flags>
+                      <glyphIndex>0</glyphIndex>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="TableAttribute">
+                      <cellPosRow>-1</cellPosRow>
+                      <cellPosCol>-2</cellPosCol>
+                      <bgColor>00B3B3B3</bgColor>
+                      <flags>8</flags>
+                      </SL__arrayElement>
+                    </attributeList>
+                  <rowHeaders elements="0" />
+                  <columnHeaders elements="0" />
+                  <activeCell class="StorageRowCol">
+                    <row>0</row>
+                    <col>0</col>
+                    </activeCell>
+                  <listboxFlags>1</listboxFlags>
+                  <headerImage class="Image">
+                    <ImageResID>-12</ImageResID>
+                    </headerImage>
+                  <baseListboxItemStrings class="SL__multiDimArray">
+                    <multiDimArraySizes elements="2">
+                      <SL__arrayElement>0</SL__arrayElement>
+                      <SL__arrayElement>0</SL__arrayElement>
+                      </multiDimArraySizes>
+                    <multiDimArrayElems elements="0" />
+                    </baseListboxItemStrings>
+                  <baseListboxDoubleClickedRow>-2</baseListboxDoubleClickedRow>
+                  <baseListboxClickedColumnHeader>-2</baseListboxClickedColumnHeader>
+                  <baseListboxDragRow class="StorageRowCol">
+                    <row>-100</row>
+                    <col>-100</col>
+                    </baseListboxDragRow>
+                  <listboxClickedCell class="RelativeRowCol">
+                    <row>0</row>
+                    <col>0</col>
+                    </listboxClickedCell>
+                  <listboxDisabledItems elements="0" />
+                  <listboxGlyphColumns elements="0" />
+                  </SL__arrayElement>
+                <SL__arrayElement class="annex" uid="157">
+                  <partID>66</partID>
+                  <rsrcID>3304</rsrcID>
+                  </SL__arrayElement>
+                </partsList>
+              <typeDesc>TypeID(14)</typeDesc>
+              <MouseWheelSupport>2</MouseWheelSupport>
+              <selLabFlags>8215</selLabFlags>
+              <comboBoxIndex>0</comboBoxIndex>
+              <comboBoxValues elements="0" />
+              </ddo>
+            </ddo>
+          <conNum>3</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

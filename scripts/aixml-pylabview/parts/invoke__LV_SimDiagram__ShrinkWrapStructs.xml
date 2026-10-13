@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.SimDiagram/ShrinkWrapStructs" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4058" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4058" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="ShrinkWrapStructs" /><TypeDesc Type="Void" Format="inline" Label="ShrinkWrapStructs" /></types><heap><SL__arrayElement class="invokeNode" uid="55020">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="55024">
+            <dco class="hGrowCItem" uid="55022">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(16023)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="55028">
+            <dco class="hGrowCItem" uid="54991">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(16024)</typeDesc>
+              <termBounds>(0, 101, 9, 114)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="55026">
+            <dco class="hGrowCItem" uid="55029">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(16025)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="55030">
+            <dco class="hGrowCItem" uid="55027">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(16026)</typeDesc>
+              <termBounds>(9, 101, 18, 114)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="55039">
+            <dco class="invokeItem" uid="55032">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(16027)</typeDesc>
+              <termBounds>(18, 0, 34, 57)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="55035">
+            <dco class="invokeItem" uid="55041">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(16028)</typeDesc>
+              <termBounds>(18, 57, 34, 114)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1033, 11544, 1068, 11658)</bounds>
+        <shortCount>3118</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="55032" />
+          <SL__arrayElement uid="55041" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="55022" />
+          <SL__arrayElement uid="54991" />
+          <SL__arrayElement uid="55029" />
+          <SL__arrayElement uid="55027" />
+          </permDCOList>
+        <nodeName>"SimDiag"</nodeName>
+        <oMId>0052</oMId>
+        <methName>"ShrinkWrapStructs"</methName>
+        <methCode>104289283</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

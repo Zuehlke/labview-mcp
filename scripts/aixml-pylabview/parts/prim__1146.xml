@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1146" source="&lt;labview&gt;\resource\Channels\Accumulator Tag\FPGA.))Channel.vi"><types><TypeDesc Type="TypeDef" Flag1="0xD3F40C3D" Format="inline"><TypeDesc Type="NumFloat32" Nested="True" Prop1="0" Format="inline" /><Label Text="Accumulator Tag.lvlib" />
+        <Label Text="Element.ctl" />
+        </TypeDesc><TypeDesc Type="TypeDef" Flag1="0xD3F40C3D" Format="inline"><TypeDesc Type="NumFloat32" Nested="True" Prop1="0" Format="inline" /><Label Text="Accumulator Tag.lvlib" />
+        <Label Text="Element.ctl" />
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="605">
+                                <termList elements="2">
+                                  <SL__arrayElement class="term" uid="619">
+                                    <dco class="parm" uid="615">
+                                      <objFlags>1</objFlags>
+                                      <typeDesc>TypeID(62)</typeDesc>
+                                      <termBounds>(0, 13, 11, 26)</termBounds>
+                                      <primIndex>62</primIndex>
+                                      <inplace>2</inplace>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="622">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="620">
+                                      <typeDesc>TypeID(63)</typeDesc>
+                                      <termBounds>(0, 0, 11, 13)</termBounds>
+                                      <primIndex>62</primIndex>
+                                      <parmIndex>1</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </termList>
+                                <bounds>(101, 49, 133, 81)</bounds>
+                                <shortCount>2</shortCount>
+                                <clumpNum>458755</clumpNum>
+                                <primResID>1146</primResID>
+                                <primIndex>62</primIndex>
+                                </SL__arrayElement>
+                              </heap></part>

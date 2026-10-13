@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/stdRefNum/Refnum.Menu" source="&lt;labview&gt;\project\_LLBMgr User Interface.vi"><types><TypeDesc Type="Refnum" RefType="Menu" Format="inline" Label="popupMenu" /><TypeDesc Type="Refnum" RefType="Menu" Format="inline" Label="popupMenu" /></types><heap><SL__arrayElement class="term" uid="1820">
+            <objFlags>131137</objFlags>
+            <dco class="bDConstDCO" uid="1814">
+              <typeDesc>TypeID(1827)</typeDesc>
+              <dsw>4096</dsw>
+              <ddo class="stdRefNum" uid="1821">
+                <bounds>(509, -187, 536, -97)</bounds>
+                <partsList elements="4">
+                  <SL__arrayElement class="label" uid="1823">
+                    <objFlags>1507650</objFlags>
+                    <partID>16</partID>
+                    <masterPart>9</masterPart>
+                    <howGrow>4096</howGrow>
+                    <bounds>(6, 0, 23, 69)</bounds>
+                    <image class="Image">
+                      <ImageResID>-9</ImageResID>
+                      </image>
+                    <fgColor>01000000</fgColor>
+                    <bgColor>01000000</bgColor>
+                    <textRec class="textHair">
+                      <flags>1024</flags>
+                      <mode>17428</mode>
+                      <text>"popupMenu"</text>
+                      <bgColor>01000000</bgColor>
+                      </textRec>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="1824">
+                    <objFlags>2097</objFlags>
+                    <partID>1</partID>
+                    <masterPart>9</masterPart>
+                    <bounds>(-2, 64, 30, 96)</bounds>
+                    <image class="Image">
+                      <ImageResID>-7121</ImageResID>
+                      </image>
+                    <bgColor>00B3B3B3</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="cosm" uid="1825">
+                    <objFlags>2355</objFlags>
+                    <partID>9</partID>
+                    <bounds>(0, 69, 27, 90)</bounds>
+                    <image class="Image">
+                      <ImageResID>-676</ImageResID>
+                      </image>
+                    <fgColor>00B3B3B3</fgColor>
+                    <bgColor>00B3B3B3</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="annex" uid="1826">
+                    <partID>66</partID>
+                    <refListLength>0</refListLength>
+                    <hGrowNodeListLength>0</hGrowNodeListLength>
+                    <rsrcID>3413</rsrcID>
+                    </SL__arrayElement>
+                  </partsList>
+                <typeDesc>TypeID(1828)</typeDesc>
+                <MouseWheelSupport>0</MouseWheelSupport>
+                </ddo>
+              <ConstValue>0000000000</ConstValue>
+              </dco>
+            </SL__arrayElement>
+          </heap></part>

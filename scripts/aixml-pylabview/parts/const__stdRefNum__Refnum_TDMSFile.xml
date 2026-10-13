@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/stdRefNum/Refnum.TDMSFile" source="&lt;labview&gt;\ProjectTemplates\Source\Core\Continuous Measurement\Logging\Logging Message Loop.vi"><types><TypeDesc Type="Refnum" RefType="TDMSFile" Format="inline" Label="TDMS File Reference" /><TypeDesc Type="Refnum" RefType="TDMSFile" Format="inline" Label="TDMS File Reference" /></types><heap><SL__arrayElement class="term" uid="2636">
+                                    <objFlags>131136</objFlags>
+                                    <dco class="bDConstDCO" uid="2634">
+                                      <typeDesc>TypeID(254)</typeDesc>
+                                      <dsw>4096</dsw>
+                                      <ddo class="stdRefNum" uid="2626">
+                                        <objFlags>8196</objFlags>
+                                        <bounds>(78, 546, 105, 567)</bounds>
+                                        <partsList elements="4">
+                                          <SL__arrayElement class="label" uid="2628">
+                                            <objFlags>1507658</objFlags>
+                                            <partID>16</partID>
+                                            <masterPart>9</masterPart>
+                                            <howGrow>4096</howGrow>
+                                            <bounds>(-17, -90, 0, 21)</bounds>
+                                            <image class="Image">
+                                              <ImageResID>-619</ImageResID>
+                                              </image>
+                                            <fgColor>01000000</fgColor>
+                                            <bgColor>01000000</bgColor>
+                                            <textRec class="textHair">
+                                              <mode>17428</mode>
+                                              <text>"TDMS File Reference"</text>
+                                              <bgColor>01000000</bgColor>
+                                              </textRec>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="cosm" uid="2629">
+                                            <objFlags>2097</objFlags>
+                                            <partID>1</partID>
+                                            <masterPart>9</masterPart>
+                                            <bounds>(18, 1, 26, 20)</bounds>
+                                            <image class="Image">
+                                              <ImageResID>-2101</ImageResID>
+                                              </image>
+                                            <bgColor>00B3B3B3</bgColor>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="cosm" uid="2631">
+                                            <objFlags>2355</objFlags>
+                                            <partID>9</partID>
+                                            <bounds>(0, 0, 27, 21)</bounds>
+                                            <image class="Image">
+                                              <ImageResID>-676</ImageResID>
+                                              </image>
+                                            <fgColor>00B3B3B3</fgColor>
+                                            <bgColor>00B3B3B3</bgColor>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="annex" uid="2632">
+                                            <partID>66</partID>
+                                            <rsrcID>3477</rsrcID>
+                                            </SL__arrayElement>
+                                          </partsList>
+                                        <typeDesc>TypeID(255)</typeDesc>
+                                        <MouseWheelSupport>0</MouseWheelSupport>
+                                        </ddo>
+                                      <ConstValue>0000000000</ConstValue>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </heap></part>

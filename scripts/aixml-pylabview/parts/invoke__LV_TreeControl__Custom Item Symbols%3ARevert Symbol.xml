@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TreeControl/Custom Item Symbols%3ARevert Symbol" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0042" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0042" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Custom Glyphs:RevertGlyph" /><TypeDesc Type="Void" Format="inline" Label="Custom Glyphs:RevertGlyph" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="index" /><TypeDesc Type="Void" Format="inline" Label="index" /></types><heap><SL__arrayElement class="invokeNode" uid="49897">
+        <objFlags>644</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="49875">
+            <dco class="hGrowCItem" uid="49899">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(17209)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49900">
+            <dco class="hGrowCItem" uid="49902">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(17210)</typeDesc>
+              <termBounds>(0, 183, 9, 196)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49909">
+            <dco class="hGrowCItem" uid="49901">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(17211)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49906">
+            <dco class="hGrowCItem" uid="49904">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(17212)</typeDesc>
+              <termBounds>(9, 183, 18, 196)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49910">
+            <dco class="invokeItem" uid="49914">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(17213)</typeDesc>
+              <termBounds>(18, 0, 34, 98)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49913">
+            <dco class="invokeItem" uid="49912">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(17214)</typeDesc>
+              <termBounds>(18, 98, 34, 196)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49724">
+            <dco class="invokeItem" uid="49730">
+              <typeDesc>TypeID(17215)</typeDesc>
+              <termBounds>(34, 0, 50, 98)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49770">
+            <dco class="invokeItem" uid="49731">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(17216)</typeDesc>
+              <termBounds>(34, 98, 50, 196)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1572, 10344, 1623, 10540)</bounds>
+        <shortCount>3380</shortCount>
+        <dcoList elements="4">
+          <SL__arrayElement uid="49914" />
+          <SL__arrayElement uid="49912" />
+          <SL__arrayElement uid="49730" />
+          <SL__arrayElement uid="49731" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="49899" />
+          <SL__arrayElement uid="49902" />
+          <SL__arrayElement uid="49901" />
+          <SL__arrayElement uid="49904" />
+          </permDCOList>
+        <nodeName>"Tree"</nodeName>
+        <oMId>004A</oMId>
+        <methName>"Custom Item Symbols:Revert Symbol"</methName>
+        <methCode>1969895443</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

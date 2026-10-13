@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.RadioButtonsControl/Create Control Ref" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0048" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0048" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Create Control Ref" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4025" HasItem="0" Format="inline" Label="Create Control Ref" /></types><heap><SL__arrayElement class="invokeNode" uid="20850">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="20852">
+            <dco class="hGrowCItem" uid="20854">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(24479)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="20855">
+            <dco class="hGrowCItem" uid="20857">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(24480)</typeDesc>
+              <termBounds>(0, 121, 9, 134)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="20863">
+            <dco class="hGrowCItem" uid="20856">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(24481)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="20860">
+            <dco class="hGrowCItem" uid="20858">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(24482)</typeDesc>
+              <termBounds>(9, 121, 18, 134)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="20864">
+            <dco class="invokeItem" uid="20868">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(24483)</typeDesc>
+              <termBounds>(18, 0, 34, 67)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="20867">
+            <dco class="invokeItem" uid="20866">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(24484)</typeDesc>
+              <termBounds>(18, 67, 34, 134)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1104, 5075, 1139, 5209)</bounds>
+        <shortCount>5060</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="20868" />
+          <SL__arrayElement uid="20866" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="20854" />
+          <SL__arrayElement uid="20857" />
+          <SL__arrayElement uid="20856" />
+          <SL__arrayElement uid="20858" />
+          </permDCOList>
+        <nodeName>"RadioBtnsControl"</nodeName>
+        <oMId>0027</oMId>
+        <methName>"Create Control Ref"</methName>
+        <methCode>104012801</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

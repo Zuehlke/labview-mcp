@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/scenegraphdisplay/ind/Refnum.LVObjCtl" source="&lt;labview&gt;\examples\Mathematics\Differential Equations - PDE\PDE Flexible Element.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0068" HasItem="0" Format="inline" Label="Solution on Uniform Grid" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0068" HasItem="0" Format="inline" Label="Solution on Uniform Grid" /></types><heap><SL__arrayElement class="fPDCO" uid="945">
+          <objFlags>1</objFlags>
+          <typeDesc>TypeID(4)</typeDesc>
+          <dsw>2048</dsw>
+          <ddo class="scenegraphdisplay" uid="8">
+            <objFlags>1</objFlags>
+            <bounds>(257, 516, 516, 756)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="37">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 0, 17, 136)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <flags>512</flags>
+                  <mode>17412</mode>
+                  <text>"Solution on Uniform Grid"</text>
+                  <bgColor>01000000</bgColor>
+                  <fr elements="1">
+                    <SL__arrayElement class="fontRun">
+                      <fontcolor>0100000C</fontcolor>
+                      </SL__arrayElement>
+                    </fr>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="sceneGraphDisplayPart" uid="38">
+                <objFlags>2354</objFlags>
+                <partID>116</partID>
+                <masterPart>9</masterPart>
+                <howGrow>240</howGrow>
+                <bounds>(22, 3, 256, 237)</bounds>
+                <image class="Image">
+                  <ImageResID>-10</ImageResID>
+                  </image>
+                <fgColor>00FFFFFF</fgColor>
+                <bgColor>00FFFFFF</bgColor>
+                <sceneView class="SceneView">
+                  <ModelView elements="16">
+                    <SL__arrayElement>3F800000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>3F800000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>3F800000</SL__arrayElement>
+                    <SL__arrayElement>C141098A</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>3F800000</SL__arrayElement>
+                    </ModelView>
+                  <Projection elements="16">
+                    <SL__arrayElement>3F800000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>80000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>3F800000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>80000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>B951BC76</SL__arrayElement>
+                    <SL__arrayElement>BF80068E</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>00000000</SL__arrayElement>
+                    <SL__arrayElement>3F800000</SL__arrayElement>
+                    </Projection>
+                  <BackgroundColor class="SceneColor">
+                    <red>00000000</red>
+                    <green>00000000</green>
+                    <blue>00000000</blue>
+                    <alpha>3F800000</alpha>
+                    </BackgroundColor>
+                  <CameraController>03</CameraController>
+                  <AutoProjection>02</AutoProjection>
+                  <Zoom>C141098A</Zoom>
+                  <EyePoint class="SceneEyePoint">
+                    <eyePoint_X>00000000</eyePoint_X>
+                    <eyePoint_Y>00000000</eyePoint_Y>
+                    <eyePoint_Z>4141098A</eyePoint_Z>
+                    </EyePoint>
+                  </sceneView>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="41">
+                <objFlags>67927</objFlags>
+                <partID>9</partID>
+                <howGrow>240</howGrow>
+                <bounds>(19, 0, 259, 240)</bounds>
+                <image class="Image">
+                  <ImageResID>-33</ImageResID>
+                  </image>
+                <fgColor>00BFBFBF</fgColor>
+                <bgColor>00BFBFBF</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="43">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>23776</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(5)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>-1</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

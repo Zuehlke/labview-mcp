@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.ClusterConstant/GetPropertyCallData" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4009" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4009" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="GetPropertyCallData" /><TypeDesc Type="LVVariant" Format="inline" Label="GetPropertyCallData" /></types><heap><SL__arrayElement class="invokeNode" uid="6991">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="6993">
+            <dco class="hGrowCItem" uid="6995">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(27777)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="6996">
+            <dco class="hGrowCItem" uid="6998">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(27778)</typeDesc>
+              <termBounds>(0, 113, 9, 126)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="7003">
+            <dco class="hGrowCItem" uid="6997">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(27779)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="7000">
+            <dco class="hGrowCItem" uid="6999">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(27780)</typeDesc>
+              <termBounds>(9, 113, 18, 126)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="7004">
+            <dco class="invokeItem" uid="7008">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(27781)</typeDesc>
+              <termBounds>(18, 0, 34, 63)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="7007">
+            <dco class="invokeItem" uid="7006">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(27782)</typeDesc>
+              <termBounds>(18, 63, 34, 126)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(197, 1634, 232, 1760)</bounds>
+        <shortCount>5804</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="7008" />
+          <SL__arrayElement uid="7006" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="6995" />
+          <SL__arrayElement uid="6998" />
+          <SL__arrayElement uid="6997" />
+          <SL__arrayElement uid="6999" />
+          </permDCOList>
+        <nodeName>"ClustCnst"</nodeName>
+        <oMId>0010</oMId>
+        <methName>"GetPropertyCallData"</methName>
+        <methCode>103969801</methCode>
+        <invokeFlags>08042000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

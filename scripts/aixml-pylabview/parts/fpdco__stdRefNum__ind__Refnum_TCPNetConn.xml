@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdRefNum/ind/Refnum.TCPNetConn" source="&lt;labview&gt;\resource\Framework\Providers\Builds\RemoteWindows\Protocol\RWT_Protocol_Launch_App_Core.vi"><types><TypeDesc Type="Refnum" RefType="TCPNetConn" Format="inline" Label="conn out" /><TypeDesc Type="Refnum" RefType="TCPNetConn" Format="inline" Label="conn out" /></types><heap><SL__arrayElement class="fPDCO" uid="210">
+          <objFlags>66049</objFlags>
+          <typeDesc>TypeID(19)</typeDesc>
+          <ddo class="stdRefNum" uid="202">
+            <objFlags>1</objFlags>
+            <bounds>(19, 505, 63, 557)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="204">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 1, 17, 52)</bounds>
+                <image class="Image">
+                  <ImageResID>-619</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <mode>17412</mode>
+                  <text>"conn out"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="205">
+                <objFlags>2101</objFlags>
+                <partID>1</partID>
+                <masterPart>9</masterPart>
+                <bounds>(15, -5, 47, 27)</bounds>
+                <image class="Image">
+                  <ImageResID>-7094</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="206">
+                <objFlags>2359</objFlags>
+                <partID>9</partID>
+                <bounds>(17, 0, 44, 21)</bounds>
+                <image class="Image">
+                  <ImageResID>-276</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="207">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>3407</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(20)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>3</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

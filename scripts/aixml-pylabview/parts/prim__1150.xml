@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1150" source="&lt;labview&gt;\resource\Framework\Providers\Builds\AppBuilder\AB_UI_Page_Icon.vi"><types><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="4376">
+                                                <termList elements="3">
+                                                  <SL__arrayElement class="term" uid="4386">
+                                                    <objFlags>294912</objFlags>
+                                                    <dco class="parm" uid="4387">
+                                                      <typeDesc>TypeID(384)</typeDesc>
+                                                      <dsw>1024</dsw>
+                                                      <termBounds>(0, 0, 28, 14)</termBounds>
+                                                      <primIndex>68</primIndex>
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="4390">
+                                                    <objFlags>1</objFlags>
+                                                    <dco class="parm" uid="4391">
+                                                      <objFlags>1</objFlags>
+                                                      <typeDesc>TypeID(385)</typeDesc>
+                                                      <termBounds>(0, 14, 14, 28)</termBounds>
+                                                      <primIndex>68</primIndex>
+                                                      <parmIndex>1</parmIndex>
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="4393">
+                                                    <objFlags>1</objFlags>
+                                                    <dco class="parm" uid="4394">
+                                                      <objFlags>1</objFlags>
+                                                      <typeDesc>TypeID(386)</typeDesc>
+                                                      <termBounds>(14, 14, 28, 28)</termBounds>
+                                                      <primIndex>68</primIndex>
+                                                      <parmIndex>2</parmIndex>
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  </termList>
+                                                <bounds>(47, 93, 79, 125)</bounds>
+                                                <shortCount>4</shortCount>
+                                                <clumpNum>5636103</clumpNum>
+                                                <primResID>1150</primResID>
+                                                <primIndex>68</primIndex>
+                                                </SL__arrayElement>
+                                              </heap></part>

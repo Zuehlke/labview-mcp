@@ -1,0 +1,105 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/%2ENET%2EConvert Obj To LV Variant" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Convert .NET Object To LV Variant" /><TypeDesc Type="LVVariant" Format="inline" Label="Convert .NET Object To LV Variant" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Object" /><TypeDesc Type="Void" Format="inline" Label="Object" /><TypeDesc Type="Void" Format="inline" Label="Err Msg" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Err Msg" /></types><heap><SL__arrayElement class="invokeNode" uid="170038">
+        <objFlags>33555076</objFlags>
+        <termList elements="10">
+          <SL__arrayElement class="term" uid="170043">
+            <dco class="hGrowCItem" uid="170041">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(63)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="170046">
+            <dco class="hGrowCItem" uid="170044">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(64)</typeDesc>
+              <termBounds>(0, 157, 9, 170)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="170049">
+            <dco class="hGrowCItem" uid="170047">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(65)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="170052">
+            <dco class="hGrowCItem" uid="170050">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(66)</typeDesc>
+              <termBounds>(9, 157, 18, 170)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="170059">
+            <dco class="invokeItem" uid="170056">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(67)</typeDesc>
+              <termBounds>(18, 0, 34, 85)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="170063">
+            <dco class="invokeItem" uid="170060">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(68)</typeDesc>
+              <termBounds>(18, 85, 34, 170)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="170067">
+            <dco class="invokeItem" uid="170065">
+              <typeDesc>TypeID(69)</typeDesc>
+              <termBounds>(34, 0, 50, 85)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="170071">
+            <dco class="invokeItem" uid="170069">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(70)</typeDesc>
+              <termBounds>(34, 85, 50, 170)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="170075">
+            <dco class="invokeItem" uid="170073">
+              <objFlags>393216</objFlags>
+              <typeDesc>TypeID(71)</typeDesc>
+              <termBounds>(50, 0, 66, 85)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="170079">
+            <dco class="invokeItem" uid="170077">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(72)</typeDesc>
+              <termBounds>(50, 85, 66, 170)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(2067, -49, 2134, 121)</bounds>
+        <shortCount>10</shortCount>
+        <dcoList elements="6">
+          <SL__arrayElement uid="170056" />
+          <SL__arrayElement uid="170060" />
+          <SL__arrayElement uid="170065" />
+          <SL__arrayElement uid="170069" />
+          <SL__arrayElement uid="170073" />
+          <SL__arrayElement uid="170077" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="170041" />
+          <SL__arrayElement uid="170044" />
+          <SL__arrayElement uid="170047" />
+          <SL__arrayElement uid="170050" />
+          </permDCOList>
+        <nodeName>"App"</nodeName>
+        <oMId>0008</oMId>
+        <methName>".NET.Convert Obj To LV Variant"</methName>
+        <methCode>2061</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

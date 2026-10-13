@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1421" source="&lt;labview&gt;\resource\Framework\Providers\Common\provcom_Callback_IsItemBackedOnDisk.vi"><types><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="type" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="path" /></types><heap><SL__arrayElement class="prim" uid="502">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="577">
+                    <dco class="parm" uid="578">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(48)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>195</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="580">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="581">
+                      <typeDesc>TypeID(49)</typeDesc>
+                      <termBounds>(0, 0, 21, 10)</termBounds>
+                      <primIndex>195</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(16, 257, 48, 289)</bounds>
+                <shortCount>10</shortCount>
+                <clumpNum>458756</clumpNum>
+                <primResID>1421</primResID>
+                <primIndex>195</primIndex>
+                </SL__arrayElement>
+              </heap></part>

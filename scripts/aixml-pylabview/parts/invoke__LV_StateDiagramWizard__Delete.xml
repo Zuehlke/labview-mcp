@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.StateDiagramWizard/Delete" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4047" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4047" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Delete" /><TypeDesc Type="Void" Format="inline" Label="Delete" /></types><heap><SL__arrayElement class="invokeNode" uid="94283">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="94285">
+            <dco class="hGrowCItem" uid="94287">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(6669)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="94288">
+            <dco class="hGrowCItem" uid="94290">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(6670)</typeDesc>
+              <termBounds>(0, 99, 9, 112)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="94300">
+            <dco class="hGrowCItem" uid="94289">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(6671)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="94297">
+            <dco class="hGrowCItem" uid="94296">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(6672)</typeDesc>
+              <termBounds>(9, 99, 18, 112)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="94301">
+            <dco class="invokeItem" uid="94305">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(6673)</typeDesc>
+              <termBounds>(18, 0, 34, 56)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="94304">
+            <dco class="invokeItem" uid="94303">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(6674)</typeDesc>
+              <termBounds>(18, 56, 34, 112)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(114, 22648, 149, 22760)</bounds>
+        <shortCount>1142</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="94305" />
+          <SL__arrayElement uid="94303" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="94287" />
+          <SL__arrayElement uid="94290" />
+          <SL__arrayElement uid="94289" />
+          <SL__arrayElement uid="94296" />
+          </permDCOList>
+        <nodeName>"StateDiagWiz"</nodeName>
+        <oMId>0096</oMId>
+        <methName>"Delete"</methName>
+        <methCode>103969792</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

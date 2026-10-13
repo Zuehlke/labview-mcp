@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.TreeControl/Edit Tree Items%3ADelete" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0042" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0042" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Edit Tree Items:Delete" /><TypeDesc Type="Void" Format="inline" Label="Edit Tree Items:Delete" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="tag" /><TypeDesc Type="Void" Format="inline" Label="tag" /><TypeDesc Type="Boolean" Format="inline" Label="Delete Children" /><TypeDesc Type="Void" Format="inline" Label="Delete Children" /></types><heap><SL__arrayElement class="invokeNode" uid="50124">
+        <objFlags>644</objFlags>
+        <termList elements="10">
+          <SL__arrayElement class="term" uid="50126">
+            <dco class="hGrowCItem" uid="50128">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(17135)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50129">
+            <dco class="hGrowCItem" uid="50131">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(17136)</typeDesc>
+              <termBounds>(0, 109, 9, 122)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50137">
+            <dco class="hGrowCItem" uid="50130">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(17137)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50134">
+            <dco class="hGrowCItem" uid="50132">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(17138)</typeDesc>
+              <termBounds>(9, 109, 18, 122)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50138">
+            <dco class="invokeItem" uid="50143">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(17139)</typeDesc>
+              <termBounds>(18, 0, 34, 61)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50142">
+            <dco class="invokeItem" uid="50141">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(17140)</typeDesc>
+              <termBounds>(18, 61, 34, 122)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="49964">
+            <dco class="invokeItem" uid="49967">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(17141)</typeDesc>
+              <termBounds>(34, 0, 50, 61)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50055">
+            <dco class="invokeItem" uid="50088">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(17142)</typeDesc>
+              <termBounds>(34, 61, 50, 122)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50087">
+            <dco class="invokeItem" uid="50112">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(17143)</typeDesc>
+              <termBounds>(50, 0, 66, 61)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="50117">
+            <dco class="invokeItem" uid="50116">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(17144)</typeDesc>
+              <termBounds>(50, 61, 66, 122)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(2035, 10348, 2102, 10470)</bounds>
+        <shortCount>3366</shortCount>
+        <dcoList elements="6">
+          <SL__arrayElement uid="50143" />
+          <SL__arrayElement uid="50141" />
+          <SL__arrayElement uid="49967" />
+          <SL__arrayElement uid="50088" />
+          <SL__arrayElement uid="50112" />
+          <SL__arrayElement uid="50116" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="50128" />
+          <SL__arrayElement uid="50131" />
+          <SL__arrayElement uid="50130" />
+          <SL__arrayElement uid="50132" />
+          </permDCOList>
+        <nodeName>"Tree"</nodeName>
+        <oMId>004A</oMId>
+        <methName>"Edit Tree Items:Delete"</methName>
+        <methCode>1969895427</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

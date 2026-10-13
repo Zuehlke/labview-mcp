@@ -1,0 +1,104 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.PageSelector/Add Page" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0035" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0035" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Add Page" /><TypeDesc Type="Void" Format="inline" Label="Add Page" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Page" /><TypeDesc Type="Void" Format="inline" Label="Page" /><TypeDesc Type="Boolean" Format="inline" Label="After" /><TypeDesc Type="Void" Format="inline" Label="After" /></types><heap><SL__arrayElement class="invokeNode" uid="41464">
+        <objFlags>644</objFlags>
+        <termList elements="10">
+          <SL__arrayElement class="term" uid="41465">
+            <dco class="hGrowCItem" uid="41467">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(19339)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="41468">
+            <dco class="hGrowCItem" uid="41470">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(19340)</typeDesc>
+              <termBounds>(0, 69, 9, 82)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="41476">
+            <dco class="hGrowCItem" uid="41469">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(19341)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="41473">
+            <dco class="hGrowCItem" uid="41471">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(19342)</typeDesc>
+              <termBounds>(9, 69, 18, 82)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="41477">
+            <dco class="invokeItem" uid="41481">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(19343)</typeDesc>
+              <termBounds>(18, 0, 34, 41)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="41480">
+            <dco class="invokeItem" uid="41479">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(19344)</typeDesc>
+              <termBounds>(18, 41, 34, 82)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="41345">
+            <dco class="invokeItem" uid="41349">
+              <typeDesc>TypeID(19345)</typeDesc>
+              <termBounds>(34, 0, 50, 41)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="41406">
+            <dco class="invokeItem" uid="41342">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(19346)</typeDesc>
+              <termBounds>(34, 41, 50, 82)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="41381">
+            <dco class="invokeItem" uid="41408">
+              <typeDesc>TypeID(19347)</typeDesc>
+              <termBounds>(50, 0, 66, 41)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="41383">
+            <dco class="invokeItem" uid="41412">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(19348)</typeDesc>
+              <termBounds>(50, 41, 66, 82)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1489, 8850, 1556, 8932)</bounds>
+        <shortCount>3870</shortCount>
+        <dcoList elements="6">
+          <SL__arrayElement uid="41481" />
+          <SL__arrayElement uid="41479" />
+          <SL__arrayElement uid="41349" />
+          <SL__arrayElement uid="41342" />
+          <SL__arrayElement uid="41408" />
+          <SL__arrayElement uid="41412" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="41467" />
+          <SL__arrayElement uid="41470" />
+          <SL__arrayElement uid="41469" />
+          <SL__arrayElement uid="41471" />
+          </permDCOList>
+        <nodeName>"PageSel"</nodeName>
+        <oMId>0040</oMId>
+        <methName>"Add Page"</methName>
+        <methCode>65604609</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

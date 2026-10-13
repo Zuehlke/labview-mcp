@@ -1,0 +1,91 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Project/AutoDiscoverSupportsType" source="&lt;labview&gt;\resource\Framework\Providers\lvdesktop.llb\CDP_AutoDiscoverSupportsType.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0049" HasItem="0" Format="inline" Label="Project" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0049" HasItem="0" Format="inline" Label="Project" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="AutoDiscoverSupportsType" /><TypeDesc Type="Boolean" Format="inline" Label="AutoDiscoverSupportsType" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x004A" HasItem="0" Format="inline" Label="SpecificType" /><TypeDesc Type="Void" Format="inline" Label="SpecificType" /></types><heap><SL__arrayElement class="invokeNode" uid="392">
+        <objFlags>66176</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="398">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="399">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(17)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="401">
+            <dco class="hGrowCItem" uid="402">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(18)</typeDesc>
+              <termBounds>(0, 137, 9, 150)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="404">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="405">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(19)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="407">
+            <dco class="hGrowCItem" uid="408">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(20)</typeDesc>
+              <termBounds>(9, 137, 18, 150)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="410">
+            <dco class="invokeItem" uid="411">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(21)</typeDesc>
+              <termBounds>(18, 0, 34, 75)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="414">
+            <dco class="invokeItem" uid="415">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(22)</typeDesc>
+              <termBounds>(18, 75, 34, 150)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="452">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="450">
+              <typeDesc>TypeID(23)</typeDesc>
+              <termBounds>(34, 0, 50, 75)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="458">
+            <dco class="invokeItem" uid="456">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(24)</typeDesc>
+              <termBounds>(34, 75, 50, 150)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(182, 145, 233, 295)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="4">
+          <SL__arrayElement uid="411" />
+          <SL__arrayElement uid="415" />
+          <SL__arrayElement uid="450" />
+          <SL__arrayElement uid="456" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="399" />
+          <SL__arrayElement uid="402" />
+          <SL__arrayElement uid="405" />
+          <SL__arrayElement uid="408" />
+          </permDCOList>
+        <nodeName>"Project"</nodeName>
+        <oMId>0031</oMId>
+        <methName>"AutoDiscoverSupportsType"</methName>
+        <methCode>655396938</methCode>
+        <invokeFlags>0408</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

@@ -282,7 +282,7 @@ call on `grpc` only when NI's service is up, and expect no `signalsJson` over Ac
 reader and their parts moved from `experiments\aixml-without-grpc` to `scripts\aixml-pylabview`, so
 both lists of what ships (the `.csproj` glob and `release.yml`'s staging) carry them to
 `bin\scripts\aixml-pylabview` with no entry of their own: `aixml2vi.py`, `vi2aixml.py` and the five
-modules they import, their three name tables, and `parts\` - 1 242 files, about 16 MB. A ZIP user
+modules they import, their three name tables, and `parts\` - 4 432 files, about 48 MB (1 253 and 16 MB until the harvest of 2026-10-13, FINDINGS §7b). A ZIP user
 needs nothing from `experiments\`, which keeps only what develops and measures the backend: the
 measurement scripts, the test suite, the probes and FINDINGS. `release.yml` asserts the modules,
 the skeleton and the part count. The Python finds the rest of a plugin's layout by itself -

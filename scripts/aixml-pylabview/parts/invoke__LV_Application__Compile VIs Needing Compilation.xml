@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/Compile VIs Needing Compilation" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="CompAllNeeded" /><TypeDesc Type="Void" Format="inline" Label="CompAllNeeded" /></types><heap><SL__arrayElement class="invokeNode" uid="556">
+        <objFlags>33555072</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="526">
+            <dco class="hGrowCItem" uid="544">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(29393)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="545">
+            <dco class="hGrowCItem" uid="547">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(29394)</typeDesc>
+              <termBounds>(0, 173, 9, 186)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="548">
+            <dco class="hGrowCItem" uid="546">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(29395)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="561">
+            <dco class="hGrowCItem" uid="549">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(29396)</typeDesc>
+              <termBounds>(9, 173, 18, 186)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="559">
+            <dco class="invokeItem" uid="557">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(29397)</typeDesc>
+              <termBounds>(18, 0, 34, 93)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="560">
+            <dco class="invokeItem" uid="563">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(29398)</typeDesc>
+              <termBounds>(18, 93, 34, 186)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1661, -49, 1696, 137)</bounds>
+        <shortCount>6136</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="557" />
+          <SL__arrayElement uid="563" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="544" />
+          <SL__arrayElement uid="547" />
+          <SL__arrayElement uid="546" />
+          <SL__arrayElement uid="549" />
+          </permDCOList>
+        <nodeName>"App"</nodeName>
+        <oMId>0008</oMId>
+        <methName>"Compile VIs Needing Compilation"</methName>
+        <methCode>2035</methCode>
+        <invokeFlags>1408</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

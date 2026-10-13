@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1140" source="&lt;labview&gt;\resource\Framework\Providers\Builds\RemoteWindows\Protocol\RWT_Protocol_Launch_App_Core.vi"><types><TypeDesc Type="NumInt8" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="574">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="576">
+            <dco class="parm" uid="577">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(45)</typeDesc>
+              <termBounds>(0, 12, 11, 25)</termBounds>
+              <primIndex>54</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="579">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="580">
+              <typeDesc>TypeID(46)</typeDesc>
+              <termBounds>(0, 0, 11, 12)</termBounds>
+              <primIndex>54</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(453, 483, 485, 515)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1140</primResID>
+        <primIndex>54</primIndex>
+        </SL__arrayElement>
+      </heap></part>

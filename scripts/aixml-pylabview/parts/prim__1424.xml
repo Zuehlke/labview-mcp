@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1424" source="&lt;labview&gt;\vi.lib\Utility\tdmsutil.llb\TDMS2TDMGlobalLog.vi"><types><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="Refnum" RefType="ByteStream" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="417">
+                                        <objFlags>512</objFlags>
+                                        <termList elements="2">
+                                          <SL__arrayElement class="term" uid="520">
+                                            <dco class="parm" uid="521">
+                                              <objFlags>1</objFlags>
+                                              <typeDesc>TypeID(217)</typeDesc>
+                                              <termBounds>(0, 12, 11, 25)</termBounds>
+                                              <primIndex>198</primIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="523">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="parm" uid="526">
+                                              <typeDesc>TypeID(218)</typeDesc>
+                                              <termBounds>(0, 0, 11, 12)</termBounds>
+                                              <primIndex>198</primIndex>
+                                              <parmIndex>1</parmIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          </termList>
+                                        <bounds>(106, 31, 138, 63)</bounds>
+                                        <shortCount>2</shortCount>
+                                        <clumpNum>851971</clumpNum>
+                                        <primResID>1424</primResID>
+                                        <primIndex>198</primIndex>
+                                        </SL__arrayElement>
+                                      </heap></part>

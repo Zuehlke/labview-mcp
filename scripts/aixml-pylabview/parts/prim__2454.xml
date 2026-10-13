@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/2454" source="&lt;labview&gt;\resource\Framework\Providers\LVClassLibrary\CLSUIP_Set Inheritance Text on Tag.vi"><types><TypeDesc Type="Boolean" Format="inline" Label="found?" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="115" RefType="TCPNetConn" Format="inline" Label="indirectly inherited interface item IDs" /></types><heap><SL__arrayElement class="prim" uid="3867">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="3869">
+                    <dco class="parm" uid="3870">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(107)</typeDesc>
+                      <termBounds>(0, 24, 8, 32)</termBounds>
+                      <primIndex>583</primIndex>
+                      <parmIndex>3</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3872">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="3873">
+                      <typeDesc>TypeID(108)</typeDesc>
+                      <termBounds>(8, 0, 16, 8)</termBounds>
+                      <primIndex>583</primIndex>
+                      <parmIndex>10</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3875">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="3876">
+                      <typeDesc>TypeID(109)</typeDesc>
+                      <dsw>512</dsw>
+                      <termBounds>(0, 0, 8, 8)</termBounds>
+                      <primIndex>583</primIndex>
+                      <parmIndex>11</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(250, 143, 282, 175)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>524291</clumpNum>
+                <primResID>2454</primResID>
+                <primIndex>583</primIndex>
+                </SL__arrayElement>
+              </heap></part>

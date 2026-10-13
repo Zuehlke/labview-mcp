@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/UI%2EHilight Pal Menu Item" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Hilite Pal Menu Item" /><TypeDesc Type="Boolean" Format="inline" Label="Hilite Pal Menu Item" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="func name" /><TypeDesc Type="Void" Format="inline" Label="func name" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Position"><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="Horizontal" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="Vertical" /></TypeDesc><Label Text="LVPointTypeDef.ctl" />
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="Position" /></types><heap><SL__arrayElement class="invokeNode" uid="169629">
+        <objFlags>33555076</objFlags>
+        <termList elements="10">
+          <SL__arrayElement class="term" uid="169634">
+            <dco class="hGrowCItem" uid="169632">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(97)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="169637">
+            <dco class="hGrowCItem" uid="169635">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(98)</typeDesc>
+              <termBounds>(0, 125, 9, 138)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="169640">
+            <dco class="hGrowCItem" uid="169638">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(99)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="169643">
+            <dco class="hGrowCItem" uid="169641">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(100)</typeDesc>
+              <termBounds>(9, 125, 18, 138)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="169650">
+            <dco class="invokeItem" uid="169647">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(101)</typeDesc>
+              <termBounds>(18, 0, 34, 69)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="169654">
+            <dco class="invokeItem" uid="169651">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(102)</typeDesc>
+              <termBounds>(18, 69, 34, 138)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="169658">
+            <dco class="invokeItem" uid="169656">
+              <typeDesc>TypeID(103)</typeDesc>
+              <termBounds>(34, 0, 50, 69)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="169662">
+            <dco class="invokeItem" uid="169660">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(104)</typeDesc>
+              <termBounds>(34, 69, 50, 138)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="169666">
+            <dco class="invokeItem" uid="169664">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(105)</typeDesc>
+              <termBounds>(50, 0, 66, 69)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="169670">
+            <dco class="invokeItem" uid="169668">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(106)</typeDesc>
+              <termBounds>(50, 69, 66, 138)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(3091, -49, 3158, 89)</bounds>
+        <shortCount>16</shortCount>
+        <dcoList elements="6">
+          <SL__arrayElement uid="169647" />
+          <SL__arrayElement uid="169651" />
+          <SL__arrayElement uid="169656" />
+          <SL__arrayElement uid="169660" />
+          <SL__arrayElement uid="169664" />
+          <SL__arrayElement uid="169668" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="169632" />
+          <SL__arrayElement uid="169635" />
+          <SL__arrayElement uid="169638" />
+          <SL__arrayElement uid="169641" />
+          </permDCOList>
+        <nodeName>"App"</nodeName>
+        <oMId>0008</oMId>
+        <methName>"UI.Hilight Pal Menu Item"</methName>
+        <methCode>2045</methCode>
+        <invokeFlags>201008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.AbsTime/Create Local" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x003C" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x003C" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Create Local" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x400E" HasItem="0" Format="inline" Label="Create Local" /></types><heap><SL__arrayElement class="invokeNode" uid="16904">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="16881">
+            <dco class="hGrowCItem" uid="16907">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(25467)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="16908">
+            <dco class="hGrowCItem" uid="16910">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(25468)</typeDesc>
+              <termBounds>(0, 81, 9, 94)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="16916">
+            <dco class="hGrowCItem" uid="16909">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(25469)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="16913">
+            <dco class="hGrowCItem" uid="16911">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(25470)</typeDesc>
+              <termBounds>(9, 81, 18, 94)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="16917">
+            <dco class="invokeItem" uid="16921">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(25471)</typeDesc>
+              <termBounds>(18, 0, 34, 47)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="16920">
+            <dco class="invokeItem" uid="16919">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(25472)</typeDesc>
+              <termBounds>(18, 47, 34, 94)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1172, 4323, 1207, 4417)</bounds>
+        <shortCount>5286</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="16921" />
+          <SL__arrayElement uid="16919" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="16907" />
+          <SL__arrayElement uid="16910" />
+          <SL__arrayElement uid="16909" />
+          <SL__arrayElement uid="16911" />
+          </permDCOList>
+        <nodeName>"AbsTime"</nodeName>
+        <oMId>0022</oMId>
+        <methName>"Create Local"</methName>
+        <methCode>104012802</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

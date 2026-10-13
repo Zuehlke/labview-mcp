@@ -20,3 +20,30 @@ primResID	name	seen	primIndex
 8017	To More Generic Class	1	
 9005	Get Menu Item Info	3	
 9002	Enable Menu Tracking	1	
+# 2026-10-13: primitives of the cache and Project Provider harvest, named by prim_names (the reverse uid join: a part's primResID -> the _name NI's export gives that node).
+1076	Round Toward +Infinity	1	
+1081	Logical Shift	1	
+1140	To Byte Integer	1	
+1155	To Quad Integer	1	
+1162	Swap Bytes	1	
+1163	Swap Words	1	
+1164	Flatten To String	1	
+1181	Number To Hexadecimal String	1	
+1308	Date/Time To Seconds	4	
+1309	Seconds To Date/Time	6	
+1350	Stop	1	
+1353	Control Help Window	1	
+1354	Get Help Window Status	1	
+1421	Path Type	2	
+1422	Array of Strings to Path	2	
+1908	Split 1D Array	1	
+2402	Coerce To Type	1	
+2409	Delete Data Value Reference	3	
+8018	Preserve Run-Time Class	6	
+8066	Get Type and Creator	2	
+8074	Set File Size	3	
+8076	Set Permissions	1	
+9112	Preview Queue Element	2	
+23066	Text to UTF-8	1	
+23067	UTF-8 to Text	1	
+24135	Preallocated Read from Binary File	1	

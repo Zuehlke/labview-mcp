@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.DAQChannelName/Create Control Ref" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0031" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0031" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Create Control Ref" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4025" HasItem="0" Format="inline" Label="Create Control Ref" /></types><heap><SL__arrayElement class="invokeNode" uid="28269">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="28271">
+            <dco class="hGrowCItem" uid="28273">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(22679)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="28274">
+            <dco class="hGrowCItem" uid="28276">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(22680)</typeDesc>
+              <termBounds>(0, 95, 9, 108)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="28282">
+            <dco class="hGrowCItem" uid="28275">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(22681)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="28279">
+            <dco class="hGrowCItem" uid="28277">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(22682)</typeDesc>
+              <termBounds>(9, 95, 18, 108)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="28283">
+            <dco class="invokeItem" uid="28287">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(22683)</typeDesc>
+              <termBounds>(18, 0, 34, 54)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="28286">
+            <dco class="invokeItem" uid="28285">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(22684)</typeDesc>
+              <termBounds>(18, 54, 34, 108)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1059, 6446, 1094, 6554)</bounds>
+        <shortCount>4646</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="28287" />
+          <SL__arrayElement uid="28285" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="28273" />
+          <SL__arrayElement uid="28276" />
+          <SL__arrayElement uid="28275" />
+          <SL__arrayElement uid="28277" />
+          </permDCOList>
+        <nodeName>"DAQName"</nodeName>
+        <oMId>0030</oMId>
+        <methName>"Create Control Ref"</methName>
+        <methCode>104012801</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

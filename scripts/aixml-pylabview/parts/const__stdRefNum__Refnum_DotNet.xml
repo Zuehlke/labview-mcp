@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/stdRefNum/Refnum.DotNet" source="&lt;labview&gt;\user.lib\_MGI\File\Zip\MGI SZL New Zip File.vi"><types><TypeDesc Type="Refnum" RefType="DotNet" dNetFlags="0x00" dNetTypeName="ICSharpCode.SharpZipLib.Zip.ZipFile, ICSharpCode.SharpZipLib, Version=0.0.0.0, Culture=neutral, PublicKeyToken=1b03e6acf1164f73" Format="inline" Label="Create" /><TypeDesc Type="Refnum" RefType="DotNet" dNetFlags="0x00" dNetTypeName="ICSharpCode.SharpZipLib.Zip.ZipFile, ICSharpCode.SharpZipLib, Version=0.0.0.0, Culture=neutral, PublicKeyToken=1b03e6acf1164f73" Format="inline" Label="Create" /></types><heap><SL__arrayElement class="term" uid="1163">
+                    <objFlags>131136</objFlags>
+                    <dco class="bDConstDCO" uid="1161">
+                      <typeDesc>TypeID(99)</typeDesc>
+                      <dsw>4096</dsw>
+                      <ddo class="stdRefNum" uid="1148">
+                        <objFlags>8192</objFlags>
+                        <bounds>(95, 656, 122, 677)</bounds>
+                        <partsList elements="4">
+                          <SL__arrayElement class="label" uid="1156">
+                            <objFlags>1511754</objFlags>
+                            <partID>16</partID>
+                            <masterPart>9</masterPart>
+                            <howGrow>4096</howGrow>
+                            <bounds>(-17, -16, 0, 21)</bounds>
+                            <image class="Image">
+                              <ImageResID>-619</ImageResID>
+                              </image>
+                            <fgColor>01000000</fgColor>
+                            <bgColor>01000000</bgColor>
+                            <textRec class="textHair">
+                              <mode>17428</mode>
+                              <text>"Create"</text>
+                              <bgColor>01000000</bgColor>
+                              </textRec>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="cosm" uid="1157">
+                            <objFlags>2097</objFlags>
+                            <partID>1</partID>
+                            <masterPart>9</masterPart>
+                            <bounds>(-2, -5, 30, 27)</bounds>
+                            <image class="Image">
+                              <ImageResID>-7118</ImageResID>
+                              </image>
+                            <bgColor>00B3B3B3</bgColor>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="cosm" uid="1158">
+                            <objFlags>2355</objFlags>
+                            <partID>9</partID>
+                            <bounds>(0, 0, 27, 21)</bounds>
+                            <image class="Image">
+                              <ImageResID>-676</ImageResID>
+                              </image>
+                            <fgColor>00B3B3B3</fgColor>
+                            <bgColor>00B3B3B3</bgColor>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="annex" uid="1159">
+                            <partID>66</partID>
+                            <rsrcID>3441</rsrcID>
+                            </SL__arrayElement>
+                          </partsList>
+                        <typeDesc>TypeID(100)</typeDesc>
+                        </ddo>
+                      <tdOffset>23</tdOffset>
+                      <DefaultData>"&amp;#x00;&amp;#x00;&amp;#x00;&amp;#x00;&amp;#x00;"</DefaultData>
+                      </dco>
+                    </SL__arrayElement>
+                  </heap></part>

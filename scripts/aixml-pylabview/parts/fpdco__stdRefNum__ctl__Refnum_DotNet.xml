@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdRefNum/ctl/Refnum.DotNet" source="&lt;labview&gt;\vi.lib\Platform\WebService\Backend\EnumerateDataTypes.vi"><types><TypeDesc Type="Refnum" RefType="DotNet" dNetFlags="0x00" dNetTypeName="NationalInstruments.LabView.WebServiceUtilities.WebServiceImporter, WebServiceUtils, Version=0.0.0.0, Culture=neutral, PublicKeyToken=1109e9caaa0bff6a" Format="inline" Label="Web Service Importer in" /><TypeDesc Type="Refnum" RefType="DotNet" dNetFlags="0x00" dNetTypeName="NationalInstruments.LabView.WebServiceUtilities.WebServiceImporter, WebServiceUtils, Version=0.0.0.0, Culture=neutral, PublicKeyToken=1109e9caaa0bff6a" Format="inline" Label="Web Service Importer in" /></types><heap><SL__arrayElement class="fPDCO" uid="221">
+          <objFlags>66048</objFlags>
+          <typeDesc>TypeID(1)</typeDesc>
+          <ddo class="stdRefNum" uid="210">
+            <bounds>(7, 12, 51, 142)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="217">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 1, 17, 130)</bounds>
+                <image class="Image">
+                  <ImageResID>-619</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <mode>17412</mode>
+                  <text>"Web Service Importer in"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="218">
+                <objFlags>2101</objFlags>
+                <partID>1</partID>
+                <masterPart>9</masterPart>
+                <bounds>(15, -5, 47, 27)</bounds>
+                <image class="Image">
+                  <ImageResID>-7118</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="219">
+                <objFlags>2359</objFlags>
+                <partID>9</partID>
+                <bounds>(17, 0, 44, 21)</bounds>
+                <image class="Image">
+                  <ImageResID>-276</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="220">
+                <partID>66</partID>
+                <rsrcID>3441</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(2)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>11</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

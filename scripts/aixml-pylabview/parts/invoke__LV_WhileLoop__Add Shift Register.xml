@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.WhileLoop/Add Shift Register" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4033" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4033" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Add Shift Register" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x400F" HasItem="0" Format="inline" Label="Add Shift Register" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Y Positon" /><TypeDesc Type="Void" Format="inline" Label="Y Positon" /></types><heap><SL__arrayElement class="invokeNode" uid="75889">
+        <objFlags>644</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="75886">
+            <dco class="hGrowCItem" uid="75892">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(11077)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="75893">
+            <dco class="hGrowCItem" uid="75895">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(11078)</typeDesc>
+              <termBounds>(0, 93, 9, 106)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="75901">
+            <dco class="hGrowCItem" uid="75894">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(11079)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="75898">
+            <dco class="hGrowCItem" uid="75896">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(11080)</typeDesc>
+              <termBounds>(9, 93, 18, 106)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="75902">
+            <dco class="invokeItem" uid="75906">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(11081)</typeDesc>
+              <termBounds>(18, 0, 34, 53)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="75905">
+            <dco class="invokeItem" uid="75904">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(11082)</typeDesc>
+              <termBounds>(18, 53, 34, 106)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="75759">
+            <dco class="invokeItem" uid="75786">
+              <typeDesc>TypeID(11083)</typeDesc>
+              <termBounds>(34, 0, 50, 53)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="75758">
+            <dco class="invokeItem" uid="75830">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(11084)</typeDesc>
+              <termBounds>(34, 53, 50, 106)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1063, 17396, 1114, 17502)</bounds>
+        <shortCount>2088</shortCount>
+        <dcoList elements="4">
+          <SL__arrayElement uid="75906" />
+          <SL__arrayElement uid="75904" />
+          <SL__arrayElement uid="75786" />
+          <SL__arrayElement uid="75830" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="75892" />
+          <SL__arrayElement uid="75895" />
+          <SL__arrayElement uid="75894" />
+          <SL__arrayElement uid="75896" />
+          </permDCOList>
+        <nodeName>"WLoop"</nodeName>
+        <oMId>0079</oMId>
+        <methName>"Add Shift Register"</methName>
+        <methCode>104206336</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

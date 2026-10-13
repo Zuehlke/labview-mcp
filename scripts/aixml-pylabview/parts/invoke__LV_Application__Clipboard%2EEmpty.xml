@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/Clipboard%2EEmpty" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Empty Clipboard" /><TypeDesc Type="Void" Format="inline" Label="Empty Clipboard" /></types><heap><SL__arrayElement class="invokeNode" uid="1038">
+        <objFlags>33555072</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="1035">
+            <dco class="hGrowCItem" uid="1047">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(29263)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1051">
+            <dco class="hGrowCItem" uid="1046">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(29264)</typeDesc>
+              <termBounds>(0, 85, 9, 98)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1049">
+            <dco class="hGrowCItem" uid="1052">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(29265)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1053">
+            <dco class="hGrowCItem" uid="1050">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(29266)</typeDesc>
+              <termBounds>(9, 85, 18, 98)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1064">
+            <dco class="invokeItem" uid="1055">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(29267)</typeDesc>
+              <termBounds>(18, 0, 34, 49)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1059">
+            <dco class="invokeItem" uid="1065">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(29268)</typeDesc>
+              <termBounds>(18, 49, 34, 98)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(2643, -49, 2678, 49)</bounds>
+        <shortCount>6114</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="1055" />
+          <SL__arrayElement uid="1065" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="1047" />
+          <SL__arrayElement uid="1046" />
+          <SL__arrayElement uid="1052" />
+          <SL__arrayElement uid="1050" />
+          </permDCOList>
+        <nodeName>"App"</nodeName>
+        <oMId>0008</oMId>
+        <methName>"Clipboard.Empty"</methName>
+        <methCode>2031</methCode>
+        <invokeFlags>201008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

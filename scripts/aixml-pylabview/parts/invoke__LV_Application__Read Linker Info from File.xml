@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Application/Read Linker Info from File" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Read Linker Info from File" /><TypeDesc Type="Array" Format="inline" Label="Read Linker Info from File"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="path" /><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="type"><EnumLabel>Instrument</EnumLabel>
+        <EnumLabel>Control</EnumLabel>
+        <EnumLabel>CIN</EnumLabel>
+        <EnumLabel>External subroutine</EnumLabel>
+        <EnumLabel>Shared library</EnumLabel>
+        <EnumLabel>Run-time menu</EnumLabel>
+        <EnumLabel>Help file</EnumLabel>
+        <EnumLabel>Palette menu</EnumLabel>
+        <EnumLabel>Polymorphic VI</EnumLabel>
+        <EnumLabel>Library</EnumLabel>
+        </TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="iState" /><TypeDesc Type="NumUInt16" Prop1="0" Format="inline" Label="iStyle" /><TypeDesc Type="NumUInt16" Prop1="0" Format="inline" Label="wStyle" /><TypeDesc Type="NumUInt16" Prop1="0" Format="inline" Label="buttons" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="viflags" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="viflags2" /><TypeDesc Type="Array" Format="inline" Label="links"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /></TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Array" Format="inline" Label="paths to read"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="paths to read" /><TypeDesc Type="Boolean" Format="inline" Label="recursive?" /><TypeDesc Type="Void" Format="inline" Label="recursive?" /><TypeDesc Type="Boolean" Format="inline" Label="newthing" /><TypeDesc Type="Void" Format="inline" Label="newthing" /></types><heap><SL__arrayElement class="invokeNode" uid="1870">
+        <objFlags>33555076</objFlags>
+        <termList elements="12">
+          <SL__arrayElement class="term" uid="1822">
+            <dco class="hGrowCItem" uid="1829">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(29077)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1833">
+            <dco class="hGrowCItem" uid="1824">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(29078)</typeDesc>
+              <termBounds>(0, 155, 9, 168)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1831">
+            <dco class="hGrowCItem" uid="1849">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(29079)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1850">
+            <dco class="hGrowCItem" uid="1832">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(29080)</typeDesc>
+              <termBounds>(9, 155, 18, 168)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1860">
+            <dco class="invokeItem" uid="1851">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(29081)</typeDesc>
+              <termBounds>(18, 0, 34, 84)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1863">
+            <dco class="invokeItem" uid="1861">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(29082)</typeDesc>
+              <termBounds>(18, 84, 34, 168)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1725">
+            <dco class="invokeItem" uid="1726">
+              <typeDesc>TypeID(29083)</typeDesc>
+              <termBounds>(34, 0, 50, 84)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1728">
+            <dco class="invokeItem" uid="1771">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(29084)</typeDesc>
+              <termBounds>(34, 84, 50, 168)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1770">
+            <dco class="invokeItem" uid="1798">
+              <typeDesc>TypeID(29085)</typeDesc>
+              <termBounds>(50, 0, 66, 84)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1792">
+            <dco class="invokeItem" uid="1802">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(29086)</typeDesc>
+              <termBounds>(50, 84, 66, 168)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1799">
+            <dco class="invokeItem" uid="1813">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(29087)</typeDesc>
+              <termBounds>(66, 0, 82, 84)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1811">
+            <dco class="invokeItem" uid="1818">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(29088)</typeDesc>
+              <termBounds>(66, 84, 82, 168)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(4268, -49, 4351, 119)</bounds>
+        <shortCount>6084</shortCount>
+        <dcoList elements="8">
+          <SL__arrayElement uid="1851" />
+          <SL__arrayElement uid="1861" />
+          <SL__arrayElement uid="1726" />
+          <SL__arrayElement uid="1771" />
+          <SL__arrayElement uid="1798" />
+          <SL__arrayElement uid="1802" />
+          <SL__arrayElement uid="1813" />
+          <SL__arrayElement uid="1818" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="1829" />
+          <SL__arrayElement uid="1824" />
+          <SL__arrayElement uid="1849" />
+          <SL__arrayElement uid="1832" />
+          </permDCOList>
+        <nodeName>"App"</nodeName>
+        <oMId>0008</oMId>
+        <methName>"Read Linker Info from File"</methName>
+        <methCode>2011</methCode>
+        <invokeFlags>10001408</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

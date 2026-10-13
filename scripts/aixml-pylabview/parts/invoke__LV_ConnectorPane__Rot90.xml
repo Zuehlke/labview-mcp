@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.ConnectorPane/Rot90" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0038" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0038" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Rot90" /><TypeDesc Type="Void" Format="inline" Label="Rot90" /></types><heap><SL__arrayElement class="invokeNode" uid="3234">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="3193">
+            <dco class="hGrowCItem" uid="3202">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(28697)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="3209">
+            <dco class="hGrowCItem" uid="3208">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(28698)</typeDesc>
+              <termBounds>(0, 75, 9, 88)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="3204">
+            <dco class="hGrowCItem" uid="3220">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(28699)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="3235">
+            <dco class="hGrowCItem" uid="3205">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(28700)</typeDesc>
+              <termBounds>(9, 75, 18, 88)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="3223">
+            <dco class="invokeItem" uid="3221">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(28701)</typeDesc>
+              <termBounds>(18, 0, 34, 44)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="3224">
+            <dco class="invokeItem" uid="3244">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(28702)</typeDesc>
+              <termBounds>(18, 44, 34, 88)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(939, 229, 974, 317)</bounds>
+        <shortCount>6006</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="3221" />
+          <SL__arrayElement uid="3244" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="3202" />
+          <SL__arrayElement uid="3208" />
+          <SL__arrayElement uid="3220" />
+          <SL__arrayElement uid="3205" />
+          </permDCOList>
+        <nodeName>"ConPane"</nodeName>
+        <oMId>009E</oMId>
+        <methName>"Rot90"</methName>
+        <methCode>597327876</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

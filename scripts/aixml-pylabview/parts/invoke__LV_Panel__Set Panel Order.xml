@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Panel/Set Panel Order" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001F" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001F" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Set Panel Order" /><TypeDesc Type="Void" Format="inline" Label="Set Panel Order" /></types><heap><SL__arrayElement class="invokeNode" uid="83661">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="83626">
+            <dco class="hGrowCItem" uid="83663">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(9243)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="83664">
+            <dco class="hGrowCItem" uid="83666">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(9244)</typeDesc>
+              <termBounds>(0, 79, 9, 92)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="83673">
+            <dco class="hGrowCItem" uid="83665">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(9245)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="83670">
+            <dco class="hGrowCItem" uid="83668">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(9246)</typeDesc>
+              <termBounds>(9, 79, 18, 92)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="83674">
+            <dco class="invokeItem" uid="83679">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(9247)</typeDesc>
+              <termBounds>(18, 0, 34, 46)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="83677">
+            <dco class="invokeItem" uid="83675">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(9248)</typeDesc>
+              <termBounds>(18, 46, 34, 92)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1369, 19198, 1404, 19290)</bounds>
+        <shortCount>1688</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="83679" />
+          <SL__arrayElement uid="83675" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="83663" />
+          <SL__arrayElement uid="83666" />
+          <SL__arrayElement uid="83665" />
+          <SL__arrayElement uid="83668" />
+          </permDCOList>
+        <nodeName>"Pnl"</nodeName>
+        <oMId>0085</oMId>
+        <methName>"Set Panel Order"</methName>
+        <methCode>104104960</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

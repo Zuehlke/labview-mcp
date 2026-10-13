@@ -1,0 +1,64 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/3917" source="&lt;labview&gt;\examples\Waveform\Waveform - Common Mathematical Operations.vi"><types><TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" /><TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" Label="triangle waveform" /><TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" Label="sine waveform" /><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="531">
+                <objFlags>65536</objFlags>
+                <termList elements="5">
+                  <SL__arrayElement class="term" uid="526">
+                    <dco class="overridableParm" uid="532">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(111)</typeDesc>
+                      <dcoFiller>515</dcoFiller>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>501</primIndex>
+                      <inplace>3</inplace>
+                      <maxWordLength>64</maxWordLength>
+                      <override>3</override>
+                      <overflow>2</overflow>
+                      <quantize>3</quantize>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="535">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="533">
+                      <typeDesc>TypeID(112)</typeDesc>
+                      <termBounds>(10, 0, 21, 10)</termBounds>
+                      <primIndex>501</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="538">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="536">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(113)</typeDesc>
+                      <termBounds>(0, 0, 10, 10)</termBounds>
+                      <primIndex>501</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="541">
+                    <dco class="parm" uid="539">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(114)</typeDesc>
+                      <termBounds>(21, 10, 30, 21)</termBounds>
+                      <primIndex>501</primIndex>
+                      <parmIndex>3</parmIndex>
+                      <inplace>5</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="544">
+                    <dco class="parm" uid="542">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(115)</typeDesc>
+                      <termBounds>(21, 0, 30, 10)</termBounds>
+                      <primIndex>501</primIndex>
+                      <parmIndex>4</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(69, 25, 101, 57)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>655363</clumpNum>
+                <primResID>3917</primResID>
+                <primIndex>501</primIndex>
+                </SL__arrayElement>
+              </heap></part>

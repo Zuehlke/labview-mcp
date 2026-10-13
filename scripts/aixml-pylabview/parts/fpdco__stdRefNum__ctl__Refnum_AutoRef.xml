@@ -1,0 +1,63 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdRefNum/ctl/Refnum.AutoRef" source="&lt;labview&gt;\resource\Framework\Providers\VILibrary\dscOnly\helpers\GetConnectionString.vi"><types><TypeDesc Type="Refnum" RefType="AutoRef" RefFlags="0x01" Field20="2" Field24="5" Format="inline" Label="ADODB._Connection 2"><Item UID="0x01" ClassID="00000205-0000-0010-800000AA006D2EA4" />
+        <Item UID="0x02" ClassID="00000514-0000-0010-800000AA006D2EA4" />
+        <Item UID="0x04" ClassID="00000550-0000-0010-800000AA006D2EA4" />
+        </TypeDesc><TypeDesc Type="Refnum" RefType="AutoRef" RefFlags="0x01" Field20="2" Field24="5" Format="inline" Label="ADODB._Connection 2"><Item UID="0x01" ClassID="00000205-0000-0010-800000AA006D2EA4" />
+        <Item UID="0x02" ClassID="00000514-0000-0010-800000AA006D2EA4" />
+        <Item UID="0x04" ClassID="00000550-0000-0010-800000AA006D2EA4" />
+        </TypeDesc></types><heap><SL__arrayElement class="fPDCO" uid="1245">
+          <typeDesc>TypeID(1)</typeDesc>
+          <ddo class="stdRefNum" uid="971">
+            <bounds>(616, 219, 660, 342)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="1239">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 1, 17, 123)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <mode>17412</mode>
+                  <text>"ADODB._Connection 2"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="1240">
+                <objFlags>2097</objFlags>
+                <partID>1</partID>
+                <masterPart>9</masterPart>
+                <bounds>(30, 2, 41, 19)</bounds>
+                <image class="Image">
+                  <ImageResID>-2085</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="1241">
+                <objFlags>2355</objFlags>
+                <partID>9</partID>
+                <bounds>(17, 0, 44, 21)</bounds>
+                <image class="Image">
+                  <ImageResID>-276</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="1242">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>3410</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(2)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>-1</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

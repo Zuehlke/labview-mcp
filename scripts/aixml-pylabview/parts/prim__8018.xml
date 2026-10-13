@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8018" source="&lt;labview&gt;\resource\Framework\Providers\MessageMakerProvider\_Message Maker\_Maker Classes\Message Scripter\Make Sender.vi"><types><TypeDesc Type="Refnum" RefType="UDClassInst" Field0="0x0000" MultiItem="1" Format="inline" Label="Message Scripter in"><Item Text="Message Maker.lvlib" />
+        <Item Text="Message Scripter.lvclass" />
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="UDClassInst" Field0="0x0000" MultiItem="1" Format="inline" Label="Message Scripter in"><Item Text="Message Maker.lvlib" />
+        <Item Text="Message Scripter.lvclass" />
+        </TypeDesc><TypeDesc Type="Refnum" RefType="UDClassInst" Field0="0x0000" MultiItem="1" Format="inline" Label="Message Maker out"><Item Text="Message Maker.lvlib" />
+        <Item Text="Message Scripter.lvclass" />
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="373">
+        <termList elements="5">
+          <SL__arrayElement class="term" uid="409">
+            <dco class="parm" uid="407">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(15)</typeDesc>
+              <termBounds>(0, 21, 8, 32)</termBounds>
+              <primIndex>457</primIndex>
+              <inplace>4</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="412">
+            <dco class="parm" uid="410">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(16)</typeDesc>
+              <termBounds>(8, 21, 16, 32)</termBounds>
+              <primIndex>457</primIndex>
+              <parmIndex>1</parmIndex>
+              <inplace>5</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="415">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="413">
+              <typeDesc>TypeID(17)</typeDesc>
+              <termBounds>(0, 11, 16, 21)</termBounds>
+              <primIndex>457</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="418">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="416">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(18)</typeDesc>
+              <termBounds>(0, 0, 8, 11)</termBounds>
+              <primIndex>457</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="421">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="419">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(19)</typeDesc>
+              <termBounds>(8, 0, 16, 11)</termBounds>
+              <primIndex>457</primIndex>
+              <parmIndex>4</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(476, 471, 508, 503)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>196611</clumpNum>
+        <primResID>8018</primResID>
+        <primIndex>457</primIndex>
+        </SL__arrayElement>
+      </heap></part>

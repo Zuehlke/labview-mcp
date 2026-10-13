@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.WaveformChart/Update Typedef" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0017" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0017" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Update Typedef" /><TypeDesc Type="Boolean" Format="inline" Label="Update Typedef" /></types><heap><SL__arrayElement class="invokeNode" uid="26006">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="25983">
+            <dco class="hGrowCItem" uid="26009">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(23213)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="26010">
+            <dco class="hGrowCItem" uid="26012">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(23214)</typeDesc>
+              <termBounds>(0, 81, 9, 94)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="26018">
+            <dco class="hGrowCItem" uid="26011">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(23215)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="26015">
+            <dco class="hGrowCItem" uid="26013">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(23216)</typeDesc>
+              <termBounds>(9, 81, 18, 94)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="26019">
+            <dco class="invokeItem" uid="26023">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(23217)</typeDesc>
+              <termBounds>(18, 0, 34, 47)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="26022">
+            <dco class="invokeItem" uid="26021">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(23218)</typeDesc>
+              <termBounds>(18, 47, 34, 94)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1455, 5998, 1490, 6092)</bounds>
+        <shortCount>4766</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="26023" />
+          <SL__arrayElement uid="26021" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="26009" />
+          <SL__arrayElement uid="26012" />
+          <SL__arrayElement uid="26011" />
+          <SL__arrayElement uid="26013" />
+          </permDCOList>
+        <nodeName>"WFChart"</nodeName>
+        <oMId>002D</oMId>
+        <methName>"Update Typedef"</methName>
+        <methCode>104012810</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

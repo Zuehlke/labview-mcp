@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.SimulationNode/Auto Size" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x405A" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x405A" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Auto Size" /><TypeDesc Type="Void" Format="inline" Label="Auto Size" /></types><heap><SL__arrayElement class="invokeNode" uid="80464">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="80466">
+            <dco class="hGrowCItem" uid="80468">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(9969)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="80469">
+            <dco class="hGrowCItem" uid="80471">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(9970)</typeDesc>
+              <termBounds>(0, 75, 9, 88)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="80477">
+            <dco class="hGrowCItem" uid="80470">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(9971)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="80474">
+            <dco class="hGrowCItem" uid="80472">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(9972)</typeDesc>
+              <termBounds>(9, 75, 18, 88)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="80480">
+            <dco class="invokeItem" uid="80478">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(9973)</typeDesc>
+              <termBounds>(18, 0, 34, 44)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="80485">
+            <dco class="invokeItem" uid="80492">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(9974)</typeDesc>
+              <termBounds>(18, 44, 34, 88)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(995, 18449, 1030, 18537)</bounds>
+        <shortCount>1844</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="80478" />
+          <SL__arrayElement uid="80492" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="80468" />
+          <SL__arrayElement uid="80471" />
+          <SL__arrayElement uid="80470" />
+          <SL__arrayElement uid="80472" />
+          </permDCOList>
+        <nodeName>"SimNode"</nodeName>
+        <oMId>0080</oMId>
+        <methName>"Auto Size"</methName>
+        <methCode>104203264</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

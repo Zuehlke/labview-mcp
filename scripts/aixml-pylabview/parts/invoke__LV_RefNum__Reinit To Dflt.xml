@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.RefNum/Reinit To Dflt" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0009" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0009" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Reinit To Dflt" /><TypeDesc Type="Void" Format="inline" Label="Reinit To Dflt" /></types><heap><SL__arrayElement class="invokeNode" uid="44765">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="44767">
+            <dco class="hGrowCItem" uid="44769">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(18509)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="44770">
+            <dco class="hGrowCItem" uid="44772">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(18510)</typeDesc>
+              <termBounds>(0, 85, 9, 98)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="44778">
+            <dco class="hGrowCItem" uid="44771">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(18511)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="44775">
+            <dco class="hGrowCItem" uid="44773">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(18512)</typeDesc>
+              <termBounds>(9, 85, 18, 98)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="44779">
+            <dco class="invokeItem" uid="44783">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(18513)</typeDesc>
+              <termBounds>(18, 0, 34, 49)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="44782">
+            <dco class="invokeItem" uid="44781">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(18514)</typeDesc>
+              <termBounds>(18, 49, 34, 98)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1387, 9438, 1422, 9536)</bounds>
+        <shortCount>3680</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="44783" />
+          <SL__arrayElement uid="44781" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="44769" />
+          <SL__arrayElement uid="44772" />
+          <SL__arrayElement uid="44771" />
+          <SL__arrayElement uid="44773" />
+          </permDCOList>
+        <nodeName>"Ref"</nodeName>
+        <oMId>0044</oMId>
+        <methName>"Reinit To Dflt"</methName>
+        <methCode>104012800</methCode>
+        <invokeFlags>08000000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

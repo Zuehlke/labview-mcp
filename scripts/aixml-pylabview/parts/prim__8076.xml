@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8076" source="&lt;labview&gt;\resource\Framework\Providers\Builds\Installer\CDK_Utility_DeleteRecursive.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="dup file or folder path" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="permissions" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="new group" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="new owner" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="file or folder path" /></types><heap><SL__arrayElement class="prim" uid="1657">
+                                <objFlags>640</objFlags>
+                                <termList elements="7">
+                                  <SL__arrayElement class="term" uid="1678">
+                                    <dco class="parm" uid="1679">
+                                      <objFlags>1</objFlags>
+                                      <typeDesc>TypeID(67)</typeDesc>
+                                      <termBounds>(24, 24, 32, 32)</termBounds>
+                                      <primIndex>409</primIndex>
+                                      <inplace>4</inplace>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1681">
+                                    <dco class="parm" uid="1682">
+                                      <objFlags>1</objFlags>
+                                      <typeDesc>TypeID(68)</typeDesc>
+                                      <termBounds>(0, 24, 8, 32)</termBounds>
+                                      <primIndex>409</primIndex>
+                                      <parmIndex>3</parmIndex>
+                                      <inplace>7</inplace>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1684">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="1685">
+                                      <typeDesc>TypeID(69)</typeDesc>
+                                      <termBounds>(0, 8, 16, 16)</termBounds>
+                                      <primIndex>409</primIndex>
+                                      <parmIndex>7</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1687">
+                                    <dco class="parm" uid="1688">
+                                      <objFlags>65536</objFlags>
+                                      <typeDesc>TypeID(70)</typeDesc>
+                                      <termBounds>(24, 0, 32, 8)</termBounds>
+                                      <primIndex>409</primIndex>
+                                      <parmIndex>8</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1690">
+                                    <dco class="parm" uid="1691">
+                                      <typeDesc>TypeID(71)</typeDesc>
+                                      <termBounds>(16, 0, 24, 8)</termBounds>
+                                      <primIndex>409</primIndex>
+                                      <parmIndex>9</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1693">
+                                    <dco class="parm" uid="1694">
+                                      <typeDesc>TypeID(72)</typeDesc>
+                                      <termBounds>(8, 0, 16, 8)</termBounds>
+                                      <primIndex>409</primIndex>
+                                      <parmIndex>10</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="1696">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="1697">
+                                      <typeDesc>TypeID(73)</typeDesc>
+                                      <termBounds>(0, 0, 8, 8)</termBounds>
+                                      <primIndex>409</primIndex>
+                                      <parmIndex>11</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </termList>
+                                <bounds>(152, 32, 184, 64)</bounds>
+                                <shortCount>2</shortCount>
+                                <clumpNum>720899</clumpNum>
+                                <primResID>8076</primResID>
+                                <primIndex>409</primIndex>
+                                </SL__arrayElement>
+                              </heap></part>

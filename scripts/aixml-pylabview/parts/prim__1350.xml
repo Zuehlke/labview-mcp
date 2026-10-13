@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1350" source="&lt;labview&gt;\resource\Channels\Event Messenger\Replicate Core.vi"><types><TypeDesc Type="Boolean" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="946">
+                        <objFlags>512</objFlags>
+                        <termList elements="1">
+                          <SL__arrayElement class="term" uid="952">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="953">
+                              <typeDesc>TypeID(114)</typeDesc>
+                              <termBounds>(0, 0, 32, 32)</termBounds>
+                              <primIndex>137</primIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(23, 136, 55, 168)</bounds>
+                        <shortCount>6</shortCount>
+                        <clumpNum>655363</clumpNum>
+                        <primResID>1350</primResID>
+                        <primIndex>137</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Knob/Delete Slider" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0020" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0020" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Delete Slider" /><TypeDesc Type="Void" Format="inline" Label="Delete Slider" /></types><heap><SL__arrayElement class="invokeNode" uid="39823">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="39794">
+            <dco class="hGrowCItem" uid="39824">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(19761)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="39825">
+            <dco class="hGrowCItem" uid="39827">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(19762)</typeDesc>
+              <termBounds>(0, 65, 9, 78)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="39832">
+            <dco class="hGrowCItem" uid="39826">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(19763)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="39829">
+            <dco class="hGrowCItem" uid="39828">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(19764)</typeDesc>
+              <termBounds>(9, 65, 18, 78)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="39833">
+            <dco class="invokeItem" uid="39837">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(19765)</typeDesc>
+              <termBounds>(18, 0, 34, 39)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="39836">
+            <dco class="invokeItem" uid="39835">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(19766)</typeDesc>
+              <termBounds>(18, 39, 34, 78)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1523, 8547, 1558, 8625)</bounds>
+        <shortCount>3968</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="39837" />
+          <SL__arrayElement uid="39835" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="39824" />
+          <SL__arrayElement uid="39827" />
+          <SL__arrayElement uid="39826" />
+          <SL__arrayElement uid="39828" />
+          </permDCOList>
+        <nodeName>"Knob"</nodeName>
+        <oMId>003E</oMId>
+        <methName>"Delete Slider"</methName>
+        <methCode>104068097</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

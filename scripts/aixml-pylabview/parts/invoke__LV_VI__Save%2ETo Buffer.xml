@@ -1,0 +1,195 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.VI/Save%2ETo Buffer" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="SaveVIToBuffer" /><TypeDesc Type="Void" Format="inline" Label="SaveVIToBuffer" /><TypeDesc Type="Void" Format="inline" Label="Buffer" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Buffer" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="SaveOptions" /><TypeDesc Type="Void" Format="inline" Label="SaveOptions" /><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="TargetOS"><EnumLabel>invalid OS target</EnumLabel>
+        <EnumLabel>Mac OS</EnumLabel>
+        <EnumLabel>Windows 3.1</EnumLabel>
+        <EnumLabel>Windows 95/NT</EnumLabel>
+        <EnumLabel>Solaris 1</EnumLabel>
+        <EnumLabel>Solaris 2</EnumLabel>
+        <EnumLabel>HP-UX</EnumLabel>
+        <EnumLabel>PowerMAX</EnumLabel>
+        <EnumLabel>Linux</EnumLabel>
+        <EnumLabel>Irix</EnumLabel>
+        <EnumLabel>Rhapsody</EnumLabel>
+        <EnumLabel>BeOS</EnumLabel>
+        <EnumLabel>AIX</EnumLabel>
+        <EnumLabel>OSF1</EnumLabel>
+        <EnumLabel>VxWorks</EnumLabel>
+        <EnumLabel>PharLap</EnumLabel>
+        <EnumLabel>Carbon</EnumLabel>
+        <EnumLabel>RTX</EnumLabel>
+        <EnumLabel>Windows x64</EnumLabel>
+        <EnumLabel>Linux x64</EnumLabel>
+        <EnumLabel>Mac OS X x64</EnumLabel>
+        <EnumLabel>Linux ARM64</EnumLabel>
+        <EnumLabel>Windows ARM64</EnumLabel>
+        <EnumLabel>Mac OS X ARM64</EnumLabel>
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="TargetOS" /><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="TargetCPU"><EnumLabel>invalid CPU target</EnumLabel>
+        <EnumLabel>Motorola 68K</EnumLabel>
+        <EnumLabel>PowerPC</EnumLabel>
+        <EnumLabel>Intel x86</EnumLabel>
+        <EnumLabel>SPARC</EnumLabel>
+        <EnumLabel>PA-RISC</EnumLabel>
+        <EnumLabel>MIPS</EnumLabel>
+        <EnumLabel>Alpha</EnumLabel>
+        <EnumLabel>ARM</EnumLabel>
+        <EnumLabel>AMD/Intel x64</EnumLabel>
+        <EnumLabel>ARM64</EnumLabel>
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="TargetCPU" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0001" HasItem="0" Format="inline" Label="App Builder" /><TypeDesc Type="Void" Format="inline" Label="App Builder" /></types><heap><SL__arrayElement class="invokeNode" uid="98471">
+        <objFlags>33555072</objFlags>
+        <termList elements="16">
+          <SL__arrayElement class="term" uid="98476">
+            <dco class="hGrowCItem" uid="98474">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(5645)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98479">
+            <dco class="hGrowCItem" uid="98477">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(5646)</typeDesc>
+              <termBounds>(0, 73, 9, 86)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98482">
+            <dco class="hGrowCItem" uid="98480">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(5647)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98485">
+            <dco class="hGrowCItem" uid="98483">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(5648)</typeDesc>
+              <termBounds>(9, 73, 18, 86)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98492">
+            <dco class="invokeItem" uid="98489">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(5649)</typeDesc>
+              <termBounds>(18, 0, 34, 43)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98496">
+            <dco class="invokeItem" uid="98493">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(5650)</typeDesc>
+              <termBounds>(18, 43, 34, 86)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98503">
+            <dco class="invokeItem" uid="98501">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(5651)</typeDesc>
+              <termBounds>(34, 0, 50, 43)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98507">
+            <dco class="invokeItem" uid="98505">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(5652)</typeDesc>
+              <termBounds>(34, 43, 50, 86)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98511">
+            <dco class="invokeItem" uid="98509">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(5653)</typeDesc>
+              <termBounds>(50, 0, 66, 43)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98515">
+            <dco class="invokeItem" uid="98513">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(5654)</typeDesc>
+              <termBounds>(50, 43, 66, 86)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98519">
+            <dco class="invokeItem" uid="98517">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(5655)</typeDesc>
+              <termBounds>(66, 0, 82, 43)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98523">
+            <dco class="invokeItem" uid="98521">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(5656)</typeDesc>
+              <termBounds>(66, 43, 82, 86)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98527">
+            <dco class="invokeItem" uid="98525">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(5657)</typeDesc>
+              <termBounds>(82, 0, 98, 43)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98531">
+            <dco class="invokeItem" uid="98529">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(5658)</typeDesc>
+              <termBounds>(82, 43, 98, 86)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98535">
+            <dco class="invokeItem" uid="98533">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(5659)</typeDesc>
+              <termBounds>(98, 0, 114, 43)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="98539">
+            <dco class="invokeItem" uid="98537">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(5660)</typeDesc>
+              <termBounds>(98, 43, 114, 86)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(4194, 22767, 4309, 22853)</bounds>
+        <shortCount>946</shortCount>
+        <dcoList elements="12">
+          <SL__arrayElement uid="98489" />
+          <SL__arrayElement uid="98493" />
+          <SL__arrayElement uid="98501" />
+          <SL__arrayElement uid="98505" />
+          <SL__arrayElement uid="98509" />
+          <SL__arrayElement uid="98513" />
+          <SL__arrayElement uid="98517" />
+          <SL__arrayElement uid="98521" />
+          <SL__arrayElement uid="98525" />
+          <SL__arrayElement uid="98529" />
+          <SL__arrayElement uid="98533" />
+          <SL__arrayElement uid="98537" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="98474" />
+          <SL__arrayElement uid="98477" />
+          <SL__arrayElement uid="98480" />
+          <SL__arrayElement uid="98483" />
+          </permDCOList>
+        <nodeName>"VI"</nodeName>
+        <oMId>0009</oMId>
+        <methName>"Save.To Buffer"</methName>
+        <methCode>1050</methCode>
+        <invokeFlags>0408</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

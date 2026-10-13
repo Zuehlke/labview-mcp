@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.VI/SetBDMod" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="SetBDMod" /><TypeDesc Type="Void" Format="inline" Label="SetBDMod" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Mod" /><TypeDesc Type="Void" Format="inline" Label="Mod" /></types><heap><SL__arrayElement class="invokeNode" uid="97968">
+        <objFlags>33555076</objFlags>
+        <termList elements="8">
+          <SL__arrayElement class="term" uid="97970">
+            <dco class="hGrowCItem" uid="97972">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(5717)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97973">
+            <dco class="hGrowCItem" uid="97975">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(5718)</typeDesc>
+              <termBounds>(0, 61, 9, 74)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97980">
+            <dco class="hGrowCItem" uid="97974">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(5719)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97978">
+            <dco class="hGrowCItem" uid="97976">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(5720)</typeDesc>
+              <termBounds>(9, 61, 18, 74)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97981">
+            <dco class="invokeItem" uid="97985">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(5721)</typeDesc>
+              <termBounds>(18, 0, 34, 37)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97984">
+            <dco class="invokeItem" uid="97983">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(5722)</typeDesc>
+              <termBounds>(18, 37, 34, 74)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97879">
+            <dco class="invokeItem" uid="97856">
+              <typeDesc>TypeID(5723)</typeDesc>
+              <termBounds>(34, 0, 50, 37)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="97925">
+            <dco class="invokeItem" uid="97924">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(5724)</typeDesc>
+              <termBounds>(34, 37, 50, 74)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(4830, 22767, 4881, 22841)</bounds>
+        <shortCount>960</shortCount>
+        <dcoList elements="4">
+          <SL__arrayElement uid="97985" />
+          <SL__arrayElement uid="97983" />
+          <SL__arrayElement uid="97856" />
+          <SL__arrayElement uid="97924" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="97972" />
+          <SL__arrayElement uid="97975" />
+          <SL__arrayElement uid="97974" />
+          <SL__arrayElement uid="97976" />
+          </permDCOList>
+        <nodeName>"VI"</nodeName>
+        <oMId>0009</oMId>
+        <methName>"SetBDMod"</methName>
+        <methCode>1081</methCode>
+        <invokeFlags>1408</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

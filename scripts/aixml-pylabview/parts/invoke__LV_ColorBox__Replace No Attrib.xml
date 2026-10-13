@@ -1,0 +1,124 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.ColorBox/Replace No Attrib" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0007" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0007" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="RepNoAttrib" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0024" HasItem="0" Format="inline" Label="RepNoAttrib" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Param 0" /><TypeDesc Type="Void" Format="inline" Label="Param 0" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Param 1" /><TypeDesc Type="Void" Format="inline" Label="Param 1" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="PaletteString" /><TypeDesc Type="Void" Format="inline" Label="PaletteString" /></types><heap><SL__arrayElement class="invokeNode" uid="154668">
+        <objFlags>644</objFlags>
+        <termList elements="12">
+          <SL__arrayElement class="term" uid="154674">
+            <dco class="hGrowCItem" uid="154671">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(1273)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154677">
+            <dco class="hGrowCItem" uid="154675">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(1274)</typeDesc>
+              <termBounds>(0, 89, 9, 102)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154680">
+            <dco class="hGrowCItem" uid="154678">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(1275)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154683">
+            <dco class="hGrowCItem" uid="154681">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(1276)</typeDesc>
+              <termBounds>(9, 89, 18, 102)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154690">
+            <dco class="invokeItem" uid="154687">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(1277)</typeDesc>
+              <termBounds>(18, 0, 34, 51)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154694">
+            <dco class="invokeItem" uid="154691">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(1278)</typeDesc>
+              <termBounds>(18, 51, 34, 102)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154698">
+            <dco class="invokeItem" uid="154696">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(1279)</typeDesc>
+              <termBounds>(34, 0, 50, 51)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154702">
+            <dco class="invokeItem" uid="154700">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(1280)</typeDesc>
+              <termBounds>(34, 51, 50, 102)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154706">
+            <dco class="invokeItem" uid="154704">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(1281)</typeDesc>
+              <termBounds>(50, 0, 66, 51)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154710">
+            <dco class="invokeItem" uid="154708">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(1282)</typeDesc>
+              <termBounds>(50, 51, 66, 102)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154714">
+            <dco class="invokeItem" uid="154712">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(1283)</typeDesc>
+              <termBounds>(66, 0, 82, 51)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="154718">
+            <dco class="invokeItem" uid="154716">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(1284)</typeDesc>
+              <termBounds>(66, 51, 82, 102)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(788, 5222, 871, 5324)</bounds>
+        <shortCount>212</shortCount>
+        <dcoList elements="8">
+          <SL__arrayElement uid="154687" />
+          <SL__arrayElement uid="154691" />
+          <SL__arrayElement uid="154696" />
+          <SL__arrayElement uid="154700" />
+          <SL__arrayElement uid="154704" />
+          <SL__arrayElement uid="154708" />
+          <SL__arrayElement uid="154712" />
+          <SL__arrayElement uid="154716" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="154671" />
+          <SL__arrayElement uid="154675" />
+          <SL__arrayElement uid="154678" />
+          <SL__arrayElement uid="154681" />
+          </permDCOList>
+        <nodeName>"ColBox"</nodeName>
+        <oMId>0028</oMId>
+        <methName>"Replace No Attrib"</methName>
+        <methCode>103982083</methCode>
+        <invokeFlags>201000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

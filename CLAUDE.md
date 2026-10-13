@@ -1206,7 +1206,9 @@ hands the composer (`--parts`), while the composer's own tables - hotpoints, eve
 always come from the `parts\` beside its code (`lvheap.own_parts`). Run answers over ActiveX carry LabVIEW's flattened XML now, so a parser
 written for the gRPC shape reads both. **EVERYTHING THE BACKEND NEEDS SHIPS SINCE 2026-10-12 -
 the user's decision that a ZIP user needs nothing from `experiments\`.** Code, name tables and all
-1 242 parts live in `scripts\aixml-pylabview`, the helper parts NI's converter built from our own
+4 432 parts live in `scripts\aixml-pylabview` (1 253 until 2026-10-13, when the cache, the Project
+Providers, `wizard\ZE_Links` and NI donors were harvested in - FINDINGS §7b; a part cut from an
+IMPLICIT invoke node killed LabVIEW on load, so none is cut or composed any more), the helper parts NI's converter built from our own
 AIXML included (80 of 83 helper documents compose and all 80 load executable; the other three are
 LUnit templates the tool fills first). A part's provenance names `<labview>\…` or a bare file name,
 never a workstation path - `lvheap.portable_source`, also at every harvest, and a test fails on an

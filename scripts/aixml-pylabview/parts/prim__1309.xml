@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1309" source="&lt;labview&gt;\resource\dialog\picktime.vi"><types><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="date time rec"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="fractional second" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="second" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="minute" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="hour" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="day of month" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="month" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="year" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="day of week" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="day of year" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="DST" /></TypeDesc><Label Text="LVDateTimeRec.ctl" />
+        </TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="to UTC (F)" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" Label="secin" /></types><heap><SL__arrayElement class="prim" uid="3006">
+                                <objFlags>512</objFlags>
+                                <termList elements="3">
+                                  <SL__arrayElement class="term" uid="3014">
+                                    <objFlags>1</objFlags>
+                                    <dco class="parm" uid="3010">
+                                      <objFlags>1</objFlags>
+                                      <typeDesc>TypeID(112)</typeDesc>
+                                      <termBounds>(0, 16, 32, 32)</termBounds>
+                                      <primIndex>134</primIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="3022">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="3016">
+                                      <typeDesc>TypeID(113)</typeDesc>
+                                      <termBounds>(16, 0, 32, 16)</termBounds>
+                                      <primIndex>134</primIndex>
+                                      <parmIndex>1</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="3041">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="3029">
+                                      <typeDesc>TypeID(114)</typeDesc>
+                                      <termBounds>(0, 0, 16, 16)</termBounds>
+                                      <primIndex>134</primIndex>
+                                      <parmIndex>2</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </termList>
+                                <bounds>(34, 17, 66, 49)</bounds>
+                                <shortCount>2</shortCount>
+                                <clumpNum>327683</clumpNum>
+                                <primResID>1309</primResID>
+                                <primIndex>134</primIndex>
+                                </SL__arrayElement>
+                              </heap></part>

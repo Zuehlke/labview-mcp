@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.DigitalTable/Create Property Node" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x003D" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x003D" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Create Property Node" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4023" HasItem="0" Format="inline" Label="Create Property Node" /></types><heap><SL__arrayElement class="invokeNode" uid="22527">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="22528">
+            <dco class="hGrowCItem" uid="22530">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(24061)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="22531">
+            <dco class="hGrowCItem" uid="22533">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(24062)</typeDesc>
+              <termBounds>(0, 109, 9, 122)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="22538">
+            <dco class="hGrowCItem" uid="22532">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(24063)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="22536">
+            <dco class="hGrowCItem" uid="22534">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(24064)</typeDesc>
+              <termBounds>(9, 109, 18, 122)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="22539">
+            <dco class="invokeItem" uid="22543">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(24065)</typeDesc>
+              <termBounds>(18, 0, 34, 61)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="22542">
+            <dco class="invokeItem" uid="22541">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(24066)</typeDesc>
+              <termBounds>(18, 61, 34, 122)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1206, 5371, 1241, 5493)</bounds>
+        <shortCount>4962</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="22543" />
+          <SL__arrayElement uid="22541" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="22530" />
+          <SL__arrayElement uid="22533" />
+          <SL__arrayElement uid="22532" />
+          <SL__arrayElement uid="22534" />
+          </permDCOList>
+        <nodeName>"DigTbl"</nodeName>
+        <oMId>0029</oMId>
+        <methName>"Create Property Node"</methName>
+        <methCode>104012803</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

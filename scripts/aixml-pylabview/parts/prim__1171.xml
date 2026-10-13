@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1171" source="&lt;labview&gt;\resource\Framework\Providers\Builds\Common\SetLVAppVersion\res_FlattenVar.vi"><types><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumUInt16" Prop1="0" Format="inline" Label="Microsoft language id" /><TypeDesc Type="NumUInt16" Prop1="0" Format="inline" Label="IBM code page number" /></types><heap><SL__arrayElement class="prim" uid="153">
+                <objFlags>65536</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="167">
+                    <dco class="parm" uid="200">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(21)</typeDesc>
+                      <termBounds>(0, 9, 18, 18)</termBounds>
+                      <primIndex>115</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="201">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="202">
+                      <typeDesc>TypeID(22)</typeDesc>
+                      <termBounds>(9, 0, 18, 9)</termBounds>
+                      <primIndex>115</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="194">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="195">
+                      <typeDesc>TypeID(23)</typeDesc>
+                      <termBounds>(0, 0, 9, 9)</termBounds>
+                      <primIndex>115</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(29, 165, 61, 197)</bounds>
+                <shortCount>4</shortCount>
+                <clumpNum>327683</clumpNum>
+                <primResID>1171</primResID>
+                <primIndex>115</primIndex>
+                </SL__arrayElement>
+              </heap></part>

@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Enum/ObjHighlight" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0023" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0023" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Highlight Object" /><TypeDesc Type="Void" Format="inline" Label="Highlight Object" /></types><heap><SL__arrayElement class="invokeNode" uid="36931">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="36933">
+            <dco class="hGrowCItem" uid="36935">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(20481)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="36936">
+            <dco class="hGrowCItem" uid="36938">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(20482)</typeDesc>
+              <termBounds>(0, 67, 9, 80)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="36944">
+            <dco class="hGrowCItem" uid="36937">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(20483)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="36941">
+            <dco class="hGrowCItem" uid="36939">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(20484)</typeDesc>
+              <termBounds>(9, 67, 18, 80)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="36945">
+            <dco class="invokeItem" uid="36949">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(20485)</typeDesc>
+              <termBounds>(18, 0, 34, 40)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="36948">
+            <dco class="invokeItem" uid="36947">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(20486)</typeDesc>
+              <termBounds>(18, 40, 34, 80)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(739, 8095, 774, 8175)</bounds>
+        <shortCount>4138</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="36949" />
+          <SL__arrayElement uid="36947" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="36935" />
+          <SL__arrayElement uid="36938" />
+          <SL__arrayElement uid="36937" />
+          <SL__arrayElement uid="36939" />
+          </permDCOList>
+        <nodeName>"Enum"</nodeName>
+        <oMId>003B</oMId>
+        <methName>"ObjHighlight"</methName>
+        <methCode>103982081</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

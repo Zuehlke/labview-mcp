@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/9103" source="&lt;labview&gt;\vi.lib\ProgressBar\Increment Progress Bar.vi"><types><TypeDesc Type="Refnum" RefType="NotifierRef" Format="inline" Label="Cancelled?"><TypeDesc Type="Boolean" Format="inline" Label="Cancelled?" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="Refnum" RefType="NotifierRef" Format="inline" Label="Cancelled?"><TypeDesc Type="Boolean" Format="inline" Label="Cancelled?" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="Cancelled?" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="# waiting" /><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="927">
+        <objFlags>512</objFlags>
+        <termList elements="7">
+          <SL__arrayElement class="term" uid="998">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1001">
+              <typeDesc>TypeID(28)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>472</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1004">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1005">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(29)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>472</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1007">
+            <dco class="parm" uid="1008">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(30)</typeDesc>
+              <termBounds>(0, 16, 16, 24)</termBounds>
+              <primIndex>472</primIndex>
+              <parmIndex>6</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1010">
+            <dco class="parm" uid="1011">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(31)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>472</primIndex>
+              <parmIndex>8</parmIndex>
+              <inplace>1</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1013">
+            <dco class="parm" uid="1014">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(32)</typeDesc>
+              <termBounds>(8, 24, 16, 32)</termBounds>
+              <primIndex>472</primIndex>
+              <parmIndex>9</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1016">
+            <dco class="parm" uid="1017">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(33)</typeDesc>
+              <termBounds>(16, 24, 24, 32)</termBounds>
+              <primIndex>472</primIndex>
+              <parmIndex>10</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1019">
+            <dco class="parm" uid="1020">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(34)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>472</primIndex>
+              <parmIndex>11</parmIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <label class="label" uid="284">
+          <objFlags>1507650</objFlags>
+          <partID>16</partID>
+          <howGrow>4096</howGrow>
+          <bounds>(-17, 0, 0, 99)</bounds>
+          <image class="Image">
+            <ImageResID>-619</ImageResID>
+            </image>
+          <fgColor>01000000</fgColor>
+          <bgColor>01000000</bgColor>
+          <textRec class="textHair">
+            <mode>82948</mode>
+            <text>"Get Notifier Status"</text>
+            <bgColor>01000000</bgColor>
+            </textRec>
+          </label>
+        <bounds>(251, 494, 283, 526)</bounds>
+        <shortCount>4</shortCount>
+        <clumpNum>196611</clumpNum>
+        <primResID>9103</primResID>
+        <primIndex>472</primIndex>
+        </SL__arrayElement>
+      </heap></part>

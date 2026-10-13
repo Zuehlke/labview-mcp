@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1512" source="&lt;labview&gt;\resource\Framework\Providers\InstrumentDriver\IDVICreator\CreateConfigVI.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="output string" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="format string" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="string (&quot;&quot;)" /></types><heap><SL__arrayElement class="prim" uid="10276">
+                                        <termList elements="4">
+                                          <SL__arrayElement class="term" uid="10338">
+                                            <dco class="parm" uid="10353">
+                                              <objFlags>1</objFlags>
+                                              <typeDesc>TypeID(806)</typeDesc>
+                                              <termBounds>(0, 16, 32, 32)</termBounds>
+                                              <primIndex>123</primIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="10342">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="parm" uid="10356">
+                                              <typeDesc>TypeID(807)</typeDesc>
+                                              <termBounds>(21, 0, 32, 16)</termBounds>
+                                              <primIndex>123</primIndex>
+                                              <parmIndex>1</parmIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="10343">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="parm" uid="10340">
+                                              <typeDesc>TypeID(808)</typeDesc>
+                                              <dsw>4096</dsw>
+                                              <termBounds>(11, 0, 21, 16)</termBounds>
+                                              <primIndex>123</primIndex>
+                                              <parmIndex>2</parmIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="10341">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="parm" uid="10358">
+                                              <typeDesc>TypeID(809)</typeDesc>
+                                              <dsw>4096</dsw>
+                                              <termBounds>(0, 0, 11, 16)</termBounds>
+                                              <primIndex>123</primIndex>
+                                              <parmIndex>3</parmIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          </termList>
+                                        <bounds>(87, 189, 119, 221)</bounds>
+                                        <shortCount>4</shortCount>
+                                        <clumpNum>5046319</clumpNum>
+                                        <primResID>1512</primResID>
+                                        <primIndex>123</primIndex>
+                                        </SL__arrayElement>
+                                      </heap></part>

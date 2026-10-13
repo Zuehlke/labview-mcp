@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.WaveformGraph/FitControlToPane" source="NI Donor Probe.vi" clean="1"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0018" HasItem="0" Format="inline" Label="graph" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0018" HasItem="0" Format="inline" Label="graph" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="FitControlToPane" /><TypeDesc Type="Void" Format="inline" Label="FitControlToPane" /></types><heap><SL__arrayElement class="invokeNode" uid="4310">
+        <objFlags>640</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="4712">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="4710">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(54)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4715">
+            <dco class="hGrowCItem" uid="4713">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(55)</typeDesc>
+              <termBounds>(0, 89, 9, 102)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4718">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="4716">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(56)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4721">
+            <dco class="hGrowCItem" uid="4719">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(57)</typeDesc>
+              <termBounds>(9, 89, 18, 102)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4728">
+            <dco class="invokeItem" uid="4725">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(58)</typeDesc>
+              <termBounds>(18, 0, 34, 51)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4732">
+            <dco class="invokeItem" uid="4729">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(59)</typeDesc>
+              <termBounds>(18, 51, 34, 102)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(238, 457, 273, 559)</bounds>
+        <shortCount>4</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="4725" />
+          <SL__arrayElement uid="4729" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="4710" />
+          <SL__arrayElement uid="4713" />
+          <SL__arrayElement uid="4716" />
+          <SL__arrayElement uid="4719" />
+          </permDCOList>
+        <nodeName>"Instr"</nodeName>
+        <oMId>0003</oMId>
+        <methName>"FitControlToPane"</methName>
+        <methCode>104012819</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

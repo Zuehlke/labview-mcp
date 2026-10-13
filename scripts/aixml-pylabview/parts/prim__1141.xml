@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1141" source="&lt;labview&gt;\examples\Graphics and Sound\2D Picture Control\subVIs\robot - Draw Joint.vi"><types><TypeDesc Type="NumInt16" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="268">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="272">
+                    <dco class="parm" uid="270">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(100)</typeDesc>
+                      <termBounds>(0, 12, 11, 25)</termBounds>
+                      <primIndex>55</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="275">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="273">
+                      <typeDesc>TypeID(101)</typeDesc>
+                      <termBounds>(0, 0, 11, 12)</termBounds>
+                      <primIndex>55</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(113, 138, 145, 170)</bounds>
+                <shortCount>10</shortCount>
+                <clumpNum>262147</clumpNum>
+                <primResID>1141</primResID>
+                <primIndex>55</primIndex>
+                </SL__arrayElement>
+              </heap></part>

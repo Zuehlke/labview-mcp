@@ -2565,6 +2565,87 @@ Every Express and malleable call over the corpus is named as NI names it now; XN
 Over the 747: **253 identical** (223), elements 97.7 %, values 96.4 % (94.8); the round trip
 unchanged.
 
+## 7b. Completing the parts from more sources (2026-10-13)
+
+The user's question: are all parts of the AIXML cache extracted yet, and what do the Project
+Providers, the user's `wizard\ZE_Links` VIs and a large customer codebase add? Every source went
+through `harvest_coverage.py` first - a DRY harvest into copies of the shipped parts - so the
+numbers below are what each source ADDS, measured before anything was copied.
+
+| source | VIs | new parts | new property / method rows |
+|---|---|---|---|
+| the AIXML export cache | 800 | 123 | 105 / 13 |
+| `resource\Framework\Providers` | 3 698 | 109 (66 not already from the cache) | 42 / 5 |
+| `wizard\ZE_Links` (`All_Properties.vi`, `All_Methods.vi`, `All_Decorations.vi`) | 4 | 2 961 | 6 059 / 2 959 |
+| a customer codebase, used as an INDEX only | 6 234 | 122 (58 found nowhere else) | 131 / 5 |
+| the whole LabVIEW 2026 tree (Wovalab left out, pylabview hangs there) | 36 418 | 752 | 30 / 21 |
+
+**The cache was NOT exhausted, by design of `harvest_corpus.py`**: it takes the smallest donor per
+known primitive name and scalar type, so graph variants, rings and slides of other
+representations, refnum constants (Menu, Occurrence, User Event, Notifier) and arrays of refnums
+fell through, and its 26 entries inside an `.llb` are never harvested at all.
+
+**What was shipped** (`scripts/aixml-pylabview/parts`, 1 253 -> 4 432 files, 16 -> 48 MB): the
+cache and the Providers (one harvest, donors smallest first), the ZE_Links VIs, and for the
+customer-only constructs an NI donor - 45 from the installation sweep, 4 from a probe NI's own
+converter built (`NI Donor Probe.xml`: `LV.Table:Point To Row Column`,
+`LV.WaveformGraph:FitControlToPane`, `ref{LV.TabControl}` and `ref{LV.SubPanel}` indicators),
+harvested `--clean`. **No part, name or row was taken from the customer code**: it only said which
+constructs a real application uses that the parts lacked. Nine stay open - arrays of .NET and
+TDMS refnums, four chart/graph variants with rare data types, `LV.Property:SetProperties[]`.
+`wiretables.json` was left as shipped (the harvests offered 14 "improved" tables; the composer
+builds any width itself now). The property table went from 105 classes, 1 183 properties and 506
+methods to **165, 7 318 and 3 482**.
+
+**ZE_Links is saved in LabVIEW 2019** (`All_Decorations.vi` in 2022), so its parts were cut from
+COPIES saved in LabVIEW 2026 (`lv-save.ps1`); harvested from the 2019 originals they differ only
+in `objFlags` (3 074 of 3 078 invoke parts). Against the shipped parts the 119 shared methods
+carry the same method codes (119 of 119) and 325 of 351 shared properties are identical; the 26
+others are `Value`-like items whose type is a Variant, because `All_Properties.vi` reads through
+NON-strict class refnums - which is the AIXML `{LV.X}` form anyway. A shipped row is never
+replaced; only its `access` gains what ZE saw.
+
+**Qualified by loading, not by the donor's name** (`probe_vi_server.py`): a minimal VI per item -
+a class refnum control into the node, error in/out - composed and loaded over COM.
+
+| run | cases | result |
+|---|---|---|
+| 40 shared methods, shipped parts (A) | 40 | 2 LabVIEW CRASHES on load, otherwise the same ExecStates as B |
+| the same 40, ZE parts (B) | 40 | 40 load, 0 `Insane`, 0 unexpected DWarns |
+| new ZE methods, two per class | 120 | 120 load, 0 `Insane`, 0 unexpected DWarns (ExecState 0 where a required input is left unwired - by design) |
+| new ZE properties, two per class | 100 | 100 load, all executable, 0 `Insane` |
+
+The cases that first answered `GetVIReference FAILED` or a NullReference were collateral of the
+crash - COM had restarted LabVIEW as `/Automation -Embedding`, which quits when its last client
+leaves - and all loaded clean when re-run on a LabVIEW restarted with `lv-restart.ps1`.
+
+**THE CRASH: 19 SHIPPED INVOKE PARTS WERE CUT FROM IMPLICIT NODES.** An invoke node linked to a
+front-panel object carries a `<ddo>` naming that object; `harvest_parts.py` filed it like an
+explicit node, and the composer used it as one, so the composed VI named an object it does not
+have: `Unswizzled references remain after loading heap`, then LabVIEW was gone. Reproduced on a
+fresh LabVIEW with `LV.String:Get Nth Line` (the second was `Size to Text`). The property side
+had always kept implicit nodes apart (`node/propNode/implicit`); the invoke side never did. Now:
+the harvester cuts no part from an implicit invoke node (its method row is still kept), the
+composer REFUSES such a part by name instead of crashing, four of the 19 were replaced by the
+explicit ZE part (Get Nth Line, Size to Text, `Get Clicked Col Hdr`, `SubPanel:Remove VI`) and
+the other 15 were removed - a call to them is a named refusal until an explicit donor is found.
+None was used by a test or a helper.
+
+**Names**: the bundle's `primitive-names.tsv` lists 258 primitives, so even `Flatten To String`,
+`Swap Bytes` and `Date/Time To Seconds` had no name. `find_prim_names.py` joins a part's
+`primResID` with NI's export of the donor on uid (the 23 Provider donors not cached yet were
+exported first): **26 of 42 new primitives named**, appended to `primitive-names-extra.tsv`; the
+other 16 sit only in password-protected VIs or are named by no export. `learn_names_full.py
+--write` then learned **106 terminal names**; `t164` composes four of the new primitives and runs
+them right.
+
+**The suite**: 129 PASS on the new parts; t133, t136 and t138 FAIL identically with the parts of
+HEAD (an A/B, folder swapped) - window messages and key focus, the session's desktop state.
+
+**Not yet done**: the whole-installation sweep found 752 parts the shipped set lacks; only the 49
+the customer-only constructs needed were taken. The rest is the natural next harvest, and like
+everything here it should be load-probed before it ships.
+
 ## 8. Files
 
 | file | |
@@ -2572,6 +2653,7 @@ unchanged.
 | `aixml2vi.py` | AIXML → VI composer |
 | `vi2aixml.py` | VI → AIXML reader |
 | `harvest_parts.py`, `harvest_corpus.py` | cut parts from VIs; pick donors from the cache |
+| `harvest_coverage.py`, `find_prim_names.py`, `probe_vi_server.py` | §7b: what a source would ADD (dry, into copies); name a primResID from NI's exports; load-probe invoke and property parts, A/B between two parts dirs |
 | `lvheap.py` | bundle reading, type tables, uid renumbering |
 | `resolve.py` | `<Call>` target → callee file and link records, no LabVIEW |
 | `wire_corpus.py`, `wire_decode.py`, `wire_fit.py`, `learn_hotpoints.py` | the two-ended wires of LabVIEW's own saves with their geometry; the table decoder; the hotpoint models per terminal kind; the per-primitive offsets into `parts/hotpoints.json` |
@@ -2607,7 +2689,7 @@ unchanged.
 | `harvest_templates.py`, `merge_props.py`, `event_specs.py` | template nodes named by wire joins; parallel property sweeps; EventSpec rows |
 | `try_vi.py`, `bisect_vi.py`, `dwarn_delta.py` | compose + load one VI with its log lines; split a broken VI; DWarns per VI |
 | `lv-com.ps1`, `lv-keeper.ps1`, `lv-restart.ps1`, `lv-save.ps1`, `lv-windows.ps1` | LabVIEW over COM - `-Post` sends window messages to the VI's own panel during a run (the close box, a key) and reports whether the panel is still open, a selftest case's `post`, and `SERVED FROM` when LabVIEW answers with another file than the one asked for; `rclick:x,y` and `esc` right-click a control and close LabVIEW's popup menu (`LVMenuWnd`); restart without the gRPC service; save a VI through LabVIEW |
-| `parts/refnum-classes.tsv`, `parts/vi-server-props.json` | the 166 VI Server class IDs; 1 052 properties and 496 methods with their codes |
+| `parts/refnum-classes.tsv`, `parts/vi-server-props.json` | the 166 VI Server class IDs; 7 318 properties and 3 482 methods with their codes (1 052 and 496 before §7b) |
 | `outline.py`, `normdiff.py` | read a heap object; diff two bundles uid-insensitively |
 | `parts/` | skeleton, parts, `wiretables.json`, `denylist.json` |
 | `terminal-names-learned.tsv` | terminal names learned from NI's exports |

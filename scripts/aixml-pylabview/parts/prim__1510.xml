@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1510" source="&lt;labview&gt;\resource\Framework\Providers\InstrumentDriver\IDVICreator\codegen\IDConfig.llb\idvi_StringRing.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="command" /><TypeDesc Type="NumUInt16" Prop1="0" Format="inline" Label="val" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="options" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="command" /></types><heap><SL__arrayElement class="prim" uid="301">
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="305">
+            <dco class="parm" uid="308">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(23)</typeDesc>
+              <termBounds>(0, 16, 32, 32)</termBounds>
+              <primIndex>124</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="306">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="311">
+              <typeDesc>TypeID(24)</typeDesc>
+              <termBounds>(21, 0, 32, 16)</termBounds>
+              <primIndex>124</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="309">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="315">
+              <typeDesc>TypeID(25)</typeDesc>
+              <dsw>4096</dsw>
+              <termBounds>(11, 0, 21, 16)</termBounds>
+              <primIndex>124</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="310">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="312">
+              <typeDesc>TypeID(26)</typeDesc>
+              <termBounds>(0, 0, 11, 16)</termBounds>
+              <primIndex>124</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(240, 281, 272, 313)</bounds>
+        <shortCount>4</shortCount>
+        <primResID>1510</primResID>
+        <primIndex>124</primIndex>
+        </SL__arrayElement>
+      </heap></part>

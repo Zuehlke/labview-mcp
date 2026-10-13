@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.DAQmxName/Discon Typedef" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0039" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0039" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Discon Typedef" /><TypeDesc Type="Boolean" Format="inline" Label="Discon Typedef" /></types><heap><SL__arrayElement class="invokeNode" uid="29164">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="29163">
+            <dco class="hGrowCItem" uid="29166">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(22455)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="29167">
+            <dco class="hGrowCItem" uid="29165">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(22456)</typeDesc>
+              <termBounds>(0, 129, 9, 142)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="29175">
+            <dco class="hGrowCItem" uid="29168">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(22457)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="29172">
+            <dco class="hGrowCItem" uid="29170">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(22458)</typeDesc>
+              <termBounds>(9, 129, 18, 142)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="29176">
+            <dco class="invokeItem" uid="29180">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(22459)</typeDesc>
+              <termBounds>(18, 0, 34, 71)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="29179">
+            <dco class="invokeItem" uid="29178">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(22460)</typeDesc>
+              <termBounds>(18, 71, 34, 142)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1195, 6582, 1230, 6724)</bounds>
+        <shortCount>4592</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="29180" />
+          <SL__arrayElement uid="29178" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="29166" />
+          <SL__arrayElement uid="29165" />
+          <SL__arrayElement uid="29168" />
+          <SL__arrayElement uid="29170" />
+          </permDCOList>
+        <nodeName>"DAQmxName"</nodeName>
+        <oMId>0031</oMId>
+        <methName>"Discon Typedef"</methName>
+        <methCode>104012809</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

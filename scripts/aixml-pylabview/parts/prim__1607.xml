@@ -1,0 +1,50 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1607" source="&lt;labview&gt;\user.lib\_MGI\1D Array\MGI Running Maximum\MGI Running Maximum (DBL).vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="lsb carry out" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Size" /><TypeDesc Type="Boolean" Format="inline" Label="carry" /></types><heap><SL__arrayElement class="prim" uid="199">
+                                        <termList elements="4">
+                                          <SL__arrayElement class="term" uid="201">
+                                            <dco class="parm" uid="202">
+                                              <objFlags>1</objFlags>
+                                              <typeDesc>TypeID(65)</typeDesc>
+                                              <termBounds>(8, 12, 17, 25)</termBounds>
+                                              <primIndex>145</primIndex>
+                                              <inplace>3</inplace>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="204">
+                                            <dco class="parm" uid="205">
+                                              <objFlags>1</objFlags>
+                                              <typeDesc>TypeID(66)</typeDesc>
+                                              <termBounds>(0, 12, 8, 25)</termBounds>
+                                              <primIndex>145</primIndex>
+                                              <parmIndex>1</parmIndex>
+                                              <inplace>4</inplace>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="207">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="parm" uid="208">
+                                              <objFlags>65536</objFlags>
+                                              <typeDesc>TypeID(67)</typeDesc>
+                                              <termBounds>(8, 0, 17, 12)</termBounds>
+                                              <primIndex>145</primIndex>
+                                              <parmIndex>2</parmIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="210">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="parm" uid="211">
+                                              <objFlags>65536</objFlags>
+                                              <typeDesc>TypeID(68)</typeDesc>
+                                              <termBounds>(0, 0, 8, 12)</termBounds>
+                                              <primIndex>145</primIndex>
+                                              <parmIndex>3</parmIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          </termList>
+                                        <bounds>(116, 64, 148, 96)</bounds>
+                                        <shortCount>2</shortCount>
+                                        <clumpNum>458755</clumpNum>
+                                        <primResID>1607</primResID>
+                                        <primIndex>145</primIndex>
+                                        </SL__arrayElement>
+                                      </heap></part>

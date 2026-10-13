@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1814" source="&lt;labview&gt;\resource\Framework\Providers\LVClassLibrary\CLSUIP_FillPatternTo2DBoolArray.vi"><types><TypeDesc Type="Array" Format="inline" Label="Boolean array"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Boolean" Format="inline" /></TypeDesc><TypeDesc Type="NumUInt8" Prop1="0" Format="inline" Label="Row 0" /></types><heap><SL__arrayElement class="prim" uid="80">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="82">
+                    <dco class="parm" uid="83">
+                      <objFlags>131073</objFlags>
+                      <typeDesc>TypeID(21)</typeDesc>
+                      <termBounds>(0, 13, 11, 26)</termBounds>
+                      <primIndex>146</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="85">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="86">
+                      <typeDesc>TypeID(22)</typeDesc>
+                      <termBounds>(0, 0, 11, 13)</termBounds>
+                      <primIndex>146</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(22, 15, 54, 47)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>327683</clumpNum>
+                <primResID>1814</primResID>
+                <primIndex>146</primIndex>
+                </SL__arrayElement>
+              </heap></part>

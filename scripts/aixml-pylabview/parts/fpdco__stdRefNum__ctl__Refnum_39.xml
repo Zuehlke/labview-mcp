@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdRefNum/ctl/Refnum.39" source="&lt;labview&gt;\vi.lib\_probes\default\.NET Core Refnum Probe.vi"><types><TypeDesc Type="Refnum" RefType="39" Format="inline" Label=".NET Core Object" /><TypeDesc Type="Refnum" RefType="39" Format="inline" Label=".NET Core Object" /></types><heap><SL__arrayElement class="fPDCO" uid="485">
+          <objFlags>66048</objFlags>
+          <typeDesc>TypeID(1)</typeDesc>
+          <ddo class="stdRefNum" uid="100">
+            <objFlags>8192</objFlags>
+            <bounds>(311, 154, 357, 249)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="476">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 1, 17, 95)</bounds>
+                <image class="Image">
+                  <ImageResID>-619</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <mode>17412</mode>
+                  <text>".NET Core Object"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="477">
+                <objFlags>2097</objFlags>
+                <partID>1</partID>
+                <masterPart>9</masterPart>
+                <bounds>(17, -5, 49, 27)</bounds>
+                <image class="Image">
+                  <ImageResID>-7172</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="478">
+                <objFlags>2359</objFlags>
+                <partID>9</partID>
+                <bounds>(19, 0, 46, 21)</bounds>
+                <image class="Image">
+                  <ImageResID>-276</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="479">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>3551</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(2)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>1</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="arrelem" key="arrelem/const/stdPict" source="&lt;labview&gt;\examples\Graphics and Sound\2D Picture Control\Annotating a Picture.vi"><types><TypeDesc Type="Picture" Prop1="0xFFFFFFFF" Format="inline" Label="blank pic" /></types><heap><ddo class="stdPict" uid="3114">
+                                  <objFlags>131076</objFlags>
+                                  <bounds>(3, 35, 21, 51)</bounds>
+                                  <partsList elements="7">
+                                    <SL__arrayElement class="label" uid="3116">
+                                      <objFlags>1507658</objFlags>
+                                      <partID>16</partID>
+                                      <masterPart>9</masterPart>
+                                      <howGrow>4096</howGrow>
+                                      <bounds>(-17, -35, 0, 16)</bounds>
+                                      <image class="Image">
+                                        <ImageResID>-619</ImageResID>
+                                        </image>
+                                      <fgColor>01000000</fgColor>
+                                      <bgColor>01000000</bgColor>
+                                      <textRec class="textHair">
+                                        <flags>512</flags>
+                                        <mode>17428</mode>
+                                        <text>"blank pic"</text>
+                                        <bgColor>01000000</bgColor>
+                                        </textRec>
+                                      </SL__arrayElement>
+                                    <SL__arrayElement class="cosm" uid="3117">
+                                      <objFlags>2323</objFlags>
+                                      <partID>9</partID>
+                                      <howGrow>240</howGrow>
+                                      <bounds>(0, 0, 18, 16)</bounds>
+                                      <image class="Image">
+                                        <ImageResID>-675</ImageResID>
+                                        </image>
+                                      <fgColor>000000FF</fgColor>
+                                      <bgColor>00FFFFFF</bgColor>
+                                      </SL__arrayElement>
+                                    <SL__arrayElement class="cosm" uid="3118">
+                                      <objFlags>2355</objFlags>
+                                      <partID>28</partID>
+                                      <masterPart>9</masterPart>
+                                      <howGrow>240</howGrow>
+                                      <bounds>(1, 1, 17, 15)</bounds>
+                                      <image class="Image">
+                                        <ImageResID>-239</ImageResID>
+                                        </image>
+                                      <fgColor>00FFFFFF</fgColor>
+                                      <bgColor>00FFFFFF</bgColor>
+                                      </SL__arrayElement>
+                                    <SL__arrayElement class="cosm" uid="3119">
+                                      <objFlags>3455</objFlags>
+                                      <partID>44</partID>
+                                      <masterPart>9</masterPart>
+                                      <howGrow>10</howGrow>
+                                      <bounds>(7, 5, 17, 15)</bounds>
+                                      <image class="Image">
+                                        <ImageResID>-11</ImageResID>
+                                        </image>
+                                      <fgColor>00B3B3B3</fgColor>
+                                      <bgColor>00B3B3B3</bgColor>
+                                      </SL__arrayElement>
+                                    <SL__arrayElement class="cosm" uid="3120">
+                                      <objFlags>3454</objFlags>
+                                      <partID>39</partID>
+                                      <masterPart>9</masterPart>
+                                      <howGrow>194</howGrow>
+                                      <bounds>(1, 5, 7, 15)</bounds>
+                                      <image class="Image">
+                                        <ImageResID>-9</ImageResID>
+                                        </image>
+                                      <bgColor>00B3B3B3</bgColor>
+                                      </SL__arrayElement>
+                                    <SL__arrayElement class="cosm" uid="3121">
+                                      <objFlags>3454</objFlags>
+                                      <partID>38</partID>
+                                      <masterPart>9</masterPart>
+                                      <howGrow>56</howGrow>
+                                      <bounds>(7, 1, 17, 5)</bounds>
+                                      <image class="Image">
+                                        <ImageResID>-9</ImageResID>
+                                        </image>
+                                      <bgColor>00B3B3B3</bgColor>
+                                      </SL__arrayElement>
+                                    <SL__arrayElement class="annex" uid="3122">
+                                      <partID>66</partID>
+                                      <refListLength>0</refListLength>
+                                      <hGrowNodeListLength>0</hGrowNodeListLength>
+                                      <rsrcID>2011</rsrcID>
+                                      </SL__arrayElement>
+                                    </partsList>
+                                  <typeDesc>TypeID(138)</typeDesc>
+                                  <MouseWheelSupport>3</MouseWheelSupport>
+                                  <totalBounds>FFBBFBD7FFBBFBD7</totalBounds>
+                                  <srcRect>FFBBFBD7FFBBFBD7</srcRect>
+                                  <zoom>3F800000</zoom>
+                                  </ddo>
+                                </heap></part>

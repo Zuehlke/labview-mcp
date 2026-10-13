@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/2402" source="&lt;labview&gt;\resource\plugins\ExternalEditors\StateDiagramEditor\StateDiagramEditor.vit"><types><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="transition enum"><EnumLabel>Quit?</EnumLabel>
+        <EnumLabel>VI Running?</EnumLabel>
+        <EnumLabel>Diagram Popup</EnumLabel>
+        <EnumLabel>Delete Button</EnumLabel>
+        <EnumLabel>New Button</EnumLabel>
+        <EnumLabel>Print</EnumLabel>
+        <EnumLabel>Arrange Priorities</EnumLabel>
+        <EnumLabel>ToggleTerminal</EnumLabel>
+        <EnumLabel>Toggle Initial</EnumLabel>
+        <EnumLabel>Button Down?</EnumLabel>
+        <EnumLabel>Diag Dbl Click</EnumLabel>
+        <EnumLabel>Create New Transition</EnumLabel>
+        <EnumLabel>Panel Resize</EnumLabel>
+        <EnumLabel>Scroll Click</EnumLabel>
+        <EnumLabel>Toggle SubVI</EnumLabel>
+        <EnumLabel>Add Probe</EnumLabel>
+        <EnumLabel>Remove Probe</EnumLabel>
+        <EnumLabel>default</EnumLabel>
+        </TypeDesc><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="transition enum"><EnumLabel>Quit?</EnumLabel>
+        <EnumLabel>VI Running?</EnumLabel>
+        <EnumLabel>Diagram Popup</EnumLabel>
+        <EnumLabel>Delete Button</EnumLabel>
+        <EnumLabel>New Button</EnumLabel>
+        <EnumLabel>Print</EnumLabel>
+        <EnumLabel>Arrange Priorities</EnumLabel>
+        <EnumLabel>ToggleTerminal</EnumLabel>
+        <EnumLabel>Toggle Initial</EnumLabel>
+        <EnumLabel>Button Down?</EnumLabel>
+        <EnumLabel>Diag Dbl Click</EnumLabel>
+        <EnumLabel>Create New Transition</EnumLabel>
+        <EnumLabel>Panel Resize</EnumLabel>
+        <EnumLabel>Scroll Click</EnumLabel>
+        <EnumLabel>Toggle SubVI</EnumLabel>
+        <EnumLabel>Add Probe</EnumLabel>
+        <EnumLabel>Remove Probe</EnumLabel>
+        <EnumLabel>default</EnumLabel>
+        </TypeDesc><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="transition enum"><EnumLabel>Quit?</EnumLabel>
+        <EnumLabel>VI Running?</EnumLabel>
+        <EnumLabel>Diagram Popup</EnumLabel>
+        <EnumLabel>Delete Button</EnumLabel>
+        <EnumLabel>New Button</EnumLabel>
+        <EnumLabel>Print</EnumLabel>
+        <EnumLabel>Arrange Priorities</EnumLabel>
+        <EnumLabel>ToggleTerminal</EnumLabel>
+        <EnumLabel>Toggle Initial</EnumLabel>
+        <EnumLabel>Button Down?</EnumLabel>
+        <EnumLabel>Diag Dbl Click</EnumLabel>
+        <EnumLabel>Create New Transition</EnumLabel>
+        <EnumLabel>Panel Resize</EnumLabel>
+        <EnumLabel>Scroll Click</EnumLabel>
+        <EnumLabel>Toggle SubVI</EnumLabel>
+        <EnumLabel>Add Probe</EnumLabel>
+        <EnumLabel>Remove Probe</EnumLabel>
+        <EnumLabel>default</EnumLabel>
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="10909">
+                                        <termList elements="3">
+                                          <SL__arrayElement class="term" uid="10955">
+                                            <objFlags>17072128</objFlags>
+                                            <dco class="parm" uid="10942">
+                                              <objFlags>65536</objFlags>
+                                              <typeDesc>TypeID(843)</typeDesc>
+                                              <dsw>18432</dsw>
+                                              <termBounds>(0, 0, 11, 7)</termBounds>
+                                              <primIndex>335</primIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="10959">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="parm" uid="10957">
+                                              <typeDesc>TypeID(844)</typeDesc>
+                                              <dsw>4096</dsw>
+                                              <termBounds>(0, 7, 11, 17)</termBounds>
+                                              <primIndex>335</primIndex>
+                                              <parmIndex>1</parmIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="10962">
+                                            <dco class="parm" uid="10960">
+                                              <objFlags>1</objFlags>
+                                              <typeDesc>TypeID(845)</typeDesc>
+                                              <termBounds>(0, 17, 11, 25)</termBounds>
+                                              <primIndex>335</primIndex>
+                                              <parmIndex>2</parmIndex>
+                                              <inplace>1</inplace>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          </termList>
+                                        <bounds>(89, 70, 121, 102)</bounds>
+                                        <shortCount>2</shortCount>
+                                        <primResID>2402</primResID>
+                                        <primIndex>335</primIndex>
+                                        </SL__arrayElement>
+                                      </heap></part>

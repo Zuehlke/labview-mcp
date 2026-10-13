@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.StringConstant/Update Typedef" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4008" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4008" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Update Typedef" /><TypeDesc Type="Boolean" Format="inline" Label="Update Typedef" /></types><heap><SL__arrayElement class="invokeNode" uid="14991">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="14993">
+            <dco class="hGrowCItem" uid="14994">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(25929)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="14995">
+            <dco class="hGrowCItem" uid="14997">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(25930)</typeDesc>
+              <termBounds>(0, 81, 9, 94)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="15004">
+            <dco class="hGrowCItem" uid="14996">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(25931)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="15001">
+            <dco class="hGrowCItem" uid="14999">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(25932)</typeDesc>
+              <termBounds>(9, 81, 18, 94)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="15005">
+            <dco class="invokeItem" uid="15009">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(25933)</typeDesc>
+              <termBounds>(18, 0, 34, 47)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="15008">
+            <dco class="invokeItem" uid="15007">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(25934)</typeDesc>
+              <termBounds>(18, 47, 34, 94)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(980, 3872, 1015, 3966)</bounds>
+        <shortCount>5390</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="15009" />
+          <SL__arrayElement uid="15007" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="14994" />
+          <SL__arrayElement uid="14997" />
+          <SL__arrayElement uid="14996" />
+          <SL__arrayElement uid="14999" />
+          </permDCOList>
+        <nodeName>"StrCnst"</nodeName>
+        <oMId>001F</oMId>
+        <methName>"Update Typedef"</methName>
+        <methCode>104114177</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

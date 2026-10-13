@@ -1821,5 +1821,27 @@
     }
    }
   ]
+ },
+ "t164_new_prim_names": {
+  "cases": [
+   {
+    "inputs": "x=2.3;bits=1;shift=2",
+    "outputs": {
+     "ceil": 3,
+     "shifted": 4,
+     "quad": 2,
+     "first": "[1,2]"
+    }
+   },
+   {
+    "inputs": "x=-1.5;bits=3;shift=0",
+    "outputs": {
+     "ceil": -1,
+     "shifted": 3,
+     "quad": -2,
+     "first": "[]"
+    }
+   }
+  ]
  }
 }

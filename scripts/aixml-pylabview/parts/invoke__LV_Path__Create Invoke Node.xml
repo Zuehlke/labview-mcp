@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Path/Create Invoke Node" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x000B" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x000B" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="Create Invoke Node" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x4024" HasItem="0" Format="inline" Label="Create Invoke Node" /></types><heap><SL__arrayElement class="invokeNode" uid="43010">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="43014">
+            <dco class="hGrowCItem" uid="43012">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(18957)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="43018">
+            <dco class="hGrowCItem" uid="42981">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(18958)</typeDesc>
+              <termBounds>(0, 101, 9, 114)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="43015">
+            <dco class="hGrowCItem" uid="43019">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(18959)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="43024">
+            <dco class="hGrowCItem" uid="43016">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(18960)</typeDesc>
+              <termBounds>(9, 101, 18, 114)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="43022">
+            <dco class="invokeItem" uid="43020">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(18961)</typeDesc>
+              <termBounds>(18, 0, 34, 57)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="43023">
+            <dco class="invokeItem" uid="43033">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(18962)</typeDesc>
+              <termBounds>(18, 57, 34, 114)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1093, 9147, 1128, 9261)</bounds>
+        <shortCount>3784</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="43020" />
+          <SL__arrayElement uid="43033" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="43012" />
+          <SL__arrayElement uid="42981" />
+          <SL__arrayElement uid="43019" />
+          <SL__arrayElement uid="43016" />
+          </permDCOList>
+        <nodeName>"Path"</nodeName>
+        <oMId>0042</oMId>
+        <methName>"Create Invoke Node"</methName>
+        <methCode>104012804</methCode>
+        <invokeFlags>08002000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

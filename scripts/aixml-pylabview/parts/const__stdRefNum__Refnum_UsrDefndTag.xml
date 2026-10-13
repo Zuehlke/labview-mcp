@@ -1,0 +1,188 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/stdRefNum/Refnum.UsrDefndTag" source="&lt;labview&gt;\resource\dialog\variable\dynamic-api\Variable_Browse_Main.vi"><types><TypeDesc Type="Refnum" RefType="UsrDefndTag" Ident="VariableObject" FirstClient="1" TypeName="Variable" Format="inline" Label="reference"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="UserDefined" Format="inline"><Ident>Variable</Ident>
+        <LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="UserDefined" Format="inline"><Ident>Variable</Ident>
+        <LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Refnum" RefType="UsrDefndTag" Ident="VariableObject" FirstClient="1" TypeName="Variable" Format="inline" Label="reference"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="UserDefined" Format="inline"><Ident>Variable</Ident>
+        <LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc></types><heap><SL__arrayElement class="term" uid="5627">
+                    <objFlags>131136</objFlags>
+                    <dco class="bDConstDCO" uid="5625">
+                      <typeDesc>TypeID(116)</typeDesc>
+                      <dsw>4096</dsw>
+                      <ddo class="stdRefNum" uid="5628">
+                        <objFlags>8196</objFlags>
+                        <bounds>(22, 33, 42, 68)</bounds>
+                        <partsList elements="3">
+                          <SL__arrayElement class="label" uid="5630">
+                            <objFlags>1507658</objFlags>
+                            <partID>16</partID>
+                            <masterPart>8017</masterPart>
+                            <howGrow>4096</howGrow>
+                            <bounds>(-17, -17, 0, 35)</bounds>
+                            <image class="Image">
+                              <ImageResID>-619</ImageResID>
+                              </image>
+                            <fgColor>01000000</fgColor>
+                            <bgColor>01000000</bgColor>
+                            <textRec class="textHair">
+                              <mode>82964</mode>
+                              <text>"reference"</text>
+                              <bgColor>01000000</bgColor>
+                              </textRec>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="stdTag" uid="5631">
+                            <objFlags>2068</objFlags>
+                            <partID>8017</partID>
+                            <howGrow>240</howGrow>
+                            <bounds>(0, 0, 20, 35)</bounds>
+                            <partsList elements="6">
+                              <SL__arrayElement class="multiCosm" uid="5633">
+                                <objFlags>2354</objFlags>
+                                <partID>79</partID>
+                                <masterPart>9</masterPart>
+                                <howGrow>194</howGrow>
+                                <bounds>(1, 23, 19, 34)</bounds>
+                                <fgColor>007F007F</fgColor>
+                                <bgColor>00FFFFFF</bgColor>
+                                <table elements="2">
+                                  <SL__arrayElement class="Image">
+                                    <ImageResID>-377</ImageResID>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="Image">
+                                    <ImageResID>-378</ImageResID>
+                                    </SL__arrayElement>
+                                  </table>
+                                </SL__arrayElement>
+                              <SL__arrayElement class="selLabel" uid="5634">
+                                <objFlags>3541298</objFlags>
+                                <partID>11</partID>
+                                <masterPart>9</masterPart>
+                                <howGrow>240</howGrow>
+                                <bounds>(1, 11, 18, 22)</bounds>
+                                <image class="Image">
+                                  <ImageResID>-11</ImageResID>
+                                  </image>
+                                <fgColor>01000000</fgColor>
+                                <bgColor>00FFFFFF</bgColor>
+                                <textRec class="textHair">
+                                  <mode>8406020</mode>
+                                  <bgColor>00FFFFFF</bgColor>
+                                  </textRec>
+                                <nVisItems>10</nVisItems>
+                                </SL__arrayElement>
+                              <SL__arrayElement class="multiCosm" uid="5035">
+                                <objFlags>2362</objFlags>
+                                <partID>15</partID>
+                                <masterPart>9</masterPart>
+                                <howGrow>4104</howGrow>
+                                <bounds>(4, -4, 16, 2)</bounds>
+                                <fgColor>00FFFFFF</fgColor>
+                                <bgColor>00FF00FF</bgColor>
+                                <table elements="4">
+                                  <SL__arrayElement class="Image">
+                                    <ImageResID>-2104</ImageResID>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="Image">
+                                    <ImageResID>-2105</ImageResID>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="Image">
+                                    <ImageResID>-2106</ImageResID>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="Image">
+                                    <ImageResID>-2107</ImageResID>
+                                    </SL__arrayElement>
+                                  </table>
+                                </SL__arrayElement>
+                              <SL__arrayElement class="cosm" uid="5635">
+                                <objFlags>3378</objFlags>
+                                <partID>43</partID>
+                                <masterPart>9</masterPart>
+                                <howGrow>4108</howGrow>
+                                <bounds>(6, 3, 14, 11)</bounds>
+                                <image class="Image">
+                                  <ImageResID>-3006</ImageResID>
+                                  </image>
+                                <fgColor>007F007F</fgColor>
+                                <bgColor>007F007F</bgColor>
+                                </SL__arrayElement>
+                              <SL__arrayElement class="cosm" uid="5636">
+                                <objFlags>2323</objFlags>
+                                <partID>9</partID>
+                                <howGrow>240</howGrow>
+                                <bounds>(0, 0, 20, 35)</bounds>
+                                <image class="Image">
+                                  <ImageResID>-17</ImageResID>
+                                  </image>
+                                <fgColor>007F007F</fgColor>
+                                <bgColor>00FFFFFF</bgColor>
+                                </SL__arrayElement>
+                              <SL__arrayElement class="annex" uid="5637">
+                                <partID>66</partID>
+                                <refListLength>0</refListLength>
+                                <hGrowNodeListLength>0</hGrowNodeListLength>
+                                <rsrcID>3480</rsrcID>
+                                </SL__arrayElement>
+                              </partsList>
+                            <typeDesc>TypeID(117)</typeDesc>
+                            <MouseWheelSupport>3</MouseWheelSupport>
+                            <selLabFlags>599</selLabFlags>
+                            <selLabData>5</selLabData>
+                            <tagType>5</tagType>
+                            <variantIndex>2</variantIndex>
+                            <tagDLLPath>505448300000000400010000</tagDLLPath>
+                            <tagDLLName>"LabVIEW"</tagDLLName>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="annex" uid="5640">
+                            <partID>66</partID>
+                            <refListLength>0</refListLength>
+                            <hGrowNodeListLength>0</hGrowNodeListLength>
+                            <rsrcID>3478</rsrcID>
+                            </SL__arrayElement>
+                          </partsList>
+                        <typeDesc>TypeID(118)</typeDesc>
+                        <MouseWheelSupport>0</MouseWheelSupport>
+                        </ddo>
+                      <ConstValue>0000000000</ConstValue>
+                      </dco>
+                    </SL__arrayElement>
+                  </heap><strs><Section Index="2" Format="inline">
+      <LVVariant HasVarItem2="1" VarType2="0" Version="auto">
+        <DataType Index="0" Type="Void" Format="inline" />
+        <Attributes>
+          <LVVariant Name="displayFilter" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="NumUInt32" Prop1="0" Format="inline" />
+            <DataFill>
+              <U32>8</U32>
+              </DataFill>
+            </LVVariant>
+          <LVVariant Name="subTypeClass" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" />
+            <DataFill>
+              <String>VariableObject</String>
+              </DataFill>
+            </LVVariant>
+          <LVVariant Name="typeClass" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" />
+            <DataFill>
+              <String>VariableObject</String>
+              </DataFill>
+            </LVVariant>
+          </Attributes>
+        <DataFill>
+          <Void />
+          </DataFill>
+        </LVVariant>
+      </Section></strs></part>

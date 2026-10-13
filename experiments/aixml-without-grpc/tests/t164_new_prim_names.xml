@@ -1,0 +1,14 @@
+<VI _name="T164 New Prim Names.vi" description="Primitives named on 2026-10-13 by find_prim_names.py: Round Toward +Infinity, Logical Shift, To Quad Integer and Split 1D Array.">
+  <Control _name="x" outputs="value:4200.x" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Node _name="Round Toward +Infinity" inputs="x:4200.x" outputs="ceil(x)\3A smallest int &gt;= x:4300.c" uid="4300" uid_parent="root"/>
+  <Indicator _name="ceil" inputs="value:4300.c" type="double" uid="4310" uid_parent="root" value="0"/>
+  <Control _name="bits" outputs="value:4210.b" type="int32" uid="4210" uid_parent="root" value="0"/>
+  <Control _name="shift" outputs="value:4220.s" type="int32" uid="4220" uid_parent="root" value="0"/>
+  <Node _name="Logical Shift" inputs="x:4210.b,y:4220.s" outputs="x &lt;&lt; y:4400.r" uid="4400" uid_parent="root"/>
+  <Indicator _name="shifted" inputs="value:4400.r" type="int32" uid="4410" uid_parent="root" value="0"/>
+  <Node _name="To Quad Integer" inputs="number:4200.x" outputs="64bit integer:4500.q" uid="4500" uid_parent="root"/>
+  <Indicator _name="quad" inputs="value:4500.q" type="int64" uid="4510" uid_parent="root" value="0"/>
+  <Constant _name="values" outputs="value:4230.a" type="array{int32}" uid="4230" uid_parent="root" value="[1,2,3,4,5]"/>
+  <Node _name="Split 1D Array" inputs="array:4230.a,index:4220.s" outputs="first subarray:4600.f" uid="4600" uid_parent="root"/>
+  <Indicator _name="first" inputs="value:4600.f" type="array{int32}" uid="4610" uid_parent="root" value="[]"/>
+</VI>

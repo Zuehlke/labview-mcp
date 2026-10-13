@@ -1,0 +1,144 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/9112" source="&lt;labview&gt;\resource\plugins\ExternalEditors\StateDiagramEditor\StateDiagramEditor.vit"><types><TypeDesc Type="Refnum" RefType="Queue" Format="inline" Label="queue out"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="Event"><EnumLabel>No Event</EnumLabel>
+          <EnumLabel>Diag Mouse Down</EnumLabel>
+          <EnumLabel>Quit</EnumLabel>
+          <EnumLabel>VI Run</EnumLabel>
+          <EnumLabel>VI Idle</EnumLabel>
+          <EnumLabel>New</EnumLabel>
+          <EnumLabel>Delete</EnumLabel>
+          <EnumLabel>Print</EnumLabel>
+          <EnumLabel>Mouse Up</EnumLabel>
+          <EnumLabel>Arrange Priorities</EnumLabel>
+          <EnumLabel>Diagram Dbl-Click</EnumLabel>
+          <EnumLabel>Name Direct Input</EnumLabel>
+          <EnumLabel>Diagram Popup</EnumLabel>
+          <EnumLabel>Terminal Toggle</EnumLabel>
+          <EnumLabel>Make Initial</EnumLabel>
+          <EnumLabel>Create New Transition</EnumLabel>
+          <EnumLabel>Panel Resize</EnumLabel>
+          <EnumLabel>Scroll Click</EnumLabel>
+          <EnumLabel>SubVI Toggle</EnumLabel>
+          <EnumLabel>Add Probe</EnumLabel>
+          <EnumLabel>Remove Probe</EnumLabel>
+          </TypeDesc><Label Text="NI_SDE_StateDiagramEditor.lvlib" />
+        <Label Text="NI_SDE_EventMessages.ctl" />
+        </TypeDesc></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="timeout in ms (-1)" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="Queue" Format="inline" Label="queue out"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="Event"><EnumLabel>No Event</EnumLabel>
+          <EnumLabel>Diag Mouse Down</EnumLabel>
+          <EnumLabel>Quit</EnumLabel>
+          <EnumLabel>VI Run</EnumLabel>
+          <EnumLabel>VI Idle</EnumLabel>
+          <EnumLabel>New</EnumLabel>
+          <EnumLabel>Delete</EnumLabel>
+          <EnumLabel>Print</EnumLabel>
+          <EnumLabel>Mouse Up</EnumLabel>
+          <EnumLabel>Arrange Priorities</EnumLabel>
+          <EnumLabel>Diagram Dbl-Click</EnumLabel>
+          <EnumLabel>Name Direct Input</EnumLabel>
+          <EnumLabel>Diagram Popup</EnumLabel>
+          <EnumLabel>Terminal Toggle</EnumLabel>
+          <EnumLabel>Make Initial</EnumLabel>
+          <EnumLabel>Create New Transition</EnumLabel>
+          <EnumLabel>Panel Resize</EnumLabel>
+          <EnumLabel>Scroll Click</EnumLabel>
+          <EnumLabel>SubVI Toggle</EnumLabel>
+          <EnumLabel>Add Probe</EnumLabel>
+          <EnumLabel>Remove Probe</EnumLabel>
+          </TypeDesc><Label Text="NI_SDE_StateDiagramEditor.lvlib" />
+        <Label Text="NI_SDE_EventMessages.ctl" />
+        </TypeDesc></TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="Event"><EnumLabel>No Event</EnumLabel>
+          <EnumLabel>Diag Mouse Down</EnumLabel>
+          <EnumLabel>Quit</EnumLabel>
+          <EnumLabel>VI Run</EnumLabel>
+          <EnumLabel>VI Idle</EnumLabel>
+          <EnumLabel>New</EnumLabel>
+          <EnumLabel>Delete</EnumLabel>
+          <EnumLabel>Print</EnumLabel>
+          <EnumLabel>Mouse Up</EnumLabel>
+          <EnumLabel>Arrange Priorities</EnumLabel>
+          <EnumLabel>Diagram Dbl-Click</EnumLabel>
+          <EnumLabel>Name Direct Input</EnumLabel>
+          <EnumLabel>Diagram Popup</EnumLabel>
+          <EnumLabel>Terminal Toggle</EnumLabel>
+          <EnumLabel>Make Initial</EnumLabel>
+          <EnumLabel>Create New Transition</EnumLabel>
+          <EnumLabel>Panel Resize</EnumLabel>
+          <EnumLabel>Scroll Click</EnumLabel>
+          <EnumLabel>SubVI Toggle</EnumLabel>
+          <EnumLabel>Add Probe</EnumLabel>
+          <EnumLabel>Remove Probe</EnumLabel>
+          </TypeDesc><Label Text="NI_SDE_StateDiagramEditor.lvlib" />
+        <Label Text="NI_SDE_EventMessages.ctl" />
+        </TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="timed out?" /><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="14463">
+                        <objFlags>640</objFlags>
+                        <termList elements="7">
+                          <SL__arrayElement class="term" uid="14481">
+                            <objFlags>32768</objFlags>
+                            <dco class="parm" uid="14477">
+                              <typeDesc>TypeID(1228)</typeDesc>
+                              <termBounds>(0, 0, 8, 8)</termBounds>
+                              <primIndex>484</primIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="14486">
+                            <dco class="parm" uid="14482">
+                              <typeDesc>TypeID(1229)</typeDesc>
+                              <termBounds>(16, 0, 24, 8)</termBounds>
+                              <primIndex>484</primIndex>
+                              <parmIndex>2</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="14494">
+                            <dco class="parm" uid="14488">
+                              <objFlags>65536</objFlags>
+                              <typeDesc>TypeID(1230)</typeDesc>
+                              <termBounds>(24, 0, 32, 8)</termBounds>
+                              <primIndex>484</primIndex>
+                              <parmIndex>3</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="14497">
+                            <dco class="parm" uid="14495">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(1231)</typeDesc>
+                              <termBounds>(0, 24, 8, 32)</termBounds>
+                              <primIndex>484</primIndex>
+                              <parmIndex>8</parmIndex>
+                              <inplace>1</inplace>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="14500">
+                            <dco class="parm" uid="14498">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(1232)</typeDesc>
+                              <termBounds>(8, 24, 16, 32)</termBounds>
+                              <primIndex>484</primIndex>
+                              <parmIndex>9</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="14503">
+                            <dco class="parm" uid="14501">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(1233)</typeDesc>
+                              <termBounds>(16, 24, 24, 32)</termBounds>
+                              <primIndex>484</primIndex>
+                              <parmIndex>10</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="14506">
+                            <dco class="parm" uid="14504">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(1234)</typeDesc>
+                              <termBounds>(24, 24, 32, 32)</termBounds>
+                              <primIndex>484</primIndex>
+                              <parmIndex>11</parmIndex>
+                              <inplace>3</inplace>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(454, 237, 486, 269)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>6881285</clumpNum>
+                        <primResID>9112</primResID>
+                        <primIndex>484</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

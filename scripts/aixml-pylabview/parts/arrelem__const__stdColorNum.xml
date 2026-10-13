@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="arrelem" key="arrelem/const/stdColorNum" source="Word Report - XY Graph Generation.vi"><types><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /></types><heap><ddo class="stdColorNum" uid="497">
+                  <objFlags>1074270240</objFlags>
+                  <bounds>(3, 35, 19, 51)</bounds>
+                  <partsList elements="3">
+                    <SL__arrayElement class="cosm" uid="499">
+                      <objFlags>6450</objFlags>
+                      <partID>41</partID>
+                      <masterPart>9</masterPart>
+                      <howGrow>240</howGrow>
+                      <bounds>(2, 2, 14, 14)</bounds>
+                      <image class="Image">
+                        <ImageResID>-239</ImageResID>
+                        </image>
+                      <fgColor>00FF1218</fgColor>
+                      <bgColor>00FF1218</bgColor>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="cosm" uid="500">
+                      <objFlags>6483</objFlags>
+                      <partID>9</partID>
+                      <howGrow>240</howGrow>
+                      <bounds>(0, 0, 16, 16)</bounds>
+                      <image class="Image">
+                        <ImageResID>-17</ImageResID>
+                        </image>
+                      <fgColor>000000FF</fgColor>
+                      <bgColor>00FFFFFF</bgColor>
+                      </SL__arrayElement>
+                    <SL__arrayElement class="annex" uid="501">
+                      <partID>66</partID>
+                      <refListLength>0</refListLength>
+                      <hGrowNodeListLength>0</hGrowNodeListLength>
+                      </SL__arrayElement>
+                    </partsList>
+                  <typeDesc>TypeID(238)</typeDesc>
+                  <MouseWheelSupport>0</MouseWheelSupport>
+                  </ddo>
+                </heap></part>

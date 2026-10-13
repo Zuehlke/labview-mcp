@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdRefNum/ctl/Refnum.EventReg" source="&lt;labview&gt;\resource\Framework\Providers\Common\provcom_ProgressBar_InvokeErrorWindow.vi"><types><TypeDesc Type="Refnum" RefType="EventReg" Field0="0x0000" Format="inline" Label="ErrorEvents"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline" ref.CField0="0x0001" ref.CField2="0x0000" ref.CField4="0x03E8"><TypeDesc Type="Refnum" Nested="True" RefType="UserEvent" Format="inline" Label="Error event"><TypeDesc Type="Cluster" Format="inline" Label="Error Event"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Error" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Status" /></TypeDesc></TypeDesc><Label Text="mxLvBuildError.ctl" />
+        </TypeDesc><TypeDesc Type="Refnum" RefType="UserEvent" Format="inline" Label="ErrorOpenEvent" ref.CField0="0x0001" ref.CField2="0x0000" ref.CField4="0x03E8"><TypeDesc Type="Cluster" Format="inline" Label="My User Event"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Dummy" /></TypeDesc></TypeDesc><TypeDesc Type="Refnum" RefType="UserEvent" Format="inline" Label="ErrorCloseEvent" ref.CField0="0x0001" ref.CField2="0x0000" ref.CField4="0x03E8"><TypeDesc Type="Cluster" Format="inline" Label="My User Event"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Dummy" /></TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Refnum" RefType="EventReg" Field0="0x0000" Format="inline" Label="ErrorEvents"><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline" ref.CField0="0x0001" ref.CField2="0x0000" ref.CField4="0x03E8"><TypeDesc Type="Refnum" Nested="True" RefType="UserEvent" Format="inline" Label="Error event"><TypeDesc Type="Cluster" Format="inline" Label="Error Event"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Error" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Status" /></TypeDesc></TypeDesc><Label Text="mxLvBuildError.ctl" />
+        </TypeDesc><TypeDesc Type="Refnum" RefType="UserEvent" Format="inline" Label="ErrorOpenEvent" ref.CField0="0x0001" ref.CField2="0x0000" ref.CField4="0x03E8"><TypeDesc Type="Cluster" Format="inline" Label="My User Event"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Dummy" /></TypeDesc></TypeDesc><TypeDesc Type="Refnum" RefType="UserEvent" Format="inline" Label="ErrorCloseEvent" ref.CField0="0x0001" ref.CField2="0x0000" ref.CField4="0x03E8"><TypeDesc Type="Cluster" Format="inline" Label="My User Event"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Dummy" /></TypeDesc></TypeDesc></TypeDesc></types><heap><SL__arrayElement class="fPDCO" uid="413">
+          <objFlags>66048</objFlags>
+          <typeDesc>TypeID(3)</typeDesc>
+          <ddo class="stdRefNum" uid="401">
+            <bounds>(-48, -33, -4, 30)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="407">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 1, 17, 63)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <mode>17412</mode>
+                  <text>"ErrorEvents"</text>
+                  <bgColor>01000000</bgColor>
+                  <fr elements="1">
+                    <SL__arrayElement class="fontRun">
+                      <fontid>1</fontid>
+                      </SL__arrayElement>
+                    </fr>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="408">
+                <objFlags>2101</objFlags>
+                <partID>1</partID>
+                <masterPart>9</masterPart>
+                <bounds>(15, -5, 47, 27)</bounds>
+                <image class="Image">
+                  <ImageResID>-7113</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="409">
+                <objFlags>2359</objFlags>
+                <partID>9</partID>
+                <bounds>(17, 0, 44, 21)</bounds>
+                <image class="Image">
+                  <ImageResID>-276</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="410">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>3451</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(4)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>11</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

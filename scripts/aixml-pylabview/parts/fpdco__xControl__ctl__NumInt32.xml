@@ -1,0 +1,92 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/xControl/ctl/NumInt32" source="&lt;labview&gt;\project\_Profile Buffer Allocation.vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Profile Data" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Profile Data" /></types><heap><SL__arrayElement class="fPDCO" uid="5875">
+                  <typeDesc>TypeID(46)</typeDesc>
+                  <ddo class="xControl" uid="5862">
+                    <objFlags>640</objFlags>
+                    <bounds>(0, 0, 268, 856)</bounds>
+                    <partsList elements="6">
+                      <SL__arrayElement class="label" uid="5868">
+                        <objFlags>1507662</objFlags>
+                        <partID>16</partID>
+                        <masterPart>9</masterPart>
+                        <howGrow>4096</howGrow>
+                        <bounds>(-22, -3, -5, 61)</bounds>
+                        <image class="Image">
+                          <ImageResID>-9</ImageResID>
+                          </image>
+                        <fgColor>01000000</fgColor>
+                        <bgColor>01000000</bgColor>
+                        <textRec class="textHair">
+                          <mode>17412</mode>
+                          <text>"Profile Data"</text>
+                          <bgColor>01000000</bgColor>
+                          </textRec>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="cosm" uid="5869">
+                        <objFlags>2355</objFlags>
+                        <partID>28</partID>
+                        <masterPart>9</masterPart>
+                        <howGrow>240</howGrow>
+                        <bounds>(0, 0, 268, 856)</bounds>
+                        <image class="Image">
+                          <ImageResID>-239</ImageResID>
+                          </image>
+                        <fgColor>00B0B0B0</fgColor>
+                        <bgColor>00B0B0B0</bgColor>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="cosm" uid="5871">
+                        <objFlags>3390</objFlags>
+                        <partID>39</partID>
+                        <masterPart>9</masterPart>
+                        <howGrow>194</howGrow>
+                        <bounds>(0, 856, 268, 856)</bounds>
+                        <image class="Image">
+                          <ImageResID>-9</ImageResID>
+                          </image>
+                        <bgColor>00B3B3B3</bgColor>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="cosm" uid="5872">
+                        <objFlags>3390</objFlags>
+                        <partID>38</partID>
+                        <masterPart>9</masterPart>
+                        <howGrow>56</howGrow>
+                        <bounds>(268, 0, 268, 856)</bounds>
+                        <image class="Image">
+                          <ImageResID>-9</ImageResID>
+                          </image>
+                        <bgColor>00B3B3B3</bgColor>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="cosm" uid="5873">
+                        <objFlags>2331</objFlags>
+                        <partID>9</partID>
+                        <howGrow>240</howGrow>
+                        <bounds>(-3, -3, 271, 859)</bounds>
+                        <image class="Image">
+                          <ImageResID>-412</ImageResID>
+                          </image>
+                        <fgColor>00B0B0B0</fgColor>
+                        <bgColor>01000000</bgColor>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="annex" uid="5874">
+                        <partID>66</partID>
+                        <refListLength>1</refListLength>
+                        <hGrowNodeListLength>14</hGrowNodeListLength>
+                        <rsrcID>21810</rsrcID>
+                        </SL__arrayElement>
+                      </partsList>
+                    <description class="cLStrObj" uid="8610">
+                      <strings elements="1">
+                        <SL__arrayElement>"Displays a list of buffer allocations that LabVIEW identifies during the profiling session. Click the column header to sort data by column. "</SL__arrayElement>
+                        </strings>
+                      </description>
+                    <typeDesc>TypeID(47)</typeDesc>
+                    <MouseWheelSupport>0</MouseWheelSupport>
+                    <subPanelFlags>010002</subPanelFlags>
+                    <xCtlState>260080000000001700104030FFFFFFFF06537472696E6700001640400002FFFFFFFFFFFFFFFF000004446174610000080030FFFFFFFF001440400001FFFFFFFF000207436F6C756D6E73001240400001FFFFFFFF000204526F7773000005000300001440400001FFFFFFFF00050753796D626F6C73001440400001FFFFFFFF00020653656C526F7700000C402107426F6F6C65616E001640400001FFFFFFFF0008084E756D436F6C733F00000A4021054F72646572000D40030006436C69636B7300000940030003526F77000D40030006436F6C756D6E00003600F10000000000000001194C56526F77416E64436F6C756D6E547970654465662E63746C001440500002000C000D0443656C6C00000D400700074E756D65726963001640400001FFFFFFFF000F09436F6C205769647468001440400001FFFFFFFF000F0657696474687300001440210F526F77486472732056697369626C65000B4003000523526F7773000F4003000953656C65637465643F000C402107536F727465643F005700F10000000000000002134D434C42207769746820536F72742E7863746C0C54532053746174652E63746C002E4050000F000100030004000600070009000A000B000E0010001100120013001400150553746174650001001600000000000000000000000600000009427566666572204944000000075649204E616D65000000094D617820427974657300000009417667204279746573000000094D696E20427974657300000006232052756E73000000000000000000000000000000060100010101010000000000FFFFFFFF00000000000000060000003B000000000000004200000042000000420000002E000000060000003B0000020E0000004200000042000000420000002E0000000000000000000000000000</xCtlState>
+                    <libVersion>0001000000000000</libVersion>
+                    <stateTD>30</stateTD>
+                    </ddo>
+                  <conNum>-1</conNum>
+                  <termListLength>1</termListLength>
+                  </SL__arrayElement>
+                </heap></part>

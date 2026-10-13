@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Panel/MoveSelectionForward" source="All_Methods.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001F" HasItem="0" Format="inline" Label="reference" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x001F" HasItem="0" Format="inline" Label="reference out" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="MoveSelectionForward" /><TypeDesc Type="Void" Format="inline" Label="MoveSelectionForward" /></types><heap><SL__arrayElement class="invokeNode" uid="83538">
+        <objFlags>644</objFlags>
+        <termList elements="6">
+          <SL__arrayElement class="term" uid="83540">
+            <dco class="hGrowCItem" uid="83541">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(9267)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="83542">
+            <dco class="hGrowCItem" uid="83544">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(9268)</typeDesc>
+              <termBounds>(0, 117, 9, 130)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="83551">
+            <dco class="hGrowCItem" uid="83543">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(9269)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="83548">
+            <dco class="hGrowCItem" uid="83546">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(9270)</typeDesc>
+              <termBounds>(9, 117, 18, 130)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="83552">
+            <dco class="invokeItem" uid="83556">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(9271)</typeDesc>
+              <termBounds>(18, 0, 34, 65)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="83555">
+            <dco class="invokeItem" uid="83554">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(9272)</typeDesc>
+              <termBounds>(18, 65, 34, 130)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(1184, 19196, 1219, 19326)</bounds>
+        <shortCount>1696</shortCount>
+        <dcoList elements="2">
+          <SL__arrayElement uid="83556" />
+          <SL__arrayElement uid="83554" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="83541" />
+          <SL__arrayElement uid="83544" />
+          <SL__arrayElement uid="83543" />
+          <SL__arrayElement uid="83546" />
+          </permDCOList>
+        <nodeName>"Pnl"</nodeName>
+        <oMId>0085</oMId>
+        <methName>"MoveSelectionForward"</methName>
+        <methCode>104104973</methCode>
+        <invokeFlags>08042000</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>
