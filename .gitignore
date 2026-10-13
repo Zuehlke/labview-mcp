@@ -103,3 +103,6 @@ __pycache__/
 *.lvprojstate
 .*.UserState/
 .vscode/*
+
+# Claude Code agent worktrees - local scratch checkouts, never committed
+.claude/worktrees/
