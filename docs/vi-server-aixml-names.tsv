@@ -129,41 +129,62 @@ class	kind	name	files
 {GenClassTag.nisyscfgSession.nisyscfg}	property	System Resources:Primary Disk Free	1
 {GenClassTag.nisyscfgSession.nisyscfg}	property	System Resources:Total Physical Memory	1
 {GenClassTag.nisyscfgSession.nisyscfg}	property	System Resources:Total Virtual Memory	1
+{LV.AbsTime}	property	Format String	1
+{LV.AbsTime}	property	Value	1
 {LV.Application}	method	FeatureToggleEnabled	1
+{LV.Application}	method	Get Broken VI List	1
 {LV.Application}	method	Get VI Tag	1
 {LV.Application}	method	LVClass.Create	2
 {LV.Application}	method	LVClass.Create Interface	1
 {LV.Application}	method	LVClass.Open	19
 {LV.Application}	method	Library.Create	2
 {LV.Application}	method	Library.Open	7
-{LV.Application}	method	Open.LV Document	1
+{LV.Application}	method	Open.LV Document	2
 {LV.Application}	method	OpenErrWdw	1
 {LV.Application}	method	Project.New	1
-{LV.Application}	method	Project.Open	2
+{LV.Application}	method	Project.Open	4
 {LV.Application}	method	Refresh Palettes	5
 {LV.Application}	property	Application:All Contexts	1
 {LV.Application}	property	Application:All VIs In Memory	4
 {LV.Application}	property	Application:Command Line Arguments	1
 {LV.Application}	property	Application:Context Name	1
 {LV.Application}	property	Application:Default:Application	1
-{LV.Application}	property	Application:Directory Path	11
+{LV.Application}	property	Application:Directory Path	12
 {LV.Application}	property	Application:Kind	1
+{LV.Application}	property	Application:Language	1
 {LV.Application}	property	Application:Menu Launch:App	1
 {LV.Application}	property	Application:Name	2
+{LV.Application}	property	Application:Target:Operating System	2
 {LV.Application}	property	Application:Unattended Mode	2
 {LV.Application}	property	Application:User Name	1
-{LV.Application}	property	Project:Active Project	43
+{LV.Application}	property	Operating System:Name	1
+{LV.Application}	property	Project:Active Project	44
 {LV.Application}	property	Project:Target Item	1
 {LV.Array}	property	Array Element	3
+{LV.Array}	property	Bounds:Area Height	1
+{LV.Array}	property	Bounds:Area Width	1
 {LV.Array}	property	Disabled	1
 {LV.Array}	property	Index Values	2
+{LV.Array}	property	Number of Rows	1
+{LV.Array}	property	Position:Left	1
+{LV.Array}	property	Position:Top	1
 {LV.Array}	property	Terminal	1
 {LV.Array}	property	Visible	2
-{LV.Boolean}	property	Disabled	8
-{LV.Boolean}	property	Label.Text	1
+{LV.Boolean}	property	Boolean Text.Text	4
+{LV.Boolean}	property	Bounds:Area Height	1
+{LV.Boolean}	property	Bounds:Area Width	2
+{LV.Boolean}	property	Description	1
+{LV.Boolean}	property	Disabled	21
+{LV.Boolean}	property	Label.Text	4
 {LV.Boolean}	property	Mechanical Action	1
+{LV.Boolean}	property	Owning VI	2
+{LV.Boolean}	property	Position	1
+{LV.Boolean}	property	Position:Left	2
 {LV.Boolean}	property	Terminal	1
-{LV.Boolean}	property	Visible	6
+{LV.Boolean}	property	Tip Strip	1
+{LV.Boolean}	property	Value	3
+{LV.Boolean}	property	Value (Signaling)	5
+{LV.Boolean}	property	Visible	15
 {LV.CaseStructure}	method	Add Frame	1
 {LV.CaseStructure}	method	GetFrameIndex	1
 {LV.CaseStructure}	method	Remove Frame	2
@@ -180,7 +201,10 @@ class	kind	name	files
 {LV.Cluster}	property	Position:Top	1
 {LV.Cluster}	property	Value	1
 {LV.ComboBox}	property	Disabled	1
+{LV.ComboBox}	property	Key Focus	2
 {LV.ComboBox}	property	Strings []	3
+{LV.ComboBox}	property	Text.Selection:End	2
+{LV.ComboBox}	property	Text.Selection:Start	2
 {LV.ComboBox}	property	Value	1
 {LV.ConnectorPane}	method	AssignCtrlToTerm	1
 {LV.ConnectorPane}	method	SetWireRule	1
@@ -205,25 +229,39 @@ class	kind	name	files
 {LV.Control}	method	Discon Typedef	1
 {LV.Control}	method	Move	9
 {LV.Control}	method	Replace	7
-{LV.Control}	property	Class Name	7
+{LV.Control}	method	Sort.vi	1
+{LV.Control}	property	Bounds:Area Width	1
+{LV.Control}	property	Class Name	9
+{LV.Control}	property	Clicks	1
+{LV.Control}	property	Col Width	1
+{LV.Control}	property	ColHdrs	1
+{LV.Control}	property	Data	1
 {LV.Control}	property	Description	1
-{LV.Control}	property	Disabled	1
+{LV.Control}	property	Disabled	2
 {LV.Control}	property	Grouped	1
 {LV.Control}	property	Is Typedef?	6
 {LV.Control}	property	Label	4
 {LV.Control}	property	Label.Text	11
 {LV.Control}	property	Locked	1
+{LV.Control}	property	NumCols?	1
 {LV.Control}	property	Plot Specific:Active Plot	1
 {LV.Control}	property	Plot Specific:General:Plot Opacity	1
 {LV.Control}	property	Plot Specific:Surface:Surface Color Ramp	1
+{LV.Control}	property	Position:Top	1
+{LV.Control}	property	SelRow	1
+{LV.Control}	property	Symbols	1
 {LV.Control}	property	Terminal	6
 {LV.Control}	property	Typedef:Path	3
+{LV.Control}	property	Value	1
 {LV.Control}	property	Value (Signaling)	1
-{LV.Control}	property	Visible	1
+{LV.Control}	property	Visible	2
+{LV.Decoration}	property	Colors	2
+{LV.Decoration}	property	Visible	2
 {LV.Diagram}	property	All Objects[]	5
 {LV.Diagram}	property	Decorations[]	1
 {LV.Diagram}	property	Nodes[]	1
 {LV.Diagram}	property	SubVIs[]	1
+{LV.Diagram}	property	Subdiagram Label	1
 {LV.DigitalGraph}	property	Active Cursor	1
 {LV.DigitalGraph}	property	Cursor.Cursor Color	1
 {LV.DigitalGraph}	property	Cursor.Cursor Point Style	1
@@ -233,10 +271,13 @@ class	kind	name	files
 {LV.DigitalGraph}	property	Cursor.Line Width	1
 {LV.DigitalGraph}	property	Cursor.Visible	1
 {LV.Digital}	method	Reinit To Default	1
+{LV.Digital}	property	Bounds:Area Height	1
 {LV.Digital}	property	Caption.Text	1
-{LV.Digital}	property	Disabled	2
+{LV.Digital}	property	Disabled	4
+{LV.Digital}	property	Position	1
+{LV.Digital}	property	Position:Top	1
 {LV.Digital}	property	Unit Label.Text	1
-{LV.Digital}	property	Visible	1
+{LV.Digital}	property	Visible	2
 {LV.DisableStructure}	method	Add Frame	1
 {LV.DisableStructure}	method	Change Disable Style	1
 {LV.DisableStructure}	method	Remove Frame	1
@@ -260,6 +301,7 @@ class	kind	name	files
 {LV.FlatSequenceFrame}	property	Diagram	2
 {LV.FlatSequence}	method	Add Frame	1
 {LV.FlatSequence}	property	Frames[]	1
+{LV.FlatSequence}	property	Subdiagram Label Visible	1
 {LV.ForLoop}	property	Diagram	2
 {LV.ForLoop}	property	Has Conditional Terminal?	1
 {LV.ForLoop}	property	Loop Count	1
@@ -285,10 +327,14 @@ class	kind	name	files
 {LV.IntensityGraph}	property	X Scale.Offset and Multiplier	2
 {LV.IntensityGraph}	property	X Scale.Offset and Multiplier:Multiplier	2
 {LV.IntensityGraph}	property	X Scale.Offset and Multiplier:Offset	1
+{LV.IntensityGraph}	property	X Scale.Range	1
 {LV.IntensityGraph}	property	Y Scale.Offset and Multiplier	2
 {LV.IntensityGraph}	property	Y Scale.Offset and Multiplier:Multiplier	3
 {LV.IntensityGraph}	property	Y Scale.Offset and Multiplier:Offset	2
+{LV.IntensityGraph}	property	Y Scale.Range	1
 {LV.IntensityGraph}	property	Z Scale.Marker Values[]	1
+{LV.IntensityGraph}	property	Z Scale.Range	1
+{LV.IntensityGraph}	property	Z Scale.Scale Fit	1
 {LV.Knob}	property	Housing Colors:BG Color	1
 {LV.Knob}	property	Scale.Range:Minimum	1
 {LV.LVClassLibrary}	method	AddItemFromMemory	2
@@ -307,12 +353,13 @@ class	kind	name	files
 {LV.LVClassLibrary}	property	Type String	1
 {LV.LabVIEWClassConstant}	property	Terminal	1
 {LV.LabVIEWClassControl}	property	Terminal	1
+{LV.LabVIEWClassControl}	property	Value (Signaling)	1
 {LV.LeftShiftRegister}	property	Right Shift Register	1
 {LV.Library}	method	AddFile	1
 {LV.Library}	method	AddItem	3
 {LV.Library}	method	ApplyIconToVIs	1
 {LV.Library}	method	Get All Descendents	5
-{LV.Library}	method	Save	4
+{LV.Library}	method	Save	5
 {LV.Library}	method	Save a Copy	3
 {LV.Library}	property	Name	2
 {LV.Library}	property	Owning Application	3
@@ -320,11 +367,37 @@ class	kind	name	files
 {LV.Library}	property	Project	3
 {LV.Library}	property	Qualified Name	1
 {LV.ListBox}	method	Point To Row	1
-{LV.ListBox}	property	Item Names	8
-{LV.ListBox}	property	Value	3
-{LV.ListBox}	property	Value (Signaling)	3
+{LV.ListBox}	property	Active Row:Active Row Number	1
+{LV.ListBox}	property	Active Row:Cell Background Color	1
+{LV.ListBox}	property	Disabled	1
+{LV.ListBox}	property	Edit Row	1
+{LV.ListBox}	property	Item Names	10
+{LV.ListBox}	property	Key Focus	1
+{LV.ListBox}	property	Number of Rows	1
+{LV.ListBox}	property	Top Row	1
+{LV.ListBox}	property	Value	4
+{LV.ListBox}	property	Value (Signaling)	4
 {LV.MixedSignalGraph}	property	Cursor List	1
-{LV.MulticolumnListbox}	property	Item Names	7
+{LV.MultiFrameStructure}	property	Visible Frame	1
+{LV.MulticolumnListbox}	method	Custom Item Symbols.Set Symbol	1
+{LV.MulticolumnListbox}	method	Point To Row Column	4
+{LV.MulticolumnListbox}	property	Active Cell:Active Cell	4
+{LV.MulticolumnListbox}	property	Active Cell:Cell Background Color	3
+{LV.MulticolumnListbox}	property	Active Cell:Cell Size:Height	1
+{LV.MulticolumnListbox}	property	Active Cell:Cell Size:Width	3
+{LV.MulticolumnListbox}	property	Bounds:Area Width	2
+{LV.MulticolumnListbox}	property	Column Header Strings[]	1
+{LV.MulticolumnListbox}	property	Edit Position	3
+{LV.MulticolumnListbox}	property	Item Names	12
+{LV.MulticolumnListbox}	property	Item Symbols	1
+{LV.MulticolumnListbox}	property	Key Focus	3
+{LV.MulticolumnListbox}	property	Number of Rows	1
+{LV.MulticolumnListbox}	property	Position:Left	2
+{LV.MulticolumnListbox}	property	Size:Height	1
+{LV.MulticolumnListbox}	property	Tip Strip	1
+{LV.MulticolumnListbox}	property	Top Left Visible Cell	1
+{LV.MulticolumnListbox}	property	Value	2
+{LV.MulticolumnListbox}	property	Value (Signaling)	2
 {LV.Node}	method	Move	3
 {LV.Node}	property	Class Name	1
 {LV.Node}	property	Position	1
@@ -340,17 +413,27 @@ class	kind	name	files
 {LV.Panel}	method	Clear Selection	1
 {LV.Panel}	method	Copy Selection	1
 {LV.Panel}	property	Controls[]	29
-{LV.Panel}	property	Panes[]	1
+{LV.Panel}	property	Decorations[]	2
+{LV.Panel}	property	Defer Panel Updates	1
+{LV.Panel}	property	Panes[]	2
 {LV.Panel}	property	Selection List[]	2
+{LV.Pane}	property	Bounds	1
+{LV.Pane}	property	Bounds:Area Height	1
+{LV.Pane}	property	Bounds:Area Width	1
 {LV.Pane}	property	Z-Order:Controls[]	1
+{LV.Path}	property	Browse Options:Prompt	1
 {LV.Path}	property	Browse Options:Start Path	1
-{LV.Path}	property	Disabled	1
-{LV.Path}	property	Value	1
-{LV.Path}	property	Value (Signaling)	1
+{LV.Path}	property	Description	1
+{LV.Path}	property	Disabled	2
+{LV.Path}	property	Value	2
+{LV.Path}	property	Value (Signaling)	2
 {LV.Path}	property	Visible	1
+{LV.Picture}	property	Draw Area Size	2
+{LV.Picture}	property	Key Focus	1
+{LV.Picture}	property	Mouse	2
 {LV.Picture}	property	Position	1
 {LV.Picture}	property	Position:Left	1
-{LV.Picture}	property	Position:Top	1
+{LV.Picture}	property	Position:Top	2
 {LV.Picture}	property	Zoom Factor	1
 {LV.ProjectItem}	method	AddFile	3
 {LV.ProjectItem}	method	AddItem	4
@@ -367,30 +450,37 @@ class	kind	name	files
 {LV.ProjectItem}	property	Type String	4
 {LV.ProjectItem}	property	VI Reference	6
 {LV.ProjectItem}	property	VI Reference No Load	1
-{LV.Project}	method	Close	1
-{LV.Project}	method	Open Window	3
-{LV.Project}	method	Save	5
-{LV.Project}	property	Application	32
+{LV.Project}	method	Close	2
+{LV.Project}	method	Open Window	4
+{LV.Project}	method	Save	6
+{LV.Project}	property	Application	33
 {LV.Project}	property	My Computer	6
 {LV.Project}	property	Name	2
-{LV.Project}	property	Path	8
+{LV.Project}	property	Path	11
 {LV.Project}	property	Root	4
+{LV.RadioButtonsControl}	property	Disabled	2
+{LV.RadioButtonsControl}	property	Value	2
 {LV.RadioButtonsControl}	property	Value (Signaling)	1
 {LV.RadioButtonsControl}	property	Visible	1
 {LV.RightShiftRegister}	method	Delete	1
-{LV.Ring}	property	Disabled	1
+{LV.Ring}	property	Disabled	5
+{LV.Ring}	property	Disabled Items []	1
 {LV.Ring}	property	Hide Last Value	7
 {LV.Ring}	property	Ring Text.Text	4
 {LV.Ring}	property	Strings And Values []	1
-{LV.Ring}	property	Strings []	12
+{LV.Ring}	property	Strings []	16
 {LV.Ring}	property	Value	8
-{LV.Ring}	property	Value (Signaling)	8
-{LV.Ring}	property	Visible	2
+{LV.Ring}	property	Value (Signaling)	10
+{LV.Ring}	property	Visible	5
 {LV.SceneGraphDisplay}	method	Redraw	1
 {LV.SceneMesh}	method	SetMeshParms	1
 {LV.SceneObject}	method	Set Drawable	1
 {LV.SceneSphere}	property	Color	1
-{LV.Scrollbar}	property	Doc Max	1
+{LV.Scrollbar}	property	Disabled	1
+{LV.Scrollbar}	property	Doc Max	2
+{LV.Scrollbar}	property	Page Size	1
+{LV.Scrollbar}	property	Value	1
+{LV.Scrollbar}	property	Value (Signaling)	1
 {LV.Sequence}	method	Add Frame	1
 {LV.Sequence}	method	Convert To FlatSeq	1
 {LV.Sequence}	method	Remove Frame	1
@@ -400,26 +490,38 @@ class	kind	name	files
 {LV.Slide}	property	Disabled	1
 {LV.Slide}	property	Fill Color	1
 {LV.Slide}	property	Label.Text	1
-{LV.Slide}	property	Scale.Range:Maximum	4
+{LV.Slide}	property	Scale.Range:Maximum	5
 {LV.Slide}	property	Scale.Range:Minimum	3
 {LV.StringConstant}	property	Value	2
 {LV.String}	method	Get Nth Line	1
-{LV.String}	property	Disabled	2
-{LV.String}	property	Key Focus	2
+{LV.String}	property	Caption.Text	2
+{LV.String}	property	Disabled	4
+{LV.String}	property	Key Focus	3
 {LV.String}	property	Label.Text	1
-{LV.String}	property	Size:Width	1
+{LV.String}	property	Owning Pane	1
+{LV.String}	property	Position	1
+{LV.String}	property	Position:Left	1
+{LV.String}	property	Position:Top	1
+{LV.String}	property	Size	1
+{LV.String}	property	Size:Width	2
 {LV.String}	property	Text.Font:Bold	2
-{LV.String}	property	Text.Scroll Position	1
+{LV.String}	property	Text.Scroll Position	2
 {LV.String}	property	Text.Selection:End	2
 {LV.String}	property	Text.Selection:Start	2
-{LV.String}	property	Text.Text	1
-{LV.String}	property	Value	5
-{LV.String}	property	Value (Signaling)	1
-{LV.String}	property	Visible	5
+{LV.String}	property	Text.Text	2
+{LV.String}	property	Text.Text Colors:Text Color	1
+{LV.String}	property	Value	6
+{LV.String}	property	Value (Signaling)	2
+{LV.String}	property	Visible	10
 {LV.Structure}	method	Move	1
 {LV.Structure}	property	Diagrams[]	1
-{LV.SubPanel}	method	Insert VI	1
-{LV.SubPanel}	method	Remove VI	1
+{LV.Structure}	property	Subdiagram Label Visible	1
+{LV.SubPanel}	method	Insert VI	3
+{LV.SubPanel}	method	Remove VI	2
+{LV.SubPanel}	property	Container Bounds:Height	1
+{LV.SubPanel}	property	Container Bounds:Width	1
+{LV.SubPanel}	property	Inserted VI	1
+{LV.SubPanel}	property	Position:Left	1
 {LV.SubVI}	method	Delete	1
 {LV.SubVI}	method	Replace	2
 {LV.SubVI}	property	Bounds	1
@@ -456,6 +558,7 @@ class	kind	name	files
 {LV.Terminal}	property	Position:Top	1
 {LV.Terminal}	property	Type Descriptor	1
 {LV.Text}	property	Text	9
+{LV.Text}	property	Visible	1
 {LV.TimeFlatSequence}	property	Frames[]	1
 {LV.TimedLoop}	method	Replace With TimedSeq	1
 {LV.TimedLoop}	method	Replace With WhileLoop	1
@@ -476,34 +579,52 @@ class	kind	name	files
 {LV.TopLevelDiagram}	property	Selection List[]	3
 {LV.TopLevelDiagram}	property	Wires[]	1
 {LV.TreeControl}	method	Custom Item Symbols.Set Symbol	1
-{LV.TreeControl}	method	Edit Tree Items.Add Item	1
+{LV.TreeControl}	method	Edit Tree Items.Add Item	2
 {LV.TreeControl}	method	Edit Tree Items.Add Item to End	1
-{LV.TreeControl}	method	Edit Tree Items.Delete	2
-{LV.TreeControl}	property	Active Cell:Active Column Number	1
-{LV.TreeControl}	property	Active Cell:String	1
-{LV.TreeControl}	property	Active Item:Tag	2
-{LV.TreeControl}	property	All Tags	1
+{LV.TreeControl}	method	Edit Tree Items.Delete	4
+{LV.TreeControl}	method	Edit Tree Items.Sort Children	1
+{LV.TreeControl}	method	Navigate Tree.Get Path	2
+{LV.TreeControl}	method	Point To Row Column	3
+{LV.TreeControl}	property	Active Cell:Active Column Number	5
+{LV.TreeControl}	property	Active Cell:Cell Size:Width	1
+{LV.TreeControl}	property	Active Cell:String	2
+{LV.TreeControl}	property	Active Item:Indent Level	1
+{LV.TreeControl}	property	Active Item:Open?	1
+{LV.TreeControl}	property	Active Item:Row Number	2
+{LV.TreeControl}	property	Active Item:Tag	6
+{LV.TreeControl}	property	All Tags	4
+{LV.TreeControl}	property	Column Header Strings[]	1
+{LV.TreeControl}	property	Disabled	1
+{LV.TreeControl}	property	Key Focus	1
+{LV.TreeControl}	property	Selection Color	1
+{LV.TreeControl}	property	Tip Strip	1
+{LV.TreeControl}	property	Top Left Visible Cell	3
+{LV.TreeControl}	property	Value	4
+{LV.TreeControl}	property	Value (Signaling)	3
+{LV.TreeControl}	property	Visible	1
 {LV.Tunnel}	property	Outside Terminal	2
 {LV.TypedRefNum}	property	Element	1
 {LV.VI}	method	Abort VI	2
-{LV.VI}	method	BD.CleanUp	6
+{LV.VI}	method	BD.CleanUp	7
 {LV.VI}	method	BD.Remove Bad Wires	6
 {LV.VI}	method	Create from Reference	1
 {LV.VI}	method	CtlVIApplyChanges	2
 {LV.VI}	method	Ctrl Val.Get	1
 {LV.VI}	method	Ctrl Val.Get All	4
-{LV.VI}	method	Ctrl Val.Set	6
+{LV.VI}	method	Ctrl Val.Set	7
 {LV.VI}	method	Default Vals.Reinit All	1
 {LV.VI}	method	FP.Center	1
-{LV.VI}	method	FP.Close	24
-{LV.VI}	method	FP.Open	20
+{LV.VI}	method	FP.Close	30
+{LV.VI}	method	FP.Old Open	1
+{LV.VI}	method	FP.Open	24
+{LV.VI}	method	Get Errors	1
 {LV.VI}	method	GetControlIndexByName	1
 {LV.VI}	method	Populate Async Call Pool	3
 {LV.VI}	method	Print.VI To HTML	1
 {LV.VI}	method	Revert VI	3
-{LV.VI}	method	Run VI	10
+{LV.VI}	method	Run VI	12
 {LV.VI}	method	Save VI Icon to File	2
-{LV.VI}	method	Save.Instrument	41
+{LV.VI}	method	Save.Instrument	43
 {LV.VI}	method	Save:Instrument	1
 {LV.VI}	method	Set VI Icon from File	1
 {LV.VI}	method	Transaction.Begin Undo	1
@@ -514,24 +635,28 @@ class	kind	name	files
 {LV.VI}	property	Block Diagram Window:Open	9
 {LV.VI}	property	Block Diagram Window:Origin	1
 {LV.VI}	property	Block Diagram Window:Window Bounds	3
+{LV.VI}	property	Connector Pane:DataType	1
 {LV.VI}	property	Connector Pane:Reference	8
 {LV.VI}	property	Control VI Type	3
-{LV.VI}	property	Execution:State	1
-{LV.VI}	property	Front Panel	38
+{LV.VI}	property	Edit Mode On Open	2
+{LV.VI}	property	Execution:State	3
+{LV.VI}	property	Front Panel	42
 {LV.VI}	property	Front Panel Window:Closeable	2
 {LV.VI}	property	Front Panel Window:Custom Title	1
-{LV.VI}	property	Front Panel Window:Is Frontmost	1
+{LV.VI}	property	Front Panel Window:Is Frontmost	4
+{LV.VI}	property	Front Panel Window:Minimum Size	1
 {LV.VI}	property	Front Panel Window:Open	2
-{LV.VI}	property	Front Panel Window:State	3
-{LV.VI}	property	Front Panel Window:Title	2
-{LV.VI}	property	Front Panel Window:Window Bounds	6
+{LV.VI}	property	Front Panel Window:State	9
+{LV.VI}	property	Front Panel Window:Title	3
+{LV.VI}	property	Front Panel Window:Window Bounds	7
+{LV.VI}	property	Help:Document Web URL	7
 {LV.VI}	property	Library	2
 {LV.VI}	property	Modifications:Block Diagram Mods Bitset	2
 {LV.VI}	property	Modifications:Front Panel Mods Bitset	2
 {LV.VI}	property	VI Description	1
 {LV.VI}	property	VI Linker Errors	1
 {LV.VI}	property	VI Name	11
-{LV.VI}	property	VI Path	5
+{LV.VI}	property	VI Path	6
 {LV.WaveformChart}	property	Active Plot	1
 {LV.WaveformChart}	property	Disabled	1
 {LV.WaveformChart}	property	History Data	5
@@ -554,7 +679,7 @@ class	kind	name	files
 {LV.WaveformGraph}	property	Cursor.Cursor Position:Cursor Y	2
 {LV.WaveformGraph}	property	Cursor.Visible	1
 {LV.WaveformGraph}	property	Legend:Number of Rows	1
-{LV.WaveformGraph}	property	Legend:Visible	1
+{LV.WaveformGraph}	property	Legend:Visible	2
 {LV.WaveformGraph}	property	Plot Images:Back	1
 {LV.WaveformGraph}	property	Plot Images:Front	1
 {LV.WaveformGraph}	property	Plot Images:Middle	1
@@ -562,8 +687,11 @@ class	kind	name	files
 {LV.WaveformGraph}	property	Plot.Plot Name	1
 {LV.WaveformGraph}	property	Value	2
 {LV.WaveformGraph}	property	X Scale.Name Label.Text	1
-{LV.WaveformGraph}	property	X Scale.Range:Maximum	2
-{LV.WaveformGraph}	property	X Scale.Range:Minimum	2
+{LV.WaveformGraph}	property	X Scale.Offset and Multiplier:Multiplier	1
+{LV.WaveformGraph}	property	X Scale.Offset and Multiplier:Offset	1
+{LV.WaveformGraph}	property	X Scale.Range	1
+{LV.WaveformGraph}	property	X Scale.Range:Maximum	3
+{LV.WaveformGraph}	property	X Scale.Range:Minimum	3
 {LV.WaveformGraph}	property	X Scale.Scale Fit	1
 {LV.WaveformGraph}	property	Y Scale.Name Label.Text	3
 {LV.WaveformGraph}	property	Y Scale.Scale Fit	2
@@ -583,16 +711,34 @@ class	kind	name	files
 {LV.Wire}	property	Terminals[]	8
 {LV.XYGraph}	property	Active Cursor	2
 {LV.XYGraph}	property	Active Plot	1
+{LV.XYGraph}	property	Bounds:Area Width	1
 {LV.XYGraph}	property	Cursor List	1
 {LV.XYGraph}	property	Cursor.Cursor Index	1
 {LV.XYGraph}	property	Cursor.Cursor Position:Cursor X	2
 {LV.XYGraph}	property	Cursor.Cursor Position:Cursor Y	5
+{LV.XYGraph}	property	Disabled	1
+{LV.XYGraph}	property	Legend:Plot Minimum	1
+{LV.XYGraph}	property	Plot Area:Size:Width	1
 {LV.XYGraph}	property	Plot.Plot Color	1
+{LV.XYGraph}	property	Visible	1
+{LV.XYGraph}	property	Y Scale.Range:Maximum	1
+{LV.XYGraph}	property	Y Scale.Range:Minimum	1
 {UDClassInst}	property	Actor Label	1
+{UDClassInst}	property	Custom VI Mode	2
+{UDClassInst}	property	Custom VI Path	1
+{UDClassInst}	property	Default Destination	1
+{UDClassInst}	property	Documentation Path	1
 {UDClassInst}	property	Drink Type	1
+{UDClassInst}	property	File Prefix	1
 {UDClassInst}	property	Long Listing	1
 {UDClassInst}	property	Name	1
 {UDClassInst}	property	Options	1
+{UDClassInst}	property	Overlay Icon	1
+{UDClassInst}	property	Project Name	1
+{UDClassInst}	property	Project Path	1
+{UDClassInst}	property	Project Root	1
+{UDClassInst}	property	Startup Application Visibility	1
+{UDClassInst}	property	Title	1
 {Visa.Instr}	property	General Settings:Timeout Value	1
 {Visa.Instr}	property	Message Based Settings:Send End Enable	3
 {Visa.Instr}	property	Message Based Settings:Termination Character	3

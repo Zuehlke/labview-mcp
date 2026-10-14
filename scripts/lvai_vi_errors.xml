@@ -1,0 +1,63 @@
+<VI _name="lvai_vi_errors.vi" description="What LabVIEW's Error List shows: every BROKEN VI in memory\2C with the error text and its explanation\2C read in two application instances - the one this VI runs in\2C and the ACTIVE PROJECT's.\0A\0AWHY IT EXISTS. Execution\3AState says a VI is broken and VI Linker Errors names a missing subVI\2C but nothing else in VI Server names WHY - a loose wire\2C an unwired required input\2C a type conflict all read as eBad and nothing more. Two methods the public catalogue does not list do\3A {LV.Application} Get Broken VI List (the NAMES of the broken VIs in that instance) and {LV.VI} Get Errors (per VI\2C Errors - the Error List's own lines\2C such as 'Add\3A Contains unwired or bad terminal' - and Details\2C the text the dialog shows below them). NI's Application Builder uses exactly this pair to explain a failed build.\0A\0ARUN IT OVER ActiveX\2C NOT THROUGH NI's SERVICE. Measured 2026-10-14 as an A/B with one broken VI open in the IDE\3A run over ActiveX the first section listed it with its error\3B run through RunVIAsTopLevel - the AI addon's own application instance - the list was EMPTY with no error. The unwired references below mean 'the instance I run in'\2C and only ActiveX runs this VI in the IDE's main instance.\0A\0AA VI opened inside a project lives in THAT project's instance\2C hence the second section. It answers code 1055 when no project is active\2C which is not a failure of the first section.\0A\0AREAD ONLY. Nothing is opened from disk\3A a broken VI is opened by NAME because it is already in memory\2C and every reference is closed again.">
+
+  <FreeLabel comment="Broken VIs of the instance this VI runs in." uid="4201" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Get Broken VI List" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="reference out:4210.app,error out:4210.err,Broken VI List:4210.list" uid="4210" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root" label="One iteration per broken VI">
+    <Tunnel _id="In1" inputs="value:4210.list" mode="index" outputs="value:4310.name" uid="4310" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4210.app" outputs="value:4311.app" uid="4311" uid_parent="4300"/>
+    <Node _name="Open VI Reference" inputs="application reference (local):4311.app,vi path:4310.name,error in (no error):" outputs="vi reference:4320.ref,error out:4320.err" uid="4320" uid_parent="4300"/>
+    <Node _name="Invoke Node" target="Get Errors" type="{LV.VI}" inputs="reference:4320.ref,error in (no error):4320.err,Call Dangerously?:" outputs="reference out:4330.ref,error out:4330.err,Errors:4330.errors,Details:4330.details" uid="4330" uid_parent="4300"/>
+    <Node _name="Flatten To XML" inputs="anything:4330.errors" outputs="xml string:4340.xml" uid="4340" uid_parent="4300"/>
+    <Node _name="Flatten To XML" inputs="anything:4330.details" outputs="xml string:4350.xml" uid="4350" uid_parent="4300"/>
+    <Node _name="Close Reference" inputs="reference:4330.ref,error in (no error):4330.err" outputs="error out:4360.err" uid="4360" uid_parent="4300"/>
+    <Node _name="Flatten To XML" inputs="anything:4360.err" outputs="xml string:4370.xml" uid="4370" uid_parent="4300"/>
+    <Tunnel _id="Out1" inputs="value:4310.name" mode="index" outputs="value:4380.v" uid="4380" uid_parent="4300"/>
+    <Tunnel _id="Out2" inputs="value:4340.xml" mode="index" outputs="value:4381.v" uid="4381" uid_parent="4300"/>
+    <Tunnel _id="Out3" inputs="value:4350.xml" mode="index" outputs="value:4382.v" uid="4382" uid_parent="4300"/>
+    <Tunnel _id="Out4" inputs="value:4370.xml" mode="index" outputs="value:4383.v" uid="4383" uid_parent="4300"/>
+  </Structure>
+  <Node _name="Flatten To XML" inputs="anything:4380.v" outputs="xml string:4390.xml" uid="4390" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4381.v" outputs="xml string:4391.xml" uid="4391" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4382.v" outputs="xml string:4392.xml" uid="4392" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4383.v" outputs="xml string:4393.xml" uid="4393" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:4210.err" outputs="code:4394.code,source:4394.source" uid="4394" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Project\3AActive Project:4500.proj,reference out:,error out:4500.err" uid="4500" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Path,read+Application" type="{LV.Project}" inputs="reference:4500.proj,error in (no error):4500.err" outputs="Path:4510.path,Application:4510.app,reference out:,error out:4510.err" uid="4510" uid_parent="root"/>
+  <Node _name="Path To String" inputs="path:4510.path" outputs="string:4515.text" uid="4515" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Get Broken VI List" type="{LV.Application}" inputs="reference:4510.app,error in (no error):4510.err" outputs="reference out:4520.app,error out:4520.err,Broken VI List:4520.list" uid="4520" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4600" uid_parent="root" label="Same, in the active project's instance">
+    <Tunnel _id="In1" inputs="value:4520.list" mode="index" outputs="value:4610.name" uid="4610" uid_parent="4600"/>
+    <Tunnel _id="In2" inputs="value:4520.app" outputs="value:4611.app" uid="4611" uid_parent="4600"/>
+    <Node _name="Open VI Reference" inputs="application reference (local):4611.app,vi path:4610.name,error in (no error):" outputs="vi reference:4620.ref,error out:4620.err" uid="4620" uid_parent="4600"/>
+    <Node _name="Invoke Node" target="Get Errors" type="{LV.VI}" inputs="reference:4620.ref,error in (no error):4620.err,Call Dangerously?:" outputs="reference out:4630.ref,error out:4630.err,Errors:4630.errors,Details:4630.details" uid="4630" uid_parent="4600"/>
+    <Node _name="Flatten To XML" inputs="anything:4630.errors" outputs="xml string:4640.xml" uid="4640" uid_parent="4600"/>
+    <Node _name="Flatten To XML" inputs="anything:4630.details" outputs="xml string:4650.xml" uid="4650" uid_parent="4600"/>
+    <Node _name="Close Reference" inputs="reference:4630.ref,error in (no error):4630.err" outputs="error out:4660.err" uid="4660" uid_parent="4600"/>
+    <Node _name="Flatten To XML" inputs="anything:4660.err" outputs="xml string:4670.xml" uid="4670" uid_parent="4600"/>
+    <Tunnel _id="Out1" inputs="value:4610.name" mode="index" outputs="value:4680.v" uid="4680" uid_parent="4600"/>
+    <Tunnel _id="Out2" inputs="value:4640.xml" mode="index" outputs="value:4681.v" uid="4681" uid_parent="4600"/>
+    <Tunnel _id="Out3" inputs="value:4650.xml" mode="index" outputs="value:4682.v" uid="4682" uid_parent="4600"/>
+    <Tunnel _id="Out4" inputs="value:4670.xml" mode="index" outputs="value:4683.v" uid="4683" uid_parent="4600"/>
+  </Structure>
+  <Node _name="Flatten To XML" inputs="anything:4680.v" outputs="xml string:4690.xml" uid="4690" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4681.v" outputs="xml string:4691.xml" uid="4691" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4682.v" outputs="xml string:4692.xml" uid="4692" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4683.v" outputs="xml string:4693.xml" uid="4693" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4500.proj,error in (no error):4520.err" outputs="error out:4695.err" uid="4695" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:4695.err" outputs="code:4696.code,source:4696.source" uid="4696" uid_parent="root"/>
+
+  <Indicator _name="names xml" conIdx="4" connection="recommended" description="Names of the broken VIs in this instance\2C an array flattened to XML." inputs="value:4390.xml" type="string" uid="4800" uid_parent="root" value=""/>
+  <Indicator _name="errors xml" conIdx="5" connection="recommended" description="Per broken VI\2C its Errors array flattened to XML." inputs="value:4391.xml" type="string" uid="4801" uid_parent="root" value=""/>
+  <Indicator _name="details xml" conIdx="6" connection="recommended" description="Per broken VI\2C its Details array flattened to XML." inputs="value:4392.xml" type="string" uid="4802" uid_parent="root" value=""/>
+  <Indicator _name="per vi error xml" conIdx="7" connection="recommended" description="Per broken VI\2C the error cluster of opening it and asking." inputs="value:4393.xml" type="string" uid="4803" uid_parent="root" value=""/>
+  <Indicator _name="code" conIdx="8" connection="recommended" inputs="value:4394.code" type="int32" uid="4804" uid_parent="root" value="0"/>
+  <Indicator _name="source" conIdx="9" connection="recommended" inputs="value:4394.source" type="string" uid="4805" uid_parent="root" value=""/>
+  <Indicator _name="project path" conIdx="10" connection="recommended" description="The active project\2C empty when none is." inputs="value:4515.text" type="string" uid="4810" uid_parent="root" value=""/>
+  <Indicator _name="project names xml" conIdx="11" connection="recommended" inputs="value:4690.xml" type="string" uid="4811" uid_parent="root" value=""/>
+  <Indicator _name="project errors xml" conIdx="12" connection="recommended" inputs="value:4691.xml" type="string" uid="4812" uid_parent="root" value=""/>
+  <Indicator _name="project details xml" conIdx="13" connection="recommended" inputs="value:4692.xml" type="string" uid="4813" uid_parent="root" value=""/>
+  <Indicator _name="project per vi error xml" conIdx="14" connection="recommended" inputs="value:4693.xml" type="string" uid="4814" uid_parent="root" value=""/>
+  <Indicator _name="project code" conIdx="15" connection="recommended" description="1055 when no project is active." inputs="value:4696.code" type="int32" uid="4815" uid_parent="root" value="0"/>
+  <Indicator _name="project source" conIdx="3" connection="recommended" inputs="value:4696.source" type="string" uid="4816" uid_parent="root" value=""/>
+</VI>
