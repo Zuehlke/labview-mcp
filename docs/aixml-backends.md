@@ -978,6 +978,21 @@ wire or an export. Not patched: the label is the converter's output, and editing
 every conversion would be a pylabview step on every grpc build for a display defect. The composer,
 which the error-list helper prefers, writes the right label.
 
+## A Bundle/Unbundle By Name drew only its first field (fixed 2026-10-14)
+
+Seen by the user on the composed `lvai_vi_errors.vi`: an `Unbundle By Name` over `code,source`
+showed `code` and a clipped, empty second row. The composer clones its terminals from a harvested
+ONE-field part and placed every field on that part's first row at that part's width (29 px), so
+the second field sat under the first. NI's converter drew the same node correctly. Measured over
+68 `nMux` nodes in NI's own VIs (`(Un)Bundle By Name` in the cached exports, heaps read with
+pylabview): **width = text width of the longest field name + 24, height = 16 per field + 1, field
+k on row 16k**; an Unbundle has its cluster terminal at `(0, 0, H, 16)` and its fields at
+`(16k, 16, 16k+16, W)`, a Bundle its output at `(0, W-8, H, W)` and its fields at
+`(16k, 0, 16k+16, W-16)`. The only exceptions were nested fields (`Settings.Graph?`), drawn by their
+last part, which the composer refuses anyway. `Composer._nmux_geometry` applies it; re-measured on
+the composed `lvai_vi_errors.vi` (both nodes show `code`/`source`) and on a probe bundling and
+unbundling three fields, which ran `[true,42,probe]`.
+
 ## Not covered, and not measured
 
 - **ActiveX is Windows only and needs a running LabVIEW**; it never starts one, so with no LabVIEW
