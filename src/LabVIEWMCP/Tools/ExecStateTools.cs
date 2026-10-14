@@ -277,6 +277,13 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             : new System.Text.Json.Nodes.JsonArray(lines.Select(e => (System.Text.Json.Nodes.JsonNode)
                 new System.Text.Json.Nodes.JsonObject { ["error"] = e.Error, ["detail"] = e.Detail }).ToArray());
 
+    /// <summary>
+    /// A broken reading whose Error List lines Get Errors refused with a code of its own - the one
+    /// case worth running the helper a second time for. Pure.
+    /// </summary>
+    internal static bool NeedsErrorsRetry(ExecStateReading? r) =>
+        r is { Broken: true, Errors: null, GetErrorsCode: not null and not 0 };
+
     /// <summary>Get Errors' own error code, or null when the helper has no such indicator.</summary>
     internal static int? GetErrorsCodeOf(Func<string, string?> read) =>
         int.TryParse(read("get errors code"), System.Globalization.NumberStyles.Integer,
@@ -333,6 +340,18 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                 var run = await route.RunHelper(helper, [new LabViewCom.Input(HelperInput, full, full)],
                                                 ComReadBack, timeoutSeconds, ct);
                 var (reading, notTrusted) = FromHelperRun(run, full);
+                // A BROKEN VI WHOSE LINES GET ERRORS REFUSED IS ASKED ONCE MORE. Measured 2026-10-14:
+                // with several composer-route calls in parallel, Get Errors answered 1026 (VI
+                // Reference is invalid) on a reference the same helper run had just read the state
+                // through - 3 of about 17 such calls, never one alone. The state stands either way;
+                // the retry is for the lines.
+                if (NeedsErrorsRetry(reading))
+                {
+                    var again = await route.RunHelper(helper, [new LabViewCom.Input(HelperInput, full, full)],
+                                                      ComReadBack, timeoutSeconds, ct);
+                    if (FromHelperRun(again, full).Reading is { Errors: not null } retried)
+                        reading = retried;
+                }
                 if (reading is not null) return new ComReading(reading, "helper", helper, null);
                 why = notTrusted!;
             }

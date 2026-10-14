@@ -90,6 +90,26 @@ public sealed class ExecStateErrorsTests
         Assert.Contains("1073", ExecStateTools.ErrorsNotReadBecause(reading));
     }
 
+    [Theory]
+    [InlineData("0", "1026", true)]   // measured: Get Errors refused on a broken VI in a parallel run
+    [InlineData("2", "1073", false)]  // a running VI is not broken, nothing to retry for
+    [InlineData("0", "0", false)]     // lines read - no retry
+    public void Only_a_broken_VI_whose_lines_were_refused_is_asked_again(string state, string code, bool retry)
+    {
+        var (reading, _) = ExecStateTools.FromHelperRun(
+            Ran(state, code == "0" ? Errors : NoErrors, code == "0" ? Details : NoErrors, code), Vi);
+
+        Assert.Equal(retry, ExecStateTools.NeedsErrorsRetry(reading));
+    }
+
+    [Fact]
+    public void A_helper_without_Get_Errors_is_not_retried()
+    {
+        var (reading, _) = ExecStateTools.FromHelperRun(Ran("0", null, null), Vi);
+
+        Assert.False(ExecStateTools.NeedsErrorsRetry(reading));
+    }
+
     [Fact]
     public void A_helper_without_Get_Errors_is_named_as_the_reason()
     {

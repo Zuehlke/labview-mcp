@@ -132,3 +132,15 @@ issued together right after answered correctly. Which code Get Errors returns th
 known; `errorsNotReadBecause` now names it (`Get Errors answered error <code>`), on
 `lvai_exec_state` as well as on `convert`, so the next occurrence settles it. Until then, read a
 broken VI's `errors` again with `lvai_exec_state` alone when a parallel build answers null.
+
+### 6b. Third acceptance - the parallel miss is `1026`, and it is retried
+
+After the next restart the table held a third time, and the miss reproduced once in seven parallel
+calls, now with its code: **`Get Errors answered error 1026`** - *VI Reference is invalid* - on the
+very reference the same helper run had just read `Execution:State` through. So the state is always
+right and only the lines go missing; what invalidates the reference in between is not established
+(it needs another call running in parallel, and has never happened to a call alone). The composed
+route now runs the helper ONCE MORE, inside the same gate, when it reads a broken VI whose lines Get
+Errors refused (`NeedsErrorsRetry`). Six parallel calls afterwards all answered with their lines -
+which does not prove the retry fired, since the miss is rare (3 of about 17 parallel calls so far);
+if it ever comes back after the retry, `errorsNotReadBecause` names the code again.
