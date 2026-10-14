@@ -282,8 +282,12 @@ public sealed class AixmlBackendTests
                 Assert.Matches($"//\\s+\"{value}\"\\s+\\S", text);   // each value on a comment line WITH its meaning
             Assert.Contains(AixmlBackend.Variable, text);              // and what still overrides it
 
-            // never rewritten once it exists: the user's edit and comments stay
+            // never rewritten once it exists: the user's edit and comments stay. The edit keeps the
+            // template's write time, as it did on the release runner where both writes fell into one
+            // timestamp tick - a cache keyed on that time served the template's "auto" back.
+            var stamp = File.GetLastWriteTimeUtc(path);
             File.WriteAllText(path, "{ // mine\n \"aixmlBackend\": \"pylabview\" }");
+            File.SetLastWriteTimeUtc(path, stamp);
             Assert.False(ServerSettings.EnsureExists(path));
             Assert.Equal("pylabview", ServerSettings.ReadBackend(path).Value);
         }

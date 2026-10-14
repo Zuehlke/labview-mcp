@@ -14,7 +14,7 @@ namespace LabVIEWMcp.Infra;
 /// because a plugin update replaces that folder and would take the user's choice with it.
 ///
 /// The file is CREATED at start-up when it is missing and never rewritten afterwards - it is the
-/// user's file from then on, comments included. It is READ ON EVERY CALL (cached by write time),
+/// user's file from then on, comments included. It is READ ON EVERY CALL (the parse cached by content),
 /// so an edit takes effect without restarting the server.
 /// </summary>
 internal static class ServerSettings
@@ -105,7 +105,11 @@ internal static class ServerSettings
     /// <summary>What the file says about the backend: the raw value, or why it could not be read.</summary>
     internal sealed record BackendEntry(string Path, string? Value, string? Error);
 
-    private static (string Path, DateTime Stamp, BackendEntry Entry)? _cache;
+    // Keyed on the file's TEXT, not its write time: two writes inside one timestamp tick share a
+    // stamp, and the release runner's test (template, then the user's edit, 7 ms apart) read the
+    // template's "auto" back for "pylabview". The file is a few hundred bytes - reading it is cheap,
+    // the parse is what the cache saves.
+    private static (string Path, string Text, BackendEntry Entry)? _cache;
     private static readonly object Gate = new();
 
     /// <summary>
@@ -117,11 +121,11 @@ internal static class ServerSettings
     public static BackendEntry ReadBackend(string? path = null)
     {
         path ??= FilePath;
-        DateTime stamp;
+        string text;
         try
         {
             if (!File.Exists(path)) return new BackendEntry(path, null, null);
-            stamp = File.GetLastWriteTimeUtc(path);
+            text = File.ReadAllText(path);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -129,18 +133,18 @@ internal static class ServerSettings
         }
         lock (Gate)
         {
-            if (_cache is { } c && c.Path == path && c.Stamp == stamp) return c.Entry;
+            if (_cache is { } c && c.Path == path && c.Text == text) return c.Entry;
         }
-        var entry = Parse(path);
-        lock (Gate) _cache = (path, stamp, entry);
+        var entry = Parse(path, text);
+        lock (Gate) _cache = (path, text, entry);
         return entry;
     }
 
-    private static BackendEntry Parse(string path)
+    private static BackendEntry Parse(string path, string text)
     {
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(path), Options);
+            using var doc = JsonDocument.Parse(text, Options);
             if (doc.RootElement.ValueKind != JsonValueKind.Object)
                 return new BackendEntry(path, null, $"{path} is not a JSON object.");
             if (!doc.RootElement.TryGetProperty(BackendKey, out var value))
