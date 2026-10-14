@@ -6578,6 +6578,15 @@ class Composer:
                 tb = dco.find("termBounds")
                 if tb is not None:
                     tb.text = lvheap.fmt_bounds((h - 26, x, h - 10, x + 16))
+            # A For Loop's N sits in the top-left corner - BELOW a subdiagram label, overlapping
+            # its last pixel row: measured on 22 of 25 labelled NI loops, N's top is the label's
+            # bottom - 1 (label 1..18 -> N 17..33); left where it is, N covers the label.
+            for c in loop.find("termList") if lh else ():
+                if c.find("dco") is not None and c.find("dco").get("class") == "lMax":
+                    tb = c.find("dco/termBounds")
+                    ny = 6 + lh - 1              # the label starts at the contRect, t + 6
+                    if tb is not None:
+                        tb.text = lvheap.fmt_bounds((ny, 0, ny + 16, 16))
             slot = {0: 1 if loop.find("loopLimitDCO") is not None else 0, 1: 0}
             for c in loop.find("termList"):
                 tb = c.find("dco/termBounds")

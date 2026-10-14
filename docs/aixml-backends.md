@@ -993,6 +993,17 @@ last part, which the composer refuses anyway. `Composer._nmux_geometry` applies 
 the composed `lvai_vi_errors.vi` (both nodes show `code`/`source`) and on a probe bundling and
 unbundling three fields, which ran `[true,42,probe]`.
 
+## A For Loop's N terminal sat on its subdiagram label (fixed 2026-10-14)
+
+Seen by the user on the same composed VI: the loop's `N` was drawn ON the subdiagram label bar,
+where LabVIEW's own loop has it below. The composer placed the label but left `N` (the `lMax` DCO)
+at the shell's `(0, 0, 16, 16)`. Measured over 25 labelled For Loops in NI's own VIs: in 22,
+**N's top is the label's bottom - 1** (label `1..18` -> N `17..33`, label `1..42` -> N `41..57`),
+whatever the label's height; every unlabelled loop has N at `(0, 0, 16, 16)`. The three outliers
+are two loops with N at the top despite a label and one at `(55, 0)` under a 56-px label - not a
+rule. The composer now applies it; checked on the composed `lvai_vi_errors.vi` and on `t159` (a
+two-line label with N WIRED: the wire is routed to the new position, `execState 1`).
+
 ## Not covered, and not measured
 
 - **ActiveX is Windows only and needs a running LabVIEW**; it never starts one, so with no LabVIEW
