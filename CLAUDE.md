@@ -1095,6 +1095,14 @@ count copied from a passing run is not a test. Stripping both comments took it t
 VI. Both skeletons now keep their prose in a sibling `.md`; the cheap tell in the field is the
 size, because a VI of about 3 170 bytes is empty whatever it was meant to hold.
 
+**A PROCESSING INSTRUCTION BEFORE `<VI>` EMPTIES THE VI THE SAME WAY, and nothing INSIDE `<VI>`
+may be unknown - measured 2026-10-14 while probing a front-panel extension of AIXML.** NI's
+validator is Xerces with a CLOSED content model: an unknown element or attribute is `-2628`
+naming it, and a foreign XML namespace does not open the schema. A PI inside `<VI>` is
+`Error 42`. Only what sits AFTER `</VI>` - a PI or a comment - is ignored, the VI identical to
+one without it. So an AIXML extension reaches NI's service only if our server STRIPS it first;
+the composer refuses an unknown element by name. `docs/aixml-frontpanel-extension.md`.
+
 ## Which interface to reach for
 
 **The `lvai_*` RPCs are the normal way in. The VI Server route is the exception.** A generated
@@ -2807,6 +2815,7 @@ literally it argued away 600 usable palette VIs.
 |---|---|---|
 | How do I read or write AIXML? | `docs/aixml-reference.md` | `lvai_aixml_reference` |
 | What does `ValidateAIXML` NOT catch? | `docs/aixml-reference.md` | `lvai_check_aixml` |
+| Can AIXML carry data NI's format does not know - front-panel layout, say - without breaking gRPC? | `docs/aixml-frontpanel-extension.md` | — only after `</VI>`, or stripped by our server before the RPC |
 | How do I check AIXML with NO LabVIEW, before spending a round trip? | `docs/aixml-lint.md` | `scripts/aixml_lint.py` |
 | How do I convert, check or RUN a VI WITHOUT NI's gRPC service, or choose which route runs? | `docs/aixml-backends.md` | `backend` on the five AIXML tools, `lvai_exec_state` and `lvai_run_vi_and_read_values` (ActiveX for a running LabVIEW), and since 2026-10-13 on every tool that reaches LabVIEW but NI's own assistant features; `LABVIEWMCP_AIXML_BACKEND` / `--aixml-backend` for the server default; `pylv_status` shows it |
 | What is a DQMH module made of? | `docs/dqmh-patterns.md` | `lvai_dqmh_reference` |
