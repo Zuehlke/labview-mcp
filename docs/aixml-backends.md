@@ -953,6 +953,31 @@ visible in `user.lib\LV_MCP` sockets composed since 2026-10-10. It unescapes bot
 `tests/.../Infra/ReaderControlFileTests.cs` pins three real controls to NI's export of them, and
 fails on all three with the reader before the change.
 
+## NI's converter labels every Invoke Node `Instr` (measured 2026-10-14)
+
+Seen by the user on `lvai_vi_errors.vi` built through NI's service: the `Get Broken VI List` node,
+an `{LV.Application}` method, carried the header `Instr` where NI's own
+`AB_Get_Detailed_BrokenVI_Message.vi` shows `App`, and `Get Errors` showed `Instr` where NI's shows
+`VI`. **The AIXML was right** (`type="{LV.Application}"`, `type="{LV.VI}"`) and so was the VI: an
+export of the NI-built VI reads both classes back correctly, and both methods returned the right
+answers in every acceptance run. The header is a STRING in the diagram heap - the invoke node's
+`nodeName` - and NI's converter writes `"Instr"` into it whatever the class is:
+
+| built by | `Get Broken VI List` | `Get Errors` | `methCode` / `invokeFlags` |
+|---|---|---|---|
+| NI's own VI (`AB_Get_Detailed_BrokenVI_Message.vi`) | `nodeName "App"` | `nodeName "VI"` | 2429 / 201408, 1106 / 200408 |
+| our composer (`pylabview`) | `"App"` | `"VI"` | identical |
+| NI's converter (`grpc`) | **`"Instr"`** | **`"Instr"`** | identical |
+
+The same label is on `BD.CleanUp` and `Save.Instrument` in `lvai_cleanup_diagram.vi`, both ordinary
+public `{LV.VI}` methods, so it is not about the methods being unlisted. Only `oMId` differs besides
+the label, and that is the node's index into the VI's own object table. Property nodes built by NI's
+converter keep their real class (`App`, `Project`). So: **cosmetic, and NI's** - a reader of a
+grpc-built diagram sees `Instr` on every Invoke Node and has to take the class from the reference
+wire or an export. Not patched: the label is the converter's output, and editing heap strings after
+every conversion would be a pylabview step on every grpc build for a display defect. The composer,
+which the error-list helper prefers, writes the right label.
+
 ## Not covered, and not measured
 
 - **ActiveX is Windows only and needs a running LabVIEW**; it never starts one, so with no LabVIEW
