@@ -494,26 +494,36 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                 await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is not null)
                 return null;
 
-            var answer = await new RunTools(connection).RunViAndReadValuesAsync(
-                helperVi,
-                new JsonObject { ["vi path"] = Path.GetFullPath(viPath) }.ToJsonString(),
-                includeRawXml: false, helperViPath: null, helperAixmlPath: null,
-                regenerateHelper: false, timeoutSeconds, ct: ct);
+            async Task<ExecStateReading?> RunOnce()
+            {
+                var answer = await new RunTools(connection).RunViAndReadValuesAsync(
+                    helperVi,
+                    new JsonObject { ["vi path"] = Path.GetFullPath(viPath) }.ToJsonString(),
+                    includeRawXml: false, helperViPath: null, helperAixmlPath: null,
+                    regenerateHelper: false, timeoutSeconds, ct: ct);
 
-            if (JsonNode.Parse(answer) is not JsonObject payload ||
-                payload["values"] is not JsonObject values)
-                return null;
+                if (JsonNode.Parse(answer) is not JsonObject payload ||
+                    payload["values"] is not JsonObject values)
+                    return null;
 
-            var state = Value(values, "exec state");
-            if (state is null || !int.TryParse(state, out var parsed)) return null;
+                var state = Value(values, "exec state");
+                if (state is null || !int.TryParse(state, out var parsed)) return null;
 
-            return new ExecStateReading(
-                parsed,
-                Value(values, "linker errors xml") ?? "",
-                int.TryParse(Value(values, "code"), out var code) ? code : 0,
-                Value(values, "source") ?? "",
-                Errors: ErrorLines(name => Value(values, name)),
-                GetErrorsCode: GetErrorsCodeOf(name => Value(values, name)));
+                return new ExecStateReading(
+                    parsed,
+                    Value(values, "linker errors xml") ?? "",
+                    int.TryParse(Value(values, "code"), out var code) ? code : 0,
+                    Value(values, "source") ?? "",
+                    Errors: ErrorLines(name => Value(values, name)),
+                    GetErrorsCode: GetErrorsCodeOf(name => Value(values, name)));
+            }
+
+            // the same retry as the ActiveX route: measured 2026-10-14 on this route too - a grpc
+            // convert issued beside six composer-route calls came back eBad with its lines unread
+            var reading = await RunOnce();
+            if (NeedsErrorsRetry(reading) && await RunOnce() is { Errors: not null } retried)
+                reading = retried;
+            return reading;
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {

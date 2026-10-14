@@ -144,3 +144,12 @@ route now runs the helper ONCE MORE, inside the same gate, when it reads a broke
 Errors refused (`NeedsErrorsRetry`). Six parallel calls afterwards all answered with their lines -
 which does not prove the retry fired, since the miss is rare (3 of about 17 parallel calls so far);
 if it ever comes back after the retry, `errorsNotReadBecause` names the code again.
+
+### 6c. Fourth acceptance - the same miss on the grpc route
+
+After the next restart everything above held again, and a nine-call parallel round showed the miss
+on the OTHER route: a grpc `convert` answered `errors: null` with no reason at all - its warning
+still claiming `errors` held the lines. The retry and the reason had been built into the ActiveX
+route only. The grpc route (`ExecStateTools.ReadAsync`) now retries the same way, and `convert`
+carries `errorsNotReadBecause` and words its warning by what was actually read. A six-call mixed
+round afterwards (two grpc, four composer) answered every one with its lines.

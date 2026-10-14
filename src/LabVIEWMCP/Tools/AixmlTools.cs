@@ -793,12 +793,14 @@ internal sealed class AixmlTools(LvaiConnection connection)
             // validator said `Invalid method`, this wrote the VI, and only lvai_exec_state saw it.
             int? execState = null;
             JsonNode? errors = null;
+            string? errorsNotRead = null;
             if (checkExecutable && response.ErrorCode == 0 && File.Exists(viPath))
             {
                 var exec = JsonNode.Parse(await new ExecStateTools(connection).ExecStateAsync(
                     Path.GetFullPath(viPath), timeoutSeconds: timeoutSeconds, ct: ct));
                 execState = (int?)exec?["execState"];
                 errors = exec?["errors"]?.DeepClone();
+                errorsNotRead = exec?["errorsNotReadBecause"]?.GetValue<string>();
             }
             var broken = execState == 0;
             return Json.Message(response,
@@ -812,13 +814,16 @@ internal sealed class AixmlTools(LvaiConnection connection)
                  ("ok", checkExecutable && response.ErrorCode == 0 && execState is >= 0
                      ? JsonValue.Create(!broken) : null),
                  ("warning", broken
-                     ? JsonValue.Create("The VI was WRITTEN but is BROKEN (execState 0). `errors` holds "
-                         + "the lines LabVIEW's Error List shows for it, each with its explanation; "
+                     ? JsonValue.Create("The VI was WRITTEN but is BROKEN (execState 0). " +
+                         (errors is not null
+                             ? "`errors` holds the lines LabVIEW's Error List shows for it, each with its explanation; "
+                             : "Its Error List lines were NOT read (`errorsNotReadBecause`) - ask lvai_exec_state; ")
                          + "lvai_validate_aixml on the same file names the node as well. For a class "
                          + "method or a call to a loaded subVI a broken intermediate can be expected; "
                          + "anywhere else it is not.")
                      : null),
                  ("errors", broken ? errors : null),
+                 ("errorsNotReadBecause", broken && errorsNotRead is not null ? JsonValue.Create(errorsNotRead) : null),
                  // THIS PATH MATTERS MOST for the check: it is the documented route for a class
                  // method - convert WITHOUT validating, because ValidateAIXML is stricter than the
                  // converter for a class wire - so nothing else looks at the file at all.
