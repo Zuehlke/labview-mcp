@@ -275,37 +275,10 @@ WITHOUT the member (measured 2026-10-10). Such a call is now refused before anyt
 All of them are generated under a throwaway name and run through the typed run helper, as
 `lvai_dqmh_place_handler`'s helpers are.
 
-## 7. What must be measured before this is trusted
+## 7. What was measured, and what is still open
 
-Run each item on a throwaway actor in a throwaway project. Read every exec state cold, with the
+Every item ran on a throwaway actor in a throwaway project, each exec state read cold with the
 project closed.
-
-1. **`lvai_create_override`** for each lifecycle method:
-   - an actor in no library;
-   - an actor in a `.lvlib`;
-   - a plain parent `.vi`;
-   - a refusal: `overrideAlreadyExists`.
-2. **`lvai_af_add_hook`**, one run per shape:
-   - `branch` on Actor Core;
-   - `series` on Actor Core with error;
-   - `seriesAfter` on Pre Launch Init with error, with a forced error that must reach Launch;
-   - `branchFromNode` after a series hook;
-   - `seriesAfter` on Stop Core and on Handle Error;
-   - `dryRun`;
-   - the refusals `hookInputUnfed`, `wireIsBranched` and `handleErrorHookBeforeCallParent`.
-
-   Also check whether `lvai_af_hook_read` lists a `CallParentNode`.
-3. **`lvai_af_remove_hook`**:
-   - on a branch hook whose wire branches: the override and its sibling overrides must read state
-     1 cold afterwards, and `siblingSave.saved` lists only siblings the remove made modified;
-   - with a sibling override that has a pre-existing unsaved edit (change it in the IDE, do not
-     save): expect `siblingHasUnsavedEdits` naming it, and nothing changed - the hook still on the
-     diagram, no file written (compare timestamps), the sibling still unsaved;
-   - the same with the override itself edited: expect `overrideHasUnsavedEdits`.
-4. **`lvai_add_class_method`** re-run:
-   - over a hook an override calls: expect `memberHasLoadedCallers` and an unchanged class file;
-   - over a protected member in a folder: expect scope and folder back, `lvai_describe_class`,
-     state 1 cold.
 
 **Results, 2026-10-10** (LabVIEW 2026 Q3 32-bit, throwaway actors and project):
 
@@ -319,3 +292,9 @@ project closed.
 | 3 `siblingHasUnsavedEdits` / `overrideHasUnsavedEdits` | pass for a hand edit in the IDE (sibling named, nothing changed); **blind** to scripted edits (bits read 0, §4) |
 | 4 re-run over a hooked member | pass: `memberHasLoadedCallers`, class unchanged; re-run after unhooking ok |
 | 4 re-run over a protected member in a folder | scope: pass; folder: unmeasured; `vi`-only re-run: failed, now refused (`rerunNeedsAixml`) |
+
+Still open:
+
+1. The folder a re-run over a member in a virtual folder puts it back into (item 4).
+2. Any hook shape on Handle Last Ack Core (§3b).
+3. Edits made by scripting are invisible to the unsaved-edit checks (§4), so they cannot refuse them.
