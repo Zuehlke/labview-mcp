@@ -153,3 +153,11 @@ still claiming `errors` held the lines. The retry and the reason had been built 
 route only. The grpc route (`ExecStateTools.ReadAsync`) now retries the same way, and `convert`
 carries `errorsNotReadBecause` and words its warning by what was actually read. A six-call mixed
 round afterwards (two grpc, four composer) answered every one with its lines.
+
+### 6d. Fifth acceptance
+
+After another restart: the baseline as before, and a nine-call parallel round (two `lvai_error_list`,
+two grpc `convert`, three composer `convert`, two composer `lvai_generate_vi`) answered every one
+with its Error List line, `errorsNotReadBecause: null` throughout. Over the five acceptance rounds
+the unread-lines case occurred 4 times in about 40 parallel calls, always with another call in
+flight, never on a call alone, and not once since both routes retry.
