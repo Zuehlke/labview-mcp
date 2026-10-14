@@ -95,3 +95,29 @@ not turn a good state reading into an error. The answer then says `errorsRead: f
 which is not the same as none. A helper built before this change is rebuilt automatically, because
 the grpc route now checks the AIXML's timestamp like every other helper (it checked existence only).
 
+
+## 6. Acceptance after a restart, 2026-10-14
+
+Run through the MCP client after restarting LabVIEW and the client, on both backends, with one
+broken VI loose in the main instance and one inside an active project:
+
+| call | result |
+|---|---|
+| `lvai_exec_state`, grpc and pylabview, VI on disk | `errors: [Add: Contains unwired or bad terminal ...]` on both |
+| `lvai_error_list`, fresh LabVIEW | empty main list, project half `available: false` (1055) |
+| `lvai_error_list` with both VIs open | each VI in its own instance, with its line |
+| `lvai_error_list viName` with a path in other case | matched by file name |
+| `lvai_convert_aixml_to_vi`, grpc and pylabview | `errors` beside `executable: false` |
+| `lvai_generate_vi`, pylabview | the note quotes the first Error List line |
+
+Three defects the acceptance found, all fixed the same day:
+
+- **Two `lvai_error_list` calls issued together collided** on the one helper VI: the second answered
+  `0x3E8 The VI is not in a state compatible with this operation`. One run at a time now
+  (`HelperGate`), re-measured with two calls in parallel.
+- **`lvai_generate_vi` on pylabview reported a written, broken VI as "The pylabview composer failed
+  and wrote nothing: No Error"** - because `convert` answers `ok: false` for a broken VI and the
+  generic failure test read that as a failure of the composer. The executable check now runs first.
+- **A parallel convert once answered `errors: null` with no reason**, and it did not reproduce
+  alone or in a second parallel run. The answer now carries `errorsNotReadBecause`, so the next
+  occurrence names its cause instead of leaving it to be guessed.

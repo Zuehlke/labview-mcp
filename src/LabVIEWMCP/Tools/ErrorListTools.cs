@@ -89,11 +89,13 @@ internal sealed class ErrorListTools(LvaiConnection connection)
                 "That is not a clean bill of health. " + problem);
 
         LabViewCom.RunResult run;
+        await HelperGate.WaitAsync(ct);
         try { run = await LabViewCom.RunAsync(helper, [], HelperReadBack, 0, timeoutSeconds, ct); }
         catch (LabViewCom.ComException e)
         {
             return Json.Error(e.Kind, e.Message, new { helperViPath = helper, via = "ActiveX" });
         }
+        finally { HelperGate.Release(); }
 
         var (list, notTrusted) = FromHelperRun(run);
         if (list is null)
@@ -101,6 +103,13 @@ internal sealed class ErrorListTools(LvaiConnection connection)
 
         return Answer(list, viName, helper);
     }
+
+    /// <summary>
+    /// One run of the helper at a time in this process. Measured 2026-10-14: two calls issued
+    /// together both ran the one helper VI over ActiveX, and the second answered
+    /// `0x3E8 The VI is not in a state compatible with this operation`.
+    /// </summary>
+    private static readonly SemaphoreSlim HelperGate = new(1, 1);
 
     /// <summary>One broken VI: its name, the Error List's lines paired with their explanations.</summary>
     internal sealed record BrokenVi(string Name, IReadOnlyList<ErrorLine> Errors, int ReadCode,

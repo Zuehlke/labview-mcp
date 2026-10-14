@@ -1025,14 +1025,18 @@ internal sealed class AixmlTools(LvaiConnection connection)
         // most: the composed exec-state helper reads the Error List's lines (Get Errors), only
         // here, because the direct read above has no such property.
         JsonNode? errors = null;
+        string? errorsNotRead = null;
         if (broken)
         {
             try
             {
-                errors = ExecStateTools.ErrorsNode(
-                    (await ExecStateTools.ReadOverComAsync(viPath, timeoutSeconds, ct)).Reading);
+                var read = await ExecStateTools.ReadOverComAsync(viPath, timeoutSeconds, ct);
+                errors = ExecStateTools.ErrorsNode(read.Reading);
+                if (errors is null)
+                    errorsNotRead = read.WhyNoHelper ??
+                        "Get Errors answered an error of its own, so the lines were not read";
             }
-            catch (LabViewCom.ComException) { }
+            catch (LabViewCom.ComException e) { errorsNotRead = $"{e.Kind}: {e.Message}"; }
         }
         var unopenable = openError is not null;
         var compiled = result.Written && File.Exists(viPath) && ContainsCompiledCode(viPath);
@@ -1051,6 +1055,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
                      ? JsonValue.Create(!broken) : null),
              ("openError", unopenable ? JsonValue.Create(openError) : null),
              ("errors", errors),
+             ("errorsNotReadBecause", errorsNotRead is null ? null : JsonValue.Create(errorsNotRead)),
              ("executableNote", execNote is null ? null : JsonValue.Create(execNote)),
              ("warning", broken
                  ? JsonValue.Create("The VI was WRITTEN but is BROKEN (execState 0). The composer " +

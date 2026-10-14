@@ -313,6 +313,19 @@ internal sealed class BulkTools(LvaiConnection connection)
                                                             checkExecutable: composed,
                                                             backend: choice.Name, ct: ct);
             steps.Add(Step("convert", convert));
+            // A WRITTEN but BROKEN VI answers ok:false too, which Failed() reads as a failure, so
+            // this is decided first: until 2026-10-14 such a VI was reported as "the composer
+            // failed and wrote nothing: No Error" beside a file on disk and its Error List lines.
+            if (composed && ErrorCode(convert) is 0 && Parsed(convert)?["executable"]?.GetValue<bool>() == false)
+                return Outcome(false, "convert", steps, total, viPath, null,
+                    "THE VI WAS WRITTEN by the pylabview composer and LabVIEW reports it NOT " +
+                    "executable" + (Parsed(convert)?["errors"] is JsonArray { Count: > 0 } lines
+                        ? $" - its Error List says: {lines[0]?["error"]}" +
+                          (lines.Count > 1 ? $" (and {lines.Count - 1} more)" : "")
+                        : "") +
+                    ". The composer does not type-check wiring the way NI's validation does: " +
+                    "`errors` in the convert step holds the Error List's lines with their " +
+                    "explanation - fix those, or generate the same document with backend grpc.");
             if (composed && Failed(convert))
                 return Outcome(false, "convert", steps, total, viPath, null,
                     (Field(convert, "errorKind") == "composerRefused"
@@ -326,12 +339,6 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "THE VI WAS WRITTEN by the pylabview composer and LabVIEW could NOT OPEN it - " +
                     openError + ". A file LabVIEW refuses to load is broken, not unmeasured; " +
                     "generate the same document with backend grpc to compare.");
-            if (composed && Parsed(convert)?["executable"]?.GetValue<bool>() == false)
-                return Outcome(false, "convert", steps, total, viPath, null,
-                    "THE VI WAS WRITTEN by the pylabview composer and LabVIEW reports it NOT " +
-                    "executable. The composer does not type-check wiring the way NI's validation " +
-                    "does: `errors` in the convert step holds the lines LabVIEW's Error List shows " +
-                    "for it - fix those, or generate the same document with backend grpc.");
             if (Failed(convert) && unresolved is not null &&
                 RouteFailure(ErrorCode(convert), Field(convert, "errorMessage"),
                              unresolved, throwaway!.ValidatedAs) is { } routeNote)
