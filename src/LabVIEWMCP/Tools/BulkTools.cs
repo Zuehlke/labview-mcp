@@ -330,7 +330,8 @@ internal sealed class BulkTools(LvaiConnection connection)
                 return Outcome(false, "convert", steps, total, viPath, null,
                     "THE VI WAS WRITTEN by the pylabview composer and LabVIEW reports it NOT " +
                     "executable. The composer does not type-check wiring the way NI's validation " +
-                    "does; generate the same document with backend grpc to have the node named.");
+                    "does: `errors` in the convert step holds the lines LabVIEW's Error List shows " +
+                    "for it - fix those, or generate the same document with backend grpc.");
             if (Failed(convert) && unresolved is not null &&
                 RouteFailure(ErrorCode(convert), Field(convert, "errorMessage"),
                              unresolved, throwaway!.ValidatedAs) is { } routeNote)
@@ -392,6 +393,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                     ["execState"] = reading?.State,
                     ["meaning"] = reading is null ? null : ExecStateTools.Meaning(reading.State),
                     ["linkerErrors"] = reading?.LinkerErrors,
+                    ["errors"] = ExecStateTools.ErrorsNode(reading),
                 });
                 route = Route(unresolved,
                     reading is null or { CouldNotOpen: true } ? null : !reading.Broken, resolved: true);
@@ -438,7 +440,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "and the converter wrote something it would have refused. Compare each " +
                         "Call's wire TYPES against lvai_vi_terminals on its target (a misspelt " +
                         "terminal NAME does not get this far - the converter refuses it with " +
-                        "Error 1), and read linkerErrors in the execState step." +
+                        "Error 1), and read errors and linkerErrors in the execState step." +
                         (brokenPane is { Measured: true, Clean: false }
                             ? " The connector pane breaches the style guide as well - see the " +
                               "connectorPane step."
@@ -1262,7 +1264,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                 return PyOutcome(false, "verify", steps, total, viPath, directory, keepBundle,
                     "The edit was applied and the call targets are right - and the result is NOT " +
                     "EXECUTABLE (eBad). Nothing was rolled back; the .vi on disk carries the " +
-                    "change. Read linkerErrors in the verify step. The usual cause is a breached " +
+                    "change. Read errors and linkerErrors in the verify step. The usual cause is a breached " +
                     "connector pane contract, which never mentions linking in its symptom. Pass " +
                     "gateOnExecState: false when the VI is deliberately unfinished at this point.");
 
@@ -1378,6 +1380,7 @@ internal sealed class BulkTools(LvaiConnection connection)
             step["execStateMeaning"] = ExecStateTools.Meaning(reading.State);
             step["broken"] = reading.Broken;
             if (reading.LinkerErrors.Length > 0) step["linkerErrors"] = reading.LinkerErrors;
+            if (reading.Errors is { Count: > 0 }) step["errors"] = ExecStateTools.ErrorsNode(reading);
             if (reading.CouldNotOpen) step["execStateCode"] = reading.Code;
         }
 

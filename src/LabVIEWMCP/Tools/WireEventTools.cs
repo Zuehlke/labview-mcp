@@ -452,7 +452,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
             step["ok"] = false;
             step["note"] = "The user-event spec was written and rebuilt, and LabVIEW still says "
                 + "the VI is NOT EXECUTABLE. At this point the cause is elsewhere in the diagram: "
-                + "read linkerErrors in the verify step.";
+                + "read errors and linkerErrors in the verify step.";
             return step;
         }
 

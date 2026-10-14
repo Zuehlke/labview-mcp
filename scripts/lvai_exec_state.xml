@@ -7,7 +7,13 @@
   <Node _name="String To Path" inputs="string:5000.value" outputs="path:5020.path" uid="5020" uid_parent="root"/>
   <Node _name="Open VI Reference" inputs="vi path:5020.path,error in (no error):" outputs="vi reference:5030.vi reference,error out:5030.error out" uid="5030" uid_parent="root"/>
 
-  <Node _name="Property Node" fields="read+Execution\3AState,read+VI Linker Errors" type="{LV.VI}" inputs="reference:5030.vi reference,error in (no error):5030.error out" outputs="Execution\3AState:5040.state,VI Linker Errors:5040.linker,reference out:,error out:5040.error out" uid="5040" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Execution\3AState,read+VI Linker Errors" type="{LV.VI}" inputs="reference:5030.vi reference,error in (no error):5030.error out" outputs="Execution\3AState:5040.state,VI Linker Errors:5040.linker,reference out:5040.ref,error out:5040.error out" uid="5040" uid_parent="root"/>
+
+  <FreeLabel comment="Get Errors names WHY a broken VI is broken." uid="5041" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Get Errors" type="{LV.VI}" inputs="reference:5040.ref,error in (no error):5040.error out,Call Dangerously?:" outputs="reference out:,error out:5042.error out,Errors:5042.errors,Details:5042.details" uid="5042" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:5042.errors" outputs="xml string:5043.xml" uid="5043" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:5042.details" outputs="xml string:5044.xml" uid="5044" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:5042.error out" outputs="code:5045.code" uid="5045" uid_parent="root"/>
 
   <Node _name="Number To Decimal String" inputs="number:5040.state" outputs="decimal integer string:5050.text" uid="5050" uid_parent="root"/>
 
@@ -22,6 +28,9 @@
 
   <Indicator _name="exec state" conIdx="4" connection="recommended" description="Execution\3AState as a number\3A 0 eBad\2C 1 eIdle\2C 2 eRunTopLevel\2C 3 eRunning. Only 0 means the VI is broken\2C and -1 means the reference NEVER OPENED - read code and source for why. That case is split off on purpose\3A a failed Open VI Reference leaves the state property unread at 0\2C which is indistinguishable from eBad\2C and a tool whose whole job is \22broken or not\22 must not answer \22broken\22 when it means \22could not look\22. Measured by pointing this VI at a .xml by mistake\3A error 1059\2C and exec state read 0." inputs="value:5054.state" type="string" uid="5100" uid_parent="root" value=""/>
   <Indicator _name="linker errors xml" conIdx="6" connection="recommended" description="VI Linker Errors flattened to XML. Empty when the VI has none. Flattened rather than typed so that whatever shape LabVIEW returns survives the trip back through a string." inputs="value:5060.xml" type="string" uid="5110" uid_parent="root" value=""/>
+  <Indicator _name="errors xml" conIdx="7" connection="recommended" description="{LV.VI} Get Errors - the lines LabVIEW's Error List shows for this VI\2C such as 'Add\3A Contains unwired or bad terminal' - as a string array flattened to XML. Empty for an executable VI. Read on its OWN error chain\2C so a refusal here (1073 on a VI that is running) never disturbs exec state\2C code or source." inputs="value:5043.xml" type="string" uid="5140" uid_parent="root" value=""/>
+  <Indicator _name="details xml" conIdx="9" connection="recommended" description="Get Errors' Details - the explanation the Error List prints under each line\2C in the same order." inputs="value:5044.xml" type="string" uid="5150" uid_parent="root" value=""/>
+  <Indicator _name="get errors code" conIdx="11" connection="recommended" description="The error code of Get Errors alone. Non-zero means the errors were NOT read\2C which is not the same as none." inputs="value:5045.code" type="int32" uid="5160" uid_parent="root" value="0"/>
   <Indicator _name="code" conIdx="8" connection="recommended" inputs="value:5080.code" type="int32" uid="5120" uid_parent="root" value="0"/>
   <Indicator _name="source" conIdx="10" connection="recommended" inputs="value:5080.source" type="string" uid="5130" uid_parent="root" value=""/>
 </VI>

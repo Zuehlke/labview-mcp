@@ -1065,6 +1065,7 @@ internal sealed class TestTools(LvaiConnection connection)
             ["step"] = "execState",
             ["execState"] = reading?.State,
             ["linkerErrors"] = reading?.LinkerErrors,
+            ["errors"] = ExecStateTools.ErrorsNode(reading),
             ["openError"] = reading is { CouldNotOpen: true } ? $"{reading.Code}: {reading.Source}" : null,
         });
         if (reading is { Broken: true })
@@ -1072,7 +1073,7 @@ internal sealed class TestTools(LvaiConnection connection)
             await CloseAsync();
             return (Outcome(false, "execState", steps, total, testViPath, testAixml,
                 "THE TEST VI WAS WRITTEN and LabVIEW cannot run it after the seeds were replaced - " +
-                "read linkerErrors in the execState step.", route: Direct(route)), null);
+                "read errors and linkerErrors in the execState step.", route: Direct(route)), null);
         }
         // A VI LabVIEW CANNOT EVEN OPEN, or one nobody could read, is not a deliverable either:
         // measured 2026-10-12, a composed test calling six accessors answered `ok: true` with

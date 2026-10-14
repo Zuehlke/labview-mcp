@@ -549,6 +549,17 @@ report, and if the VI does not load there while NI's service is up, compose it a
    then driven with `backend: "grpc"` if NI's service is up, otherwise your report says the event
    path was not driven. `lvai_exec_state` names linker errors on this route too.
 
+**A BROKEN VI COMES WITH ITS CAUSE - since 2026-10-14, on both backends.** Every executability
+check - `lvai_exec_state`, the `execState` step of `lvai_generate_vi` and the test generators,
+`lvai_convert_aixml_to_vi`'s `executable` - answers `errors`: the lines LabVIEW's Error List
+shows for that VI (`Add: Contains unwired or bad terminal`, `Wire: Wire has loose ends.`), each
+with its explanation. **Read them before changing anything** and fix what they name - a loose
+wire, an unwired required input, a type conflict - instead of regenerating blind; quote them in
+your report. `linkerErrors` only ever says "The VI is not executable" for a fault in the VI's own
+diagram. `errorsRead: false` means the lines were NOT read, not that there are none; an empty
+list on a broken VI means the cause is in a subVI or a link. `lvai_error_list` lists every broken
+VI open in LabVIEW, with the same lines.
+
 ## Diagram size and cohesion — a standing user rule
 
 **THE BLOCK DIAGRAM HAS A SIZE BUDGET - 1920 x 1080 px - AND IT IS MEASURED NOW.** The user's

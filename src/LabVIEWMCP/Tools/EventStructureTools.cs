@@ -345,7 +345,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                 return Outcome(false, "verify", steps, frameList, total, viPath, directory,
                     keepBundle,
                     "Every event registered and the rebuild succeeded - and LabVIEW says the " +
-                    "result is NOT EXECUTABLE. Nothing was rolled back. Read linkerErrors in the " +
+                    "result is NOT EXECUTABLE. Nothing was rolled back. Read errors and linkerErrors in the " +
                     "verify step: at this point the cause is the DIAGRAM rather than the events, " +
                     "because validation was skipped and nothing here type-checks your wiring. " +
                     DataFieldNote(reading, afterWiringWillStillBeBad: false));

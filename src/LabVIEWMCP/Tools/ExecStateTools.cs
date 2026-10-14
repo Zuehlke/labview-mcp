@@ -17,8 +17,14 @@ namespace LabVIEWMcp.Tools;
 /// route's direct ActiveX fallback, which has no such property - rather than because the VI has
 /// none. Kept apart so "not looked at" is never reported as "clean".
 /// </param>
+/// <param name="Errors">
+/// What LabVIEW's Error List says about this VI - {LV.VI} Get Errors, each line with its explanation.
+/// Null when they were NOT read (a helper built before 2026-10-14, the direct ActiveX fallback, or
+/// Get Errors itself refused), which is not the same as an empty list.
+/// </param>
 internal sealed record ExecStateReading(int State, string LinkerErrors, int Code, string Source,
-                                        bool LinkerErrorsRead = true)
+                                        bool LinkerErrorsRead = true,
+                                        IReadOnlyList<ErrorListTools.ErrorLine>? Errors = null)
 {
     /// <summary>The VI is not executable. Only 0 means this.</summary>
     internal bool Broken => State == 0;
@@ -125,6 +131,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             meaning = Meaning(reading.State),
             linkerErrors = reading.LinkerErrors,
             linkerErrorsAvailable = true,
+            errors = ErrorsJson(reading),
+            errorsRead = reading.Errors is not null,
             code = reading.Code,
             source = reading.Source,
             note = reading.CouldNotOpen
@@ -132,9 +140,9 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                   "source. It is reported as -1 rather than 0 precisely so it cannot be mistaken " +
                   "for eBad."
                 : reading.Broken
-                    ? "eBad: the VI is NOT executable. A retarget that breaks the connector pane " +
-                      "contract shows up exactly here and nowhere else - callTargets and a clean " +
-                      "AIXML export are both green in that state."
+                    ? BrokenNote(reading, "A retarget that breaks the connector pane contract " +
+                      "shows up exactly here and nowhere else - callTargets and a clean AIXML " +
+                      "export are both green in that state.")
                     : "Executable. This says nothing about whether it does the right thing; it " +
                       "says LabVIEW can run it.",
         });
@@ -176,6 +184,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             helperViPath = read.HelperViPath,
             linkerErrors = r.LinkerErrorsRead ? r.LinkerErrors : null,
             linkerErrorsAvailable = r.LinkerErrorsRead,
+            errors = ErrorsJson(r),
+            errorsRead = r.Errors is not null,
             linkerErrorsUnavailableBecause = read.WhyNoHelper,
             code = r.Code,
             source = r.Source,
@@ -185,9 +195,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                   "for eBad."
                 : r.Broken
                     ? r.LinkerErrorsRead
-                        ? "eBad: the VI is NOT executable. linkerErrors names a missing link " +
-                          "(`Missing subVI ...`); an empty <Val> there means LabVIEW reported no " +
-                          "link error, so look at the diagram and its subVIs."
+                        ? BrokenNote(r, "linkerErrors names a missing link (`Missing subVI ...`).")
                         : "eBad: the VI is NOT executable. Its linker errors were NOT read (see " +
                           "linkerErrorsUnavailableBecause): the state came from ActiveX directly, " +
                           "which has no linker-error property."
@@ -227,6 +235,49 @@ internal sealed class ExecStateTools(LvaiConnection connection)
     internal static readonly string[] HelperReadBack =
         ["exec state", "linker errors xml", "code", "source", HelperInput];
 
+    /// <summary>
+    /// Read back when the helper has them - {LV.VI} Get Errors, added 2026-10-14. Optional, so a
+    /// helper that lacks them still gives a trusted state: their absence means "not read".
+    /// </summary>
+    internal static readonly string[] ErrorsReadBack = ["errors xml", "details xml", "get errors code"];
+
+    /// <summary>Everything asked of the composed helper over ActiveX.</summary>
+    internal static readonly string[] ComReadBack = [.. HelperReadBack, .. ErrorsReadBack];
+
+    /// <summary>
+    /// The Error List's lines for this VI from the helper's three Get Errors indicators, or null when
+    /// they were not read: an indicator missing, Get Errors answering an error of its own, or XML
+    /// this cannot parse. Pure.
+    /// </summary>
+    internal static IReadOnlyList<ErrorListTools.ErrorLine>? ErrorLines(Func<string, string?> read)
+    {
+        if (read("errors xml") is not { } errors || read("details xml") is not { } details
+            || read("get errors code") is not { } code || code.Trim() != "0")
+            return null;
+        try
+        {
+            var lines = ErrorListTools.StringArray(errors);
+            var explanations = ErrorListTools.StringArray(details);
+            return lines.Select((line, i) =>
+                new ErrorListTools.ErrorLine(line, i < explanations.Count ? explanations[i] : null)).ToList();
+        }
+        catch (Exception e) when (e is System.Xml.XmlException or FormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The same for a step a route tool builds as a JsonObject; null when not read.</summary>
+    internal static System.Text.Json.Nodes.JsonArray? ErrorsNode(ExecStateReading? r) =>
+        r?.Errors is not { } lines
+            ? null
+            : new System.Text.Json.Nodes.JsonArray(lines.Select(e => (System.Text.Json.Nodes.JsonNode)
+                new System.Text.Json.Nodes.JsonObject { ["error"] = e.Error, ["detail"] = e.Detail }).ToArray());
+
+    /// <summary>The answer's `errors` value: each line with its explanation, or null when not read.</summary>
+    internal static object? ErrorsJson(ExecStateReading r) =>
+        r.Errors?.Select(e => new { error = e.Error, detail = e.Detail }).ToList();
+
     /// <summary>One helper run at a time in this process - its control is the only input it has.</summary>
     private static readonly SemaphoreSlim HelperGate = new(1, 1);
 
@@ -263,7 +314,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             try
             {
                 var run = await route.RunHelper(helper, [new LabViewCom.Input(HelperInput, full, full)],
-                                                HelperReadBack, timeoutSeconds, ct);
+                                                ComReadBack, timeoutSeconds, ct);
                 var (reading, notTrusted) = FromHelperRun(run, full);
                 if (reading is not null) return new ComReading(reading, "helper", helper, null);
                 why = notTrusted!;
@@ -329,8 +380,27 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             Read("linker errors xml")!.ReplaceLineEndings("\n"),
             int.TryParse(Read("code"), System.Globalization.NumberStyles.Integer,
                          System.Globalization.CultureInfo.InvariantCulture, out var code) ? code : 0,
-            Read("source")!.ReplaceLineEndings("\n")), null);
+            Read("source")!.ReplaceLineEndings("\n"),
+            Errors: ErrorLines(Read)), null);
     }
+
+    /// <summary>
+    /// The note for an eBad reading. With the Error List's lines read, they ARE the diagnosis - a
+    /// loose wire, an unwired required input, a type conflict - which `linkerErrors` never names: for
+    /// a VI broken in its own diagram LabVIEW's linker text is only "The VI is not executable",
+    /// measured 2026-10-14 on an Add with one input unwired.
+    /// </summary>
+    internal static string BrokenNote(ExecStateReading r, string otherwise) =>
+        r.Errors is { Count: > 0 } lines
+            ? $"eBad: the VI is NOT executable. LabVIEW's Error List says: {lines[0].Error}" +
+              (lines.Count > 1 ? $" (and {lines.Count - 1} more under `errors`)" : "") +
+              ". Each `errors` entry is a line of the Error List with its explanation - fix THAT " +
+              "rather than regenerating blind."
+            : r.Errors is not null
+                ? "eBad: the VI is NOT executable, and the Error List has no line for the VI ITSELF - " +
+                  "the cause is in a subVI or a missing link. " + otherwise
+                : "eBad: the VI is NOT executable. The Error List's lines were NOT read (errorsRead " +
+                  "false); lvai_error_list reads them for a VI open in LabVIEW. " + otherwise;
 
     /// <summary>Human-readable name for an Execution:State value.</summary>
     internal static string Meaning(int state) => state switch
@@ -383,7 +453,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             if (Path.GetDirectoryName(helperVi) is { Length: > 0 } directory)
                 Directory.CreateDirectory(directory);
 
-            if ((regenerateHelper || !File.Exists(helperVi)) &&
+            if ((regenerateHelper || HelperCache.NeedsRebuild(aixml, helperVi)) &&
                 await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct: ct) is not null)
                 return null;
 
@@ -404,7 +474,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                 parsed,
                 Value(values, "linker errors xml") ?? "",
                 int.TryParse(Value(values, "code"), out var code) ? code : 0,
-                Value(values, "source") ?? "");
+                Value(values, "source") ?? "",
+                Errors: ErrorLines(name => Value(values, name)));
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {

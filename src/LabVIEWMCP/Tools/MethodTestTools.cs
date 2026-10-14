@@ -937,6 +937,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             ["step"] = "execState",
             ["execState"] = reading?.State,
             ["linkerErrors"] = reading?.LinkerErrors,
+            ["errors"] = ExecStateTools.ErrorsNode(reading),
             ["openError"] = reading is { CouldNotOpen: true } ? $"{reading.Code}: {reading.Source}" : null,
         });
         if (reading is { Broken: true })
@@ -944,7 +945,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             await CloseAsync();
             return (Outcome(false, "execState", steps, total, testViPath, testAixml,
                 "THE TEST VI WAS WRITTEN and LabVIEW cannot run it after the seeds were replaced - " +
-                "read linkerErrors in the execState step. A required input of a method that this " +
+                "read errors and linkerErrors in the execState step. A required input of a method that this " +
                 "call did not wire would look exactly like this.", route: Direct(route)), null);
         }
         // Unreadable or unopenable is no pass either - the class test answered ok with execState
