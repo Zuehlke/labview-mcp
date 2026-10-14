@@ -24,7 +24,8 @@ namespace LabVIEWMcp.Tools;
 /// </param>
 internal sealed record ExecStateReading(int State, string LinkerErrors, int Code, string Source,
                                         bool LinkerErrorsRead = true,
-                                        IReadOnlyList<ErrorListTools.ErrorLine>? Errors = null)
+                                        IReadOnlyList<ErrorListTools.ErrorLine>? Errors = null,
+                                        int? GetErrorsCode = null)
 {
     /// <summary>The VI is not executable. Only 0 means this.</summary>
     internal bool Broken => State == 0;
@@ -133,6 +134,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             linkerErrorsAvailable = true,
             errors = ErrorsJson(reading),
             errorsRead = reading.Errors is not null,
+            errorsNotReadBecause = ErrorsNotReadBecause(reading),
             code = reading.Code,
             source = reading.Source,
             note = reading.CouldNotOpen
@@ -186,6 +188,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             linkerErrorsAvailable = r.LinkerErrorsRead,
             errors = ErrorsJson(r),
             errorsRead = r.Errors is not null,
+            errorsNotReadBecause = r.LinkerErrorsRead ? ErrorsNotReadBecause(r) : read.WhyNoHelper,
             linkerErrorsUnavailableBecause = read.WhyNoHelper,
             code = r.Code,
             source = r.Source,
@@ -273,6 +276,20 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             ? null
             : new System.Text.Json.Nodes.JsonArray(lines.Select(e => (System.Text.Json.Nodes.JsonNode)
                 new System.Text.Json.Nodes.JsonObject { ["error"] = e.Error, ["detail"] = e.Detail }).ToArray());
+
+    /// <summary>Get Errors' own error code, or null when the helper has no such indicator.</summary>
+    internal static int? GetErrorsCodeOf(Func<string, string?> read) =>
+        int.TryParse(read("get errors code"), System.Globalization.NumberStyles.Integer,
+                     System.Globalization.CultureInfo.InvariantCulture, out var code) ? code : null;
+
+    /// <summary>Why `errors` is null for a reading, or null when it is not.</summary>
+    internal static string? ErrorsNotReadBecause(ExecStateReading r) =>
+        r.Errors is not null ? null
+        : r.GetErrorsCode is { } code and not 0
+            ? $"Get Errors answered error {code} instead of the Error List's lines"
+            : r.GetErrorsCode is null
+                ? "the helper that ran has no Get Errors step (built before 2026-10-14, or the direct ActiveX fallback)"
+                : "the lines could not be parsed";
 
     /// <summary>The answer's `errors` value: each line with its explanation, or null when not read.</summary>
     internal static object? ErrorsJson(ExecStateReading r) =>
@@ -381,7 +398,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             int.TryParse(Read("code"), System.Globalization.NumberStyles.Integer,
                          System.Globalization.CultureInfo.InvariantCulture, out var code) ? code : 0,
             Read("source")!.ReplaceLineEndings("\n"),
-            Errors: ErrorLines(Read)), null);
+            Errors: ErrorLines(Read),
+            GetErrorsCode: GetErrorsCodeOf(Read)), null);
     }
 
     /// <summary>
@@ -475,7 +493,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                 Value(values, "linker errors xml") ?? "",
                 int.TryParse(Value(values, "code"), out var code) ? code : 0,
                 Value(values, "source") ?? "",
-                Errors: ErrorLines(name => Value(values, name)));
+                Errors: ErrorLines(name => Value(values, name)),
+                GetErrorsCode: GetErrorsCodeOf(name => Value(values, name)));
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {

@@ -121,3 +121,14 @@ Three defects the acceptance found, all fixed the same day:
 - **A parallel convert once answered `errors: null` with no reason**, and it did not reproduce
   alone or in a second parallel run. The answer now carries `errorsNotReadBecause`, so the next
   occurrence names its cause instead of leaving it to be guessed.
+
+### 6a. Second acceptance after a restart - and the parallel miss, partly explained
+
+The whole table above held again. The parallel miss came back once more - `lvai_generate_vi` and a
+`convert` issued together, the generate answering `errors: null` - and this time the new field named
+the place: **Get Errors itself answered an error**, so the state was read and the lines were not. It
+is intermittent: 2 of about ten composer-route calls issued in parallel, never alone, and four
+issued together right after answered correctly. Which code Get Errors returns there is not yet
+known; `errorsNotReadBecause` now names it (`Get Errors answered error <code>`), on
+`lvai_exec_state` as well as on `convert`, so the next occurrence settles it. Until then, read a
+broken VI's `errors` again with `lvai_exec_state` alone when a parallel build answers null.

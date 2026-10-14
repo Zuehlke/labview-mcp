@@ -86,6 +86,24 @@ public sealed class ExecStateErrorsTests
         var (reading, _) = ExecStateTools.FromHelperRun(Ran("2", NoErrors, NoErrors, "1073"), Vi);
 
         Assert.Null(reading!.Errors);
+        Assert.Equal(1073, reading.GetErrorsCode);
+        Assert.Contains("1073", ExecStateTools.ErrorsNotReadBecause(reading));
+    }
+
+    [Fact]
+    public void A_helper_without_Get_Errors_is_named_as_the_reason()
+    {
+        var (reading, _) = ExecStateTools.FromHelperRun(Ran("0", null, null), Vi);
+
+        Assert.Contains("no Get Errors step", ExecStateTools.ErrorsNotReadBecause(reading!));
+    }
+
+    [Fact]
+    public void Lines_that_were_read_need_no_reason()
+    {
+        var (reading, _) = ExecStateTools.FromHelperRun(Ran("0", Errors, Details), Vi);
+
+        Assert.Null(ExecStateTools.ErrorsNotReadBecause(reading!));
     }
 
     [Fact]

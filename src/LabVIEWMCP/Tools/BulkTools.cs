@@ -324,8 +324,12 @@ internal sealed class BulkTools(LvaiConnection connection)
                           (lines.Count > 1 ? $" (and {lines.Count - 1} more)" : "")
                         : "") +
                     ". The composer does not type-check wiring the way NI's validation does: " +
-                    "`errors` in the convert step holds the Error List's lines with their " +
-                    "explanation - fix those, or generate the same document with backend grpc.");
+                    (Parsed(convert)?["errors"] is JsonArray
+                        ? "`errors` in the convert step holds the Error List's lines with their " +
+                          "explanation - fix those, or generate the same document with backend grpc."
+                        : "the Error List's lines were NOT read (`errorsNotReadBecause` in the " +
+                          "convert step) - ask lvai_exec_state for them, or generate the same " +
+                          "document with backend grpc."));
             if (composed && Failed(convert))
                 return Outcome(false, "convert", steps, total, viPath, null,
                     (Field(convert, "errorKind") == "composerRefused"

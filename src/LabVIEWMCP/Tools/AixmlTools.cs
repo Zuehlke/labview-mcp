@@ -1033,8 +1033,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
                 var read = await ExecStateTools.ReadOverComAsync(viPath, timeoutSeconds, ct);
                 errors = ExecStateTools.ErrorsNode(read.Reading);
                 if (errors is null)
-                    errorsNotRead = read.WhyNoHelper ??
-                        "Get Errors answered an error of its own, so the lines were not read";
+                    errorsNotRead = read.WhyNoHelper ?? ExecStateTools.ErrorsNotReadBecause(read.Reading);
             }
             catch (LabViewCom.ComException e) { errorsNotRead = $"{e.Kind}: {e.Message}"; }
         }
