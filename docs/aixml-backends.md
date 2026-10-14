@@ -917,6 +917,42 @@ compiled code (145 kB) that the strip refused, in a session that had not been re
 class creation and members as the LUnit route documents; and a second run in the same LabVIEW
 answered `Error 1051` for a `Gain.ctl` of the first run still in memory - the tool named it.
 
+## Reading a `.ctl` on `pylabview` (2026-10-14)
+
+**`lvai_convert_vi_to_aixml` on a `.ctl` answered `composerFailed` on this backend, where `grpc`
+answered the control** - `TypeError: int() can't convert non-string with explicit base` in
+`vi2aixml.py`'s `pane_flags`, on **119 of 121** `.ctl` files on this station. A `.ctl` LabVIEW has
+saved points `CONP` at its `TypeDef`, not at a `Function` (`lvai_describe_ctl`'s `wrappedType`), so
+there is no pane and the TypeDef's children carry no `Flags`. The two that read were flag-patched
+controls never resaved (`wrappedType: Function`).
+
+Compared then over 46 controls against NI's exports of the same files: **0 identical before, 46
+after.** What had to change besides the crash, each counted on those 46 or on NI's cached exports:
+
+| what | NI's export | the reader wrote |
+|---|---|---|
+| a control at the heap's default conNum on a TypeDef pane | `conIdx="0" connection="required"` (3 of 46) | nothing |
+| a control with NO terminal on the control's diagram - the usual case for one LabVIEW saved | **no element at all** (18 of 46) | the control, inserted at root with a note |
+| an unwired terminal | `outputs="value:"` / `inputs="value:"` on every one of ~5 500, 0 omitted | nothing - **VIs too** |
+| a typedef or cluster with no DefaultData | its elements' literals, `[0,0]`, `[false,0,]` | `0` - **VIs too** |
+| the VI description | `,` `:` and control characters as `\2C` `\3A` `\0A`, a backslash doubled, the rest raw | raw - **VIs too** |
+| a MULTI-LINE description (pylabview's `<Chunk>` lines) or one left `Format="bin"` | the text | whitespace, or empty - **VIs too** |
+| a file saved under another name (`pdc.ctl` holding `Channel.ctl`) | the FILE name | the stored name |
+
+The 18 NI-empty controls are matched, not improved on: the reader writes no element either and
+leaves an XML comment saying so, so the information stays visible while the elements agree. Over
+300 cached NI exports of VIs (the old reader's 300 were 278 of the same and 22 later ones, since a
+copy of it outside the repository could not read 22) the same changes took matching descriptions from 150 to 297, values on
+controls and indicators from 1 651 to 1 823, and the empty-net attributes from 0 to 151 of 151.
+What is left: 3 descriptions are stale cache entries, and 29 values a type the reader has no
+literal for (a VISA name's `COM1`, a numeric with units) - both older than this change.
+
+**The composer had the matching half wrong**: it unescaped a CONTROL's description and wrote the
+VI's own verbatim, so an NI export's `\2C` landed in the composed VI as those three characters -
+visible in `user.lib\LV_MCP` sockets composed since 2026-10-10. It unescapes both now.
+`tests/.../Infra/ReaderControlFileTests.cs` pins three real controls to NI's export of them, and
+fails on all three with the reader before the change.
+
 ## Not covered, and not measured
 
 - **ActiveX is Windows only and needs a running LabVIEW**; it never starts one, so with no LabVIEW

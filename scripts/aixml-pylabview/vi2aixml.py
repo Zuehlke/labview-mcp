@@ -133,6 +133,53 @@ def aixml_type(tree):
     return TYPE_TO_AIXML.get(k)
 
 
+def empty_value(tree):
+    """The value NI's export writes for a type that carries no DefaultData.
+
+    NI's exports write nothing for a type with no literal: 261 refnums, 34 waveforms, 30 dynamic
+    data, 27 timestamps, 9 variants, 7 pictures in the cache, all value="". A TYPEDEF is its
+    wrapped type and a CLUSTER its elements' literals - this answered "0" for both until
+    2026-10-14, where NI writes [0,0] for a typedef'd cluster of two doubles.
+    """
+    t = tree.get("Type")
+    kids = [c for c in tree if c.tag == "TypeDesc"]
+    if t == "TypeDef":
+        return empty_value(kids[0]) if kids else "0"
+    if t == "Cluster":
+        return "[%s]" % ",".join(empty_value(k) for k in kids)
+    if t == "Array":
+        return "[]"         # NI's exports: 356 array value=[] in the cache
+    return {"Boolean": "false"}.get(t, "" if t in (
+        "String", "Path", "Refnum", "Picture", "MeasureData", "LVVariant", "Tag") else "0")
+
+
+def string_block_text(el):
+    """The text of a pylabview string block such as STRG's description. A MULTI-LINE one is
+    written as <Chunk> lines joined by its EOLN attribute ("LF", "CRLF"), a chunk possibly as
+    Storage="hex" - LVblock.initWithXMLSingleString. Reading only the element's own text gave the
+    indentation between the chunks, so every multi-line VI description came back as whitespace
+    (15 of 40 cached NI examples, 2026-10-14)."""
+    if el is None:
+        return ""
+
+    def one(c):
+        if c.get("Storage") == "hex":
+            return bytes.fromhex(c.text or "").decode("mac_roman")
+        return c.text or ""
+    chunks = el.findall("Chunk")
+    if not chunks:
+        return one(el)
+    eoln = (el.get("EOLN") or "LF").replace("CR", "\r").replace("LF", "\n")
+    return eoln.join(one(c) for c in chunks)
+
+
+def escape_description(s):
+    """NI's escaping inside description=, counted over the cached exports: ',' and ':' and the
+    control characters as a backslash plus two hex digits (909 \\2C, 163 \\3A, 866 \\0A on VI
+    descriptions), a backslash DOUBLED, everything else raw - ']' included, unlike a value."""
+    return "".join("\\\\" if c == "\\" else ("\\%02X" % ord(c) if ord(c) < 0x20 or c in ",:" else c) for c in s)
+
+
 def escape_value(v):
     """NI's escaping inside value= and type literals, counted over 1 584 cached exports:
     control characters, ',' and ']' become a backslash plus two hex digits; ':' and ';' stay raw.
@@ -859,12 +906,18 @@ class Reader:
     # ---- the whole VI ------------------------------------------------------------------------
     def read(self):
         b = self.b
+        # LabVIEW loads a file under its FILE name, and so names it NI's export: a class's private
+        # data control saved as pdc.ctl still says Channel.ctl inside (2026-10-14). The stored
+        # name stays where the two differ only in CASE - a caller may spell the path in any case
+        # on Windows (`test Skipped.vi` for Test Skipped.vi, which NI's export kept)
         name = b.main.find("LVSR/Section").get("Name")
+        if self.vi_path and os.path.basename(self.vi_path).lower() != (name or "").lower():
+            name = os.path.basename(self.vi_path)
         # a library member's name is QUALIFIED, as NI's exporter writes it - "X.xctl:Facade.vi",
         # "Special Monitor.lvclass:Monitor Data Changed.vi" - the owning library from LIBN
         libs = [l.text.strip() for l in b.main.findall("LIBN/Section/Library") if (l.text or "").strip()]
         self.out.set("_name", ":".join(libs + [name]))
-        self.out.set("description", b.main.findtext("STRG/Section/String") or "")
+        self.out.set("description", escape_description(self.description_text()))
         pane = self.pane_flags()
         self.fp_by_uid = {}
         for fpdco in b.fp.iter("SL__arrayElement"):
@@ -920,8 +973,16 @@ class Reader:
                 self.fb_inits[d.find("rsrDCO").get("uid")] = e
         root = b.bd.find("root")
         self.walk(root, "root", self.out)
+        is_control_file = name.lower().endswith((".ctl", ".ctt"))
         for uid, el in self.fp_by_uid.items():
             if uid not in self.fp_placed:
+                if is_control_file:
+                    # a .ctl whose control has NO terminal on its diagram - the usual case for one
+                    # LabVIEW saved: NI's export writes no element for it (18 of 46 compared,
+                    # 2026-10-14), so neither does this; the note keeps it visible
+                    self.notes.append("%s %r has no terminal on the control's diagram, and NI's "
+                                      "export writes no element for it" % (el.tag, el.get("_name")))
+                    continue
                 # its terminal sits in a construct this reader does not walk yet
                 el.set("uid_parent", "root")
                 self.out.insert(0, el)
@@ -956,6 +1017,13 @@ class Reader:
                 el.set(attr, ",".join("%s:%s" % (escape(nm), self.term_net.get(u, "")) for u, nm in order))
             elif attr in el.attrib:
                 del el.attrib[attr]
+        # an UNWIRED terminal still carries its attribute with an empty net, as NI writes it on
+        # every one of its 404 unwired controls and 79 indicators - 0 of ~5 500 omit it - and as
+        # the schema requires (CLAUDE.md, cold-build-shakerrig.md section 2)
+        for el in self.fp_by_uid.values():
+            attr = "inputs" if el.tag == "Indicator" else "outputs"
+            if not el.get(attr):
+                el.set(attr, "value:")
         for n in self.notes:
             self.out.append(ET.Comment(" vi2aixml: " + n + " "))
         return self.out
@@ -1022,12 +1090,7 @@ class Reader:
     # ---- elements ----------------------------------------------------------------------------
     def default_value(self, tree, dd):
         if dd is None:
-            # NI's exports write nothing for a type with no literal: 261 refnums, 34 waveforms,
-            # 30 dynamic data, 27 timestamps, 9 variants, 7 pictures in the cache, all value=""
-            if tree.get("Type") == "Array":
-                return "[]"         # NI's exports: 356 array value=[] in the cache
-            return {"Boolean": "false"}.get(tree.get("Type"), "" if tree.get("Type") in (
-                "String", "Path", "Refnum", "Picture", "MeasureData", "LVVariant", "Tag") else "0")
+            return empty_value(tree)
         # pylabview renders DefaultData as MacRoman text with &#x..; escapes for unprintables
         raw = dd.strip('"')
         out = bytearray()
@@ -2124,6 +2187,19 @@ class Reader:
         item = "%s:%s" % (escape(term), net)
         el.set(attr, item if not cur else cur + "," + item)
 
+    def description_text(self):
+        """The VI's description from STRG. pylabview leaves that block BINARY for some VIs - 9 of
+        300 cached NI examples, MGI's among them - as a 4-byte big-endian length and the text
+        (LVblock's STRG parseRSRCSectionData)."""
+        sec = self.b.main.find("STRG/Section")
+        if sec is None:
+            return ""
+        if sec.get("Format") == "bin" and sec.get("File"):
+            data = open(os.path.join(self.b.dir, sec.get("File")), "rb").read()
+            n = int.from_bytes(data[:4], "big") if len(data) >= 4 else 0
+            return data[4:4 + n].decode("mac_roman")
+        return string_block_text(sec.find("String"))
+
     def pane_flags(self):
         """conIdx (as text) -> connection, read off the pane's Function type.
 
@@ -2132,10 +2208,17 @@ class Reader:
         This read it as `required` / `recommended` until 2026-10-12, so lvai_vi_terminals on a
         class accessor answered `Sensor in ... required` where NI's export says `dynamic`, and
         a method test could not tell the dispatch input among several class-typed ones.
+
+        A .ctl LabVIEW has saved points CONP at its TypeDef, not at a Function, and has no pane:
+        reading that TypeDef's children as terminals failed on 119 of 121 controls (2026-10-14).
+        NI's export then gives the control conIdx 0 `required` when its conNum is the heap's
+        default 0 (3 of 46 controls compared) and nothing when it is -1 (the other 43).
         """
         out = {}
         cons = int(self.b.main.find("CONP/Section/TypeDesc").get("TypeID"))
         func = self.b.flat[self.b.flat_of_consolidated(cons)]
+        if func.get("Type") != "Function":
+            return {"0": "required"}
         for i, c in enumerate([c for c in func if c.tag == "TypeDesc"]):
             f = int(c.get("Flags"), 16)
             if c.get("TypeID") is not None and f:

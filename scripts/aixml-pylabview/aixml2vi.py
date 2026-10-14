@@ -7039,7 +7039,8 @@ class Composer:
                 absolute_owners=[h.get("uid") for h, _ in getattr(self, "fb_pairs", [])])
             self.report.append("wires routed: %d, left generic: %d" % (routed, left))
         self.connector_pane()
-        self.description = vi.get("description") or ""
+        # escaped as NI escapes it (\2C, \3A, \0A, a doubled backslash), like a control's below
+        self.description = unescape(vi.get("description") or "")
 
     def set_array_anchors(self):
         """Give every array constant its nRC/oRC anchor now that every position is final (see
