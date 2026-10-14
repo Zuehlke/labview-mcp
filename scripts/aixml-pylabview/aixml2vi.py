@@ -6560,8 +6560,14 @@ class Composer:
                     loop.find("termList").append(c)    # out of the border slots below
             t, l, b, r = lvheap.parse_bounds(loop.find("bounds").text)
             cr = loop.find("contRect")
+            # The diagram rect inside the border, as LabVIEW writes it per class (measured on
+            # NI's labelled loops, 8 For and 63 While): a For Loop's border is ONE pixel on top
+            # and left with its page stack bottom-right, a While Loop's six all round. Written
+            # 6 for a For Loop, its subdiagram label - which sits on the contRect - floated
+            # 5 px inside the frame instead of filling its top edge.
+            ins = (1, 1, 5, 5) if loop.get("class") == "forLoop" else (6, 6, 6, 6)
             if cr is not None:
-                cr.text = lvheap.fmt_bounds((t + 6, l + 6, b - 6, r - 6))
+                cr.text = lvheap.fmt_bounds((t + ins[0], l + ins[1], b - ins[2], r - ins[3]))
             sb = inner.srn.find("bounds")
             if sb is not None:
                 sb.text = lvheap.fmt_bounds((-t, -l, -t, -l))
@@ -6584,7 +6590,7 @@ class Composer:
             for c in loop.find("termList") if lh else ():
                 if c.find("dco") is not None and c.find("dco").get("class") == "lMax":
                     tb = c.find("dco/termBounds")
-                    ny = 6 + lh - 1              # the label starts at the contRect, t + 6
+                    ny = ins[0] + lh - 1         # the label starts at the contRect
                     if tb is not None:
                         tb.text = lvheap.fmt_bounds((ny, 0, ny + 16, 16))
             slot = {0: 1 if loop.find("loopLimitDCO") is not None else 0, 1: 0}

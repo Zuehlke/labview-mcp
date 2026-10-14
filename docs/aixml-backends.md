@@ -993,7 +993,7 @@ last part, which the composer refuses anyway. `Composer._nmux_geometry` applies 
 the composed `lvai_vi_errors.vi` (both nodes show `code`/`source`) and on a probe bundling and
 unbundling three fields, which ran `[true,42,probe]`.
 
-## A For Loop's N terminal sat on its subdiagram label (fixed 2026-10-14)
+## A For Loop's subdiagram label floated, and its N sat on it (fixed 2026-10-14)
 
 Seen by the user on the same composed VI: the loop's `N` was drawn ON the subdiagram label bar,
 where LabVIEW's own loop has it below. The composer placed the label but left `N` (the `lMax` DCO)
@@ -1003,6 +1003,15 @@ whatever the label's height; every unlabelled loop has N at `(0, 0, 16, 16)`. Th
 are two loops with N at the top despite a label and one at `(55, 0)` under a 56-px label - not a
 rule. The composer now applies it; checked on the composed `lvai_vi_errors.vi` and on `t159` (a
 two-line label with N WIRED: the wire is routed to the new position, `execState 1`).
+
+**And the label itself floated 5 px inside the frame**, which the user saw next: LabVIEW puts a
+subdiagram label exactly on its structure's `contRect`, for every class measured, and the composer
+wrote a For Loop's `contRect` six pixels in all round like a While Loop's. NI's is
+`(+1, +1, -5, -5)` relative to the bounds - a one-pixel border top and left, the page stack
+bottom-right - on all 8 labelled For Loops and on unlabelled ones alike; While Loops (63), Case
+structures (36) and Flat Sequence frames (3) match what the composer writes. A Disable structure
+(`commentNode`) reads `(+1, +1, -1, -1)` on NI's four, but written so in the composer its label
+slid under the frame selector, so that one stays at 6 until the selector's geometry is measured.
 
 ## Not covered, and not measured
 
