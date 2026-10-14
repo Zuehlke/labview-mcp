@@ -104,6 +104,27 @@ public sealed class BatchAndHealthTests
         // else is broken. A locked or vanished log must not take the status call down with it.
         Assert.Null(Record.Exception(() => StatusTools.Health()));
 
+    // The two log names measured side by side on 2026-10-14, LabVIEW 2020 and 2026 both running;
+    // 2020's was written LAST, and the old newest-log rule read it for the 2026 being talked to.
+    private const string Log2026 = @"C:\t\LabVIEW_32_26.3.1f1_interactive_user_cur.txt";
+    private const string Log2020 = @"C:\t\LabVIEW_32_20.0.1f1_user_cur.txt";
+    private static readonly (string, DateTime)[] BothLogs =
+        [(Log2026, new DateTime(2026, 10, 14, 11, 3, 0)), (Log2020, new DateTime(2026, 10, 14, 11, 6, 0))];
+
+    [Fact]
+    public void TheLogOfTheConnectedReleaseWinsOverANewerOne() =>
+        Assert.Equal(Log2026, StatusTools.PickLog(BothLogs, 2026));
+
+    [Theory]
+    [InlineData(null)]   // the port's owner could not be read
+    [InlineData(2025)]   // a release with no log of its own
+    public void WithoutAMatchTheNewestLogStands(int? release) =>
+        Assert.Equal(Log2020, StatusTools.PickLog(BothLogs, release));
+
+    [Fact]
+    public void NoLogsMeansNoPick() =>
+        Assert.Null(StatusTools.PickLog([], 2026));
+
     // ================================================================== lvai_swap_subvis batching
 
     private static readonly SwapTools Swap = new(null!);

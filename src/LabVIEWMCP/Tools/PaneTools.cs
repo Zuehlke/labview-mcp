@@ -214,7 +214,9 @@ internal sealed class PaneTools(LvaiConnection connection)
         Directory.CreateDirectory(scratch);
         try
         {
-            var main = Path.Combine(scratch, "m.xml");
+            // Named after the VI: pylv-conpane.py prints the bundle's stem as the VI's name, and a
+            // fixed `m.xml` made lvai_generate_vi's pane step call every VI "m" (seen 2026-10-14).
+            var main = Path.Combine(scratch, Path.GetFileNameWithoutExtension(viPath) + ".xml");
             var extract = await PyLabview.RunAsync(bundle, bundle.ReadRsrcPy,
                 ["-x", "-i", Path.GetFullPath(viPath), "-m", main], timeoutSeconds, ct);
             if (extract.ExitCode != 0 || !File.Exists(main))

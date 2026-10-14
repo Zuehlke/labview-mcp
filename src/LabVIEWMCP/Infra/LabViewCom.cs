@@ -77,6 +77,30 @@ internal static class LabViewCom
     {
         if (NotReady() is { } why) throw new ComException("labviewNotRunning", why);
 
+        // ONE ActiveX OPERATION AT A TIME, process-wide. Measured 2026-10-14: lvai_exec_state's
+        // helper and lvai_run_vi_and_read_values called together on the same VI made the helper's
+        // Get Errors answer 1026 (VI Reference is invalid) on a reference it had just read the state
+        // through; alone, the same call read the Error List cleanly. LabVIEW serialises the work
+        // anyway, so waiting here costs nothing but the race.
+        var budget = TimeSpan.FromSeconds(Math.Clamp(timeoutSeconds, 1, 3600));
+        var clock = Stopwatch.StartNew();
+        if (!await ComGate.WaitAsync(budget, ct))
+            throw new ComException("comCallTimedOut",
+                $"Another ActiveX call to LabVIEW was still running after {timeoutSeconds} s, so this " +
+                "one never started. Call again when it has finished.");
+        try
+        {
+            return await RunOnLabViewAsync(body, budget - clock.Elapsed, timeoutSeconds, ct);
+        }
+        finally { ComGate.Release(); }
+    }
+
+    /// <summary>The gate <see cref="WithLabViewAsync{T}"/> holds for the length of one operation.</summary>
+    private static readonly SemaphoreSlim ComGate = new(1, 1);
+
+    private static async Task<T> RunOnLabViewAsync<T>(Func<object, T> body, TimeSpan remaining,
+                                                      int timeoutSeconds, CancellationToken ct)
+    {
         var work = Task.Factory.StartNew(() =>
         {
             // ActiveX is a Windows facility - the guard sits here, in the lambda, because that is
@@ -90,7 +114,7 @@ internal static class LabViewCom
 
         try
         {
-            return await work.WaitAsync(TimeSpan.FromSeconds(Math.Clamp(timeoutSeconds, 1, 3600)), ct);
+            return await work.WaitAsync(remaining > TimeSpan.FromSeconds(1) ? remaining : TimeSpan.FromSeconds(1), ct);
         }
         catch (TimeoutException)
         {

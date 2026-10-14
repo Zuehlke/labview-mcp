@@ -83,7 +83,7 @@ internal sealed class StatusTools(LvaiConnection connection)
                 ["services"] = services,
                 ["reflectionError"] = reflectionError,
                 // A LabVIEW that is running and answering can still be too sick to work.
-                ["labviewHealth"] = Health(),
+                ["labviewHealth"] = Health(connection.Port),
             }.ToJsonString(Indented);
         });
 
@@ -114,15 +114,19 @@ internal sealed class StatusTools(LvaiConnection connection)
     /// like evidence of appending and is not - the second reading is a different, fast-growing
     /// file. Count the `#Date:` headers instead. An agent drew exactly that wrong conclusion here.
     /// </summary>
-    internal static JsonObject Health()
+    internal static JsonObject Health(int? connectedPort = null)
     {
         var temp = Path.GetTempPath();
+        // THE LabVIEW BEING TALKED TO, not the newest log. Measured 2026-10-14 with LabVIEW 2020 and
+        // 2026 running together: the 2020 log was written last, so this reported 2020's log and
+        // 2020's age beside a gRPC service that belonged to 2026. The owner of the connected port
+        // is the instance this answer is about - the rule LabViewVersionStamp already uses.
+        var (pid, release) = ConnectedLabView(connectedPort);
         string? log = null;
         try
         {
-            log = Directory.EnumerateFiles(temp, "LabVIEW_*_cur.txt")
-                .OrderByDescending(File.GetLastWriteTimeUtc)
-                .FirstOrDefault();
+            log = PickLog(Directory.EnumerateFiles(temp, "LabVIEW_*_cur.txt")
+                              .Select(f => (f, File.GetLastWriteTimeUtc(f))), release);
         }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
         {
@@ -190,12 +194,15 @@ internal sealed class StatusTools(LvaiConnection connection)
         // The zero was not health; it was a log reset eight seconds earlier. The note below has
         // SAID "the log is reset at start" since it was written and never said WHEN that was, so
         // the one number that settles it was the one number missing.
-        var upSeconds = LabViewUpSeconds();
+        var upSeconds = LabViewUpSeconds(pid);
 
         return new JsonObject
         {
             ["logFound"] = true,
             ["logPath"] = log,
+            // Which LabVIEW the log and the age were matched to; null when the port's owner could
+            // not be read, and then the newest log and the youngest LabVIEW stand in, as before.
+            ["matchedTo"] = release is null ? null : $"LabVIEW {release} serving port {connectedPort} (pid {pid})",
             ["logWrittenUtc"] = File.GetLastWriteTimeUtc(log).ToString("O"),
             // The OS's own answer, not an inference from the log: a log can be appended to across
             // restarts, so its age is not the instance's age.
@@ -473,11 +480,43 @@ internal sealed class StatusTools(LvaiConnection connection)
     /// <summary>
     /// Seconds since the youngest LabVIEW process started, or <c>null</c> when that cannot be read.
     /// </summary>
-    private static int? LabViewUpSeconds()
+    /// <summary>
+    /// The pid and release of the LabVIEW listening on <paramref name="port"/>, or nulls when the
+    /// port is unknown, its owner cannot be read, or the owner's folder names no release.
+    /// </summary>
+    private static (int? Pid, int? Release) ConnectedLabView(int? port)
+    {
+        if (port is not { } p || PortDiscovery.PidOwningPort(p) is not { } owner) return (null, null);
+        var release = LabViewVersionStamp.RunningReleases().FirstOrDefault(r => r.Pid == owner).Release;
+        return (owner, release > 0 ? release : null);
+    }
+
+    /// <summary>
+    /// The crash log to read: the newest one written by <paramref name="release"/> when that is
+    /// known and present, else the newest of all. A log's name carries its LabVIEW's version -
+    /// `LabVIEW_32_26.3.1f1_interactive_user_cur.txt` is 2026, `LabVIEW_32_20.0.1f1_user_cur.txt`
+    /// 2020 - as the release's last two digits before the first dot. Pure.
+    /// </summary>
+    internal static string? PickLog(IEnumerable<(string Path, DateTime WrittenUtc)> logs, int? release)
+    {
+        var newestFirst = logs.OrderByDescending(l => l.WrittenUtc).Select(l => l.Path).ToList();
+        if (release is { } r)
+        {
+            var prefix = $"{r % 100}.";
+            var match = newestFirst.FirstOrDefault(path =>
+                Path.GetFileName(path).Split('_') is { Length: > 2 } parts &&
+                parts[2].StartsWith(prefix, StringComparison.Ordinal));
+            if (match is not null) return match;
+        }
+        return newestFirst.FirstOrDefault();
+    }
+
+    private static int? LabViewUpSeconds(int? pid = null)
     {
         try
         {
             var youngest = Process.GetProcessesByName("LabVIEW")
+                .Where(p => pid is null || p.Id == pid)
                 .Select(p => { try { return (DateTime?)p.StartTime; } catch { return null; } })
                 .Where(t => t is not null)
                 .Max();
