@@ -75,7 +75,6 @@ public sealed class ComValuesTests
     [Fact]
     public void What_is_not_covered_is_refused_by_name()
     {
-        Assert.Contains("2D array", Refusal("[[1,2],[3,4]]", "array{array{double}}"));
         Assert.Contains("cannot be set over COM", Refusal("", "doublewaveform"));
         Assert.Contains("cannot be set over COM", Refusal("", "ref{LV.VI}"));
     }
@@ -199,5 +198,48 @@ public sealed class ComValuesTests
         Assert.Empty(Assert.IsType<string[]>(Convert(
             "<Array><Name>a</Name><Dimsize>0</Dimsize><String><Name></Name><Val></Val></String></Array>",
             "array{string}")));
+    }
+
+    /// <summary>
+    /// A 2D array crosses as ONE rectangular array (the class comment's rule, measured in the
+    /// experiment). `array.2{string}` is the reader's spelling of Find Account.vi's accounts table
+    /// in the DQMH ATM build of 2026-10-15, which was refused here and ran only on grpc.
+    /// </summary>
+    [Fact]
+    public void A_2D_array_crosses_as_one_rectangular_array()
+    {
+        var table = Assert.IsType<string[,]>(Convert(
+            "[[12345,John,Doe,550],[23456,Jennifer,Rodriguez,1000]]", "array.2{string}"));
+        Assert.Equal(2, table.GetLength(0));
+        Assert.Equal(4, table.GetLength(1));
+        Assert.Equal("Rodriguez", table[1, 2]);
+
+        Assert.Equal(new double[,] { { 1, 2 }, { 3, 4.5 } }, Convert("[[1,2],[3,4.5]]", "array.2{double}"));
+        Assert.Equal(new double[,] { { 1, 2 }, { 3, 4 } }, Convert("[[1,2],[3,4]]", "array{array{double}}"));
+        Assert.Empty(Assert.IsType<int[,]>(Convert("[]", "array.2{int32}")));
+        Assert.Equal(new int[,,] { { { 1, 2 } }, { { 3, 4 } } }, Convert("[[[1,2]],[[3,4]]]", "array.3{int32}"));
+
+        Assert.Contains("not rectangular", Refusal("[[1,2],[3]]", "array.2{double}"));
+        Assert.Contains("element 'x'", Refusal("[[1,x]]", "array.2{double}"));
+        Assert.Contains("cannot be set over COM", Refusal("[[[1]]]", "array.2{cluster{double.a}}"));
+    }
+
+    /// <summary>LabVIEW's XML for a 2D array: a Dimsize per dimension, then the elements row-major.</summary>
+    [Fact]
+    public void A_2D_array_reads_from_LabVIEWs_XML_and_writes_back_to_it()
+    {
+        const string xml = "<Array><Name>Accounts</Name><Dimsize>2</Dimsize><Dimsize>2</Dimsize>" +
+                           "<String><Name></Name><Val>a</Val></String><String><Name></Name><Val>b</Val></String>" +
+                           "<String><Name></Name><Val>c</Val></String><String><Name></Name><Val>d</Val></String></Array>";
+        var grid = Assert.IsType<string[,]>(Convert(xml, "array.2{string}"));
+        Assert.Equal(new[,] { { "a", "b" }, { "c", "d" } }, grid);
+
+        var back = ComValues.ToLabviewXml("Accounts", "array.2{string}", grid);
+        Assert.NotNull(back);
+        Assert.Equal(["2", "2"], back.Elements("Dimsize").Select(d => d.Value));
+        Assert.Equal(["a", "b", "c", "d"], back.Elements("String").Select(s => (string?)s.Element("Val")));
+
+        Assert.Contains("2 <Dimsize>", Refusal(xml.Replace("<Dimsize>2</Dimsize><Dimsize>2</Dimsize>", "<Dimsize>4</Dimsize>"),
+                                               "array.2{string}"));
     }
 }

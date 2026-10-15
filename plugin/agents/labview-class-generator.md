@@ -896,9 +896,10 @@ report, and if the VI does not load there while NI's service is up, compose it a
    one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
    the line verbatim.
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be
-   running. ActiveX has no `Value (Signaling)`, so `signalsJson` is refused: an event-driven VI is
-   then driven with `backend: "grpc"` if NI's service is up, otherwise your report says the event
-   path was not driven. `lvai_exec_state` names linker errors on this route too.
+   running. `signalsJson` works here too since 2026-10-15 - ActiveX has no `Value (Signaling)`,
+   so the server runs its timed helper COMPOSED, over ActiveX - and an event-driven VI is driven
+   on this route; a 2D array input is set as `[[a,b],[c,d]]`. `lvai_exec_state` names linker
+   errors on this route too.
 
 **A BROKEN VI COMES WITH ITS CAUSE - since 2026-10-14, on both backends.** Every executability
 check - `lvai_exec_state`, the `execState` step of `lvai_generate_vi` and the test generators,

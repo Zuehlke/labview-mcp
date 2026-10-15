@@ -1149,7 +1149,8 @@ LabVIEW goes over its ActiveX server instead of Nigel** (`Infra/LabViewCom.cs`, 
 day): executability, `lvai_run_vi_and_read_values`, the diagram render - and `lvai_exec_state` and
 that run tool take `backend` too. ActiveX ATTACHES ONLY, never starts LabVIEW (one started by COM
 quits when the call ends and leaves an invisible dialog), never runs a broken VI, and runs with a
-deadline and an Abort; it has no Value (Signaling), and no linker-error property - `lvai_exec_state`
+deadline and an Abort; it has no Value (Signaling) - `signalsJson` runs the timed helper COMPOSED and run over
+ActiveX since 2026-10-15 - and no linker-error property - `lvai_exec_state`
 names them anyway, through its own helper composed and run over ActiveX (2026-10-12). Measured against NI's
 helpers: the same states, 11 of 11 runs right, 0.02 s per state read. The pane is read from the
 FILE by `pylv-conpane.py`, matching NI's probe. **The server's own HELPER VIs are NOT yet on this

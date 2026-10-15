@@ -84,8 +84,14 @@ internal static class ComValues
         // gRPC route's answers carry, so a tool (or a caller) that writes it reaches either route.
         // Found 2026-10-13: lvai_graft_diagram's rewire helper is handed its name lists that way,
         // and on the ActiveX route they were refused as "not an array literal".
-        if (text.TrimStart().StartsWith('<') && Braces(type) is { Head: "array" or "cluster" })
+        if (text.TrimStart().StartsWith('<') && (ArrayShape(type) is not null || Braces(type) is { Head: "cluster" }))
             return FromLabviewXml(text, type, out problem);
+
+        // A 2D (or nD) array - `array.2{string}` as the reader writes it - crosses as ONE
+        // rectangular .NET array, T[,]. It was refused until 2026-10-15, and the DQMH ATM build's
+        // Find Account.vi, which takes the accounts table, could only be run on the grpc route.
+        if (ArrayShape(type) is { Rank: > 1 } grid)
+            return GridFromText(text, grid.Rank, grid.Element, out problem);
 
         if (Braces(type) is { Head: "array" } array)
             return ArrayFromText(text, array.Body.Trim(), out problem);
@@ -124,12 +130,6 @@ internal static class ComValues
             problem = $"'{text}' is not an array literal - write [1,2,3]";
             return null;
         }
-        if (element.StartsWith("array{", StringComparison.Ordinal))
-        {
-            problem = "a 2D array cannot be set over COM by this server yet";
-            return null;
-        }
-
         var values = new List<object?>();
         foreach (var item in items)
         {
@@ -150,6 +150,92 @@ internal static class ComValues
             _ when Integers.ContainsKey(element) => values.Select(v => Convert.ToInt32(v, Invariant)).ToArray(),
             _ => Refuse(out problem, $"an array of {element} cannot be set over COM by this server yet"),
         };
+    }
+
+    /// <summary>
+    /// An array type's rank and element type: `array{T}` is 1, `array.2{T}` - the reader's spelling
+    /// of a 2D array - is 2, and a nested `array{array{T}}` counts each level. An element's label
+    /// (`array{string.String}`) is dropped. Null for anything that is not an array.
+    /// </summary>
+    internal static (int Rank, string Element)? ArrayShape(string type)
+    {
+        if (Braces(type.Trim()) is not { } parts) return null;
+        int rank;
+        if (parts.Head == "array") rank = 1;
+        else if (parts.Head.StartsWith("array.", StringComparison.Ordinal)
+                 && int.TryParse(parts.Head["array.".Length..], NumberStyles.None, Invariant, out var r) && r >= 1)
+            rank = r;
+        else return null;
+        var element = FieldType(parts.Body.Trim());
+        return ArrayShape(element) is { } inner ? (rank + inner.Rank, inner.Element) : (rank, element);
+    }
+
+    /// <summary>The .NET element type a rectangular array of <paramref name="element"/> is built of, or null.</summary>
+    private static Type? GridElementType(string element) => element switch
+    {
+        "string" or "path" => typeof(string),
+        "bool" => typeof(bool),
+        _ when Floats.Contains(element) => typeof(double),
+        _ when Integers.ContainsKey(element) => typeof(int),
+        _ => null,
+    };
+
+    /// <summary>
+    /// Values in row-major order plus the size of each dimension -> a rectangular T[,...] of
+    /// <paramref name="element"/>, or null with <paramref name="problem"/>.
+    /// </summary>
+    private static Array? Grid(IReadOnlyList<object?> flat, int[] dims, string element, out string? problem)
+    {
+        problem = null;
+        if (GridElementType(element) is not { } clr)
+            return (Array?)Refuse(out problem, $"a {dims.Length}D array of {element} cannot be set over COM by this server yet");
+        var grid = Array.CreateInstance(clr, dims);
+        var index = new int[dims.Length];
+        foreach (var value in flat)
+        {
+            grid.SetValue(clr == typeof(double) ? Convert.ToDouble(value, Invariant)
+                          : clr == typeof(int) ? Convert.ToInt32(value, Invariant) : value, index);
+            for (var d = dims.Length - 1; d >= 0; d--)
+            {
+                if (++index[d] < dims[d]) break;
+                index[d] = 0;
+            }
+        }
+        return grid;
+    }
+
+    /// <summary>`[[a,b],[c,d]]` for a rank-<paramref name="rank"/> array: nested literals, rectangular.</summary>
+    private static object? GridFromText(string text, int rank, string element, out string? problem)
+    {
+        problem = null;
+        var dims = new int[rank];
+        var seen = new bool[rank];
+        var flat = new List<object?>();
+        string? Walk(string literal, int depth)
+        {
+            if (Literal(literal) is not { } items)
+                return $"'{literal}' is not an array literal - a {rank}D array is written [[1,2],[3,4]]";
+            // the FIRST list at each depth sets that dimension; every other one must match it
+            if (!seen[depth]) { seen[depth] = true; dims[depth] = items.Count; }
+            else if (items.Count != dims[depth])
+                return $"the array is not rectangular: {items.Count} elements where {dims[depth]} were expected";
+            foreach (var item in items)
+            {
+                if (depth < rank - 1)
+                {
+                    if (Walk(item, depth + 1) is { } why) return why;
+                }
+                else
+                {
+                    flat.Add(FromText(item, element, out var p));
+                    if (p is not null) return $"element '{item}': {p}";
+                }
+            }
+            return null;
+        }
+
+        if (Walk(text, 0) is { } refusal) return Refuse(out problem, refusal);
+        return Grid(flat, dims, element, out problem);
     }
 
     /// <summary>
@@ -176,13 +262,33 @@ internal static class ComValues
     private static object? FromXmlElement(System.Xml.Linq.XElement element, string type, out string? problem)
     {
         problem = null;
+        // LabVIEW writes an nD array as ONE <Array> with a Dimsize per dimension, then every
+        // element in row-major order - the shape the gRPC route's answers carry for Find Account's
+        // accounts table
+        if (ArrayShape(type) is { Rank: > 1 } shape)
+        {
+            if (element.Name.LocalName != "Array")
+                return Refuse(out problem, $"<{element.Name.LocalName}> given for {type}");
+            var sizes = element.Elements("Dimsize").Select(d => int.TryParse(d.Value, out var n) ? n : -1).ToArray();
+            if (sizes.Length != shape.Rank || sizes.Any(n => n < 0))
+                return Refuse(out problem, $"a {shape.Rank}D array needs {shape.Rank} <Dimsize> elements, the XML gives {sizes.Length}");
+            var count = sizes.Aggregate(1, (a, n) => a * n);
+            var flat = new List<object?>();
+            foreach (var child in element.Elements()
+                         .Where(e => e.Name.LocalName is not ("Name" or "Dimsize")).Take(count))
+            {
+                flat.Add(FromXmlElement(child, shape.Element, out problem));
+                if (problem is not null) return Refuse(out problem, $"array element: {problem}");
+            }
+            if (flat.Count != count)
+                return Refuse(out problem, $"the Dimsizes give {count} elements and the XML holds {flat.Count}");
+            return Grid(flat, sizes, shape.Element, out problem);
+        }
         if (Braces(type) is { Head: "array" } array)
         {
             if (element.Name.LocalName != "Array")
                 return Refuse(out problem, $"<{element.Name.LocalName}> given for {type}");
             var elementType = FieldType(array.Body.Trim());
-            if (elementType.StartsWith("array{", StringComparison.Ordinal))
-                return Refuse(out problem, "a 2D array cannot be set over COM by this server yet");
             var size = int.TryParse((string?)element.Element("Dimsize"), out var n) ? n : 0;
             var values = new List<object?>();
             foreach (var child in element.Elements()
@@ -346,6 +452,27 @@ internal static class ComValues
                 var fieldType = FieldType(field);
                 var fieldName = field.Length > fieldType.Length ? field[(fieldType.Length + 1)..] : "";
                 if (ToLabviewXml(fieldName, fieldType, fieldsValue.GetValue(i)) is not { } child) return null;
+                element.Add(child);
+            }
+            return element;
+        }
+
+        if (ArrayShape(type) is { Rank: > 1 } shape && value is Array grid && grid.Rank == shape.Rank)
+        {
+            // a Dimsize per dimension, then the elements row-major - which is .NET's enumeration
+            // order of a rectangular array - unnamed, as LabVIEW writes an array's elements
+            var element = new System.Xml.Linq.XElement("Array", new System.Xml.Linq.XElement("Name", name));
+            for (var d = 0; d < grid.Rank; d++)
+                element.Add(new System.Xml.Linq.XElement("Dimsize", grid.GetLength(d)));
+            if (grid.Length == 0)
+            {
+                if (ToLabviewXml("", shape.Element, null) is not { } template) return null;
+                template.Element("Val")?.SetValue("");
+                element.Add(template);
+            }
+            foreach (var item in grid)
+            {
+                if (ToLabviewXml("", shape.Element, item) is not { } child) return null;
                 element.Add(child);
             }
             return element;

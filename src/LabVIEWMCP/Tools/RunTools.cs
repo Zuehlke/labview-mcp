@@ -166,8 +166,10 @@ internal sealed class RunTools(LvaiConnection connection)
         [Description(AixmlBackend.ParameterDescription + """
              On pylabview the VI is run over LabVIEW's ActiveX server instead of NI's service: no
             helper VI, the panel's names and types read from the file by pylabview, inputs and
-            values in AIXML literals ("3.5", "[1,2,3]", "[false,0,]"), runForMs honoured, signalsJson
-            refused. LabVIEW must already be running - this never starts it.
+            values in AIXML literals ("3.5", "[1,2,3]", "[false,0,]"), runForMs honoured. signalsJson
+            runs the timed helper COMPOSED by our composer, over ActiveX, against the target whose
+            typed inputs were set first - Value (Signaling) needs VI Server, which ActiveX lacks.
+            LabVIEW must already be running - this never starts it.
             """)]
         string? backend = null,
         CancellationToken ct = default)
@@ -177,7 +179,7 @@ internal sealed class RunTools(LvaiConnection connection)
             return AixmlBackend.Refusal(badBackend);
         if (choice.Name == AixmlBackend.PyLabview)
             return AixmlTools.WithBackend(await Rpc.GuardAsync(() =>
-                RunOverComAsync(viPath, inputsJson, runForMs, signalsJson, timeoutSeconds, ct)), choice);
+                RunOverComAsync(viPath, inputsJson, runForMs, signalsJson, signalGapMs, timeoutSeconds, ct)), choice);
         return AixmlTools.WithBackend(await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(viPath))
@@ -386,28 +388,7 @@ internal sealed class RunTools(LvaiConnection connection)
             if (signals.Count > 0)
             {
                 response.Outputs.TryGetValue("signal error xml", out var signalErrorXml);
-                var signalCode = HelperErrorCode(signalErrorXml);
-                payload["signals"] = new JsonObject
-                {
-                    ["sent"] = new JsonArray(signals.Select(s => (JsonNode?)new JsonObject
-                    {
-                        ["control"] = s.Key, ["value"] = s.Value,
-                    }).ToArray()),
-                    ["gapMs"] = Math.Max(0, signalGapMs),
-                    ["errorCode"] = signalCode is { } sc ? JsonValue.Create(sc) : null,
-                    ["errorXml"] = signalErrorXml,
-                    ["note"] = signalCode switch
-                    {
-                        null or 0 => "Every signal was written; the snapshot was taken after the last gap.",
-                        1193 => "Error 1193: a LATCHED boolean cannot be written with Value (Signaling). " +
-                                "The signals after it were NOT sent; the snapshot was still taken. Test " +
-                                "what that button triggers through the handler's own unit test instead.",
-                        1055 or 1026 => $"Error {signalCode}: a signal names no control on the target's panel. " +
-                                        "The signals from there on were NOT sent; the snapshot was still taken.",
-                        _ => $"Error {signalCode} stopped the signals at that point; the snapshot was " +
-                             "still taken. errorXml names the source.",
-                    },
-                };
+                payload["signals"] = SignalsAnswer(signals, signalGapMs, signalErrorXml);
             }
             if (helperOverriddenBecause is { } why) payload["helperOverridden"] = JsonValue.Create(why);
             payload["panelClosedAfterRun"] = panelClose;
@@ -453,23 +434,158 @@ internal sealed class RunTools(LvaiConnection connection)
     }
 
     /// <summary>
+    /// signalsJson on the pylabview backend. ActiveX has no Value (Signaling), so the timed helper
+    /// the gRPC route runs - `lvai_run_for_ms.xml`, which runs the target, fires each signal
+    /// through VI Server and snapshots the panel - is COMPOSED by our composer and run over
+    /// ActiveX in LabVIEW's main instance. The target's typed inputs are set over COM first and
+    /// its reference held while the helper runs, so they keep their types; the helper itself is
+    /// given no inputs to set. Until 2026-10-15 this was refused, and every event-driven
+    /// verification of a pylabview build went back to NI's service - the DQMH ATM build's GUI among
+    /// them.
+    /// </summary>
+    private static async Task<string> RunSignalledOverComAsync(
+        string target, IReadOnlyList<LabViewCom.Input> inputs, int runForMs,
+        IReadOnlyList<KeyValuePair<string, string>> signals, int signalGapMs,
+        int timeoutSeconds, CancellationToken ct)
+    {
+        if (DefaultHelperAixmlPath(timed: true) is not { } aixml || !File.Exists(aixml))
+            return Json.Error("helperMissing",
+                $"{TimedHelperAixmlFileName} is not in the scripts folder next to the exe.", new { viPath = target });
+        string helper;
+        try { helper = await BackendRoute.ComposedHelperAsync(aixml, timeoutSeconds, ct); }
+        catch (BackendRoute.RouteException e)
+        {
+            return Json.Error(e.Kind, e.Message, new { viPath = target, helperAixmlPath = aixml });
+        }
+
+        var helperInputs = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["VI Path"] = target,
+            ["Input Names"] = "",
+            ["Input Values"] = "",
+            [RunForMsControlName] = runForMs.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            [SignalNamesControlName] = string.Join("\n", signals.Select(s => s.Key)),
+            ["Signal Values"] = string.Join("\n", signals.Select(s => s.Value)),
+            ["signal gap ms"] = Math.Max(0, signalGapMs).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+        string[] outputs = ["values xml", "error xml", "disabled labels xml", "disabled xml", "signal error xml"];
+
+        var stopwatch = Stopwatch.StartNew();
+        LabViewCom.HelperRun run;
+        try
+        {
+            run = await LabViewCom.RunHelperOnTargetAsync(target, inputs, helper, helperInputs, outputs,
+                                                          timeoutSeconds, ct);
+        }
+        catch (LabViewCom.ComException e)
+        {
+            return Json.Error(e.Kind, e.Message, new { viPath = target, via = "ActiveX" });
+        }
+        stopwatch.Stop();
+
+        if (run.TargetExecState == 0)
+            return Json.Error("viNotExecutable",
+                "The VI is broken (execState 0), so it was not run - over ActiveX a broken VI opens " +
+                "its error window, a modal nobody can see. lvai_exec_state names the cause.",
+                new { viPath = target, via = "ActiveX" });
+        if (run.SetProblems.Count > 0)
+            return Json.Error("inputNotSet",
+                "LabVIEW refused to set: " + string.Join("; ", run.SetProblems) + ". Nothing ran.",
+                new { viPath = target, via = "ActiveX" });
+
+        var valuesXml = run.Outputs.GetValueOrDefault("values xml");
+        var errorXml = run.Outputs.GetValueOrDefault("error xml");
+        var values = LvValuesXml.Parse(valuesXml);
+        var rawHelperCode = HelperErrorCode(errorXml);
+        var endedOnItsOwn = TargetEndedBeforeAbort(true, rawHelperCode, errorXml);
+        var helperCode = endedOnItsOwn ? 0 : rawHelperCode;
+        return new JsonObject
+        {
+            ["ok"] = run.Finished && helperCode is null or 0,
+            ["viPath"] = target,
+            ["via"] = "ActiveX, composed helper",
+            ["values"] = LvValuesXml.ToJson(values),
+            ["valueCount"] = values.Count,
+            ["valuesXml"] = values.Count == 0 ? valuesXml : null,
+            ["helperErrorXml"] = errorXml,
+            ["helperErrorCode"] = rawHelperCode is { } hc ? JsonValue.Create(hc) : null,
+            ["helperFailed"] = helperCode is not null and not 0,
+            ["helperFinished"] = run.Finished,
+            ["targetEndedBeforeAbort"] = endedOnItsOwn,
+            ["helperViPath"] = helper,
+            ["helperAixmlPath"] = aixml,
+            ["inputsSent"] = inputs.Count,
+            ["elapsedMs"] = stopwatch.ElapsedMilliseconds,
+            ["runForMs"] = runForMs,
+            ["disabled"] = DisabledStates(run.Outputs.GetValueOrDefault("disabled labels xml"),
+                                          run.Outputs.GetValueOrDefault("disabled xml")),
+            ["signals"] = SignalsAnswer(signals, signalGapMs, run.Outputs.GetValueOrDefault("signal error xml")),
+            ["note"] = (run.Finished ? "" : "THE HELPER DID NOT FINISH within the budget and was aborted, " +
+                                            "the target with it - raise timeoutSeconds. ") +
+                       (endedOnItsOwn
+                           ? "The target ENDED ON ITS OWN before the time was up, so these values are its " +
+                             "FINAL values and its `error out` is a real result."
+                           : $"These values are a SNAPSHOT taken after {runForMs} ms and the signals, and the " +
+                             "target was then ABORTED - no cleanup on its diagram ran, so `error out` shows " +
+                             "its default.") +
+                       " Inputs were set over ActiveX with their real types before the helper ran.",
+        }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    /// <summary>The `signals` block of an answer, the same on both routes.</summary>
+    internal static JsonObject SignalsAnswer(IReadOnlyList<KeyValuePair<string, string>> signals,
+                                             int signalGapMs, string? signalErrorXml)
+    {
+        var signalCode = HelperErrorCode(signalErrorXml);
+        return new JsonObject
+        {
+            ["sent"] = new JsonArray(signals.Select(s => (JsonNode?)new JsonObject
+            {
+                ["control"] = s.Key, ["value"] = s.Value,
+            }).ToArray()),
+            ["gapMs"] = Math.Max(0, signalGapMs),
+            ["errorCode"] = signalCode is { } sc ? JsonValue.Create(sc) : null,
+            ["errorXml"] = signalErrorXml,
+            ["note"] = signalCode switch
+            {
+                null or 0 => "Every signal was written; the snapshot was taken after the last gap.",
+                1193 => "Error 1193: a LATCHED boolean cannot be written with Value (Signaling). " +
+                        "The signals after it were NOT sent; the snapshot was still taken. Test " +
+                        "what that button triggers through the handler's own unit test instead.",
+                1055 or 1026 => $"Error {signalCode}: a signal names no control on the target's panel. " +
+                                "The signals from there on were NOT sent; the snapshot was still taken.",
+                _ => $"Error {signalCode} stopped the signals at that point; the snapshot was " +
+                     "still taken. errorXml names the source.",
+            },
+        };
+    }
+
+    /// <summary>
     /// lvai_run_vi_and_read_values on the pylabview backend: the panel's names and types come from
     /// the FILE (pylabview's reader - ActiveX cannot list controls), the run goes over ActiveX
     /// (<see cref="LabViewCom"/>), and NI's service is not touched. Everything that is refused here
     /// is refused BEFORE the run, by name: a control the panel does not have, a value that does not
-    /// convert to its type, a broken VI, and signals, which ActiveX has no Value (Signaling) for.
+    /// convert to its type, and a broken VI. Signals go through the composed timed helper
+    /// (<see cref="RunSignalledOverComAsync"/>), because ActiveX has no Value (Signaling).
     /// </summary>
     private static async Task<string> RunOverComAsync(string viPath, string? inputsJson, int runForMs,
-                                                      string? signalsJson, int timeoutSeconds,
-                                                      CancellationToken ct)
+                                                      string? signalsJson, int signalGapMs,
+                                                      int timeoutSeconds, CancellationToken ct)
     {
         var full = Path.GetFullPath(viPath);
         if (!File.Exists(full))
             return Json.Error("viNotFound", $"No file at '{full}'.", new { viPath = full });
-        if (!string.IsNullOrWhiteSpace(signalsJson))
-            return Json.Error("notAvailableOnBackend",
-                "signalsJson fires Value (Signaling), which LabVIEW's ActiveX server does not offer. " +
-                "Use the grpc backend to drive events.", new { viPath = full });
+        List<KeyValuePair<string, string>> signals;
+        try { signals = ParseSignals(signalsJson); }
+        catch (ArgumentException bad)
+        {
+            return Json.Error("badArguments", bad.Message, new { signalsJson });
+        }
+        if (signals.Count > 0 && runForMs <= 0)
+            return Json.Error("badArguments",
+                "signalsJson needs runForMs: signals are fired while the VI RUNS, after runForMs " +
+                "has elapsed, and a VI run without runForMs is waited on until it ends.",
+                new { signalCount = signals.Count, runForMs });
         if (AixmlComposer.Locate(out var missing) is not { } setup)
             return Json.Error("backendNotAvailable", missing, new { viPath = full });
         if (LabViewCom.NotReady() is { } notReady)
@@ -495,6 +611,10 @@ internal sealed class RunTools(LvaiConnection connection)
                     $"'{name}' ({control.Type}): {problem}. Nothing ran.", new { viPath = full });
             inputs.Add(new LabViewCom.Input(name, value, text));
         }
+
+        if (signals.Count > 0)
+            return await RunSignalledOverComAsync(full, inputs, runForMs, signals, signalGapMs,
+                                                  timeoutSeconds, ct);
 
         // INDICATORS ONLY, as NI's helper reads them: Ctrl Val.Get All with its default answered
         // the indicators and none of the controls, measured 2026-10-10 on the same VIs. The answer

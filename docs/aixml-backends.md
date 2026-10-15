@@ -262,7 +262,7 @@ ones stay in `helpers`, so neither backend runs or overwrites the other's.
 | `lvai_placeholder_subvi`, `lvai_add_vis_to_project` | the stub composed from the reader's export; the listing is a file edit and never needed NI |
 | `lvai_set_vi_icon` | the icon helper composed and run over ActiveX, judged by the same read-back file. Until 2026-10-11 it took the parameter and still called NI's `RunVIAsTopLevel` |
 | `lvai_exec_state` | the SAME `lvai_exec_state.xml` helper, COMPOSED and run over ActiveX, so linker errors are named as on grpc (`route: helper`) - `Missing subVI X.vi in VI Y.vi.`. Only when the helper cannot be composed or run is `ExecState` read directly over ActiveX, which has no linker-error property: then `route: direct`, `linkerErrorsAvailable: false` and `linkerErrorsUnavailableBecause`. A route on pylabview (`lvai_generate_test`, `lvai_add_class_method`, …) reads it the same way. Until 2026-10-12 the direct read was the only one, and `linkerErrors` was null for every VI |
-| `lvai_run_vi_and_read_values` | the panel's names and types read from the FILE (ActiveX can set and get a control by name but cannot list them), inputs converted by type, `SetControlValue` → `Run` → `GetControlValue`. **The answer has the gRPC shape**: the INDICATORS (as NI's helper reads them), each with LabVIEW's type tag (`DBL`), its `Val` text and LabVIEW's flattened `xml` - generated from the value and its type, measured identical to NI's on 11 of 11 values - plus the AIXML `literal`. A DBL keeps LabVIEW's shape, not its last digits (LabVIEW printed 5050 as `5049.99999999999999`). `runForMs` works — a snapshot, then Abort. Refused before anything runs: `signalsJson` (ActiveX has no Value (Signaling)), a control the panel does not have, a value that does not convert, a broken VI, a waveform, a refnum, a 2D array |
+| `lvai_run_vi_and_read_values` | the panel's names and types read from the FILE (ActiveX can set and get a control by name but cannot list them), inputs converted by type, `SetControlValue` → `Run` → `GetControlValue`. **The answer has the gRPC shape**: the INDICATORS (as NI's helper reads them), each with LabVIEW's type tag (`DBL`), its `Val` text and LabVIEW's flattened `xml` - generated from the value and its type, measured identical to NI's on 11 of 11 values - plus the AIXML `literal`. A DBL keeps LabVIEW's shape, not its last digits (LabVIEW printed 5050 as `5049.99999999999999`). `runForMs` works — a snapshot, then Abort. Refused before anything runs: a control the panel does not have, a value that does not convert, a broken VI, a waveform, a refnum. A 2D (nD) array crosses as ONE rectangular array since 2026-10-15. **`signalsJson` runs the timed helper COMPOSED and run over ActiveX** (since 2026-10-15) against the target whose typed inputs were set first and whose reference is held - ActiveX itself has no Value (Signaling) |
 
 Before either backend: `lvai_check_aixml`'s pre-checks, and the refusal of a property name with its
 category dropped (`propertyNameWouldCrashLabview`) — that document is wrong whichever converter
@@ -299,7 +299,7 @@ log, `lvai_apply_aixml_to_vi`), or is the three-step gRPC event route the compos
 or pylabview": read the server default from `pylv_status` (now in every roster), compose an Event
 Structure in one `lvai_generate_vi` call instead of the three-step gRPC route, let a `Call` resolve
 by file instead of opening callees, treat `composerRefused` as a composer gap and repeat that one
-call on `grpc` only when NI's service is up, and expect no `signalsJson` over ActiveX.
+call on `grpc` only when NI's service is up. `signalsJson` works over ActiveX since 2026-10-15.
 `PluginAgentTests.EveryAgentCarriesTheBackendRuleAndMayReadTheBackend` keeps it in all eight.
 
 ## Where the pylabview pieces are found
@@ -1054,6 +1054,37 @@ mode. `roundtrip.py` over the composer suite: **137 of 138**, `t136` (VI Activat
 desktop's focus) failing with the old reader too; `t133` and `t138` failed once and passed on a
 rerun, as they did with the old code. Pass the suite's `--out` as a BACKSLASH path - one with
 forward slashes made every case `ExecState None`, because LabVIEW answered "file not found" for it.
+
+## Signals and 2D arrays over ActiveX (2026-10-15)
+
+The two run-route gaps that still sent the DQMH ATM build's verification to NI's service, closed
+the same day as the graft above.
+
+**A 2D array input was refused** (`inputNotConvertible`) - the accounts table of `Find Account.vi`,
+`array.2{string}` in the reader's spelling. The class comment of `ComValues` already recorded that
+a 2D array crosses ActiveX as ONE rectangular array; the code refused it anyway. `ComValues` reads
+the rank from `array.N{T}` or a nested `array{array{T}}`, builds `T[,...]` from a nested literal
+`[[a,b],[c,d]]` (rectangular, or refused naming the row) or from LabVIEW's XML (a `Dimsize` per
+dimension, elements row-major), and writes a 2D indicator back as that XML. Measured: `Find
+Account.vi` with a three-row table and ` 34567 ` answered Found, row 2, Bryan Smith, 750.5.
+
+**`signalsJson` was refused** - ActiveX has no Value (Signaling). The gRPC route fires it from its
+timed helper, `lvai_run_for_ms.xml`, which runs the target through VI Server, signals, snapshots
+and aborts. That helper COMPOSES, so on pylabview it is composed and run over ActiveX in LabVIEW's
+main instance (`LabViewCom.RunHelperOnTargetAsync`). The target's typed inputs are set over COM
+first and its reference is HELD while the helper runs, so the helper's Open VI Reference by path
+reaches the same VI with the values in place - the helper itself sets strings only. **Accepted
+with `LABVIEW_GRPC_PORT=1`**: the grafted ATM driven card-in plus typing answered `signals.errorCode
+0` and `Card Simulator` disabled 2, `User Input`/`Enter` 0 - the gRPC run's answer exactly - in
+4.5 s; the control arm, typing only, left `Card Simulator` 0 and `User Input`/`Enter` 2. And `Find
+Account.vi` through the same route, its table set over COM, ended on its own with Jennifer
+Rodriguez, 1000 (`targetEndedBeforeAbort`), so a typed input survives the held reference.
+
+**A snapshot's Abort leaves a DQMH module RUNNING**, on either route. Every runForMs run of the ATM
+GUI was aborted after its snapshot, `Shut Down ATM` never ran, and the Bank module's `Main.vi`
+stayed `execState 3` - so the next run of `Find Account.vi`, a subVI of its handlers, answered
+`Error 1000` at `Run VI`. Running the module's own `Stop Module.vi` released it. Signal the
+program's Stop as the last signal when it starts a module, or stop the module afterwards.
 
 ## Not covered, and not measured
 

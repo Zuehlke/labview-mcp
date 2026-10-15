@@ -240,6 +240,70 @@ internal static class LabViewCom
             return new RunResult(state, true, finished, aborted, runMs, [], values ?? ReadAll(vi, names));
         }), timeoutSeconds, ct);
 
+    internal sealed record HelperRun(int TargetExecState, bool Finished, long RunMs,
+                                     IReadOnlyList<string> SetProblems,
+                                     IReadOnlyDictionary<string, string?> Outputs);
+
+    /// <summary>
+    /// Set <paramref name="targetInputs"/> on the target, then run a HELPER VI that drives it -
+    /// `lvai_run_for_ms`, which runs the target, fires Value (Signaling) through VI Server and
+    /// snapshots its panel, the one thing ActiveX itself cannot do. The target's reference is HELD
+    /// while the helper runs, so the helper's Open VI Reference by path reaches the same VI in
+    /// memory, values set, and the inputs keep their real types (the helper sets strings only).
+    /// The helper's outputs are read back as text.
+    /// </summary>
+    public static Task<HelperRun> RunHelperOnTargetAsync(string targetPath, IReadOnlyList<Input> targetInputs,
+                                                         string helperPath,
+                                                         IReadOnlyDictionary<string, string> helperInputs,
+                                                         IReadOnlyList<string> helperOutputs,
+                                                         int timeoutSeconds, CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, targetPath, target =>
+        {
+            var state = Convert.ToInt32(Get(target, "ExecState"), CultureInfo.InvariantCulture);
+            if (state == 0)
+                return new HelperRun(0, false, 0, [], new Dictionary<string, string?>());
+            var problems = new List<string>();
+            foreach (var input in targetInputs)
+            {
+                try { Call(target, "SetControlValue", input.Name, input.Value); }
+                catch (Exception e) when (e is TargetInvocationException or COMException)
+                {
+                    problems.Add($"{input.Name} = '{input.Text}': {Inner(e)}");
+                }
+            }
+            if (problems.Count > 0)
+                return new HelperRun(state, false, 0, problems, new Dictionary<string, string?>());
+
+            return WithVi(app, helperPath, helper =>
+            {
+                foreach (var (name, value) in helperInputs)
+                    Call(helper, "SetControlValue", name, value);
+                var deadline = Math.Max(1000, timeoutSeconds * 1000 - 2000);
+                var clock = Stopwatch.StartNew();
+                Call(helper, "Run", true);
+                var finished = false;
+                while (clock.ElapsedMilliseconds < deadline)
+                {
+                    var now = Convert.ToInt32(Get(helper, "ExecState"), CultureInfo.InvariantCulture);
+                    if (now is not (2 or 3)) { finished = true; break; }
+                    Thread.Sleep(20);
+                }
+                var runMs = clock.ElapsedMilliseconds;
+                if (!finished)
+                {
+                    try { Call(helper, "Abort"); } catch (Exception e) when (e is TargetInvocationException or COMException) { }
+                    try { Call(target, "Abort"); } catch (Exception e) when (e is TargetInvocationException or COMException) { }
+                }
+                var outputs = new Dictionary<string, string?>(StringComparer.Ordinal);
+                foreach (var name in helperOutputs)
+                {
+                    try { outputs[name] = Call(helper, "GetControlValue", name) as string; }
+                    catch (Exception e) when (e is TargetInvocationException or COMException) { outputs[name] = null; }
+                }
+                return new HelperRun(state, finished, runMs, [], outputs);
+            });
+        }), timeoutSeconds, ct);
+
     private static List<Reading> ReadAll(object vi, IReadOnlyList<string> names)
     {
         var values = new List<Reading>();

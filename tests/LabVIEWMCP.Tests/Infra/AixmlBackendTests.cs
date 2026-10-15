@@ -578,21 +578,44 @@ public sealed class AixmlBackendTests
                      panel!.Select(i => $"{i.Name}:{i.Type}:{i.Indicator}").OrderBy(s => s));
     }
 
-    /// <summary>ActiveX has no Value (Signaling); refused before LabVIEW is asked anything.</summary>
+    /// <summary>
+    /// Signals on the ActiveX route go through the COMPOSED timed helper since 2026-10-15 - they
+    /// were refused (`notAvailableOnBackend`) until then. The argument rules are the gRPC route's
+    /// and are checked before LabVIEW is asked anything: signals need runForMs, and a malformed
+    /// list is refused by name. NI's service is never asked either way.
+    /// </summary>
     [Fact]
-    public async Task Signals_are_refused_on_the_ActiveX_route()
+    public async Task Signals_on_the_ActiveX_route_follow_the_grpc_rules_and_never_reach_NI()
     {
         await using var server = await LvaiTestServer.StartAsync();
         var vi = server.TempPath("any.vi");
         await File.WriteAllBytesAsync(vi, [0]);
+        var run = new RunTools(server.Connection);
 
-        var result = await new RunTools(server.Connection).RunViAndReadValuesAsync(
-            vi, runForMs: 300, signalsJson: """[{"control":"Stop","value":"true"}]""",
-            backend: "pylabview");
+        var untimed = await run.RunViAndReadValuesAsync(
+            vi, signalsJson: """[{"control":"Stop","value":"true"}]""", backend: "pylabview");
+        Assert.Equal("badArguments", Res.Str(untimed, "errorKind"));
+        Assert.Contains("needs runForMs", Res.Str(untimed, "error"));
 
-        Assert.Equal("notAvailableOnBackend", Res.Str(result, "errorKind"));
-        Assert.Equal("pylabview", Res.Str(result, "backend"));
+        var malformed = await run.RunViAndReadValuesAsync(
+            vi, runForMs: 300, signalsJson: """{"Stop":"true"}""", backend: "pylabview");
+        Assert.Equal("badArguments", Res.Str(malformed, "errorKind"));
+
+        Assert.NotEqual("notAvailableOnBackend", Res.Str(untimed, "errorKind"));
+        Assert.Equal("pylabview", Res.Str(untimed, "backend"));
         Assert.Equal(0, server.Service.CountOf("RunVIAsTopLevel"));
+    }
+
+    /// <summary>The helper the signal route runs composes, source-only, with the parts as committed.</summary>
+    [Fact]
+    public async Task The_timed_run_helper_composes_for_the_signal_route()
+    {
+        if (!ComposerHere()) return;
+
+        var (vi, problem) = await ComposedHelpers.EnsureAsync(RunTools.TimedHelperAixmlFileName, 180, default);
+
+        Assert.True(vi is not null, problem);
+        Assert.False(AixmlTools.ContainsCompiledCode(vi!));
     }
 
     /// <summary>
