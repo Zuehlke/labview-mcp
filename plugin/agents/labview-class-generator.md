@@ -746,7 +746,8 @@ Everything here was verified before this agent was written. Treat it as fact.
 
 - **Look terminal names up with `lvai_aixml_reference` and `lvai_example_index`, in ONE batched
   call.** Both are in your tool list. `lvai_aixml_reference` takes `node=` as a comma-separated
-  list; `lvai_vi_terminals` cannot see inside an `.llb`, which rules out most driver APIs, and the
+  list; `lvai_vi_terminals` cannot see inside an `.llb` FILE (DAQmx's are files; most other `.llb`s
+  in LabVIEW 2026 are folders and read fine), which rules out most driver APIs, and the
   route there is an NI example that already calls the VI. Measured 2026-09-04: a run that did not
   have these tools spent **4.5 minutes of wall clock against 3 seconds inside LabVIEW** exporting
   three examples to find the TDMS terminal names, and re-derived a `Bundle By Name` rule that has

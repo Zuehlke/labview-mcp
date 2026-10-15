@@ -108,9 +108,11 @@ def _extract_callee(path):
     got = _CALLEES.get(key)
     if got is None:
         try:
+            # a member of an .llb CONTAINER has a virtual path through it; read its extracted file
+            real = resolve.materialize(path) or path
             d = tempfile.mkdtemp(prefix="callee_")
             _CALLEE_DIRS.append(d)
-            got = lvheap.extract(path, d, timeout=30)
+            got = lvheap.extract(real, d, timeout=30)
         except RuntimeError as ex:
             got = ex
         _CALLEES[key] = got
@@ -3907,7 +3909,7 @@ class Composer:
         owner = None
         for _ in range(4):
             cand = os.path.join(d, libs[-1])
-            if os.path.exists(cand):
+            if resolve.exists(cand):
                 owner = cand
                 break
             d = os.path.dirname(d)

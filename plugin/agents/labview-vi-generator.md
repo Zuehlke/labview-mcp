@@ -655,9 +655,11 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    the main GUI. END the error chain in an `error out` INDICATOR when the task allows new controls
    (`allowNewControls`), merged with `Merge Errors` like any other VI. When new controls are NOT
    allowed, do not leave the chain dangling - an unwired error output pops LabVIEW's automatic
-   error dialog, a modal that stops the whole gRPC service during a test run - and do not reach for
-   `Simple Error Handler.vi` (it lives in an `.llb`, so it is not callable by bare name): return
-   `NEEDS CLARIFICATION` asking whether an `error out` indicator may be added.
+   error dialog, a modal that stops the whole gRPC service during a test run. `Simple Error
+   Handler.vi` IS callable by bare name on both backends (it lives in the `error.llb` FOLDER; this
+   line said the opposite until 2026-10-15), but it raises the same kind of modal on an error. So
+   return `NEEDS CLARIFICATION` asking whether an `error out` indicator may be added, and name
+   `Simple Error Handler.vi` as the alternative with that cost.
    **EVERY EVENT BUTTON MUST BE WIRED IN THE SCAFFOLD, even one whose value the program never
    needs** - the graft refuses an unwired terminal (`scaffoldTerminalUnwired`). The pattern that
    keeps the user's click count right: put the button's terminal INSIDE its own Value Change

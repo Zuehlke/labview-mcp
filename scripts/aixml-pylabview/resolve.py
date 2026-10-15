@@ -21,11 +21,22 @@ caller file, one empty component per level up (["", "", "X.vi"] from a subfolder
 In LabVIEW 2026 almost every .llb is a DIRECTORY (323 of 344 under vi.lib), so its VIs are
 ordinary files and the .llb is just one more path component.
 
+The rest are CONTAINER FILES - every DAQmx .llb, VI Tester, JKI EasyXML, OpenG buttons.llb - and
+LabVIEW links a member of one exactly like a member of an .llb folder, a path running THROUGH the
+.llb: <vilib>\\DAQmx\\configure\\task.llb\\DAQmx Clear Task.vi (NI's Analog Input - Filtering.vi,
+read 2026-10-15). So a member keeps that VIRTUAL path everywhere a path is written, and only
+materialize() turns it into a real file: pylabview extracts the container once (--keep-names
+writes each member under its own name, 0.3 s for task.llb), cached on disk by the .llb's path,
+size and time. A container is opened only on a miss, and only when its bytes carry the name.
+
 A library's member URL is either SYMBOLIC (/<vilib>/Utility/AngleManip/x.vi, how installed
 libraries write it) or RELATIVE TO THE .lvlib FILE TREATED AS A DIRECTORY (../x.vi is the
 library's own folder) - the same convention as a .lvproj, measured on DQMH New Event.lvlib.
+A library stored INSIDE an .llb file (VI Tester API.lvlib) follows the same rule from its
+virtual path.
 """
 import glob
+import hashlib
 import os
 import xml.etree.ElementTree as ET
 
@@ -43,6 +54,91 @@ def labview_root():
             if os.path.exists(os.path.join(d, "LabVIEW.exe")):
                 return d
     return None
+
+
+def llb_cache_root():
+    """Where extracted .llb containers are kept: beside the server's other caches."""
+    base = os.environ.get("LABVIEWMCP_CACHE_DIR") or os.path.join(os.path.expanduser("~"), ".labviewmcp", "cache")
+    return os.path.join(base, "llb")
+
+
+def llb_split(path):
+    """(container .llb FILE, member name) when `path` runs through one, else None. Only the
+    first container counts: an .llb inside an .llb does not occur."""
+    full = os.path.abspath(path)
+    parts = full.split(os.sep)
+    for i in range(1, len(parts) - 1):
+        if parts[i].lower().endswith(".llb"):
+            container = os.sep.join(parts[:i + 1])
+            if os.path.isfile(container):
+                return container, os.sep.join(parts[i + 1:])
+    return None
+
+
+_LLB_MEMBERS = {}
+
+
+def llb_members(container):
+    """{member name lower: extracted file} of an .llb container, extracting it on first use.
+    {} when pylabview cannot read it."""
+    key = os.path.normcase(os.path.abspath(container))
+    if key in _LLB_MEMBERS:
+        return _LLB_MEMBERS[key]
+    st = os.stat(container)
+    tag = hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
+    out_dir = os.path.join(llb_cache_root(), "%s_%d_%d" % (tag, st.st_size, int(st.st_mtime)))
+    main = os.path.join(out_dir, "llb.xml")
+    members = {}
+    if not os.path.exists(main):
+        import lvheap
+        os.makedirs(out_dir, exist_ok=True)
+        try:
+            lvheap.run_pylabview(["-x", "--keep-names", "-i", container, "-m", main], timeout=120)
+        except RuntimeError:
+            pass
+    if os.path.exists(main):
+        try:
+            root = ET.parse(main).getroot()
+        except ET.ParseError:
+            root = None
+        # the members are the resource-file blocks: UCRF uncompressed, CPRF / ZCRF compressed
+        for block in (root if root is not None else []):
+            if block.tag not in ("UCRF", "CPRF", "ZCRF"):
+                continue
+            for sec in block.findall("Section"):
+                name, f = sec.get("Name"), sec.get("File")
+                if name and f and os.path.exists(os.path.join(out_dir, f)):
+                    members[name.lower()] = os.path.join(out_dir, f)
+    _LLB_MEMBERS[key] = members
+    return members
+
+
+def materialize(path):
+    """A path -> a real file holding it: itself, or the extracted member of an .llb container.
+    None when neither exists."""
+    if os.path.exists(path):
+        return path
+    split = llb_split(path)
+    if split is None:
+        return None
+    return llb_members(split[0]).get(split[1].lower())
+
+
+def exists(path):
+    return materialize(path) is not None
+
+
+def _carries(container, name):
+    """Does the container's raw data name `name`? A cheap filter before extracting it."""
+    try:
+        with open(container, "rb") as fh:
+            data = fh.read()
+    except OSError:
+        return False
+    try:
+        return name.encode("mac_roman") in data
+    except UnicodeEncodeError:
+        return name.encode("utf-8", "ignore") in data
 
 
 def relative_ref(from_file, to_path):
@@ -67,18 +163,19 @@ class Resolver:
                     self.roots.append((anchor, os.path.join(d, sub)))
         self._files = None
         self._owners = None
+        self._llbs = None    # .llb CONTAINER files, installation first
         self._near = {}
 
     # ---- indexes, built on first use ------------------------------------------------------
     def _index(self):
         if self._files is not None:
             return
-        self._files, self._owners = {}, {}
+        self._files, self._owners, self._llbs = {}, {}, []
         for anchor, d in self.roots:
-            self._walk(d, self._files, self._owners)
+            self._walk(d, self._files, self._owners, llbs=self._llbs)
 
     @staticmethod
-    def _walk(d, files, owners, depth=None):
+    def _walk(d, files, owners, depth=None, llbs=None):
         base = d.rstrip(os.sep).count(os.sep)
         for dirpath, dirnames, filenames in os.walk(d):
             if depth is not None and dirpath.count(os.sep) - base >= depth:
@@ -89,21 +186,33 @@ class Resolver:
                     files.setdefault(low, []).append(os.path.join(dirpath, f))
                 elif low.endswith(OWNER_EXT):
                     owners.setdefault(low, []).append(os.path.join(dirpath, f))
+                elif low.endswith(".llb") and llbs is not None:
+                    llbs.append(os.path.join(dirpath, f))
+
+    def _in_llbs(self, name, llbs):
+        """Virtual paths (<container>\\<member>) of every .llb container holding `name`."""
+        hits = []
+        for container in llbs:
+            if not _carries(container, name):
+                continue
+            if name.lower() in llb_members(container):
+                hits.append(os.path.join(container, name))
+        return hits
 
     def _near_index(self, caller_dir):
         """VIs and owners in the caller's folder, its subfolders and two levels above - where an
         example or a project keeps its own subVIs, linked relatively."""
         caller_dir = os.path.abspath(caller_dir)
         if caller_dir not in self._near:
-            files, owners = {}, {}
+            files, owners, llbs = {}, {}, []
             # the caller's own folder three levels deep, its parent two, the grandparent one -
             # bounded, because a caller in a big tree (C:	emp) would otherwise index all of it
             for up, depth in ((0, 3), (1, 2), (2, 1)):
                 d = caller_dir
                 for _ in range(up):
                     d = os.path.dirname(d)
-                self._walk(d, files, owners, depth=depth)
-            self._near[caller_dir] = (files, owners)
+                self._walk(d, files, owners, depth=depth, llbs=llbs)
+            self._near[caller_dir] = (files, owners, llbs)
         return self._near[caller_dir]
 
     def symbolic(self, path):
@@ -127,7 +236,10 @@ class Resolver:
 
     def member(self, owner, name, kind=("VI",)):
         """The file an owner (.lvlib or .lvclass) lists under `name`, at any folder depth."""
-        root = ET.parse(owner).getroot()
+        real = materialize(owner)
+        if real is None:
+            return None
+        root = ET.parse(real).getroot()
         for item in root.iter("Item"):
             if item.get("Name") != name or not item.get("URL"):
                 continue
@@ -138,7 +250,7 @@ class Resolver:
                 anchor, _, rest = url[1:].partition("/")
                 for a, d in self.roots:
                     p = os.path.normpath(os.path.join(d, *rest.split("/")))
-                    if a == anchor and os.path.exists(p):
+                    if a == anchor and exists(p):
                         return p
                 return None
             # relative to the OWNER FILE treated as a directory: ../x.vi is its own folder
@@ -151,7 +263,12 @@ class Resolver:
         near = []
         for d in (caller_dirs or []):
             near += self._near_index(d)[1].get(name.lower(), [])
-        return near + self._owners.get(name.lower(), [])
+        found = near + self._owners.get(name.lower(), [])
+        if found:
+            return found
+        # a library stored INSIDE an .llb container (VI Tester API.lvlib in VI Tester API.llb)
+        llbs = [c for d in (caller_dirs or []) for c in self._near_index(d)[2]] + self._llbs
+        return self._in_llbs(name, llbs)
 
     # ---- the one call -----------------------------------------------------------------------
     def resolve(self, target, caller_dirs, caller_file=None):
@@ -170,7 +287,7 @@ class Resolver:
                 return {"error": "no %s in the installation or near the caller" % owners[-1]}
             for owner in candidates:
                 path = self.member(owner, vi_name)
-                if path and os.path.exists(path):
+                if path and exists(path):
                     kind = "class member" if owners[-1].lower().endswith(".lvclass") else "library member"
                     return {"path": path, "qual": owners + [vi_name], "kind": kind,
                             "path_ref": self.ref(path, caller_file),
@@ -205,4 +322,17 @@ class Resolver:
             if s:
                 return {"path": p, "qual": [target], "path_ref": ("0", [s[0]] + s[1]), "lib_ref": None,
                         "kind": "bare name", "ambiguous": len(hits) > 1}
+        # last, the .llb CONTAINERS - near the caller first, then the installation's; opened only
+        # now, and only those whose bytes carry the name, because extracting one costs a pylabview run
+        for d in (caller_dirs or []):
+            near = self._in_llbs(target, self._near_index(d)[2])
+            if near:
+                return {"path": near[0], "qual": [target], "path_ref": ("1", relative_ref(caller_file, near[0])),
+                        "lib_ref": None, "kind": "near the caller", "ambiguous": len(near) > 1}
+        hits = self._in_llbs(target, self._llbs)
+        for p in hits:
+            s = self.symbolic(p)
+            if s:
+                return {"path": p, "qual": [target], "path_ref": ("0", [s[0]] + s[1]), "lib_ref": None,
+                        "kind": "bare name", "llb": True, "ambiguous": len(hits) > 1}
         return {"error": "%r is neither near the caller nor in the installation" % target}

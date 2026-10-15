@@ -38,12 +38,16 @@ exists as a scaffold rather than a recipe.
 3. **Expect the palette index to miss it.** `lvai_palette_index` scans `menus\` and `LVAddons\`;
    JKI's `.mnu` files live under `vi.lib\addons\_JKI Toolkits\dynamic_palette\`, which is neither.
    A miss there is not proof a call is illegal — measured for Caraya, and the same applies here.
-4. **The `.llb` problem is the one to expect, and it is measured.** CLAUDE.md §9 of the AIXML
-   reference: a VI **inside an `.llb` does not resolve by bare name**. VI Tester ships as `.llb`s
-   (`TestCase.llb`, `TestRunner.llb`, …), where Caraya ships as a `.lvlib` whose members resolve by
-   their `Caraya.lvlib\3A…` qualifier. So the first thing to find out is what qualifier, if any,
-   reaches a VI Tester VI. Get it the way the Caraya spellings were got: export a **shipped example
-   that already calls it** with `lvai_convert_vi_to_aixml` and copy `target=` verbatim.
+4. **The `.llb` is NOT the obstacle - the library inside it is. Measured 2026-10-15.** VI Tester
+   ships as `.llb` FILES (`TestCase.llb`, `VI Tester API.llb`, …), and the `.lvlib`s that own its
+   VIs are stored INSIDE them. On gRPC `Run Tests (Path).vi` by bare name is `Unsupported SubVI`,
+   and `VI Tester API.lvlib\3ARun Tests (Path).vi` RESOLVES (`required input 'Test Path' is not
+   wired`) - the same rule as Caraya's `Caraya.lvlib\3A…`. An `.llb` is never a qualifier. So find
+   each target's OWNING LIBRARY: the `.lvlib` names are readable from the `.llb` file
+   (`grep -aoE '[^/\\]+\.lvlib' "VI Tester API.llb"`), or export a shipped example that already
+   calls it and copy `target=` verbatim. **The `pylabview` backend resolves both spellings** - its
+   composer opens an `.llb` file on a miss and links the bare name under the qualified one - so
+   the qualifier matters only on `grpc`. CLAUDE.md, "A VI INSIDE AN `.llb`".
 
 **If you cannot establish a callable target, return `CANNOT PROCEED`** naming exactly what you tried
 and what came back, and say that Caraya is available and proven. Do not generate a test that cannot
@@ -53,7 +57,7 @@ run, and do not silently switch frameworks — the framework is the user's choic
 CANNOT PROCEED
 VI Tester is present on disk but no callable target could be established:
   - `TestCase.lvclass:setUp.vi`              -> Unsupported SubVI
-  - `VI Tester API.llb\3ARun VI Test.vi`     -> Unsupported SubVI
+  - `VI Tester API.lvlib\3ARun VI Test.vi`   -> Unsupported SubVI
 Caraya is installed and proven (`labview-caraya-unit-test`). Shall I use it instead?
 ```
 

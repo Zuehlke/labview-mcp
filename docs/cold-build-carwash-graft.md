@@ -66,7 +66,10 @@ LabVIEW's own share stayed small throughout: a `lvai_generate_vis` of three VIs 
    the suite covers only the deterministic cases.
 7. **`Release Queue`'s error is unwired**, so an error at exit reaches LabVIEW's automatic error
    dialog. `Simple Error Handler.vi` lives in an `.llb` and is not callable by bare name; the
-   right spelling was not established.
+   right spelling was not established. **Corrected 2026-10-15: it IS callable by bare name** -
+   `error.llb` is a folder, the VI is in no library, and it resolved, converted and read
+   `execState 1` on both backends. The `.llb` rule this relied on was wrong; see
+   `docs/aixml-reference.md` §9, "`.llb` targets on the two backends".
 8. The close-save adopted the scaffold and a scratch helper into the project; both had to be
    removed by hand with the project closed.
 

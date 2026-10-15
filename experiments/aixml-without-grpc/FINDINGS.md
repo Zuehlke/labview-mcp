@@ -195,7 +195,11 @@ LabVIEW involved. Every rule below was read off a link record LabVIEW wrote itse
   `C:\Program Files\NI\LVAddons\lvai\26.3\resource`. The resolver reproduces that record exactly.
 * **In LabVIEW 2026 an `.llb` is almost always a DIRECTORY** — 323 of the 344 under vi.lib — so
   its VIs are plain files and the `.llb` is one more path component. pylabview refuses the
-  directory itself (`Permission denied`), which is the tell.
+  directory itself (`Permission denied`), which is the tell. **The rest are CONTAINER files** -
+  every DAQmx `.llb`, VI Tester, JKI EasyXML - and since 2026-10-15 the resolver extracts one on a
+  miss and links its member through the `.llb` (`<vilib>\DAQmx\configure\task.llb\DAQmx Clear
+  Task.vi`, as NI's `Analog Input - Filtering.vi` does); `docs/aixml-backends.md`, "A Call into an
+  `.llb` FILE".
 * **An installed `.lvlib` lists its members by symbolic URL** (`/<vilib>/Utility/AngleManip/
   Degrees to Radians (Scalar DBL).vi`), not relative to itself; a user's library writes them
   relative. Both are resolved.

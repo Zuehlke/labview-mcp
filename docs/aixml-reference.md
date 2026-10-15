@@ -2640,7 +2640,7 @@ it excludes targets that do resolve, and it does not explain the ones that do no
 | `Agilent 34401.lvlib\3AInitialize.vi` | **`instr.lib`**, library member, in the library's `Public\` folder | **resolved** |
 | `Agilent 34401.lvlib\3APublic\5CInitialize.vi` | the same VI, qualifier carrying the **in-library folder** | not resolved |
 | `Initialize.vi` | the same VI by **bare name** | not resolved |
-| `Inverse Error Function_Estimation.vi` | `vi.lib`, **inside `SpecialFunctions.llb`**, no library, no palette | not resolved |
+| `Inverse Error Function_Estimation.vi` | `vi.lib`, inside `SpecialFunctions.llb` — and a **member of `NI_AAL_MathFunc.lvlib`**, which this row missed | not resolved |
 | `ProbeLib.lvlib\3ACelsius To Fahrenheit.vi` | a **project** library, hand-written `.lvlib` | not resolved |
 | `LV_MCP\5CPlaceholder 1 in 1 out.vi` | the resolving VI above, addressed by **relative path** | not resolved |
 | `\3Cuserlib\3E\5CLV_MCP\5CPlaceholder 1 in 1 out.vi` | the same, by **symbolic-root path** | not resolved |
@@ -2663,11 +2663,60 @@ So the target is resolved **by name, against what the installation can find**:
   name' is not wired` - which is the signature of a target LabVIEW loaded and read the pane of.
   That matters because `instr.lib` is where every Plug and Play instrument driver installs, so the
   omission read as "a generated VI cannot drive an instrument", which is false.
-- **inside an `.llb`** — the bare name does NOT reach it. `.llb` contents are exposed through the
-  palette or through the owning library, not by name alone. This is what the old rule was really
-  observing: most palette VIs live in `.llb`s.
+- **inside an `.llb`** — **the `.llb` is NOT the variable; library membership is.** This bullet said
+  "the bare name does NOT reach it" until 2026-10-15, from the `Inverse Error Function_Estimation.vi`
+  row above - and that VI is a member of `NI_AAL_MathFunc.lvlib`, so it was refused as a library
+  member called by its bare name, not for its `.llb`. Re-measured with the bogus-terminal trick
+  plus a convert and `execState` (table below): a plain VI in an `.llb` resolves by bare name on
+  gRPC, in an `.llb` FOLDER and in an `.llb` FILE alike, DAQmx included; a library member in an
+  `.llb` needs its `lvlib:` qualifier like any other, even when the `.lvlib` itself sits INSIDE the
+  `.llb` file (VI Tester) - on gRPC; the pylabview composer also takes the bare name. See "`.llb`
+  targets on the two backends" below.
+- **an `.llb` qualifier** — `VI Tester API.llb\3ARun VI Test.vi` is not a spelling of anything. An
+  `.llb` is a path component, never a namespace; the qualifier is the owning `.lvlib`.
 - **a path** — never, in any spelling. Relative, absolute and symbolic-root forms were all refused.
 - **project-local code** — never, loose or in a project library, palette or not.
+
+#### `.llb` targets on the two backends (measured 2026-10-15)
+
+**In LabVIEW 2026 an `.llb` is usually a FOLDER, not a file.** On this station 344 `.llb`s under
+`vi.lib`, `user.lib` and `instr.lib` are directories and 22 are real container files (VI Tester,
+JKI EasyXML, JKI State Machine, TestStand, OpenG `buttons.llb`, `Platform\codeGenEngine.llb` …);
+under `LVAddons` 342 against 25, and **DAQmx's are FILES** (`DAQmx\read.llb`,
+`create\channels.llb`, `configure\task.llb`). Which kind a target sits in decided the pylabview
+answer until `resolve.py` learned to open a container (the right-hand column, same day). Each row: one `Call`, put through `ValidateAIXML` with a bogus
+terminal (an `Object terminal not found` answer means RESOLVED), then converted and `execState`
+read; pylabview through `lvai_convert_aixml_to_vi backend=pylabview` and `lvai_exec_state`.
+
+| `Call target=` | where it lives | gRPC | pylabview, first | pylabview, after the fix |
+|---|---|---|---|---|
+| `Simple Error Handler.vi` | `error.llb` FOLDER, no library | **resolved**, executable | **resolved**, executable | same |
+| `Inverse Error Function_Estimation.vi` | `SpecialFunctions.llb` FOLDER, member of `NI_AAL_MathFunc.lvlib` | `Unsupported SubVI` | **resolved**, executable - linked under the qualified name | same |
+| `NI_AAL_MathFunc.lvlib\3AInverse Error Function_Estimation.vi` | the same | **resolved** | **resolved**, executable | same |
+| `XML Build Entity__JKI EasyXML.vi` | `JKI_EasyXML.llb` FILE, no library | **resolved**, executable | refused: `neither near the caller nor in the installation` | **resolved**, executable |
+| `3D Arrow Pad__ogtk.vi` | OpenG `buttons.llb` FILE | **resolved** (terminal complaint) | refused, same message | **resolved**, executable |
+| `DAQmx Clear Task.vi` | `LVAddons\nidaqmx\…\configure\task.llb` FILE | **resolved** (`required input 'task in'`) | refused, same message | **resolved** (`required input 'task in'`) |
+| `Run Tests (Path).vi` | `VI Tester API.llb` FILE, member of `VI Tester API.lvlib` stored inside it | `Unsupported SubVI` | refused | **resolved**, linked as `VI Tester API.lvlib:Run Tests (Path).vi` (`required input 'Test Path'`) |
+| `VI Tester API.lvlib\3ARun Tests (Path).vi` | the same | **resolved** (`required input 'Test Path'`) | refused: `no VI Tester API.lvlib in the installation` | **resolved** (`required input 'Test Path'`) |
+
+So:
+
+- **gRPC: the `.llb` does not matter.** A plain VI resolves by bare name, a library member by its
+  `lvlib:` qualifier, wherever the `.llb` is a folder or a file. `Clear Errors.vi` resolving on
+  2026-10-06 was this rule, not an exception to another one.
+- **pylabview: the same, and a library member even by its bare name.** The composer resolves
+  against files on disk (`scripts\aixml-pylabview\resolve.py`), so an `.llb` folder was always an
+  ordinary folder - and a container `.llb` was invisible, DAQmx included, until the resolver
+  learned to open one the same day. On a miss it extracts each container whose bytes carry the
+  name (`pylabview --keep-names`, 0.3 s for `task.llb`, cached under
+  `%USERPROFILE%\.labviewmcp\cache\llb` by the container's path, size and time) and links the
+  member with the path running THROUGH the `.llb` - `<vilib>\DAQmx\configure\task.llb\DAQmx
+  Clear Task.vi`, read off NI's own `Analog Input - Filtering.vi`. A library stored inside a
+  container (`VI Tester API.lvlib`) resolves its members by the same virtual path. Measured
+  compose times: 4 s for the first DAQmx miss in a process (the whole tree is indexed and the
+  carrying containers extracted), 1.7 s for a later compose from the disk cache.
+- **A `.ctl` is no different on gRPC**: AIXML has no spelling that names a `.ctl` at all
+  (`docs/aixml-call-loaded-vi.md`), in an `.llb` or not.
 
 Two consequences worth stating separately, because each was a wrong belief that cost work:
 
@@ -3686,9 +3735,11 @@ no source checkout. Writing back is a different matter — see §9 and §11.
 Both bit here, and both produce a *false negative* that looks like "the driver is not
 installed":
 
-- **`.llb` is a single file, not a directory.** `find … -iname "DAQmx Read.vi"` can never
-  match a VI inside one, no matter which root you search. A driver's whole API can live in a
-  handful of `.llb`s — e.g. `read.llb`, `write.llb`, `create/channels.llb`.
+- **An `.llb` MAY be a single file.** `find … -iname "DAQmx Read.vi"` can never match a VI
+  inside one, no matter which root you search. A driver's whole API can live in a handful of
+  `.llb`s — e.g. `read.llb`, `write.llb`, `create/channels.llb`, all FILES. Most `.llb`s in
+  LabVIEW 2026 are FOLDERS (344 of 366 in the installation tree, measured 2026-10-15), and a
+  `find` does reach those - so a hit in one tree and a miss in another is not a contradiction.
 - **LVAddons live outside the LabVIEW tree.** Drivers ship as add-ons under
   `C:\Program Files\NI\LVAddons\<name>\<version>\`, with their own `vi.lib`, `examples` and
   `menus`. Searching every `…\National Instruments\LabVIEW <year>\` directory finds nothing.

@@ -127,10 +127,31 @@ has had. Measured 2026-08-27 over eight probes: generation resolves a target **b
 the installation can find**, and the palette has nothing to do with it. A library member resolves
 by its qualifier with no palette entry (`Caraya.lvlib\3AVI Name.vi`); a loose VI in a plain folder
 under `vi.lib` or `user.lib` resolves by its bare name with no palette entry and no library. What
-does *not* resolve: a VI inside an `.llb` by bare name — which is what the old rule was really
-seeing, since most palette VIs live in `.llb`s (not absolute: `Clear Errors.vi` from
-`error.llb` resolved by bare name on 2026-10-06) — a path in any spelling, and project-local code,
-loose or in a project library — **unless that code is LOADED, and then only for conversion.**
+does *not* resolve: a library member by its bare name, a path in any spelling, and project-local
+code, loose or in a project library — **unless that code is LOADED, and then only for conversion.**
+
+**A VI INSIDE AN `.llb` IS NOT A REASON TO GIVE UP ON A CALL - so search for the NI VI and TRY the
+call before ruling it out.** This paragraph said "a VI inside an `.llb` does not resolve by bare
+name" until 2026-10-15, and two agents duly refused `Simple Error Handler.vi` on that ground. The
+row behind it was a library member: `Inverse Error Function_Estimation.vi` belongs to
+`NI_AAL_MathFunc.lvlib`, so it was refused for its LIBRARY, not its `.llb`. Re-measured on both
+backends - `docs/aixml-reference.md` §9, "`.llb` targets on the two backends":
+
+- **gRPC: the `.llb` does not matter at all.** Bare name for a plain VI, `lvlib:` qualifier for a
+  library member - in an `.llb` FOLDER and in an `.llb` FILE alike: `Simple Error Handler.vi`,
+  `XML Build Entity__JKI EasyXML.vi`, `DAQmx Clear Task.vi`,
+  `VI Tester API.lvlib\3ARun Tests (Path).vi` all resolved. An `.llb` is never a qualifier.
+- **pylabview: the same, since the same day.** Most `.llb`s in LabVIEW 2026 are folders (344 of
+  366 in the installation tree), and there the composer resolves a VI like any other file - a
+  library member even by its bare name. The rest are CONTAINER FILES, every DAQmx `.llb` among
+  them, and the composer could not see into one until `resolve.py` learned to: on a miss it
+  extracts the container through pylabview (0.3 s for DAQmx `task.llb`, cached under
+  `%USERPROFILE%\.labviewmcp\cache\llb`) and links the member with the path running THROUGH the
+  `.llb`, exactly as LabVIEW writes it (`<vilib>\DAQmx\configure\task.llb\DAQmx Clear Task.vi`,
+  read off NI's own DAQmx example). Every probe above then gave the gRPC answer over ActiveX -
+  `execState 1`, or only the unwired required input named. The first miss in a process costs a
+  few seconds (the containers whose bytes carry the name are extracted); later ones come from
+  the cache.
 
 **PROJECT-LOCAL CODE RESOLVES BY BARE NAME ONCE IT IS OPEN IN LabVIEW — measured 2026-09-25 on
 NI's hint, and the sentence above said "does not resolve" flatly until then.** Opened through its

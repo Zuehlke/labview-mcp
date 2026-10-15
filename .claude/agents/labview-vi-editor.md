@@ -276,7 +276,7 @@ Read the two messages apart — the distinction is the whole diagnosis:
 
 | Message | Meaning |
 |---|---|
-| `Unsupported SubVI: X` | the target was **not resolved by the validator** → regenerable once X is loaded (open it through the project, then `lvai_generate_vi`); still a stop when X is a project-LIBRARY member (unmeasured) or lives in an `.llb` |
+| `Unsupported SubVI: X` | the target was **not resolved by the validator** → regenerable once X is loaded (open it through the project, then `lvai_generate_vi`); still a stop when X is a project-LIBRARY member (unmeasured). An INSTALLED VI in an `.llb` is not a stop by itself: on gRPC a plain one resolves by bare name and a library member by its `lvlib:` qualifier, `.llb` folder or file alike - try the qualified spelling before giving up (CLAUDE.md, "A VI INSIDE AN `.llb`") |
 | `Object terminal not found` | the target **was** resolved, only a terminal name is wrong → fixable |
 
 The second line above is just a knock-on: an unresolved target has no terminals, so its wires
@@ -289,9 +289,12 @@ own path) and read `loadedSubVIs.executable`. `true` means the VI is regenerable
 route: continue, and generate the edited version the same way later. Delete the scratch VI
 afterwards. Nothing of the user's has been touched by that probe.
 
-**Otherwise - any other refusal line, a project-LIBRARY member, an `.llb` target, or a probe that
-comes back not executable - stop.** Nothing has been touched yet, which is the point of doing this
-first. Return:
+**Otherwise - any other refusal line, a project-LIBRARY member, or a probe that comes back not
+executable - stop.** An installed target in an `.llb` is not on that list: re-validate it with its
+`lvlib:` qualifier first (the owning `.lvlib` is in the VI's export, or ask `lvai_vi_terminals`), and
+stop only if that is refused too. The `pylabview` backend reaches the same targets, `.llb` FILES
+such as DAQmx's included, and takes a library member by its bare name as well. Nothing has been
+touched yet, which is the point of doing this first. Return:
 
 ```
 CANNOT PROCEED
@@ -302,7 +305,7 @@ Blocking calls (targets the generator cannot resolve):
   - Utilities/Parse Line.vi
 
 Why: these targets did not resolve even with the callees loaded (or are of a kind the
-loaded route is not measured for: a project-library member, a VI inside an .llb), so
+loaded route is not measured for: a project-library member), so
 these nodes cannot be written back.
 
 What can still be done:
@@ -312,8 +315,8 @@ What can still be done:
 
 This gate used to put most real application VIs out of reach, because 70 % of them call the
 project's own subVIs (`docs/aixml-gap-census.md`). Since the loaded route (2026-09-25) that share
-is reachable in principle; what still stops a VI is a library-member target, an `.llb` target, or
-a construct AIXML cannot carry.
+is reachable in principle; what still stops a VI is a project-library-member target or a
+construct AIXML cannot carry. An installed VI in an `.llb` does not (measured 2026-10-15).
 Find out in two calls rather than after an hour.
 
 ### Phase 3 — Has the new functionality already been built?
@@ -447,8 +450,11 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    settled 2026-10-02:** no `error in`; end the chain in an `error out` INDICATOR when new controls
    are allowed (`allowNewControls`), merged with `Merge Errors`. When they are not, do not leave
    it dangling - an unwired error output raises LabVIEW's automatic error dialog, a modal that
-   stops the whole gRPC service - and `Simple Error Handler.vi` is not callable by bare name (it
-   lives in an `.llb`): return `NEEDS CLARIFICATION` asking whether an `error out` may be added.
+   stops the whole gRPC service. `Simple Error Handler.vi` IS callable by bare name on both backends
+   (it lives in the `error.llb` FOLDER; this line said the opposite until 2026-10-15) and ends the
+   chain without a new control - but it raises a modal dialog on an error, which stops the gRPC
+   service exactly like the automatic one. So return `NEEDS CLARIFICATION` asking whether an
+   `error out` may be added, and name `Simple Error Handler.vi` as the alternative with that cost.
    **Every event button must be WIRED in the scaffold**, even one whose value the program never
    needs: put its terminal inside its own Value Change frame, wired to a Case selector whose TRUE
    case does the work. A LATCHED button read there answers TRUE for the press and resets itself,

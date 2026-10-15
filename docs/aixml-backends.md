@@ -1086,8 +1086,39 @@ stayed `execState 3` - so the next run of `Find Account.vi`, a subVI of its hand
 `Error 1000` at `Run VI`. Running the module's own `Stop Module.vi` released it. Signal the
 program's Stop as the last signal when it starts a module, or stop the module afterwards.
 
+## A Call into an `.llb` FILE - DAQmx among them (fixed 2026-10-15)
+
+**The composer refused every target inside an `.llb` CONTAINER file**, where NI's converter
+resolves them all: `DAQmx Clear Task.vi`, VI Tester, JKI EasyXML and OpenG `buttons.llb` answered
+`neither near the caller nor in the installation` (or `no X.lvlib in the installation` for a
+library stored inside one). `resolve.py` walked directories, and an `.llb` FOLDER - 344 of the 366
+in the installation tree - had always been an ordinary folder to it, so the gap was the other 22,
+plus 25 under `LVAddons`: every DAQmx `.llb`.
+
+**How LabVIEW links such a callee was read first, not guessed**: NI's `Analog Input -
+Filtering.vi` names `DAQmx Clear Task.vi` with `TpVal 0` and `<vilib>`, `DAQmx`, `configure`,
+`task.llb`, `DAQmx Clear Task.vi` - the same shape as a member of an `.llb` folder, a path running
+through the `.llb`. So the member keeps that VIRTUAL path everywhere a path is written, and only
+`resolve.materialize()` turns it into a real file: pylabview extracts the container once with
+`--keep-names`, which writes each member under its own name (0.3 s for `task.llb`), cached under
+`%USERPROFILE%\.labviewmcp\cache\llb` by the container's path, size and time
+(`LABVIEWMCP_CACHE_DIR` moves it). A container is opened only on a MISS, and only when its raw
+bytes carry the name, because extracting is a pylabview run. The composer reads the callee's pane
+from the extracted file (`_extract_callee`), a library inside a container resolves its members
+by the same virtual path, and the reader's `link_file` materializes a DAQmx link too.
+
+**Measured over ActiveX** on the probes of `docs/aixml-reference.md` §9: JKI EasyXML and OpenG
+`3D Arrow Pad__ogtk.vi` `execState 1`; `DAQmx Clear Task.vi` and VI Tester's `Run Tests (Path).vi`
+(bare and qualified) broken ONLY by their unwired required input, named by LabVIEW - the gRPC
+answer to the letter, and proof that LabVIEW loaded the link and read the callee's pane. A
+first DAQmx miss in a process took 4 s, a later compose 1.7 s. `PylabviewLlbContainerTests`
+covers the DAQmx and the VI Tester case where they are installed and skips elsewhere.
+
 ## Not covered, and not measured
 
+- **A DAQmx call has not been RUN through a composed VI** - the probes above stop at the link and
+  the pane, because a DAQmx task needs a device (simulated or real) this station was not set up
+  with.
 - **ActiveX is Windows only and needs a running LabVIEW**; it never starts one, so with no LabVIEW
   the pylabview backend writes and reads VIs and reports executability as not measured.
 - **`lvai_connector_pane` on pylabview does not MEASURE the pane's orientation** - the slot

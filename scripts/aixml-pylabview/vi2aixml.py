@@ -465,10 +465,12 @@ def link_file(path, caller_file):
         if _RESOLVER is None:
             import resolve
             _RESOLVER = resolve.Resolver()
+        import resolve
         for anchor, d in _RESOLVER.roots:
             if anchor == comps[0]:
-                p = os.path.join(d, *comps[1:])
-                if os.path.exists(p):
+                # a path through an .llb CONTAINER (every DAQmx link) is read from its extracted member
+                p = resolve.materialize(os.path.join(d, *comps[1:]))
+                if p:
                     return p
         return None
     if kind == 0:

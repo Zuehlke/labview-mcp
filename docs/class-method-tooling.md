@@ -1556,7 +1556,9 @@ Three things about it are not optional:
   not.
 
 The VI lives in an `.llb` (`vi.lib\Utility\traverseref.llb`), so `lvai_vi_terminals` cannot read it
-and a bare name does not resolve. The qualifier and every terminal name above came from exporting
+and a bare name does not resolve. (Corrected 2026-10-15: the bare name fails because the VI is a
+LIBRARY member - `traverseref.llb` is a folder, and the `.llb` itself does not stop a `Call`;
+`docs/aixml-reference.md` §9, "`.llb` targets on the two backends".) The qualifier and every terminal name above came from exporting
 NI's own `Obtaining Unknown Object References.vi`, which is the documented route for any
 library-owned VI.
 
