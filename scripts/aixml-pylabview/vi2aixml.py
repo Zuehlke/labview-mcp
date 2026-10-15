@@ -1136,6 +1136,15 @@ class Reader:
         for attr, bit in aixml2vi.Composer.PRIM_MODE_BITS.get(name, {}).items():
             if int(node.findtext("objFlags") or 0) & bit:
                 el.set(attr, "true")
+        if name == "Array To Cluster":
+            # its cluster SIZE is the output's field count, which NI's exporter writes as
+            # elements="N" on every such node; left out, the composer takes LabVIEW's default
+            # of nine and a round trip of a three-field node came back broken
+            for term in node.find("termList"):
+                if term.find("dco").findtext("parmIndex") is None:
+                    tree = self.tid_tree(term.find("dco"))
+                    if tree is not None and tree.get("Type") == "Cluster":
+                        el.set("elements", str(len(aixml2vi.fields(tree))))
         for term in node.find("termList"):
             dco = term.find("dco")
             pidx = dco.findtext("parmIndex") or "out"
@@ -1360,7 +1369,13 @@ class Reader:
         # one event (aixml2vi.event_items), so joining with ',' made NI's Graph Events.vi frame
         # read back as one source list ending in 'Autoscale Range Change: Cursor Release'
         # ...and ';' with TWO spaces after it (Graph Events.vi, `t125`'s user events)
-        return {i: " %s " % ";  ".join(("%s: %s" % (", ".join(src), kind)) if src else kind for src, kind in v)
+        # ESCAPED as NI writes a selector: ':' is \3A and ',' is \2C, ';' stays raw - counted over
+        # the cached exports, 443 Value Change selectors and every one `"Search"\3A Value Change`.
+        # This wrote them raw until 2026-10-15, and lvai_graft_diagram's EventFrames, which matches
+        # NI's `\3A`, then found NO frame on the pylabview backend, skipped the re-registration and
+        # left the grafted VI eBad ("one or more event cases have no events defined").
+        return {i: escape_description(" %s " % ";  ".join(("%s: %s" % (", ".join(src), kind)) if src else kind
+                                                          for src, kind in v))
                 for i, v in items.items()}
 
     def case(self, node, parent_uid, event=False):

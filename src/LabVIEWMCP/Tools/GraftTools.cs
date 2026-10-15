@@ -861,6 +861,18 @@ internal sealed class GraftTools(LvaiConnection connection)
     {
         if (!File.Exists(scaffoldXml)) return null;
         var reading = EventFrames.Read(scaffoldXml);
+        // A selector the reader REFUSES is not "no Event Structure": until 2026-10-15 both came
+        // back as null here, so a scaffold whose frames could not be read was grafted with every
+        // registration lost and answered `events: null` beside an eBad VI.
+        if (reading.Refusal is not null && reading.RefusalKind != "noEventStructure")
+            return new JsonObject
+            {
+                ["ok"] = false,
+                ["framesRegistered"] = 0,
+                ["refusalKind"] = reading.RefusalKind,
+                ["note"] = "The scaffold's Event Structure could not be read, so no registration " +
+                           "could be written back: " + reading.Refusal,
+            };
         if (reading.Frames.Count == 0) return null;
         var frames = reading.Frames.Where(f => f.Control is not null).ToList();
         if (frames.Count == 0) return null;

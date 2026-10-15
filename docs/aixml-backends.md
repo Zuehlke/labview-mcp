@@ -1013,6 +1013,48 @@ structures (36) and Flat Sequence frames (3) match what the composer writes. A D
 (`commentNode`) reads `(+1, +1, -1, -1)` on NI's four, but written so in the composer its label
 slid under the frame selector, so that one stays at 6 until the selector's geometry is measured.
 
+## The graft lost its events, and Array To Cluster was refused (fixed 2026-10-15)
+
+Both found by the DQMH ATM cold build of 2026-10-15, both sending that build back to NI's
+service - the user's request was to fix them so that a build needs `grpc` no more.
+
+**`lvai_graft_diagram` on pylabview left an event-driven VI eBad** - "one or more event cases
+have no events defined", `events: null` in the answer, and `grpc` grafted the same scaffold clean.
+The graft reads the scaffold's frames off its EXPORT with `EventFrames`, which matches NI's
+spelling ` "Card Simulator"\3A Value Change `. **`vi2aixml.py` wrote the colon RAW** -
+` "Card Simulator": Value Change ` - so on pylabview every frame was an unrecognised selector, and
+`ReregisterEventsAsync` turned that refusal into the same `null` as "no Event Structure" and
+grafted on. NI escapes `:` as `\3A` and `,` as `\2C` in every selector - all 443 Value Change
+selectors in the cached exports, and multi-source ones as `<Preview>\2C <Terminals>\3A Mouse Down`;
+`;` between events stays raw. Three fixes: the reader escapes as NI does, `EventFrames` accepts
+either spelling, and a refused selector now FAILS the graft (`eventReregistrationFailed` with the
+refusal) instead of passing as "nothing to register". The composer reads both spellings already -
+it unescapes a selector before splitting it.
+
+**`Array To Cluster elements="3"` was refused** - `mode elements=3 is not composable yet`. Measured
+on NI's converter's builds of two probes (array{double} in): with `elements="3"` the output is a
+cluster of three `NumFloat64` labelled `Items[0..2]` after the wire's source `Items`, WITHOUT the
+attribute nine of them. The size lives in the output's type and nowhere else in the heap. The
+composer wrote the PART DONOR's type instead - a cluster of three strings from
+`examples\Arrays\Array to Cluster.vi` - whatever the document asked for: right by luck for the ATM's
+three menu captions, and for a double array LabVIEW re-typed it on load (a control arm with the
+old composer ran `[1.5,2.5,3.5]`), but the size was always three where NI's is nine, and
+`elements` itself was refused. The composer now types the output from the wired array's element
+type and `elements` (default 9, range 1..256), and **the reader writes `elements="N"`** from the
+output's field count - it wrote none, so a round trip could not keep the size. Measured over
+ActiveX: `elements="3"` on doubles and on strings, and no attribute on doubles, each ran with the
+values NI's build gives.
+
+**Accepted over raw stdio with `LABVIEW_GRPC_PORT=1`**, so a call still reaching NI would have
+failed: the ATM scaffold grafted into a copy of the exam's supplied VI on `pylabview` - `ok`,
+`execState 1`, 8 controls grafted plus the `error out` it adds, `wiringMatchesScaffold`, **5 frames
+registered again**, 39 s. Driven afterwards (`signalsJson`, which only the gRPC run has): card in
+and typing left `Card Simulator` disabled and `User Input`/`Enter` enabled, the scaffold's Account
+mode. `roundtrip.py` over the composer suite: **137 of 138**, `t136` (VI Activation, needs the
+desktop's focus) failing with the old reader too; `t133` and `t138` failed once and passed on a
+rerun, as they did with the old code. Pass the suite's `--out` as a BACKSLASH path - one with
+forward slashes made every case `ExecState None`, because LabVIEW answered "file not found" for it.
+
 ## Not covered, and not measured
 
 - **ActiveX is Windows only and needs a running LabVIEW**; it never starts one, so with no LabVIEW

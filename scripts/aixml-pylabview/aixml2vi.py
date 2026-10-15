@@ -2189,7 +2189,11 @@ class Composer:
     # on NI's In Range and Coerce.vi (aggregate=true)
     NODE_ATTRS = {"_name", "inputs", "outputs", "uid", "uid_parent", "_id"}
     PRIM_MODES = {"In Range and Coerce": ("includeHigh", "includeLow"),   # name -> mode attributes add_node writes
-                  "Read from Text File": ("readLines",)}
+                  "Read from Text File": ("readLines",),
+                  "Array To Cluster": ("elements",)}
+    # Array To Cluster's cluster size when `elements` is absent - LabVIEW's own default, read off
+    # NI's converter's build of a probe without the attribute, 2026-10-15: nine fields
+    ARRAY_TO_CLUSTER_DEFAULT = 9
     # a mode that is a bit of the prim's objFlags, read off probes/pmodes.xml through NI's own
     # converter: includeLow 0x200000, includeHigh 0x100000, neither 0 (NI's exports write the
     # attribute only when it is true, 21 of 27 In Range nodes with both)
@@ -2208,6 +2212,37 @@ class Composer:
         if unknown:
             raise Unsupported("Node %r: mode %s is not composable yet" % (
                 unescape(el.get("_name") or ""), ", ".join("%s=%s" % (a, el.get(a)) for a in unknown)))
+
+    def _array_to_cluster_type(self, el, net):
+        """Array To Cluster's output: a cluster of `elements` fields, each the wired array's
+        ELEMENT type - read off NI's converter's build of two probes, 2026-10-15: an array{double}
+        with elements="3" answers Cluster{Items[0], Items[1], Items[2]} of NumFloat64, labelled
+        after the wire's source `Items`, and without the attribute nine of them. The part's donor
+        is a cluster of three STRINGS, which every Array To Cluster composed as until then - right
+        by luck for the ATM's three menu captions, broken for any other element type or size -
+        and `elements` itself was refused."""
+        raw = el.get("elements")
+        try:
+            n = int(raw) if raw is not None else self.ARRAY_TO_CLUSTER_DEFAULT
+        except ValueError:
+            raise Unsupported("Array To Cluster %s: elements=%r is not a number" % (el.get("uid"), raw))
+        if not 1 <= n <= 256:
+            raise Unsupported("Array To Cluster %s: elements=%d is outside 1..256" % (el.get("uid"), n))
+        arr = self.net_type.get(net) if net else None
+        if arr is None or arr.get("Type") != "Array" or len(arr.findall("Dimension")) != 1:
+            raise Unsupported("Array To Cluster %s: needs a wired 1D array to type its cluster" % el.get("uid"))
+        item = elem_of(arr)
+        lab = self._source_label(net) or ""
+        out = ET.Element("TypeDesc", {"Type": "Cluster", "Format": "inline"})
+        if lab:
+            out.set("Label", lab)
+        for i in range(n):
+            f = copy.deepcopy(item)
+            f.attrib.pop("Label", None)
+            if lab:
+                f.set("Label", "%s[%d]" % (lab, i))
+            out.append(f)
+        return out
 
     def add_node(self, el):
         name = unescape(el.get("_name"))
@@ -2390,6 +2425,12 @@ class Composer:
             ET.SubElement(a, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
             ET.SubElement(a, "TypeDesc", {"Type": "String", "Prop1": "0xFFFFFFFF", "Format": "inline"})
             new_types[idx_of[id(by_name["text"])]] = a
+        if name == "Array To Cluster":
+            # NI's converter takes the terminal names in any case (`array`/`cluster` in its
+            # exports), so the lookup does too
+            out_term = next(t for t in terms if int(t.find("dco").findtext("objFlags") or 0) & 1)
+            arr_net = next((n for k, n in ins if k.lower() == "array"), None)
+            new_types[idx_of[id(out_term)]] = self._array_to_cluster_type(el, arr_net)
         for tname, net in outs:
             if net:
                 self.net_type[net] = new_types[idx_of[id(by_name[tname])]]

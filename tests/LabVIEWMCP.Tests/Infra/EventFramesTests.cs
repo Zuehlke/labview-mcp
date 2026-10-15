@@ -72,6 +72,27 @@ public sealed class EventFramesTests : IDisposable
         Assert.All(reading.Frames, f => Assert.True(f.NeedsRegistration));
     }
 
+    /// <summary>
+    /// The selector our OWN reader (vi2aixml.py) wrote until 2026-10-15, copied out of its export of
+    /// the ATM scaffold: a RAW colon where NI writes <c>\3A</c>. Not matched, it was silently "no
+    /// frames" to lvai_graft_diagram on the pylabview backend, which skipped the re-registration
+    /// and left the grafted VI eBad. Both spellings must read the same.
+    /// </summary>
+    [Fact]
+    public void ReadsARawColonAsNIsEscapedOne()
+    {
+        var raw = EventFrames.Read(Document(" &quot;Card Simulator&quot;: Value Change ",
+                                            " &lt;Tick&gt;: User Event "));
+        var escaped = EventFrames.Read(Document(" &quot;Card Simulator&quot;\\3A Value Change ",
+                                                " &lt;Tick&gt;\\3A User Event "));
+
+        Assert.Null(raw.Refusal);
+        Assert.Equal(escaped.Frames.Select(f => (f.Control, f.Trigger, f.UserEvent)),
+                     raw.Frames.Select(f => (f.Control, f.Trigger, f.UserEvent)));
+        Assert.Equal("Card Simulator", raw.Frames[0].Control);
+        Assert.Equal("Tick", raw.Frames[1].UserEvent);
+    }
+
     /// <summary>A control name may contain spaces; the closing quote is what ends it.</summary>
     [Fact]
     public void KeepsSpacesInsideAControlName()

@@ -78,8 +78,15 @@ internal static class EventFrames
         internal List<DataFieldLoss> DataFieldLosses { get; init; } = [];
     }
 
+    /// <summary>
+    /// The colon is NI's <c>\3A</c>, or a RAW <c>:</c> - our own reader wrote it raw until
+    /// 2026-10-15, and a selector this does not match was silently "no frames" to
+    /// lvai_graft_diagram, which then left the grafted VI eBad on the pylabview backend.
+    /// </summary>
+    private const string Colon = @"(?:\\3A|:)";
+
     private static readonly Regex Static = new(
-        @"^\s*""(?<control>.+)""\\3A\s*(?<trigger>.+?)\s*$", RegexOptions.Compiled);
+        @"^\s*""(?<control>.+)""" + Colon + @"\s*(?<trigger>.+?)\s*$", RegexOptions.Compiled);
 
     /// <summary>
     /// A DYNAMIC user event: ` &lt;Data Event&gt;\3A User Event `. The name inside the
@@ -87,7 +94,7 @@ internal static class EventFrames
     /// event has no front-panel ddo, so there is nothing to resolve out of the heap.
     /// </summary>
     private static readonly Regex Dynamic = new(
-        @"^\s*<(?<event>.+)>\\3A\s*User Event\s*$", RegexOptions.Compiled);
+        @"^\s*<(?<event>.+)>" + Colon + @"\s*User Event\s*$", RegexOptions.Compiled);
 
     internal static Reading Read(string aiXmlPath)
     {
