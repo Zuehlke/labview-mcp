@@ -930,7 +930,7 @@ def _const_value(tree, value):
     if t in ("String", "Tag"):
         # a Tag constant (a DAQmx terminal name ...) is flattened like a string: measured
         # 0000000C 4F6E626F617264436C6F636B for "OnboardClock"
-        b = unescape(value or "").encode("mac_roman")
+        b = lvheap.value_bytes(unescape(value or ""))
         return (struct.pack(">I", len(b)) + b).hex().upper()
     if t == "NumFloatExt":
         return _quad(float(value or 0))
@@ -955,7 +955,7 @@ def _const_value(tree, value):
                 comps[0] = comps[0].rstrip(":")
             body = struct.pack(">HH", 0 if absolute else 1, len(comps))
             for c in comps:
-                cb = c.encode("mac_roman")
+                cb = lvheap.value_bytes(c)
                 body += struct.pack(">B", len(cb)) + cb
         return (b"PTH0" + struct.pack(">I", len(body)) + body).hex().upper()
     if t == "Refnum":
@@ -4570,7 +4570,7 @@ class Composer:
                     if st.get("Type") != "String":
                         raise Unsupported("Case Structure %s: string selectors on a %s wire" % (el.get("uid"), st.get("Type")))
                     strs = sorted({x[1:-1] for its in items for x in its if x.startswith('"') and ".." not in x},
-                                  key=lambda s: s.encode("mac_roman"))
+                                  key=lvheap.value_bytes)
                     strings = strs
                     value = lambda x: strs.index(x[1:-1])
                 elif kind == "enum":
@@ -4614,7 +4614,7 @@ class Composer:
             for c in list(sa):
                 sa.remove(c)
             for s in strings:
-                ET.SubElement(sa, "SL__arrayElement").text = s.encode("mac_roman").hex().upper() or None
+                ET.SubElement(sa, "SL__arrayElement").text = lvheap.value_bytes(s).hex().upper() or None
             sa.set("elements", str(len(sa)))
             case.find("SelectDefaultCase").text = "%02X" % default
             case.find("SelectNRightType").text = str(len(ra))

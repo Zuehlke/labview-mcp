@@ -14,6 +14,7 @@ between them. What it does not read yet is written as an XML comment naming the 
 so nothing is dropped in silence.
 """
 import json
+import math
 import os
 import re
 import shutil
@@ -125,13 +126,37 @@ def aixml_type(tree):
         return "fixed"      # NI's export writes a fixed-point number bare, its word lengths dropped
     if k and k.startswith("Unit"):
         base = TYPE_TO_AIXML.get("Num" + k[4:])
-        if base is None or tree.find("PhysUnit") is not None:
+        if base is None:
             return None
+        units = tree.findall("PhysUnit")
+        if units:
+            spelt = unit_text(units)
+            return "%s{%s}" % (base, spelt) if spelt else None
         labels = [e.text or "" for e in tree.findall("EnumLabel")]
         if labels:
             return "%s{%s}" % (base, ",".join(escape_value(l) for l in labels))
         return base
     return TYPE_TO_AIXML.get(k)
+
+
+# a numeric's PHYSICAL UNIT: one <PhysUnit Val1=base Val2=exponent> per SI base unit, the exponent
+# a signed 16-bit number (65533 is -3). NI's export spells the product `m^-3 kg` - in base order,
+# separated by a space, exponent 1 bare. Measured 2026-10-15 on the cache's units: 2 = s, 3 = m,
+# 4 = kg (double{s}, double{m}, double{m^-3 kg}); the rest is LabVIEW's base-unit order and is
+# NOT measured here, so an index outside the three reads as "unknown unit" rather than a guess.
+PHYS_UNITS = {2: "s", 3: "m", 4: "kg"}
+
+
+def unit_text(units):
+    parts = []
+    for u in sorted(units, key=lambda u: int(u.get("Val1") or 0)):
+        name = PHYS_UNITS.get(int(u.get("Val1") or -1))
+        if name is None:
+            return None
+        exp = int(u.get("Val2") or 1)
+        exp = exp - 0x10000 if exp >= 0x8000 else exp
+        parts.append(name if exp == 1 else "%s^%d" % (name, exp))
+    return " ".join(parts)
 
 
 def empty_value(tree):
@@ -191,10 +216,12 @@ def escape_value(v):
 
 
 def fmt_float(v):
+    # lower case, as NI's exporter writes them: 8 nan and 18 inf/-inf in the cached exports and
+    # not one NaN or Inf (2026-10-15)
     if v != v:
-        return "NaN"
+        return "-nan" if math.copysign(1.0, v) < 0 else "nan"   # NI keeps the sign bit
     if v in (float("inf"), float("-inf")):
-        return "Inf" if v > 0 else "-Inf"
+        return "inf" if v > 0 else "-inf"
     return "%.17g" % v
 
 
@@ -276,17 +303,37 @@ def _flat_decode(tree, b, pos):
         return str(struct.unpack(INT_FMT[t], b[pos:pos + n])[0]), pos + n
     if t == "String":
         n = struct.unpack(">I", b[pos:pos + 4])[0]
-        return escape_value(b[pos + 4:pos + 4 + n].decode("mac_roman")), pos + 4 + n
+        return escape_value(lvheap.value_text(b[pos + 4:pos + 4 + n])), pos + 4 + n
     if t == "Path":
         n = struct.unpack(">I", b[pos + 4:pos + 8])[0]
         return _decode_value(tree, b[pos:pos + 8 + n].hex()), pos + 8 + n
+    # Measured 2026-10-15 on the cluster constants the reader left undecoded (63 in the cache): a
+    # REFNUM in a constant is four bytes and NI writes it empty; a PICTURE is length-prefixed like
+    # a string; an EMPTY variant is the 20 bytes below and NI writes it empty too. A variant that
+    # holds data is not decoded - its layout was not measured.
+    if t == "Refnum":
+        if len(b) < pos + 4:
+            raise ValueError("refnum past the end")
+        return "", pos + 4
+    if t == "Picture":
+        n = struct.unpack(">I", b[pos:pos + 4])[0]
+        return escape_value(lvheap.value_text(b[pos + 4:pos + 4 + n])), pos + 4 + n
+    if t == "LVVariant":
+        if b[pos + 4:pos + 20] == EMPTY_VARIANT_TAIL:
+            return "", pos + 20
+        raise ValueError("a variant holding data")
     raise ValueError("no flattened form known for %s" % t)
+
+
+# an EMPTY variant flattened, after its 4-byte version word (0x26008000 in LabVIEW 2026): one type,
+# void (`0004 0000`), then `0001 0000`, no data and no attributes
+EMPTY_VARIANT_TAIL = bytes.fromhex("00000001000400000001000000000000")
 
 
 def _decode_value(tree, hexstr):
     if tree.get("Type") == "TypeDef" and tree.find("TypeDesc") is not None:
         return _decode_value(tree.find("TypeDesc"), hexstr)
-    if tree.get("Type") in ("Array", "Cluster", "NumFloatExt", "NumComplex128", "NumComplex64"):
+    if tree.get("Type") in ("Array", "Cluster", "NumFloatExt", "NumComplex128", "NumComplex64", "Picture"):
         return _flat_decode(tree, bytes.fromhex(hexstr) if hexstr else b"", 0)[0]
     t = tree.get("Type")
     if t and t.startswith("Unit"):
@@ -306,7 +353,7 @@ def _decode_value(tree, hexstr):
         return "true" if b and b[0] else "false"
     if t in ("String", "Tag"):
         n = struct.unpack(">I", b[:4])[0] if b else 0
-        return escape_value(b[4:4 + n].decode("mac_roman"))
+        return escape_value(lvheap.value_text(b[4:4 + n]))
     if t == "Path":
         if len(b) < 12:
             return ""
@@ -314,7 +361,7 @@ def _decode_value(tree, hexstr):
         comps, i = [], 12
         for _ in range(count):
             n = b[i]
-            comps.append(b[i + 1:i + 1 + n].decode("mac_roman"))
+            comps.append(lvheap.value_text(b[i + 1:i + 1 + n]))
             i += 1 + n
         if kind == 0 and comps:
             return escape_value(comps[0] + ":\\" + "\\".join(comps[1:]))
@@ -934,6 +981,21 @@ class Reader:
                 ranks[t[2]] = n
         return ranks
 
+    def dco_def(self, d):
+        """A DCO as its DEFINITION. A term's <dco> is often a bare `<dco uid="402"/>` whose class
+        and body live elsewhere in the heap - a shift register's rSR, for one, is defined NESTED in
+        its lSR (`<dco class="lSR"> ... <rsrDCO class="rSR" uid="402">`), so the loop's own term for
+        it carries no class. Read as classless, 53 of 58 missing shift registers in the cached NI
+        exports went missing that way (2026-10-15)."""
+        if d is None or d.get("class"):
+            return d
+        if getattr(self, "_dco_index", None) is None:
+            self._dco_index = {}
+            for e in self.b.bd.iter():
+                if e.get("class") and e.get("uid"):
+                    self._dco_index.setdefault(e.get("uid"), e)
+        return self._dco_index.get(d.get("uid"), d)
+
     @staticmethod
     def node_defs(diag):
         """The nodes of a diagram, in nodeList order, each resolved to its DEFINITION (often in
@@ -1180,6 +1242,17 @@ class Reader:
         el.set("type", t or "?" + lvheap.type_key(tree))
         el.set("uid", ddo.get("uid"))
         el.set("uid_parent", parent_uid)
+        if dco.find("ConstValue") is None:
+            # NOT a default: measured 2026-10-15 over the cache, every constant of a file saved by
+            # LabVIEW 11 or later carries ConstValue (5 803 of 5 803), and only the LabVIEW 9.0
+            # files lack it - their values live in the compiled data space, which pylabview does
+            # not decode, and 64 of their 78 are not the default. Decoding "" as 0/false/"" made
+            # Dictionary Example.vi's 57 constants plausible and wrong.
+            el.set("value", "")
+            self.notes.append("constant %s: value not stored in the block diagram heap (a file from "
+                              "before LabVIEW 11 keeps it in compiled code) - not decoded" % ddo.get("uid"))
+            self.term_owner[term.get("uid")] = (el, "value", False)
+            return el
         v = decode_value(tree, dco.findtext("ConstValue") or "") if t else None
         el.set("value", v if v is not None else "")
         if v is None:
@@ -1297,7 +1370,7 @@ class Reader:
         children = []
         rank = self._tunnel_ranks(node, "lpTun")
         for term in node.find("termList"):
-            d = term.find("dco")
+            d = self.dco_def(term.find("dco"))
             if d is None:
                 continue
             dc = d.get("class")
@@ -1463,7 +1536,7 @@ class Reader:
                 if d is not None and t.get("class") == "term":
                     ts.setdefault(d.get("uid"), []).append(t)
             frame_srn_terms.append(ts)
-        sel_strings = [bytes.fromhex(x.text).decode("mac_roman") if x.text else ""
+        sel_strings = [lvheap.value_text(bytes.fromhex(x.text)) if x.text else ""
                        for x in node.findall("SelectStringArray/SL__arrayElement")]
         sel_tree = None
         frame_els = []
@@ -1477,7 +1550,7 @@ class Reader:
         outer_tunnels = []
         rank = self._tunnel_ranks(node, "selTun")
         for term in node.find("termList"):
-            d = term.find("dco")
+            d = self.dco_def(term.find("dco"))
             if d is None:
                 continue
             dc = d.get("class")

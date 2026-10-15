@@ -1199,6 +1199,76 @@ escapes off there.
 tests pin the key separation in both directions. Each new test was checked against the old code:
 the two reader tests fail on the old reader, the preference test fails with the order swapped.
 
+## Can the reader reproduce the whole cache? (measured 2026-10-15)
+
+The question was whether every NI export in `cache\aixml` could be rebuilt on `pylabview`. All 874
+entries, the cache left untouched (the reader wrote into a scratch folder): 4 are reader entries
+already, 5 name a `user.lib\LV_MCP` socket that no longer exists, and **all 865 others were read -
+0 failures, 0 timeouts, 0 stderr**, `.llb` members included; median 1.1 s, p95 4.8 s, one outlier
+at 177 s (Wovalab `Asciidoc\Basic Example.vi`).
+
+Of those, 60 have nothing to compare: NI exported 10 empty (password-protected) and 50 without a
+diagram (locked - the reader DID read their diagrams). Of the 805 left, **197 are identical in every
+attribute, 230 more in every fact** (`compare_full.py`'s four sets) and 378 differ. 23 entries are
+stale (the VI changed after NI's export, mostly regenerated sockets) - 10 of the 378 are those, so
+they say nothing about the reader. What the 368 others are made of, by element:
+
+| cause | weight | relevant? |
+|---|---|---|
+| **constructs the reader does not read** - a comment names each: `decomposeDataValRefNode` 172, `callByRefNode` 88, `decomposeClusterNode` 50, `xNode` 47 (Express VIs, Database Variant To Data), `decomposeArrayNode` 42, `sequence` 34 (Stacked Sequence), `extFunc` 20 (Call Library Function), `xDataNode` 16, `mergeSignal` 13, `callParentDynIUse` 10, `Class0183` 10 (Python Node), `timeLoop` 8, `constructorNode` 6 (.NET), `decomposeArraySplitNode` 6, `fBox` 3 (Formula Node), `eventRegCallback` 3, `decomposeVariantNode` 2, three unnamed classes | 1 426 lost edges, 517 nodes and 438 tunnels INSIDE them | **yes** - the In Place Element structure alone is 172 nodes; everything inside an unread structure is lost with it |
+| **shift registers missing**: 58 in 36 VIs, 53 of them one cause - the rSR DCO is DEFINED nested in the lSR (`<dco class="lSR"> … <rsrDCO class="rSR" uid=…>`), so the loop's own term is a bare `<dco uid=…/>` with no class and `loop()` skips it | the register, its Left/Right and every wire through them | **yes** - a defect, not a gap; the loop reads as if it had no state |
+| **constants read back as their DEFAULT** - 34 VIs. The three LabVIEW **9.0** VIs lose every value (`Dictionary Example.vi` 57 of 57); in current VIs a cluster holding a variant (77 constants), a units numeric, a picture, an enum read 0 | silent wrong values, not missing ones | **yes** - `0`, `false` and `""` look like real data |
+| **terminal descriptions**: NI writes 1 507 on controls and indicators, the reader **0** | documentation only | for the doc tools |
+| **comments attached to a node** (`comment=` on Node, Call, Constant, Structure) | ~160 | for documentation |
+| **terminal NAMES** differ on a wire whose ends agree (`Drink Type`/`Drink type`, `?parm11`, `value2`, `Rectangle.bottom`/`bottom`, `delta`/`?`) | 647 edges; 121 VIs differ ONLY in these (plus unread constructs) | for re-composing; the wiring itself is right |
+| **types**: units (`double{m}` read `?UnitFloat64`), sets and maps (`?115`), a strict VI refnum's connector pane (read plain `ref{LV.VI}`), a VI Server Reference's class (`{LV.SubPanel}` read untyped) | ~125 elements | yes for strict VI refnums (Call By Reference / Start Asynchronous Call need the pane) |
+| `adapt="true"` on 202 calls NI writes WITHOUT it - DAQmx Trigger/Create Virtual Channel/Read, Panel Type Selector, MAPro: polymorphic calls whose instance is FIXED | 202 | yes for re-composing - it lets LabVIEW pick an instance the author fixed |
+| call targets: 83 genuinely different - a channel library's INSTANCE (`Tag-bool.lvlib`) where NI names the template (`Tag.lvlib`), the dynamic-dispatch class of a dispatched call, a truncated Caraya method name | 83 | partly |
+| **a one-frame Event Structure**: NI writes NO `CaseFrame` - its children sit on the structure and the event spec is gone - the reader writes the frame | e.g. `Simple Semaphore.vi` | no - the reader carries MORE |
+| complex constants: NI drops the imaginary part (`0` for `0+1i`), the reader keeps it; `-inf` vs `-Inf` | a handful | no - NI's side is the lossy one |
+| cosmetics: `Constant style="Ring"` missing (155), a backslash doubled in a VI description that was already escaped (9), `conIdx`/`connection` missing on 10 optional terminals | | minor |
+
+The scratch run is not committed; `experiments\aixml-without-grpc\compare_full.py` reproduces the
+fact sets.
+
+### The two silent-wrong-data rows, fixed the same day
+
+Both rows marked "silent" above produced data that LOOKED right, so they were fixed first; the
+gaps that announce themselves (unread constructs, descriptions, terminal names) are left as they
+are. Re-run over the same 865 VIs, the cache still untouched:
+
+- **Shift registers.** `Reader.dco_def` resolves a bare `<dco uid=…/>` to its definition anywhere
+  in the heap; `loop()` and the case structure's tunnels use it. All 53 nested-rSR registers read
+  now. The other 5 sit inside a Timed Loop or a Stacked Sequence - unread constructs, not this
+  defect.
+- **Constants.** What `ConstValue` means was MEASURED first: every constant of a file saved by
+  LabVIEW 11 or later carries one (5 803 of 5 803 in the cache), and only the three LabVIEW 9.0
+  files lack it - their values live in compiled code (`CNST` is only the constant nodes' uid set),
+  64 of their 78 non-default. So a missing `ConstValue` is UNKNOWN, not default: the value is
+  written empty and a `vi2aixml` comment says `value not stored in the block diagram heap`. In
+  current files a cluster's REFNUM (4 bytes, written empty), an EMPTY variant (20 fixed bytes after
+  the version word, written empty; a variant holding data stays undecoded), a PICTURE
+  (length-prefixed) and a numeric with a UNIT now decode - `double{m}`, `double{m^-3 kg}`, the unit
+  as `PhysUnit Val1` = base (2 s, 3 m, 4 kg; others unmeasured and left undecoded) and `Val2` = a
+  signed 16-bit exponent.
+- **String bytes are Windows-1252**, the station's code page, not MacRoman: NI writes byte 0xD1 as
+  `Ñ` and 0xFF as `ÿ`, cp1252's own characters occur, and the five undefined bytes appear as
+  U+0081/8D/8F/90/9D. `lvheap.value_text`/`value_bytes` hold the rule, and the COMPOSER uses
+  `value_bytes` for string and path constants and case-selector strings too - it wrote MacRoman,
+  so a constant `Ñ` reached LabVIEW as byte 0x84 (`„`). Labels and names are not affected by this
+  change and were not measured.
+- **`nan`, `-nan`, `inf`, `-inf`** in lower case, the sign of a NaN kept - NI's spelling, 26 of 26.
+
+**Result:** facts-identical VIs 427 → **457** (209 identical in every attribute), VIs with
+different facts 378 → 348, constant values off 245 → 85, of which 74 are the reported LabVIEW 9.0
+gaps and 11 NI's lossy complex numbers, an undecoded fixed-point and extended complex, a
+cluster typedef of control refnums and one stale socket. **No constant is read as a default where
+NI's value is not one any more, unless the reader says so in a comment.** Per VI, no fact set got
+worse - except the two LabVIEW 9.0 VIs whose DEFAULT constants (`0`, `false`) were right by
+accident before and are now reported undecoded with the rest. `ReaderShiftRegisterAndConstantTests`
+pins one case of each against NI's export, every assertion checked to fail on the old reader's
+output.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has not been RUN through a composed VI** - the probes above stop at the link and
