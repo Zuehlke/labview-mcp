@@ -43,6 +43,16 @@ namespace LabVIEWMcp.Infra;
 ///
 /// A HIT NEEDS NO RUNNING LabVIEW. The lookup is two file reads, so an example's diagram stays
 /// readable on a machine where LabVIEW is closed or still starting.
+///
+/// BOTH BACKENDS' EXPORTS LIVE HERE, KEPT APART BY THE KEY - the user's decision of 2026-10-14
+/// ("alles im Cache") and of 2026-10-15 (one folder, the backend in the key). An entry of NI's
+/// converter keeps the key it always had, so the entries written before are still served; an
+/// entry of our reader (vi2aixml.py) is keyed under <c>pylabview@&lt;reader hash&gt;</c> as well,
+/// so a change to the reader's code turns every older reader entry into a miss rather than serving
+/// what the fixed reader would no longer write. Why apart and not shared: the reader matches NI's
+/// export in every fact for 392 of 747 VIs (attributes 95.5 %), so a grpc call served a reader
+/// entry would be handed an answer it did not ask for and told it was NI's. The other direction
+/// is allowed and preferred - see <see cref="CachedReader"/>.
 /// </summary>
 internal static class AixmlExportStore
 {
@@ -59,8 +69,11 @@ internal static class AixmlExportStore
     /// <param name="ViPath">The source VI, for anyone reading the cache directory by hand.</param>
     /// <param name="CachedUtc">When the export was taken.</param>
     /// <param name="XmlBytes">Size of the payload, re-checked on load so a truncated file misses.</param>
+    /// <param name="Backend">Whose export this is; absent on entries written before 2026-10-15,
+    /// which are all NI's.</param>
     private sealed record Sidecar(
-        int Version, string Key, string ViPath, string CachedUtc, long XmlBytes);
+        int Version, string Key, string ViPath, string CachedUtc, long XmlBytes,
+        string? Backend = null);
 
     /// <summary>
     /// Where entries live: a subfolder of the shared cache directory, so exports and the example
@@ -85,7 +98,7 @@ internal static class AixmlExportStore
     /// comment, so the same VI can arrive spelled two ways; without normalising, each spelling
     /// would get its own entry and neither would ever hit the other's.
     /// </summary>
-    internal static string? KeyFor(string viPath)
+    internal static string? KeyFor(string viPath, string backend = AixmlBackend.Grpc)
     {
         try
         {
@@ -99,10 +112,39 @@ internal static class AixmlExportStore
                 info = new FileInfo(member.Container);
             if (!info.Exists) return null;
 
-            return string.Join('|',
+            var key = string.Join('|',
                 full.ToLowerInvariant(),
                 info.LastWriteTimeUtc.Ticks,
                 info.Length);
+            // NI's entries keep the key they always had; the reader's carry its code's hash too
+            if (backend == AixmlBackend.Grpc) return key;
+            if (backend != AixmlBackend.PyLabview) return null;
+            return ReaderStamp() is { } stamp ? $"pylabview@{stamp}|{key}" : null;
+        }
+        catch { return null; }
+    }
+
+    private static string? _readerStamp;
+
+    /// <summary>
+    /// A hash over the reader's code - vi2aixml.py and the modules it reads with. Null when the
+    /// composer is not here, which makes every reader entry a miss and every save a no-op.
+    /// </summary>
+    internal static string? ReaderStamp()
+    {
+        if (_readerStamp is not null) return _readerStamp;
+        try
+        {
+            if (AixmlComposer.Locate(out _) is not { } setup) return null;
+            using var sha = SHA256.Create();
+            foreach (var file in new[] { "vi2aixml.py", "aixml2vi.py", "lvheap.py", "resolve.py" })
+            {
+                var path = Path.Combine(setup.ComposerDirectory, file);
+                var bytes = File.Exists(path) ? File.ReadAllBytes(path) : [];
+                sha.TransformBlock(bytes, 0, bytes.Length, null, 0);
+            }
+            sha.TransformFinalBlock([], 0, 0);
+            return _readerStamp = Convert.ToHexString(sha.Hash!)[..12];
         }
         catch { return null; }
     }
@@ -134,12 +176,13 @@ internal static class AixmlExportStore
     /// the text would break every one of them.
     /// </summary>
     public static bool TryCopyTo(string viPath, string destination,
-                                 IReadOnlyList<string>? roots = null)
+                                 IReadOnlyList<string>? roots = null,
+                                 string backend = AixmlBackend.Grpc)
     {
         try
         {
             if (!IsCacheable(viPath, roots)) return false;
-            if (KeyFor(viPath) is not { } key) return false;
+            if (KeyFor(viPath, backend) is not { } key) return false;
             if (ReadSidecar(key) is not { } sidecar) return false;
 
             var payload = PathFor(key);
@@ -169,12 +212,13 @@ internal static class AixmlExportStore
     /// is not cacheable or the write failed - never throws, because failing to cache is not a
     /// reason to fail the export that already succeeded.
     /// </summary>
-    public static bool Save(string viPath, string xmlPath, IReadOnlyList<string>? roots = null)
+    public static bool Save(string viPath, string xmlPath, IReadOnlyList<string>? roots = null,
+                            string backend = AixmlBackend.Grpc)
     {
         try
         {
             if (!IsCacheable(viPath, roots)) return false;
-            if (KeyFor(viPath) is not { } key) return false;
+            if (KeyFor(viPath, backend) is not { } key) return false;
             if (!File.Exists(xmlPath)) return false;
 
             System.IO.Directory.CreateDirectory(Directory);
@@ -198,7 +242,7 @@ internal static class AixmlExportStore
             File.Move(payloadTemp, payload, overwrite: true);
 
             var sidecar = new Sidecar(FormatVersion, key, Path.GetFullPath(viPath),
-                DateTime.UtcNow.ToString("O"), new FileInfo(payload).Length);
+                DateTime.UtcNow.ToString("O"), new FileInfo(payload).Length, backend);
 
             var record = SidecarFor(key);
             var recordTemp = $"{record}.{stamp}.tmp";
@@ -210,9 +254,9 @@ internal static class AixmlExportStore
     }
 
     /// <summary>When this VI's entry was taken, or null when there is none worth trusting.</summary>
-    public static DateTime? CachedUtc(string viPath)
+    public static DateTime? CachedUtc(string viPath, string backend = AixmlBackend.Grpc)
     {
-        if (KeyFor(viPath) is not { } key) return null;
+        if (KeyFor(viPath, backend) is not { } key) return null;
         if (ReadSidecar(key) is not { } sidecar) return null;
 
         return DateTime.TryParse(sidecar.CachedUtc, null,

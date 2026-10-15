@@ -325,7 +325,7 @@ internal sealed class PaneTools(LvaiConnection connection)
                                    $"terminals-{Guid.NewGuid():N}.xml");
         try
         {
-            var read = await AixmlComposer.ReadAsync(setup, viPath, scratch, timeoutSeconds, ct);
+            var read = (await CachedReader.ReadAsync(setup, viPath, scratch, timeoutSeconds, ct)).Result;
             if (!read.Written) return (null, read.Message);
             return ViTerminals.Parse(await File.ReadAllTextAsync(scratch, ct)) is { } parsed
                 ? (PaneTerminals(parsed), null)

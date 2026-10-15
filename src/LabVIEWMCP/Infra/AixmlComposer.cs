@@ -274,6 +274,16 @@ internal static class AixmlComposer
     internal sealed record PanelItem(string Name, string Type, bool Indicator);
 
     /// <summary>
+    /// The LABEL behind an exported `_name`, as LabVIEW and ActiveX know the control: a doubled
+    /// backslash back to one, `\3A` and `\2C` back to ':' and ','. The reader writes names as NI's
+    /// exporter does since 2026-10-15, and the run route sets a control by this name over ActiveX,
+    /// where `attribute? (F\3A entity)` matches nothing.
+    /// </summary>
+    internal static string LabelOf(string exported) =>
+        System.Text.RegularExpressions.Regex.Replace(exported, @"\\\\|\\([0-9A-Fa-f]{2})",
+            m => m.Value == @"\\" ? @"\" : ((char)Convert.ToInt32(m.Groups[1].Value, 16)).ToString());
+
+    /// <summary>
     /// A VI's controls and indicators, read from the FILE by vi2aixml.py - ActiveX can set and get
     /// a control by name but cannot list them, so this is what the COM run route asks instead.
     /// Null with <paramref name="problem"/> when the reader failed.
@@ -290,7 +300,7 @@ internal static class AixmlComposer
             var root = System.Xml.Linq.XDocument.Load(scratch).Root;
             var items = root?.Descendants()
                 .Where(e => e.Name.LocalName is "Control" or "Indicator")
-                .Select(e => new PanelItem((string?)e.Attribute("_name") ?? "",
+                .Select(e => new PanelItem(LabelOf((string?)e.Attribute("_name") ?? ""),
                                            (string?)e.Attribute("type") ?? "",
                                            e.Name.LocalName == "Indicator"))
                 .Where(i => i.Name.Length > 0)

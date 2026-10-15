@@ -562,8 +562,22 @@ def set_sublabel(el, diag):
 def name_attr(s):
     """A label as a `_name` attribute, as NI's exporter writes one: a backslash DOUBLED - it writes
     `delimiter (\\\\t)` for the label `delimiter (\\t)` - so the composer's unescape cannot read a
-    backslash and two hex digits that follow it as one character."""
-    return s.replace("\\", "\\\\")
+    backslash and two hex digits that follow it as one character. And ':' and ',' as \\3A and \\2C:
+    counted 2026-10-15 over 869 cached NI exports, 85 of 85 control and indicator names holding a
+    colon carry \\3A and 23 of 23 holding a comma carry \\2C. Raw, JKI's `attribute? (F: entity)`
+    reached lvai_vi_terminals as a name no `inputs=` string can carry, ':' being its separator."""
+    return s.replace("\\", "\\\\").replace(":", "\\3A").replace(",", "\\2C")
+
+
+_LABEL_ESCAPES = {"\\\\": "\\", "\\3A": ":", "\\2C": ","}
+
+
+def label_of(name):
+    """The label behind a `_name` written by name_attr - for the places that hand a control's name
+    on as something else: a terminal name (escaped again by `escape`), a `link=` (NI writes it RAW,
+    `link="PV:"`) or an event selector (escaped by its own rule). Measured as a regression the day
+    name_attr learned \\3A: a VI Server Reference's output came out `SP\\5C3A`."""
+    return re.sub(r"\\\\|\\3A|\\2C", lambda m: _LABEL_ESCAPES[m.group(0)], name)
 
 
 def unquote(t):
@@ -1010,8 +1024,18 @@ class Reader:
             if el.tag in ("Node", "Call") and not nm.startswith("#"):
                 per_el.setdefault(id(el), (el, []))[1].append((tu, nm, sink))
         for el, terms in per_el.values():
-            ins = ["%s:%s" % (escape(nm), self.term_net[tu]) for tu, nm, sink in terms if sink and tu in self.term_net]
-            outs = ["%s:%s" % (escape(nm), self.term_net[tu]) for tu, nm, sink in terms if not sink and tu in self.term_net]
+            # A CALL lists every terminal of its callee's pane, an unwired one with an empty net, as
+            # NI's exporter writes it (5 686 of 15 655 call inputs and 4 278 of 10 402 outputs in
+            # the cached exports are `name:`). Wired-only left a polymorphic VI's instances - whose
+            # calls are never wired - with no terminals at all, and lvai_vi_terminals on the
+            # pylabview backend then had nothing to name (Trim Whitespace.vi, 2026-10-15). A name
+            # the reader could not establish (`?`) stays out rather than going in as a terminal.
+            # Primitives keep wired-only: their unwired names come from a table with gaps.
+            every = el.tag == "Call"
+            ins = ["%s:%s" % (escape(nm), self.term_net.get(tu, "")) for tu, nm, sink in terms
+                   if sink and (tu in self.term_net or (every and not nm.startswith("?")))]
+            outs = ["%s:%s" % (escape(nm), self.term_net.get(tu, "")) for tu, nm, sink in terms
+                    if not sink and (tu in self.term_net or (every and not nm.startswith("?")))]
             for attr, items in (("inputs", ins), ("outputs", outs)):
                 if items:
                     el.set(attr, ",".join(items))
@@ -1360,7 +1384,7 @@ class Reader:
             ddo = sp.findtext("ddoUID") or "0"
             ctl = self.ctl_by_ddo.get(ddo) if ddo != "0" else None
             # NI's selector names a control TRIMMED: `"Stop Button"` for a label padded with blanks
-            src = '"%s"' % ctl.get("_name").strip() if ctl is not None else None
+            src = '"%s"' % label_of(ctl.get("_name")).strip() if ctl is not None else None
             k = int(sp.findtext("dynIndex") or 0)
             if src is None and 0 < k <= len(dyn) and dyn[k - 1]:
                 src = "<%s>" % dyn[k - 1]
@@ -1993,7 +2017,7 @@ class Reader:
         el.set("fields", ",".join(fields))
         ddo = node.find("ddo")
         if ddo is not None and ddo.get("uid") in self.ctl_by_ddo:
-            el.set("link", self.ctl_by_ddo[ddo.get("uid")].get("_name"))
+            el.set("link", label_of(self.ctl_by_ddo[ddo.get("uid")].get("_name")))
         el.set("type", "{%s}" % cls)
         return el
 
@@ -2100,8 +2124,8 @@ class Reader:
         ddo = node.find("ddo")
         if ddo is not None:
             ctl = self.ctl_by_ddo.get(ddo.get("uid"))
-            name = ctl.get("_name") if ctl is not None else "?"
-            el.set("element", name)
+            el.set("element", ctl.get("_name") if ctl is not None else "?")   # escaped, as NI writes it
+            name = label_of(ctl.get("_name")) if ctl is not None else "?"
         else:
             name = unquote(node.findtext("label/textRec/text") or "This VI")
             tree = self.tid_tree(node.find("termList/SL__arrayElement"))

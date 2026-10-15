@@ -244,7 +244,7 @@ ones stay in `helpers`, so neither backend runs or overwrites the other's.
 |---|---|
 | `lvai_validate_aixml` | composes into a scratch folder and deletes it; `validatedBy: composer`. errorCode 0 means the composer CAN build it — it does **not** type-check wiring the way NI's validation does |
 | `lvai_convert_aixml_to_vi` | composes the VI, source-only — `sourceOnly` is read from the written file, not assumed. `executable` is read over ActiveX when LabVIEW is running, otherwise `executableNote` says it was not measured. `openVI` is not honoured (`openVINote`); overwriting a path LabVIEW may hold in memory gets a `memoryNote` — though measured, a VI read over ActiveX is released and LabVIEW reads the rewritten file the next time |
-| `lvai_convert_vi_to_aixml` | `vi2aixml.py`; never cached (the export cache holds NI's output), `readerNote` carries the measured fidelity |
+| `lvai_convert_vi_to_aixml` | `vi2aixml.py`, through the export cache since 2026-10-15 under the reader's own key: a cached NI export of the VI is served first, then the reader's own, else a fresh read is cached (`CachedReader`, next sections). `exportBy` names whose export came back, `readerNote` carries the measured fidelity |
 | `lvai_generate_vi` | the validate step is SKIPPED and says so; the convert reads `executable` over ActiveX in its place and stops on a broken VI. **No step touches NI's service**: the diagram size is LabVIEW's own `PrintVIToHTML` over ActiveX, the connector pane is read from the FILE by `pylv-conpane.py`, `panePattern` rebuilds without closing a project. A VI with no conIdx at all has no pane — the composer writes none — and says so |
 | `lvai_generate_vis` | each entry as `lvai_generate_vi`, with the batch's backend |
 | `lvai_open_file` | a PROJECT only: the composed `lvai_open_project` helper over ActiveX - `Project.Open` and `Open Window` in LabVIEW's main instance, which is the IDE's - then the same active-project check and foreground retry, then a REOPEN retry (`reopenRetry`): a project already LOADED but not active stays inactive however often it is opened, so it is saved and closed by path (`lvai_close_project.xml`) and opened again. A VI is refused (`notAvailableOnBackend`) |
@@ -256,7 +256,7 @@ ones stay in `helpers`, so neither backend runs or overwrites the other's.
 | `lvai_generate_test` | the DIRECT route too: the subject (and any setup VI) found by file, no project opened. Its PLACEHOLDER fallback points the call at the subject with LabVIEW's own `{LV.SubVI}` Replace - not the pylabview retarget, which answered ok here and left a test one folder below its subject failing with Error 7 Bad Linkage - one swap per case, because every case calls the same stub |
 | `lvai_swap_subvis` | the same helper, composed and run over ActiveX - in LabVIEW's main instance, so `{LV.SubVI}` Replace works with no project open. Verified against the READER's export of the saved file, and the answer says so |
 | `lvai_generate_caraya_test_runner`, `lvai_run_caraya_tests` | the runner composed; the run over ActiveX, the JUnit report read as on grpc. The run's answer names `backend` and `backendSource` since 2026-10-12 - it took the parameter and named neither until then |
-| `lvai_vi_terminals` | the export is the READER's (`vi2aixml.py`), no LabVIEW at all; never served from the export cache and never written into it, which holds NI's output only. A text answer, so `backend` and `backendSource` are its last line |
+| `lvai_vi_terminals` | the export is the READER's (`vi2aixml.py`), no LabVIEW at all, through the export cache like `lvai_convert_vi_to_aixml` since 2026-10-15 - NI's cached export first, then the reader's own; the provenance line says whose. A text answer, so `backend` and `backendSource` are its last line |
 | `lvai_connector_pane` | with `viPath`: the pattern read from the FILE (`pylv-conpane.py`, the route `lvai_generate_vi`'s pane step takes), the terminals from the reader's export, the slot positions from the measured pattern table - the probe's own verdict code over those three, so the answer has the grpc shape. The one reading that is not this VI's own is the orientation: the table holds the majority one, and the answer says so for the 8 patterns seen in two. Falls back to `pylv-conpane.py`'s own verdict when the reader or the table cannot help. A pattern or the full list needs no backend and names none |
 | `lvai_render_diagrams` | LabVIEW's own Print.VI To HTML over ActiveX per VI - the `diagramSize` step's route - with no helper VI; same answer shape, `renderedBy` instead of the helper fields, a refused print named per VI, `labviewDied` when a LabVIEW that ran before is gone after. Format Standard, so no hierarchy picture - every diagram and case frame still comes back |
 | `lvai_placeholder_subvi`, `lvai_add_vis_to_project` | the stub composed from the reader's export; the listing is a file edit and never needed NI |
@@ -1141,6 +1141,55 @@ DAQmx terminal names still had to come from an NI example. The refusal was ours:
 unchanged), `LlbPathTests` the split and the cache key, and `PylabviewLlbMemberReadTests` the
 reader on the real DAQmx and EasyXML files, skipping where they are not installed.
 `lvai_describe_vi` on pylabview still checks `File.Exists` and refuses such a path.
+
+## The reader's exports in the cache, and two reader gaps a caller saw (2026-10-15)
+
+**The pylabview reader's exports go into the export cache now** - the user's decision of
+2026-10-14 ("alles im Cache"), and of 2026-10-15 for HOW: one folder, `cache\aixml`, with the
+backend in the KEY. NI's entries keep the key they always had, so everything cached before is still
+served; a reader entry is keyed `pylabview@<hash>|<NI's key>`, the hash over `vi2aixml.py`,
+`aixml2vi.py`, `lvheap.py` and `resolve.py`, so a reader fix turns every older reader entry into a
+miss instead of serving what the fixed reader would no longer write. The sidecar records `Backend`.
+
+**Why apart rather than shared, although the formats are the same:** the reader matches NI's
+export in every fact for 392 of 747 VIs (attributes 95.5 %, wires 93.5 %). One shared entry per VI
+would hand a grpc caller a reader export labelled as NI's whenever the reader happened to export
+first. So the rule is ASYMMETRIC (`Infra/CachedReader.cs`): **a grpc call is served only NI's
+entries; a pylabview read takes NI's cached export FIRST** - the higher-fidelity reading, and
+serving a file needs no NI service - **then its own, else it reads and caches.** Every reader route
+goes through it: `lvai_convert_vi_to_aixml`, `lvai_vi_terminals`, the describe tools' export
+(`BackendRoute.ExportAsync`) and `lvai_connector_pane`'s terminal read. The installation-only rule
+is unchanged: the user's own code is never cached, whoever reads it.
+
+**And the cold `.llb` demo build found two reader gaps a caller sees, both fixed:**
+
+- **A polymorphic VI's instances had no terminals.** Its export is one `Call` per instance, never
+  wired, and the reader wrote a Call's terminals only where a wire touched them - NI writes every
+  one, an unwired one as `name:` (5 686 of 15 655 call inputs and 4 278 of 10 402 outputs in the
+  cached exports). `lvai_vi_terminals` on pylabview then named `Trim Whitespace.vi`'s instances and
+  nothing else. The reader now writes every terminal of a Call; a name it could not establish
+  (`?`) stays out. Primitives keep wired-only, because their unwired names come from a table with
+  gaps. `compare_full.py` could not see this: it compares edges, and an unwired terminal has none.
+- **A `:` or `,` in a control's name went out raw**, where NI writes `\3A` and `\2C` - counted 85 of
+  85 and 23 of 23 over 869 cached exports. JKI's `attribute? (F: entity)` reached
+  `lvai_vi_terminals` as a name no `inputs=` string can carry, `:` being its separator.
+
+**Measured, old reader against new on the same corpus.** `compare_full.py` over the cached NI
+exports, both readers on the 742 VIs both could read: 407 identical either way and **not one VI's
+facts changed** (elements 97.88 %, attributes 95.55 %, values 96.12 %, edges 94.38 % before and
+after) - that comparison sees no unwired terminal, so it is the guard against collateral damage.
+What it cannot see, measured separately over 120 cached VIs with calls: of the terminal names NI
+lists on a `Call`, the old reader wrote **57.3 %** and the new one **99.3 %**. The first run of
+that guard did find damage, and it is why `label_of` exists: with names escaped, a VI Server
+Reference handed its escaped name on as its OUTPUT terminal, which `escape` escaped again
+(`SP\5C3A`), and a property node's `link=` - which NI writes RAW, `link="PV:"` - came out escaped.
+Both now take the label, and the rerun showed 0 changed VIs. The run route reads control names
+from the reader too, to set them over ActiveX by name, so `AixmlComposer.LabelOf` takes the
+escapes off there.
+
+`Infra/PylabviewReaderPolymorphicTests.cs` reads both real VIs and pins `LabelOf`, and the store
+tests pin the key separation in both directions. Each new test was checked against the old code:
+the two reader tests fail on the old reader, the preference test fails with the order swapped.
 
 ## Not covered, and not measured
 

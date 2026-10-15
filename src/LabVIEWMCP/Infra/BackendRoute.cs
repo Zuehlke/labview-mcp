@@ -119,7 +119,7 @@ internal static class BackendRoute
         {
             if (OnPyLabview)
             {
-                var read = await AixmlComposer.ReadAsync(Setup(), vi, export, timeoutSeconds, ct);
+                var read = (await CachedReader.ReadAsync(Setup(), vi, export, timeoutSeconds, ct)).Result;
                 return read.Written && File.Exists(export)
                     ? (File.ReadAllText(export), 0, "No Error")
                     : (null, read.ErrorCode, read.Message);

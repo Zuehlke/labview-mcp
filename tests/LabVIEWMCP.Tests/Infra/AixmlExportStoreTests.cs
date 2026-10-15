@@ -365,6 +365,97 @@ public class AixmlExportStoreTests : IDisposable
     }
 
     private string Key() => AixmlExportStore.KeyFor(_viPath)!;
+
+    // ---------- the pylabview reader's entries (2026-10-15) ----------
+
+    private const string ReaderXml =
+        """<VI _name="Scale TDMS Data.vi"><Node _name="Subtract" uid="143"/></VI>""";
+
+    /// <summary>Save a READER export of the same VI, tracked for Dispose like NI's.</summary>
+    private bool SaveReaderEntry()
+    {
+        var path = Path.Combine(_tree, "reader-export.xml");
+        File.WriteAllText(path, ReaderXml);
+        var saved = AixmlExportStore.Save(_viPath, path, _roots, AixmlBackend.PyLabview);
+        if (saved) _payloads.Add(AixmlExportStore.PathFor(
+            AixmlExportStore.KeyFor(_viPath, AixmlBackend.PyLabview)!));
+        return saved;
+    }
+
+    /// <summary>
+    /// NI's entries keep the key they always had, so the exports cached before the reader joined
+    /// the cache are still served; the reader's key carries its code's hash on top.
+    /// </summary>
+    [Fact]
+    public void An_NI_entry_keeps_its_old_key_and_the_reader_gets_its_own()
+    {
+        if (AixmlExportStore.ReaderStamp() is not { } stamp) return;   // no composer here
+
+        Assert.Equal(AixmlExportStore.KeyFor(_viPath), AixmlExportStore.KeyFor(_viPath, AixmlBackend.Grpc));
+        var reader = AixmlExportStore.KeyFor(_viPath, AixmlBackend.PyLabview)!;
+        Assert.StartsWith($"pylabview@{stamp}|", reader);
+        Assert.EndsWith(Key(), reader);
+        Assert.NotEqual(AixmlExportStore.PathFor(Key()), AixmlExportStore.PathFor(reader));
+        Assert.Null(AixmlExportStore.KeyFor(_viPath, "nonsense"));
+    }
+
+    /// <summary>
+    /// The reason the two are kept apart: the reader matches NI's export in every fact for only
+    /// about half the VIs, so a grpc caller handed a reader entry would be told NI said something
+    /// NI did not.
+    /// </summary>
+    [Fact]
+    public void A_reader_entry_is_never_served_to_a_grpc_call()
+    {
+        if (AixmlExportStore.ReaderStamp() is null) return;
+        Assert.True(SaveReaderEntry());
+
+        Assert.False(AixmlExportStore.TryCopyTo(_viPath, Destination("ni.xml"), _roots));
+        Assert.True(AixmlExportStore.TryCopyTo(_viPath, Destination("reader.xml"), _roots,
+                                               AixmlBackend.PyLabview));
+        Assert.Equal(ReaderXml, File.ReadAllText(Destination("reader.xml")));
+        Assert.NotNull(AixmlExportStore.CachedUtc(_viPath, AixmlBackend.PyLabview));
+        Assert.Null(AixmlExportStore.CachedUtc(_viPath));
+    }
+
+    [Fact]
+    public void Both_backends_entries_of_one_VI_live_side_by_side()
+    {
+        if (AixmlExportStore.ReaderStamp() is null) return;
+        Assert.True(SaveEntry());
+        Assert.True(SaveReaderEntry());
+
+        Assert.True(AixmlExportStore.TryCopyTo(_viPath, Destination("ni.xml"), _roots));
+        Assert.True(AixmlExportStore.TryCopyTo(_viPath, Destination("reader.xml"), _roots,
+                                               AixmlBackend.PyLabview));
+        Assert.Equal(Xml, File.ReadAllText(Destination("ni.xml")));
+        Assert.Equal(ReaderXml, File.ReadAllText(Destination("reader.xml")));
+    }
+
+    /// <summary>
+    /// The pylabview backend takes NI's cached export first - the user's choice of 2026-10-15 -
+    /// and its own entry only where NI's is missing. Neither hit runs the reader, so the VI here
+    /// can be the fake one.
+    /// </summary>
+    [Fact]
+    public async Task The_pylabview_read_prefers_NI_s_cached_export_then_its_own()
+    {
+        if (AixmlComposer.Locate(out _) is not { } setup || AixmlExportStore.ReaderStamp() is null) return;
+
+        Assert.True(SaveReaderEntry());
+        var own = await CachedReader.ReadAsync(setup, _viPath, Destination("a.xml"), 30, default,
+                                               roots: _roots);
+        Assert.Equal(AixmlBackend.PyLabview, own.ServedFrom);
+        Assert.Equal(ReaderXml, File.ReadAllText(Destination("a.xml")));
+
+        Assert.True(SaveEntry());
+        var ni = await CachedReader.ReadAsync(setup, _viPath, Destination("b.xml"), 30, default,
+                                              roots: _roots);
+        Assert.Equal(AixmlBackend.Grpc, ni.ServedFrom);
+        Assert.True(ni.Result.Written);
+        Assert.Equal(Xml, File.ReadAllText(Destination("b.xml")));
+        Assert.Contains("NI's converter export", ni.Note);
+    }
 }
 
 /// <summary>

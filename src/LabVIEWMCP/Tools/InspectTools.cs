@@ -105,8 +105,11 @@ internal sealed class InspectTools(LvaiConnection connection)
         (`Voltage - Finite Input.vi`) yields every terminal name and both polymorphic instance
         names at once.
         ON THE pylabview BACKEND the export is our own reader's (vi2aixml.py) - no LabVIEW and no
-        NI service at all - and it is never cached and never served from the cache, which holds
-        NI's converter output only. The answer's last line names `backend` and `backendSource`.
+        NI service at all - and it goes through the export cache too since 2026-10-15, kept apart
+        from NI's entries by its key: a cached NI export of the VI is served first (higher fidelity,
+        reading it needs no NI service), then the reader's own earlier export, else a fresh read is
+        cached. A reader entry is never served to a grpc call. The provenance line says whose export
+        it was; the answer's last line names `backend` and `backendSource`.
         """)]
     public async Task<string> ViTerminalsAsync(
         [Description(@"Absolute path to the .vi whose terminals you need")] string viPath,
@@ -142,10 +145,8 @@ internal sealed class InspectTools(LvaiConnection connection)
                 $"terminals-{Path.GetFileNameWithoutExtension(viPath)}.xml");
             Directory.CreateDirectory(CacheDirectory.Scratch);
 
-            // THE READER NEITHER READS NOR WRITES THE EXPORT CACHE. It holds NI's converter output,
-            // and lvai_convert_vi_to_aixml on pylabview keeps the same rule: a reader export stored
-            // there would later be served as NI's, and an NI export served here would be an answer
-            // the backend asked for did not give.
+            // The reader goes through the cache too since 2026-10-15, under its own key
+            // (CachedReader): NI's cached export first, then its own, then a fresh read.
             var composed = choice.Name == AixmlBackend.PyLabview;
 
             // Through the export cache, both ways. This tool used to call the RPC directly and so
@@ -169,18 +170,19 @@ internal sealed class InspectTools(LvaiConnection connection)
                 if (AixmlComposer.Locate(out var missing) is not { } setup)
                     return Json.Error("backendNotAvailable", missing, new { viPath });
 
-                var read = await AixmlComposer.ReadAsync(setup, viPath, scratch, timeoutSeconds, ct);
+                var cached = await CachedReader.ReadAsync(setup, viPath, scratch, timeoutSeconds, ct,
+                                                          refresh);
+                var read = cached.Result;
                 if (!read.Written)
                     return Json.Error("exportFailed",
                         $"vi2aixml.py could not read '{viPath}': {read.Message}",
                         new { viPath, readerExitCode = read.ExitCode });
 
-                provenance = "Read by vi2aixml.py, the pylabview backend's reader - NOT by NI's " +
-                             "converter, and no LabVIEW was asked. Never cached: the export cache " +
-                             "holds NI's output only" +
-                             (refresh ? ", so refresh changes nothing here." : ".") +
-                             " A terminal name that differs from NI's export is the reader's until " +
-                             "shown otherwise.";
+                provenance = cached.ServedFrom == AixmlBackend.Grpc
+                    ? "NI's converter export, " + cached.Note
+                    : "Read by vi2aixml.py, the pylabview backend's reader - NOT by NI's converter, " +
+                      "and no LabVIEW was asked; " + cached.Note + ". A terminal name that differs " +
+                      "from NI's export is the reader's until shown otherwise.";
             }
             else if (fromCache)
             {

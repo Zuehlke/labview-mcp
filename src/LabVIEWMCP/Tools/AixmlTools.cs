@@ -43,6 +43,12 @@ internal sealed class AixmlTools(LvaiConnection connection)
         takes it as it is, and its export is cached keyed on the `.llb`'s stat since 2026-10-15;
         on pylabview the reader extracts the container into %USERPROFILE%\.labviewmcp\cache\llb
         once and reads the member there.
+        ON pylabview THE CACHE IS USED TOO, since 2026-10-15, kept apart from NI's entries by its
+        key: a cached NI export of the VI is served first (higher fidelity, no NI service needed to
+        read it), then the reader's own earlier export, else a fresh read is cached under the
+        reader's key. A reader entry is never served to a grpc call, and the reader's code hash is
+        part of its key, so a fixed reader never serves an old reading. `exportBy` names whose
+        export came back.
         """)]
     public async Task<string> ConvertViToAixmlAsync(
         [Description(@"Absolute path to the source .vi")] string viPath,
@@ -59,7 +65,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
             return AixmlBackend.Refusal(badBackend);
         return choice.Name == AixmlBackend.PyLabview
             ? await ReadWithComposerAsync(viPath, aiXmlFilePath, returnContent, maxContentChars,
-                                          timeoutSeconds, choice, ct)
+                                          timeoutSeconds, choice, ct, refresh)
             : WithBackend(await ConvertViToAixmlCoreAsync(viPath, aiXmlFilePath, returnContent,
                                                           maxContentChars, timeoutSeconds, refresh,
                                                           roots: null, ct), choice);
@@ -1093,20 +1099,26 @@ internal sealed class AixmlTools(LvaiConnection connection)
 
     private static async Task<string> ReadWithComposerAsync(
         string viPath, string aixmlPath, bool returnContent, int maxContentChars, int timeoutSeconds,
-        AixmlBackend.Choice choice, CancellationToken ct)
+        AixmlBackend.Choice choice, CancellationToken ct, bool refresh = false,
+        IReadOnlyList<string>? roots = null)
     {
         if (AixmlComposer.Locate(out var missing) is not { } setup)
             return BackendNotAvailable(missing, choice);
 
-        var result = await AixmlComposer.ReadAsync(setup, viPath, aixmlPath, timeoutSeconds, ct);
-        return ComposerAnswer(result, choice,
+        // Through the export cache since 2026-10-15: NI's cached export first, then the reader's
+        // own, then a fresh read that is cached under the reader's key (CachedReader).
+        var read = await CachedReader.ReadAsync(setup, viPath, aixmlPath, timeoutSeconds, ct,
+                                                refresh, roots);
+        return ComposerAnswer(read.Result, choice,
             [.. await FileFactsAsync(aixmlPath, returnContent, maxContentChars, ct),
-             ("fromCache", JsonValue.Create(false)),
-             ("cacheNote", JsonValue.Create(
-                 "not cached: the export cache holds NI's converter output, and a reader's output " +
-                 "stored there would later be served as NI's")),
-             ("readerNote", JsonValue.Create(
-                 "Read by vi2aixml.py, NOT by NI's converter. Measured 2026-10-12 against NI's own " +
+             ("fromCache", JsonValue.Create(read.ServedFrom is not null)),
+             ("exportBy", JsonValue.Create(read.ServedFrom == AixmlBackend.Grpc
+                 ? "NI's converter (from the cache)" : "vi2aixml.py, the pylabview reader")),
+             ("cacheNote", JsonValue.Create(read.Note)),
+             ("readerNote", JsonValue.Create(read.ServedFrom == AixmlBackend.Grpc
+                 ? "This export is NI's own, served from the cache - not the reader's. Pass refresh " +
+                   "to read the VI with vi2aixml.py."
+                 : "Read by vi2aixml.py, NOT by NI's converter. Measured 2026-10-12 against NI's own " +
                  "exports of 747 VIs (locked VIs and stale cache entries left out): 392 identical in " +
                  "every fact; elements 97.7 %, constant values 96.4 %, wires 93.5 %, attributes " +
                  "95.5 %. Read back and recomposed, 129 of the composer's 130 tests still compute " +
