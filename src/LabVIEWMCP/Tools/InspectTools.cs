@@ -178,11 +178,10 @@ internal sealed class InspectTools(LvaiConnection connection)
                         $"vi2aixml.py could not read '{viPath}': {read.Message}",
                         new { viPath, readerExitCode = read.ExitCode });
 
+                // whose export it is, then where it came from - each said once
                 provenance = cached.ServedFrom == AixmlBackend.Grpc
-                    ? "NI's converter export, " + cached.Note
-                    : "Read by vi2aixml.py, the pylabview backend's reader - NOT by NI's converter, " +
-                      "and no LabVIEW was asked; " + cached.Note + ". A terminal name that differs " +
-                      "from NI's export is the reader's until shown otherwise.";
+                    ? cached.Note
+                    : CachedReader.ReaderProvenance + " " + cached.Note;
             }
             else if (fromCache)
             {

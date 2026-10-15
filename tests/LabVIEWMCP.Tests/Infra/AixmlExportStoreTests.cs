@@ -447,6 +447,11 @@ public class AixmlExportStoreTests : IDisposable
                                                roots: _roots);
         Assert.Equal(AixmlBackend.PyLabview, own.ServedFrom);
         Assert.Equal(ReaderXml, File.ReadAllText(Destination("a.xml")));
+        // the note says where it came from, once; whose it is stays with the caller - the live
+        // check of 2026-10-15 printed "read by vi2aixml.py" twice and ended "re-read.."
+        Assert.DoesNotContain("vi2aixml.py, the pylabview", own.Note);
+        Assert.DoesNotContain("..", own.Note);
+        Assert.Contains("Served from the export cache", own.Note);
 
         Assert.True(SaveEntry());
         var ni = await CachedReader.ReadAsync(setup, _viPath, Destination("b.xml"), 30, default,

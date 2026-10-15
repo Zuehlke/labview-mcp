@@ -112,6 +112,41 @@ public sealed class RunToolsTests : IDisposable
         Assert.False(RunTools.IsOwnHelper(@"C:\Temp\App\Main.vi"));
     }
 
+    /// <summary>
+    /// A member of an .llb CONTAINER file has no file of its own, and the tool answered
+    /// FileNotFoundException for it - found in the live check of 2026-10-15 on a JKI EasyXML VI,
+    /// after lvai_vi_terminals and lvai_convert_vi_to_aixml had learned the same path. LabVIEW opens
+    /// it by the path through the .llb, so the path goes to the helper unchanged.
+    /// </summary>
+    [Fact]
+    public async Task A_member_of_an_llb_file_is_run_by_its_path_through_the_llb()
+    {
+        await using var server = await ServerWith();
+        File.WriteAllText(At("Tools.llb"), "a container file, not a folder");
+        var member = Path.Combine(At("Tools.llb"), "Member.vi");
+
+        await new RunTools(server.Connection).RunViAndReadValuesAsync(
+            member, helperViPath: At("helper.vi"), helperAixmlPath: ShippedHelperAixml(),
+            closePanelAfterRun: false);
+
+        Assert.Equal(member, server.Service.Last<RunVIAsTopLevelRequest>("RunVIAsTopLevel")
+                                           .Inputs["VI Path"]);
+    }
+
+    /// <summary>The control arm: a path through a FOLDER that is not there is still refused.</summary>
+    [Fact]
+    public async Task A_path_through_a_missing_llb_is_still_refused()
+    {
+        await using var server = await ServerWith();
+
+        var answer = await new RunTools(server.Connection).RunViAndReadValuesAsync(
+            Path.Combine(At("Missing.llb"), "Member.vi"), helperViPath: At("helper.vi"),
+            helperAixmlPath: ShippedHelperAixml(), closePanelAfterRun: false);
+
+        Assert.Contains("No VI at", answer);
+        Assert.Equal(0, server.Service.CountOf("RunVIAsTopLevel"));
+    }
+
     [Fact]
     public async Task Sends_empty_lists_when_the_vi_needs_no_inputs()
     {

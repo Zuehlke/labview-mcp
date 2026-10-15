@@ -84,6 +84,9 @@ internal sealed class RunTools(LvaiConnection connection)
         does NOT run - watch helperFailed, because errorCode is RunVIAsTopLevel's and reads 0.
         Reading is done through a VI REFERENCE, which is released afterwards, so this does not
         burn the target's path for a later lvai_convert_aixml_to_vi.
+        A VI INSIDE AN `.llb` CONTAINER FILE runs by its path THROUGH the `.llb`, as LabVIEW links
+        it (`...\JKI_EasyXML.llb\Escape-Unescape String for XML__JKI EasyXML.vi`), on both
+        backends since 2026-10-15; until then the existence check refused it.
         """)]
     public async Task<string> RunViAndReadValuesAsync(
         [Description(@"Absolute path to the .vi to run")] string viPath,
@@ -182,7 +185,9 @@ internal sealed class RunTools(LvaiConnection connection)
                 RunOverComAsync(viPath, inputsJson, runForMs, signalsJson, signalGapMs, timeoutSeconds, ct)), choice);
         return AixmlTools.WithBackend(await Rpc.GuardAsync(async () =>
         {
-            if (!File.Exists(viPath))
+            // a member of an .llb CONTAINER file is a VI too: LabVIEW opens it by the path through
+            // the .llb, as it links one (LlbPath)
+            if (!LlbPath.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
 
             List<KeyValuePair<string, string>> signals;
@@ -573,7 +578,9 @@ internal sealed class RunTools(LvaiConnection connection)
                                                       int timeoutSeconds, CancellationToken ct)
     {
         var full = Path.GetFullPath(viPath);
-        if (!File.Exists(full))
+        // a member of an .llb CONTAINER file too: ActiveX opens it by the path through the .llb,
+        // and the reader lists its panel from the member it extracts (resolve.py)
+        if (!LlbPath.Exists(full))
             return Json.Error("viNotFound", $"No file at '{full}'.", new { viPath = full });
         List<KeyValuePair<string, string>> signals;
         try { signals = ParseSignals(signalsJson); }

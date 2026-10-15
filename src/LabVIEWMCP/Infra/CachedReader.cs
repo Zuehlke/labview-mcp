@@ -19,9 +19,23 @@ internal static class CachedReader
 {
     /// <param name="Result">The read's own result; a cache hit is a written, clean one.</param>
     /// <param name="ServedFrom">Null for a fresh read, else the backend whose cached export it was.</param>
-    /// <param name="Note">One line saying which of the three happened.</param>
+    /// <param name="Note">
+    /// Whole sentences saying what came back and from where, ready to stand alone. They used to be
+    /// a clause each callers prefixed with their own "read by vi2aixml.py", which printed that
+    /// twice and ended "re-read.." - seen in the live check of 2026-10-15.
+    /// </param>
     internal sealed record Outcome(AixmlComposer.Result Result, string? ServedFrom, bool Stored,
                                    string Note);
+
+    /// <summary>
+    /// The reader's own words for an export it made: whose it is and how far to trust it. Not part
+    /// of <see cref="Outcome.Note"/>, which says only where the export came from - a caller with its
+    /// own provenance field (lvai_convert_vi_to_aixml's readerNote) would print it twice.
+    /// </summary>
+    internal const string ReaderProvenance =
+        "Read by vi2aixml.py, the pylabview backend's reader - NOT by NI's converter, and no " +
+        "LabVIEW was asked. A name or fact that differs from NI's export is the reader's until " +
+        "shown otherwise.";
 
     public static async Task<Outcome> ReadAsync(
         AixmlComposer.Setup setup, string viPath, string aixmlPath, int timeoutSeconds,
@@ -34,28 +48,30 @@ internal static class CachedReader
                     var taken = AixmlExportStore.CachedUtc(viPath, backend);
                     var when = taken is { } t ? $", taken {t:yyyy-MM-dd HH:mm}Z" : "";
                     var note = backend == AixmlBackend.Grpc
-                        ? $"served from the export cache: NI's converter export of this VI{when}. " +
+                        ? $"NI's converter export of this VI, served from the export cache{when}. " +
                           "The pylabview backend prefers it to its own reader's - it is the " +
-                          "higher-fidelity reading and serving it needs no NI service. Pass " +
+                          "higher-fidelity reading, and serving it needs no NI service. Pass " +
                           "refresh to read the VI with vi2aixml.py instead."
-                        : $"served from the export cache: the pylabview reader's own export{when}, " +
-                          "made by the reader code that is installed now. Pass refresh to re-read.";
+                        : $"Served from the export cache{when}: the pylabview reader's own earlier read, " +
+                          "made by the reader code installed now. " +
+                          "Pass refresh to read again.";
                     return new Outcome(new AixmlComposer.Result(true, false, "No Error", [], 0, 0),
                                        backend, false, note);
                 }
 
         var read = await AixmlComposer.ReadAsync(setup, viPath, aixmlPath, timeoutSeconds, ct);
         if (!read.Written)
-            return new Outcome(read, null, false, "not cached: the read failed");
+            return new Outcome(read, null, false, "Not cached: the read failed.");
 
         var stored = AixmlExportStore.Save(viPath, aixmlPath, roots, AixmlBackend.PyLabview);
         var outcome = stored
-            ? "read by vi2aixml.py and written to the export cache under the reader's key - kept " +
-              "apart from NI's entries, so a grpc call is never served it"
+            ? $"Written to the export cache under the reader's key - kept apart " +
+              "from NI's entries, so a grpc call is never served it."
             : AixmlExportStore.IsCacheable(viPath, roots)
-                ? "read by vi2aixml.py; not cached: the entry could not be written"
-                : "read by vi2aixml.py; not cached: this VI is outside the LabVIEW installation, " +
-                  "and an export depends on its subVIs too - your own code is always re-read";
+                ? "Not cached: the entry could not be written - another call " +
+                  "may have been storing the same VI at that moment; the next read retries."
+                : "Not cached: this VI is outside the LabVIEW installation, and " +
+                  "an export depends on its subVIs too - your own code is always read afresh.";
         return new Outcome(read, null, stored, outcome);
     }
 }

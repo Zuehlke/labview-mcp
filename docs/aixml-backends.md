@@ -1142,6 +1142,14 @@ unchanged), `LlbPathTests` the split and the cache key, and `PylabviewLlbMemberR
 reader on the real DAQmx and EasyXML files, skipping where they are not installed.
 `lvai_describe_vi` on pylabview still checks `File.Exists` and refuses such a path.
 
+**`lvai_run_vi_and_read_values` followed the same evening**, found by the live check after the
+client restart: it answered `viNotFound` for the EasyXML VI on pylabview and `FileNotFoundException`
+on grpc, both from our own `File.Exists`. Both take `LlbPath.Exists` now and hand the path through
+the `.llb` on unchanged - to NI's run helper, which opens it with `Open VI Reference`, and to
+ActiveX; the panel's names come from the reader, which materializes the member as above.
+`RunToolsTests` pins the grpc half against the fake service, with a path through a missing `.llb`
+as the control.
+
 ## The reader's exports in the cache, and two reader gaps a caller saw (2026-10-15)
 
 **The pylabview reader's exports go into the export cache now** - the user's decision of
