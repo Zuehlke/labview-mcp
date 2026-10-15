@@ -89,11 +89,18 @@ internal static class AixmlExportStore
     {
         try
         {
-            var info = new FileInfo(Path.GetFullPath(viPath));
+            var full = Path.GetFullPath(viPath);
+            var info = new FileInfo(full);
+            // A member of an .llb CONTAINER FILE has no stat of its own: the container's stands in,
+            // so any change to the .llb invalidates every member's entry. Until 2026-10-15 such a
+            // path had no key and every export of a DAQmx VI answered "the entry could not be
+            // written".
+            if (!info.Exists && LlbPath.Split(full) is { } member)
+                info = new FileInfo(member.Container);
             if (!info.Exists) return null;
 
             return string.Join('|',
-                info.FullName.ToLowerInvariant(),
+                full.ToLowerInvariant(),
                 info.LastWriteTimeUtc.Ticks,
                 info.Length);
         }

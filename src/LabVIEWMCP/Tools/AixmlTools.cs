@@ -38,6 +38,11 @@ internal sealed class AixmlTools(LvaiConnection connection)
         subVIs too, and user code changes one subVI at a time behind a caller whose own timestamp
         never moves. Every answer carries fromCache and a one-line cacheNote, so which of the two
         happened is visible rather than guessed. Pass refresh to re-export a cached VI anyway.
+        A VI INSIDE AN `.llb` CONTAINER FILE - every DAQmx VI - is read by its path THROUGH the
+        `.llb`, as LabVIEW writes it (`...\configure\task.llb\DAQmx Clear Task.vi`): NI's converter
+        takes it as it is, and its export is cached keyed on the `.llb`'s stat since 2026-10-15;
+        on pylabview the reader extracts the container into %USERPROFILE%\.labviewmcp\cache\llb
+        once and reads the member there.
         """)]
     public async Task<string> ConvertViToAixmlAsync(
         [Description(@"Absolute path to the source .vi")] string viPath,

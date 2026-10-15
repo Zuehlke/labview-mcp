@@ -1114,6 +1114,34 @@ answer to the letter, and proof that LabVIEW loaded the link and read the callee
 first DAQmx miss in a process took 4 s, a later compose 1.7 s. `PylabviewLlbContainerTests`
 covers the DAQmx and the VI Tester case where they are installed and skips elsewhere.
 
+## Reading a VI inside an `.llb` FILE - `lvai_vi_terminals`, `lvai_convert_vi_to_aixml` (2026-10-15)
+
+**The compose half above left the READ half refusing**: a demo build the same day composed a
+call to JKI EasyXML's `Escape-Unescape String for XML__JKI EasyXML.vi` and then could not ask
+`lvai_vi_terminals` for its terminals - `FileNotFoundException: No VI at ...` on BOTH backends, so
+DAQmx terminal names still had to come from an NI example. The refusal was ours: the tool checked
+`File.Exists`, which is false for every member of a container file.
+
+- **gRPC: NI's converter takes the path through the `.llb` as it is.** Measured with
+  `lvai_convert_vi_to_aixml` (which never had the check): `...\configure\task.llb\DAQmx Clear
+  Task.vi` answered `errorCode 0` and the full export. So `lvai_vi_terminals` now passes the
+  virtual path straight on (`LlbPath.Exists` in place of `File.Exists`) - no copy, no extraction.
+  The same measurement answered `not cached: the entry could not be written`: the export cache
+  keyed an entry on the VI's own stat, which a member does not have. `AixmlExportStore.KeyFor`
+  takes the CONTAINER's stat for one now, so a rebuilt `.llb` invalidates all its members.
+- **pylabview: the reader materializes the member.** `vi2aixml.py` given a path that does not
+  exist asks `resolve.materialize()` - the container extracted once into
+  `%USERPROFILE%\.labviewmcp\cache\llb` - reads that file, and keeps the VIRTUAL path as the VI's
+  own, so its relative links to siblings in the same container resolve through `materialize()` as
+  well. A member the container does not hold exits naming both: `the .llb container '...' holds
+  no member '...'`, which the tools answer as `exportFailed`. `DAQmx Clear Task.vi` read in 0.65 s
+  with the container already extracted.
+
+`InspectToolsTests` pins the gRPC half against the fake service (the request carries the path
+unchanged), `LlbPathTests` the split and the cache key, and `PylabviewLlbMemberReadTests` the
+reader on the real DAQmx and EasyXML files, skipping where they are not installed.
+`lvai_describe_vi` on pylabview still checks `File.Exists` and refuses such a path.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has not been RUN through a composed VI** - the probes above stop at the link and

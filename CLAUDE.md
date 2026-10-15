@@ -152,6 +152,12 @@ backends - `docs/aixml-reference.md` §9, "`.llb` targets on the two backends":
   `execState 1`, or only the unwired required input named. The first miss in a process costs a
   few seconds (the containers whose bytes carry the name are extracted); later ones come from
   the cache.
+- **And the TERMINAL NAMES of such a VI are readable since the same day.** `lvai_vi_terminals` and
+  `lvai_convert_vi_to_aixml` take the path through the `.llb` FILE as LabVIEW writes it, on both
+  backends. Their `FileNotFoundException` was our own `File.Exists` check: NI's converter accepts
+  the path unchanged (measured, `errorCode 0`), and the pylabview reader extracts the member
+  through `resolve.py`. An NI example is no longer the only source of a DAQmx VI's terminal names.
+  `docs/aixml-backends.md`, "Reading a VI inside an `.llb` FILE".
 
 **PROJECT-LOCAL CODE RESOLVES BY BARE NAME ONCE IT IS OPEN IN LabVIEW — measured 2026-09-25 on
 NI's hint, and the sentence above said "does not resolve" flatly until then.** Opened through its

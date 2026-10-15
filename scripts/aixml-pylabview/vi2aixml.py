@@ -481,7 +481,12 @@ def link_file(path, caller_file):
     p = caller_file
     for c in comps:
         p = os.path.dirname(p) if c == "" else os.path.join(p, c)
-    return p if os.path.isfile(p) else None
+    if os.path.isfile(p):
+        return p
+    # a sibling inside the same .llb container file as a caller read from one
+    import resolve
+    m = resolve.materialize(p)
+    return m if m and os.path.isfile(m) else None
 
 
 def callee_slots(path):
@@ -2250,8 +2255,19 @@ def main(argv):
     if src.lower().endswith(".xml"):
         main_xml = src
     else:
+        # a VI INSIDE an .llb container file, its path running through the .llb as LabVIEW writes
+        # it: read from the member resolve.py extracted. vi_path below stays the virtual path, so
+        # the VI's relative links still resolve from where LabVIEW sees it
+        real = src
+        if not os.path.exists(src):
+            import resolve
+            real = resolve.materialize(src)
+            if real is None:
+                split = resolve.llb_split(src)
+                sys.exit("No VI at '%s'%s" % (src, "" if split is None else
+                         ": the .llb container '%s' holds no member '%s'" % split))
         tmp = tempfile.mkdtemp(prefix="vi2aixml_")
-        main_xml = lvheap.extract(src, tmp)
+        main_xml = lvheap.extract(real, tmp)
     try:
         root = Reader(main_xml, vi_path=None if src.lower().endswith(".xml") else os.path.abspath(src)).read()
     finally:

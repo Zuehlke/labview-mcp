@@ -174,6 +174,40 @@ public sealed class InspectToolsTests : IDisposable
     }
 
     /// <summary>
+    /// A path THROUGH an .llb container FILE reaches NI's converter as it is (2026-10-15). It used
+    /// to stop at the server's own existence check with FileNotFoundException, which is why no
+    /// DAQmx VI's terminals could be read; NI was measured taking the path unchanged.
+    /// </summary>
+    [Fact]
+    public async Task APathThroughAnLlbFileReachesNIsConverterUnchanged()
+    {
+        await using var server = await ServerWith();
+        var container = Path.Combine(_dir, "widgets.llb");
+        File.WriteAllText(container, "a container file, not a folder");
+        var member = Path.Combine(container, "Widget.vi");
+
+        var result = await new InspectTools(server.Connection).ViTerminalsAsync(member, backend: "grpc");
+
+        Assert.Contains("in one", result);
+        var (_, request) = Assert.Single(server.Service.Received, r => r.Method == "ConvertVIToAIXML");
+        Assert.Equal(member, ((LabVIEWMcp.Lvai.ConvertVIToAIXMLRequest)request).ViPath);
+    }
+
+    /// <summary>An .llb that is a FOLDER holds ordinary files: a missing one is still missing.</summary>
+    [Fact]
+    public async Task AMissingViInAnLlbFolderIsStillReportedMissing()
+    {
+        await using var server = await ServerWith();
+        var folder = Directory.CreateDirectory(Path.Combine(_dir, "folder.llb")).FullName;
+
+        var result = await new InspectTools(server.Connection)
+            .ViTerminalsAsync(Path.Combine(folder, "absent.vi"), backend: "grpc");
+
+        Assert.False(Res.Bool(result, "ok"));
+        Assert.DoesNotContain(server.Service.Received, r => r.Method == "ConvertVIToAIXML");
+    }
+
+    /// <summary>
     /// A childless VI element is the documented silent export failure - the diagram was withheld,
     /// not absent. "0 terminals" would be the empty answer this tool exists to prevent.
     /// </summary>

@@ -704,6 +704,12 @@ and copy its `Call` element.** `Voltage - Finite Input.vi` yielded every termina
 polymorphic instance names at once. `lvai_vi_terminals` now says this in its own description, which
 is where it is read at the moment it is needed.
 
+**CORRECTED 2026-10-15: the tool reads inside an `.llb` FILE now, on both backends.** The
+`FileNotFoundException` was the SERVER's own `File.Exists` check, not a limit of either converter:
+NI's `ConvertVIToAIXML` takes `...\configure\task.llb\DAQmx Clear Task.vi` as it is (`errorCode 0`,
+the full export), and the pylabview reader extracts the container through `resolve.py` and reads
+the member. `docs/aixml-backends.md`, "Reading a VI inside an `.llb` FILE".
+
 ### Result
 
 22 tests green across both classes — 4 + 2 on the parent, 4 + 4 + 8 on the child — 12 members all

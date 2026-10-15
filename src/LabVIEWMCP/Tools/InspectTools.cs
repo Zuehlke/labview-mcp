@@ -92,17 +92,18 @@ internal sealed class InspectTools(LvaiConnection connection)
         The last line of the answer says whether the export came from the disk cache or from
         LabVIEW, the same way lvai_convert_vi_to_aixml reports it; pass refresh to force a
         re-export when you suspect a stale entry.
-        IT CANNOT SEE INSIDE AN `.llb`, AND THAT RULES OUT MOST DRIVER APIs. A path through an
-        `.llb` answers `FileNotFoundException` - measured 2026-09-03 on
-        `...\create\channels.llb\DAQmx Create Virtual Channel.vi` and the `timing.llb`
-        equivalent. EVERY DAQmx VI lives in an `.llb`, so this tool cannot give you their terminal
-        names at all, and hunting for a spelling it will never produce cost 240 s of wall clock
-        against 10 s inside LabVIEW - the worst row of that run.
-        WHAT WORKS INSTEAD: export an NI EXAMPLE that already calls the VI and copy its `Call`
-        element. `lvai_example_index` finds one, `lvai_convert_vi_to_aixml` reads it, and a single
-        example - `Voltage - Finite Input.vi` - yielded every terminal name AND both polymorphic
-        instance names at once. That is the documented route for any library-owned VI, not a
-        workaround.
+        A VI INSIDE AN `.llb` CONTAINER FILE IS READ TOO, since 2026-10-15 - spell the path through
+        the `.llb` as LabVIEW does: `...\DAQmx\configure\task.llb\DAQmx Clear Task.vi`. Every DAQmx
+        VI lives in such a file, and until then this tool answered `FileNotFoundException` for all
+        of them, on both backends, because the server checked the path exists before asking
+        anyone. NI's converter takes the path as it is (measured, `errorCode 0`), and the export is
+        cached like any installation VI, keyed on the `.llb`'s own stat; the pylabview reader
+        extracts the container once into `%USERPROFILE%\.labviewmcp\cache\llb` and reads the
+        member there. A member name the `.llb` does not hold is the reader's or NI's refusal.
+        The other route still works and is worth knowing for a whole API: export an NI EXAMPLE
+        that already calls the VI - `lvai_example_index` finds one - and a single example
+        (`Voltage - Finite Input.vi`) yields every terminal name and both polymorphic instance
+        names at once.
         ON THE pylabview BACKEND the export is our own reader's (vi2aixml.py) - no LabVIEW and no
         NI service at all - and it is never cached and never served from the cache, which holds
         NI's converter output only. The answer's last line names `backend` and `backendSource`.
@@ -129,7 +130,9 @@ internal sealed class InspectTools(LvaiConnection connection)
                                                      AixmlBackend.Choice choice, CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
-            if (!File.Exists(viPath))
+            // A path THROUGH an .llb container file is a VI too - both backends read its member
+            // (LlbPath), so only a path that is neither is refused here.
+            if (!LlbPath.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
 
             // Under the cache root, not %TEMP%: this file exists only to be parsed, and keeping
