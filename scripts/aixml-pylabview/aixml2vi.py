@@ -50,6 +50,9 @@ INDEX_SHIFT = 3   # consolidated 1 and 2 are the two connector-pane Function typ
 
 # a label objFlags bit only one donor carries - Composer.instantiate clears it
 LABEL_FLAG_DONOR_ONLY = 0x20000000
+# a While Loop's lTst DCO: set for Stop if True (objFlags 65537, the harvested shell), clear for
+# Continue if True (objFlags 1) - which NI's exporter writes as a <Condition> with NO value
+LOOP_STOP_IF_TRUE = 0x10000
 
 SCALARS = {
     "double": ("NumFloat64", "stdNum"), "single": ("NumFloat32", "stdNum"),
@@ -3842,6 +3845,12 @@ class Composer:
         keep = {lcnt.find("termList")[0].get("uid")}
         if ltst is not None:
             keep.add(ltst.find("termList")[0].get("uid"))
+            cond = next((c for c in el if c.tag == "Condition"), None)
+            if cond is not None and cond.get("value") != "stop":
+                # Continue if True: NI writes the Condition with no value (vi2aixml reads it so
+                # since 2026-10-15); composed as Stop if True, such a loop ran inverted
+                flags = ltst.find("objFlags")
+                flags.text = str(int(flags.text or 0) & ~LOOP_STOP_IF_TRUE)
         lmax_outer = lmax_inner = None
         if loop.find("loopLimitDCO") is not None:
             lmax_uid = loop.find("loopLimitDCO").get("uid")

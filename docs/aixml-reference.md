@@ -456,6 +456,16 @@ Enumerated values observed:
 - `Tunnel.mode`: `index` (auto-indexing on a loop border); absent means plain tunnel
 - `Tunnel.cond`: `true` seen on an event-structure border tunnel
 - `Control.style`: `latched` (mechanical action of a boolean)
+- `Condition.value`: `stop` for **Stop if True**; ABSENT for **Continue if True**. Measured
+  2026-10-15: NI's exports carry 428 `value="stop"` and a handful with no `value`, and every
+  value-less one checked (`SB_WriteINIVal.vi`, `picktime.vi`, `Add Abstract Message to Actor.vi`)
+  is a Continue-if-True loop - in the heap the loop's `lTst` DCO with `objFlags 1` where Stop if
+  True reads `65537` (bit `0x10000`). The pylabview reader wrote `stop` for every loop until that
+  day, and the composer built every loop as Stop if True; both follow the attribute now.
+- Case selector text (`CaseFrame.selector`): a string or enum item is QUOTED, and inside the
+  quotes a `,` is `\2C` (NI's `"N-waveforms\2C N-filters"`), a control character `\XX` - the
+  LabVIEW Icon Editor's Backspace case is `"\08"` - and a backslash doubled. A raw control
+  character is not legal XML 1.0, so a reader that writes one loses the whole export.
 - `Structure._name`: `While Loop` · `For Loop` · `Case Structure` · `Event Structure` ·
   `Flat Sequence Frame` (each frame is its own `Structure`, there is no parent element)
 

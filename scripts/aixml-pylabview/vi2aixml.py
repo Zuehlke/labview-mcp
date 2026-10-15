@@ -30,6 +30,7 @@ TYPE_TO_AIXML = {v[0]: k for k, v in aixml2vi.SCALARS.items()}
 TYPE_TO_AIXML["MeasureData.TimeStamp"] = "timestamp"
 INT_FMT = aixml2vi.INT_FMT
 SINK = 0x8000          # objFlags bit on a terminal that RECEIVES a wire (measured, see FINDINGS)
+LOOP_STOP_IF_TRUE = aixml2vi.LOOP_STOP_IF_TRUE
 
 
 def escape(s):
@@ -590,6 +591,37 @@ def unquote(t):
 def esc_attr_items(items):
     """Case selector items as NI writes them: joined by ', ' with the comma escaped."""
     return "\\2C ".join(items)
+
+
+def esc_case_text(s):
+    """A string or enum case item's TEXT as NI writes it inside the quotes: ',' as \\2C - NI's own
+    `"N-waveforms\\2C N-filters"`, which unescaped raw would split into two items - control
+    characters as \\XX, and a backslash DOUBLED so aixml2vi.unescape cannot read what follows it as
+    hex. A raw control character is not legal XML 1.0 at all: the LabVIEW Icon Editor's KeyDown.vi
+    has a Backspace case `"\\x08"`, and the export was unreadable from that byte on (2026-10-15)."""
+    return "".join("\\\\" if c == "\\" else ("\\%02X" % ord(c) if ord(c) < 0x20 or c == "," else c) for c in s)
+
+
+# what XML 1.0 forbids outright; \t \n \r are legal and ElementTree writes them as references
+_XML_ILLEGAL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def escape_illegal_xml_chars(root):
+    """The last line of defence before serialising: an attribute or text holding a character XML
+    1.0 forbids makes the WHOLE export unparseable, so it is written as \\XX - AIXML's own escape -
+    and a comment names each place, because a path that reaches here was not escaped on purpose."""
+    hits = []
+    for el in root.iter():
+        for k, v in list(el.attrib.items()):
+            if _XML_ILLEGAL.search(v):
+                el.set(k, _XML_ILLEGAL.sub(lambda m: "\\%02X" % ord(m.group()), v))
+                hits.append("%s %s=" % (el.tag, k) + (" uid %s" % el.get("uid") if el.get("uid") else ""))
+        if el.text and _XML_ILLEGAL.search(el.text):
+            el.text = _XML_ILLEGAL.sub(lambda m: "\\%02X" % ord(m.group()), el.text)
+            hits.append("%s text" % el.tag)
+    for h in hits:
+        root.append(ET.Comment(" vi2aixml: control character written as \\XX in %s " % h))
+    return hits
 
 
 # heap class of a fixed-shape node -> its AIXML name; the terminal names come from the
@@ -1249,7 +1281,14 @@ class Reader:
                 self.term_owner[t.get("uid")] = (el, "#count", False)
         tst = node.find("loopTestDCO")
         if tst is not None:
-            cond = ET.Element("Condition", {"uid": tst.get("uid"), "uid_parent": node.get("uid"), "value": "stop"})
+            # value="stop" only for Stop if True: the lTst DCO carries 0x10000 then (objFlags 65537),
+            # and Continue if True clears it (objFlags 1) - where NI's exporter writes NO value at
+            # all. Measured 2026-10-15 on SB_WriteINIVal.vi, picktime.vi and Add Abstract Message
+            # to Actor.vi, all three objFlags 1 and value-less in NI's export, against 428 NI
+            # "stop" conditions; this wrote "stop" for every loop until then.
+            cond = ET.Element("Condition", {"uid": tst.get("uid"), "uid_parent": node.get("uid")})
+            if int(tst.findtext("objFlags") or 0) & LOOP_STOP_IF_TRUE:
+                cond.set("value", "stop")
             for t in inner_terms.get(tst.get("uid"), []):
                 self.term_owner[t.get("uid")] = (cond, "value", True)
             self._pending_children = getattr(self, "_pending_children", [])
@@ -1508,10 +1547,10 @@ class Reader:
             else:
                 def val(v):
                     if st == "String":
-                        return '"%s"' % sel_strings[v] if 0 <= v < len(sel_strings) else str(v)
+                        return '"%s"' % esc_case_text(sel_strings[v]) if 0 <= v < len(sel_strings) else str(v)
                     if labels:
                         # QUOTED, as NI's exporter writes an enum item (`"State 1"`, t97)
-                        return '"%s"' % labels[v] if 0 <= v < len(labels) else str(v)
+                        return '"%s"' % esc_case_text(labels[v]) if 0 <= v < len(labels) else str(v)
                     return str(v)
                 if stt == 0 and ett == 0:
                     txt = val(s)
@@ -2297,6 +2336,7 @@ def main(argv):
     finally:
         if tmp:
             shutil.rmtree(tmp, ignore_errors=True)
+    escape_illegal_xml_chars(root)
     ET.indent(root, "  ")
     text = ET.tostring(root, encoding="unicode")
     if len(argv) > 1:

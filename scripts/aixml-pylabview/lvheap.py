@@ -65,11 +65,24 @@ def own_parts():
 TYPEID_RE = re.compile(r"TypeID\((\d+)\)")
 
 
+def _pylabview_argv():
+    """How to start pylabview. The bundle's own python.exe on readRSRC.py, exactly what
+    pylabview.cmd runs - NOT through `cmd /c`: cmd.exe re-parses the command line, so a path
+    holding `&` (`Controls\\Path&Icon.ctl` in the LabVIEW Icon Editor, 2026-10-15) was split
+    there into two commands. Only a layout without that pair falls back to the launcher."""
+    here = os.path.dirname(PYLABVIEW_CMD)
+    python = os.path.join(here, "python.exe")
+    script = os.path.join(here, "app", "pylabview", "readRSRC.py")
+    if os.path.exists(python) and os.path.exists(script):
+        return [python, script]
+    return ["cmd", "/c", PYLABVIEW_CMD]
+
+
 def run_pylabview(args, timeout=120):
     # subprocess.run's own timeout kills only cmd.exe: the python grandchild keeps the pipes open
     # and the second communicate() then waits for ever - a coverage run hung 7 minutes on one
     # vi.lib VI that way (2026-10-10). Kill the whole tree instead.
-    p = subprocess.Popen(["cmd", "/c", PYLABVIEW_CMD] + args, stdin=subprocess.DEVNULL,
+    p = subprocess.Popen(_pylabview_argv() + args, stdin=subprocess.DEVNULL,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     try:
         out, err = p.communicate(timeout=timeout)
