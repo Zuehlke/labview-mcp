@@ -46,9 +46,14 @@ internal sealed class LayoutPlan
 /// </summary>
 internal static class DiagramLayout
 {
-    public const int ColumnGap = 28;
-    public const int RowGap = 14;
-    public const int ConstantGap = 12;
+    // the user's review of 2026-10-16: "in X and in Y a little more room - it looks very squeezed".
+    // Before it: 28, 14, 12 and 2 px, and every structure's inset 8 px tighter (6 at the top)
+    public const int ColumnGap = 40;
+    public const int RowGap = 24;
+    public const int ConstantGap = 18;
+    /// <summary>Between constants stacked on one node, and between ports on one border: the same
+    /// gap, so a constant stays level with the port it feeds.</summary>
+    public const int StackGap = 6;
     public const int LabelGap = 8;
     public const int AnchorReach = 220;
     /// <summary>A comment further than this from every node, or wider than NoteWidth, describes
@@ -80,11 +85,11 @@ internal static class DiagramLayout
     /// left, top, right, bottom. A loop's bottom keeps room for i and the stop terminal.</summary>
     private static (int L, int T, int R, int B) Insets(string cls) => cls switch
     {
-        "WhileLoop" => (18, 14, 18, 30),
-        "ForLoop" => (24, 22, 18, 30),
-        "CaseStructure" or "DisableStructure" => (16, 22, 16, 12),
-        "EventStructure" => (16, 26, 16, 12),
-        _ => (16, 20, 16, 16),
+        "WhileLoop" => (26, 20, 26, 38),
+        "ForLoop" => (32, 28, 26, 38),
+        "CaseStructure" or "DisableStructure" => (24, 28, 24, 20),
+        "EventStructure" => (24, 32, 24, 20),
+        _ => (24, 26, 24, 24),
     };
 
     private sealed class Arrangement
@@ -816,7 +821,7 @@ internal static class DiagramLayout
             var top = rail - keeper.Old.H / 2;
             foreach (var p in errors.Where(p => p != keeper).OrderByDescending(p => p.Inner ?? int.MinValue))
             {
-                top -= 2 + p.Old.H;
+                top -= StackGap + p.Old.H;
                 p.RelY = top + p.Old.H / 2;
             }
             errTop[side] = top;
@@ -824,19 +829,19 @@ internal static class DiagramLayout
         // everything else: in the order it asks for, without overlap on either border it sits on,
         // then pushed up above the error ports and off the bottom
         var rest = shape.Ports.Where(p => !p.Error || shape.Rail is null).OrderBy(p => !p.Dynamic).ThenBy(p => p.RelY).ToList();
-        var prevBottom = new Dictionary<bool, int> { [true] = shape.PortTop - 2, [false] = shape.PortTop - 2 };
+        var prevBottom = new Dictionary<bool, int> { [true] = shape.PortTop - StackGap, [false] = shape.PortTop - StackGap };
         foreach (var p in rest)
         {
             var sides = SidesOf(p);
-            var t = Math.Max(p.RelY - p.Room / 2, sides.Max(sd => prevBottom[sd]) + 2);
+            var t = Math.Max(p.RelY - p.Room / 2, sides.Max(sd => prevBottom[sd]) + StackGap);
             t = Math.Min(t, maxBottom - p.Room);
             p.RelY = t + p.Room / 2;
             foreach (var sd in sides) prevBottom[sd] = t + p.Room;
         }
         var limit = new Dictionary<bool, int>
         {
-            [true] = Math.Min(maxBottom, errTop[true] - 2),
-            [false] = Math.Min(maxBottom, errTop[false] - 2),
+            [true] = Math.Min(maxBottom, errTop[true] - StackGap),
+            [false] = Math.Min(maxBottom, errTop[false] - StackGap),
         };
         for (var i = rest.Count - 1; i >= 0; i--)
         {
@@ -844,7 +849,7 @@ internal static class DiagramLayout
             var sides = SidesOf(p);
             var lim = sides.Min(sd => limit[sd]);
             if (p.RelY - p.Room / 2 + p.Room > lim) p.RelY = Math.Max(shape.PortTop, lim - p.Room) + p.Room / 2;
-            foreach (var sd in sides) limit[sd] = p.RelY - p.Room / 2 - 2;
+            foreach (var sd in sides) limit[sd] = p.RelY - p.Room / 2 - StackGap;
         }
     }
 
@@ -859,8 +864,8 @@ internal static class DiagramLayout
             var l = b.L <= s.Box.L + 4;
             var r = b.R >= s.Box.R - 4;
             var room = PortRoom(b, OuterEnd(ctx, s, b).Node);
-            if (both || (l && !r)) left += room + 2;
-            if (both || (r && !l)) right += room + 2;
+            if (both || (l && !r)) left += room + StackGap;
+            if (both || (r && !l)) right += room + StackGap;
         }
         foreach (var t in s.Tunnels) Add(t, false);
         foreach (var t in s.ShiftRegs) Add(t, true);
@@ -1073,7 +1078,7 @@ internal static class DiagramLayout
         var prevBottom = int.MinValue / 2;
         foreach (var x in wanted.OrderBy(x => x.B.T + x.B.H / 2))
         {
-            var b = x.B.T < prevBottom + 2 ? x.B.Offset(0, prevBottom + 2 - x.B.T) : x.B;
+            var b = x.B.T < prevBottom + StackGap ? x.B.Offset(0, prevBottom + StackGap - x.B.T) : x.B;
             stacked.Add((x.C, b, x.L, x.T));
             prevBottom = b.B;
         }

@@ -103,14 +103,14 @@ public sealed class DiagramLayoutTests
     /// A chain of seven subVI calls on one error wire, each with a long label constant. Hung at the
     /// height of the chain, every constant took its full width out of the row: 2023 px against the
     /// original's 1293. Rising over the node before, as the original has them, they cost almost
-    /// none: 1352 px.
+    /// none: 1352 px, and 1454 with the room the user asked for on 2026-10-16.
     /// </summary>
     [Fact]
     public void Constants_on_a_chain_rise_over_the_node_before()
     {
         var model = Load("atm-update-panel-original.txt");
         var plan = DiagramLayout.Plan(model);
-        Assert.True(plan.PredictedTop.W <= 1293 * 11 / 10, $"{plan.PredictedTop.W} px wide");
+        Assert.True(plan.PredictedTop.W <= 1293 * 115 / 100, $"{plan.PredictedTop.W} px wide");
         var rail = model.Top.Objects.Where(o => o.Class == "SubVI").Select(o => plan.Predicted[o.Key]).ToList();
         var constants = model.Top.Objects.Where(o => o.IsConstant).Select(o => plan.Predicted[o.Key]).ToList();
         Assert.Contains(constants, c => rail.Any(r => c.B <= r.T && c.L < r.L && c.R > r.L - 200));
@@ -176,7 +176,8 @@ public sealed class DiagramLayoutTests
         var model = Ni.Value;
         var before = DiagramLayoutTools.TopOutline(model);
         var plan = DiagramLayout.Plan(model);
-        Assert.True(plan.PredictedTop.W < before.W * 0.6, $"planned {plan.PredictedTop.W} px wide against {before.W}");
+        // 0.6 until the user asked for more room on 2026-10-16; with it the plan is 2304 against 3805
+        Assert.True(plan.PredictedTop.W < before.W * 0.65, $"planned {plan.PredictedTop.W} px wide against {before.W}");
         Assert.True(plan.PredictedTop.H < before.H * 0.8, $"planned {plan.PredictedTop.H} px high against {before.H}");
     }
 

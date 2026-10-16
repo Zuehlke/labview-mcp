@@ -73,6 +73,21 @@ remains is the engine's choice of layout.
 Each diagram is laid out from the inside out: a structure's frames first, so its size is known
 before its own diagram is arranged.
 
+**The spacing.** The user's review of 2026-10-16 found the compacted layout good but squeezed:
+"in X and in Y a little more room". The values went up as follows:
+
+| constant | was | now |
+|---|---|---|
+| between columns (`ColumnGap`) | 28 px | 40 px |
+| between rows (`RowGap`) | 14 px | 24 px |
+| from a constant to its node (`ConstantGap`) | 12 px | 18 px |
+| between stacked constants and between ports (`StackGap`) | 2 px | 6 px |
+
+Every structure's inset grew by 8 px, 6 px at the top. Constants and ports share `StackGap`, so a
+constant stays level with the port it feeds. Over the 45 ATM VIs, measured on the renders, the
+median width went from 0.93 to 1.00 of the original's and the height from 0.73 to 0.83, with none
+wider than 1920 px.
+
 - **Columns follow data flow.** The column is the longest path from a source, the old Sugiyama
   layering.
 - **Parallel loops share a column, one above the other.** Two While Loops with no wire path between
@@ -81,9 +96,9 @@ before its own diagram is arranged.
   came three columns after its producer, behind the panel set-up only it waits for, and the two
   loops ran next to each other across 2295 px. The user's review of 2026-10-16: the original,
   stacked layout was better than ours.
-- **A gap is as wide as the wires crossing it.** 28 px (`ColumnGap`) plus 6 px (`WireLane`) per
+- **A gap is as wide as the wires crossing it.** `ColumnGap` plus 6 px (`WireLane`) per
   wire beyond the second, counting wires from node to node and, in a frame, wires from the left
-  border and to the right border. The frame's insets grow the same way. At the plain 28 px, five
+  border and to the right border. The frame's insets grow the same way. At a plain 28 px, five
   wires from the ATM consumer loop's shift registers crossed the gaps around its three subVIs, and
   `CleanUpWire` knotted them above the nodes.
 - **A node never stacks on a structure.** It gets a column of its own in front of it, because a
