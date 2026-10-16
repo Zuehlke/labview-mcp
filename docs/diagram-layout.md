@@ -58,7 +58,7 @@ clean-up (a test asserts it). The apply helper walks a path of `object frame obj
 | Which register do `Shift Registers[]` give? | The RIGHT register of each pair, on the right border. The left one follows it. |
 | Is a Case Structure's selector (`?`) a tunnel? | No: `Tunnels[]` does not list it, and the dump finds it as the left-border term that matches no tunnel. `{LV.CaseStructure}` `Selector` reads it; cast to `{LV.GObject}`, the double move with the owner unwired puts it exactly where asked (9 of 9). An error cluster wired to it enters every frame through it. |
 | Are an Event Structure's dynamic event terminals tunnels? | No. `Tunnels[]` does not list them either; the dump finds them as the border terms that match no tunnel and are not the timeout terminal in the top-left corner. `{LV.EventStructure}` `Dynamic Terminal (Left)` and `(Right)` read them, and the double move with the owner unwired puts them exactly where asked (2 of 2). |
-| Does an Event Data Node move? | No. LabVIEW keeps it on the event frame's left border: eleven were asked for interior positions and all came back. Not vertically either: one asked for 186 px higher stayed where it was, and after a resize it sits wherever LabVIEW leaves it, near the bottom in the DQMH Main. A filter event's Event Filter Node (`Discard?`, VI Server class `NamedBundler`) stays on the right border the same way. Both are left alone. |
+| Does an Event Data Node move? | No. LabVIEW keeps it on the event frame's left border: eleven were asked for interior positions and all came back. Not vertically either: one asked for 186 px higher stayed where it was, and after a resize it sits wherever LabVIEW leaves it, near the bottom in the DQMH Main. A filter event's Event Filter Node (`Discard?`, VI Server class `NamedBundler`) stays on the right border the same way. Both are left alone. They are told by KIND, not by place: the cluster terminal LabVIEW hides on the border is zero wide. By place - within 12 px of a border - the test missed every data node the composer writes, which LabVIEW keeps 30 px in, and caught an indicator whose LABEL reached the right border (LayoutCheck, 2026-10-16). |
 | Does a While Loop's stop terminal go where asked? | Near the bottom only: asked 880, it landed 986 once and 856 another time. It is constrained by LabVIEW. |
 | Do decorations (arrows) move? | Not by `Move`. An arrow grouped with its label follows the label. |
 | What does Bounds mean for an object whose label shows? | **The size of object AND label, at the object's own Position.** All 13 such objects in the fixture have a Bounds size equal to their Total Bounds Rect, shifted. A numeric constant with its label on the left reads 151 px wide, and 132 px of that is label to the LEFT of its Position. The parser corrects this (`DiagramModel.Parse`). |
@@ -90,6 +90,10 @@ wider than 1920 px.
 
 - **Columns follow data flow.** The column is the longest path from a source, the old Sugiyama
   layering.
+- **A structure off the error chain goes as late as what it feeds allows.** As early as its inputs
+  allowed, `Write Samples to TDMS`'s For Loop took the column before `TDMS Open`, which it does
+  not feed. The path wire into `TDMS Open` then went round the loop. Now the loop stacks above
+  `TDMS Open`, and the path wire runs straight along the bottom.
 - **Parallel loops share a column, one above the other.** Two While Loops with no wire path between
   them, either way, run side by side, like a producer and a consumer. They go into the later of
   their two columns, and what follows them moves right. By longest path alone the ATM's consumer
@@ -113,6 +117,11 @@ wider than 1920 px.
   - In DQMH's Main, the tie rule keeps the message loop under the event loop.
 - **Nodes align to their neighbours.** A right-to-left pass, then a left-to-right pass, makes
   two-node wires level.
+  - **Nodes pushed together stack so their wires do not cross.** `CleanUpWire` turns a wire just
+    after its source. So of the wires climbing to a stack, the one from furthest left goes on top,
+    and of the wires dropping to it, at the bottom. In the order of their sources' terminal
+    heights, the three indicators of `Evaluate TDMS File` came out upside down, every wire across
+    the other two.
 - **Tunnels, shift registers and case selectors are levelled with the terminal their inside wire
   meets.** The user's review of 2026-10-16 named three wires; each rule below answers one.
   - Error ports sit on the rail, and an error port is the lowest port on its border.
@@ -177,11 +186,23 @@ wider than 1920 px.
   - A constant rises at most 120 px above its terminal (`MaxLift`). With no limit, an ATM test's
     expected value rose 150 px and was wired down past four assertions. Over the 45 VIs of that
     project, the limit cost 3 % of the mean width.
+- **A wire's run stays clear.** A wire that passes nodes on its way runs at the height of one of
+  its ends, and `CleanUpWire` draws it through whatever stands there. In `LayoutCheck Main` the
+  `TDMS File Path` wire ran through the `Samples` array constant hanging on `Create User Event`.
+  Where both heights are blocked, what blocks one of them moves clear of it by 5 px (`Corridor`),
+  the shorter way. Only a hanging constant on its own, or a free node with what hangs on it, moves.
+  A wire crossing another reads; a wire through a constant does not.
 - **A comment moves with the object it describes**, the nearest one within 40 px.
   - A comment on a subVI goes below it, any other above it.
   - In a frame, a comment on a node of the rail goes above even so. Below the rail it would make
     every frame of the structure taller by its height.
-  - A collision pass moves a comment up or down, clear of everything else, labels included.
+  - **On the top level a control or an indicator is no anchor.** Its wire leaves sideways
+    through where the comment would hang. `Send Block and Wait`'s comment hung on its `User Event`
+    control, across the wires to both subVIs. It is a note now, above the diagram.
+  - **A comment keeps off wires as well as objects.** A wire runs somewhere inside the box its two
+    ends span; `CleanUpWire` picks the turn, so nothing finer is known before it ran. Of the places
+    above or below the comment, and at either end of its node's top or bottom, the nearest one
+    that covers no object and no wire box wins. Failing that, the one that covers fewest wires.
 - **A frame's note goes into room the frame has.**
   - A note is a comment of three lines or more (40 px, `FrameNoteHeight`) or wider than 300 px:
     a DQMH `#CodeNeeded` block. NI's clean-up puts these beside any node, so nearness says
@@ -195,8 +216,12 @@ wider than 1920 px.
   - Stacking every note directly above its code (the rule before) put the code of every short frame
     at the bottom under an empty field.
 - **A note on the top level goes beside the structure it was nearest to.** The candidates are
-  its top on the side the note was on, then the other side, then above it. The one where the
-  diagram grows least wins. DQMH's HowTo block lands to the right of the case structure's top.
+  its top on the side the note was on, sliding up that side as far as the diagram goes, then the
+  other side, then above it. A place over a wire box loses first, then the one where the diagram
+  grows more. DQMH's HowTo block lands to the right of the case structure's top.
+  `LayoutCheck Main`'s note found the left of the consumer loop full of the wires climbing to the
+  producer, went to the far right of the diagram, and left the top left empty. Sliding up its own
+  side, it sits at the top left, beside the producer.
 - **On the top level, controls start the diagram and indicators end it.** Every other node gets
   column 1 or later as a FLOOR in the column calculation, so what follows moves along. Raised
   after the fact instead, the ATM's `Current VI's Path` shared a column with the `Strip Path` it
@@ -315,6 +340,34 @@ Still open on this subject:
   constants rise as a staircase, but no higher than `MaxLift`.
 - **Inside the consumer loop** the shift-register wires still run as a bundle above the three
   subVIs, as they did in the original.
+
+## 4b. The LayoutCheck project
+
+A project built for this check (`C:	emp\LayoutCheck`, 2026-10-16) has a producer and a consumer on a
+user event, a TDMS evaluation and eight subVIs. The user's review of its first render named five
+defects. Each rule in section 3 marked LayoutCheck answers one, and a test on the real dump of the
+VI holds it (`DiagramLayoutCheckTests`):
+
+| defect in the render | cause | now |
+|---|---|---|
+| `Keep Running` laid over `Blocks Written` | the indicator's label reached the frame border, so it was taken for a border node and not laid out | border nodes told by kind |
+| the Stop terminal under the event data node | the composed data node sits 30 px in, so it was laid out and LabVIEW kept it where it was | the same |
+| `TDMS File Path` wire through the `Samples` constant | nothing kept a wire's run clear | corridors |
+| comments on wires (`Send Block and Wait`, the main VI's note) | a control as an anchor; wires not counted | no control anchors, wire boxes |
+| `Evaluate TDMS File`'s indicators wired across each other | a stack ordered by its sources' heights | the turn order |
+| `Write Samples to TDMS`'s path wire round the loop | the loop placed as early as possible | structures off the chain go late |
+| the empty top left of the main VI | the note went to the far right | notes slide up their own side |
+
+What stays, because the wiring decides it: the main VI's `Release` and `Evaluate TDMS File` sit after
+both loops, so the refnum and path wires to them run under the consumer loop. `Read TDMS Channels`
+carries its file refnum round the read loop to `TDMS Close` in the same way. A person would wire them
+through the loop; the layout does not change wiring.
+
+A composer defect showed in the same renders. An enum or Boolean constant whose label sits LEFT of
+its value had the label widened to its text and nothing moved after it. `create or replace` ran across
+its own enum, and the enum's item field kept the donor's 12 px, so LabVIEW drew no item at all.
+`aixml2vi.py` now moves every value part right of the label and widens the item field to the longest
+item (`PylabviewInlineLabelTests`).
 
 ## 5. Switched on, 2026-10-16
 

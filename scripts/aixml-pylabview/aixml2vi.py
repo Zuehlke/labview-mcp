@@ -1969,11 +1969,76 @@ class Composer:
         w = int(-(-text_width(name) // 1)) + self.LABEL_PAD
         lab.find("bounds").text = lvheap.fmt_bounds((0, 32, 15, 32 + w) if is_ind else (0, -w, 15, 0))
 
+    # AN ENUM OR RING CONSTANT's parts, after the label: the frame (cosm 9), the glyph (cosm 1) 2 px
+    # in, the item text (multiLabel 12) from 10 px in, the arrow (multiCosm 79) after the text, the
+    # hidden number (numLabel 10) beyond the frame - read off the donor, whose item field was 12 px
+    # wide, so LabVIEW drew the glyph and the arrow and no item at all (LayoutCheck, 2026-10-16).
+    RING_ITEM_PAD = 6
+
+    def _fit_inline(self, ddo, name):
+        """A diagram constant whose label sits LEFT of its value - a Boolean, an enum, a ring, a
+        path: every value part moves right of the label. _set_label widens the label to its text
+        and nothing moved what followed it, so `use system decimal point` ran across its own T/F
+        and `create or replace` across its enum (LayoutCheck, 2026-10-16). An enum or ring's item
+        field becomes as wide as its longest item, the arrow and the frame following it."""
+        parts = list(ddo.find("partsList"))
+        label = next((p for p in parts if p.get("class") == "label" and p.findtext("partID") == "16"), None)
+        if label is None or label.find("bounds") is None or not name or int(label.findtext("objFlags") or 0) & 8:
+            return
+        rest = [p for p in parts if p is not label and p.find("bounds") is not None]
+        if not rest:
+            return
+        lt, ll, lb, _ = lvheap.parse_bounds(label.findtext("bounds"))
+        lw = int(-(-text_width(name) // 1)) + self.LABEL_PAD
+        fb = lvheap.fmt_bounds
+        boxes = {id(p): list(lvheap.parse_bounds(p.findtext("bounds"))) for p in rest}
+        # a label ABOVE the value (a front-panel style) is not inline, and nothing has to move
+        if min(b[0] for b in boxes.values()) >= lb:
+            return
+        label.find("bounds").text = fb((lt, ll, lb, ll + lw))
+        if ddo.get("class") == "stdRing":
+            ml = next((p for p in rest if p.get("class") == "multiLabel" and p.find("buf") is not None), None)
+            items = re.findall(r'"([^"]*)"', ml.findtext("buf") or "") if ml is not None else []
+            if ml is not None and items:
+                b = boxes[id(ml)]
+                need = max(int(-(-text_width(i) // 1)) for i in items) + self.RING_ITEM_PAD
+                grow = need - (b[3] - b[1])
+                if grow > 0:
+                    b[3] += grow
+                    for p in rest:
+                        q = boxes[id(p)]
+                        if p is ml:
+                            continue
+                        if p.get("class") == "cosm" and p.findtext("partID") == "9":
+                            q[3] += grow            # the frame widens around the item
+                        elif q[1] >= b[1]:
+                            q[1] += grow            # what sits right of the item moves along
+                            q[3] += grow
+        shift = ll + lw - min(b[1] for b in boxes.values())
+        for p in rest:
+            q = boxes[id(p)]
+            if shift > 0:
+                q[1] += shift
+                q[3] += shift
+            p.find("bounds").text = fb(tuple(q))
+        ob = ddo.find("bounds")
+        if ob is not None:
+            o = lvheap.parse_bounds(ob.text)
+            right = max(max(b[3] for b in boxes.values()), ll + lw)
+            # the hidden number field of a ring lies beyond its frame and is not drawn
+            frame = next((boxes[id(p)] for p in rest if p.get("class") == "cosm" and p.findtext("partID") == "9"), None)
+            if frame is not None:
+                right = max(frame[3], ll + lw)
+            ob.text = fb((o[0], o[1], o[2], o[1] + right))
+
     def _fit_const(self, ddo, name, tree, value):
         cls = ddo.get("class")
         spec = self.FIT_PARTS.get(cls)
         t = tree.get("Type")
-        if spec is None or (cls == "stdNum" and (t not in NUM_RANK or "Complex" in t)):
+        if spec is None:
+            self._fit_inline(ddo, name)
+            return
+        if cls == "stdNum" and (t not in NUM_RANK or "Complex" in t):
             return
         parts = {(p.get("class"), p.findtext("partID")): p for p in ddo.find("partsList")}
         label, text = parts.get(("label", "16")), parts.get(spec[:2])

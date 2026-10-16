@@ -77,6 +77,8 @@ internal static class DiagramLayout
     /// limit, an ATM test's expected value rose 150 px and wired down past four assertions; over
     /// the 45 VIs of that project 120 px cost 3 % of the mean width.</summary>
     public const int MaxLift = 120;
+    /// <summary>Half the height a wire's run keeps clear of nodes and constants.</summary>
+    public const int Corridor = 5;
 
     private static readonly HashSet<string> Arrangeable = new(StringComparer.Ordinal)
         { "WhileLoop", "ForLoop", "CaseStructure", "EventStructure", "DisableStructure" };
@@ -215,9 +217,11 @@ internal static class DiagramLayout
                 notes.Add(t);
                 continue;
             }
+            // a control or indicator on the top level is no anchor: its wire leaves sideways
+            // through where the comment would hang, and its own label already names it
             var anchor = t.Box.W > NoteWidth
                 ? NearestAnchor(t, layoutNodes.Where(n => n.IsStructure).ToList())
-                : NearestAnchor(t, layoutNodes);
+                : NearestAnchor(t, layoutNodes.Where(n => d.Owner is not null || !n.IsControlTerminal).ToList());
             if (anchor is null) notes.Add(t);
             else
             {
@@ -461,23 +465,21 @@ internal static class DiagramLayout
             foreach (var (o, dx, dy) in b.Members) a.Pos[o] = (p.X + dx, p.Y + dy);
         }
 
-        // comments clear of what they would cover: up first, then down
-        var labelSet = blocks.Values.SelectMany(b => b.Members).Select(m => m.O).Where(o => o.IsText).ToHashSet();
-        foreach (var t in labelSet)
+        // a wire past nodes runs at the height of one of its ends: what stands there moves clear
+        ClearCorridors(ctx, graph, layoutNodes, blocks, a.Pos, colPlans.Select(c => c.OnRail).OfType<DObject>().ToHashSet());
+
+        // comments clear of what they would cover: nodes always, and wires as far as their ends
+        // tell - a wire runs inside the box its two ends span, and CleanUpWire draws it through a
+        // comment as readily as through empty diagram
+        var wireBoxes = WireBoxes(ctx, graph, nodes, a.Pos);
+        var commentOf = blocks.SelectMany(kv => kv.Value.Members.Where(m => m.O.IsText).Select(m => (m.O, N: kv.Key)))
+                              .ToDictionary(p => p.O, p => p.N);
+        foreach (var (t, n) in commentOf)
         {
-            if (!a.Pos.TryGetValue(t, out var tp)) continue;
+            if (!a.Pos.TryGetValue(t, out var tp) || !a.Pos.TryGetValue(n, out var np)) continue;
             var others = a.Pos.Where(kv => kv.Key != t).Select(kv => Extent(ctx, kv.Key, kv.Value.X, kv.Value.Y)).ToList();
-            var start = new Box(tp.X, tp.Y, t.Box.W, t.Box.H);
-            var best = start;
-            for (var step = 0; step < 12 && others.Any(o => o.Overlaps(best, 4)); step++)
-            {
-                var hit = others.Where(o => o.Overlaps(best, 4)).ToList();
-                var up = start with { T = hit.Min(o => o.T) - t.Box.H - LabelGap };
-                var down = start with { T = hit.Max(o => o.B) + LabelGap };
-                best = Math.Abs(up.T - start.T) <= Math.Abs(down.T - start.T) && !others.Any(o => o.Overlaps(up, 4)) ? up
-                     : !others.Any(o => o.Overlaps(down, 4)) ? down : up;
-                start = best;
-            }
+            var best = PlaceComment(new Box(tp.X, tp.Y, t.Box.W, t.Box.H), Extent(ctx, n, np.X, np.Y), others,
+                                    wireBoxes.Select(w => w.B).ToList());
             a.Pos[t] = (best.L, best.T);
         }
 
@@ -497,19 +499,25 @@ internal static class DiagramLayout
                 var e = Extent(ctx, t, 0, 0);
                 var right = t.Box.L + t.Box.W / 2 > s.Box.L + s.Box.W / 2;
                 Box Beside(bool r) => r ? new Box(sb.R + ColumnGap, sb.T, e.W, e.H) : new Box(sb.L - ColumnGap - e.W, sb.T, e.W, e.H);
-                var candidates = new[]
-                {
-                    Beside(right), Beside(!right),
-                    right ? new Box(sb.R - e.W, sb.T - RowGap - e.H, e.W, e.H) : new Box(sb.L, sb.T - RowGap - e.H, e.W, e.H),
-                };
+                // beside it on its own side, sliding up that side as far as the diagram goes before
+                // the other side is tried: LayoutCheck Main's note found the left of the consumer
+                // loop full of the wires climbing to the producer, and went to the far right of
+                // the diagram while the top left stood empty
+                var candidates = new List<(Box B, int Rank)>();
+                foreach (var (side, rank) in new[] { (right, 0), (!right, 1000) })
+                    for (var k = 0; k == 0 || Beside(side).T - k * 12 >= content.T; k++)
+                        candidates.Add((Beside(side).Offset(0, -k * 12), rank + k));
+                candidates.Add((right ? new Box(sb.R - e.W, sb.T - RowGap - e.H, e.W, e.H) : new Box(sb.L, sb.T - RowGap - e.H, e.W, e.H), 2000));
+                candidates.Add((right ? new Box(sb.L, sb.T - RowGap - e.H, e.W, e.H) : new Box(sb.R - e.W, sb.T - RowGap - e.H, e.W, e.H), 2001));
                 Box? best = null;
                 var bestCost = long.MaxValue;
-                for (var i = 0; i < candidates.Length; i++)
+                foreach (var (c, rank) in candidates)
                 {
-                    var c = candidates[i];
                     if (placedNow.Any(p => p.Overlaps(c, RowGap))) continue;
                     var u = Box.Union([content, c]);
-                    var cost = (long)u.W * u.H - (long)content.W * content.H + i;   // growth first, then the preference order
+                    // a wire through it first, then growth, then the preference order
+                    var cost = wireBoxes.Count(w => w.B.Overlaps(c)) * 1_000_000_000L
+                             + ((long)u.W * u.H - (long)content.W * content.H) * 4 + rank;
                     if (cost < bestCost) { bestCost = cost; best = c; }
                 }
                 if (best is not { } b) continue;
@@ -569,6 +577,123 @@ internal static class DiagramLayout
         return a;
     }
 
+    /// <summary>Where each wire will run: inside the box its two ends span, a line when they are
+    /// level. CleanUpWire picks the turn, so nothing finer is known before it ran.</summary>
+    private static List<(Box B, DObject[] Ends)> WireBoxes(Context ctx, Graph g, List<DObject> nodes,
+                                                         Dictionary<DObject, (int X, int Y)> pos)
+    {
+        var list = new List<(Box, DObject[])>();
+        foreach (var e in nodes.SelectMany(n => g.Out(n)))
+        {
+            if (e.From == e.To || !pos.TryGetValue(e.From, out var ps) || !pos.TryGetValue(e.To, out var pt)) continue;
+            var xs = ps.X + Size(ctx, e.From).W;
+            var xt = pt.X;
+            var ys = ps.Y + TermY(ctx, e.From, e.FromTerm);
+            var yt = pt.Y + TermY(ctx, e.To, e.ToTerm);
+            var l = Math.Min(xs, xt);
+            list.Add((new Box(l, Math.Min(ys, yt) - 2, Math.Max(xs, xt) - l, Math.Abs(ys - yt) + 4), [e.From, e.To]));
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// A comment's place near its node: where it is, unless it covers a node or a wire - then the
+    /// nearest place above or below, or at either end of the node's top or bottom, that covers
+    /// nothing; failing that, the one that covers fewest wires. Nodes are never covered.
+    /// </summary>
+    private static Box PlaceComment(Box start, Box anchor, List<Box> objects, List<Box> wires)
+    {
+        var w = start.W;
+        var h = start.H;
+        var candidates = new List<Box> { start };
+        for (var k = 1; k * 6 <= MaxLift; k++)
+        {
+            candidates.Add(start.Offset(0, -k * 6));
+            candidates.Add(start.Offset(0, k * 6));
+        }
+        foreach (var x in new[] { anchor.L, anchor.R - w, anchor.L + (anchor.W - w) / 2 })
+            for (var k = 0; k * 6 <= 60; k++)
+            {
+                candidates.Add(new Box(x, anchor.T - h - LabelGap - k * 6, w, h));
+                candidates.Add(new Box(x, anchor.B + LabelGap + k * 6, w, h));
+            }
+        var best = start;
+        var bestCost = long.MaxValue;
+        foreach (var c in candidates)
+        {
+            if (objects.Any(o => o.Overlaps(c, 4))) continue;
+            var cost = wires.Count(b => b.Overlaps(c, 1)) * 10_000L + Math.Abs(c.L - start.L) + Math.Abs(c.T - start.T);
+            if (cost < bestCost) { bestCost = cost; best = c; }
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// A wire that passes nodes on its way runs at the height of one of its ends - CleanUpWire
+    /// turns it just after its source or just before its target - and is drawn through whatever
+    /// stands at that height: LayoutCheck Main's TDMS File Path wire ran through the Samples array
+    /// constant hanging on Create User Event. Where both heights are blocked, what blocks one of
+    /// them moves clear of it, the shorter way: a hanging constant alone, a free node with what
+    /// hangs on it. A wire crossing another reads; a wire through a constant does not.
+    /// </summary>
+    private static void ClearCorridors(Context ctx, Graph g, List<DObject> nodes, Dictionary<DObject, Block> blocks,
+                                       Dictionary<DObject, (int X, int Y)> pos, HashSet<DObject> onRail)
+    {
+        var owner = new Dictionary<DObject, DObject>();
+        foreach (var (n, b) in blocks)
+            foreach (var m in b.Members) owner[m.O] = n;
+        // what moves as one: a node with all that hangs on it, or one hanging constant alone
+        List<DObject> Group(DObject o) => blocks.TryGetValue(o, out var b) ? [o, .. b.Members.Select(m => m.O)] : [o];
+        bool Movable(DObject o) => owner.ContainsKey(o)
+            ? o.IsConstant
+            : !o.IsStructure && !o.IsControlTerminal && !onRail.Contains(o) && !o.IsText;
+        Box Ext(DObject o) => Extent(ctx, o, pos[o].X, pos[o].Y);
+
+        var edges = nodes.SelectMany(n => g.Out(n))
+            .Where(e => e.From != e.To && pos.ContainsKey(e.From) && pos.ContainsKey(e.To))
+            .Select(e => (E: e, Xs: pos[e.From].X + Size(ctx, e.From).W, Xt: pos[e.To].X))
+            .Where(t => t.Xt - t.Xs > 2 * ColumnGap)
+            .OrderByDescending(t => t.Xt - t.Xs).ToList();
+        foreach (var (e, xs, xt) in edges)
+        {
+            List<DObject> Hits(int y) => pos.Keys
+                .Where(o => !o.IsText && o != e.From && o != e.To && !(owner.TryGetValue(o, out var w) && w == e.From))
+                .Where(o => { var b = Ext(o); return b.R > xs + 2 && b.L < xt - 2 && b.T < y + Corridor && b.B > y - Corridor; })
+                .ToList();
+            var ys = pos[e.From].Y + TermY(ctx, e.From, e.FromTerm);
+            var yt = pos[e.To].Y + TermY(ctx, e.To, e.ToTerm);
+            var hs = Hits(ys);
+            var ht = Hits(yt);
+            if (hs.Count == 0 || ht.Count == 0) continue;
+            foreach (var (y, hits) in new[] { (yt, ht), (ys, hs) }.OrderBy(p => p.Item2.Count))
+            {
+                if (!hits.All(Movable)) continue;
+                var moves = new Dictionary<DObject, int>();
+                foreach (var key in hits.Distinct())
+                {
+                    var grp = Group(key);
+                    var box = Box.Union(grp.Where(o => !o.IsText).Select(Ext));
+                    var gap = owner.ContainsKey(key) ? StackGap : RowGap / 2;
+                    var up = y - Corridor - box.B;
+                    var down = y + Corridor - box.T;
+                    foreach (var dy in Math.Abs(up) <= Math.Abs(down) ? new[] { up, down } : [down, up])
+                    {
+                        var shifted = grp.Where(o => !o.IsText).Select(o => Ext(o).Offset(0, dy)).ToList();
+                        if (pos.Keys.Any(o => !o.IsText && !grp.Contains(o) && shifted.Any(sb => sb.Overlaps(Ext(o), gap))))
+                            continue;
+                        moves[key] = dy;
+                        break;
+                    }
+                    if (!moves.ContainsKey(key)) break;
+                }
+                if (moves.Count < hits.Distinct().Count()) continue;
+                foreach (var (key, dy) in moves)
+                    foreach (var o in Group(key)) pos[o] = (pos[o].X, pos[o].Y + dy);
+                break;
+            }
+        }
+    }
+
     // ------------------------------------------------------------------ structures
 
     private static StructShape Shape(Context ctx, DObject s)
@@ -600,7 +725,7 @@ internal static class DiagramLayout
         }
         FitNotes(ctx, shape, ref contentW, ref contentH, ref rail);
         // an event frame's data node sits on the left border: the contents start right of it
-        var dataNode = s.Frames.SelectMany(f => f.Objects.Where(o => IsBorderNode(f, o) && o.Box.L <= s.Box.L + 12))
+        var dataNode = s.Frames.SelectMany(f => f.Objects.Where(o => IsBorderNode(f, o) && IsEventDataNode(o)))
                                .Select(o => o.Box.R - s.Box.L).DefaultIfEmpty(0).Max();
         if (dataNode > 0) il = Math.Max(il, dataNode + ColumnGap / 2);
         // a lane between a structure inside and this border, where a wire from its port to ours
@@ -960,9 +1085,10 @@ internal static class DiagramLayout
             if (cols[c].OnRail is { } r) colOf[r] = c;
         }
 
-        int? Desired(DObject n, bool downstream)
+        // where a node wants to be, and the right edge of the node its wire comes from
+        (int Y, int SrcX)? Desired(DObject n, bool downstream)
         {
-            var wants = new List<int>();
+            var wants = new List<(int Y, int X)>();
             var edges = downstream ? g.Out(n) : g.In(n);
             foreach (var e in edges)
             {
@@ -971,29 +1097,27 @@ internal static class DiagramLayout
                 if (downstream ? oc <= colOf[n] : oc >= colOf[n]) continue;
                 var myTerm = downstream ? e.FromTerm : e.ToTerm;
                 var theirTerm = downstream ? e.ToTerm : e.FromTerm;
-                wants.Add(op.Y + TermY(ctx, other, theirTerm) - TermY(ctx, n, myTerm));
+                wants.Add((op.Y + TermY(ctx, other, theirTerm) - TermY(ctx, n, myTerm), op.X + Size(ctx, other).W));
             }
             if (wants.Count == 0) return null;
-            wants.Sort();
+            wants.Sort((p, q) => p.Y.CompareTo(q.Y));
             return wants[wants.Count / 2];
         }
 
-        void Settle(int c, Func<DObject, int?> want)
+        // the nodes in this order, each as near its wanted y as the ones before it allow, and all
+        // above the node on the rail, or above the rail line
+        List<(DObject N, int Y)> Stack(int c, List<(DObject N, int Y, int? X)> order)
         {
-            var (above, onRail) = cols[c];
-            if (above.Count == 0) return;
-            var target = above.Select(n => (N: n, Y: want(n) ?? pos[n].Y)).OrderBy(t => t.Y).ToList();
-            // down the column: no overlap
+            var onRail = cols[c].OnRail;
             var placed = new List<(DObject N, int Y)>();
             var prevBottom = int.MinValue;
-            foreach (var (n, y0) in target)
+            foreach (var (n, y0, _) in order)
             {
                 var b = blocks[n].Box;
                 var y = prevBottom == int.MinValue ? y0 : Math.Max(y0, prevBottom + RowGap - b.T);
                 placed.Add((n, y));
                 prevBottom = y + b.B;
             }
-            // up the column: everything stays above the node on the rail, or above the rail line
             var limit = onRail is not null ? pos[onRail].Y + blocks[onRail].Box.T - RowGap
                       : railY is { } ry ? ry - RowGap : int.MaxValue;
             for (var i = placed.Count - 1; i >= 0; i--)
@@ -1004,13 +1128,47 @@ internal static class DiagramLayout
                 placed[i] = (n, y);
                 limit = y + b.T - RowGap;
             }
+            return placed;
+        }
+
+        void Settle(int c, Func<DObject, (int Y, int SrcX)?> want, bool upstream)
+        {
+            var above = cols[c].Above;
+            if (above.Count == 0) return;
+            var target = above.Select(n => (N: n, W: want(n)))
+                              .Select(t => (t.N, Y: t.W?.Y ?? pos[t.N].Y, X: t.W?.SrcX)).OrderBy(t => t.Y).ToList();
+            var placed = Stack(c, target);
+            // nodes pushed together off their wires cross each other's wires unless the wire that
+            // turns first runs outermost: CleanUpWire turns a wire just after its source, so of the
+            // wires climbing to a stack the one from furthest left goes on top, and of those
+            // dropping to it at the bottom. In the order of their sources' heights the three
+            // indicators of Evaluate TDMS File came out upside down, every wire across the others
+            if (upstream && placed.Count > 1)
+            {
+                var at = placed.ToDictionary(p => p.N, p => p.Y);
+                var order = new List<(DObject N, int Y, int? X)>();
+                for (var i = 0; i < target.Count;)
+                {
+                    var j = i;
+                    while (j + 1 < placed.Count && placed[j + 1].Y + blocks[placed[j + 1].N].Box.T
+                           - (placed[j].Y + blocks[placed[j].N].Box.B) <= RowGap) j++;
+                    var run = target.Skip(i).Take(j - i + 1).ToList();
+                    var rising = run.Where(t => t.X is not null && at[t.N] < t.Y - 2).OrderBy(t => t.X).ThenBy(t => t.Y);
+                    var falling = run.Where(t => t.X is not null && at[t.N] > t.Y + 2).OrderByDescending(t => t.X).ThenBy(t => t.Y);
+                    var level = run.Except(rising).Except(falling);
+                    order.AddRange(rising.Concat(level).Concat(falling));
+                    i = j + 1;
+                }
+                placed = Stack(c, order);
+            }
             foreach (var (n, y) in placed) pos[n] = (pos[n].X, y);
         }
 
         for (var c = cols.Count - 2; c >= 0; c--)
-            Settle(c, n => Desired(n, downstream: true));
+            Settle(c, n => Desired(n, downstream: true), upstream: false);
         for (var c = 1; c < cols.Count; c++)
-            Settle(c, n => g.Out(n).Any(e => colOf.TryGetValue(e.To, out var oc) && oc > c) ? pos[n].Y : Desired(n, downstream: false));
+            Settle(c, n => g.Out(n).Any(e => colOf.TryGetValue(e.To, out var oc) && oc > c) ? null : Desired(n, downstream: false),
+                   upstream: true);
     }
 
     /// <summary>
@@ -1019,10 +1177,20 @@ internal static class DiagramLayout
     /// (measured 2026-10-16: eleven data nodes asked for 117/186 and the like, and one filter node,
     /// all came back at their border). They are not laid out; the contents start right of the data
     /// node.
+    /// Told by KIND, not by place: the cluster terminal LabVIEW hides on the border is zero
+    /// wide. By place the test missed every composed data node - LabVIEW keeps those 30 px in
+    /// from the left, not 8 - and caught an indicator whose LABEL reached the right border, so
+    /// that indicator stayed where it was and a constant was laid over it (LayoutCheck,
+    /// 2026-10-16).
     /// </summary>
     internal static bool IsBorderNode(Diagram d, DObject o) =>
-        d.Owner is { Class: "EventStructure" } owner && !o.IsText && !o.IsStructure
-        && (o.Box.L <= owner.Box.L + 12 || o.Box.R >= owner.Box.R - 12);
+        d.Owner is { Class: "EventStructure" } && (IsEventDataNode(o) || IsFilterNode(o));
+
+    private static bool IsEventDataNode(DObject o) =>
+        o.Class == "NamedUnbundler" && o.Terms.Any(t => !t.Source && t.Box.W == 0);
+
+    private static bool IsFilterNode(DObject o) =>
+        o.Class == "NamedBundler" && o.Terms.Any(t => t.Source && t.Box.W == 0);
 
     /// <summary>A frame's subdiagram label: a Text as wide as the frame, at its top.</summary>
     private static HashSet<DObject> SubdiagramLabels(Diagram frame, DObject owner) =>
@@ -1185,6 +1353,15 @@ internal static class DiagramLayout
         {
             layer.Clear();
             foreach (var n in nodes) Of(n);
+        }
+        // a structure off the error chain goes as late as what it feeds allows: as early as its
+        // inputs allowed, Write Samples to TDMS's For Loop took the column before TDMS Open, which
+        // it does not feed, and the path wire into TDMS Open went round the loop
+        var stacked = ParallelLoops(g, nodes, layer).SelectMany(gr => gr).ToHashSet();
+        foreach (var s in nodes.Where(n => n.IsStructure && !g.OnErrorChain(n) && !stacked.Contains(n)))
+        {
+            var consumers = g.Out(s).Select(e => e.To).Where(k => k != s && layer.ContainsKey(k) && !k.IsConstant).ToList();
+            if (consumers.Count > 0 && consumers.Min(k => layer[k]) - 1 > layer[s]) layer[s] = consumers.Min(k => layer[k]) - 1;
         }
         // an unattached constant goes one column before its earliest consumer
         foreach (var c in nodes.Where(n => n.IsConstant))

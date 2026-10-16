@@ -606,6 +606,12 @@ greyed zeros from the diagram's origin to the array. A CLUSTER constant is laid 
 out - fields stacked with their labels hidden, the pane's frame parts, `docBounds` and `origin`
 computed from its size - where it used to be drawn as an empty frame; nested clusters and array
 fields included, and its wire attaches exactly. FINDINGS, "Constants as LabVIEW draws them".
+**A constant whose label sits LEFT of its value - a Boolean, an enum, a ring - since 2026-10-16**:
+the label was widened to its text and nothing after it moved, so `use system decimal point` ran
+across its own T/F and `create or replace` across its enum, whose item field kept the donor's 12 px
+and showed no item. Every value part now starts where the label ends, and an enum's item field is as
+wide as its longest item, the arrow and the frame following it (`_fit_inline`,
+`PylabviewInlineLabelTests`, `docs/diagram-layout.md` §4b).
 **A front-panel label too**: the text's advances + 4 px (296 labels of NI's examples measured
 +3..4), with the object's own box widened to its visible label as NI's converter writes it -
 outside that box LabVIEW cut it - and the text written raw, since pylabview escapes nothing
