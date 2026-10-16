@@ -20,6 +20,16 @@ an invisible "Abort Running VIs" dialog behind), it never runs a broken VI (the 
 modal), and it runs asynchronously with a deadline and an Abort. A call that hangs is reported with
 LabVIEW's visible window titles, because it is waiting behind a dialog.
 
+**Attaching is `Activator.CreateInstance`, and that is not attach-only by itself** - measured
+2026-10-16. LabVIEW does not register in the Running Object Table (`GetActiveObject` answers
+`MK_E_UNAVAILABLE` on a normally started IDE), so the class factory is the only way in; it reaches
+the running LabVIEW while that one answers, and when it does NOT - hung, or behind a modal - COM
+starts a second `LabVIEW.exe /Automation -Embedding`. That one quits when it is released, and with
+JKI's SDP `Start.vi` running in it the quit raised "Quitting aborts all running VIs" - a modal the
+user met five times in one build. `LabViewCom.Attach` now compares the LabVIEW processes before
+and after: a new one is released and ended at once, and the call answers `labviewNotAnswering`
+instead of running in a LabVIEW nobody asked for.
+
 The composer's reach is measured in `experiments/aixml-without-grpc/FINDINGS.md` (source tree
 only): 88 composition tests load and run; 252 of NI's 792 exports compose and 216 of those are
 executable, with no LabVIEW crash; the reader matches NI's own export in every fact for 143 of 768
@@ -238,6 +248,46 @@ NI in the middle of it. It is an `AsyncLocal`: it ends with the tool that set it
 into another client call. Helpers are composed into `%TEMP%\LabVIEWMCP\helpers-pylabview`, NI's built
 ones stay in `helpers`, so neither backend runs or overwrites the other's.
 
+## The resident Python worker
+
+**Every Python call of the server runs in a resident process since 2026-10-16** -
+`scripts\aixml-pylabview\worker.py`, started by `Infra/PythonWorkers.cs` behind
+`PyLabview.RunAsync`, so no caller changed. Before, a pylabview generation started one
+interpreter for the composer, a second inside it for pylabview's rebuild, one per callee whose
+pane it read, and two more for the connector-pane check (extract, then `pylv-conpane.py`).
+Measured on the LayoutCheck build:
+
+| | own process | worker, warm |
+|---|---|---|
+| compose `LayoutCheck Main` (five callees) | 2.25 s | 0.6 s |
+| compose `Compute Channel Statistics` (a `vi.lib` library member) | 1.41 s | 0.37 s |
+| extract a VI | about 0.5 s | 0.07 s |
+| `pylv-conpane.py` | about 0.5 s | 0.03 s |
+| the whole LayoutCheck build, nine VIs, end to end | 27.8 s | **21.8 s** (grpc: 31.4 s, the same run) |
+| the 393 composer and pylabview tests | 37 s | 18 s |
+
+Three things make it pay, not only the interpreter start: pylabview runs IN the process (its
+rebuild and every callee read were subprocesses), a callee read once is kept until its file
+changes (`_CALLEES` is keyed on size and time now), and the installation's index - 4 000
+directories walked for every library-qualified Call, 0.6 s - is shared for ten minutes
+(`resolve._INSTALL_INDEX`).
+
+**What it must not change is the answer**, and `PythonWorkersTests` holds it to that against a
+python.exe of its own: exit code, stdout, the last line of stderr, stdin closed, the working
+directory, a `__main__` guard. The first version failed five refusal tests: `sys.exit("message")`
+printed nothing, because Python prints that message only when the PROCESS ends - the worker prints
+it now. A script runs as `__main__` with fresh globals; only `aixml2vi.py` is imported once and
+called through `main(argv)`, so its caches live.
+
+The rules it keeps: at most four at once; a worker is replaced after 300 calls; a call past its
+deadline kills its worker and throws as before; an in-process pylabview read that outruns its own
+timeout (a callee read has 30 s) poisons the worker, which answers and is replaced; a composer
+file edited since the worker started (a checkout's live copy is read) is answered `stale` and the
+call goes to a fresh worker; a worker that dies or answers nonsense is dropped and the call runs
+as its own process after all. One worker is started and warmed at server start, because the first
+compose in a fresh one paid 1.38 s for imports. `LABVIEWMCP_PYTHON_WORKER=0` turns them off;
+`pylv_status` shows both under `aixmlBackend`: `pythonWorkers`, `pythonWorkersStarted`.
+
 ## What each tool does on `pylabview`
 
 | tool | on `pylabview` |
@@ -247,9 +297,9 @@ ones stay in `helpers`, so neither backend runs or overwrites the other's.
 | `lvai_convert_vi_to_aixml` | `vi2aixml.py`, through the export cache since 2026-10-15 under the reader's own key: a cached NI export of the VI is served first, then the reader's own, else a fresh read is cached (`CachedReader`, next sections). `exportBy` names whose export came back, `readerNote` carries the measured fidelity |
 | `lvai_generate_vi` | the validate step is SKIPPED and says so; the convert reads `executable` over ActiveX in its place and stops on a broken VI. **No step touches NI's service**: the diagram size is LabVIEW's own `PrintVIToHTML` over ActiveX, the connector pane is read from the FILE by `pylv-conpane.py`, `panePattern` rebuilds without closing a project. A VI with no conIdx at all has no pane — the composer writes none — and says so |
 | `lvai_generate_vis` | each entry as `lvai_generate_vi`, with the batch's backend |
-| `lvai_open_file` | a PROJECT only: the composed `lvai_open_project` helper over ActiveX - `Project.Open` and `Open Window` in LabVIEW's main instance, which is the IDE's - then the same active-project check and foreground retry, then a REOPEN retry (`reopenRetry`): a project already LOADED but not active stays inactive however often it is opened, so it is saved and closed by path (`lvai_close_project.xml`) and opened again. A VI is refused (`notAvailableOnBackend`) |
+| `lvai_open_file` | a PROJECT only: the composed `lvai_open_project` helper over ActiveX - `Project.Open` and `Open Window` in LabVIEW's main instance, which is the IDE's - then the same active-project check and foreground retry, then a REOPEN retry (`reopenRetry`): a project already LOADED but not active stays inactive however often it is opened, so it is saved and closed by path (`lvai_close_project.xml`) and opened again. **A VI opens too since 2026-10-16** - refused until then: with no project its front panel is opened in LabVIEW's main instance (0.1 s), with one it is opened THROUGH the project after it, by the composed `lvai_open_vi_in_project` helper (`Project.Open` - `Application` - `Open VI Reference` - `FP.Open`, unactivated), and `lvai_close_vi` then closes it on the same backend. `viPaths` as on grpc: `alsoOpened`, `allOpened` |
 | `lvai_close_active_project` | the composed close helper over ActiveX - the same Save and Close, the same sweep |
-| `lvai_create_class` | **no step touches NI's service**: throwaway project opened and closed, carrier composed, NI's own class provider run - all over ActiveX through composed helpers. `typedefFieldsJson` is refused; the typedef binding has no such route yet |
+| `lvai_create_class` | **no step touches NI's service**: throwaway project opened and closed, carrier composed, NI's own class provider run - all over ActiveX through composed helpers. `typedefFieldsJson` binds on the same route since 2026-10-16 - `lvai_bind_class_fields` inherits the backend, and the refusal had outlived the reason for it: measured, a `uint16` enum typedef made by `lvai_create_typedef` on pylabview bound (`typedefAfter 1`, in the file), and the accessors NI's wizard made over it are executable |
 | `lvai_create_interface`, `lvai_create_accessors` | as `lvai_create_class`: NI's own providers run from composed helpers over ActiveX, no step touches NI's service. The accessors come out SOURCE-ONLY on both backends since 2026-10-12 - the project's `NI.LV.All.SourceOnly` decides it, and the tool sets it (`projectSourceOnly`) and reads every saved accessor back (`sourceOnly`) |
 | `lvai_add_class_method` | each method COMPOSED from its AIXML (path and cluster stand-ins compose like any type), the pane repaired by pylabview, the retype-and-membership helper composed and run over ActiveX - LabVIEW writes the class links on its own save. Validation is the composer's, not NI's wiring check, and a `composerRefused` is never waved through as class-wire strictness. A composed method calls the class's accessors DIRECTLY, so a class terminal can be fed by a real class wire - the shape that exposed the helper's retype race (below) |
 | `lvai_generate_class_test`, `lvai_generate_method_test` | the DIRECT route, as on grpc, with NOTHING OPENED: the composer resolves the class's accessors and methods by FILE (the class's folder is passed as a search folder, `AixmlComposer.ExtraSearch`), writes the dynamic-dispatch calls itself, and composes the seeds as CLASS CONSTANTS - so the `{LV.Constant}` Replace step is skipped as well (next sections). The socket route stays as the fallback |
@@ -263,6 +313,21 @@ ones stay in `helpers`, so neither backend runs or overwrites the other's.
 | `lvai_set_vi_icon` | the icon helper composed and run over ActiveX, judged by the same read-back file. Until 2026-10-11 it took the parameter and still called NI's `RunVIAsTopLevel` |
 | `lvai_exec_state` | the SAME `lvai_exec_state.xml` helper, COMPOSED and run over ActiveX, so linker errors are named as on grpc (`route: helper`) - `Missing subVI X.vi in VI Y.vi.`. Only when the helper cannot be composed or run is `ExecState` read directly over ActiveX, which has no linker-error property: then `route: direct`, `linkerErrorsAvailable: false` and `linkerErrorsUnavailableBecause`. A route on pylabview (`lvai_generate_test`, `lvai_add_class_method`, …) reads it the same way. Until 2026-10-12 the direct read was the only one, and `linkerErrors` was null for every VI |
 | `lvai_run_vi_and_read_values` | the panel's names and types read from the FILE (ActiveX can set and get a control by name but cannot list them), inputs converted by type, `SetControlValue` → `Run` → `GetControlValue`. **The answer has the gRPC shape**: the INDICATORS (as NI's helper reads them), each with LabVIEW's type tag (`DBL`), its `Val` text and LabVIEW's flattened `xml` - generated from the value and its type, measured identical to NI's on 11 of 11 values - plus the AIXML `literal`. A DBL keeps LabVIEW's shape, not its last digits (LabVIEW printed 5050 as `5049.99999999999999`). `runForMs` works — a snapshot, then Abort. Refused before anything runs: a control the panel does not have, a value that does not convert, a broken VI, a waveform, a refnum. A 2D (nD) array crosses as ONE rectangular array since 2026-10-15. **`signalsJson` runs the timed helper COMPOSED and run over ActiveX** (since 2026-10-15) against the target whose typed inputs were set first and whose reference is held - ActiveX itself has no Value (Signaling) |
+
+| `lvai_convert_vis_to_aixml` | since 2026-10-16: each VI through the reader and the export cache, as `lvai_convert_vi_to_aixml` reads one, four at a time in the Python workers; `exportBy` per row. Until then it took no `backend` and always asked NI's `ConvertVIToAIXML` |
+| `lvai_run_vi_as_top_level` | since 2026-10-16: `lvai_run_vi_and_read_values` over ActiveX, whose answer comes back (`ranAs` says so) - typed values instead of NI's string map |
+| `lvai_generate_vi_with_events` | since 2026-10-16: `lvai_generate_vi` on pylabview, ONE step - the composer registers every frame, wires the dynamic event terminal and reads a user event's payload itself (`route`) |
+| `lvai_wire_dynamic_events`, `lvai_set_event_data_fields` | since 2026-10-16, for a VI NI's converter built: the wiring helper composed and run over ActiveX (it still reaches the VI through the ACTIVE project, so with none open the answer is `noActiveProject` on both backends), the verify's execState over ActiveX and its row names read back by our reader. Measured end to end: LayoutCheck's main VI built by NI's route, then wired, repointed and run on pylabview - executable, 15 blocks written, NI's export of it identical to the all-grpc one. The row check had to learn the reader's shape: it lists only WIRED rows, so it judges by name where the counts differ |
+| `lvai_ensure_labview` | since 2026-10-16: READY means LabVIEW answers over ActiveX (`readyMeans`, `labviewVersion`), not that NI's service answers - a LabVIEW older than 2026 has none, and nothing on this backend waits for Nigel |
+| `lvai_error_list` | composed helper over ActiveX as before; NI's converter, its fallback when the composer cannot build the helper, is no longer tried on a server whose backend is pylabview |
+
+**What still goes to NI's service on purpose** (the audit of 2026-10-16): `pylv_route`, whose
+question IS whether NI's converter rebuilds the VI; `lvai_find_palette_item` and
+`lvai_drop_palette_item`, NI's palette RPCs; `lvai_status`'s service check; and NI's own assistant
+tools (`lvai_discuss_file`, `lvai_apply_aixml_to_vi`, `lvai_build_from_build_specification`,
+`lvai_get_application_configuration`, `lvai_log_usage_data`, the info-cache, filter and monitor
+tools). Everything else has a pylabview route. A pylabview read may still SERVE a cached export
+NI's converter made earlier - by design, it is the higher-fidelity reading and costs no service.
 
 Before either backend: `lvai_check_aixml`'s pre-checks, and the refusal of a property name with its
 category dropped (`propertyNameWouldCrashLabview`) — that document is wrong whichever converter
@@ -663,6 +728,15 @@ class; a notifier travels on a wire; a Case Structure whose uids are names finds
 rule: **an error terminal is never part of a polymorphic group** - the notifier parts' donor sent
 an error cluster as its data, and a string notification typed `error out` String until it was
 excluded by name. FINDINGS §7a, "Typed control refnums, notifiers and named uids".
+
+**A user-event and a notifier refnum compose as a subVI's CONTROL too, since 2026-10-16**
+(`ref{UserEvent}{<type>}`, `ref{Notifier}{<type>}`, held in VCTP as `Refnum UserEvent` and
+`Refnum NotifierRef` around their data type, the parts chosen by RefType as for a queue). They were
+refused by name, and the LayoutCheck build sent the two subVIs that take them to NI's service. The
+first composed build killed LabVIEW on load - `Insane FrontPanelDataController ... termList n=0`,
+DAbort: the part's `fPDCO` carried no `termListLength`, and the data element inside the refnum kept
+the visible flags of the panel it was cut from. Both are written now; all nine LayoutCheck VIs
+compose, every one executable (`PylabviewRefnumControlTests`).
 
 **Two composer defects surfaced on the way, both general.** A growable node now SHRINKS as well as
 grows: a one-input Format Into String used to keep the template's unwired second input and broke

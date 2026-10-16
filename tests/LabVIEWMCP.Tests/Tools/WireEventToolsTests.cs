@@ -324,4 +324,19 @@ public sealed class WireEventToolsTests
             code: 1055, helperErrorSource: "Property Node in lvai_wire_dyn_events.vi",
             topClasses: [""]));
     }
+
+    [Fact]
+    public void An_ActiveX_run_maps_onto_the_outputs_NI_would_give()
+    {
+        var run = System.Text.Json.Nodes.JsonNode.Parse("""
+            {"ok": true, "values": {
+              "found": {"type": "Boolean", "value": "TRUE", "xml": "<Boolean/>"},
+              "code": {"type": "I32", "value": "0", "xml": "<I32/>"},
+              "top classes": {"type": "Array", "value": null, "xml": "<Array><Dimsize>1</Dimsize></Array>"}}}
+            """) as System.Text.Json.Nodes.JsonObject;
+        var outputs = WireEventTools.OutputsOf(run);
+        Assert.Equal("TRUE", outputs["found"]);
+        Assert.Equal("0", outputs["code"]);
+        Assert.Equal(1, WireEventTools.Dimsize(outputs["top classes"]));
+    }
 }

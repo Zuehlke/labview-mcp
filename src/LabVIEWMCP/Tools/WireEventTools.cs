@@ -128,8 +128,14 @@ internal sealed class WireEventTools(LvaiConnection connection)
         bool finishUserEvents = true,
         [Description("Local budget in seconds")]
         int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.RouteParameterDescription + """
+             On pylabview the helper is COMPOSED and run over ActiveX, and every later step
+            inherits the backend. A VI the composer wrote needs none of this - it is wired and its
+            user events registered in the compose - and is answered as already wired.
+            """)]
+        string? backend = null) =>
+        await BackendRoute.WithBackendAsync(backend, "lvai_wire_dynamic_events", () => Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(viPath))
                 throw new FileNotFoundException($"No file at '{viPath}'.", viPath);
@@ -154,7 +160,10 @@ internal sealed class WireEventTools(LvaiConnection connection)
 
             var stale = IsStale(aixml, helperVi);
             var helperGenerated = false;
-            if (regenerateHelper || stale || !File.Exists(helperVi))
+            if (BackendRoute.OnPyLabview)
+                helperVi = await BackendRoute.ComposedHelperAsync(aixml, timeoutSeconds, ct,
+                                                                  Path.GetFileName(helperVi));
+            else if (regenerateHelper || stale || !File.Exists(helperVi))
             {
                 if (await GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct)
                     is { } generationFailure) return generationFailure;
@@ -168,16 +177,36 @@ internal sealed class WireEventTools(LvaiConnection connection)
             // user event. Several user-event frames are finished from this record (step 3).
             var before = finishUserEvents ? await ExtractBeforeWiringAsync(viPath, timeoutSeconds, ct) : null;
 
-            var request = new RunVIAsTopLevelRequest { ViPath = helperVi };
-            request.Inputs["VI Path"] = Path.GetFullPath(viPath);
-
             var stopwatch = Stopwatch.StartNew();
-            var response = await connection.InvokeAsync((c, t) =>
-                c.RunVIAsTopLevelAsync(request,
-                    deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-            stopwatch.Stop();
-
-            var outputs = response.Outputs;
+            IDictionary<string, string> outputs;
+            JsonObject payload;
+            if (BackendRoute.OnPyLabview)
+            {
+                // over ActiveX: the run answers typed values; the indicators are read back into
+                // the same name -> text map NI's RunVIAsTopLevel gives - a scalar's text, an
+                // array's or cluster's flattened XML, which is what the parsers below read
+                var run = await new RunTools(connection).RunViAndReadValuesAsync(helperVi,
+                    new JsonObject { ["VI Path"] = Path.GetFullPath(viPath) }.ToJsonString(),
+                    timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview, ct: ct);
+                stopwatch.Stop();
+                if (BackendRoute.RunRefusal(run) is { } refusal)
+                    return Json.Error(refusal, "The composed wiring helper did not run over ActiveX.",
+                        new { helperViPath = helperVi, answer = JsonNode.Parse(run) });
+                outputs = OutputsOf(JsonNode.Parse(run) as JsonObject);
+                payload = new JsonObject { ["errorCode"] = 0, ["errorMessage"] = "No Error", ["via"] = "ActiveX" };
+            }
+            else
+            {
+                var request = new RunVIAsTopLevelRequest { ViPath = helperVi };
+                request.Inputs["VI Path"] = Path.GetFullPath(viPath);
+                var response = await connection.InvokeAsync((c, t) =>
+                    c.RunVIAsTopLevelAsync(request,
+                        deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+                stopwatch.Stop();
+                outputs = response.Outputs;
+                payload = Json.Node(response).AsObject();
+                payload.Remove("outputs");
+            }
             var found = Flag(outputs, "found");
             var chainCode = Number(outputs, "code");
             var chainSource = Text(outputs, "source");
@@ -189,11 +218,14 @@ internal sealed class WireEventTools(LvaiConnection connection)
             var terminalNames = Strings(Text(outputs, "terminal names"));
             var registrationNodes = Dimsize(Text(outputs, "registration nodes"));
 
-            var outcome = Classify(found, chainCode, sourceFrom, wiredBefore, endsAfter, broken,
+            // Over ActiveX the helper's code IS read back - the 1055 of the Project:Active Project
+            // read with no project open, everything after it skipped and the class list empty -
+            // where NI's run reads none (Error 91). Given as NI's shape, it gets NI's verdict,
+            // noActiveProject, not noRefnumSourceFound about a diagram nobody read (2026-10-16).
+            var classifiedCode = BackendRoute.OnPyLabview && chainCode == 1055
+                                 && topClasses.All(string.IsNullOrWhiteSpace) ? null : chainCode;
+            var outcome = Classify(found, classifiedCode, sourceFrom, wiredBefore, endsAfter, broken,
                                    chainSource, topClasses);
-
-            var payload = Json.Node(response).AsObject();
-            payload.Remove("outputs");
 
             payload["ok"] = JsonValue.Create(outcome.Ok);
             payload["errorKind"] = outcome.Kind is null ? null : JsonValue.Create(outcome.Kind);
@@ -314,7 +346,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
             }
 
             return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-        });
+        }));
 
     /// <summary>
     /// STEP 3 of the user-event route: write the spec again, onto the file that now carries the
@@ -680,6 +712,24 @@ internal sealed class WireEventTools(LvaiConnection connection)
         var array = new JsonArray();
         foreach (var value in values) array.Add(JsonValue.Create(value));
         return array;
+    }
+
+    /// <summary>
+    /// A run over ActiveX as NI's RunVIAsTopLevel outputs: each indicator by name, a scalar as its
+    /// text, an array or cluster as LabVIEW's flattened XML - the shape the parsers here read.
+    /// </summary>
+    internal static Dictionary<string, string> OutputsOf(JsonObject? run)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (run?["values"] is not JsonObject values) return map;
+        foreach (var (name, node) in values)
+        {
+            if (node is not JsonObject v) continue;
+            var type = (string?)v["type"] ?? "";
+            var text = type is "Array" or "Cluster" ? (string?)v["xml"] : v["value"]?.ToString();
+            if (text is not null) map[name] = text;
+        }
+        return map;
     }
 
     private static string? Text(IDictionary<string, string> outputs, string name) =>

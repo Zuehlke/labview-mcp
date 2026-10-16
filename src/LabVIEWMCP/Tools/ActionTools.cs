@@ -40,7 +40,34 @@ internal sealed class ActionTools(LvaiConnection connection)
         string? inputsJson = null,
         [Description("Local budget in seconds - raise it for long-running VIs")]
         int timeoutSeconds = 300,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview the VI runs over LabVIEW's ActiveX server - the route of
+            lvai_run_vi_and_read_values, whose answer comes back: inputs converted to each
+            control's own type, every indicator read back with its type, NI's service not asked.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_run_vi_as_top_level", out var choice, out var bad))
+            return AixmlBackend.Refusal(bad);
+        if (choice.Name == AixmlBackend.PyLabview)
+        {
+            // the ActiveX run: refused on a broken VI, run with a deadline and an Abort
+            var run = await new RunTools(connection).RunViAndReadValuesAsync(
+                viPath, inputsJson, timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview, ct: ct);
+            if (JsonNode.Parse(run) is JsonObject answer)
+            {
+                answer["ranAs"] = "lvai_run_vi_and_read_values over ActiveX - NI's RunVIAsTopLevel is " +
+                                  "not reached on this backend, so values come back typed, not as strings";
+                return AixmlTools.WithBackend(Json.Document(answer), choice);
+            }
+            return run;
+        }
+        return AixmlTools.WithBackend(await RunViAsTopLevelGrpcAsync(viPath, inputsJson, timeoutSeconds, ct), choice);
+    }
+
+    private async Task<string> RunViAsTopLevelGrpcAsync(string viPath, string? inputsJson, int timeoutSeconds,
+                                                        CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
             var request = new RunVIAsTopLevelRequest { ViPath = viPath };
@@ -350,9 +377,11 @@ internal sealed class ActionTools(LvaiConnection connection)
             """)]
         string? viPaths = null,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview only a PROJECT is opened - with a composed helper over LabVIEW's ActiveX
-            server (Project.Open plus its window), checked for being ACTIVE the same way; a VI is
-            refused. LabVIEW must already be running.
+             On pylabview everything goes over LabVIEW's ActiveX server: a project with a composed
+            helper (Project.Open plus its window), checked for being ACTIVE the same way; a VI
+            with no project has its front panel opened in LabVIEW's main instance, and with a
+            project it is opened THROUGH it (lvai_open_vi_in_project). LabVIEW must already be
+            running.
             """)]
         string? backend = null)
     {
@@ -524,12 +553,22 @@ internal sealed class ActionTools(LvaiConnection connection)
     {
         viPath = NormalizedPath(viPath);
         projectPath = NormalizedPath(projectPath);
-        if (viPath is { Length: > 0 } || ViPathList(viPaths).Any())
-            return Json.Error("notAvailableOnBackend",
-                "Opening a VI in the IDE is not built for the pylabview backend - only a project. " +
-                "Use the grpc backend for a VI.", new { viPath, viPaths });
+        // the VIs, viPath first: opened LOOSE in LabVIEW's main instance with no project, and
+        // THROUGH the project once it is open with one - NI's OpenFile does the same with a pair.
+        // Refused here until 2026-10-16, which sent every caller that needed a VI loaded to NI's
+        // service.
+        var vis = new List<string>();
+        if (viPath is { Length: > 0 }) vis.Add(viPath);
+        vis.AddRange(ViPathList(viPaths).Select(p => NormalizedPath(p)!).Where(p => !vis.Contains(p)));
+        foreach (var vi in vis.Where(p => !File.Exists(p)))
+            return Json.Error("fileNotFound", $"A VI to open does not exist: {vi}",
+                new { checkedPath = vi, openedNothing = true });
         if (projectPath is not { Length: > 0 })
-            return Json.Error("badArguments", "Name the .lvproj to open in projectPath.");
+        {
+            if (vis.Count == 0)
+                return Json.Error("badArguments", "Name the .lvproj in projectPath, or a VI in viPath / viPaths.");
+            return Json.Document(await OpenVisOverComAsync(vis, null, timeoutSeconds, ct));
+        }
         if (OpenFilePrecheck(null, null, projectPath, Path.GetFileName(projectPath)) is { } refusal)
             return refusal;
 
@@ -559,7 +598,12 @@ internal sealed class ActionTools(LvaiConnection connection)
             ["errorMessage"] = errorCode == 0 ? "No Error" : errorSource,
             ["via"] = "ActiveX",
         };
-        if (!checkActive || errorCode != 0) return Json.Document(result);
+        if (errorCode != 0) return Json.Document(result);
+        if (!checkActive)
+        {
+            if (vis.Count > 0) AddVisOpened(result, await OpenVisOverComAsync(vis, projectPath, timeoutSeconds, ct));
+            return Json.Document(result);
+        }
 
         var (active, note, activePath) = await ProjectIsActiveAsync(timeoutSeconds, ct, AixmlBackend.PyLabview);
         JsonObject? retry = null;
@@ -615,7 +659,93 @@ internal sealed class ActionTools(LvaiConnection connection)
             result["errorKind"] = "projectDidNotBecomeActive";
             result["hint"] = NoActiveProjectHint(errorCode, retry is not null);
         }
+        if (vis.Count > 0) AddVisOpened(result, await OpenVisOverComAsync(vis, projectPath, timeoutSeconds, ct));
         return Json.Document(result);
+    }
+
+    /// <summary>The composed helper that opens a VI through its project (pylabview backend).</summary>
+    internal const string OpenViInProjectHelperAixmlFileName = "lvai_open_vi_in_project.xml";
+
+    /// <summary>
+    /// Opens each VI's front panel over ActiveX: with no project in LabVIEW's main instance,
+    /// with one through the composed <c>lvai_open_vi_in_project</c> helper, in the project's own
+    /// instance. The answer has lvai_open_file's shape for a VI: errorCode/errorMessage of the
+    /// first, <c>alsoOpened</c> and <c>allOpened</c> for the rest.
+    /// </summary>
+    private async Task<JsonObject> OpenVisOverComAsync(List<string> vis, string? projectPath,
+                                                       int timeoutSeconds, CancellationToken ct)
+    {
+        string? helper = null;
+        if (projectPath is not null)
+        {
+            var (built, problem) = await ComposedHelpers.EnsureAsync(OpenViInProjectHelperAixmlFileName, timeoutSeconds, ct);
+            if (built is null)
+                return new JsonObject { ["errorCode"] = -1, ["errorMessage"] = problem, ["errorKind"] = "helperNotComposable" };
+            helper = built;
+        }
+        var each = new JsonArray();
+        foreach (var vi in vis)
+        {
+            int code;
+            string message;
+            if (helper is null)
+            {
+                try
+                {
+                    var open = await LabViewCom.OpenFrontPanelAsync(vi, timeoutSeconds, ct);
+                    (code, message) = open ? (0, "No Error") : (-1, "The front panel did not read open afterwards.");
+                }
+                catch (LabViewCom.ComException ex)
+                {
+                    (code, message) = (LabViewCom.ErrorCodeOf(ex.Message), ex.Message);
+                }
+            }
+            else
+            {
+                var run = JsonNode.Parse(await new RunTools(connection).RunViAndReadValuesAsync(
+                    helper, new JsonObject { ["project path"] = projectPath, ["vi path"] = vi }.ToJsonString(),
+                    timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview, ct: ct)) as JsonObject;
+                var xml = run?["values"]?["error out"]?["xml"]?.GetValue<string>() ?? "";
+                var c = System.Text.RegularExpressions.Regex.Match(xml, @"<Name>code</Name>\s*<Val>(-?\d+)");
+                var src = System.Text.RegularExpressions.Regex.Match(xml, @"<Name>source</Name>\s*<Val>([^<]*)");
+                if (run?["ok"]?.GetValue<bool>() is not true)
+                    (code, message) = (-1, run?.ToJsonString() ?? "the helper did not run");
+                else if (c.Success && int.Parse(c.Groups[1].Value) is var n && n != 0)
+                    (code, message) = (n, src.Success ? src.Groups[1].Value : "");
+                else
+                    (code, message) = (0, "No Error");
+            }
+            each.Add(new JsonObject { ["viPath"] = vi, ["errorCode"] = code, ["errorMessage"] = message });
+        }
+        var first = (JsonObject)each[0]!;
+        var answer = new JsonObject
+        {
+            ["errorCode"] = first["errorCode"]!.GetValue<int>(),
+            ["errorMessage"] = first["errorMessage"]!.GetValue<string>(),
+            ["via"] = "ActiveX",
+            ["openedThrough"] = projectPath is null ? "LabVIEW's main instance, no project" : "the project's own instance",
+        };
+        if (each.Count > 1)
+        {
+            answer["alsoOpened"] = new JsonArray([.. each.Skip(1).Select(e => e!.DeepClone())]);
+            answer["allOpened"] = each.All(e => e!["errorCode"]!.GetValue<int>() == 0);
+        }
+        return answer;
+    }
+
+    /// <summary>A project open's answer, with the VIs opened after it folded in.</summary>
+    private static void AddVisOpened(JsonObject result, JsonObject vis)
+    {
+        result["viErrorCode"] = vis["errorCode"]?.DeepClone();
+        result["viErrorMessage"] = vis["errorMessage"]?.DeepClone();
+        result["openedThrough"] = vis["openedThrough"]?.DeepClone();
+        if (vis["alsoOpened"] is { } also) result["alsoOpened"] = also.DeepClone();
+        if (vis["allOpened"] is { } all) result["allOpened"] = all.DeepClone();
+        if (vis["errorCode"]?.GetValue<int>() is not 0 && result["errorCode"]?.GetValue<int>() is 0)
+        {
+            result["errorCode"] = vis["errorCode"]!.DeepClone();
+            result["errorMessage"] = vis["errorMessage"]!.DeepClone();
+        }
     }
 
     /// <summary>Saves and closes a project by path - the composed route's reopen step.</summary>

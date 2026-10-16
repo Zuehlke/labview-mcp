@@ -170,9 +170,21 @@ internal static class PyLabview
                                   l.Contains("switched to raw", StringComparison.OrdinalIgnoreCase))];
     }
 
-    /// <summary>Run a Python script from the bundle with the environment left alone.</summary>
+    /// <summary>
+    /// Run a Python script from the bundle with the environment left alone - in a resident
+    /// worker when one can take it (<see cref="PythonWorkers"/>), else in a process of its own.
+    /// </summary>
     public static async Task<Run> RunAsync(Bundle bundle, string script, IEnumerable<string> args,
                                            int timeoutSeconds, CancellationToken ct)
+    {
+        var list = args as IReadOnlyList<string> ?? [.. args];
+        return await PythonWorkers.TryRunAsync(bundle, script, list, timeoutSeconds, ct)
+               ?? await RunProcessAsync(bundle, script, list, timeoutSeconds, ct);
+    }
+
+    /// <summary>The same call in a python.exe of its own - the route before the workers, and their fallback.</summary>
+    internal static async Task<Run> RunProcessAsync(Bundle bundle, string script, IEnumerable<string> args,
+                                                    int timeoutSeconds, CancellationToken ct)
     {
         var info = new ProcessStartInfo(bundle.PythonExe)
         {
@@ -229,18 +241,20 @@ internal static class PyLabview
         catch (OperationCanceledException)
         {
             try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
-            throw new TimeoutException(
-                $"pylabview did not finish within {timeoutSeconds}s. Typical costs are 0.2-0.7 s to " +
-                "extract and 1.2 s to rebuild - but MEASURED on a real top-level VI with 34 " +
-                "compiled-code sections, extraction took 68.6 s, which no MCP client will await. " +
-                "For a VI that large use the CLI, which has no such ceiling: " +
-                "LabVIEWMCP --pylv-extract <file.vi> --out <dir>");
+            throw new TimeoutException(TimeoutMessage(timeoutSeconds));
         }
         stopwatch.Stop();
 
         return new Run(process.ExitCode, stdout.ToString(), stderr.ToString(),
                        stopwatch.ElapsedMilliseconds);
     }
+
+    internal static string TimeoutMessage(int timeoutSeconds) =>
+        $"pylabview did not finish within {timeoutSeconds}s. Typical costs are 0.2-0.7 s to " +
+        "extract and 1.2 s to rebuild - but MEASURED on a real top-level VI with 34 " +
+        "compiled-code sections, extraction took 68.6 s, which no MCP client will await. " +
+        "For a VI that large use the CLI, which has no such ceiling: " +
+        "LabVIEWMCP --pylv-extract <file.vi> --out <dir>";
 
     /// <summary>
     /// Node families NI publishes as unsupported by the AIXML generator. They are the reason

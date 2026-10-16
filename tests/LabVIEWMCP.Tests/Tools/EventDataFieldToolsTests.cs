@@ -39,10 +39,19 @@ public sealed class EventDataFieldToolsTests
         Assert.Contains(terminal, bad);
     }
 
+    /// <summary>
+    /// OUR READER's export (vi2aixml.py) of a repointed node, verbatim from LayoutCheck Main Y,
+    /// 2026-10-16 - NI's export of the same file reads `outputs="Source:,Samples:4242.Samples,Time:"`.
+    /// The reader lists only the wired row, and the positional check called it bad.
+    /// </summary>
+    private const string ReaderFixed =
+        """<Node _name="Event Data Node" uid="4242" uid_parent="4236" fields="Source,Samples,Time" outputs="Samples:4242.Samples" />""";
+
     [Theory]
     [InlineData(FixedInt32)]
     [InlineData(FixedDouble)]
     [InlineData(StopFrameNode)]
+    [InlineData(ReaderFixed)]
     public void ARowWhoseTerminalMatchesItsFieldIsClean(string export) =>
         Assert.Empty(EventDataFieldTools.UnrepointedRows(export));
 

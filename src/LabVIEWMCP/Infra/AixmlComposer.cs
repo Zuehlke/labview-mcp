@@ -86,6 +86,10 @@ internal static class AixmlComposer
             ["labviewInUse"] = AixmlBackend.LabViewInUse(),
             ["partsRelease"] = setup is null ? null : PartsRelease(setup.PartsDirectory),
             ["missing"] = setup is null ? missing : null,
+            // resident Python processes behind every pylabview call (PythonWorkers);
+            // LABVIEWMCP_PYTHON_WORKER=0 sends each call to a python.exe of its own again
+            ["pythonWorkers"] = PythonWorkers.Enabled,
+            ["pythonWorkersStarted"] = PythonWorkers.Started,
         };
     }
 

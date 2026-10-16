@@ -58,7 +58,22 @@ internal sealed class LifecycleTools(LvaiConnection connection)
             human dismisses it. Only ever cleared when this tool starts LabVIEW itself.
             """)]
         bool keepAutoSave = false,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview READY means LabVIEW answers over its ActiveX server - what that backend
+            uses - not that NI's gRPC service answers: a LabVIEW older than 2026 has no such
+            service, and on pylabview nothing waits for Nigel.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_ensure_labview", out var choice, out var bad))
+            return AixmlBackend.Refusal(bad);
+        return AixmlTools.WithBackend(await EnsureCoreAsync(waitSeconds, keepAutoSave,
+            choice.Name == AixmlBackend.PyLabview, ct), choice);
+    }
+
+    private async Task<string> EnsureCoreAsync(int waitSeconds, bool keepAutoSave, bool overCom,
+                                               CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
             var budget = TimeSpan.FromSeconds(Rpc.ClampToolWait(waitSeconds));
@@ -127,6 +142,42 @@ internal sealed class LifecycleTools(LvaiConnection connection)
 
             while (!token.IsCancellationRequested)
             {
+                if (overCom)
+                {
+                    // ready = a running LabVIEW with a window answers over ActiveX; NotReady keeps
+                    // COM away from a LabVIEW still starting, which would launch a second one
+                    if (LabViewCom.NotReady() is { } notYet)
+                        last = new InvalidOperationException(notYet);
+                    else
+                    {
+                        try
+                        {
+                            var version = await LabViewCom.WithLabViewAsync(app =>
+                                app.GetType().InvokeMember("Version", System.Reflection.BindingFlags.GetProperty,
+                                    null, app, null, System.Globalization.CultureInfo.InvariantCulture)?.ToString(),
+                                10, token);
+                            return new JsonObject
+                            {
+                                ["ok"] = true,
+                                ["state"] = "ready",
+                                ["readyMeans"] = "LabVIEW answers over ActiveX (the pylabview backend's route); NI's gRPC service was not asked",
+                                ["startedByThisCall"] = startedNow,
+                                ["launched"] = launched,
+                                ["launchMethod"] = launch?.Method,
+                                ["autoSaveCleared"] = autoSave?.Describe(),
+                                ["labviewVersion"] = version,
+                                ["waitedMs"] = stopwatch.ElapsedMilliseconds,
+                            }.ToJsonString(Indented);
+                        }
+                        catch (Exception e) when (!ct.IsCancellationRequested)
+                        {
+                            last = e;
+                        }
+                    }
+                    try { await Task.Delay(2000, token); }
+                    catch (OperationCanceledException) { /* budget spent */ }
+                    continue;
+                }
                 try
                 {
                     connection.Invalidate();   // the port changes with every LabVIEW start

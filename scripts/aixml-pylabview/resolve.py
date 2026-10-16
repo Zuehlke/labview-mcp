@@ -38,6 +38,7 @@ virtual path.
 import glob
 import hashlib
 import os
+import time
 import xml.etree.ElementTree as ET
 
 ANCHORS = (("<vilib>", "vi.lib"), ("<userlib>", "user.lib"), ("<instrlib>", "instr.lib"),
@@ -147,6 +148,10 @@ def relative_ref(from_file, to_path):
     return ["" if c == ".." else c for c in rel.split(os.sep)]
 
 
+_INSTALL_INDEX = {}            # roots -> (built at, files, owners, llbs)
+INSTALL_INDEX_SECONDS = 600
+
+
 class Resolver:
     def __init__(self, lv_root=None):
         self.lv_root = lv_root or labview_root()
@@ -170,9 +175,19 @@ class Resolver:
     def _index(self):
         if self._files is not None:
             return
-        self._files, self._owners, self._llbs = {}, {}, []
-        for anchor, d in self.roots:
-            self._walk(d, self._files, self._owners, llbs=self._llbs)
+        # the INSTALLATION's index is shared by every Resolver of the process: walking it is
+        # 4 000 directories and 0.6 s, which every compose paid for a library-qualified Call.
+        # In the server's resident worker (worker.py) that is once per ten minutes instead - an
+        # installation changes when a toolkit is installed, not between two composes
+        key = tuple(self.roots)
+        got = _INSTALL_INDEX.get(key)
+        if got is None or time.monotonic() - got[0] > INSTALL_INDEX_SECONDS:
+            files, owners, llbs = {}, {}, []
+            for anchor, d in self.roots:
+                self._walk(d, files, owners, llbs=llbs)
+            got = (time.monotonic(), files, owners, llbs)
+            _INSTALL_INDEX[key] = got
+        self._files, self._owners, self._llbs = got[1], got[2], got[3]
 
     @staticmethod
     def _walk(d, files, owners, depth=None, llbs=None):

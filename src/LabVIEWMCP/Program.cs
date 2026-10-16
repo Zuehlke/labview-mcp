@@ -222,6 +222,10 @@ _ = ExampleIndex.WarmAsync();
 // nothing ever argued for; the example index had a measurement behind it and this one did not.
 _ = PaletteIndex.WarmAsync();
 
+// And one resident Python worker with the composer and pylabview imported, so the first
+// pylabview call after a start does not pay for the imports (PythonWorkers says what it saves).
+_ = PythonWorkers.WarmAsync();
+
 await builder.Build().RunAsync();
 return 0;
 

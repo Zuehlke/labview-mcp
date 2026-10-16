@@ -642,17 +642,20 @@ public sealed class AixmlBackendTests
         Assert.Contains("lvai_no_such_helper.xml", why);
     }
 
-    /// <summary>On pylabview lvai_open_file opens projects only; a VI is refused before LabVIEW is asked.</summary>
+    /// <summary>
+    /// On pylabview lvai_open_file opens a VI over ActiveX since 2026-10-16 - refused until then,
+    /// which sent every caller needing a VI loaded to NI's service. A VI that is not there is still
+    /// refused by name before LabVIEW is asked, and NI's OpenFile is never called.
+    /// </summary>
     [Fact]
-    public async Task Opening_a_VI_is_refused_on_the_ActiveX_route()
+    public async Task Opening_a_missing_VI_is_refused_on_the_ActiveX_route_without_NI()
     {
         await using var server = await LvaiTestServer.StartAsync();
-        var vi = server.TempPath("any.vi");
-        await File.WriteAllBytesAsync(vi, [0]);
+        var vi = server.TempPath("not-there.vi");
 
         var result = await new ActionTools(server.Connection).OpenFileAsync(viPath: vi, backend: "pylabview");
 
-        Assert.Equal("notAvailableOnBackend", Res.Str(result, "errorKind"));
+        Assert.Equal("fileNotFound", Res.Str(result, "errorKind"));
         Assert.Equal("pylabview", Res.Str(result, "backend"));
         Assert.Equal(0, server.Service.CountOf("OpenFile"));
     }

@@ -305,6 +305,11 @@ internal sealed class ErrorListTools(LvaiConnection connection)
         }
         var (composed, why) = await ComposedHelpers.EnsureAsync(HelperAixmlFileName, timeoutSeconds, ct);
         if (composed is not null) return (composed, null);
+        // NI's converter only where the server's backend is grpc: on a pylabview server NI's
+        // service is not the fallback, it is the thing to stay away from (the audit of 2026-10-16)
+        if (AixmlBackend.ServerDefault().Name == AixmlBackend.PyLabview)
+            return (null, $"The composer could not build it ({why}). The server's backend is pylabview, " +
+                          "so NI's converter is not tried.");
         var (generated, problem) = await GenerateWithNiAsync(regenerate, timeoutSeconds, ct);
         return generated is not null
             ? (generated, null)

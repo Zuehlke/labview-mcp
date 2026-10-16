@@ -162,8 +162,8 @@ internal sealed class ClassTools(LvaiConnection connection)
         [Description(AixmlBackend.ParameterDescription + """
              On pylabview NO STEP touches NI's service: the throwaway project is opened and closed,
             the carrier composed, and NI's own class provider run, all through COMPOSED helpers over
-            LabVIEW's ActiveX server. LabVIEW must already be running. typedefFieldsJson is refused
-            there - the typedef binding has no such route yet.
+            LabVIEW's ActiveX server. LabVIEW must already be running. typedefFieldsJson binds on
+            the same route - lvai_bind_class_fields inherits the backend.
             """)]
         string? backend = null)
     {
@@ -189,10 +189,8 @@ internal sealed class ClassTools(LvaiConnection connection)
             // a `typedef.X` marker in fields decides where X's placeholder sits.
             var (typedefFields, typedefRefusal) = TypedefFieldRequest(typedefFieldsJson, parsed, projectPath);
             if (typedefRefusal is not null) return typedefRefusal;
-            if (typedefFields.Count > 0 && choice.Name == AixmlBackend.PyLabview)
-                return Json.Error("notAvailableOnBackend",
-                    "typedefFieldsJson needs the typedef binding, which runs only on the grpc backend " +
-                    "so far. Create the class with backend grpc, or without the typedef fields.");
+            // refused on pylabview until 2026-10-16, while lvai_bind_class_fields - the binding
+            // step - inherits the route's backend like every other inner call
             parsed = WithTypedefPlaceholders(parsed, typedefFields);
 
             // pylabview is NO LONGER a precondition here. It was, while the private data control

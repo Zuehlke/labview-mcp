@@ -83,12 +83,7 @@ internal static class LabViewCom
             // where the platform analyzer looks (CA1416), and NotReady above cannot vouch for it
             if (!OperatingSystem.IsWindows())
                 throw new ComException("notWindows", "LabVIEW's ActiveX server is reachable on Windows only.");
-            var type = Type.GetTypeFromProgID(ProgId)
-                ?? throw new ComException("activeXNotRegistered",
-                    $"{ProgId} is not registered, so LabVIEW's ActiveX server cannot be reached. " +
-                    "It is registered by LabVIEW's installer; a repair install restores it.");
-            var app = Activator.CreateInstance(type)
-                ?? throw new ComException("activeXNotRegistered", $"{ProgId} gave no object.");
+            var app = Attach();
             try { return body(app); }
             finally { Release(app); }
         }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
@@ -139,12 +134,13 @@ internal static class LabViewCom
             try
             {
                 if (!OperatingSystem.IsWindows()) { opened.TrySetResult(false); return; }
-                if (Type.GetTypeFromProgID(ProgId) is { } type) app = Activator.CreateInstance(type);
-                if (app is not null) vi = Call(app, "GetVIReference", Path.GetFullPath(viPath));
+                app = Attach();
+                vi = Call(app, "GetVIReference", Path.GetFullPath(viPath));
                 opened.TrySetResult(vi is not null);
                 if (vi is not null) release.Wait();
             }
-            catch (Exception e) when (e is TargetInvocationException or COMException or ArgumentException)
+            catch (Exception e) when (e is TargetInvocationException or COMException or ArgumentException
+                                          or ComException)
             {
                 opened.TrySetResult(false);
             }
@@ -217,6 +213,41 @@ internal static class LabViewCom
 
     /// <summary>Print.VI To HTML's Format: {Custom, Standard, Using Panel, Using SubVI, Complete}.</summary>
     internal const int PrintFormatStandard = 1;
+
+    /// <summary>
+    /// LabVIEW's Application object - of the LabVIEW that RUNS, never a new one. LabVIEW does not
+    /// register in the running-object table (GetActiveObject answers MK_E_UNAVAILABLE on an IDE
+    /// started by hand), so the object is CREATED, which reaches the running instance - unless that
+    /// instance does not answer, hung after a crash: COM then STARTS a second LabVIEW with
+    /// /Automation -Embedding. Such a LabVIEW quits as soon as the call releases it, and with JKI's
+    /// SDP running it asks first, "Quitting aborts all running VIs" - a modal on the user's screen;
+    /// the next call started the next one, four in fifteen minutes (2026-10-16). So the processes
+    /// are compared around the creation, and a LabVIEW this call started is ended at once.
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static object Attach()
+    {
+        var type = Type.GetTypeFromProgID(ProgId)
+            ?? throw new ComException("activeXNotRegistered",
+                $"{ProgId} is not registered, so LabVIEW's ActiveX server cannot be reached. " +
+                "It is registered by LabVIEW's installer; a repair install restores it.");
+        var before = RunningPids();
+        var app = Activator.CreateInstance(type)
+            ?? throw new ComException("activeXNotRegistered", $"{ProgId} gave no object.");
+        var started = RunningPids().Except(before).ToList();
+        if (started.Count == 0) return app;
+        Release(app);
+        foreach (var id in started)
+        {
+            try { using var p = System.Diagnostics.Process.GetProcessById(id); p.Kill(); }
+            catch (Exception e) when (e is ArgumentException or InvalidOperationException
+                                          or System.ComponentModel.Win32Exception) { }
+        }
+        throw new ComException("labviewNotAnswering",
+            "The running LabVIEW did not answer over ActiveX, so COM started a second LabVIEW for " +
+            "this call; it was ended again. The running one is probably hung - after a crash, or " +
+            "behind a dialog. Close the dialog, or restart LabVIEW (lvai_ensure_labview starts it).");
+    }
 
     /// <summary>The ids of every running LabVIEW - taken before a call that may kill one.</summary>
     public static IReadOnlySet<int> RunningPids()

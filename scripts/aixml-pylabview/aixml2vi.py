@@ -107,7 +107,14 @@ def _extract_callee(path):
     """A callee's bundle, extracted once per process - a coverage run meets the same vi.lib VIs
     hundreds of times. A callee pylabview cannot read in 30 s (several Wovalab VIs hang it) is
     refused, and remembered as refused."""
+    # keyed on the file's size and time too: in the server's resident worker (worker.py) this
+    # cache outlives one compose, and a callee rebuilt since must be read again
     key = os.path.normcase(os.path.abspath(path))
+    try:
+        st = os.stat(resolve.materialize(path) or path)
+        key = (key, st.st_size, st.st_mtime_ns)
+    except OSError:
+        pass
     got = _CALLEES.get(key)
     if got is None:
         try:
@@ -169,17 +176,24 @@ def split_field(s):
 ENUM_BASE = {"uint8": "UnitUInt8", "uint16": "UnitUInt16", "uint32": "UnitUInt32"}
 
 
+# AIXML's refnum kind -> VCTP's RefType, for the refnums that hold a data type
+REFNUM_CONTAINERS = {"Queue": "Queue", "UserEvent": "UserEvent", "Notifier": "NotifierRef"}
+
+
 def type_tree(aixml_type, label=None, constant=False):
     """AIXML's type grammar -> an inlined TypeDesc tree as VCTP writes it:
     scalars, cluster{T.name,...}, array{T} / array.N{T}, enums uintN{a,b,c}."""
     aixml_type = aixml_type.strip()
-    mq = re.fullmatch(r"ref\{Queue\}\{(.*)\}", aixml_type, re.S)
+    mq = re.fullmatch(r"ref\{(Queue|UserEvent|Notifier)\}\{(.*)\}", aixml_type, re.S)
     if mq:
         # a QUEUE refnum, as NI's exporter writes one - ref{Queue}{<element type>.<label>} - and
         # VCTP holds it: Refnum Queue around the element's type (the ATM build's producer and
-        # consumer could only share a NAMED queue without it, 2026-10-12)
-        t, lab = split_field(mq.group(1))
-        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "Queue", "Format": "inline"})
+        # consumer could only share a NAMED queue without it, 2026-10-12). A USER EVENT and a
+        # NOTIFIER are written the same way and held the same way, Refnum UserEvent and Refnum
+        # NotifierRef around their data type - as a subVI's CONTROL they were refused here, and the
+        # two LayoutCheck subVIs that take them went to NI's service (2026-10-16)
+        t, lab = split_field(mq.group(2))
+        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": REFNUM_CONTAINERS[mq.group(1)], "Format": "inline"})
         el.append(type_tree(t, lab))
         if label:
             el.set("Label", label)
@@ -1334,19 +1348,23 @@ class Composer:
         # object of the element's type (the donor's: a typedef'd cluster of two int32), and
         # re-typing the refnum alone left the two disagreeing - "Going from good to bad after
         # compiling" (2026-10-12). So it takes the array's route, its element rebuilt from parts.
-        queue = t == "Refnum" and tree.get("RefType") == "Queue" and not force_class
+        # A USER-EVENT and a NOTIFIER refnum control hold their data type's object the same way
+        # (the parts cut off mxLvBuildNewItem.ctl and Acquire.vi, a cluster and an array inside)
+        queue = t == "Refnum" and tree.get("RefType") in REFNUM_CONTAINERS.values() and not force_class
         if (t in self.DDO_CLASS and not force_class) or queue:
             cls = "stdRefNum" if queue else self.DDO_CLASS[t]
             key = None
             if queue:
                 for d in (want, other):
-                    k = "%s/stdRefNum/%s/Refnum.Queue" % (prefix, d)
+                    k = "%s/stdRefNum/%s/Refnum.%s" % (prefix, d, tree.get("RefType"))
                     if d and self.parts.get(k) is not None:
                         key = k
                         break
                 if key is None:
-                    raise Unsupported("no %s part for a queue refnum" % prefix)
-            if key is None and in_array and self.parts.get("arrelem/%s/%s" % (prefix, cls)) is not None:
+                    raise Unsupported("no %s part for a %s refnum" % (prefix, tree.get("RefType")))
+            # the frameless element part is a ONE-dimensional array: a 2D array inside a container
+            # (a user event carrying a block of samples) takes a part of its own rank
+            if key is None and in_array and self.parts.get("arrelem/%s/%s" % (prefix, cls)) is not None                     and not (t == "Array" and len(tree.findall("Dimension")) > 1):
                 key = "arrelem/%s/%s" % (prefix, cls)
             if key is None:
                 # best part: same element kind and direction, then same element kind, then any
@@ -1456,6 +1474,29 @@ class Composer:
                         # numeric part's own 50 px in an array constant whose cell is 13 px was
                         # "Insane Array Constant {graphics} (0x80)" even inside a wider array
                         child.find("bounds").text = old.find("bounds").text
+                    if queue:
+                        # THE OBJECT INSIDE A REFNUM CONTAINER is an element, as NI's converter
+                        # writes the 2D array inside a user-event refnum control: objFlags 0x3C
+                        # where a front-panel part has 0x4, howGrow 240, no description, its label
+                        # hidden (0x8) - built from a front-panel part it carried the part's own
+                        # (LayoutCheck's Send Block and Wait, 2026-10-16)
+                        f = child.find("objFlags")
+                        if f is None:
+                            f = ET.Element("objFlags")
+                            child.insert(0, f)
+                        f.text = str(int(f.text or 0) | 0x38)
+                        if child.find("howGrow") is None:
+                            hg = ET.Element("howGrow")
+                            hg.text = "240"
+                            child.insert(list(child).index(f) + 1, hg)
+                        for dsc in child.findall("description"):
+                            child.remove(dsc)
+                        pl = child.find("partsList")
+                        for part in (pl if pl is not None else []):
+                            if part.get("class") == "label" and part.findtext("partID") == "16":
+                                pf = part.find("objFlags")
+                                if pf is not None:
+                                    pf.text = str(int(pf.text or 0) | 0x8)
                     pos = list(ddo).index(old)
                     ddo.remove(old)
                     ddo.insert(pos, child)
@@ -1784,6 +1825,14 @@ class Composer:
         conn.text = con if con is not None else "-1"
         if conn.text == "0":
             fpdco.remove(conn)
+        # A CONTROL HAS ITS DIAGRAM TERMINAL: termListLength 1 on the holder, as every holder of
+        # NI's build carries. A part cut from a .ctl has none - the user-event refnum's, off
+        # mxLvBuildNewItem.ctl - and its control came up "Insane FrontPanelDataController ...
+        # termList n=0", a FATAL insanity that took LabVIEW down on load (2026-10-16)
+        if fpdco.find("termListLength") is None:
+            tll = ET.Element("termListLength")
+            tll.text = "1"
+            fpdco.append(tll)                    # after ddo and conNum, as LabVIEW writes it
         if con is not None:
             # A control ON the pane carries fPDCO objFlags 0x10000, plus 0x200 when recommended
             # and 0x80 when required - read off an AIXML-generated stub. Without it LabVIEW logs

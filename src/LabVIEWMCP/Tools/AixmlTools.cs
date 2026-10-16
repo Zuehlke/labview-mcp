@@ -161,18 +161,32 @@ internal sealed class AixmlTools(LvaiConnection connection)
         int maxContentChars = 20000,
         [Description("Local budget in seconds, per VI")] int timeoutSeconds = 180,
         [Description("Ignore cached exports and ask LabVIEW again")] bool refresh = false,
-        CancellationToken ct = default) =>
-        await ConvertVisToAixmlCoreAsync(viPaths, outputDirectory, returnContent, maxContentChars,
-                                         timeoutSeconds, refresh, roots: null, ct);
+        CancellationToken ct = default,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview each VI is read by vi2aixml.py through the export cache, as
+            lvai_convert_vi_to_aixml reads one - NI's cached export first, then the reader's own -
+            and no LabVIEW is asked.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_convert_vis_to_aixml", out var choice, out var bad))
+            return AixmlBackend.Refusal(bad);
+        return WithBackend(await ConvertVisToAixmlCoreAsync(viPaths, outputDirectory, returnContent,
+            maxContentChars, timeoutSeconds, refresh, roots: null, ct,
+            composed: choice.Name == AixmlBackend.PyLabview), choice);
+    }
 
     /// <summary>The body of <see cref="ConvertVisToAixmlAsync"/>; see the single-VI core for why
     /// the installation roots are a parameter here and not on the tool method.</summary>
     internal async Task<string> ConvertVisToAixmlCoreAsync(
         string viPaths, string outputDirectory, bool returnContent, int maxContentChars,
         int timeoutSeconds, bool refresh, IReadOnlyList<string>? roots,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default, bool composed = false) =>
         await Rpc.GuardAsync(async () =>
         {
+            AixmlComposer.Setup? setup = null;
+            if (composed && (setup = AixmlComposer.Locate(out var missing)) is null)
+                return Json.Error("backendNotAvailable", missing);
             // NEWLINE separated, deliberately not Rpc.SplitList. That helper also splits on commas
             // and semicolons, and both are legal characters in a Windows path - a VI under
             // `C:\Data\Rev 2, final\` would arrive as two nonexistent paths and be reported as two
@@ -196,6 +210,42 @@ internal sealed class AixmlTools(LvaiConnection connection)
             // Phase 1, CONCURRENT: everything already cached. No connection is touched, so this
             // also answers while LabVIEW is closed or still starting.
             var served = new bool[paths.Count];
+            if (setup is not null)
+            {
+                // the reader: each VI through the export cache, NI's cached export first - the
+                // single-VI tool's route; reads run in the resident Python workers, four at once
+                var rowsRead = new JsonNode?[paths.Count];
+                int fromCache = 0, readFresh = 0, readFailed = 0;
+                await Parallel.ForEachAsync(Enumerable.Range(0, paths.Count),
+                    new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = ct },
+                    async (i, token) =>
+                    {
+                        var outcome = await CachedReader.ReadAsync(setup, paths[i], outputs[i],
+                            timeoutSeconds, token, refresh, roots);
+                        var ok = outcome.Result.Written;
+                        if (!ok) Interlocked.Increment(ref readFailed);
+                        else if (outcome.ServedFrom is not null) Interlocked.Increment(ref fromCache);
+                        else Interlocked.Increment(ref readFresh);
+                        var row = await RowAsync(i, outcome.ServedFrom is not null, ok ? 0 : -1,
+                                                 ok ? "No Error" : outcome.Result.Message);
+                        row["exportBy"] = outcome.ServedFrom == AixmlBackend.Grpc ? "NI's converter (cached)" : "vi2aixml.py";
+                        row["cacheNote"] = outcome.Note;
+                        rowsRead[i] = row;
+                    });
+                stopwatch.Stop();
+                return Json.Document(new JsonObject
+                {
+                    ["requested"] = paths.Count,
+                    ["fromCache"] = fromCache,
+                    ["exported"] = readFresh,
+                    ["failed"] = readFailed,
+                    ["elapsedMs"] = stopwatch.ElapsedMilliseconds,
+                    ["outputDirectory"] = folder,
+                    ["note"] = "Read by the pylabview backend's reader through the export cache - " +
+                               "no LabVIEW asked. " + CachedReader.ReaderProvenance,
+                    ["results"] = new JsonArray([.. rowsRead]),
+                });
+            }
             if (!refresh)
                 Parallel.For(0, paths.Count,
                     new ParallelOptions { MaxDegreeOfParallelism = ParallelScan.Degree },

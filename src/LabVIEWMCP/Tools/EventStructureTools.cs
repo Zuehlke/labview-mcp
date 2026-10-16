@@ -111,7 +111,36 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             """)]
         string? bundleDirectory = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview this is lvai_generate_vi on that backend, ONE step: the composer writes
+            every event frame's registration, the dynamic event terminal's wire and a user event's
+            payload field itself, so there is no pylabview registration pass, no
+            lvai_wire_dynamic_events and no lvai_set_event_data_fields to follow - and NI's
+            service is not asked. Read a user event's payload by naming its field in the Event
+            Data Node (`fields="Source,Samples,Time"`); a grpc-route placeholder constant stays
+            the constant it is.
+            """)]
+        string? backend = null)
+    {
+        if (!AixmlBackend.TryResolve(backend, "lvai_generate_vi_with_events", out var choice, out var bad))
+            return AixmlBackend.Refusal(bad);
+        if (choice.Name == AixmlBackend.PyLabview)
+        {
+            var generated = await new BulkTools(connection).GenerateViAsync(
+                aiXmlFilePath, viPath, timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview, ct: ct);
+            if (JsonNode.Parse(generated) is not JsonObject answer) return generated;
+            answer["route"] = "composed in one step by lvai_generate_vi on pylabview: the composer " +
+                              "registers the events itself";
+            return AixmlTools.WithBackend(Json.Document(answer), choice);
+        }
+        return AixmlTools.WithBackend(await GenerateWithEventsGrpcAsync(aiXmlFilePath, viPath, verify,
+            bundleDirectory, timeoutSeconds, ct), choice);
+    }
+
+    private async Task<string> GenerateWithEventsGrpcAsync(string aiXmlFilePath, string viPath, bool verify,
+                                                           string? bundleDirectory, int timeoutSeconds,
+                                                           CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(aiXmlFilePath))

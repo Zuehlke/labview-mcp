@@ -89,8 +89,14 @@ internal sealed class EventDataFieldTools(LvaiConnection connection)
             """)]
         string? bundleDirectory = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
-        CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        CancellationToken ct = default,
+        [Description(AixmlBackend.RouteParameterDescription + """
+             On pylabview the verify reads execState over ActiveX and the row names back with our
+            own reader. A VI the composer wrote reads its payload already - name the field in the
+            Event Data Node - and needs no call of this tool.
+            """)]
+        string? backend = null) =>
+        await BackendRoute.WithBackendAsync(backend, "lvai_set_event_data_fields", () => Rpc.GuardAsync(async () =>
         {
             if (!File.Exists(viPath))
                 return Json.Error("badArguments", $"No file at viPath '{viPath}'.");
@@ -188,20 +194,17 @@ internal sealed class EventDataFieldTools(LvaiConnection connection)
                 var export = Path.ChangeExtension(copy, ".xml");
                 try
                 {
-                    var exported = await connection.InvokeAsync((c, t) =>
-                        c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest
-                        {
-                            ViPath = copy,
-                            AiXMLFilePath = export,
-                        }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t)
-                        .ResponseAsync, ct);
+                    // NI's converter on grpc, our reader on pylabview
+                    var (text, code, _) = await BackendRoute.ExportAsync(connection, copy, "edf-verify",
+                                                                         timeoutSeconds, ct);
                     steps.Add(new JsonObject
                     {
                         ["step"] = "read back the row names (on the copy)",
-                        ["errorCode"] = exported.ErrorCode,
+                        ["errorCode"] = code,
+                        ["readBy"] = BackendRoute.OnPyLabview ? "vi2aixml.py" : "NI's converter",
                     });
-                    if (File.Exists(export))
-                        stale = UnrepointedRows(await File.ReadAllTextAsync(export, ct));
+                    if (text is not null)
+                        stale = UnrepointedRows(text);
                 }
                 catch (Exception bad) when (bad is IOException or InvalidOperationException)
                 {
@@ -284,7 +287,7 @@ internal sealed class EventDataFieldTools(LvaiConnection connection)
                       "NOTHING about the VI - read its `code` and `source`. `load error code 6, " +
                       "Could not load block diagram` means the edit produced a diagram LabVIEW " +
                       "will not load at all, which is what deleting a constant placeholder does.");
-        });
+        }));
 
     // ---------------------------------------------------------------- plumbing
 
@@ -361,6 +364,20 @@ internal sealed class EventDataFieldTools(LvaiConnection connection)
             var terms = outputs.Split(',');
             var uid = Attr(node.Value, "uid") ?? "?";
 
+            // OUR READER (vi2aixml.py) lists only the WIRED rows - `outputs="Samples:4242.Samples"`
+            // for fields Source,Samples,Time - so positions do not line up there, and the first
+            // pylabview run of this check called a repointed row bad (2026-10-16). With fewer
+            // terminals than fields a row is judged by NAME: one no field is called is the bad one.
+            if (terms.Length != names.Length)
+            {
+                foreach (var t in terms)
+                {
+                    var term = t.Split(':')[0];
+                    if (term.Length != 0 && !names.Contains(term))
+                        bad.Add($"uid {uid}: fields says `{fields}`, a terminal is called `{term}`");
+                }
+                continue;
+            }
             for (var i = 0; i < names.Length && i < terms.Length; i++)
             {
                 // `name:net` - the part before the first colon is the terminal's name.
