@@ -1,0 +1,192 @@
+<VI _name="lvbd_layout_dump.vi" description="Reads the geometry of a VI's whole block diagram for lvai_layout_diagram, nested diagrams included, as one text line per diagram, object and wire. Read-only\3A the VI is opened by path, read and closed, never saved.\0A\0AA queue of diagrams is walked breadth first. Every diagram gets an id - 0 for the top level, then parent id.object index.frame index - so an object is addressed by its diagram id and its index in that diagram's All Objects[], which LabVIEW keeps in a stable order (measured 2026-10-16\3A NI's Clean Up Diagram moved every object of a DQMH Main.vi and changed no index).\0A\0ALINES\3A D|id|left|top|width|height for a diagram. O|id|index|class|left|top|width|height|frames|terminals|tunnels|own|frame|shiftregs|total for an object, where terminals is name^source^left^top^width^height~ per node terminal, tunnels is left^top^width^height~ per structure tunnel own is name^source for an object that is itself a terminal, and frame is width^height of a structure's Frame Size, which a write sets (Bounds is read-only on a structure, error 1029) and which differs from Bounds on a Case or Event Structure, shiftregs is left^top^width^height~ per shift register of a loop (Shift Registers[] answers the right one of each pair), and total is left^top^right^bottom of the Total Bounds Rect, which takes in the object's label. W|id|index|ends for a wire, ends being left^top~ per wire terminal. Every coordinate is LabVIEW's Position, in the block diagram pane's coordinates.">
+  <FreeLabel comment="Breadth first over every diagram" uid="4200" uid_parent="root"/>
+  <Control _name="vi path" conIdx="0" connection="recommended" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]" outputs="value:4202.value"/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4210.path" uid="4210" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4210.path,error in (no error):4202.value" outputs="vi reference:4211.vi,error out:4211.err" uid="4211" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:4211.vi,error in (no error):4211.err" outputs="Block Diagram:4212.bd,reference out:,error out:4212.err" uid="4212" uid_parent="root"/>
+  <Constant _name="diagram class" outputs="value:4213.value" type="ref{LV.Diagram}" uid="4213" uid_parent="root" value=""/>
+  <Node _name="To More Generic Class" inputs="reference:4212.bd,target class:4213.value" outputs="generic class reference:4214.d" uid="4214" uid_parent="root"/>
+  <Node _name="Build Array" inputs="element:4214.d" outputs="appended array:4215.q" uid="4215" uid_parent="root"/>
+  <Constant _name="top id" outputs="value:4216.value" type="string" uid="4216" uid_parent="root" value="0"/>
+  <Node _name="Build Array" inputs="element:4216.value" outputs="appended array:4217.ids" uid="4217" uid_parent="root"/>
+  <Constant _name="no lines" outputs="value:4218.value" type="array{string}" uid="4218" uid_parent="root" value="[]"/>
+
+  <Structure _name="While Loop" count="" uid="4300" uid_parent="root">
+    <ShiftReg uid="4301" uid_parent="4300">
+      <Left inputs="value:4215.q" outputs="value:4302.q" uid="4302" uid_parent="4301"/>
+      <Right inputs="value:4390.q" outputs="value:" uid="4303" uid_parent="4301"/>
+    </ShiftReg>
+    <ShiftReg uid="4304" uid_parent="4300">
+      <Left inputs="value:4217.ids" outputs="value:4305.ids" uid="4305" uid_parent="4304"/>
+      <Right inputs="value:4391.ids" outputs="value:" uid="4306" uid_parent="4304"/>
+    </ShiftReg>
+    <ShiftReg uid="4307" uid_parent="4300">
+      <Left inputs="value:4218.value" outputs="value:4308.lines" uid="4308" uid_parent="4307"/>
+      <Right inputs="value:4392.lines" outputs="value:4309.lines" uid="4309" uid_parent="4307"/>
+    </ShiftReg>
+    <ShiftReg uid="4310" uid_parent="4300">
+      <Left inputs="value:4212.err" outputs="value:4311.err" uid="4311" uid_parent="4310"/>
+      <Right inputs="value:4320.err" outputs="value:4312.err" uid="4312" uid_parent="4310"/>
+    </ShiftReg>
+    <Constant _name="first" outputs="value:4313.value" type="int32" uid="4313" uid_parent="4300" value="0"/>
+    <Constant _name="bar" outputs="value:4314.value" type="string" uid="4314" uid_parent="4300" value="|"/>
+    <Constant _name="D" outputs="value:4315.value" type="string" uid="4315" uid_parent="4300" value="D|"/>
+    <Node _name="Index Array" inputs="array:4302.q,index:4313.value" outputs="element:4316.d" uid="4316" uid_parent="4300"/>
+    <Node _name="Index Array" inputs="array:4305.ids,index:4313.value" outputs="element:4317.id" uid="4317" uid_parent="4300"/>
+    <Node _name="Delete From Array" inputs="array:4302.q,length:,index:4313.value" outputs="array w/ subset deleted:4318.rest,deleted portion:" uid="4318" uid_parent="4300"/>
+    <Node _name="Delete From Array" inputs="array:4305.ids,length:,index:4313.value" outputs="array w/ subset deleted:4319.rest,deleted portion:" uid="4319" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+All Objects[],read+Wires[],read+Position\3ALeft,read+Position\3ATop,read+Bounds\3AArea Width,read+Bounds\3AArea Height" type="{LV.Diagram}" inputs="reference:4316.d,error in (no error):4311.err" outputs="All Objects[]:4320.objs,Wires[]:4320.wires,Position\3ALeft:4320.l,Position\3ATop:4320.t,Bounds\3AArea Width:4320.w,Bounds\3AArea Height:4320.h,reference out:,error out:4320.err" uid="4320" uid_parent="4300"/>
+    <Node _name="Number To Decimal String" inputs="number:4320.l" outputs="decimal integer string:4321.s" uid="4321" uid_parent="4300"/>
+    <Node _name="Number To Decimal String" inputs="number:4320.t" outputs="decimal integer string:4322.s" uid="4322" uid_parent="4300"/>
+    <Node _name="Number To Decimal String" inputs="number:4320.w" outputs="decimal integer string:4323.s" uid="4323" uid_parent="4300"/>
+    <Node _name="Number To Decimal String" inputs="number:4320.h" outputs="decimal integer string:4324.s" uid="4324" uid_parent="4300"/>
+    <Node _name="Concatenate Strings" inputs="string:4315.value,string:4317.id,string:4314.value,string:4321.s,string:4314.value,string:4322.s,string:4314.value,string:4323.s,string:4314.value,string:4324.s" outputs="concatenated string:4325.line" uid="4325" uid_parent="4300"/>
+
+    <Structure _name="For Loop" count="4400.value" maxin="" maxout="" uid="4400" uid_parent="4300">
+      <Tunnel _id="In1" inputs="value:4320.objs" mode="index" outputs="value:4401.obj" uid="4401" uid_parent="4400"/>
+      <Tunnel _id="In2" inputs="value:4317.id" outputs="value:4402.id" uid="4402" uid_parent="4400"/>
+      <Constant _name="node class" outputs="value:4403.value" type="ref{LV.Node}" uid="4403" uid_parent="4400" value=""/>
+      <Constant _name="structure class" outputs="value:4404.value" type="ref{LV.Structure}" uid="4404" uid_parent="4400" value=""/>
+      <Constant _name="terminal class" outputs="value:4405.value" type="ref{LV.Terminal}" uid="4405" uid_parent="4400" value=""/>
+      <Constant _name="obar" outputs="value:4406.value" type="string" uid="4406" uid_parent="4400" value="|"/>
+      <Constant _name="O" outputs="value:4407.value" type="string" uid="4407" uid_parent="4400" value="O|"/>
+      <Constant _name="dot" outputs="value:4408.value" type="string" uid="4408" uid_parent="4400" value="."/>
+      <Constant _name="hat" outputs="value:4409.value" type="string" uid="4409" uid_parent="4400" value="^"/>
+      <Constant _name="one" outputs="value:4410.value" type="string" uid="4410" uid_parent="4400" value="1"/>
+      <Constant _name="zero" outputs="value:4411.value" type="string" uid="4411" uid_parent="4400" value="0"/>
+      <Node _name="Property Node" fields="read+Class Name,read+Position\3ALeft,read+Position\3ATop,read+Bounds\3AArea Width,read+Bounds\3AArea Height,read+Total Bounds Rect" type="{LV.GObject}" inputs="reference:4401.obj,error in (no error):" outputs="Class Name:4412.cls,Position\3ALeft:4412.l,Position\3ATop:4412.t,Bounds\3AArea Width:4412.w,Bounds\3AArea Height:4412.h,Total Bounds Rect:4412.tb,reference out:,error out:4412.err" uid="4412" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4400.value" outputs="decimal integer string:4413.s" uid="4413" uid_parent="4400"/>
+      <Node _name="Unbundle By Name" fields="Left,Top,Right,Bottom" inputs="input cluster:4412.tb" outputs="Left:4480.l,Top:4480.t,Right:4480.r,Bottom:4480.b" uid="4480" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4480.l" outputs="decimal integer string:4481.s" uid="4481" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4480.t" outputs="decimal integer string:4482.s" uid="4482" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4480.r" outputs="decimal integer string:4483.s" uid="4483" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4480.b" outputs="decimal integer string:4484.s" uid="4484" uid_parent="4400"/>
+      <Node _name="Concatenate Strings" inputs="string:4481.s,string:4409.value,string:4482.s,string:4409.value,string:4483.s,string:4409.value,string:4484.s" outputs="concatenated string:4485.tb" uid="4485" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4412.l" outputs="decimal integer string:4414.s" uid="4414" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4412.t" outputs="decimal integer string:4415.s" uid="4415" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4412.w" outputs="decimal integer string:4416.s" uid="4416" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4412.h" outputs="decimal integer string:4417.s" uid="4417" uid_parent="4400"/>
+
+      <Node _name="To More Specific Class" inputs="reference:4401.obj,error in:,target class:4403.value" outputs="specific class reference:4420.node,error out:4420.err" uid="4420" uid_parent="4400"/>
+      <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Node}" inputs="reference:4420.node,error in (no error):4420.err" outputs="Terminals[]:4421.terms,reference out:,error out:4421.err" uid="4421" uid_parent="4400"/>
+      <Structure _name="For Loop" count="" maxin="" maxout="" uid="4500" uid_parent="4400">
+        <Tunnel _id="In1" inputs="value:4421.terms" mode="index" outputs="value:4501.term" uid="4501" uid_parent="4500"/>
+        <Constant _name="thart" outputs="value:4502.value" type="string" uid="4502" uid_parent="4500" value="^"/>
+        <Constant _name="tilde" outputs="value:4503.value" type="string" uid="4503" uid_parent="4500" value="~"/>
+        <Constant _name="tone" outputs="value:4504.value" type="string" uid="4504" uid_parent="4500" value="1"/>
+        <Constant _name="tzero" outputs="value:4505.value" type="string" uid="4505" uid_parent="4500" value="0"/>
+        <Node _name="Property Node" fields="read+Name,read+Is Source?,read+Position\3ALeft,read+Position\3ATop,read+Bounds\3AArea Width,read+Bounds\3AArea Height" type="{LV.Terminal}" inputs="reference:4501.term,error in (no error):" outputs="Name:4506.name,Is Source?:4506.src,Position\3ALeft:4506.l,Position\3ATop:4506.t,Bounds\3AArea Width:4506.w,Bounds\3AArea Height:4506.h,reference out:,error out:4506.err" uid="4506" uid_parent="4500"/>
+        <Node _name="Select" inputs="t:4504.value,s:4506.src,f:4505.value" outputs="s? t\3Af:4507.src" uid="4507" uid_parent="4500"/>
+        <Node _name="Number To Decimal String" inputs="number:4506.l" outputs="decimal integer string:4508.s" uid="4508" uid_parent="4500"/>
+        <Node _name="Number To Decimal String" inputs="number:4506.t" outputs="decimal integer string:4509.s" uid="4509" uid_parent="4500"/>
+        <Node _name="Number To Decimal String" inputs="number:4506.w" outputs="decimal integer string:4510.s" uid="4510" uid_parent="4500"/>
+        <Node _name="Number To Decimal String" inputs="number:4506.h" outputs="decimal integer string:4511.s" uid="4511" uid_parent="4500"/>
+        <Node _name="Concatenate Strings" inputs="string:4506.name,string:4502.value,string:4507.src,string:4502.value,string:4508.s,string:4502.value,string:4509.s,string:4502.value,string:4510.s,string:4502.value,string:4511.s,string:4503.value" outputs="concatenated string:4512.term" uid="4512" uid_parent="4500"/>
+        <Tunnel _id="Out1" inputs="value:4512.term" mode="index" outputs="value:4513.value" uid="4513" uid_parent="4500"/>
+        <Tunnel _id="Out2" inputs="value:4506.err" mode="index" outputs="value:" uid="4514" uid_parent="4500"/>
+      </Structure>
+      <Node _name="Concatenate Strings" inputs="string:4513.value" outputs="concatenated string:4422.terms" uid="4422" uid_parent="4400"/>
+
+      <Node _name="To More Specific Class" inputs="reference:4401.obj,error in:,target class:4404.value" outputs="specific class reference:4430.st,error out:4430.err" uid="4430" uid_parent="4400"/>
+      <Node _name="Property Node" fields="read+Diagrams[],read+Tunnels[],read+Frame Size" type="{LV.Structure}" inputs="reference:4430.st,error in (no error):4430.err" outputs="Diagrams[]:4431.diags,Tunnels[]:4431.tunnels,Frame Size:4431.fs,reference out:,error out:4431.err" uid="4431" uid_parent="4400"/>
+      <Node _name="Unbundle By Name" fields="Width,Height" inputs="input cluster:4431.fs" outputs="Width:4435.fw,Height:4435.fh" uid="4435" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4435.fw" outputs="decimal integer string:4436.s" uid="4436" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4435.fh" outputs="decimal integer string:4437.s" uid="4437" uid_parent="4400"/>
+      <Node _name="Concatenate Strings" inputs="string:4436.s,string:4409.value,string:4437.s" outputs="concatenated string:4438.fs" uid="4438" uid_parent="4400"/>
+      <Node _name="Array Size" inputs="array:4431.diags" outputs="size(s):4432.n" uid="4432" uid_parent="4400"/>
+      <Node _name="Number To Decimal String" inputs="number:4432.n" outputs="decimal integer string:4433.s" uid="4433" uid_parent="4400"/>
+      <Structure _name="For Loop" count="4600.value" maxin="" maxout="" uid="4600" uid_parent="4400">
+        <Tunnel _id="In1" inputs="value:4431.diags" mode="index" outputs="value:" uid="4601" uid_parent="4600"/>
+        <Tunnel _id="In2" inputs="value:4402.id" outputs="value:4602.id" uid="4602" uid_parent="4600"/>
+        <Tunnel _id="In3" inputs="value:4413.s" outputs="value:4603.i" uid="4603" uid_parent="4600"/>
+        <Constant _name="fdot" outputs="value:4604.value" type="string" uid="4604" uid_parent="4600" value="."/>
+        <Node _name="Number To Decimal String" inputs="number:4600.value" outputs="decimal integer string:4605.s" uid="4605" uid_parent="4600"/>
+        <Node _name="Concatenate Strings" inputs="string:4602.id,string:4604.value,string:4603.i,string:4604.value,string:4605.s" outputs="concatenated string:4606.cid" uid="4606" uid_parent="4600"/>
+        <Tunnel _id="Out1" inputs="value:4606.cid" mode="index" outputs="value:4607.value" uid="4607" uid_parent="4600"/>
+      </Structure>
+      <Structure _name="For Loop" count="" maxin="" maxout="" uid="4700" uid_parent="4400">
+        <Tunnel _id="In1" inputs="value:4431.tunnels" mode="index" outputs="value:4701.tun" uid="4701" uid_parent="4700"/>
+        <Constant _name="uhat" outputs="value:4702.value" type="string" uid="4702" uid_parent="4700" value="^"/>
+        <Constant _name="utilde" outputs="value:4703.value" type="string" uid="4703" uid_parent="4700" value="~"/>
+        <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop,read+Bounds\3AArea Width,read+Bounds\3AArea Height" type="{LV.GObject}" inputs="reference:4701.tun,error in (no error):" outputs="Position\3ALeft:4704.l,Position\3ATop:4704.t,Bounds\3AArea Width:4704.w,Bounds\3AArea Height:4704.h,reference out:,error out:4704.err" uid="4704" uid_parent="4700"/>
+        <Node _name="Number To Decimal String" inputs="number:4704.l" outputs="decimal integer string:4705.s" uid="4705" uid_parent="4700"/>
+        <Node _name="Number To Decimal String" inputs="number:4704.t" outputs="decimal integer string:4706.s" uid="4706" uid_parent="4700"/>
+        <Node _name="Number To Decimal String" inputs="number:4704.w" outputs="decimal integer string:4707.s" uid="4707" uid_parent="4700"/>
+        <Node _name="Number To Decimal String" inputs="number:4704.h" outputs="decimal integer string:4708.s" uid="4708" uid_parent="4700"/>
+        <Node _name="Concatenate Strings" inputs="string:4705.s,string:4702.value,string:4706.s,string:4702.value,string:4707.s,string:4702.value,string:4708.s,string:4703.value" outputs="concatenated string:4709.tun" uid="4709" uid_parent="4700"/>
+        <Tunnel _id="Out1" inputs="value:4709.tun" mode="index" outputs="value:4710.value" uid="4710" uid_parent="4700"/>
+        <Tunnel _id="Out2" inputs="value:4704.err" mode="index" outputs="value:" uid="4711" uid_parent="4700"/>
+      </Structure>
+      <Node _name="Concatenate Strings" inputs="string:4710.value" outputs="concatenated string:4434.tunnels" uid="4434" uid_parent="4400"/>
+      <Constant _name="loop class" outputs="value:4470.value" type="ref{LV.Loop}" uid="4470" uid_parent="4400" value=""/>
+      <Node _name="To More Specific Class" inputs="reference:4401.obj,error in:,target class:4470.value" outputs="specific class reference:4471.loop,error out:4471.err" uid="4471" uid_parent="4400"/>
+      <Node _name="Property Node" fields="read+Shift Registers[]" type="{LV.Loop}" inputs="reference:4471.loop,error in (no error):4471.err" outputs="Shift Registers[]:4472.srs,reference out:,error out:4472.err" uid="4472" uid_parent="4400"/>
+      <Structure _name="For Loop" count="" maxin="" maxout="" uid="4740" uid_parent="4400">
+        <Tunnel _id="In1" inputs="value:4472.srs" mode="index" outputs="value:4741.sr" uid="4741" uid_parent="4740"/>
+        <Constant _name="shat" outputs="value:4742.value" type="string" uid="4742" uid_parent="4740" value="^"/>
+        <Constant _name="stilde" outputs="value:4743.value" type="string" uid="4743" uid_parent="4740" value="~"/>
+        <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop,read+Bounds\3AArea Width,read+Bounds\3AArea Height" type="{LV.GObject}" inputs="reference:4741.sr,error in (no error):" outputs="Position\3ALeft:4744.l,Position\3ATop:4744.t,Bounds\3AArea Width:4744.w,Bounds\3AArea Height:4744.h,reference out:,error out:4744.err" uid="4744" uid_parent="4740"/>
+        <Node _name="Number To Decimal String" inputs="number:4744.l" outputs="decimal integer string:4745.s" uid="4745" uid_parent="4740"/>
+        <Node _name="Number To Decimal String" inputs="number:4744.t" outputs="decimal integer string:4746.s" uid="4746" uid_parent="4740"/>
+        <Node _name="Number To Decimal String" inputs="number:4744.w" outputs="decimal integer string:4747.s" uid="4747" uid_parent="4740"/>
+        <Node _name="Number To Decimal String" inputs="number:4744.h" outputs="decimal integer string:4748.s" uid="4748" uid_parent="4740"/>
+        <Node _name="Concatenate Strings" inputs="string:4745.s,string:4742.value,string:4746.s,string:4742.value,string:4747.s,string:4742.value,string:4748.s,string:4743.value" outputs="concatenated string:4749.sr" uid="4749" uid_parent="4740"/>
+        <Tunnel _id="Out1" inputs="value:4749.sr" mode="index" outputs="value:4750.value" uid="4750" uid_parent="4740"/>
+        <Tunnel _id="Out2" inputs="value:4744.err" mode="index" outputs="value:" uid="4751" uid_parent="4740"/>
+      </Structure>
+      <Node _name="Concatenate Strings" inputs="string:4750.value" outputs="concatenated string:4473.srs" uid="4473" uid_parent="4400"/>
+
+      <Node _name="To More Specific Class" inputs="reference:4401.obj,error in:,target class:4405.value" outputs="specific class reference:4440.term,error out:4440.err" uid="4440" uid_parent="4400"/>
+      <Node _name="Property Node" fields="read+Name,read+Is Source?" type="{LV.Terminal}" inputs="reference:4440.term,error in (no error):4440.err" outputs="Name:4441.name,Is Source?:4441.src,reference out:,error out:4441.err" uid="4441" uid_parent="4400"/>
+      <Node _name="Select" inputs="t:4410.value,s:4441.src,f:4411.value" outputs="s? t\3Af:4442.src" uid="4442" uid_parent="4400"/>
+      <Node _name="Concatenate Strings" inputs="string:4441.name,string:4409.value,string:4442.src" outputs="concatenated string:4443.own" uid="4443" uid_parent="4400"/>
+
+      <Node _name="Concatenate Strings" inputs="string:4407.value,string:4402.id,string:4406.value,string:4413.s,string:4406.value,string:4412.cls,string:4406.value,string:4414.s,string:4406.value,string:4415.s,string:4406.value,string:4416.s,string:4406.value,string:4417.s,string:4406.value,string:4433.s,string:4406.value,string:4422.terms,string:4406.value,string:4434.tunnels,string:4406.value,string:4443.own,string:4406.value,string:4438.fs,string:4406.value,string:4473.srs,string:4406.value,string:4485.tb" outputs="concatenated string:4450.line" uid="4450" uid_parent="4400"/>
+      <Tunnel _id="Out1" inputs="value:4450.line" mode="index" outputs="value:4460.value" uid="4460" uid_parent="4400"/>
+      <Tunnel _id="Out2" inputs="value:4431.diags" mode="concat" outputs="value:4461.value" uid="4461" uid_parent="4400"/>
+      <Tunnel _id="Out3" inputs="value:4607.value" mode="concat" outputs="value:4462.value" uid="4462" uid_parent="4400"/>
+      <Tunnel _id="Out4" inputs="value:4412.err" mode="index" outputs="value:" uid="4463" uid_parent="4400"/>
+      <Tunnel _id="Out5" inputs="value:4421.err" mode="index" outputs="value:" uid="4464" uid_parent="4400"/>
+      <Tunnel _id="Out6" inputs="value:4431.err" mode="index" outputs="value:" uid="4465" uid_parent="4400"/>
+      <Tunnel _id="Out7" inputs="value:4441.err" mode="index" outputs="value:" uid="4466" uid_parent="4400"/>
+      <Tunnel _id="Out8" inputs="value:4472.err" mode="index" outputs="value:" uid="4467" uid_parent="4400"/>
+    </Structure>
+
+    <Structure _name="For Loop" count="4800.value" maxin="" maxout="" uid="4800" uid_parent="4300">
+      <Tunnel _id="In1" inputs="value:4320.wires" mode="index" outputs="value:4801.wire" uid="4801" uid_parent="4800"/>
+      <Tunnel _id="In2" inputs="value:4317.id" outputs="value:4802.id" uid="4802" uid_parent="4800"/>
+      <Constant _name="W" outputs="value:4803.value" type="string" uid="4803" uid_parent="4800" value="W|"/>
+      <Constant _name="wbar" outputs="value:4804.value" type="string" uid="4804" uid_parent="4800" value="|"/>
+      <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Wire}" inputs="reference:4801.wire,error in (no error):" outputs="Terminals[]:4805.ends,reference out:,error out:4805.err" uid="4805" uid_parent="4800"/>
+      <Node _name="Number To Decimal String" inputs="number:4800.value" outputs="decimal integer string:4806.s" uid="4806" uid_parent="4800"/>
+      <Structure _name="For Loop" count="" maxin="" maxout="" uid="4900" uid_parent="4800">
+        <Tunnel _id="In1" inputs="value:4805.ends" mode="index" outputs="value:4901.end" uid="4901" uid_parent="4900"/>
+        <Constant _name="ehat" outputs="value:4902.value" type="string" uid="4902" uid_parent="4900" value="^"/>
+        <Constant _name="etilde" outputs="value:4903.value" type="string" uid="4903" uid_parent="4900" value="~"/>
+        <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.Terminal}" inputs="reference:4901.end,error in (no error):" outputs="Position\3ALeft:4904.l,Position\3ATop:4904.t,reference out:,error out:4904.err" uid="4904" uid_parent="4900"/>
+        <Node _name="Number To Decimal String" inputs="number:4904.l" outputs="decimal integer string:4905.s" uid="4905" uid_parent="4900"/>
+        <Node _name="Number To Decimal String" inputs="number:4904.t" outputs="decimal integer string:4906.s" uid="4906" uid_parent="4900"/>
+        <Node _name="Concatenate Strings" inputs="string:4905.s,string:4902.value,string:4906.s,string:4903.value" outputs="concatenated string:4907.end" uid="4907" uid_parent="4900"/>
+        <Tunnel _id="Out1" inputs="value:4907.end" mode="index" outputs="value:4908.value" uid="4908" uid_parent="4900"/>
+        <Tunnel _id="Out2" inputs="value:4904.err" mode="index" outputs="value:" uid="4909" uid_parent="4900"/>
+      </Structure>
+      <Node _name="Concatenate Strings" inputs="string:4908.value" outputs="concatenated string:4807.ends" uid="4807" uid_parent="4800"/>
+      <Node _name="Concatenate Strings" inputs="string:4803.value,string:4802.id,string:4804.value,string:4806.s,string:4804.value,string:4807.ends" outputs="concatenated string:4808.line" uid="4808" uid_parent="4800"/>
+      <Tunnel _id="Out1" inputs="value:4808.line" mode="index" outputs="value:4810.value" uid="4810" uid_parent="4800"/>
+      <Tunnel _id="Out2" inputs="value:4805.err" mode="index" outputs="value:" uid="4811" uid_parent="4800"/>
+    </Structure>
+
+    <Node _name="Build Array" concat="true" inputs="array:4308.lines,element:4325.line,array:4460.value,array:4810.value" outputs="appended array:4392.lines" uid="4392" uid_parent="4300"/>
+    <Node _name="Build Array" concat="true" inputs="array:4318.rest,array:4461.value" outputs="appended array:4390.q" uid="4390" uid_parent="4300"/>
+    <Node _name="Build Array" concat="true" inputs="array:4319.rest,array:4462.value" outputs="appended array:4391.ids" uid="4391" uid_parent="4300"/>
+    <Node _name="Empty Array?" inputs="array:4390.q" outputs="empty?:4393.done" uid="4393" uid_parent="4300"/>
+    <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4320.err" outputs="status:4394.status" uid="4394" uid_parent="4300"/>
+    <Node _name="Or" inputs="x:4393.done,y:4394.status" outputs="x .or. y?:4395.stop" uid="4395" uid_parent="4300"/>
+    <Condition inputs="value:4395.stop" uid="4396" uid_parent="4300" value="stop"/>
+  </Structure>
+
+  <Node _name="Close Reference" inputs="reference:4211.vi,error in (no error):4312.err" outputs="error out:4980.err" uid="4980" uid_parent="root"/>
+  <Indicator _name="lines" conIdx="4" connection="recommended" type="array{string}" uid="4990" uid_parent="root" value="[]" inputs="value:4309.lines"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4999" uid_parent="root" value="[false,0,]" inputs="value:4980.err"/>
+</VI>

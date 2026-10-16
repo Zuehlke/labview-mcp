@@ -2957,6 +2957,7 @@ literally it argued away 600 usable palette VIs.
 | Why does a consumer loop act on stale panel values? | `docs/cold-build-atm-agents-7.md` | `lvai_check_aixml` `controlReadBeforeWait` |
 | Why does LabVIEW's exit ask to save dozens of `LVMCP Validate` VIs, or the Error list show them, and can they be closed? | `docs/scratch-vis-in-memory.md` §2a | — safe to discard; the fixed name still piles up as `LVMCP Validate2` … `12`, and their windows and dialogs can report themselves invisible |
 | Is this block diagram too BIG, and which stretch goes into a subVI? | `docs/diagram-size.md` | `lvai_check_aixml` `diagramChain` before generating; `diagramSize` in the answer of `lvai_generate_vi` / `lvai_generate_vi_with_events` after |
+| How do I lay out an existing block diagram ORDERLY - after NI's Clean Up Diagram wrecked it, or a large VI by hand? | `docs/diagram-layout.md` | `lvai_layout_diagram` - our engine, not `BD.CleanUp`: data-flow columns, ONE straight error rail along the bottom, comments moved with their anchor, structures sized by `Frame Size`; saves in place with a backup. Not yet the automatic clean-up |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
 | How do I SET a Timed Loop's timing? | `scripts/templates/README.md` | `scripts/pylv-set-timedloop.py` |
 | How do I put LOGIC inside a Timed Loop or Event Structure? | `scripts/templates/README.md`, "the slot pattern" | `scripts/pylv-retarget-subvi.py` |

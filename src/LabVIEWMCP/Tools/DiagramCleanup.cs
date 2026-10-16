@@ -181,7 +181,7 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
     }
 
     /// <summary>Extract, pylv-strip-compiled.py, rebuild - the same three steps pylv_apply ends with.</summary>
-    private async Task<JsonObject> StripCompiledAsync(string viPath, int timeoutSeconds, CancellationToken ct)
+    internal async Task<JsonObject> StripCompiledAsync(string viPath, int timeoutSeconds, CancellationToken ct)
     {
         var answer = new JsonObject();
         if (PyLabview.Locate() is not { } bundle || StatusTools.ScriptsDirectory() is not { } scripts)
