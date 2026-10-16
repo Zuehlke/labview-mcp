@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace LabVIEWMcp.Infra;
 
 /// <summary>
-/// A VI's controls and indicators as the pylabview reader listed them, kept per FILE STATE.
+/// A VI's controls and indicators as the pylabview reader listed them, kept per FILE CONTENT.
 ///
 /// The ActiveX run route asks the reader for a VI's panel before every run, because ActiveX can set
 /// and get a control by name but cannot list them. For a helper that never changes that was the
@@ -14,10 +14,15 @@ namespace LabVIEWMcp.Infra;
 /// dump helper and 1.30 s for the apply helper on every VI, against 0.09 and 0.10 s inside LabVIEW -
 /// about 2 s of a small VI's 2.3.
 ///
-/// The key is the file's full path, size and write time, and the reader's own code stamp: a VI
-/// saved again is a miss, and so is every entry once the reader changes. What is cached is what
-/// the reader reads from that file and nothing else, so this is as current as reading it again.
+/// THE KEY IS WHAT THE READER READS: the file's bytes and the reader's own stamp
+/// (<see cref="AixmlExportStore.ReaderStamp"/>, which covers the bundled pylabview too). The first
+/// version keyed on size and write time, which a copy that keeps an older timestamp can defeat;
+/// hashing the bytes costs well under a millisecond for a helper and a few for a large VI. What is
+/// cached is only what the reader reads from those bytes, so a hit is as current as reading again.
+///
 /// Kept in memory for the process and on disk under the cache root, so a server restart keeps it.
+/// On disk an entry is named after the VI's PATH and its content, and writing one removes the
+/// entries the same path had before: a VI saved a hundred times leaves one file, not a hundred.
 /// </summary>
 internal static class PanelCache
 {
@@ -30,28 +35,36 @@ internal static class PanelCache
 
     private sealed record Entry(string Name, string Type, bool Indicator);
 
-    /// <summary>The cache key for the file as it is now, or null when there is none to make.</summary>
-    internal static string? Key(string viPath, string? readerStamp)
+    /// <summary>
+    /// The entry's name: the path's hash, a dash, the content's hash. Null when there is nothing
+    /// to key - no reader stamp, or no file to read.
+    /// </summary>
+    internal static (string PathPart, string Name)? Key(string viPath, string? readerStamp)
     {
         if (readerStamp is null) return null;
-        var file = new FileInfo(Path.GetFullPath(viPath));
-        if (!file.Exists) return null;
-        var text = $"{file.FullName.ToUpperInvariant()}|{file.Length}|{file.LastWriteTimeUtc.Ticks}|{readerStamp}";
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..32];
+        var full = Path.GetFullPath(viPath);
+        byte[] content;
+        try { content = File.ReadAllBytes(full); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
+        var pathPart = Hex(Encoding.UTF8.GetBytes(full.ToUpperInvariant()))[..16];
+        var statePart = Hex([.. SHA256.HashData(content), .. Encoding.UTF8.GetBytes("|" + readerStamp)])[..32];
+        return (pathPart, pathPart + "-" + statePart);
     }
+
+    private static string Hex(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
 
     public static List<AixmlComposer.PanelItem>? TryGet(string viPath, string? readerStamp, string? folder = null)
     {
         if (Key(viPath, readerStamp) is not { } key) return null;
-        if (Memory.TryGetValue(key, out var hit)) return hit;
+        if (Memory.TryGetValue(key.Name, out var hit)) return hit;
         try
         {
-            var file = Path.Combine(folder ?? Folder, key + ".json");
+            var file = Path.Combine(folder ?? Folder, key.Name + ".json");
             if (!File.Exists(file)) return null;
             var entries = JsonSerializer.Deserialize<List<Entry>>(File.ReadAllText(file));
             if (entries is null) return null;
             var items = entries.Select(e => new AixmlComposer.PanelItem(e.Name, e.Type, e.Indicator)).ToList();
-            Memory[key] = items;
+            Memory[key.Name] = items;
             return items;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
@@ -63,14 +76,19 @@ internal static class PanelCache
     public static void Put(string viPath, string? readerStamp, List<AixmlComposer.PanelItem> items, string? folder = null)
     {
         if (Key(viPath, readerStamp) is not { } key) return;
-        Memory[key] = items;
+        Memory[key.Name] = items;
         try
         {
             var dir = folder ?? Folder;
             Directory.CreateDirectory(dir);
-            var tmp = Path.Combine(dir, key + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp");
+            var target = Path.Combine(dir, key.Name + ".json");
+            var tmp = Path.Combine(dir, key.Name + "." + Guid.NewGuid().ToString("N")[..8] + ".tmp");
             File.WriteAllText(tmp, JsonSerializer.Serialize(items.Select(i => new Entry(i.Name, i.Type, i.Indicator))));
-            File.Move(tmp, Path.Combine(dir, key + ".json"), overwrite: true);
+            File.Move(tmp, target, overwrite: true);
+            // what this path held before is no longer its content
+            foreach (var old in Directory.GetFiles(dir, key.PathPart + "-*.json"))
+                if (!string.Equals(old, target, StringComparison.OrdinalIgnoreCase))
+                    File.Delete(old);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

@@ -79,9 +79,10 @@ VIs on disk under **`%USERPROFILE%\.labviewmcp\cache\aixml`** — the examples t
 VI's subVIs too, and those change behind a caller whose own timestamp never moves. Every answer
 says which happened in `fromCache` and `cacheNote`; `refresh` re-exports. §10 of
 `lvai_aixml_reference` has the rest. **The pylabview reader's exports are cached there too since
-2026-10-15, in the same folder under their OWN key** (backend plus the reader's code hash): a grpc
-call is never served a reader entry - the reader matches NI's export in every fact for only 392 of
-747 VIs - while a pylabview read takes NI's cached export first, then its own.
+2026-10-15, in the same folder under their OWN key** (backend plus a hash over the reader's code
+and, since 2026-10-16, the bundled pylabview): a grpc call is never served a reader entry - the
+reader matches NI's export in every fact for only 392 of 747 VIs - while a pylabview read takes
+NI's cached export first, then its own.
 `docs/aixml-backends.md`, "The reader's exports in the cache".
 
 **The cache is NOT under `%LOCALAPPDATA%`** — this line said so until 2026-08-13 and it sent that

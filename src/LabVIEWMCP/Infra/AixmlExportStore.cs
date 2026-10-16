@@ -127,8 +127,11 @@ internal static class AixmlExportStore
     private static string? _readerStamp;
 
     /// <summary>
-    /// A hash over the reader's code - vi2aixml.py and the modules it reads with. Null when the
-    /// composer is not here, which makes every reader entry a miss and every save a no-op.
+    /// A hash over the reader's code - vi2aixml.py and the modules it reads with - AND the bundled
+    /// pylabview package it reads through, as it runs, patches applied, plus the bundle's pylabview
+    /// commit. Until 2026-10-16 it covered our four scripts only, so a pylabview update alone kept
+    /// every reader entry and panel list valid. Null when the composer is not here, which makes
+    /// every reader entry a miss and every save a no-op.
     /// </summary>
     internal static string? ReaderStamp()
     {
@@ -136,17 +139,38 @@ internal static class AixmlExportStore
         try
         {
             if (AixmlComposer.Locate(out _) is not { } setup) return null;
-            using var sha = SHA256.Create();
-            foreach (var file in new[] { "vi2aixml.py", "aixml2vi.py", "lvheap.py", "resolve.py" })
-            {
-                var path = Path.Combine(setup.ComposerDirectory, file);
-                var bytes = File.Exists(path) ? File.ReadAllBytes(path) : [];
-                sha.TransformBlock(bytes, 0, bytes.Length, null, 0);
-            }
-            sha.TransformFinalBlock([], 0, 0);
-            return _readerStamp = Convert.ToHexString(sha.Hash!)[..12];
+            return _readerStamp = StampOf(ReaderFiles(setup.ComposerDirectory, setup.Bundle.Directory),
+                                          setup.Bundle.PylabviewCommit);
         }
         catch { return null; }
+    }
+
+    /// <summary>The files a read depends on: our four scripts, then every module of the bundled
+    /// pylabview package, in a fixed order.</summary>
+    internal static IEnumerable<string> ReaderFiles(string composerDirectory, string bundleDirectory)
+    {
+        foreach (var file in new[] { "vi2aixml.py", "aixml2vi.py", "lvheap.py", "resolve.py" })
+            yield return Path.Combine(composerDirectory, file);
+        var package = Path.Combine(bundleDirectory, "app", "pylabview");
+        if (System.IO.Directory.Exists(package))
+            foreach (var module in System.IO.Directory.GetFiles(package, "*.py").OrderBy(p => p, StringComparer.Ordinal))
+                yield return module;
+    }
+
+    /// <summary>Twelve hex digits over the files' names and contents and the pylabview commit. A
+    /// missing file counts as empty, so its appearing later changes the stamp too.</summary>
+    internal static string StampOf(IEnumerable<string> files, string? pylabviewCommit)
+    {
+        using var sha = SHA256.Create();
+        void Add(byte[] bytes) => sha.TransformBlock(bytes, 0, bytes.Length, null, 0);
+        foreach (var path in files)
+        {
+            Add(Encoding.UTF8.GetBytes(Path.GetFileName(path) + "\n"));
+            Add(File.Exists(path) ? File.ReadAllBytes(path) : []);
+        }
+        Add(Encoding.UTF8.GetBytes(pylabviewCommit ?? ""));
+        sha.TransformFinalBlock([], 0, 0);
+        return Convert.ToHexString(sha.Hash!)[..12];
     }
 
     /// <summary>

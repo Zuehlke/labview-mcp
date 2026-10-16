@@ -50,6 +50,37 @@ public sealed class PanelCacheTests : IDisposable
         Assert.Null(PanelCache.TryGet(_vi, "reader1", _dir));
     }
 
+    /// <summary>The first key was size and write time: a copy that keeps an old timestamp, at the
+    /// same size, answered the panel of whatever the path held before.</summary>
+    [Fact]
+    public void Same_size_and_timestamp_with_other_content_is_a_miss()
+    {
+        var when = File.GetLastWriteTimeUtc(_vi);
+        PanelCache.Put(_vi, "reader1", Items, _dir);
+        var other = new byte[2048];
+        other[100] = 1;
+        File.WriteAllBytes(_vi, other);
+        File.SetLastWriteTimeUtc(_vi, when);
+        Assert.Equal(2048, new FileInfo(_vi).Length);
+        Assert.Null(PanelCache.TryGet(_vi, "reader1", _dir));
+    }
+
+    [Fact]
+    public void A_new_state_replaces_the_entry_of_the_same_vi_and_no_other()
+    {
+        var second = Path.Combine(_dir, "other.vi");
+        File.WriteAllBytes(second, new byte[1500]);
+        PanelCache.Put(_vi, "reader1", Items, _dir);
+        PanelCache.Put(second, "reader1", Items, _dir);
+        File.AppendAllText(_vi, "saved again");
+        PanelCache.Put(_vi, "reader1", Items, _dir);
+
+        Assert.Equal(2, Directory.GetFiles(_dir, "*.json").Length);
+        PanelCache.ForgetMemory();
+        Assert.NotNull(PanelCache.TryGet(_vi, "reader1", _dir));
+        Assert.NotNull(PanelCache.TryGet(second, "reader1", _dir));
+    }
+
     [Fact]
     public void A_changed_reader_is_a_miss()
     {

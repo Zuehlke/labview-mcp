@@ -1155,9 +1155,14 @@ as the control.
 **The pylabview reader's exports go into the export cache now** - the user's decision of
 2026-10-14 ("alles im Cache"), and of 2026-10-15 for HOW: one folder, `cache\aixml`, with the
 backend in the KEY. NI's entries keep the key they always had, so everything cached before is still
-served; a reader entry is keyed `pylabview@<hash>|<NI's key>`, the hash over `vi2aixml.py`,
-`aixml2vi.py`, `lvheap.py` and `resolve.py`, so a reader fix turns every older reader entry into a
-miss instead of serving what the fixed reader would no longer write. The sidecar records `Backend`.
+served. A reader entry is keyed `pylabview@<hash>|<NI's key>`, so a reader fix turns every older
+reader entry into a miss instead of serving what the fixed reader would no longer write. The sidecar
+records `Backend`. The hash covers:
+
+- `vi2aixml.py`, `aixml2vi.py`, `lvheap.py` and `resolve.py`;
+- every module of the bundled pylabview package, as it runs with its patches applied, and the
+  bundle's pylabview commit. These were added 2026-10-16: until then a pylabview update alone kept
+  every reader entry valid.
 
 **Why apart rather than shared, although the formats are the same:** the reader matches NI's
 export in every fact for 392 of 747 VIs (attributes 95.5 %, wires 93.5 %). One shared entry per VI
@@ -1276,12 +1281,23 @@ run.** ActiveX can set and get a control by name but cannot list them. For a hel
 changes, that read was most of a call. Measured on `lvai_layout_diagram`'s two helpers: the
 reader took 0.73 s and 1.30 s per run, against 0.09 s and 0.10 s inside LabVIEW on a small VI.
 
-- `PanelCache` keeps the list per file state: path, size, write time and the reader's code stamp
-  (`AixmlExportStore.ReaderStamp`).
+- `PanelCache` keys the list on WHAT THE READER READS: a hash of the file's bytes and the reader's
+  stamp (`AixmlExportStore.ReaderStamp`, which covers the bundled pylabview too). The first version
+  keyed on size and write time; a copy that keeps an older timestamp could defeat that. Hashing
+  costs well under a millisecond for a helper.
 - It is held in memory for the process and on disk under `<cache root>\panels`, so a server restart
   keeps it.
-- A VI saved again is a miss, and so is every entry once the reader changes. What is cached is only
-  what the reader reads from that file, so it is as current as reading it again.
+- On disk an entry is named after the VI's path and its content. Writing one removes what the same
+  path held before, so a VI saved a hundred times leaves one file.
+- A changed VI is a miss, and so is every entry once the reader or pylabview changes. What is cached
+  is only what the reader reads from those bytes, so it is as current as reading it again.
+- Deleting `<cache root>\panels` is always safe: it refills on the next run.
+
+**A composed helper is rebuilt by CONTENT as well as by timestamp.** Its `.parts` stamp carries a
+hash of its AIXML, so an older AIXML restored with its own older timestamp rebuilds the helper.
+Before that, the AIXML had to be NEWER than the VI. The gRPC route keeps its narrow
+timestamp-only rule (`HelperCache`), because there a rebuild runs `ValidateAIXML`, which has
+crashed LabVIEW.
 
 **`LabViewCom.HoldAsync` keeps a VI loaded** until its answer is disposed: a reference held on a
 thread of its own. Helpers that open the VI by path one after the other then reach the copy in

@@ -258,9 +258,10 @@ Two costs had nothing to do with the layout, and both are fixed:
   by name but cannot list them, so the server asked the pylabview reader for the helper's controls
   every time: 0.73 s for the dump helper and 1.30 s for the apply helper, against 0.09 and 0.10 s
   inside LabVIEW on a small VI. That was about 2 s of the 2.3.
-  - `PanelCache` keeps the list per file state: path, size, write time and the reader's code
-    stamp. It is held in memory and on disk under `%USERPROFILE%\.labviewmcp\cache\panels`.
-  - A VI saved again, or a changed reader, is a miss.
+  - `PanelCache` keeps the list per file content: a hash of the VI's bytes and the reader's stamp,
+    which covers the bundled pylabview too. It is held in memory and on disk under
+    `%USERPROFILE%\.labviewmcp\cache\panels`, one entry per VI.
+  - A changed VI, a changed reader or a pylabview update is a miss (`docs/aixml-backends.md`).
 - **Each VI was loaded twice.** Opening a test VI's reference cold takes 1.6-2.5 s over ActiveX,
   because it brings Caraya's hierarchy along; an application VI takes 0.02 s. The dump helper and
   the apply helper each opened it by path, and LabVIEW dropped it in between.
