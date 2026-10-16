@@ -19,6 +19,133 @@ public sealed class DiagramLayoutTests
 
     private static readonly Lazy<DiagramModel> Ni = new(() => Load("dqmh-main-ni-cleanup.txt"));
     private static readonly Lazy<DiagramModel> Original = new(() => Load("dqmh-main-original.txt"));
+    /// <summary>The ATM exam's main VI as generated, before any layout: a producer and a consumer
+    /// loop on one queue (C:\Temp\ATM_pylabview, 2026-10-16).</summary>
+    private static readonly Lazy<DiagramModel> AtmMain = new(() => Load("atm-main-original.txt"));
+
+    /// <summary>
+    /// The ATM's producer and consumer loops have no wire between them. By longest path alone the
+    /// consumer came three columns after the producer, behind the panel set-up only it waits for,
+    /// and the two loops ran side by side across 2295 px.
+    /// </summary>
+    [Fact]
+    public void Parallel_loops_share_a_column_one_above_the_other()
+    {
+        var model = AtmMain.Value;
+        var plan = DiagramLayout.Plan(model);
+        var loops = model.Top.Objects.Where(o => o.Class == "WhileLoop").Select(o => plan.Predicted[o.Key])
+                         .OrderBy(b => b.T).ToList();
+        Assert.Equal(2, loops.Count);
+        Assert.Equal(loops[0].L, loops[1].L);
+        Assert.True(loops[0].B <= loops[1].T, $"upper loop ends at {loops[0].B}, lower starts at {loops[1].T}");
+        Assert.True(plan.PredictedTop.W <= 1920, $"{plan.PredictedTop.W} px wide");
+    }
+
+    /// <summary>Five shift registers and three tunnels on the consumer loop, no taller than its
+    /// code, were pushed onto each other at the top of its border.</summary>
+    [Fact]
+    public void A_border_holds_its_ports_one_above_the_other()
+    {
+        var model = AtmMain.Value;
+        var plan = DiagramLayout.Plan(model);
+        var loop = model.Top.Objects.Single(o => o.Index == 23);
+        var box = plan.Predicted[loop.Key];
+        var ports = plan.Tunnels.Where(t => t.ApplyPath == "T" && t.Index == 23).ToList();
+        int H(LayoutTunnel t) => t.ShiftRegister ? loop.ShiftRegs[t.Tunnel].H : loop.Tunnels[t.Tunnel].H;
+        foreach (var left in new[] { true, false })
+        {
+            // a shift register is a pair, one on each border
+            var side = ports.Where(t => t.ShiftRegister || (t.X == box.L) == left).OrderBy(t => t.Y).ToList();
+            for (var i = 1; i < side.Count; i++)
+                Assert.True(side[i].Y >= side[i - 1].Y + H(side[i - 1]),
+                    $"{(left ? "left" : "right")} border: port at {side[i].Y} overlaps the one at {side[i - 1].Y}");
+            Assert.All(side, t => Assert.InRange(t.Y, box.T, box.B - H(t)));
+        }
+    }
+
+    /// <summary>Current VI's Path feeds Strip Path. Raised past the controls' column after the
+    /// fact, it came to share Strip Path's column, and its wire dropped and climbed between them -
+    /// the user's "ganz schlimm abgeknickt".</summary>
+    [Fact]
+    public void A_node_never_shares_a_column_with_what_it_feeds()
+    {
+        var plan = DiagramLayout.Plan(AtmMain.Value);
+        var thisPath = plan.Predicted["0#7"];
+        var strip = plan.Predicted["0#5"];
+        Assert.True(strip.L > thisPath.R, $"Strip Path at {strip.L}, Current VI's Path ends at {thisPath.R}");
+    }
+
+    /// <summary>The consumer loop's three constants hang on three shift registers, one above the
+    /// other. Side by side they made a staircase of labels in front of the loop.</summary>
+    [Fact]
+    public void Constants_in_front_of_a_border_stack_with_one_right_edge()
+    {
+        var plan = DiagramLayout.Plan(AtmMain.Value);
+        var constants = new[] { "0#12", "0#13", "0#14" }.Select(k => plan.Predicted[k]).OrderBy(b => b.T).ToList();
+        Assert.Single(constants.Select(b => b.R).Distinct());
+        for (var i = 1; i < constants.Count; i++)
+            Assert.True(constants[i].T >= constants[i - 1].B, $"constant at {constants[i].T} overlaps the one ending at {constants[i - 1].B}");
+    }
+
+    /// <summary>Init ATM Panel shared a column with Build Path, whose long "accounts file name"
+    /// constant pushed the whole column 300 px right of anything that fed it: the free space on
+    /// the left of the user's review.</summary>
+    [Fact]
+    public void A_node_moves_left_into_room_its_column_leaves()
+    {
+        var plan = DiagramLayout.Plan(AtmMain.Value);
+        var init = plan.Predicted["0#4"];
+        var controls = plan.Predicted["0#6"];     // Pnl Controls[], what feeds it
+        Assert.InRange(init.L - controls.R, DiagramLayout.ColumnGap, 120);
+    }
+
+    /// <summary>
+    /// A chain of seven subVI calls on one error wire, each with a long label constant. Hung at the
+    /// height of the chain, every constant took its full width out of the row: 2023 px against the
+    /// original's 1293. Rising over the node before, as the original has them, they cost almost
+    /// none: 1352 px.
+    /// </summary>
+    [Fact]
+    public void Constants_on_a_chain_rise_over_the_node_before()
+    {
+        var model = Load("atm-update-panel-original.txt");
+        var plan = DiagramLayout.Plan(model);
+        Assert.True(plan.PredictedTop.W <= 1293 * 11 / 10, $"{plan.PredictedTop.W} px wide");
+        var rail = model.Top.Objects.Where(o => o.Class == "SubVI").Select(o => plan.Predicted[o.Key]).ToList();
+        var constants = model.Top.Objects.Where(o => o.IsConstant).Select(o => plan.Predicted[o.Key]).ToList();
+        Assert.Contains(constants, c => rail.Any(r => c.B <= r.T && c.L < r.L && c.R > r.L - 200));
+    }
+
+    /// <summary>
+    /// A Caraya test's eight assertions, each with a label and an expected value hanging on it.
+    /// Placed side by side, those constants pushed the test to 2118 x 462 px, against the original's
+    /// 1396 x 739: the user's "too flat vertically, still full width". Compacted one by one, the
+    /// assertions zigzagged; as one kind they keep one left edge.
+    /// </summary>
+    [Fact]
+    public void Nodes_of_one_kind_keep_one_column_and_the_test_stays_compact()
+    {
+        var model = Load("atm-test-session-start-original.txt");
+        var plan = DiagramLayout.Plan(model);
+        var asserts = Enumerable.Range(8, 8).Select(i => plan.Predicted[$"0#{i}"]).ToList();
+        Assert.Single(asserts.Select(b => b.L).Distinct());
+        Assert.True(plan.PredictedTop.W <= 1396 && plan.PredictedTop.H >= 739 / 2,
+            $"{plan.PredictedTop.W} x {plan.PredictedTop.H} px");
+    }
+
+    /// <summary>Five wires from the consumer loop's shift registers cross the gaps around its three
+    /// subVIs; at the plain 28 px CleanUpWire knotted them above the nodes.</summary>
+    [Fact]
+    public void A_gap_crossed_by_many_wires_is_wider()
+    {
+        var model = AtmMain.Value;
+        var plan = DiagramLayout.Plan(model);
+        var frame = model.Diagrams["0.23.0"];
+        var dequeue = plan.Predicted[frame.Objects.Single(o => o.Index == 3).Key];
+        var handle = plan.Predicted[frame.Objects.Single(o => o.Index == 2).Key];
+        Assert.True(handle.L - dequeue.R >= DiagramLayout.ColumnGap + 3 * DiagramLayout.WireLane,
+            $"gap {handle.L - dequeue.R} px");
+    }
 
     [Fact]
     public void The_dump_parses_into_every_diagram_object_and_wire()
@@ -89,6 +216,32 @@ public sealed class DiagramLayoutTests
         var plan = DiagramLayout.Plan(model);
         var clashes = new List<string>();
         foreach (var d in model.Diagrams.Values.Where(d => d.Owner is not null))
+        {
+            var boxes = d.Objects.Where(o => !o.IsDecoration && !o.IsLoopTerminal && plan.Predicted.ContainsKey(o.Key))
+                .Select(o =>
+                {
+                    var p = plan.Predicted[o.Key];
+                    var (l, t, r, b) = o.Overhang;
+                    return (o.Key, B: new Box(p.L - l, p.T - t, p.W + l + r, p.H + t + b));
+                }).ToList();
+            for (var i = 0; i < boxes.Count; i++)
+                for (var j = i + 1; j < boxes.Count; j++)
+                    if (boxes[i].B.Overlaps(boxes[j].B)) clashes.Add($"{boxes[i].Key} / {boxes[j].Key}");
+        }
+        Assert.True(clashes.Count == 0, string.Join(", ", clashes));
+    }
+
+    /// <summary>Compaction moves nodes into room other columns leave, and constants rise over the
+    /// node before: neither may put anything on top of anything else, labels included.</summary>
+    [Theory]
+    [InlineData("atm-main-original.txt")]
+    [InlineData("atm-update-panel-original.txt")]
+    public void Nothing_overlaps_after_compaction(string fixture)
+    {
+        var model = Load(fixture);
+        var plan = DiagramLayout.Plan(model);
+        var clashes = new List<string>();
+        foreach (var d in model.Diagrams.Values)
         {
             var boxes = d.Objects.Where(o => !o.IsDecoration && !o.IsLoopTerminal && plan.Predicted.ContainsKey(o.Key))
                 .Select(o =>

@@ -75,6 +75,17 @@ before its own diagram is arranged.
 
 - **Columns follow data flow.** The column is the longest path from a source, the old Sugiyama
   layering.
+- **Parallel loops share a column, one above the other.** Two While Loops with no wire path between
+  them, either way, run side by side, like a producer and a consumer. They go into the later of
+  their two columns, and what follows them moves right. By longest path alone the ATM's consumer
+  came three columns after its producer, behind the panel set-up only it waits for, and the two
+  loops ran next to each other across 2295 px. The user's review of 2026-10-16: the original,
+  stacked layout was better than ours.
+- **A gap is as wide as the wires crossing it.** 28 px (`ColumnGap`) plus 6 px (`WireLane`) per
+  wire beyond the second, counting wires from node to node and, in a frame, wires from the left
+  border and to the right border. The frame's insets grow the same way. At the plain 28 px, five
+  wires from the ATM consumer loop's shift registers crossed the gaps around its three subVIs, and
+  `CleanUpWire` knotted them above the nodes.
 - **A node never stacks on a structure.** It gets a column of its own in front of it, because a
   structure's height is what a diagram can least afford twice. This is how the "Error" frame came
   down from 417 to 311 px.
@@ -101,6 +112,12 @@ before its own diagram is arranged.
   - **Ports fed by one node outside keep that node's terminal order.** Levelled by their inside
     wires, the Dequeue Message's queue, message and message data crossed, and `CleanUpWire` took
     the data wire right round the case structure.
+  - **A border holds its ports one above the other.** Where a side needs more height than the
+    structure has, the structure grows, and the room goes above the code, between the label and
+    the content, where the ports stack over the error port. A shift register is a PAIR at one
+    height, so it counts on both borders. `Shift Registers[]` hands back only the right register,
+    and while the ports were spread per side a left tunnel of the ATM consumer loop landed on the
+    left register of a pair.
   - **A lane next to the border.** Where a structure inside reaches the border, the inset grows by
     14 px (`Lane`). With 7 px, `CleanUpWire` routed the event loop's error wire backwards round its
     corner.
@@ -118,6 +135,33 @@ before its own diagram is arranged.
   - A constant or value whose wire leaves by the RIGHT border (the stop terminal, an output
     tunnel) goes to the last column.
   - A constant for a filter node's `Discard?` goes to the top right, by the node.
+  - **Constants on one node stack one above the other**, in their terminals' order and centred on
+    them. Side by side they made a staircase as wide as all of them: an ATM test assertion with its
+    long label constant and its expected value took 490 px, and since a column shares one left
+    edge, every assertion in it moved right by that much. The user's review of 2026-10-16: "too
+    flat vertically, still full width".
+  - **A port fed by a constant gets the constant's height on the border**, so the constants in
+    front of a structure stack with straight wires.
+- **Compaction: a node moves left into the room its column leaves.** Columns are only the start.
+  Each node then moves left as far as two things allow. Nothing beside it may overlap it in
+  height, keeping `ColumnGap` and the lanes. And it stays right of everything that feeds it, so
+  wires still run left to right.
+  - Structures of one column move together, so stacked loops keep their shared left edge.
+  - So do nodes of one kind in a column (same class, terminal count and size), such as a test's
+    eight assertions. One by one they zigzagged, each as far as its own constants allowed.
+  - The indicators then end the diagram again.
+  - Columns alone kept the ATM's `Init ATM Panel` 300 px to the right, across empty diagram,
+    behind the long constant of the `Build Path` that shared its column. That was the free space on
+    the left in the user's review.
+- **Constants on a chain rise over the node before.** Where only a node's own constants hold it
+  back, they rise until they are clear, and the node moves left. This gives the staircase a person
+  draws: each constant above the node before it, wired down.
+  - Seven subVIs on one error wire in `Update ATM Panel`, each with a long label constant at the
+    height of the chain, took 2023 px. Rising, they took 1352, against the original's 1293.
+  - Structures never lift their constants: those must stay level with the ports they feed.
+  - A constant rises at most 120 px above its terminal (`MaxLift`). With no limit, an ATM test's
+    expected value rose 150 px and was wired down past four assertions. Over the 45 VIs of that
+    project, the limit cost 3 % of the mean width.
 - **A comment moves with the object it describes**, the nearest one within 40 px.
   - A comment on a subVI goes below it, any other above it.
   - In a frame, a comment on a node of the rail goes above even so. Below the rail it would make
@@ -138,7 +182,10 @@ before its own diagram is arranged.
 - **A note on the top level goes beside the structure it was nearest to.** The candidates are
   its top on the side the note was on, then the other side, then above it. The one where the
   diagram grows least wins. DQMH's HowTo block lands to the right of the case structure's top.
-- **On the top level, controls start the diagram and indicators end it.**
+- **On the top level, controls start the diagram and indicators end it.** Every other node gets
+  column 1 or later as a FLOOR in the column calculation, so what follows moves along. Raised
+  after the fact instead, the ATM's `Current VI's Path` shared a column with the `Strip Path` it
+  feeds, and its wire dropped and climbed between them.
 - **Frames of one structure share their rail,** so the error line runs straight through every
   case.
 - **Width is kept for short subdiagram labels.** A structure is never narrower than its
@@ -176,6 +223,68 @@ all of them the module's `#CodeNeeded` places. No wire was broken and no object 
   wire can loop.
 - **Two terminal properties are not done yet:** panel terminals shown as icons (no VI Server
   property; a heap flag), and ordering the top-level controls by connector-pane row.
+
+## 4a. A whole project: the ATM exam build
+
+All 45 VIs of `C:\Temp\ATM_pylabview\Automatic Teller Machine` (application, Caraya tests and
+runners), measured 2026-10-16. Each VI was laid out with one `lvai_layout_diagram` call (`verify`
+off, no render), over a second server instance driven by raw stdio with a stopwatch around each
+call:
+
+| | VIs | per VI | total |
+|---|---|---|---|
+| application VIs | 22 | 2.2-3.1 s, mean 2.4 s | 53 s |
+| Caraya test VIs and runners | 23 | 5.9-9.3 s, mean 7.6 s | 176 s |
+
+- **The difference is loading, not layout.** Opening a test VI's reference cold takes 1.6-2.5 s
+  over ActiveX, because it brings Caraya's hierarchy along; an application VI takes 0.02 s.
+  The tool loads each VI twice, once for the dump and once for the apply.
+  - Holding one reference open across both steps would save about one load per test VI. That is
+    an estimate; it has not been measured.
+- **The first call after a server start** composes the two helpers: a warm-up call on an 11-object
+  VI took 8.9 s against 2.2 s warm.
+- The plan itself takes milliseconds.
+- **Before and after**, both Caraya suites passed (103 and 37 tests) and 45 of 45 VIs were
+  executable, with no compiled code in any file. Only the 45 VIs changed: the `.lvproj` and the
+  data file were untouched.
+
+The first run put `ATM Main`'s producer and consumer loops side by side: 2295 x 301 px, against the
+original's 1866 x 793. The user judged the original, with the loops stacked, better. The three
+rules this added are in section 3:
+
+- parallel loops share a column
+- a border holds its ports
+- a gap is as wide as the wires crossing it
+
+They brought `ATM Main` to 1918 x 431, with the loops stacked.
+
+The second review found the results too flat and still too wide: `ATM Main` had free space on
+its left, a bent path wire, and `Test Handle Session Start` came out at 2118 x 462 px against the
+original's 1396 x 739. Four more rules answered it, all in section 3:
+
+- constants on one node stack
+- compaction
+- constants on a chain rise over the node before (at most 120 px)
+- nodes of one kind keep one column
+
+The control-terminal floor fixed the bent wire.
+
+| | original | first run | now |
+|---|---|---|---|
+| `ATM Main` | 1866 x 793 | 2295 x 301 | 1627 x 444 |
+| `Test Handle Session Start` | 1396 x 739 | 2118 x 462 | 1079 x 538 |
+| `Update ATM Panel` | 1293 x 512 | 2029 x 184 | 1352 x 206 |
+| all 45 VIs, median width / height / area | 1 | | 0.93 / 0.73 / 0.67 |
+
+None is wider than 1920 px, and 42 of 45 got smaller. All 45 VIs stay executable, and both Caraya
+suites pass.
+
+Still open on this subject:
+
+- **Chains stay flat.** `Update ATM Panel` is 206 px high against the original's 512. Its
+  constants rise as a staircase, but no higher than `MaxLift`.
+- **Inside the consumer loop** the shift-register wires still run as a bundle above the three
+  subVIs, as they did in the original.
 
 ## 5. Not yet switched on
 

@@ -66,6 +66,12 @@ internal static class DiagramLayout
     /// <summary>Extra inset where a structure inside sits against the border: room for a wire
     /// between its ports and ours to run up or down.</summary>
     public const int Lane = 14;
+    /// <summary>Extra width a gap between columns gets per wire crossing it beyond the second.</summary>
+    public const int WireLane = 6;
+    /// <summary>How far a constant may rise above its terminal to let its node move left. With no
+    /// limit, an ATM test's expected value rose 150 px and wired down past four assertions; over
+    /// the 45 VIs of that project 120 px cost 3 % of the mean width.</summary>
+    public const int MaxLift = 120;
 
     private static readonly HashSet<string> Arrangeable = new(StringComparer.Ordinal)
         { "WhileLoop", "ForLoop", "CaseStructure", "EventStructure", "DisableStructure" };
@@ -113,6 +119,9 @@ internal static class DiagramLayout
         public Box Old;
         public bool Left;
         public int RelY;
+        /// <summary>The height the port's slot on the border needs: its own, or the constant's
+        /// outside that feeds it, so the constants in front of a border stack with straight wires.</summary>
+        public int Room;
     }
 
     private sealed class StructShape
@@ -120,6 +129,8 @@ internal static class DiagramLayout
         public int W, H;
         public int? Rail;                 // y of the rail from the structure's top, when it has one
         public int Top;                   // where frame contents start (inset + label)
+        public int PortTop;               // where ports may start on the side borders: room
+                                          // added for them goes between this and Top
         public int Left;
         public Dictionary<Diagram, (Arrangement A, int Dy)> Frames { get; } = [];
         public List<Port> Ports { get; } = [];
@@ -252,6 +263,23 @@ internal static class DiagramLayout
         }
         var anyRail = colPlans.Any(c => c.OnRail is not null);
 
+        // a gap is as wide as the wires crossing it need: 28 px carried eight wires from the ATM
+        // consumer loop's shift registers past three subVIs, and CleanUpWire knotted them above
+        // the nodes. Column -1 is the left border, the last column's gap the right border's
+        var colOf = new Dictionary<DObject, int>();
+        for (var i = 0; i < colPlans.Count; i++)
+            foreach (var n in colPlans[i].Above.Append(colPlans[i].OnRail).OfType<DObject>()) colOf[n] = i;
+        var nets = layoutNodes.SelectMany(n => graph.Out(n))
+            .Where(e => e.From != e.To && colOf.ContainsKey(e.From) && colOf.ContainsKey(e.To))
+            .GroupBy(e => (e.From, e.FromTerm)).ToList();
+        int Lanes(int i)
+        {
+            var crossing = nets.Count(g => colOf[g.Key.From] <= i && g.Any(e => colOf[e.To] > i))
+                + colOf.Where(kv => kv.Value > i).Sum(kv => graph.LeftFed.GetValueOrDefault(kv.Key))
+                + colOf.Where(kv => kv.Value <= i).Sum(kv => graph.RightFed.GetValueOrDefault(kv.Key));
+            return WireLane * Math.Max(0, crossing - 2);
+        }
+
         int railY = 0;
         if (anyRail)
         {
@@ -265,8 +293,10 @@ internal static class DiagramLayout
 
         // nodes of one column share a left edge; constants hanging on them reach back into the gap
         int x = 0;
+        var column = -1;
         foreach (var (above, onRail) in colPlans)
         {
+            column++;
             var colNodes = onRail is null ? above.ToList() : above.Append(onRail).ToList();
             var lead = colNodes.Max(n => Math.Max(0, -blocks[n].WidthBox.L));
             var reach = colNodes.Max(n => blocks[n].WidthBox.R);
@@ -300,11 +330,124 @@ internal static class DiagramLayout
                     y += bb.H + RowGap;
                 }
             }
-            x = nx + reach + ColumnGap;
+            x = nx + reach + ColumnGap + Lanes(column);
         }
 
         if (colPlans.Count > 1)
             AlignToNeighbours(ctx, graph, colPlans, blocks, a.Pos, anyRail ? railY : null);
+
+        // ---- compaction: a node moves left as far as nothing beside it and no wire into it
+        // forbids. Columns alone kept the ATM's Init ATM Panel 300 px to the right, across empty
+        // diagram, behind the long constant of the Build Path that shares its column. Where only
+        // a node's own constants hold it back - a chain of subVIs, each with a long label constant
+        // at the height of the chain - the constants rise until they are clear and the node moves
+        // left: the staircase a person draws, each constant above the node before, wired down
+        if (colPlans.Count > 1)
+        {
+            var obstacles = new List<(Box B, int Col)>();
+            var indicators = isTop ? layoutNodes.Where(n => n.IsControlTerminal && !n.OwnSource).ToHashSet() : [];
+            var first = isTop && colPlans[0].Above.Append(colPlans[0].OnRail).OfType<DObject>().All(n => n.IsControlTerminal) ? 1 : 0;
+            List<(Box B, bool Node, int Member)> Parts(DObject n)
+            {
+                var parts = new List<(Box B, bool Node, int Member)> { (Extent(ctx, n, 0, 0), true, -1) };
+                var m = blocks[n].Members;
+                for (var i = 0; i < m.Count; i++)
+                    parts.Add((Extent(ctx, m[i].O, m[i].Dx, m[i].Dy), m[i].O.IsText, i));
+                return parts;
+            }
+            // nothing reaches further left than the first column it may move into already does
+            var firstCol = colPlans[Math.Min(first, colPlans.Count - 1)];
+            var floorX = firstCol.Above.Append(firstCol.OnRail).OfType<DObject>()
+                .Min(n => a.Pos[n].X + Parts(n).Min(p => p.B.L));
+            int Clear(Box rel, int y, bool node, int c, int fromX)
+            {
+                // the least x at which rel, placed at (x, y), keeps clear of what is settled
+                var x = Math.Max(fromX, floorX - rel.L);
+                var m = node ? RowGap / 2 : 2;
+                foreach (var (b, col) in obstacles)
+                    if (b.T < y + rel.B + m && y + rel.T < b.B + m)
+                        x = Math.Max(x, b.R - rel.L + (node ? ColumnGap + (col == c - 1 ? Lanes(c - 1) : 0) : ConstantGap));
+                return x;
+            }
+            int PredX(DObject n, int c)
+            {
+                var x = int.MinValue;
+                foreach (var e in graph.In(n))
+                    if (e.From != n && colOf.TryGetValue(e.From, out var pc) && pc < c && a.Pos.TryGetValue(e.From, out var pp))
+                        x = Math.Max(x, pp.X + Size(ctx, e.From).W + ColumnGap + (pc == c - 1 ? Lanes(c - 1) : 0));
+                return x;
+            }
+            void Settle(DObject n, int c)
+            {
+                var (x, y) = a.Pos[n];
+                foreach (var p in Parts(n)) obstacles.Add((p.B.Offset(x, y), c));
+            }
+            for (var c = 0; c < colPlans.Count; c++)
+            {
+                var members = colPlans[c].Above.Append(colPlans[c].OnRail).OfType<DObject>().ToList();
+                var movable = members.Where(n => c > first && !indicators.Contains(n)).ToList();
+                // structures of one column keep their shared left edge: stacked loops stay stacked
+                var structures = movable.Where(n => n.IsStructure).ToList();
+                if (structures.Count > 0)
+                {
+                    var target = structures.Max(n => Parts(n).Aggregate(PredX(n, c),
+                        (x, p) => Math.Max(x, Clear(p.B, a.Pos[n].Y, true, c, int.MinValue))));
+                    foreach (var n in structures)
+                        a.Pos[n] = (Math.Min(a.Pos[n].X, structures.Count > 1 ? target
+                            : Parts(n).Aggregate(PredX(n, c), (x, p) => Math.Max(x, Clear(p.B, a.Pos[n].Y, true, c, int.MinValue)))), a.Pos[n].Y);
+                    foreach (var n in structures) Settle(n, c);
+                }
+                // nodes of one kind in a column - a test's eight assertions - move together too:
+                // one by one they zigzagged, each as far as its own constants allowed
+                var kinds = movable.Where(n => !n.IsStructure)
+                    .GroupBy(n => (n.Class, n.Terms.Count, n.Box.W, n.Box.H)).Where(g => g.Count() > 1)
+                    .Select(g => g.ToList()).ToList();
+                foreach (var kind in kinds)
+                {
+                    var target = kind.Max(n => Parts(n).Aggregate(PredX(n, c),
+                        (x, p) => Math.Max(x, Clear(p.B, a.Pos[n].Y, p.Node, c, int.MinValue))));
+                    foreach (var n in kind) a.Pos[n] = (Math.Min(a.Pos[n].X, target), a.Pos[n].Y);
+                    foreach (var n in kind) Settle(n, c);
+                }
+                var grouped = kinds.SelectMany(k => k).ToHashSet();
+                foreach (var n in members.Except(structures).Where(n => !grouped.Contains(n)).OrderBy(n => a.Pos[n].Y))
+                {
+                    if (!movable.Contains(n))
+                    {
+                        if (!indicators.Contains(n)) Settle(n, c);
+                        continue;
+                    }
+                    var (px, py) = a.Pos[n];
+                    var parts = Parts(n);
+                    var own = parts.Where(p => p.Node).ToList();
+                    var held = parts.Where(p => !p.Node).ToList();
+                    var xNode = own.Aggregate(PredX(n, c), (x, p) => Math.Max(x, Clear(p.B, py, true, c, int.MinValue)));
+                    var xFull = held.Aggregate(xNode, (x, p) => Math.Max(x, Clear(p.B, py, false, c, int.MinValue)));
+                    var nx = xFull;
+                    if (xFull - xNode > ColumnGap && held.Count > 0)
+                    {
+                        for (var lift = 4; lift <= MaxLift; lift += 4)
+                        {
+                            if (held.Any(p => Clear(p.B.Offset(0, -lift), py, false, c, int.MinValue) > xNode)) continue;
+                            var m = blocks[n].Members;
+                            foreach (var p in held) m[p.Member] = (m[p.Member].O, m[p.Member].Dx, m[p.Member].Dy - lift);
+                            nx = xNode;
+                            break;
+                        }
+                    }
+                    a.Pos[n] = (Math.Min(px, nx), py);
+                    if (!indicators.Contains(n)) Settle(n, c);
+                }
+            }
+            // the indicators end the diagram again, in one column
+            if (indicators.Count > 0 && obstacles.Count > 0)
+            {
+                var right = obstacles.Max(o => o.B.R) + ColumnGap;
+                var x0 = indicators.Max(n => right - Parts(n).Min(p => p.B.L));
+                foreach (var n in indicators)
+                    if (x0 < a.Pos[n].X) a.Pos[n] = (x0, a.Pos[n].Y);
+            }
+        }
 
         // hanging things follow their node
         foreach (var (n, b) in blocks)
@@ -411,8 +554,11 @@ internal static class DiagramLayout
         var boxes = a.Pos.Select(kv => Extent(ctx, kv.Key, kv.Value.X, kv.Value.Y)).ToList();
         var all = Box.Union(boxes);
         var moved = a.Pos.Keys.ToList();
-        foreach (var o in moved) a.Pos[o] = (a.Pos[o].X - all.L, a.Pos[o].Y - all.T);
-        a.W = all.W;
+        // in a frame the wires from and to the border cross its inset the same way
+        var leadIn = d.Owner is null ? 0 : Lanes(-1);
+        var leadOut = d.Owner is null ? 0 : Lanes(colPlans.Count - 1);
+        foreach (var o in moved) a.Pos[o] = (a.Pos[o].X - all.L + leadIn, a.Pos[o].Y - all.T);
+        a.W = all.W + leadIn + leadOut;
         a.H = all.H;
         if (anyRail) a.Rail = railY - all.T;
         return a;
@@ -462,12 +608,25 @@ internal static class DiagramLayout
         if (StructureAt(b => b.R >= cw)) ir += Lane;
         shape.Left = il;
         shape.Top = it + labelH;
+        shape.PortTop = shape.Top;
         var labelW = s.Frames.SelectMany(f => SubdiagramLabels(f, s)).Select(t => t.Box.W).DefaultIfEmpty(0).Max();
         shape.W = Math.Max(Math.Max(il + contentW + ir, 60), Math.Min(labelW, SubdiagramLabelKeep) + (s.Box.W - labelW > 0 && s.Box.W - labelW < 40 ? s.Box.W - labelW : 12));
         shape.H = Math.Max(shape.Top + contentH + ib, 50);
         shape.Rail = rail >= 0 ? shape.Top + rail : null;
         if (shape.Rail is null && s.Terms.Any(t => IsError(t.Name)))
             shape.Rail = shape.H - ib - 8;      // an error tunnel with no rail inside: low, where one would be
+        // a border holds its ports: five shift registers and two tunnels on the ATM's consumer
+        // loop, no taller than its code, were pushed onto each other at the top. The room goes
+        // above the code, where the ports stack over the error port
+        var need = BorderNeed(ctx, s);
+        var room = shape.H - ib - shape.PortTop;
+        if (need > room)
+        {
+            var extra = need - room;
+            shape.Top += extra;
+            shape.H += extra;
+            if (shape.Rail is { } r0) shape.Rail = r0 + extra;
+        }
         Ports(ctx, s, shape, ib);
         return shape;
     }
@@ -616,8 +775,9 @@ internal static class DiagramLayout
             var outer = s.Terms.FirstOrDefault(t => p.Old.Contains(t.Box.L, t.Box.T, 1));
             p.Error = outer is not null && IsError(outer.Name);
             p.Inner = p.Dynamic ? null : InnerY(ctx, s, shape, p.Old, p.ShiftRegister);
-            p.RelY = p.Dynamic ? shape.Top + 2 + p.Old.H / 2 : p.Inner ?? (shape.Top + 6 + p.Old.H / 2);
+            p.RelY = p.Dynamic ? shape.PortTop + 2 + p.Old.H / 2 : p.Inner ?? (shape.PortTop + 6 + p.Old.H / 2);
             (p.OuterNode, p.OuterOffset) = OuterEnd(ctx, s, p.Old);
+            p.Room = PortRoom(p.Old, p.OuterNode);
             shape.Ports.Add(p);
         }
         // ports fed by one node outside keep that node's terminal order: DQMH's Dequeue Message
@@ -639,49 +799,78 @@ internal static class DiagramLayout
                 prev = y;
             }
         }
-        var maxBottom = Math.Max(shape.Top, shape.H - bottomInset);
+        // a shift register is a PAIR, one register on each border at one height: it counts on both
+        // sides. Spread per side alone, a left tunnel of the ATM consumer loop landed on the left
+        // register of a pair that was only ever sorted on the right
+        var maxBottom = Math.Max(shape.PortTop, shape.H - bottomInset);
+        bool[] SidesOf(Port p) => p.ShiftRegister ? [true, false] : [p.Left];
+        var errTop = new Dictionary<bool, int> { [true] = int.MaxValue, [false] = int.MaxValue };
         foreach (var side in new[] { true, false })
         {
-            var onSide = shape.Ports.Where(p => p.Left == side).ToList();
-            var errors = onSide.Where(p => p.Error).ToList();
-            var errTop = int.MaxValue;
-            if (shape.Rail is { } rail && errors.Count > 0)
+            var errors = shape.Ports.Where(p => p.Error && SidesOf(p).Contains(side)).ToList();
+            if (shape.Rail is not { } rail || errors.Count == 0) continue;
+            // the one whose wire comes from the rail keeps it; the rest stack above it,
+            // the nearest to the rail lowest
+            var keeper = errors.OrderBy(p => Math.Abs((p.Inner ?? int.MinValue / 2) - rail)).First();
+            keeper.RelY = rail;
+            var top = rail - keeper.Old.H / 2;
+            foreach (var p in errors.Where(p => p != keeper).OrderByDescending(p => p.Inner ?? int.MinValue))
             {
-                // the one whose wire comes from the rail keeps it; the rest stack above it,
-                // the nearest to the rail lowest
-                var keeper = errors.OrderBy(p => Math.Abs((p.Inner ?? int.MinValue / 2) - rail)).First();
-                keeper.RelY = rail;
-                var top = rail - keeper.Old.H / 2;
-                foreach (var p in errors.Where(p => p != keeper).OrderByDescending(p => p.Inner ?? int.MinValue))
-                {
-                    top -= 2 + p.Old.H;
-                    p.RelY = top + p.Old.H / 2;
-                }
-                errTop = top;
+                top -= 2 + p.Old.H;
+                p.RelY = top + p.Old.H / 2;
             }
-            // everything else: in the order it asks for, without overlap, and above the error ports
-            var rest = onSide.Where(p => !p.Error || shape.Rail is null).OrderBy(p => !p.Dynamic).ThenBy(p => p.RelY).ToList();
-            var prevBottom = shape.Top - 2;
-            foreach (var p in rest)
-            {
-                var t = Math.Max(p.RelY - p.Old.H / 2, prevBottom + 2);
-                t = Math.Min(t, maxBottom - p.Old.H);
-                p.RelY = t + p.Old.H / 2;
-                prevBottom = t + p.Old.H;
-            }
-            if (errTop != int.MaxValue)
-            {
-                var limit = errTop - 2;
-                for (var i = rest.Count - 1; i >= 0; i--)
-                {
-                    var p = rest[i];
-                    var b = p.RelY - p.Old.H / 2 + p.Old.H;
-                    if (b > limit) p.RelY = Math.Max(shape.Top, limit - p.Old.H) + p.Old.H / 2;
-                    limit = p.RelY - p.Old.H / 2 - 2;
-                }
-            }
+            errTop[side] = top;
+        }
+        // everything else: in the order it asks for, without overlap on either border it sits on,
+        // then pushed up above the error ports and off the bottom
+        var rest = shape.Ports.Where(p => !p.Error || shape.Rail is null).OrderBy(p => !p.Dynamic).ThenBy(p => p.RelY).ToList();
+        var prevBottom = new Dictionary<bool, int> { [true] = shape.PortTop - 2, [false] = shape.PortTop - 2 };
+        foreach (var p in rest)
+        {
+            var sides = SidesOf(p);
+            var t = Math.Max(p.RelY - p.Room / 2, sides.Max(sd => prevBottom[sd]) + 2);
+            t = Math.Min(t, maxBottom - p.Room);
+            p.RelY = t + p.Room / 2;
+            foreach (var sd in sides) prevBottom[sd] = t + p.Room;
+        }
+        var limit = new Dictionary<bool, int>
+        {
+            [true] = Math.Min(maxBottom, errTop[true] - 2),
+            [false] = Math.Min(maxBottom, errTop[false] - 2),
+        };
+        for (var i = rest.Count - 1; i >= 0; i--)
+        {
+            var p = rest[i];
+            var sides = SidesOf(p);
+            var lim = sides.Min(sd => limit[sd]);
+            if (p.RelY - p.Room / 2 + p.Room > lim) p.RelY = Math.Max(shape.PortTop, lim - p.Room) + p.Room / 2;
+            foreach (var sd in sides) limit[sd] = p.RelY - p.Room / 2 - 2;
         }
     }
+
+    /// <summary>The height the busier side border needs to hold its ports one above the other:
+    /// tunnels, shift registers (a pair, so both sides), the case selector and the dynamic event
+    /// terminals.</summary>
+    private static int BorderNeed(Context ctx, DObject s)
+    {
+        int left = 0, right = 0;
+        void Add(Box b, bool both)
+        {
+            var l = b.L <= s.Box.L + 4;
+            var r = b.R >= s.Box.R - 4;
+            var room = PortRoom(b, OuterEnd(ctx, s, b).Node);
+            if (both || (l && !r)) left += room + 2;
+            if (both || (r && !l)) right += room + 2;
+        }
+        foreach (var t in s.Tunnels) Add(t, false);
+        foreach (var t in s.ShiftRegs) Add(t, true);
+        if (s.Selector is { } sel) Add(sel.Box, false);
+        foreach (var t in s.DynamicTerms) Add(t.Box, false);
+        return Math.Max(left, right) + 4;
+    }
+
+    private static int PortRoom(Box port, DObject? outer) =>
+        outer is { IsConstant: true } c ? Math.Max(port.H, c.Box.H + c.Overhang.T + c.Overhang.B) : port.H;
 
     /// <summary>The node a port's OUTSIDE wire runs to, in the structure's own diagram, and the
     /// middle of that terminal below the node's top; (null, 0) for a wire to another border or to
@@ -691,9 +880,14 @@ internal static class DiagramLayout
         if (!ctx.Model.Diagrams.TryGetValue(s.DiagramId, out var d)) return (null, 0);
         foreach (var w in d.Wires.Where(w => w.Ends.Any(e => port.Contains(e.X, e.Y, 1))))
             foreach (var (ex, ey) in w.Ends.Where(e => !port.Contains(e.X, e.Y, 1)))
+            {
                 foreach (var o in d.Objects.Where(o => o != s && !o.IsStructure))
                     if (o.Terms.FirstOrDefault(t => t.Box.L == ex && t.Box.T == ey) is { } t)
                         return (o, t.Box.T + t.Box.H / 2 - o.Box.T);
+                // a constant lists no terminal: its wire ends on its body
+                if (d.Objects.FirstOrDefault(o => o.IsConstant && o.Box.Contains(ex, ey, 2)) is { } c)
+                    return (c, c.Box.H / 2);
+            }
         return (null, 0);
     }
 
@@ -861,17 +1055,32 @@ internal static class DiagramLayout
         // the node's own label (DQMH_REG_EVENTS above a node) takes room too
         var (oL, oT, oR, oB) = n.Overhang;
         var parts = new List<Box> { new(-oL, -oT, w + oL + oR, h + oT + oB) };
-        var taken = new List<Box>();
+        var wanted = new List<(DObject C, Box B, int L, int T)>();
         foreach (var (c, to) in constants ?? new List<(DObject C, Term? To)>())
         {
             var port = to is not null && ctx.Shapes.TryGetValue(n, out var ns) ? PortOf(ns, to.Box.L, to.Box.T) : null;
             var ty = port is not null ? port.RelY : to is null ? h / 2 : to.Box.T + to.Box.H / 2 - n.Box.T;
             // the constant's label comes along: a numeric with its label on the left reaches far
             var (cL, cT, cR, cB) = c.Overhang;
-            var cb = new Box(-c.Box.W - cR - ConstantGap - cL, ty - c.Box.H / 2 - cT,
-                             c.Box.W + cL + cR, c.Box.H + cT + cB);
-            while (taken.Any(t => t.Overlaps(cb, 2))) cb = cb.Offset(-(cb.W + ConstantGap), 0);
-            taken.Add(cb);
+            wanted.Add((c, new Box(-c.Box.W - cR - ConstantGap - cL, ty - c.Box.H / 2 - cT,
+                                   c.Box.W + cL + cR, c.Box.H + cT + cB), cL, cT));
+        }
+        // constants that would cover each other stack one above the other, in their terminals'
+        // order and centred on them. Side by side they made a staircase as wide as all of them: an
+        // ATM test's assertion with its label and its expected value took 490 px, and since a
+        // column shares one left edge, every assertion in it moved right by that much
+        var stacked = new List<(DObject C, Box B, int L, int T)>();
+        var prevBottom = int.MinValue / 2;
+        foreach (var x in wanted.OrderBy(x => x.B.T + x.B.H / 2))
+        {
+            var b = x.B.T < prevBottom + 2 ? x.B.Offset(0, prevBottom + 2 - x.B.T) : x.B;
+            stacked.Add((x.C, b, x.L, x.T));
+            prevBottom = b.B;
+        }
+        var lift = stacked.Count == 0 ? 0 : (stacked.Sum(x => x.B.T) - wanted.Sum(x => x.B.T)) / stacked.Count;
+        foreach (var (c, b0, cL, cT) in stacked)
+        {
+            var cb = b0.Offset(0, -lift);
             parts.Add(cb);
             block.Members.Add((c, cb.L + cL, cb.T + cT));
         }
@@ -941,17 +1150,37 @@ internal static class DiagramLayout
     private static Dictionary<DObject, int> Layers(Graph g, List<DObject> nodes, bool isTop)
     {
         var layer = new Dictionary<DObject, int>();
+        var floor = new Dictionary<DObject, int>();
         var onStack = new HashSet<DObject>();
         int Of(DObject n)
         {
             if (layer.TryGetValue(n, out var l)) return l;
             if (!onStack.Add(n)) return 0;           // a cycle - feedback node, shift register
             var preds = g.In(n).Select(e => e.From).Where(p => p != n && nodes.Contains(p) && !p.IsConstant).Distinct();
-            l = preds.Select(p => Of(p) + 1).DefaultIfEmpty(0).Max();
+            l = Math.Max(floor.GetValueOrDefault(n), preds.Select(p => Of(p) + 1).DefaultIfEmpty(0).Max());
             onStack.Remove(n);
             return layer[n] = l;
         }
+        // on the top level the controls have the first column to themselves. As a floor, so what
+        // follows moves along: raised after the fact, the ATM's Current VI's Path came to share a
+        // column with the Strip Path it feeds, and its wire dropped and climbed between them
+        if (isTop && nodes.Any(n => n.IsControlTerminal && n.OwnSource))
+            foreach (var n in nodes.Where(n => !n.IsControlTerminal)) floor[n] = 1;
         foreach (var n in nodes) Of(n);
+        // parallel loops share a column, the later of theirs, and stack: a producer and a consumer
+        // with no wire path between them either way. By longest path alone the ATM's consumer came
+        // three columns after its producer - behind the panel set-up only it waits for - and the
+        // two loops ran side by side across 2295 px
+        foreach (var group in ParallelLoops(g, nodes, layer))
+        {
+            var at = group.Max(s => layer[s]);
+            foreach (var s in group) floor[s] = at;
+        }
+        if (floor.Count > 0)
+        {
+            layer.Clear();
+            foreach (var n in nodes) Of(n);
+        }
         // an unattached constant goes one column before its earliest consumer
         foreach (var c in nodes.Where(n => n.IsConstant))
         {
@@ -979,6 +1208,31 @@ internal static class DiagramLayout
         var used = layer.Values.Distinct().OrderBy(v => v).Select((v, i) => (v, i)).ToDictionary(p => p.v, p => p.i);
         foreach (var n in layer.Keys.ToList()) layer[n] = used[layer[n]];
         return layer;
+    }
+
+    /// <summary>While Loops that run side by side: no wire path from one to the other, either way.
+    /// Each group holds loops parallel to every other loop in it, in column order.</summary>
+    private static List<List<DObject>> ParallelLoops(Graph g, List<DObject> nodes, Dictionary<DObject, int> layer)
+    {
+        var loops = nodes.Where(n => n.Class == "WhileLoop").OrderBy(n => layer[n]).ToList();
+        if (loops.Count < 2) return [];
+        var reach = loops.ToDictionary(l => l, l =>
+        {
+            var seen = new HashSet<DObject>();
+            var stack = new Stack<DObject>([l]);
+            while (stack.Count > 0)
+                foreach (var e in g.Out(stack.Pop()))
+                    if (e.To != l && nodes.Contains(e.To) && seen.Add(e.To)) stack.Push(e.To);
+            return seen;
+        });
+        var groups = new List<List<DObject>>();
+        foreach (var l in loops)
+        {
+            var home = groups.FirstOrDefault(gr => gr.All(o => !reach[o].Contains(l) && !reach[l].Contains(o)));
+            if (home is null) groups.Add([l]);
+            else home.Add(l);
+        }
+        return groups.Where(gr => gr.Count > 1).ToList();
     }
 
     internal static bool IsError(string name) =>
@@ -1055,6 +1309,10 @@ internal static class DiagramLayout
         /// <summary>Nodes wired to a node LabVIEW keeps on the right border - the Discard? of a
         /// filter event, at the frame's top right.</summary>
         public HashSet<DObject> FeedsFilterNode { get; } = [];
+        /// <summary>Per node, the wires from the frame's LEFT border into it, and from it to the
+        /// RIGHT border: they cross every gap between the border and the node.</summary>
+        public Dictionary<DObject, int> LeftFed { get; } = [];
+        public Dictionary<DObject, int> RightFed { get; } = [];
 
         /// <summary>
         /// The error chain the rail carries: the one that enters or leaves by the border, else the
@@ -1122,6 +1380,12 @@ internal static class DiagramLayout
                     e.Border ? !e.Source
                     : e.O is { } o && !e.Source && !nodes.Contains(o) && !o.IsText && !o.IsDecoration
                       && (o.IsLoopTerminal || d.Owner is { } ow && o.Box.L > ow.Box.L + ow.Box.W / 2);
+                if (s.Border && s.Source)
+                    foreach (var k in ends.Where((e, i) => i != src && !e.Border && e.O is not null && nodes.Contains(e.O))
+                                          .Select(e => e.O!).Distinct())
+                        g.LeftFed[k] = g.LeftFed.GetValueOrDefault(k) + 1;
+                if (s.O is not null && nodes.Contains(s.O) && ends.Where((_, i) => i != src).Any(e => e.Border && !e.Source))
+                    g.RightFed[s.O] = g.RightFed.GetValueOrDefault(s.O) + 1;
                 if (s.O is not null && nodes.Contains(s.O) && ends.Where((_, i) => i != src).Any(RightSink))
                 {
                     g.FeedsRight.Add(s.O);
