@@ -506,6 +506,31 @@ internal sealed class BulkTools(LvaiConnection connection)
                                  cleaned["note"]?.GetValue<string>();
             }
 
+            // A VI WE WRITE IS SOURCE-ONLY, whoever put compiled code into it. The clean-up strips
+            // what its own save brought in and leaves what was there before - so a VI NI's converter
+            // wrote WITH compiled code, as it does when the callees of a direct Call are loaded, kept
+            // it: Evaluate TDMS File in the gRPC cold build of LayoutCheck (2026-10-16), the one VI of
+            // nine with a VICD block. A pylabview edit of such a file runs the old compiled code
+            // (docs/pylabview-stale-compiled-code.md), so it goes here, before anything else reads it.
+            if (!openVI && ContainsCompiledCode(viPath))
+            {
+                var strip = await (StripCompiled?.Invoke(viPath, timeoutSeconds, ct)
+                    ?? new DiagramCleanup(connection).StripCompiledAsync(viPath, timeoutSeconds, ct));
+                var clean = !ContainsCompiledCode(viPath);
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "stripCompiled",
+                    ["ok"] = clean,
+                    ["note"] = clean
+                        ? "The converter wrote compiled code into the VI; it is stripped - the file is source-only."
+                        : "The converter wrote compiled code into the VI and stripping it FAILED - a later " +
+                          "pylabview edit of this file would run the old compiled code. Read detail.",
+                    ["detail"] = strip,
+                });
+                if (!clean)
+                    cleanNote += " The VI still carries compiled code: read the stripCompiled step.";
+            }
+
             // THE SIZE, after any pane repair (a render loads the VI, and a pylabview rebuild
             // after that would write under LabVIEW's loaded copy) and before the pane measurement.
             JsonObject? size = null;
@@ -566,13 +591,15 @@ internal sealed class BulkTools(LvaiConnection connection)
     /// The `diagramSize` step: one render of the written VI plus the longest chain of its AIXML.
     /// Shared with lvai_generate_vi_with_events, which builds the main VIs that ran largest.
     /// </summary>
-    internal async Task<JsonObject> DiagramSizeStepAsync(string aixmlPath, string viPath,
+    internal async Task<JsonObject> DiagramSizeStepAsync(string? aixmlPath, string viPath,
                                                          int timeoutSeconds, CancellationToken ct,
                                                          bool overCom = false)
     {
         var watch = Stopwatch.StartNew();
         DiagramSize.ChainResult? chain = null;
-        try { chain = DiagramSize.Chain(await File.ReadAllTextAsync(aixmlPath, ct)); }
+        // no AIXML where the VI comes from another tool (lvai_wire_dynamic_events): no chain
+        if (aixmlPath is not null)
+            try { chain = DiagramSize.Chain(await File.ReadAllTextAsync(aixmlPath, ct)); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         var running = LabViewCom.RunningPids();
         var (measured, png) = await (MeasureDiagram?.Invoke(viPath, timeoutSeconds, ct)
@@ -605,6 +632,13 @@ internal sealed class BulkTools(LvaiConnection connection)
     /// <summary>Test seam for the `cleanUpDiagram` step (viPath, backend); null in production, where
     /// <see cref="DiagramCleanup"/> runs our layout engine.</summary>
     internal Func<string, string, int, CancellationToken, Task<JsonObject>>? CleanUp
+    {
+        get; init;
+    }
+
+    /// <summary>Test seam for the `stripCompiled` step (viPath); null in production, where
+    /// <see cref="DiagramCleanup.StripCompiledAsync"/> strips the file through pylabview.</summary>
+    internal Func<string, int, CancellationToken, Task<JsonObject>>? StripCompiled
     {
         get; init;
     }

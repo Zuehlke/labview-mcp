@@ -357,6 +357,30 @@ Still open on this subject:
 - **Inside the consumer loop** the shift-register wires still run as a bundle above the three
   subVIs, as they did in the original.
 
+## 4c. The gRPC comparison build
+
+The same project built through NI's converter (`C:\temp\LayoutCheck_grpc`, 2026-10-16) showed
+two defects the composer never has, both texts LabVIEW clips in silence:
+
+- **A comment sized too small.** NI's converter sized `Release Event and Notifier`'s comment to
+  70 x 41 for 41 characters, and it showed "Releases run even after an". The dump reads each
+  Text's TEXT now, and every short comment - no line over 60 characters (`FitLineChars`), not a
+  subdiagram label - gets `Size to Text?` = TRUE in a pass of its own before anything moves:
+  206 x 15, measured, the whole sentence. Not only a clipped one: deciding "clipped" from a width
+  estimate flagged `One report line per channel.` in a box that fitted, and on a comment that
+  fits the property changes nothing. A long block - DQMH's HowTo, a `#CodeNeeded` note - keeps
+  its shape. The engine plans with the fitted box.
+- **A subdiagram label clipped by its structure.** NI's converter sizes a structure to its
+  contents and the label with it - "Append one line per" of "Append one line per channel",
+  "Statistics of one" of "Statistics of one channel row". LabVIEW widens the label with the
+  structure (measured: Frame Size 156 -> 260 px, and the label read the whole sentence), so the
+  structure is now as wide as the label's text plus 24 px (`LabelTextPad`), up to 600 px. The
+  box alone carried only the clipped width; `SubdiagramLabelKeep` still guards a dump without the
+  text.
+
+Text widths come from the composer's own table, `scripts/aixml-pylabview/parts/font-widths.json`
+(`TextMetrics`).
+
 ## 4b. The LayoutCheck project
 
 A project built for this check (`C:	emp\LayoutCheck`, 2026-10-16) has a producer and a consumer on a

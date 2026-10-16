@@ -288,6 +288,17 @@ internal sealed class WireEventTools(LvaiConnection connection)
                 if (cleaned["ok"]?.GetValue<bool>() != true)
                     payload["note"] = JsonValue.Create($"{payload["note"]?.GetValue<string>()} The block " +
                         "diagram was NOT cleaned up: " + cleaned["note"]?.GetValue<string>());
+
+                // AND THE SIZE, since this is where a user-event VI is finished: the generator
+                // returns at its verify step for such a VI, before its own size step, so the main
+                // VI of every producer/consumer build came back unmeasured (the gRPC cold build of
+                // LayoutCheck, 2026-10-16). The chain needs the AIXML, which this tool never sees.
+                var size = await new BulkTools(connection).DiagramSizeStepAsync(
+                    null, viPath, timeoutSeconds, ct,
+                    overCom: AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview);
+                payload["diagramSize"] = size;
+                if (size["note"]?.GetValue<string>() is { Length: > 0 } sizeNote)
+                    payload["note"] = JsonValue.Create($"{payload["note"]?.GetValue<string>()}{sizeNote}");
             }
 
             if (before is { } b)

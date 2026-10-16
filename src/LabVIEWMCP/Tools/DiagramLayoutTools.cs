@@ -132,12 +132,15 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
             var error = GraftTools.ReadHelperError(run);
             var moveResults = Records(values, "move results");
             var sizeResults = Records(values, "size results");
+            var fitResults = Records(values, "size to text results");
+            answer["commentsFitted"] = fitResults.Count(r => r.StartsWith("0;", StringComparison.Ordinal));
             var tunnelResults = Records(values, "tunnel results").Concat(Records(values, "shift register results"))
                 .Concat(Records(values, "selector results")).Concat(Records(values, "dynamic left results"))
                 .Concat(Records(values, "dynamic right results")).ToList();
             answer["helperErrorCode"] = error.Code;
             answer["moveErrors"] = moveResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
-            answer["sizeErrors"] = sizeResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
+            answer["sizeErrors"] = sizeResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal))
+                                   + fitResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
             answer["tunnelErrors"] = tunnelResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
             if (error.Code is not null && error.Code != 0)
             {
@@ -206,6 +209,8 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
     internal static JsonObject ApplyInputs(string vi, LayoutPlan plan) => new()
     {
         ["vi path"] = vi,
+        // comments whose text did not fit their box, fitted before anything moves
+        ["size to text"] = GraftTools.ArrayXml("size to text", plan.SizeToText),
         ["moves"] = GraftTools.ArrayXml("moves", plan.Moves.Where(m => !m.Late).Select(m => $"{m.ApplyPath};{m.Index};{m.X};{m.Y}")),
         // a While Loop's stop and iteration terminals: after the sizes, since LabVIEW repositions
         // them itself when Frame Size shrinks the loop

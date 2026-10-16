@@ -141,8 +141,21 @@
       <Node _name="Property Node" fields="read+Name,read+Is Source?" type="{LV.Terminal}" inputs="reference:4440.term,error in (no error):4440.err" outputs="Name:4441.name,Is Source?:4441.src,reference out:,error out:4441.err" uid="4441" uid_parent="4400"/>
       <Node _name="Select" inputs="t:4410.value,s:4441.src,f:4411.value" outputs="s? t\3Af:4442.src" uid="4442" uid_parent="4400"/>
       <Node _name="Concatenate Strings" inputs="string:4441.name,string:4409.value,string:4442.src" outputs="concatenated string:4443.own" uid="4443" uid_parent="4400"/>
+      <Constant _name="text class" outputs="value:5100.value" type="ref{LV.Text}" uid="5100" uid_parent="4400" value=""/>
+      <Node _name="To More Specific Class" inputs="reference:4401.obj,error in:,target class:5100.value" outputs="specific class reference:5101.text,error out:5101.err" uid="5101" uid_parent="4400"/>
+      <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:5101.text,error in (no error):5101.err" outputs="Text:5102.t,reference out:,error out:5102.err" uid="5102" uid_parent="4400"/>
+      <Constant _name="line feed" outputs="value:5103.value" type="string" uid="5103" uid_parent="4400" value="&#10;"/>
+      <Constant _name="line mark" outputs="value:5104.value" type="string" uid="5104" uid_parent="4400" value="\5Cn"/>
+      <Constant _name="carriage return" outputs="value:5105.value" type="string" uid="5105" uid_parent="4400" value="&#13;"/>
+      <Constant _name="nothing" outputs="value:5106.value" type="string" uid="5106" uid_parent="4400" value=""/>
+      <Constant _name="pipe" outputs="value:5107.value" type="string" uid="5107" uid_parent="4400" value="|"/>
+      <Constant _name="slash" outputs="value:5108.value" type="string" uid="5108" uid_parent="4400" value="/"/>
+      <Constant _name="replace all" outputs="value:5109.value" type="bool" uid="5109" uid_parent="4400" value="true"/>
+      <Node _name="Search and Replace String" inputs="input string:5102.t,search string:5105.value,replace string:5106.value,replace all?:5109.value" outputs="result string:5110.s" uid="5110" uid_parent="4400"/>
+      <Node _name="Search and Replace String" inputs="input string:5110.s,search string:5103.value,replace string:5104.value,replace all?:5109.value" outputs="result string:5111.s" uid="5111" uid_parent="4400"/>
+      <Node _name="Search and Replace String" inputs="input string:5111.s,search string:5107.value,replace string:5108.value,replace all?:5109.value" outputs="result string:5112.s" uid="5112" uid_parent="4400"/>
 
-      <Node _name="Concatenate Strings" inputs="string:4407.value,string:4402.id,string:4406.value,string:4413.s,string:4406.value,string:4412.cls,string:4406.value,string:4414.s,string:4406.value,string:4415.s,string:4406.value,string:4416.s,string:4406.value,string:4417.s,string:4406.value,string:4433.s,string:4406.value,string:4422.terms,string:4406.value,string:4434.tunnels,string:4406.value,string:4443.own,string:4406.value,string:4438.fs,string:4406.value,string:4473.srs,string:4406.value,string:4485.tb" outputs="concatenated string:4450.line" uid="4450" uid_parent="4400"/>
+      <Node _name="Concatenate Strings" inputs="string:4407.value,string:4402.id,string:4406.value,string:4413.s,string:4406.value,string:4412.cls,string:4406.value,string:4414.s,string:4406.value,string:4415.s,string:4406.value,string:4416.s,string:4406.value,string:4417.s,string:4406.value,string:4433.s,string:4406.value,string:4422.terms,string:4406.value,string:4434.tunnels,string:4406.value,string:4443.own,string:4406.value,string:4438.fs,string:4406.value,string:4473.srs,string:4406.value,string:4485.tb,string:4406.value,string:5112.s" outputs="concatenated string:4450.line" uid="4450" uid_parent="4400"/>
       <Tunnel _id="Out1" inputs="value:4450.line" mode="index" outputs="value:4460.value" uid="4460" uid_parent="4400"/>
       <Tunnel _id="Out2" inputs="value:4431.diags" mode="concat" outputs="value:4461.value" uid="4461" uid_parent="4400"/>
       <Tunnel _id="Out3" inputs="value:4607.value" mode="concat" outputs="value:4462.value" uid="4462" uid_parent="4400"/>
@@ -150,6 +163,7 @@
       <Tunnel _id="Out5" inputs="value:4421.err" mode="index" outputs="value:" uid="4464" uid_parent="4400"/>
       <Tunnel _id="Out6" inputs="value:4431.err" mode="index" outputs="value:" uid="4465" uid_parent="4400"/>
       <Tunnel _id="Out7" inputs="value:4441.err" mode="index" outputs="value:" uid="4466" uid_parent="4400"/>
+      <Tunnel _id="Out9" inputs="value:5102.err" mode="index" outputs="value:" uid="5113" uid_parent="4400"/>
       <Tunnel _id="Out8" inputs="value:4472.err" mode="index" outputs="value:" uid="4467" uid_parent="4400"/>
     </Structure>
 

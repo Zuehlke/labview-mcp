@@ -1,6 +1,6 @@
 """Writes scripts/lvbd_layout_apply.xml - edit this, not the XML.
 
-Nine passes (moves, structure sizes, late moves for a While Loop's own terminals, tunnels, shift registers, case selectors, an event structure's two dynamic event terminals, wire clean-up) share one diagram
+Ten passes (size to text, moves, structure sizes, late moves for a While Loop's own terminals, tunnels, shift registers, case selectors, an event structure's two dynamic event terminals, wire clean-up) share one diagram
 walk, so the helper is generated:
 
     python scripts/lvbd_layout_apply_gen.py scripts/lvbd_layout_apply.xml
@@ -144,7 +144,7 @@ def concat(parent, nets):
 
 
 desc = ("Applies a layout computed by lvai_layout_diagram to a VI's block diagram and saves it in place. "
-        "Six kinds of pass, in this order\\3A MOVES, each 'path;index;left;top' - the object at that index of the "
+        "Seven kinds of pass, in this order\\3A SIZE TO TEXT, each 'path;index' - a comment whose text did not fit its box gets Size to Text? = TRUE; MOVES, each 'path;index;left;top' - the object at that index of the "
         "diagram the path reaches is moved so that its Position becomes left,top in the pane's coordinates; "
         "SIZES, each 'path;index;width;height' - that structure's Frame Size is written, which sets its outer size exactly and keeps its top left corner (Auto Size and ShrinkWrapStructs grow a structure but never shrink it, measured 2026-10-16); LATE MOVES, a loop's own stop and iteration terminals, after the sizes since LabVIEW repositions them when Frame Size shrinks the loop, each placed by writing its Position (Move clamps a loop terminal into the loop's corner); TUNNELS, each 'path;index;tunnel;left;top' - that tunnel of that structure is moved; SHIFT REGISTERS, the same for a loop's Shift Registers[] (the left terminal; the right one follows); WIRES, each 'path' - every "
         "wire of that diagram is cleaned up with CleanUpWire. A path is 'object frame object frame ...' from "
@@ -161,6 +161,8 @@ vi = nu()
 e(f'  <Control _name="vi path" conIdx="0" connection="recommended" type="string" uid="{vi}" uid_parent="root" value="" outputs="value:{vi}.value"/>')
 mv = nu()
 e(f'  <Control _name="moves" conIdx="1" connection="recommended" type="array{{string}}" uid="{mv}" uid_parent="root" value="[]" outputs="value:{mv}.value"/>')
+stt = nu()
+e(f'  <Control _name="size to text" type="array{{string}}" uid="{stt}" uid_parent="root" value="[]" outputs="value:{stt}.value"/>')
 lm = nu()
 e(f'  <Control _name="late moves" type="array{{string}}" uid="{lm}" uid_parent="root" value="[]" outputs="value:{lm}.value"/>')
 sz = nu()
@@ -257,6 +259,42 @@ def moves_pass(src, run_err, by_position=False):
     e('  </Structure>')
     return mo, run_err
 
+
+# ---- size to text: a comment whose text did not fit its box - LabVIEW clipped it in silence -
+# is fitted FIRST, so that every move after it places the box it really has. NI's converter sized
+# Release Event and Notifier's comment to 70 x 41 for 41 characters; Size to Text? = TRUE drew it
+# whole at 206 x 15 (LayoutCheck, 2026-10-16)
+L = nu()
+e(f'  <Structure _name="For Loop" count="" maxin="" maxout="" uid="{L}" uid_parent="root">')
+t1, t2 = nu(), nu()
+e(f'    <Tunnel _id="In1" inputs="value:{stt}.value" mode="index" outputs="value:{t1}.op" uid="{t1}" uid_parent="{L}"/>')
+e(f'    <Tunnel _id="In2" inputs="value:{top}" outputs="value:{t2}.top" uid="{t2}" uid_parent="{L}"/>')
+f = split(L, f"{t1}.op", 2)
+d, err = walk(L, f[0], f"{t2}.top")
+idx = number(L, f[1])
+u = nu()
+e(f'    <Node _name="Property Node" fields="read+All Objects[]" type="{{LV.Diagram}}" inputs="reference:{d},error in (no error):{err}" outputs="All Objects[]:{u}.objs,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+objs, err = f"{u}.objs", f"{u}.err"
+u = nu()
+e(f'    <Node _name="Index Array" inputs="array:{objs},index:{idx}" outputs="element:{u}.obj" uid="{u}" uid_parent="{L}"/>')
+obj = f"{u}.obj"
+tcls = const(L, "text class", "ref{LV.Text}", "")
+u = nu()
+e(f'    <Node _name="To More Specific Class" inputs="reference:{obj},error in:{err},target class:{tcls}" outputs="specific class reference:{u}.t,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+txt, err = f"{u}.t", f"{u}.err"
+yes = const(L, "fit", "bool", "true")
+u = nu()
+e(f'    <Node _name="Property Node" fields="write+Size to Text?" type="{{LV.Text}}" inputs="reference:{txt},error in (no error):{err},Size to Text?:{yes}" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+err = f"{u}.err"
+u = nu()
+e(f'    <Node _name="Property Node" fields="read+Bounds\\3AArea Width,read+Bounds\\3AArea Height" type="{{LV.Text}}" inputs="reference:{txt},error in (no error):{err}" outputs="Bounds\\3AArea Width:{u}.w,Bounds\\3AArea Height:{u}.h,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+fw, fh, err = f"{u}.w", f"{u}.h", f"{u}.err"
+semi = const(L, "result separator", "string", ";")
+line = concat(L, [code_of(L, err), semi, dec(L, fw), semi, dec(L, fh), const(L, "record end", "string", "|")])
+fo = nu()
+e(f'    <Tunnel _id="Out1" inputs="value:{line}" mode="index" outputs="value:{fo}.value" uid="{fo}" uid_parent="{L}"/>')
+run_err = chain(L, run_err)
+e('  </Structure>')
 
 mo, run_err = moves_pass(mv, run_err)
 
@@ -426,6 +464,10 @@ cerr = f"{u}.err"
 j = nu()
 e(f'  <Node _name="Concatenate Strings" inputs="string:{mo}.value,string:{lmo}.value" outputs="concatenated string:{j}.s" uid="{j}" uid_parent="root"/>')
 u = nu()
+j2 = nu()
+e(f'  <Node _name="Concatenate Strings" inputs="string:{fo}.value" outputs="concatenated string:{j2}.s" uid="{j2}" uid_parent="root"/>')
+u2 = nu()
+e(f'  <Indicator _name="size to text results" type="string" uid="{u2}" uid_parent="root" value="" inputs="value:{j2}.s"/>')
 e(f'  <Indicator _name="move results" conIdx="4" connection="recommended" type="string" uid="{u}" uid_parent="root" value="" inputs="value:{j}.s"/>')
 j = nu()
 e(f'  <Node _name="Concatenate Strings" inputs="string:{so}.value" outputs="concatenated string:{j}.s" uid="{j}" uid_parent="root"/>')

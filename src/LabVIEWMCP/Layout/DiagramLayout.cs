@@ -15,6 +15,9 @@ internal sealed class LayoutPlan
     public List<LayoutSize> Sizes { get; } = [];
     public List<LayoutTunnel> Tunnels { get; } = [];
     public List<string> WireDiagrams { get; } = [];
+    /// <summary>Comments to fit to their text before anything moves, "path;index": their text
+    /// did not fit the box, and LabVIEW clipped it in silence.</summary>
+    public List<string> SizeToText { get; } = [];
     public List<string> Notes { get; } = [];
     /// <summary>Where every moved object is expected to end up, by <see cref="DObject.Key"/>.</summary>
     public Dictionary<string, Box> Predicted { get; } = new(StringComparer.Ordinal);
@@ -71,6 +74,10 @@ internal static class DiagramLayout
     /// (measured 2026-10-16: a 304 px label in a case made 142 wide showed two of its three lines).
     /// The dump does not carry the text, so a structure is kept as wide as its label up to this.</summary>
     public const int SubdiagramLabelKeep = 320;
+    /// <summary>What a subdiagram label needs beyond its text, and the widest a structure grows
+    /// for one whose text the dump read.</summary>
+    public const int LabelTextPad = 24;
+    public const int SubdiagramLabelMax = 600;
     /// <summary>Extra inset where a structure inside sits against the border: room for a wire
     /// between its ports and ours to run up or down.</summary>
     public const int Lane = 14;
@@ -172,7 +179,11 @@ internal static class DiagramLayout
         plan.PredictedTop = new Box(origin.Item1, origin.Item2, top.W, top.H);
 
         foreach (var d in model.Diagrams.Values.OrderBy(d => d.Depth))
+        {
             plan.WireDiagrams.Add(d.ApplyPath);
+            foreach (var t in d.Objects.Where(o => o.FitToText))
+                plan.SizeToText.Add($"{d.ApplyPath};{t.Index}");
+        }
         plan.Moves.Sort((a, b) => a.Depth.CompareTo(b.Depth));
         plan.Sizes.Sort((a, b) => b.Depth.CompareTo(a.Depth));
         return plan;
@@ -746,8 +757,17 @@ internal static class DiagramLayout
         shape.Left = il;
         shape.Top = it + labelH;
         shape.PortTop = shape.Top;
-        var labelW = s.Frames.SelectMany(f => SubdiagramLabels(f, s)).Select(t => t.Box.W).DefaultIfEmpty(0).Max();
+        var labels = s.Frames.SelectMany(f => SubdiagramLabels(f, s)).ToList();
+        var labelW = labels.Select(t => t.Box.W).DefaultIfEmpty(0).Max();
         shape.W = Math.Max(Math.Max(il + contentW + ir, 60), Math.Min(labelW, SubdiagramLabelKeep) + (s.Box.W - labelW > 0 && s.Box.W - labelW < 40 ? s.Box.W - labelW : 12));
+        // a label whose TEXT the dump read is as wide as its text: NI's converter sizes a
+        // structure to its contents and clips the label - "Append one line per" of "Append one
+        // line per channel" (the gRPC cold build of LayoutCheck, 2026-10-16) - and LabVIEW widens
+        // the label with the structure, measured. The box alone carried only the clipped width
+        var textW = labels.Where(t => t.Text is not null)
+            .Select(t => TextMetrics.Lines(t.Text!).Max(l => TextMetrics.Width(l)) + LabelTextPad)
+            .DefaultIfEmpty(0).Max();
+        shape.W = Math.Max(shape.W, Math.Min(textW, SubdiagramLabelMax));
         shape.H = Math.Max(shape.Top + contentH + ib, 50);
         shape.Rail = rail >= 0 ? shape.Top + rail : null;
         if (shape.Rail is null && s.Terms.Any(t => IsError(t.Name)))

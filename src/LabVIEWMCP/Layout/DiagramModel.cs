@@ -64,6 +64,14 @@ internal sealed class DObject
     /// terminal, a loop's i or stop terminal); empty name and false otherwise.</summary>
     public string OwnName { get; init; } = "";
     public bool OwnSource { get; init; }
+    /// <summary>A Text's own text (a comment, a subdiagram label); null for anything else, and for
+    /// a dump from before the field existed.</summary>
+    public string? Text { get; init; }
+    /// <summary>A frame's subdiagram label - sized by LabVIEW to its frame.</summary>
+    public bool IsSubdiagramLabel { get; set; }
+    /// <summary>A comment whose text did not fit its box: <see cref="Box"/> is already the size it
+    /// gets once the apply helper writes Size to Text? = TRUE.</summary>
+    public bool FitToText { get; set; }
     /// <summary>A structure's Frame Size, the writable twin of Bounds; null for anything else.</summary>
     public (int W, int H)? FrameSize { get; init; }
     public List<Diagram> Frames { get; } = [];
@@ -148,6 +156,8 @@ internal sealed class DiagramModel
                         ShiftRegs = f.Length > 13
                             ? Items(f[13]).Select(ParseBox).Where(b => b is not null).Select(b => b!.Value).ToList() : [],
                         Total = f.Length > 14 ? ParseRect(f[14]) : null,
+                        // a Text's own text, line breaks written as \n and '|' as '/' by the dump
+                        Text = f.Length > 15 && f[3] == "Text" ? f[15].Replace("\\n", "\n") : null,
                     });
                     break;
                 case "W" when f.Length >= 4:
@@ -184,8 +194,38 @@ internal sealed class DiagramModel
             owner.Frames.Add(d);
         }
         foreach (var o in objects) o.Frames.Sort((a, b) => a.FrameIndex.CompareTo(b.FrameIndex));
+        foreach (var d in model.Diagrams.Values)
+            foreach (var t in d.Objects.Where(o => o.IsText && o.Text is not null))
+            {
+                // a frame's subdiagram label: as wide as the frame, at its top. LabVIEW sizes it
+                // to the frame and clips its text when the frame is narrower; it is never fitted
+                if (d.Owner is { } owner && t.Box.W >= owner.Box.W * 0.7 && t.Box.T - owner.Box.T < 45)
+                {
+                    t.IsSubdiagramLabel = true;
+                    continue;
+                }
+                // a COMMENT is drawn whole: Size to Text? = TRUE. NI's converter sized Release Event
+                // and Notifier's to 70 x 41 for 41 characters, and it showed "Releases run even
+                // after an" (the gRPC cold build of LayoutCheck, 2026-10-16); fitted, 206 x 15,
+                // measured. Every short comment, not only a clipped one: deciding "clipped" from a
+                // width estimate flagged a one-line box that fitted, and on one that fits the
+                // property changes nothing. A long block - DQMH's HowTo, a #CodeNeeded note -
+                // keeps the shape it was wrapped to on purpose
+                var textLines = TextMetrics.Lines(t.Text!);
+                if (t.Text!.Length == 0 || textLines.Any(l => l.Length > FitLineChars)) continue;
+                t.FitToText = true;
+                t.Box = t.Box with
+                {
+                    W = textLines.Max(l => TextMetrics.Width(l)) + 8,
+                    H = textLines.Length * TextMetrics.LineHeight,
+                };
+            }
         return model;
     }
+
+    /// <summary>The longest line a comment may have to be fitted to its text: CLAUDE.md keeps a
+    /// diagram comment under about 45 characters.</summary>
+    public const int FitLineChars = 60;
 
     private static int I(string s) => int.TryParse(s, out var v) ? v : 0;
     private static IEnumerable<string> Items(string s) => s.Split('~', StringSplitOptions.RemoveEmptyEntries);

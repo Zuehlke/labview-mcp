@@ -1,4 +1,4 @@
-using Google.Protobuf;
+﻿using Google.Protobuf;
 using Grpc.Core;
 using LabVIEWMcp.Lvai;
 
@@ -46,6 +46,9 @@ internal sealed class FakeLvaiService : LVAI.LVAIBase
     public string? XmlFileContent { get; set; }
     /// <summary>When set, ConvertAIXMLToVI writes this to the requested viPath.</summary>
     public string? ViFileContent { get; set; }
+    /// <summary>When set, ConvertAIXMLToVI copies this file to the requested viPath - a real VI,
+    /// for a test that reads the file's resource map.</summary>
+    public string? ViFileCopyFrom { get; set; }
     /// <summary>
     /// Per-RPC override of <see cref="ErrorCode"/>, honoured by ValidateAIXML,
     /// ConvertAIXMLToVI and RunVIAsTopLevel. A COMPOSED tool makes several calls in one
@@ -272,6 +275,8 @@ internal sealed class FakeLvaiService : LVAI.LVAIBase
                 lock (_gate) _convertedAixml.Add(File.ReadAllText(request.AiXMLFilePath));
             if (ViFileContent is not null)
                 File.WriteAllText(request.ViPath, ViFileContent);
+            if (ViFileCopyFrom is not null)
+                File.Copy(ViFileCopyFrom, request.ViPath, overwrite: true);
             return new ConvertAIXMLToVIResponse
             {
                 ErrorCode = CodeFor(nameof(ConvertAIXMLToVI)),

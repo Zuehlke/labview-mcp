@@ -64,7 +64,7 @@ because the render decides. Fixture: `Fixtures/diagram-size/Browser History v2.x
 | when | tool | field |
 |---|---|---|
 | before generating | `lvai_check_aixml` | `diagramChain`: `longestChainStages`, `withinBudget` (10), `longestChain` - the elements along the chain, with `inside` for the structure it runs through |
-| after generating | `lvai_generate_vi`, `lvai_generate_vis`, `lvai_generate_vi_with_events` | `diagramSize` at top level (`width`, `height`, `withinBudget`, `longestChainStages`), the full step with the PNG path under `steps` |
+| after generating | `lvai_generate_vi`, `lvai_generate_vis`, `lvai_generate_vi_with_events`, and `lvai_wire_dynamic_events` for a user-event VI (no `longestChainStages` there: it never sees the AIXML) | `diagramSize` at top level (`width`, `height`, `withinBudget`, `longestChainStages`), the full step with the PNG path under `steps` |
 | after generating a TEST | `lvai_generate_test`, `lvai_generate_class_test`, `lvai_generate_method_test`, `lvai_generate_caraya_test_runner` | `diagramSize` of the test VI at top level, and a note to split it when it is over (section 5) |
 
 The render costs 90-460 ms (measured). It is ON by default for these tools and for the test VIs

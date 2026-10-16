@@ -6952,6 +6952,7 @@ class Composer:
 
     COLUMN_GAP = 60
     DATA_NODE_LEFT = 8
+    ROW_MAX = 30000       # px a diagram's row may reach before its columns wrap below
     COLUMN_MAX = 860      # px a column of one level may grow before it wraps
 
     def _place(self, diag, lv, sizes, top0, left0):
@@ -6999,6 +7000,13 @@ class Composer:
                 y += max(it[3], 32) + 30
             cols.append(col)
             for col in cols:
+                # A ROW WIDER THAN ROW_MAX WRAPS into a band below: a bounds coordinate is a
+                # signed 16-bit number in the heap, and lvbd_layout_apply - ten passes, each a
+                # loop in a column of its own because each waits for the one before - reached
+                # 34 254 px and failed to compose, "int too big to convert" (2026-10-16)
+                cw = max(it[4] for it, _ in col)
+                if x + cw > self.ROW_MAX and x > left0:
+                    x, top0 = left0, bottom + self.COLUMN_GAP
                 for (obj, el, _, h, w), dy in col:
                     yy = top0 + dy
                     if el.tag == "Structure":

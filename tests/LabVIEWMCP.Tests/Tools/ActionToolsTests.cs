@@ -1,4 +1,5 @@
 ﻿using Grpc.Core;
+using LabVIEWMcp.Infra;
 using LabVIEWMcp.Lvai;
 using LabVIEWMcp.Tests.Fakes;
 using LabVIEWMcp.Tests.Support;
@@ -219,6 +220,33 @@ public class ActionOpenFileTests
         Assert.Equal("badArguments", Res.Str(result, "errorKind"));
         Assert.Contains("viPath", Res.Str(result, "error"));
         Assert.Equal(0, server.Service.CountOf("OpenFile"));
+    }
+
+    /// <summary>
+    /// Several VIs on grpc: the first is opened by an inner call, which was made WITHOUT the
+    /// backend and resolved it afresh - to whatever default applied, pylabview on the station that
+    /// found it - and the call was refused as "not built for the pylabview backend" while reporting
+    /// grpc (the gRPC cold build of LayoutCheck, 2026-10-16). Here a pylabview choice handed down
+    /// stands in for that default; an explicit grpc must reach LabVIEW for every VI.
+    /// </summary>
+    [Fact]
+    public async Task Several_VIs_open_on_the_backend_the_call_named()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        using var a = new TempOpenFiles();
+        using var b = new TempOpenFiles();
+        AixmlBackend.Inherited.Value = new AixmlBackend.Choice(AixmlBackend.PyLabview, "test");
+        try
+        {
+            var result = await new ActionTools(server.Connection).OpenFileAsync(
+                viPaths: a.Vi + "\n" + b.Vi, backend: AixmlBackend.Grpc);
+            Assert.DoesNotContain("notAvailableOnBackend", result);
+            Assert.Equal(2, server.Service.CountOf("OpenFile"));
+        }
+        finally
+        {
+            AixmlBackend.Inherited.Value = null;
+        }
     }
 
     [Fact]

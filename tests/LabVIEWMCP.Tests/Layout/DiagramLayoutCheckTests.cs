@@ -180,6 +180,44 @@ public sealed class DiagramLayoutCheckTests
     }
 
     /// <summary>
+    /// NI's converter sized Release Event and Notifier's comment to 70 x 41 for 41 characters, and
+    /// it showed "Releases run even after an" (the gRPC cold build of LayoutCheck, 2026-10-16). The
+    /// dump reads the text now; a short comment is fitted to it (Size to Text? = TRUE) before
+    /// anything moves, and the engine plans with the fitted box: one line.
+    /// </summary>
+    [Fact]
+    public void A_short_comment_is_fitted_to_its_text()
+    {
+        var model = Load("layoutcheck-grpc-release.txt");
+        var comment = model.Top.Objects.Single(o => o.Index == 6);
+        Assert.Equal("Releases run even after an earlier error.", comment.Text);
+        Assert.True(comment.FitToText);
+        Assert.Equal(TextMetrics.LineHeight, comment.Box.H);
+        var plan = DiagramLayout.Plan(model);
+        Assert.Equal(["T;6"], plan.SizeToText);
+        Assert.Contains("<Val>T;6</Val>", DiagramLayoutTools.ApplyInputs(@"C:\x\R.vi", plan)["size to text"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// NI's converter sized Format Report's loop to its contents and clipped the subdiagram label
+    /// to "Append one line per"; LabVIEW widens the label with the structure (measured), so the
+    /// structure has to be as wide as the label's TEXT - which the box alone never told.
+    /// </summary>
+    [Fact]
+    public void A_structure_is_as_wide_as_its_subdiagram_labels_text()
+    {
+        var model = Load("layoutcheck-grpc-format-report.txt");
+        var loop = model.Top.Objects.Single(o => o.Index == 2);
+        var label = loop.Frames[0].Objects.Single(o => o.IsText);
+        Assert.True(label.IsSubdiagramLabel);
+        Assert.False(label.FitToText);
+        var plan = DiagramLayout.Plan(model);
+        Assert.True(plan.Predicted[loop.Key].W >= TextMetrics.Width("Append one line per channel"),
+            $"loop {plan.Predicted[loop.Key].W} px for a label of {TextMetrics.Width("Append one line per channel")} px");
+        Assert.DoesNotContain(plan.SizeToText, op => op.StartsWith("2 0;", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// The diagram stays where it was, labels included. Anchored on the boxes alone, every pass
     /// moved the whole of LayoutCheck Main right by the width of the labels left of its controls,
     /// 95 px a pass.

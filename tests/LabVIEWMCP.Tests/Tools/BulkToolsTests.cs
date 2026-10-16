@@ -58,6 +58,46 @@ public class BulkGenerateViTests
             return Task.FromResult<ExecStateReading?>(new ExecStateReading(state, "", 0, ""));
         };
 
+    // ------------------------------------------------ source-only, 2026-10-16
+
+    /// <summary>
+    /// NI's converter writes COMPILED CODE into a VI when the callees of a direct Call are loaded:
+    /// Evaluate TDMS File, the one VI of nine with a VICD block in the gRPC cold build of
+    /// LayoutCheck. The clean-up strips only what its own save brought in, so nothing removed it.
+    /// lvai_generate_vi strips it now, and leaves a source-only VI alone.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_generated_VI_carrying_compiled_code_is_stripped(bool compiled)
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        var withCode = RepoTree.Path("tests", "LabVIEWMCP.Tests", "Fixtures", "compiled-code", "Compiled Caller.vi");
+        var sourceOnly = RepoTree.Path("tests", "LabVIEWMCP.Tests", "Fixtures", "reader", "Test Rectangle Accessors.vi");
+        server.Service.ViFileCopyFrom = compiled ? withCode : sourceOnly;
+        var stripped = new List<string>();
+        var tools = new BulkTools(server.Connection)
+        {
+            MeasureDiagram = (_, _, _) => Task.FromResult<((int, int)?, string?)>((null, null)),
+            CleanUp = NoCleanUp,
+            CleanUpPanel = NoCleanUp,
+            StripCompiled = (vi, _, _) =>
+            {
+                stripped.Add(vi);
+                File.Copy(sourceOnly, vi, overwrite: true);       // what the real strip leaves
+                return Task.FromResult(new JsonObject { ["ok"] = true });
+            },
+        };
+        var vi = server.TempPath("Out.vi");
+
+        var result = await tools.GenerateViAsync(CallerAixml(server), vi, measurePane: false);
+
+        Assert.Equal(compiled ? [vi] : [], stripped);
+        Assert.False(BulkTools.ContainsCompiledCode(vi));
+        var steps = Res.Obj(result)["steps"]!.AsArray().Select(s => s?["step"]?.GetValue<string>()).ToList();
+        Assert.Equal(compiled, steps.Contains("stripCompiled"));
+    }
+
     [Fact]
     public void Only_unresolved_subvi_lines_are_read_as_the_loaded_route()
     {

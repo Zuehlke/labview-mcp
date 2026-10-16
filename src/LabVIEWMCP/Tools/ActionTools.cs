@@ -384,8 +384,12 @@ internal sealed class ActionTools(LvaiConnection connection)
 
             if (extra.Count > 0)
             {
+                // the backend this call resolved to, passed on: left out, the inner call resolved it
+                // afresh as a CLIENT call of lvai_open_file and took the server's default - pylabview
+                // on this station - and a grpc call with viPaths was refused as "not built for the
+                // pylabview backend" (the gRPC cold build of LayoutCheck, 2026-10-16)
                 var first = await OpenFileAsync(viPath, viName, projectPath, projectName,
-                                                checkActive, timeoutSeconds, ct);
+                                                checkActive, timeoutSeconds, ct, backend: choice.Name);
                 var answer = JsonNode.Parse(first) as JsonObject;
                 if (answer is null || answer["errorCode"]?.GetValue<int>() is not 0)
                     return first;                        // the first refusal says why; stop there

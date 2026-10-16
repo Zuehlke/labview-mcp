@@ -621,6 +621,11 @@ on row 8 k; Get Waveform Components as Unbundle By Name, 16 px a row; Build Wave
 12 px down, its output the right 16 px; the Event Data Node 16 px a row, the longest name + 16 wide
 (all eleven of Delacor's), and placed 8 px in from its frame's left edge where LabVIEW keeps it - at
 30 px it floated in the frame (`PylabviewGrowableNodeTests`).
+**A row wider than 30 000 px wraps into a band below (`ROW_MAX`), since the same day**: a bounds
+coordinate is a signed 16-bit number in the heap, and `lvbd_layout_apply` - ten passes, each a
+loop in its own column because each waits for the one before - reached 34 254 px and failed to
+compose, "int too big to convert"; the server then ran the helper it had cached before, and the
+new pass did nothing (`PylabviewWideDiagramTests`).
 **A front-panel label too**: the text's advances + 4 px (296 labels of NI's examples measured
 +3..4), with the object's own box widened to its visible label as NI's converter writes it -
 outside that box LabVIEW cut it - and the text written raw, since pylabview escapes nothing

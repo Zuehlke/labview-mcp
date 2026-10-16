@@ -97,3 +97,10 @@ fixed VIs rendered; the only two DWarn events in the log are the two control fil
   `pylv-strip-compiled.py`'s header says `ConvertAIXMLToVI` writes compiled code itself, from a
   2026-09-10 measurement; both may be true under different conditions. The strip is harmless on a
   file with none (it answers `already 1` / `dropped: (none)`), so the fix does not depend on which.
+
+**`lvai_generate_vi` strips it too since 2026-10-16, on both backends.** Its clean-up step stripped
+only the compiled code its own save brought in and kept what was there before - so a VI NI's
+converter wrote WITH compiled code, as it does with a direct Call's callees loaded, kept it:
+`Evaluate TDMS File` in the gRPC cold build of LayoutCheck, the one VI of nine with a `VICD`
+block. A `stripCompiled` step now runs after the clean-ups whenever the file carries any, and
+says so in the answer.
