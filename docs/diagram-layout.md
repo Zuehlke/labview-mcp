@@ -59,7 +59,7 @@ clean-up (a test asserts it). The apply helper walks a path of `object frame obj
 | Is a Case Structure's selector (`?`) a tunnel? | No: `Tunnels[]` does not list it, and the dump finds it as the left-border term that matches no tunnel. `{LV.CaseStructure}` `Selector` reads it; cast to `{LV.GObject}`, the double move with the owner unwired puts it exactly where asked (9 of 9). An error cluster wired to it enters every frame through it. |
 | Are an Event Structure's dynamic event terminals tunnels? | No. `Tunnels[]` does not list them either; the dump finds them as the border terms that match no tunnel and are not the timeout terminal in the top-left corner. `{LV.EventStructure}` `Dynamic Terminal (Left)` and `(Right)` read them, and the double move with the owner unwired puts them exactly where asked (2 of 2). |
 | Does an Event Data Node move? | No. LabVIEW keeps it on the event frame's left border: eleven were asked for interior positions and all came back. Not vertically either: one asked for 186 px higher stayed where it was, and after a resize it sits wherever LabVIEW leaves it, near the bottom in the DQMH Main. A filter event's Event Filter Node (`Discard?`, VI Server class `NamedBundler`) stays on the right border the same way. Both are left alone. They are told by KIND, not by place: the cluster terminal LabVIEW hides on the border is zero wide. By place - within 12 px of a border - the test missed every data node the composer writes, which LabVIEW keeps 30 px in, and caught an indicator whose LABEL reached the right border (LayoutCheck, 2026-10-16). |
-| Does a While Loop's stop terminal go where asked? | **Yes, if it is moved AFTER the loop's `Frame Size` is written.** Moved before, LabVIEW repositions the stop and the iteration terminal itself when the loop shrinks: in three arms on `LayoutCheck Main`, the stop alone, the `i` alone and both together each landed off target, and both together under the loop's bottom border, hidden. The `late moves` pass of `lvbd_layout_apply` moves them after the sizes, and all four landed exactly. This row said "near the bottom only: asked 880, it landed 986 once and 856 another time. It is constrained by LabVIEW." - it was the order, not a constraint. |
+| Does a While Loop's stop terminal go where asked? | **Yes, if it is moved AFTER the loop's `Frame Size` is written.** Moved before, LabVIEW repositions the stop and the iteration terminal itself when the loop shrinks: in three arms on `LayoutCheck Main`, the stop alone, the `i` alone and both together each landed off target, and both together under the loop's bottom border, hidden. The `late moves` pass of `lvbd_layout_apply` places them after the sizes. **And by writing `Position`, not by `Move`:** `Move` takes a position relative to the loop's diagram, and a loop CLAMPS its own terminals into its bottom right corner (R-22, B-22). Asked for 700,150 and for 800,150, the `i` landed at 835,194 both times; the double move's correction started from the clamp and landed there again, so on a second layout pass both terminals of each While Loop sat on one spot. `Position` written 700,150 read back 700,150, for a loop terminal and a subVI alike. From a raw VI the double move had happened to land inside the loop, which is why the first measurement looked right. This row said "near the bottom only: asked 880, it landed 986 once and 856 another time. It is constrained by LabVIEW." - it was the order, not a constraint. |
 | Do decorations (arrows) move? | Not by `Move`. An arrow grouped with its label follows the label. |
 | What does Bounds mean for an object whose label shows? | **The size of object AND label, at the object's own Position.** All 13 such objects in the fixture have a Bounds size equal to their Total Bounds Rect, shifted. A numeric constant with its label on the left reads 151 px wide, and 132 px of that is label to the LEFT of its Position. The parser corrects this (`DiagramModel.Parse`). |
 | Can a subdiagram label grow? | No. When its structure narrows, it keeps its height and CLIPS its text: a 304 px label in a case made 142 wide showed two of its three lines. |
@@ -226,11 +226,22 @@ wider than 1920 px.
   column 1 or later as a FLOOR in the column calculation, so what follows moves along. Raised
   after the fact instead, the ATM's `Current VI's Path` shared a column with the `Strip Path` it
   feeds, and its wire dropped and climbed between them.
-- **A While Loop's stop terminal goes bottom right inside, its iteration terminal bottom left**,
-  11 px in as LabVIEW puts it in a new loop, both 12 px above the bottom border. The `i` used to be
-  left where it was: once the layout made the loop shorter it sat under the border, hidden, its wire
-  running down into the border (the user's review of `LayoutCheck Main`). Both move after the sizes
-  (section 2). A For Loop's `N` and `i` LabVIEW keeps in place itself.
+- **A loop's stop terminal goes bottom right inside, its iteration terminal bottom left**, 11 px in
+  as LabVIEW puts it in a new loop, both 12 px above the bottom border - a While Loop's and a For
+  Loop's alike. The `i` used to be left where it was: once the layout made the loop shorter it sat
+  under the border, hidden, its wire running down into the border (the user's review of
+  `LayoutCheck Main`). Both are placed after the sizes (section 2). This line said LabVIEW kept a
+  For Loop's `i` in place itself; the cold rebuild showed `Generate Samples`' outer loop with its `i`
+  29 px under the border. A For Loop's `N` is no Terminal object and stays on the border.
+- **Every wire is cleaned up three times.** In one pass, `CleanUpWire` routes a wire round the
+  stale segments of wires it cleans after it: `LayoutCheck Main`'s five outputs to five stacked
+  indicators came out with two crossing, and a second pass ran them apart. `Evaluate TDMS File`'s
+  four outputs, each forked to `Format Report` and an indicator, still crossed after two; cleaning
+  only those four again, in either order, changed nothing, and a third pass over EVERY wire ran them
+  apart - the others have to settle first.
+- **The diagram stays where it was, labels included.** The plan used to anchor the laid-out
+  contents, labels included, at the old corner of the boxes, labels excluded, so every pass moved
+  `LayoutCheck Main` right by the width of the labels left of its controls - 95 px a pass.
 - **Frames of one structure share their rail,** so the error line runs straight through every
   case.
 - **Width is kept for short subdiagram labels.** A structure is never narrower than its

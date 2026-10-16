@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using LabVIEWMcp.Layout;
 using LabVIEWMcp.Tests.Support;
 using LabVIEWMcp.Tools;
@@ -157,6 +158,57 @@ public sealed class DiagramLayoutCheckTests
         var inputs = DiagramLayoutTools.ApplyInputs(@"C:\x\Main.vi", plan);
         Assert.Contains("<Val>19 0;3;", inputs["late moves"]!.GetValue<string>());
         Assert.DoesNotContain("<Val>19 0;3;", inputs["moves"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// A For Loop's i too: this file said LabVIEW kept it in place itself, and the cold rebuild of
+    /// LayoutCheck (2026-10-16) showed Generate Samples' outer loop with its i 29 px under the
+    /// bottom border.
+    /// </summary>
+    [Fact]
+    public void A_For_Loops_iteration_terminal_goes_bottom_left_after_the_sizes()
+    {
+        var model = Load("layoutcheck-write-samples-raw.txt");
+        var plan = DiagramLayout.Plan(model);
+        var loop = model.Top.Objects.Single(o => o.Index == 13);
+        var box = plan.Predicted[loop.Key];
+        var i = loop.Frames[0].Objects.Single(o => o.IsLoopTerminal && o.OwnSource);
+        var p = plan.Predicted[i.Key];
+        Assert.Equal(box.L + 11, p.L);
+        Assert.Equal(box.B - 12, p.B);
+        Assert.True(plan.Moves.Single(m => m.DiagramId == i.DiagramId && m.Index == i.Index).Late);
+    }
+
+    /// <summary>
+    /// The diagram stays where it was, labels included. Anchored on the boxes alone, every pass
+    /// moved the whole of LayoutCheck Main right by the width of the labels left of its controls,
+    /// 95 px a pass.
+    /// </summary>
+    [Fact]
+    public void A_layout_keeps_the_diagram_where_it_was_labels_included()
+    {
+        var model = Main.Value;
+        var plan = DiagramLayout.Plan(model);
+        var objects = model.Top.Objects.Where(o => !o.IsDecoration && plan.Predicted.ContainsKey(o.Key)).ToList();
+        Assert.Equal(model.Top.Objects.Where(o => !o.IsDecoration).Min(o => o.Box.L - o.Overhang.L),
+                     objects.Min(o => Extent(o, plan.Predicted[o.Key]).L));
+    }
+
+    /// <summary>
+    /// In one pass over a diagram's wires, CleanUpWire routes a wire round the stale segments of
+    /// wires it cleans after it: LayoutCheck Main's five outputs to five stacked indicators came
+    /// out with two crossing; cleaned again, they ran apart. Evaluate TDMS File's four forked
+    /// outputs needed a third pass over every wire. The apply helper cleans every wire three times.
+    /// </summary>
+    [Fact]
+    public void The_apply_helper_cleans_every_wire_three_times()
+    {
+        var xml = XDocument.Load(RepoTree.Path("scripts", "lvbd_layout_apply.xml"));
+        var clean = xml.Descendants("Node").Single(n => (string?)n.Attribute("target") == "CleanUpWire");
+        var outer = clean.Parent!.Parent!;
+        Assert.Equal("For Loop", (string?)outer.Attribute("_name"));
+        var n = ((string?)outer.Attribute("maxin"))!.Split('.')[0];
+        Assert.Equal("3", (string?)xml.Descendants("Constant").Single(c => (string?)c.Attribute("uid") == n).Attribute("value"));
     }
 
     /// <summary>

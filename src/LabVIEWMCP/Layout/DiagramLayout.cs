@@ -161,9 +161,13 @@ internal static class DiagramLayout
         var ctx = new Context(model, plan);
         var top = Arrange(ctx, model.Top, isTop: true);
 
-        // keep the diagram where it was: its contents start at the old top-left corner
+        // keep the diagram where it was: its contents, labels included, start at the old top-left
+        // corner of its contents, labels included. Taken from the boxes alone, every pass moved the
+        // whole diagram right by the width of the labels left of the controls - 95 px a pass on
+        // LayoutCheck Main (2026-10-16)
         var movable = model.Top.Objects.Where(o => !o.IsDecoration).ToList();
-        var origin = movable.Count == 0 ? (0, 0) : (movable.Min(o => o.Box.L), movable.Min(o => o.Box.T));
+        var origin = movable.Count == 0 ? (0, 0)
+            : (movable.Min(o => o.Box.L - o.Overhang.L), movable.Min(o => o.Box.T - o.Overhang.T));
         Place(ctx, model.Top, top, origin.Item1, origin.Item2);
         plan.PredictedTop = new Box(origin.Item1, origin.Item2, top.W, top.H);
 
@@ -1465,11 +1469,13 @@ internal static class DiagramLayout
 
     private static void PlaceLoopTerminals(Context ctx, DObject loop, Box box)
     {
-        // a While Loop's stop terminal goes bottom right, inside, and its iteration terminal bottom
-        // left, 11 px in as LabVIEW puts it in a new loop. Left where it was, the i of a loop the
-        // layout made shorter sat under its bottom border, hidden, its wire running down into the
-        // border (LayoutCheck, 2026-10-16). A For Loop's N and i LabVIEW keeps in place itself
-        if (loop.Class != "WhileLoop") return;
+        // a loop's stop terminal goes bottom right, inside, and its iteration terminal bottom left,
+        // 11 px in as LabVIEW puts it in a new loop. Left where it was, the i of a loop the layout
+        // made shorter sat under its bottom border, hidden, its wire running down into the border -
+        // in a While Loop and in a For Loop alike (LayoutCheck, 2026-10-16; this said LabVIEW kept
+        // a For Loop's i in place itself, and the cold rebuild showed one 29 px under the border).
+        // A For Loop's N is no Terminal object: it stays on the border
+        if (loop.Class is not ("WhileLoop" or "ForLoop")) return;
         foreach (var f in loop.Frames)
             foreach (var t in f.Objects.Where(o => o.IsLoopTerminal))
             {

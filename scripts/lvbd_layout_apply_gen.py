@@ -146,7 +146,7 @@ def concat(parent, nets):
 desc = ("Applies a layout computed by lvai_layout_diagram to a VI's block diagram and saves it in place. "
         "Six kinds of pass, in this order\\3A MOVES, each 'path;index;left;top' - the object at that index of the "
         "diagram the path reaches is moved so that its Position becomes left,top in the pane's coordinates; "
-        "SIZES, each 'path;index;width;height' - that structure's Frame Size is written, which sets its outer size exactly and keeps its top left corner (Auto Size and ShrinkWrapStructs grow a structure but never shrink it, measured 2026-10-16); LATE MOVES, the moves pass again for a While Loop's stop and iteration terminals, which LabVIEW repositions itself when Frame Size shrinks the loop; TUNNELS, each 'path;index;tunnel;left;top' - that tunnel of that structure is moved; SHIFT REGISTERS, the same for a loop's Shift Registers[] (the left terminal; the right one follows); WIRES, each 'path' - every "
+        "SIZES, each 'path;index;width;height' - that structure's Frame Size is written, which sets its outer size exactly and keeps its top left corner (Auto Size and ShrinkWrapStructs grow a structure but never shrink it, measured 2026-10-16); LATE MOVES, a loop's own stop and iteration terminals, after the sizes since LabVIEW repositions them when Frame Size shrinks the loop, each placed by writing its Position (Move clamps a loop terminal into the loop's corner); TUNNELS, each 'path;index;tunnel;left;top' - that tunnel of that structure is moved; SHIFT REGISTERS, the same for a loop's Shift Registers[] (the left terminal; the right one follows); WIRES, each 'path' - every "
         "wire of that diagram is cleaned up with CleanUpWire. A path is 'object frame object frame ...' from "
         "the top-level diagram, empty for the top level itself, the ids lvbd_layout_dump writes.\\0A\\0A"
         "WHY EVERY OBJECT IS MOVED TWICE\\3A Position reads in the pane's coordinates while Move takes a "
@@ -198,7 +198,7 @@ run_err = err
 # While Loop's stop and iteration terminals, which LabVIEW repositions itself when Frame Size
 # shrinks the loop: moved first, both landed under the loop's bottom border, hidden (LayoutCheck,
 # 2026-10-16)
-def moves_pass(src, run_err):
+def moves_pass(src, run_err, by_position=False):
     L = nu()
     e(f'  <Structure _name="For Loop" count="" maxin="" maxout="" uid="{L}" uid_parent="root">')
     t1, t2 = nu(), nu()
@@ -219,22 +219,33 @@ def moves_pass(src, run_err):
     u = nu()
     e(f'    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:{x},Top:{y},input cluster:{pos}" outputs="output cluster:{u}.target" uid="{u}" uid_parent="{L}"/>')
     target = f"{u}.target"
-    dup = const(L, "duplicate", "bool", "false")
-    u = nu()
-    e(f'    <Node _name="Invoke Node" target="Move" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err},position:{target},owner:{d},duplicate:{dup}" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
-    err = f"{u}.err"
-    u = nu()
-    e(f'    <Node _name="Property Node" fields="read+Position" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err}" outputs="Position:{u}.landed,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
-    landed, err = f"{u}.landed", f"{u}.err"
-    u = nu()
-    e(f'    <Node _name="Add" inputs="x:{target},y:{target}" outputs="x+y:{u}.twice" uid="{u}" uid_parent="{L}"/>')
-    twice = f"{u}.twice"
-    u = nu()
-    e(f'    <Node _name="Subtract" inputs="x:{twice},y:{landed}" outputs="x-y:{u}.corrected" uid="{u}" uid_parent="{L}"/>')
-    corrected = f"{u}.corrected"
-    u = nu()
-    e(f'    <Node _name="Invoke Node" target="Move" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err},position:{corrected},owner:{d},duplicate:{dup}" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
-    err = f"{u}.err"
+    if by_position:
+        # a loop's own terminal: Position written in the pane's coordinates lands exactly. Move
+        # takes them relative to the loop's diagram, and a loop CLAMPS its terminals into its
+        # bottom right corner, so the first of the two moves landed there and the correction
+        # from it landed there again - both of a While Loop's terminals on one spot (measured
+        # 2026-10-16 on LayoutCheck Main: Move to 700,150 and to 800,150 both 835,194; Position
+        # written 700,150 read back 700,150)
+        u = nu()
+        e(f'    <Node _name="Property Node" fields="write+Position" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err},Position:{target}" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+        err = f"{u}.err"
+    else:
+        dup = const(L, "duplicate", "bool", "false")
+        u = nu()
+        e(f'    <Node _name="Invoke Node" target="Move" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err},position:{target},owner:{d},duplicate:{dup}" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+        err = f"{u}.err"
+        u = nu()
+        e(f'    <Node _name="Property Node" fields="read+Position" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err}" outputs="Position:{u}.landed,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+        landed, err = f"{u}.landed", f"{u}.err"
+        u = nu()
+        e(f'    <Node _name="Add" inputs="x:{target},y:{target}" outputs="x+y:{u}.twice" uid="{u}" uid_parent="{L}"/>')
+        twice = f"{u}.twice"
+        u = nu()
+        e(f'    <Node _name="Subtract" inputs="x:{twice},y:{landed}" outputs="x-y:{u}.corrected" uid="{u}" uid_parent="{L}"/>')
+        corrected = f"{u}.corrected"
+        u = nu()
+        e(f'    <Node _name="Invoke Node" target="Move" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err},position:{corrected},owner:{d},duplicate:{dup}" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+        err = f"{u}.err"
     u = nu()
     e(f'    <Node _name="Property Node" fields="read+Position\\3ALeft,read+Position\\3ATop" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err}" outputs="Position\\3ALeft:{u}.l,Position\\3ATop:{u}.t,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
     fl, ft, err = f"{u}.l", f"{u}.t", f"{u}.err"
@@ -287,7 +298,7 @@ e(f'    <Tunnel _id="Out1" inputs="value:{line}" mode="index" outputs="value:{so
 run_err = chain(L, run_err)
 e('  </Structure>')
 
-lmo, run_err = moves_pass(lm, run_err)
+lmo, run_err = moves_pass(lm, run_err, by_position=True)
 
 def border_pass(ops, cls_name, cls_type, prop, prop_type, indexed):
     """Moves a border object of a structure - a tunnel, a shift register or a case selector - with
@@ -378,17 +389,23 @@ d, err = walk(L, f"{t1}.op", f"{t2}.top")
 u = nu()
 e(f'    <Node _name="Property Node" fields="read+Wires[]" type="{{LV.Diagram}}" inputs="reference:{d},error in (no error):{err}" outputs="Wires[]:{u}.wires,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
 wires, err = f"{u}.wires", f"{u}.err"
+# THREE TIMES over every wire: in one pass a wire is routed round the stale segments of wires
+# cleaned after it, and a fan of five outputs to five stacked indicators came out with two of them
+# crossing; a second pass straightened that one (LayoutCheck Main, 2026-10-16). Evaluate TDMS File's
+# four forked outputs still crossed after two, and re-cleaning only those four, in either order,
+# changed nothing; a third pass over EVERY wire ran them apart - the others have to settle first
+R = nu()
+passes = const(L, "clean-up passes", "int32", "3")
+e(f'    <Structure _name="For Loop" count="" maxin="{passes}" maxout="" uid="{R}" uid_parent="{L}">')
+tr = nu()
+e(f'      <Tunnel _id="In1" inputs="value:{wires}" outputs="value:{tr}.w" uid="{tr}" uid_parent="{R}"/>')
 W = nu()
-e(f'    <Structure _name="For Loop" count="" maxin="" maxout="" uid="{W}" uid_parent="{L}">')
+e(f'      <Structure _name="For Loop" count="" maxin="" maxout="" uid="{W}" uid_parent="{R}">')
 tw = nu()
-e(f'      <Tunnel _id="In1" inputs="value:{wires}" mode="index" outputs="value:{tw}.wire" uid="{tw}" uid_parent="{W}"/>')
+e(f'        <Tunnel _id="In1" inputs="value:{tr}.w" mode="index" outputs="value:{tw}.wire" uid="{tw}" uid_parent="{W}"/>')
 u = nu()
-e(f'      <Node _name="Invoke Node" target="CleanUpWire" type="{{LV.Wire}}" inputs="reference:{tw}.wire,error in (no error):" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{W}"/>')
-werr = f"{u}.err"
-u = nu()
-e(f'      <Node _name="Unbundle By Name" fields="status" inputs="input cluster:{werr}" outputs="status:{u}.bad" uid="{u}" uid_parent="{W}"/>')
-wo = nu()
-e(f'      <Tunnel _id="Out1" inputs="value:{u}.bad" mode="index" outputs="value:{wo}.value" uid="{wo}" uid_parent="{W}"/>')
+e(f'        <Node _name="Invoke Node" target="CleanUpWire" type="{{LV.Wire}}" inputs="reference:{tw}.wire,error in (no error):" outputs="reference out:,error out:" uid="{u}" uid_parent="{W}"/>')
+e('      </Structure>')
 e('    </Structure>')
 u = nu()
 e(f'    <Node _name="Array Size" inputs="array:{wires}" outputs="size(s):{u}.n" uid="{u}" uid_parent="{L}"/>')
