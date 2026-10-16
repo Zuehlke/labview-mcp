@@ -120,6 +120,62 @@ internal static class LabViewCom
     }
 
     /// <summary>
+    /// Keep a VI LOADED until the answer is disposed: a reference held on a thread of its own, so
+    /// helpers that open the VI by path one after the other reach the copy in memory instead of
+    /// loading it again. Measured 2026-10-16: a Caraya test VI takes 1.6-2.5 s to load cold, and
+    /// lvai_layout_diagram loaded each one twice, once for its dump and once for its apply.
+    /// Null when nothing could be held - an optimisation, never a precondition: the caller goes on
+    /// without it. A pylabview edit of the file must not run while a hold stands, or LabVIEW keeps
+    /// serving the copy it holds.
+    /// </summary>
+    public static async Task<IAsyncDisposable?> HoldAsync(string viPath, int timeoutSeconds, CancellationToken ct)
+    {
+        if (NotReady() is not null || !OperatingSystem.IsWindows()) return null;
+        var opened = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new ManualResetEventSlim(false);
+        var thread = new Thread(() =>
+        {
+            object? app = null, vi = null;
+            try
+            {
+                if (!OperatingSystem.IsWindows()) { opened.TrySetResult(false); return; }
+                if (Type.GetTypeFromProgID(ProgId) is { } type) app = Activator.CreateInstance(type);
+                if (app is not null) vi = Call(app, "GetVIReference", Path.GetFullPath(viPath));
+                opened.TrySetResult(vi is not null);
+                if (vi is not null) release.Wait();
+            }
+            catch (Exception e) when (e is TargetInvocationException or COMException or ArgumentException)
+            {
+                opened.TrySetResult(false);
+            }
+            finally
+            {
+                if (vi is not null) Release(vi);
+                if (app is not null) Release(app);
+            }
+        }) { IsBackground = true, Name = "LabVIEW VI hold" };
+        thread.Start();
+        bool held;
+        try { held = await opened.Task.WaitAsync(TimeSpan.FromSeconds(Math.Clamp(timeoutSeconds, 1, 3600)), ct); }
+        catch (Exception e) when (e is TimeoutException or OperationCanceledException) { held = false; }
+        if (held) return new Hold(release, thread);
+        release.Set();
+        return null;
+    }
+
+    private sealed class Hold(ManualResetEventSlim release, Thread thread) : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync()
+        {
+            release.Set();
+            // the reference is released on its own thread; a COM call that hangs there must not
+            // hang the caller, so it gets a few seconds and is left behind after that
+            thread.Join(TimeSpan.FromSeconds(5));
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    /// <summary>
     /// Open a VI's front panel in LabVIEW's editor - the ActiveX counterpart of opening it with
     /// lvai_open_file, for a route that needs the VI open THERE (a scripting call that ends the
     /// session on a VI the editor does not hold). The open panel keeps the VI in memory after the

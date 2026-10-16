@@ -291,6 +291,10 @@ internal static class AixmlComposer
     public static async Task<(List<PanelItem>? Items, string? Problem)> ReadPanelAsync(
         Setup setup, string viPath, int timeoutSeconds, CancellationToken ct)
     {
+        // the same file read again answers the same: a helper run asked this before every run and
+        // it was most of the call (PanelCache)
+        var stamp = AixmlExportStore.ReaderStamp();
+        if (PanelCache.TryGet(viPath, stamp) is { } cached) return (cached, null);
         var scratch = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "panel-read",
                                    Guid.NewGuid().ToString("N") + ".xml");
         try
@@ -305,6 +309,7 @@ internal static class AixmlComposer
                                            e.Name.LocalName == "Indicator"))
                 .Where(i => i.Name.Length > 0)
                 .ToList() ?? [];
+            PanelCache.Put(viPath, stamp, items);
             return (items, null);
         }
         finally

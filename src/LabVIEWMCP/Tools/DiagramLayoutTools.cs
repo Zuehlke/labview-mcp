@@ -72,92 +72,107 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
             if (StatusTools.ScriptsDirectory() is not { } scripts)
                 return Json.Error("noScriptsDirectory", "The scripts folder next to the exe is missing.");
 
-            // ---- 1. read
-            var dump = await DumpAsync(Path.Combine(scripts, DumpHelper), vi, timeoutSeconds, ct);
-            if (dump.Failure is not null) return dump.Failure;
-            var model = DiagramModel.Parse(dump.Lines!);
-            var before = TopOutline(model);
-
-            // ---- 2. decide
-            var plan = DiagramLayout.Plan(model);
-            var answer = new JsonObject
+            // ---- 0. the VI stays loaded from the dump to the apply: each helper opens it by path, and
+            // a Caraya test VI took 1.6-2.5 s to load every time, twice per call (measured 2026-10-16)
+            var hold = await LabViewCom.HoldAsync(vi, timeoutSeconds, ct);
+            try
             {
-                ["viPath"] = vi,
-                ["diagrams"] = model.Diagrams.Count,
-                ["objects"] = model.AllObjects.Count(),
-                ["wires"] = model.Diagrams.Values.Sum(d => d.Wires.Count),
-                ["before"] = Outline(before),
-                ["planned"] = Outline(plan.PredictedTop),
-                ["moves"] = plan.Moves.Count,
-                ["structuresSized"] = plan.Sizes.Count,
-                ["tunnelsMoved"] = plan.Tunnels.Count,
-                ["structuresKeptAsTheyAre"] = new JsonArray(plan.StructuresKeptAsTheyAre.Select(s => (JsonNode)s).ToArray()),
-            };
-            if (dryRun)
-            {
-                answer["ok"] = true;
-                answer["dryRun"] = true;
-                answer["note"] = "Nothing was changed. Run again without dryRun to apply the plan.";
-                return Json.Document(answer);
-            }
+                // ---- 1. read
+                var dump = await DumpAsync(Path.Combine(scripts, DumpHelper), vi, timeoutSeconds, ct);
+                if (dump.Failure is not null) return dump.Failure;
+                var model = DiagramModel.Parse(dump.Lines!);
+                var before = TopOutline(model);
 
-            // ---- 3. apply, on a backed-up VI
-            var work = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "layout", Guid.NewGuid().ToString("N")[..12]);
-            Directory.CreateDirectory(work);
-            var backup = Path.Combine(work, Path.GetFileName(vi));
-            File.Copy(vi, backup, overwrite: true);
-            answer["backupPath"] = backup;
-            var compiledBefore = BulkTools.ContainsCompiledCode(vi);
-
-            var helper = await GraftTools.HelperAsync(connection, Path.Combine(scripts, ApplyHelper), timeoutSeconds, ct);
-            if (helper.Failure is not null) return helper.Failure;
-            var run = JsonNode.Parse(await new RunTools(connection).RunViAndReadValuesAsync(helper.Vi!,
-                ApplyInputs(vi, plan).ToJsonString(), timeoutSeconds: timeoutSeconds, ct: ct)) as JsonObject;
-            var values = run?["values"] as JsonObject;
-            var error = GraftTools.ReadHelperError(run);
-            var moveResults = Records(values, "move results");
-            var sizeResults = Records(values, "size results");
-            var tunnelResults = Records(values, "tunnel results").Concat(Records(values, "shift register results"))
-                .Concat(Records(values, "selector results")).Concat(Records(values, "dynamic left results"))
-                .Concat(Records(values, "dynamic right results")).ToList();
-            answer["helperErrorCode"] = error.Code;
-            answer["moveErrors"] = moveResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
-            answer["sizeErrors"] = sizeResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
-            answer["tunnelErrors"] = tunnelResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
-            if (error.Code is not null && error.Code != 0)
-            {
-                answer["ok"] = false;
-                answer["note"] = $"LabVIEW answered error {error.Code} ({error.Source}). The VI may be partly " +
-                                 "rearranged; the copy from before is under backupPath.";
-                return Json.Document(answer);
-            }
-
-            // ---- 4. no compiled code may stay in a VI we wrote
-            if (!compiledBefore && BulkTools.ContainsCompiledCode(vi))
-                answer["compiledCodeStripped"] = await new DiagramCleanup(connection).StripCompiledAsync(vi, timeoutSeconds, ct);
-
-            // ---- 5. what LabVIEW made of it
-            if (verify)
-            {
-                var again = await DumpAsync(Path.Combine(scripts, DumpHelper), vi, timeoutSeconds, ct);
-                if (again.Lines is not null)
+                // ---- 2. decide
+                var plan = DiagramLayout.Plan(model);
+                var answer = new JsonObject
                 {
-                    var after = DiagramModel.Parse(again.Lines);
-                    answer["after"] = Outline(TopOutline(after));
-                    var (exact, off, worst) = Compare(plan, after);
-                    answer["landedExactly"] = exact;
-                    answer["landedOff"] = off;
-                    answer["worstOffsetPx"] = worst;
+                    ["viPath"] = vi,
+                    ["diagrams"] = model.Diagrams.Count,
+                    ["objects"] = model.AllObjects.Count(),
+                    ["wires"] = model.Diagrams.Values.Sum(d => d.Wires.Count),
+                    ["before"] = Outline(before),
+                    ["planned"] = Outline(plan.PredictedTop),
+                    ["moves"] = plan.Moves.Count,
+                    ["structuresSized"] = plan.Sizes.Count,
+                    ["tunnelsMoved"] = plan.Tunnels.Count,
+                    ["structuresKeptAsTheyAre"] = new JsonArray(plan.StructuresKeptAsTheyAre.Select(s => (JsonNode)s).ToArray()),
+                    ["heldInMemory"] = hold is not null,
+                };
+                if (dryRun)
+                {
+                    answer["ok"] = true;
+                    answer["dryRun"] = true;
+                    answer["note"] = "Nothing was changed. Run again without dryRun to apply the plan.";
+                    return Json.Document(answer);
                 }
+
+                // ---- 3. apply, on a backed-up VI
+                var work = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "layout", Guid.NewGuid().ToString("N")[..12]);
+                Directory.CreateDirectory(work);
+                var backup = Path.Combine(work, Path.GetFileName(vi));
+                File.Copy(vi, backup, overwrite: true);
+                answer["backupPath"] = backup;
+                var compiledBefore = BulkTools.ContainsCompiledCode(vi);
+
+                var helper = await GraftTools.HelperAsync(connection, Path.Combine(scripts, ApplyHelper), timeoutSeconds, ct);
+                if (helper.Failure is not null) return helper.Failure;
+                var run = JsonNode.Parse(await new RunTools(connection).RunViAndReadValuesAsync(helper.Vi!,
+                    ApplyInputs(vi, plan).ToJsonString(), timeoutSeconds: timeoutSeconds, ct: ct)) as JsonObject;
+                var values = run?["values"] as JsonObject;
+                var error = GraftTools.ReadHelperError(run);
+                var moveResults = Records(values, "move results");
+                var sizeResults = Records(values, "size results");
+                var tunnelResults = Records(values, "tunnel results").Concat(Records(values, "shift register results"))
+                    .Concat(Records(values, "selector results")).Concat(Records(values, "dynamic left results"))
+                    .Concat(Records(values, "dynamic right results")).ToList();
+                answer["helperErrorCode"] = error.Code;
+                answer["moveErrors"] = moveResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
+                answer["sizeErrors"] = sizeResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
+                answer["tunnelErrors"] = tunnelResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
+                if (error.Code is not null && error.Code != 0)
+                {
+                    answer["ok"] = false;
+                    answer["note"] = $"LabVIEW answered error {error.Code} ({error.Source}). The VI may be partly " +
+                                     "rearranged; the copy from before is under backupPath.";
+                    return Json.Document(answer);
+                }
+
+                // ---- 4. no compiled code may stay in a VI we wrote - and a pylabview edit must not run
+                // under a VI LabVIEW holds, or LabVIEW keeps serving the copy it holds
+                if (!compiledBefore && BulkTools.ContainsCompiledCode(vi))
+                {
+                    if (hold is not null) { await hold.DisposeAsync(); hold = null; }
+                    answer["compiledCodeStripped"] = await new DiagramCleanup(connection).StripCompiledAsync(vi, timeoutSeconds, ct);
+                }
+
+                // ---- 5. what LabVIEW made of it
+                if (verify)
+                {
+                    var again = await DumpAsync(Path.Combine(scripts, DumpHelper), vi, timeoutSeconds, ct);
+                    if (again.Lines is not null)
+                    {
+                        var after = DiagramModel.Parse(again.Lines);
+                        answer["after"] = Outline(TopOutline(after));
+                        var (exact, off, worst) = Compare(plan, after);
+                        answer["landedExactly"] = exact;
+                        answer["landedOff"] = off;
+                        answer["worstOffsetPx"] = worst;
+                    }
+                }
+                if (render)
+                {
+                    var dir = renderDirectory ?? Path.Combine(work, "render");
+                    answer["render"] = JsonNode.Parse(await new RenderTools(connection).RenderDiagramsAsync(
+                        vi, dir, timeoutSeconds: timeoutSeconds, backend: BackendRoute.Current, ct: ct));
+                }
+                answer["ok"] = true;
+                return Json.Document(answer);
             }
-            if (render)
+            finally
             {
-                var dir = renderDirectory ?? Path.Combine(work, "render");
-                answer["render"] = JsonNode.Parse(await new RenderTools(connection).RenderDiagramsAsync(
-                    vi, dir, timeoutSeconds: timeoutSeconds, backend: BackendRoute.Current, ct: ct));
+                if (hold is not null) await hold.DisposeAsync();
             }
-            answer["ok"] = true;
-            return Json.Document(answer);
         }));
 
     // ------------------------------------------------------------------ helpers

@@ -246,18 +246,32 @@ runners), measured 2026-10-16. Each VI was laid out with one `lvai_layout_diagra
 off, no render), over a second server instance driven by raw stdio with a stopwatch around each
 call:
 
-| | VIs | per VI | total |
+| | VIs | first measurement | after the two fixes below |
 |---|---|---|---|
-| application VIs | 22 | 2.2-3.1 s, mean 2.4 s | 53 s |
-| Caraya test VIs and runners | 23 | 5.9-9.3 s, mean 7.6 s | 176 s |
+| application VIs | 22 | 2.2-3.1 s, mean 2.4 s, total 53 s | 0.19-2.1 s, mean 0.39 s, total 8.6 s |
+| Caraya test VIs and runners | 23 | 5.9-9.3 s, mean 7.6 s, total 176 s | 2.1-2.5 s, mean 2.3 s, total 53 s |
+| whole project | 45 | 228 s | 62 s |
 
-- **The difference is loading, not layout.** Opening a test VI's reference cold takes 1.6-2.5 s
-  over ActiveX, because it brings Caraya's hierarchy along; an application VI takes 0.02 s.
-  The tool loads each VI twice, once for the dump and once for the apply.
-  - Holding one reference open across both steps would save about one load per test VI. That is
-    an estimate; it has not been measured.
-- **The first call after a server start** composes the two helpers: a warm-up call on an 11-object
-  VI took 8.9 s against 2.2 s warm.
+Two costs had nothing to do with the layout, and both are fixed:
+
+- **The run route read each helper's panel before every run.** ActiveX can set and get a control
+  by name but cannot list them, so the server asked the pylabview reader for the helper's controls
+  every time: 0.73 s for the dump helper and 1.30 s for the apply helper, against 0.09 and 0.10 s
+  inside LabVIEW on a small VI. That was about 2 s of the 2.3.
+  - `PanelCache` keeps the list per file state: path, size, write time and the reader's code
+    stamp. It is held in memory and on disk under `%USERPROFILE%\.labviewmcp\cache\panels`.
+  - A VI saved again, or a changed reader, is a miss.
+- **Each VI was loaded twice.** Opening a test VI's reference cold takes 1.6-2.5 s over ActiveX,
+  because it brings Caraya's hierarchy along; an application VI takes 0.02 s. The dump helper and
+  the apply helper each opened it by path, and LabVIEW dropped it in between.
+  - `LabViewCom.HoldAsync` now keeps a reference on a thread of its own from the dump to the
+    apply. It was held in 45 of 45 calls; the answer says so in `heldInMemory`.
+  - The hold is released before compiled code is stripped from the file, because a pylabview edit
+    must not run under a VI LabVIEW holds.
+- **The first call after a helper changed** composes it again. Before the fixes a warm-up call on an
+  11-object VI took 8.9 s against 2.2 s warm; after them, on unchanged helpers, it took 2.3 s.
+  - The helpers themselves were always composed once and kept, under
+    `%TEMP%\LabVIEWMCP\helpers-pylabview`.
 - The plan itself takes milliseconds.
 - **Before and after**, both Caraya suites passed (103 and 37 tests) and 45 of 45 VIs were
   executable, with no compiled code in any file. Only the 45 VIs changed: the `.lvproj` and the

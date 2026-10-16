@@ -1269,6 +1269,31 @@ accident before and are now reported undecoded with the rest. `ReaderShiftRegist
 pins one case of each against NI's export, every assertion checked to fail on the old reader's
 output.
 
+## The run route's panel read is cached, and a VI can be held (2026-10-16)
+
+**`lvai_run_vi_and_read_values` on `pylabview` reads the VI's panel from the FILE before every
+run.** ActiveX can set and get a control by name but cannot list them. For a helper that never
+changes, that read was most of a call. Measured on `lvai_layout_diagram`'s two helpers: the
+reader took 0.73 s and 1.30 s per run, against 0.09 s and 0.10 s inside LabVIEW on a small VI.
+
+- `PanelCache` keeps the list per file state: path, size, write time and the reader's code stamp
+  (`AixmlExportStore.ReaderStamp`).
+- It is held in memory for the process and on disk under `<cache root>\panels`, so a server restart
+  keeps it.
+- A VI saved again is a miss, and so is every entry once the reader changes. What is cached is only
+  what the reader reads from that file, so it is as current as reading it again.
+
+**`LabViewCom.HoldAsync` keeps a VI loaded** until its answer is disposed: a reference held on a
+thread of its own. Helpers that open the VI by path one after the other then reach the copy in
+memory.
+
+- A Caraya test VI takes 1.6-2.5 s to load cold, and `lvai_layout_diagram` used to load it twice.
+- A hold is an optimisation, never a precondition: null when nothing could be held.
+- A pylabview edit of the file must not run while a hold stands.
+
+Together the two took the ATM project's 45 VIs from 228 s to 62 s in `lvai_layout_diagram`
+(`docs/diagram-layout.md` §4a).
+
 ## Not covered, and not measured
 
 - **A DAQmx call has not been RUN through a composed VI** - the probes above stop at the link and
