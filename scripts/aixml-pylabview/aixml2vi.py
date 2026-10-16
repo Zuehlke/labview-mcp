@@ -3197,6 +3197,47 @@ class Composer:
                 tb.text = lvheap.fmt_bounds((r, 0, r + self.NMUX_ROW, w - 16) if bundle
                                             else (r, 16, r + self.NMUX_ROW, w))
 
+    AGG_ROW = 8
+
+    @staticmethod
+    def _set_box(node, h, w=None):
+        b = node.find("bounds")
+        if b is not None and b.text:
+            top, left, _, right = lvheap.parse_bounds(b.text)
+            b.text = lvheap.fmt_bounds((top, left, top + h, left + (w if w is not None else right - left)))
+
+    @staticmethod
+    def _set_term(t, box):
+        tb = t.find("dco/termBounds")
+        if tb is not None:
+            tb.text = lvheap.fmt_bounds(box)
+
+    def _agg_rows(self, node, agg, row_terms, agg_box):
+        """Build Array, Bundle and Unbundle grow 8 px a terminal, as LabVIEW draws them. The
+        harvested part carries ONE row, and every further terminal was cloned onto it: a Build
+        Array of four elements stayed 17 px high with its four inputs on one spot, and the wires
+        into it ran past a box too small for them (LayoutCheck, 2026-10-16). Measured on NI's
+        converter: 32 px wide, height 8 n + 1 (17 at least), terminal k on row 8 k, 16 px wide on
+        its side; the other side's terminal spans the height. agg_box(h) gives that one."""
+        h = max(17, self.AGG_ROW * len(row_terms) + 1)
+        self._set_box(node, h)
+        self._set_term(agg, agg_box(h))
+        return h
+
+    def _waveform_bundle_geometry(self, node, agg, field_terms, names):
+        """Build Waveform: its fields start 12 px down, under the waveform input, 16 px a row; the
+        output takes the right 16 px - NI's converter, Y and dt: 35 x 45, fields (12, 0, 28, 19)
+        and (28, 0, 44, 19), output (0, 19, 45, 35)."""
+        if not field_terms:
+            return
+        w = int(-(-max(text_width(n) for n in names) // 1)) + self.NMUX_PAD
+        h = 12 + self.NMUX_ROW * len(field_terms) + 1
+        self._set_box(node, h, w)
+        self._set_term(agg, (0, w - 16, h, w))
+        for k, t in enumerate(field_terms):
+            r = 12 + self.NMUX_ROW * k
+            self._set_term(t, (r, 0, r + self.NMUX_ROW, w - 16))
+
     def add_agg_node(self, el):
         """Bundle (mux), Unbundle (demux), Bundle/Unbundle By Name (nMux), Index Array (aIndx)
         and Build Array (aBuild), measured on an AIXML-generated VI:
@@ -3273,6 +3314,11 @@ class Composer:
             if name == "Unbundle By Name":
                 self._nmux_geometry(node, agg, [ends[k][0] for k, _ in picked],
                                     [k for k, _ in picked], bundle=False)
+            else:
+                outs_ = [ends[k][0] for k, _ in picked]
+                self._agg_rows(node, agg, outs_, lambda h: (0, 0, h, 16))
+                for k, t in enumerate(outs_):
+                    self._set_term(t, (self.AGG_ROW * k, 16, self.AGG_ROW * k + self.AGG_ROW, 32))
         elif name in ("Bundle By Name", "Bundle"):
             agg, cref, tpl = terms[0], terms[1], terms[2]
             cin = [n for t, n in ins if t in ("input cluster", "cluster")]
@@ -3330,6 +3376,10 @@ class Composer:
                 unknown = [k for k in given if k not in keys]
                 if unknown:
                     raise Unsupported("%s %s: no field %r (has %s)" % (name, el.get("uid"), unknown[0], ", ".join(labels)))
+                rows = [t for t in tl if t is not agg and t is not cref]
+                self._agg_rows(node, agg, rows, lambda h: (0, 24, h, 32))
+                for k, t in enumerate(rows):
+                    self._set_term(t, (self.AGG_ROW * k, 0, self.AGG_ROW * k + self.AGG_ROW, 16))
             for _, net in outs:
                 if net:
                     self.net_type[net] = unlabel(ctype)
@@ -3422,6 +3472,10 @@ class Composer:
                 ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
                 self.ends[(el.get("uid"), key)] = (t.get("uid"), diag)
             self.ends[(el.get("uid"), "appended array")] = (agg.get("uid"), diag)
+            rows = [t for t in tl if t is not agg]
+            self._agg_rows(node, agg, rows, lambda h: (0, 16, h, 32))
+            for k, t in enumerate(rows):
+                self._set_term(t, (self.AGG_ROW * k, 0, self.AGG_ROW * k + self.AGG_ROW, 16))
             for _, net in outs:
                 if net:
                     self.net_type[net] = atype
@@ -3659,6 +3713,7 @@ class Composer:
                 cref.find("objFlags").text = str(0x20040)   # no waveform wired, as Bundle's
             self.ends[(el.get("uid"), "waveform")] = (cref.get("uid"), diag)
             self.ends[(el.get("uid"), "output waveform")] = (agg.get("uid"), diag)
+            built = []
             for k, net in ins:
                 if k == "waveform":
                     continue
@@ -3669,6 +3724,8 @@ class Composer:
                 tl.append(t)
                 ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
                 self.ends[(el.get("uid"), k)] = (t.get("uid"), diag)
+                built.append((t, k))
+            self._waveform_bundle_geometry(node, agg, [t for t, _ in built], [k for _, k in built])
             for _, net in outs:
                 if net:
                     self.net_type[net] = wtype
@@ -3678,6 +3735,7 @@ class Composer:
                 tl.remove(c)
             agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(wtype)
             self.ends[(el.get("uid"), "waveform")] = (agg.get("uid"), diag)
+            got = []
             for k, net in outs:
                 if k not in labels:
                     raise Unsupported("Get Waveform Components %s: no field %r" % (el.get("uid"), k))
@@ -3686,8 +3744,12 @@ class Composer:
                 tl.append(t)
                 ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
                 self.ends[(el.get("uid"), k)] = (t.get("uid"), diag)
+                got.append((t, k))
                 if net:
                     self.net_type[net] = unlabel(fs[idx])
+            # one row per field, as Unbundle By Name: the part's two-row box left a single Y
+            # over an empty second row (the user's report of 2026-10-16)
+            self._nmux_geometry(node, agg, [t for t, _ in got], [k for _, k in got], bundle=False)
         f = node.find("objFlags")
         if f is None:
             f = ET.Element("objFlags")
@@ -5630,6 +5692,16 @@ class Composer:
                 self.net_type[outs[k]] = unlabel(fs[idx])
         node.find("termList").set("elements", str(len(node.find("termList"))))
         dl.set("elements", str(len(dl)))
+        # one row of 16 px per field, the fields from 8 px in: as LabVIEW draws its own, over the
+        # eleven data nodes of Delacor's DQMH Main - width = the longest name's text + 16, height
+        # 16 n + 1. Cloned onto the part's one row, Source, Samples and Time lay on one spot and
+        # the node showed `Source` with the Samples wire leaving it (LayoutCheck, 2026-10-16)
+        rows = list(node.find("termList"))[1:]
+        if rows:
+            w = int(-(-max(text_width(k) for k in want) // 1)) + 16
+            self._set_box(node, self.NMUX_ROW * len(rows) + 1, w)
+            for k, t in enumerate(rows):
+                self._set_term(t, (self.NMUX_ROW * k, 8, self.NMUX_ROW * k + self.NMUX_ROW, w))
         for e in node.iter("typeDesc"):
             e.attrib.pop("_t", None)
         diag.nodes.append(node)
@@ -6879,6 +6951,7 @@ class Composer:
             frame_dims[id(seq)] = dims
 
     COLUMN_GAP = 60
+    DATA_NODE_LEFT = 8
     COLUMN_MAX = 860      # px a column of one level may grow before it wraps
 
     def _place(self, diag, lv, sizes, top0, left0):
@@ -6899,10 +6972,23 @@ class Composer:
         # level feeds anything else in it, so its objects may stand side by side and every wire
         # still runs forward. A test VI asserting eleven values stacked 22 constants in one column
         # and came out 1598 px tall with 604 px of width (the ATM build, 2026-10-11).
+        # AN EVENT DATA NODE sits on its frame's left border, 8 px in from the structure's edge,
+        # at the top - where LabVIEW keeps it and NI's converter writes it. In the first column at
+        # 30 px it floated in the frame, and LabVIEW kept it there through every move (LayoutCheck,
+        # 2026-10-16); the frame's code starts right of it
+        edn = [it for it in items if it[1].tag == "Node" and unescape(it[1].get("_name") or "") == "Event Data Node"]
+        y_edn, right_edn = top0, 0
+        for obj, el, _, h, w in edn:
+            place_obj(obj, y_edn, self.DATA_NODE_LEFT)
+            y_edn += h + 10
+            right_edn = max(right_edn, self.DATA_NODE_LEFT + w)
+        if edn:
+            items = [it for it in items if it not in edn]
+            left0 = max(left0, right_edn + self.COLUMN_GAP // 2)
         by_level = {}
         for it in items:
             by_level.setdefault(it[2], []).append(it)
-        x, right, bottom = left0, 0, 0
+        x, right, bottom = left0, right_edn, (y_edn - 10 if edn else 0)
         for L in sorted(by_level):
             cols, col, y = [], [], 0
             for it in by_level[L]:
@@ -6921,7 +7007,7 @@ class Composer:
                         place_obj(obj, yy, x)
                     right, bottom = max(right, x + w), max(bottom, yy + h)
                 x += max(it[4] for it, _ in col) + self.COLUMN_GAP
-        y = (bottom + 20) if items else top0
+        y = (bottom + 20) if items or edn else top0
         for obj in notes:
             h, w = lvheap.size_of(obj)
             place_obj(obj, y, left0)

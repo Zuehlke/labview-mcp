@@ -612,6 +612,15 @@ across its own T/F and `create or replace` across its enum, whose item field kep
 and showed no item. Every value part now starts where the label ends, and an enum's item field is as
 wide as its longest item, the arrow and the frame following it (`_fit_inline`,
 `PylabviewInlineLabelTests`, `docs/diagram-layout.md` §4b).
+**A node that grows with its terminals, since the same day**: each harvested part carries ONE row,
+and every further terminal was cloned onto it - a Build Array of four elements 17 px high with its
+inputs on one spot, an Event Data Node showing `Source` with the Samples wire leaving it, a
+one-field Get Waveform Components over an empty second row. Measured on NI's converter's build of
+one probe: Build Array, Bundle and Unbundle 32 px wide and 8 n + 1 high (17 at least), terminal k
+on row 8 k; Get Waveform Components as Unbundle By Name, 16 px a row; Build Waveform's fields from
+12 px down, its output the right 16 px; the Event Data Node 16 px a row, the longest name + 16 wide
+(all eleven of Delacor's), and placed 8 px in from its frame's left edge where LabVIEW keeps it - at
+30 px it floated in the frame (`PylabviewGrowableNodeTests`).
 **A front-panel label too**: the text's advances + 4 px (296 labels of NI's examples measured
 +3..4), with the object's own box widened to its visible label as NI's converter writes it -
 outside that box LabVIEW cut it - and the text written raw, since pylabview escapes nothing

@@ -1,6 +1,9 @@
 namespace LabVIEWMcp.Layout;
 
-internal sealed record LayoutMove(string DiagramId, string ApplyPath, int Index, int X, int Y, int Depth, string Class);
+/// <summary>Late: applied after the structures' sizes - a While Loop's own terminals, which LabVIEW
+/// repositions itself when Frame Size shrinks the loop.</summary>
+internal sealed record LayoutMove(string DiagramId, string ApplyPath, int Index, int X, int Y, int Depth, string Class,
+                                  bool Late = false);
 internal sealed record LayoutSize(string DiagramId, string ApplyPath, int Index, int FrameW, int FrameH, int Depth, Box Target);
 internal sealed record LayoutTunnel(string ApplyPath, int Index, int Tunnel, int X, int Y, bool ShiftRegister,
                                     bool Selector = false, bool Dynamic = false);
@@ -1462,14 +1465,17 @@ internal static class DiagramLayout
 
     private static void PlaceLoopTerminals(Context ctx, DObject loop, Box box)
     {
-        // the stop terminal of a While Loop: bottom right, inside
+        // a While Loop's stop terminal goes bottom right, inside, and its iteration terminal bottom
+        // left, 11 px in as LabVIEW puts it in a new loop. Left where it was, the i of a loop the
+        // layout made shorter sat under its bottom border, hidden, its wire running down into the
+        // border (LayoutCheck, 2026-10-16). A For Loop's N and i LabVIEW keeps in place itself
         if (loop.Class != "WhileLoop") return;
         foreach (var f in loop.Frames)
-            foreach (var t in f.Objects.Where(o => o.IsLoopTerminal && !o.OwnSource))
+            foreach (var t in f.Objects.Where(o => o.IsLoopTerminal))
             {
-                var x = box.R - 18 - t.Box.W;
+                var x = t.OwnSource ? box.L + 11 : box.R - 18 - t.Box.W;
                 var y = box.B - 12 - t.Box.H;
-                ctx.Plan.Moves.Add(new LayoutMove(f.Id, f.ApplyPath, t.Index, x, y, f.Depth, t.Class));
+                ctx.Plan.Moves.Add(new LayoutMove(f.Id, f.ApplyPath, t.Index, x, y, f.Depth, t.Class, Late: true));
                 ctx.Plan.Predicted[t.Key] = new Box(x, y, t.Box.W, t.Box.H);
             }
     }

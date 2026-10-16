@@ -59,7 +59,7 @@ clean-up (a test asserts it). The apply helper walks a path of `object frame obj
 | Is a Case Structure's selector (`?`) a tunnel? | No: `Tunnels[]` does not list it, and the dump finds it as the left-border term that matches no tunnel. `{LV.CaseStructure}` `Selector` reads it; cast to `{LV.GObject}`, the double move with the owner unwired puts it exactly where asked (9 of 9). An error cluster wired to it enters every frame through it. |
 | Are an Event Structure's dynamic event terminals tunnels? | No. `Tunnels[]` does not list them either; the dump finds them as the border terms that match no tunnel and are not the timeout terminal in the top-left corner. `{LV.EventStructure}` `Dynamic Terminal (Left)` and `(Right)` read them, and the double move with the owner unwired puts them exactly where asked (2 of 2). |
 | Does an Event Data Node move? | No. LabVIEW keeps it on the event frame's left border: eleven were asked for interior positions and all came back. Not vertically either: one asked for 186 px higher stayed where it was, and after a resize it sits wherever LabVIEW leaves it, near the bottom in the DQMH Main. A filter event's Event Filter Node (`Discard?`, VI Server class `NamedBundler`) stays on the right border the same way. Both are left alone. They are told by KIND, not by place: the cluster terminal LabVIEW hides on the border is zero wide. By place - within 12 px of a border - the test missed every data node the composer writes, which LabVIEW keeps 30 px in, and caught an indicator whose LABEL reached the right border (LayoutCheck, 2026-10-16). |
-| Does a While Loop's stop terminal go where asked? | Near the bottom only: asked 880, it landed 986 once and 856 another time. It is constrained by LabVIEW. |
+| Does a While Loop's stop terminal go where asked? | **Yes, if it is moved AFTER the loop's `Frame Size` is written.** Moved before, LabVIEW repositions the stop and the iteration terminal itself when the loop shrinks: in three arms on `LayoutCheck Main`, the stop alone, the `i` alone and both together each landed off target, and both together under the loop's bottom border, hidden. The `late moves` pass of `lvbd_layout_apply` moves them after the sizes, and all four landed exactly. This row said "near the bottom only: asked 880, it landed 986 once and 856 another time. It is constrained by LabVIEW." - it was the order, not a constraint. |
 | Do decorations (arrows) move? | Not by `Move`. An arrow grouped with its label follows the label. |
 | What does Bounds mean for an object whose label shows? | **The size of object AND label, at the object's own Position.** All 13 such objects in the fixture have a Bounds size equal to their Total Bounds Rect, shifted. A numeric constant with its label on the left reads 151 px wide, and 132 px of that is label to the LEFT of its Position. The parser corrects this (`DiagramModel.Parse`). |
 | Can a subdiagram label grow? | No. When its structure narrows, it keeps its height and CLIPS its text: a 304 px label in a case made 142 wide showed two of its three lines. |
@@ -226,6 +226,11 @@ wider than 1920 px.
   column 1 or later as a FLOOR in the column calculation, so what follows moves along. Raised
   after the fact instead, the ATM's `Current VI's Path` shared a column with the `Strip Path` it
   feeds, and its wire dropped and climbed between them.
+- **A While Loop's stop terminal goes bottom right inside, its iteration terminal bottom left**,
+  11 px in as LabVIEW puts it in a new loop, both 12 px above the bottom border. The `i` used to be
+  left where it was: once the layout made the loop shorter it sat under the border, hidden, its wire
+  running down into the border (the user's review of `LayoutCheck Main`). Both move after the sizes
+  (section 2). A For Loop's `N` and `i` LabVIEW keeps in place itself.
 - **Frames of one structure share their rail,** so the error line runs straight through every
   case.
 - **Width is kept for short subdiagram labels.** A structure is never narrower than its
@@ -357,6 +362,9 @@ VI holds it (`DiagramLayoutCheckTests`):
 | `Evaluate TDMS File`'s indicators wired across each other | a stack ordered by its sources' heights | the turn order |
 | `Write Samples to TDMS`'s path wire round the loop | the loop placed as early as possible | structures off the chain go late |
 | the empty top left of the main VI | the note went to the far right | notes slide up their own side |
+| the While Loops' `i` missing (second review) | left where it was, then under the shrunk loop's border | placed bottom left, after the sizes |
+| `Source` floating in its frame, showing one field of three | the composer: data node 30 px in, every field on one row | the composer, see below |
+| a Build Array whose four wires end on one small box | the composer: every input on the first row | the composer, see below |
 
 What stays, because the wiring decides it: the main VI's `Release` and `Evaluate TDMS File` sit after
 both loops, so the refnum and path wires to them run under the consumer loop. `Read TDMS Channels`
@@ -368,6 +376,13 @@ its value had the label widened to its text and nothing moved after it. `create 
 its own enum, and the enum's item field kept the donor's 12 px, so LabVIEW drew no item at all.
 `aixml2vi.py` now moves every value part right of the label and widens the item field to the longest
 item (`PylabviewInlineLabelTests`).
+
+The second review found the same kind of defect in nodes that grow with their terminals. Each
+harvested part carries ONE row, and every further terminal was cloned onto it. Build Array, Bundle,
+Unbundle, Get and Build Waveform and the Event Data Node now get NI's geometry, read off NI's
+converter's build of the same document (`PylabviewGrowableNodeTests`). And the Event Data Node
+stands where LabVIEW keeps it, 8 px in from its frame's left edge at the top, where the composer had
+it 30 px in, floating; LabVIEW kept it there through every move.
 
 ## 5. Switched on, 2026-10-16
 

@@ -206,7 +206,10 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
     internal static JsonObject ApplyInputs(string vi, LayoutPlan plan) => new()
     {
         ["vi path"] = vi,
-        ["moves"] = GraftTools.ArrayXml("moves", plan.Moves.Select(m => $"{m.ApplyPath};{m.Index};{m.X};{m.Y}")),
+        ["moves"] = GraftTools.ArrayXml("moves", plan.Moves.Where(m => !m.Late).Select(m => $"{m.ApplyPath};{m.Index};{m.X};{m.Y}")),
+        // a While Loop's stop and iteration terminals: after the sizes, since LabVIEW repositions
+        // them itself when Frame Size shrinks the loop
+        ["late moves"] = GraftTools.ArrayXml("late moves", plan.Moves.Where(m => m.Late).Select(m => $"{m.ApplyPath};{m.Index};{m.X};{m.Y}")),
         ["sizes"] = GraftTools.ArrayXml("sizes", plan.Sizes.Select(s => $"{s.ApplyPath};{s.Index};{s.FrameW};{s.FrameH}")),
         ["tunnels"] = GraftTools.ArrayXml("tunnels", plan.Tunnels.Where(t => !t.ShiftRegister && !t.Selector && !t.Dynamic)
             .Select(t => $"{t.ApplyPath};{t.Index};{t.Tunnel};{t.X};{t.Y}")),

@@ -1,6 +1,6 @@
 """Writes scripts/lvbd_layout_apply.xml - edit this, not the XML.
 
-Eight passes (moves, structure sizes, tunnels, shift registers, case selectors, an event structure's two dynamic event terminals, wire clean-up) share one diagram
+Nine passes (moves, structure sizes, late moves for a While Loop's own terminals, tunnels, shift registers, case selectors, an event structure's two dynamic event terminals, wire clean-up) share one diagram
 walk, so the helper is generated:
 
     python scripts/lvbd_layout_apply_gen.py scripts/lvbd_layout_apply.xml
@@ -144,9 +144,9 @@ def concat(parent, nets):
 
 
 desc = ("Applies a layout computed by lvai_layout_diagram to a VI's block diagram and saves it in place. "
-        "Five passes, in this order\\3A MOVES, each 'path;index;left;top' - the object at that index of the "
+        "Six kinds of pass, in this order\\3A MOVES, each 'path;index;left;top' - the object at that index of the "
         "diagram the path reaches is moved so that its Position becomes left,top in the pane's coordinates; "
-        "SIZES, each 'path;index;width;height' - that structure's Frame Size is written, which sets its outer size exactly and keeps its top left corner (Auto Size and ShrinkWrapStructs grow a structure but never shrink it, measured 2026-10-16); TUNNELS, each 'path;index;tunnel;left;top' - that tunnel of that structure is moved; SHIFT REGISTERS, the same for a loop's Shift Registers[] (the left terminal; the right one follows); WIRES, each 'path' - every "
+        "SIZES, each 'path;index;width;height' - that structure's Frame Size is written, which sets its outer size exactly and keeps its top left corner (Auto Size and ShrinkWrapStructs grow a structure but never shrink it, measured 2026-10-16); LATE MOVES, the moves pass again for a While Loop's stop and iteration terminals, which LabVIEW repositions itself when Frame Size shrinks the loop; TUNNELS, each 'path;index;tunnel;left;top' - that tunnel of that structure is moved; SHIFT REGISTERS, the same for a loop's Shift Registers[] (the left terminal; the right one follows); WIRES, each 'path' - every "
         "wire of that diagram is cleaned up with CleanUpWire. A path is 'object frame object frame ...' from "
         "the top-level diagram, empty for the top level itself, the ids lvbd_layout_dump writes.\\0A\\0A"
         "WHY EVERY OBJECT IS MOVED TWICE\\3A Position reads in the pane's coordinates while Move takes a "
@@ -161,6 +161,8 @@ vi = nu()
 e(f'  <Control _name="vi path" conIdx="0" connection="recommended" type="string" uid="{vi}" uid_parent="root" value="" outputs="value:{vi}.value"/>')
 mv = nu()
 e(f'  <Control _name="moves" conIdx="1" connection="recommended" type="array{{string}}" uid="{mv}" uid_parent="root" value="[]" outputs="value:{mv}.value"/>')
+lm = nu()
+e(f'  <Control _name="late moves" type="array{{string}}" uid="{lm}" uid_parent="root" value="[]" outputs="value:{lm}.value"/>')
 sz = nu()
 e(f'  <Control _name="sizes" conIdx="2" connection="recommended" type="array{{string}}" uid="{sz}" uid_parent="root" value="[]" outputs="value:{sz}.value"/>')
 wr = nu()
@@ -192,52 +194,60 @@ e(f'  <Node _name="To More Generic Class" inputs="reference:{bd},target class:{d
 top = f"{u}.top"
 run_err = err
 
-# ---- moves
-L = nu()
-e(f'  <Structure _name="For Loop" count="" maxin="" maxout="" uid="{L}" uid_parent="root">')
-t1, t2 = nu(), nu()
-e(f'    <Tunnel _id="In1" inputs="value:{mv}.value" mode="index" outputs="value:{t1}.op" uid="{t1}" uid_parent="{L}"/>')
-e(f'    <Tunnel _id="In2" inputs="value:{top}" outputs="value:{t2}.top" uid="{t2}" uid_parent="{L}"/>')
-f = split(L, f"{t1}.op", 4)
-d, err = walk(L, f[0], f"{t2}.top")
-idx, x, y = number(L, f[1]), number(L, f[2]), number(L, f[3])
-u = nu()
-e(f'    <Node _name="Property Node" fields="read+All Objects[]" type="{{LV.Diagram}}" inputs="reference:{d},error in (no error):{err}" outputs="All Objects[]:{u}.objs,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
-objs, err = f"{u}.objs", f"{u}.err"
-u = nu()
-e(f'    <Node _name="Index Array" inputs="array:{objs},index:{idx}" outputs="element:{u}.obj" uid="{u}" uid_parent="{L}"/>')
-obj = f"{u}.obj"
-u = nu()
-e(f'    <Node _name="Property Node" fields="read+Position" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err}" outputs="Position:{u}.pos,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
-pos, err = f"{u}.pos", f"{u}.err"
-u = nu()
-e(f'    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:{x},Top:{y},input cluster:{pos}" outputs="output cluster:{u}.target" uid="{u}" uid_parent="{L}"/>')
-target = f"{u}.target"
-dup = const(L, "duplicate", "bool", "false")
-u = nu()
-e(f'    <Node _name="Invoke Node" target="Move" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err},position:{target},owner:{d},duplicate:{dup}" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
-err = f"{u}.err"
-u = nu()
-e(f'    <Node _name="Property Node" fields="read+Position" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err}" outputs="Position:{u}.landed,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
-landed, err = f"{u}.landed", f"{u}.err"
-u = nu()
-e(f'    <Node _name="Add" inputs="x:{target},y:{target}" outputs="x+y:{u}.twice" uid="{u}" uid_parent="{L}"/>')
-twice = f"{u}.twice"
-u = nu()
-e(f'    <Node _name="Subtract" inputs="x:{twice},y:{landed}" outputs="x-y:{u}.corrected" uid="{u}" uid_parent="{L}"/>')
-corrected = f"{u}.corrected"
-u = nu()
-e(f'    <Node _name="Invoke Node" target="Move" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err},position:{corrected},owner:{d},duplicate:{dup}" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
-err = f"{u}.err"
-u = nu()
-e(f'    <Node _name="Property Node" fields="read+Position\\3ALeft,read+Position\\3ATop" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err}" outputs="Position\\3ALeft:{u}.l,Position\\3ATop:{u}.t,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
-fl, ft, err = f"{u}.l", f"{u}.t", f"{u}.err"
-semi = const(L, "result separator", "string", ";")
-line = concat(L, [code_of(L, err), semi, dec(L, fl), semi, dec(L, ft), const(L, "record end", "string", "|")])
-mo = nu()
-e(f'    <Tunnel _id="Out1" inputs="value:{line}" mode="index" outputs="value:{mo}.value" uid="{mo}" uid_parent="{L}"/>')
-run_err = chain(L, run_err)
-e('  </Structure>')
+# ---- moves: the same pass twice - before the sizes for everything, and after them for a
+# While Loop's stop and iteration terminals, which LabVIEW repositions itself when Frame Size
+# shrinks the loop: moved first, both landed under the loop's bottom border, hidden (LayoutCheck,
+# 2026-10-16)
+def moves_pass(src, run_err):
+    L = nu()
+    e(f'  <Structure _name="For Loop" count="" maxin="" maxout="" uid="{L}" uid_parent="root">')
+    t1, t2 = nu(), nu()
+    e(f'    <Tunnel _id="In1" inputs="value:{src}.value" mode="index" outputs="value:{t1}.op" uid="{t1}" uid_parent="{L}"/>')
+    e(f'    <Tunnel _id="In2" inputs="value:{top}" outputs="value:{t2}.top" uid="{t2}" uid_parent="{L}"/>')
+    f = split(L, f"{t1}.op", 4)
+    d, err = walk(L, f[0], f"{t2}.top")
+    idx, x, y = number(L, f[1]), number(L, f[2]), number(L, f[3])
+    u = nu()
+    e(f'    <Node _name="Property Node" fields="read+All Objects[]" type="{{LV.Diagram}}" inputs="reference:{d},error in (no error):{err}" outputs="All Objects[]:{u}.objs,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+    objs, err = f"{u}.objs", f"{u}.err"
+    u = nu()
+    e(f'    <Node _name="Index Array" inputs="array:{objs},index:{idx}" outputs="element:{u}.obj" uid="{u}" uid_parent="{L}"/>')
+    obj = f"{u}.obj"
+    u = nu()
+    e(f'    <Node _name="Property Node" fields="read+Position" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err}" outputs="Position:{u}.pos,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+    pos, err = f"{u}.pos", f"{u}.err"
+    u = nu()
+    e(f'    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:{x},Top:{y},input cluster:{pos}" outputs="output cluster:{u}.target" uid="{u}" uid_parent="{L}"/>')
+    target = f"{u}.target"
+    dup = const(L, "duplicate", "bool", "false")
+    u = nu()
+    e(f'    <Node _name="Invoke Node" target="Move" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err},position:{target},owner:{d},duplicate:{dup}" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+    err = f"{u}.err"
+    u = nu()
+    e(f'    <Node _name="Property Node" fields="read+Position" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err}" outputs="Position:{u}.landed,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+    landed, err = f"{u}.landed", f"{u}.err"
+    u = nu()
+    e(f'    <Node _name="Add" inputs="x:{target},y:{target}" outputs="x+y:{u}.twice" uid="{u}" uid_parent="{L}"/>')
+    twice = f"{u}.twice"
+    u = nu()
+    e(f'    <Node _name="Subtract" inputs="x:{twice},y:{landed}" outputs="x-y:{u}.corrected" uid="{u}" uid_parent="{L}"/>')
+    corrected = f"{u}.corrected"
+    u = nu()
+    e(f'    <Node _name="Invoke Node" target="Move" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err},position:{corrected},owner:{d},duplicate:{dup}" outputs="reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+    err = f"{u}.err"
+    u = nu()
+    e(f'    <Node _name="Property Node" fields="read+Position\\3ALeft,read+Position\\3ATop" type="{{LV.GObject}}" inputs="reference:{obj},error in (no error):{err}" outputs="Position\\3ALeft:{u}.l,Position\\3ATop:{u}.t,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
+    fl, ft, err = f"{u}.l", f"{u}.t", f"{u}.err"
+    semi = const(L, "result separator", "string", ";")
+    line = concat(L, [code_of(L, err), semi, dec(L, fl), semi, dec(L, ft), const(L, "record end", "string", "|")])
+    mo = nu()
+    e(f'    <Tunnel _id="Out1" inputs="value:{line}" mode="index" outputs="value:{mo}.value" uid="{mo}" uid_parent="{L}"/>')
+    run_err = chain(L, run_err)
+    e('  </Structure>')
+    return mo, run_err
+
+
+mo, run_err = moves_pass(mv, run_err)
 
 # ---- sizes
 L = nu()
@@ -276,6 +286,8 @@ so = nu()
 e(f'    <Tunnel _id="Out1" inputs="value:{line}" mode="index" outputs="value:{so}.value" uid="{so}" uid_parent="{L}"/>')
 run_err = chain(L, run_err)
 e('  </Structure>')
+
+lmo, run_err = moves_pass(lm, run_err)
 
 def border_pass(ops, cls_name, cls_type, prop, prop_type, indexed):
     """Moves a border object of a structure - a tunnel, a shift register or a case selector - with
@@ -395,7 +407,7 @@ u = nu()
 e(f'  <Node _name="Close Reference" inputs="reference:{viref},error in (no error):{serr}" outputs="error out:{u}.err" uid="{u}" uid_parent="root"/>')
 cerr = f"{u}.err"
 j = nu()
-e(f'  <Node _name="Concatenate Strings" inputs="string:{mo}.value" outputs="concatenated string:{j}.s" uid="{j}" uid_parent="root"/>')
+e(f'  <Node _name="Concatenate Strings" inputs="string:{mo}.value,string:{lmo}.value" outputs="concatenated string:{j}.s" uid="{j}" uid_parent="root"/>')
 u = nu()
 e(f'  <Indicator _name="move results" conIdx="4" connection="recommended" type="string" uid="{u}" uid_parent="root" value="" inputs="value:{j}.s"/>')
 j = nu()

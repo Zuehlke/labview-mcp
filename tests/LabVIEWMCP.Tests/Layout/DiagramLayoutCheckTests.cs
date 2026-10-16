@@ -1,5 +1,6 @@
 using LabVIEWMcp.Layout;
 using LabVIEWMcp.Tests.Support;
+using LabVIEWMcp.Tools;
 using Xunit;
 
 namespace LabVIEWMcp.Tests.Layout;
@@ -124,6 +125,38 @@ public sealed class DiagramLayoutCheckTests
         var open = plan.Predicted[model.Top.Objects.Single(o => o.Index == 3).Key];
         var loop = plan.Predicted[model.Top.Objects.Single(o => o.Index == 13).Key];
         Assert.True(open.L <= loop.L, $"TDMS Open at {open.L}, the loop at {loop.L}");
+    }
+
+    /// <summary>
+    /// A While Loop's iteration terminal was left where it was. Once the layout made the loop
+    /// shorter it sat under the bottom border, hidden, its wire running down into the border. And
+    /// moved BEFORE the loop's Frame Size was written, LabVIEW repositioned both terminals itself
+    /// and both landed under the border (measured in three arms). So both go bottom left and
+    /// bottom right inside, and both move after the sizes.
+    /// </summary>
+    [Fact]
+    public void A_While_Loops_own_terminals_go_into_its_bottom_corners_after_the_sizes()
+    {
+        var model = Main.Value;
+        var plan = DiagramLayout.Plan(model);
+        foreach (var index in new[] { 18, 19 })
+        {
+            var loop = model.Top.Objects.Single(o => o.Index == index);
+            var box = plan.Predicted[loop.Key];
+            var terms = loop.Frames[0].Objects.Where(o => o.IsLoopTerminal).ToList();
+            Assert.Equal(2, terms.Count);
+            foreach (var t in terms)
+            {
+                var p = plan.Predicted[t.Key];
+                Assert.True(p.L > box.L && p.R < box.R && p.T > box.T && p.B < box.B, $"terminal {t.Key} at {p}, the loop {box}");
+                Assert.Equal(box.B - 12, p.B);
+                Assert.True(t.OwnSource ? p.L - box.L < 20 : box.R - p.R < 20, $"terminal {t.Key} at {p}");
+                Assert.True(plan.Moves.Single(m => m.DiagramId == t.DiagramId && m.Index == t.Index).Late);
+            }
+        }
+        var inputs = DiagramLayoutTools.ApplyInputs(@"C:\x\Main.vi", plan);
+        Assert.Contains("<Val>19 0;3;", inputs["late moves"]!.GetValue<string>());
+        Assert.DoesNotContain("<Val>19 0;3;", inputs["moves"]!.GetValue<string>());
     }
 
     /// <summary>
