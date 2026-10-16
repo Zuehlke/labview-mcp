@@ -120,14 +120,14 @@ internal sealed class BulkTools(LvaiConnection connection)
             """)]
         string? backend = null,
         [Description("""
-            Run LabVIEW's own Clean Up Diagram on the written VI and save it in place - {LV.VI}
-            BD.CleanUp then Save.Instrument, the two calls NI's Message Maker makes on every VI it
-            scripts - BEFORE the diagram is measured, so diagramSize is the diagram you get. Omit
-            it to clean up whenever the diagram is measured, which is every deliverable; helpers
-            and carriers skip it. Skipped with openVI, where the IDE holds its own copy. A VI that
-            had no compiled code comes back with none: a LabVIEW save that writes some is stripped
-            again. A failed clean-up does not fail the call - the VI is as generated, and the
-            cleanUpDiagram step says why.
+            Lay out the written VI's block diagram with OUR layout engine - the pipeline of
+            lvai_layout_diagram, since 2026-10-16 in place of LabVIEW's BD.CleanUp - and save it in
+            place, BEFORE the diagram is measured, so diagramSize is the diagram you get. Omit it
+            to clean up whenever the diagram is measured, which is every deliverable; helpers and
+            carriers skip it. Skipped with openVI, where the IDE holds its own copy, and for a DQMH
+            module's Main.vi. A VI that had no compiled code comes back with none. A failed layout
+            does not fail the call - the VI is put back as generated, and the cleanUpDiagram step
+            (engine: lvai_layout_diagram) says why.
             """)]
         bool? cleanUpDiagram = null,
         [Description("""
@@ -603,7 +603,7 @@ internal sealed class BulkTools(LvaiConnection connection)
     }
 
     /// <summary>Test seam for the `cleanUpDiagram` step (viPath, backend); null in production, where
-    /// <see cref="DiagramCleanup"/> runs LabVIEW's own Clean Up Diagram.</summary>
+    /// <see cref="DiagramCleanup"/> runs our layout engine.</summary>
     internal Func<string, string, int, CancellationToken, Task<JsonObject>>? CleanUp
     {
         get; init;

@@ -225,9 +225,9 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             """)]
         string? backend = null,
         [Description("""
-            Run LabVIEW's own Clean Up Diagram on each method once it is a verified member, and
-            save it in place (the cleanUpDiagram step). Reported, never gating: a refused clean-up
-            leaves the method as converted and still ok.
+            Lay out each method's block diagram with our layout engine (lvai_layout_diagram's)
+            once it is a verified member, and save it in place (the cleanUpDiagram step). Reported,
+            never gating: a layout that does not finish leaves the method as converted and still ok.
             """)]
         bool cleanUpDiagram = true)
     {

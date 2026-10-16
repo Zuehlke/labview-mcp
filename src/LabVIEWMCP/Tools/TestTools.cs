@@ -3471,9 +3471,9 @@ internal sealed class TestTools(LvaiConnection connection)
 
     /// <summary>The `measureDiagram` switch of the three Caraya test generators.</summary>
     internal const string MeasureTestDiagramDescription = """
-        Render the test VI to report its `diagramSize`, after LabVIEW's Clean Up Diagram - on by
-        default, because a test VI has the same 1920 x 1080 budget as any other. False skips the
-        render AND the clean-up.
+        Render the test VI to report its `diagramSize`, after our layout of its diagram (the
+        cleanUpDiagram step, lvai_layout_diagram's engine) - on by default, because a test VI has
+        the same 1920 x 1080 budget as any other. False skips the render AND the clean-up.
         """;
 
     /// <summary>What to do when a generated test VI is over the size budget, or "" when it is not.</summary>

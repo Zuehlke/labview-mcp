@@ -161,8 +161,9 @@ internal sealed class LUnitTools(LvaiConnection connection)
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default,
         [Description("""
-            Run LabVIEW's own Clean Up Diagram on each test method once it is a verified member,
-            and save it in place (the cleanUpDiagram step). Reported, never gating.
+            Lay out each test method's block diagram with our layout engine (lvai_layout_diagram's)
+            once it is a verified member, and save it in place (the cleanUpDiagram step). Reported,
+            never gating.
             """)]
         bool cleanUpDiagram = true) =>
         await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_lunit_add_test_method", async () =>

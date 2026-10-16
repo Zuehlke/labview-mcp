@@ -350,7 +350,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
                     "because validation was skipped and nothing here type-checks your wiring. " +
                     DataFieldNote(reading, afterWiringWillStillBeBad: false));
 
-            // 8. THE CLEAN-UP, LabVIEW's own, once every pylabview edit is in the file - it is a
+            // 8. THE CLEAN-UP, our layout, once every pylabview edit is in the file - it ends in a
             //    LabVIEW save - and before the size, so the size is the diagram the caller gets.
             //    Only on an executable VI: one still waiting for lvai_wire_dynamic_events returned
             //    above, and that tool cleans up when it has finished the frames.

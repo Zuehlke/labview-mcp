@@ -166,9 +166,10 @@ internal sealed class SwapTools(LvaiConnection connection)
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         [Description("""
-            Run LabVIEW's own Clean Up Diagram on each VI after a successful swap and save it in
-            place (the cleanUpDiagram field) - a Replace keeps each node's position while its size
-            and terminals change. Reported, never gating; a DQMH module's Main.vi is never touched.
+            Lay out each VI's block diagram with our layout engine (lvai_layout_diagram's) after a
+            successful swap and save it in place (the cleanUpDiagram field) - a Replace keeps each
+            node's position while its size and terminals change. Reported, never gating; a DQMH
+            module's Main.vi is never touched.
             """)]
         bool cleanUpDiagram = true)
     {
@@ -191,8 +192,8 @@ internal sealed class SwapTools(LvaiConnection connection)
     }
 
     /// <summary>
-    /// One swap, then LabVIEW's Clean Up Diagram on the saved VI when the swap was ok. The clean-up
-    /// is added to the answer as `cleanUpDiagram` and never changes its `ok`.
+    /// One swap, then our layout of the saved VI when the swap was ok. The clean-up is added to the
+    /// answer as `cleanUpDiagram` and never changes its `ok`.
     /// </summary>
     private async Task<string> OneAndCleanAsync(string viPath, string? swapsJson, string? constantsJson,
                                                 bool verify, bool verbose, string? helperViPath,

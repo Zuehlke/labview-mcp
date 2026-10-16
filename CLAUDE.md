@@ -561,10 +561,12 @@ come back ready to paste. `ok: false` with `failedAtStep: connectorPane` still m
 written** — it is the pane that needs another pass, not the diagram. Measured 2026-08-25: 1.1 s for
 the whole sequence against three round trips. `docs/bulk-operations.md`.
 
-**AND IT RUNS LabVIEW's OWN CLEAN UP DIAGRAM ON EVERY DELIVERABLE, on both backends - the user's
-recommendation of 2026-10-12.** `{LV.VI}` `BD.CleanUp` then `Save.Instrument`, the two calls NI's
-Message Maker makes, through `scripts\lvai_cleanup_diagram.xml`; before `diagramSize`, so the size
-is the diagram the caller gets. `cleanUpDiagram` follows `measureDiagram` when omitted, so helpers
+**AND IT LAYS OUT THE DIAGRAM OF EVERY DELIVERABLE, on both backends - the user's recommendation
+of 2026-10-12.** **Since 2026-10-16 that is OUR layout engine, the pipeline of
+`lvai_layout_diagram`, no longer LabVIEW's `BD.CleanUp`** - the user's decision after the ATM and
+DQMH renders (`docs/diagram-layout.md`). The step keeps its name, `cleanUpDiagram`, and names the
+engine in `engine`. It runs before `diagramSize`, so the size is the diagram the caller gets. A
+layout that does not finish puts the VI back as generated. `cleanUpDiagram` follows `measureDiagram` when omitted, so helpers
 and carriers skip it; `lvai_generate_vi_with_events` and `lvai_wire_dynamic_events` clean up at
 their successful end. A save that brings compiled code into a source-only VI is stripped again. A
 failed clean-up is reported in the `cleanUpDiagram` step and does not fail the call. **Since
@@ -2958,7 +2960,7 @@ literally it argued away 600 usable palette VIs.
 | Why does a consumer loop act on stale panel values? | `docs/cold-build-atm-agents-7.md` | `lvai_check_aixml` `controlReadBeforeWait` |
 | Why does LabVIEW's exit ask to save dozens of `LVMCP Validate` VIs, or the Error list show them, and can they be closed? | `docs/scratch-vis-in-memory.md` §2a | — safe to discard; the fixed name still piles up as `LVMCP Validate2` … `12`, and their windows and dialogs can report themselves invisible |
 | Is this block diagram too BIG, and which stretch goes into a subVI? | `docs/diagram-size.md` | `lvai_check_aixml` `diagramChain` before generating; `diagramSize` in the answer of `lvai_generate_vi` / `lvai_generate_vi_with_events` after |
-| How do I lay out an existing block diagram ORDERLY - after NI's Clean Up Diagram wrecked it, or a large VI by hand? | `docs/diagram-layout.md` | `lvai_layout_diagram` - our engine, not `BD.CleanUp`: data-flow columns, ONE straight error rail along the bottom, comments moved with their anchor, structures sized by `Frame Size`; saves in place with a backup. Not yet the automatic clean-up |
+| How do I lay out an existing block diagram ORDERLY - after NI's Clean Up Diagram wrecked it, or a large VI by hand? | `docs/diagram-layout.md` | `lvai_layout_diagram` - our engine, not `BD.CleanUp`: data-flow columns, ONE straight error rail along the bottom, parallel loops stacked, comments moved with their anchor, structures sized by `Frame Size`; saves in place with a backup. The automatic `cleanUpDiagram` step of every generated VI since 2026-10-16. As an agent task it is `labview-vi-editor`, Phase 0b |
 | Can I read a Timed Loop's `Timeout`, `Period`, …? | `experiments/pylabview/FINDINGS.md` §3.16 (source tree only) | `scripts/pylv-decode-terminals.py` |
 | How do I SET a Timed Loop's timing? | `scripts/templates/README.md` | `scripts/pylv-set-timedloop.py` |
 | How do I put LOGIC inside a Timed Loop or Event Structure? | `scripts/templates/README.md`, "the slot pattern" | `scripts/pylv-retarget-subvi.py` |

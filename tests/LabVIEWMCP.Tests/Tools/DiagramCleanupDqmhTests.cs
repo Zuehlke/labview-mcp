@@ -66,4 +66,19 @@ public sealed class DiagramCleanupDqmhTests : IDisposable
         Assert.True(step["skipped"]!.GetValue<bool>());
         Assert.Contains("DQMH", step["note"]!.GetValue<string>());
     }
+
+    /// <summary>Since 2026-10-16 the diagram step is our layout engine, not LabVIEW's BD.CleanUp, and
+    /// every answer says which ran - a skip included.</summary>
+    [Fact]
+    public async Task The_diagram_step_names_our_layout_engine()
+    {
+        Touch("Request Events--cluster.ctl");
+        Touch("Broadcast Events--cluster.ctl");
+        var main = Touch("Main.vi");
+
+        var step = await new DiagramCleanup(null!).RunAsync(main, "pylabview", 10, CancellationToken.None);
+
+        Assert.Equal("cleanUpDiagram", step["step"]!.GetValue<string>());
+        Assert.Equal("lvai_layout_diagram", step["engine"]!.GetValue<string>());
+    }
 }

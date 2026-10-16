@@ -316,8 +316,26 @@ Still open on this subject:
 - **Inside the consumer loop** the shift-register wires still run as a bundle above the three
   subVIs, as they did in the original.
 
-## 5. Not yet switched on
+## 5. Switched on, 2026-10-16
 
-`DiagramCleanup` still runs NI's `BD.CleanUp` after generation. It is switched to this engine only
-after the user accepts the renders, and the DQMH-Main skip stays in the automatic pipeline until
-the user lifts it. A direct `lvai_layout_diagram` call does lay out a DQMH `Main.vi`.
+`DiagramCleanup` runs this engine after generation, in place of NI's `BD.CleanUp` - the user's
+decision after the ATM renders. Every route that cleaned up still does:
+
+- `lvai_generate_vi` and `lvai_generate_vis`;
+- the end of `lvai_generate_vi_with_events` and `lvai_wire_dynamic_events`;
+- `lvai_add_class_method` and `lvai_lunit_add_test_method`;
+- `lvai_swap_subvis` and `lvai_make_malleable`;
+- the test generators.
+
+What the step does:
+
+- It keeps its name, `cleanUpDiagram`, and names the engine in `engine` (`lvai_layout_diagram`).
+- It runs the pipeline without its verify pass, on the backend of the tool that called it.
+- It holds the VI in memory from the dump to the apply.
+- A layout that does not finish copies the generated VI back from the backup the pipeline took
+  (`restored`), and the call stays `ok`, as before.
+
+The DQMH-Main skip stays in the automatic pipeline until the user lifts it. A direct
+`lvai_layout_diagram` call does lay out a DQMH `Main.vi`.
+
+The front panel is still LabVIEW's own algorithm (`cleanUpPanel`).
