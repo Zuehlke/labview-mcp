@@ -23,13 +23,15 @@ number.
 2. **Plan.** `src/LabVIEWMCP/Layout/DiagramLayout.cs` computes the layout in C# with no LabVIEW.
    Its tests run on two REAL dumps of the same VI under `tests/.../Fixtures/layout/`, the original
    and the NI-cleaned one.
-3. **Write.** `scripts/lvbd_layout_apply.xml` runs six passes, then `Save.Instrument`:
+3. **Write.** `scripts/lvbd_layout_apply.xml` runs eight passes, then `Save.Instrument`:
    1. moves
    2. structure sizes
    3. tunnels
    4. shift registers
    5. case selectors
-   6. `CleanUpWire` on every wire
+   6. event structures' left dynamic event terminals
+   7. their right dynamic event terminals
+   8. `CleanUpWire` on every wire
 
    The helper is generated from `scripts/lvbd_layout_apply_gen.py`. Edit the generator, not the
    XML.
@@ -55,6 +57,7 @@ clean-up (a test asserts it). The apply helper walks a path of `object frame obj
 | How is a tunnel moved? | A single `Move` lands it wrong. Use the double move, with the owner unwired. |
 | Which register do `Shift Registers[]` give? | The RIGHT register of each pair, on the right border. The left one follows it. |
 | Is a Case Structure's selector (`?`) a tunnel? | No: `Tunnels[]` does not list it, and the dump finds it as the left-border term that matches no tunnel. `{LV.CaseStructure}` `Selector` reads it; cast to `{LV.GObject}`, the double move with the owner unwired puts it exactly where asked (9 of 9). An error cluster wired to it enters every frame through it. |
+| Are an Event Structure's dynamic event terminals tunnels? | No. `Tunnels[]` does not list them either; the dump finds them as the border terms that match no tunnel and are not the timeout terminal in the top-left corner. `{LV.EventStructure}` `Dynamic Terminal (Left)` and `(Right)` read them, and the double move with the owner unwired puts them exactly where asked (2 of 2). |
 | Does an Event Data Node move? | No. LabVIEW keeps it on the event frame's left border: eleven were asked for interior positions and all came back. Not vertically either: one asked for 186 px higher stayed where it was, and after a resize it sits wherever LabVIEW leaves it, near the bottom in the DQMH Main. A filter event's Event Filter Node (`Discard?`, VI Server class `NamedBundler`) stays on the right border the same way. Both are left alone. |
 | Does a While Loop's stop terminal go where asked? | Near the bottom only: asked 880, it landed 986 once and 856 another time. It is constrained by LabVIEW. |
 | Do decorations (arrows) move? | Not by `Move`. An arrow grouped with its label follows the label. |
@@ -101,6 +104,11 @@ before its own diagram is arranged.
   - **A lane next to the border.** Where a structure inside reaches the border, the inset grows by
     14 px (`Lane`). With 7 px, `CleanUpWire` routed the event loop's error wire backwards round its
     corner.
+  - **An Event Structure's dynamic event terminals go to the top**, on both sides, above every
+    other port: the user's review of 2026-10-16, after NI's clean-up had left them at the bottom
+    and the registration refnum ran down the loop's edge to them. The loop's shift register then
+    levels with them, so the refnum runs straight in. Delacor's original has them 66 px down its
+    237 px structure, under the frame's header note; ours sit 57 px down.
   - A port with nothing inside to level with (a refnum passed straight through every frame) goes
     to the top, where DQMH carries such refnums.
   - Before these two rules, the event loop's shift register sat under its error tunnel at the
@@ -148,8 +156,9 @@ before its own diagram is arranged.
 | ours, run 8 | 1937 x 1155 | 714 x 477 | 820 x 312 |
 | ours, run 12, frames compacted | 1961 x 904 | 756 x 422 | 857 x 267 |
 | ours, run 14, wires routed | 2031 x 904 | 756 x 422 | 871 x 267 |
+| ours, run 15, event terminals at the top | 2031 x 904 | 756 x 422 | 871 x 267 |
 
-Runs 8, 12 and 14 left LabVIEW's Error List unchanged: the same five errors as Delacor's original,
+Runs 8, 12, 14 and 15 left LabVIEW's Error List unchanged: the same five errors as Delacor's original,
 all of them the module's `#CodeNeeded` places. No wire was broken and no object was lost.
 
 **Still apart from the original:**

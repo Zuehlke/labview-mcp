@@ -7,435 +7,588 @@
   <Control _name="shift registers" type="array{string}" uid="4205" uid_parent="root" value="[]" outputs="value:4205.value"/>
   <Control _name="tunnels" type="array{string}" uid="4206" uid_parent="root" value="[]" outputs="value:4206.value"/>
   <Control _name="selectors" type="array{string}" uid="4207" uid_parent="root" value="[]" outputs="value:4207.value"/>
-  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4208" uid_parent="root" value="[false,0,]" outputs="value:4208.value"/>
-  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4209.path" uid="4209" uid_parent="root"/>
-  <Node _name="Open VI Reference" inputs="vi path:4209.path,error in (no error):4208.value" outputs="vi reference:4210.vi,error out:4210.err" uid="4210" uid_parent="root"/>
-  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:4210.vi,error in (no error):4210.err" outputs="Block Diagram:4211.bd,reference out:,error out:4211.err" uid="4211" uid_parent="root"/>
-  <Constant _name="diagram class" outputs="value:4212.value" type="ref{LV.Diagram}" uid="4212" uid_parent="root" value=""/>
-  <Node _name="To More Generic Class" inputs="reference:4211.bd,target class:4212.value" outputs="generic class reference:4213.top" uid="4213" uid_parent="root"/>
-  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4214" uid_parent="root">
-    <Tunnel _id="In1" inputs="value:4202.value" mode="index" outputs="value:4215.op" uid="4215" uid_parent="4214"/>
-    <Tunnel _id="In2" inputs="value:4213.top" outputs="value:4216.top" uid="4216" uid_parent="4214"/>
-  <Constant _name="text format" outputs="value:4217.value" type="string" uid="4217" uid_parent="4214" value="%s"/>
-  <Constant _name="text array" outputs="value:4218.value" type="array{string.String}" uid="4218" uid_parent="4214" value="[]"/>
-  <Constant _name="semicolon" outputs="value:4219.value" type="string" uid="4219" uid_parent="4214" value=";"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4217.value,spreadsheet string:4215.op,array type (2D Dbl):4218.value,delimiter (Tab):4219.value" outputs="array:4220.parts" uid="4220" uid_parent="4214"/>
-  <Constant _name="field 0" outputs="value:4221.value" type="int32" uid="4221" uid_parent="4214" value="0"/>
-  <Constant _name="field 1" outputs="value:4222.value" type="int32" uid="4222" uid_parent="4214" value="1"/>
-  <Constant _name="field 2" outputs="value:4223.value" type="int32" uid="4223" uid_parent="4214" value="2"/>
-  <Constant _name="field 3" outputs="value:4224.value" type="int32" uid="4224" uid_parent="4214" value="3"/>
-  <Node _name="Index Array" inputs="array:4220.parts,index:4221.value,index:4222.value,index:4223.value,index:4224.value" outputs="element:4225.f0,element:4225.f1,element:4225.f2,element:4225.f3" uid="4225" uid_parent="4214"/>
-  <Constant _name="int format" outputs="value:4226.value" type="string" uid="4226" uid_parent="4214" value="%d"/>
-  <Constant _name="int array" outputs="value:4227.value" type="array{int32}" uid="4227" uid_parent="4214" value="[]"/>
-  <Constant _name="space" outputs="value:4228.value" type="string" uid="4228" uid_parent="4214" value=" "/>
-  <Constant _name="two" outputs="value:4229.value" type="int32" uid="4229" uid_parent="4214" value="2"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4226.value,spreadsheet string:4225.f0,array type (2D Dbl):4227.value,delimiter (Tab):4228.value" outputs="array:4230.ints" uid="4230" uid_parent="4214"/>
-  <Node _name="Array Size" inputs="array:4230.ints" outputs="size(s):4231.n" uid="4231" uid_parent="4214"/>
-  <Node _name="Quotient &amp; Remainder" inputs="x:4231.n,y:4229.value" outputs="x-y*floor(x/y):,floor(x/y):4232.pairs" uid="4232" uid_parent="4214"/>
-  <Constant _name="no error" outputs="value:4233.value" type="cluster{bool.status,int32.code,string.source}" uid="4233" uid_parent="4214" value="[false,0,]"/>
-  <Structure _name="For Loop" count="4234.value" maxin="4232.pairs" maxout="" uid="4234" uid_parent="4214">
-    <Tunnel _id="In1" inputs="value:4230.ints" outputs="value:4235.ints" uid="4235" uid_parent="4234"/>
-  <Constant _name="structure class" outputs="value:4239.value" type="ref{LV.Structure}" uid="4239" uid_parent="4234" value=""/>
-  <Constant _name="pair" outputs="value:4240.value" type="int32" uid="4240" uid_parent="4234" value="2"/>
-    <Node _name="Multiply" inputs="x:4234.value,y:4240.value" outputs="x*y:4241.a" uid="4241" uid_parent="4234"/>
-    <Node _name="Increment" inputs="x:4241.a" outputs="x+1:4242.b" uid="4242" uid_parent="4234"/>
-    <Node _name="Index Array" inputs="array:4235.ints,index:4241.a,index:4242.b" outputs="element:4243.oi,element:4243.fi" uid="4243" uid_parent="4234"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4245.d,error in (no error):4237.err" outputs="All Objects[]:4247.objs,reference out:,error out:4247.err" uid="4247" uid_parent="4234"/>
-    <Node _name="Index Array" inputs="array:4247.objs,index:4243.oi" outputs="element:4248.obj" uid="4248" uid_parent="4234"/>
-    <Node _name="To More Specific Class" inputs="reference:4248.obj,error in:4247.err,target class:4239.value" outputs="specific class reference:4249.st,error out:4249.err" uid="4249" uid_parent="4234"/>
-    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4249.st,error in (no error):4249.err" outputs="Diagrams[]:4250.diags,reference out:,error out:4250.err" uid="4250" uid_parent="4234"/>
-    <Node _name="Index Array" inputs="array:4250.diags,index:4243.fi" outputs="element:4251.nd" uid="4251" uid_parent="4234"/>
-    <ShiftReg uid="4244" uid_parent="4234">
-      <Left inputs="value:4216.top" outputs="value:4245.d" uid="4245" uid_parent="4244"/>
-      <Right inputs="value:4251.nd" outputs="value:4246.d" uid="4246" uid_parent="4244"/>
+  <Control _name="dynamic left" type="array{string}" uid="4208" uid_parent="root" value="[]" outputs="value:4208.value"/>
+  <Control _name="dynamic right" type="array{string}" uid="4209" uid_parent="root" value="[]" outputs="value:4209.value"/>
+  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4210" uid_parent="root" value="[false,0,]" outputs="value:4210.value"/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4211.path" uid="4211" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4211.path,error in (no error):4210.value" outputs="vi reference:4212.vi,error out:4212.err" uid="4212" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:4212.vi,error in (no error):4212.err" outputs="Block Diagram:4213.bd,reference out:,error out:4213.err" uid="4213" uid_parent="root"/>
+  <Constant _name="diagram class" outputs="value:4214.value" type="ref{LV.Diagram}" uid="4214" uid_parent="root" value=""/>
+  <Node _name="To More Generic Class" inputs="reference:4213.bd,target class:4214.value" outputs="generic class reference:4215.top" uid="4215" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4216" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4202.value" mode="index" outputs="value:4217.op" uid="4217" uid_parent="4216"/>
+    <Tunnel _id="In2" inputs="value:4215.top" outputs="value:4218.top" uid="4218" uid_parent="4216"/>
+  <Constant _name="text format" outputs="value:4219.value" type="string" uid="4219" uid_parent="4216" value="%s"/>
+  <Constant _name="text array" outputs="value:4220.value" type="array{string.String}" uid="4220" uid_parent="4216" value="[]"/>
+  <Constant _name="semicolon" outputs="value:4221.value" type="string" uid="4221" uid_parent="4216" value=";"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4219.value,spreadsheet string:4217.op,array type (2D Dbl):4220.value,delimiter (Tab):4221.value" outputs="array:4222.parts" uid="4222" uid_parent="4216"/>
+  <Constant _name="field 0" outputs="value:4223.value" type="int32" uid="4223" uid_parent="4216" value="0"/>
+  <Constant _name="field 1" outputs="value:4224.value" type="int32" uid="4224" uid_parent="4216" value="1"/>
+  <Constant _name="field 2" outputs="value:4225.value" type="int32" uid="4225" uid_parent="4216" value="2"/>
+  <Constant _name="field 3" outputs="value:4226.value" type="int32" uid="4226" uid_parent="4216" value="3"/>
+  <Node _name="Index Array" inputs="array:4222.parts,index:4223.value,index:4224.value,index:4225.value,index:4226.value" outputs="element:4227.f0,element:4227.f1,element:4227.f2,element:4227.f3" uid="4227" uid_parent="4216"/>
+  <Constant _name="int format" outputs="value:4228.value" type="string" uid="4228" uid_parent="4216" value="%d"/>
+  <Constant _name="int array" outputs="value:4229.value" type="array{int32}" uid="4229" uid_parent="4216" value="[]"/>
+  <Constant _name="space" outputs="value:4230.value" type="string" uid="4230" uid_parent="4216" value=" "/>
+  <Constant _name="two" outputs="value:4231.value" type="int32" uid="4231" uid_parent="4216" value="2"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4228.value,spreadsheet string:4227.f0,array type (2D Dbl):4229.value,delimiter (Tab):4230.value" outputs="array:4232.ints" uid="4232" uid_parent="4216"/>
+  <Node _name="Array Size" inputs="array:4232.ints" outputs="size(s):4233.n" uid="4233" uid_parent="4216"/>
+  <Node _name="Quotient &amp; Remainder" inputs="x:4233.n,y:4231.value" outputs="x-y*floor(x/y):,floor(x/y):4234.pairs" uid="4234" uid_parent="4216"/>
+  <Constant _name="no error" outputs="value:4235.value" type="cluster{bool.status,int32.code,string.source}" uid="4235" uid_parent="4216" value="[false,0,]"/>
+  <Structure _name="For Loop" count="4236.value" maxin="4234.pairs" maxout="" uid="4236" uid_parent="4216">
+    <Tunnel _id="In1" inputs="value:4232.ints" outputs="value:4237.ints" uid="4237" uid_parent="4236"/>
+  <Constant _name="structure class" outputs="value:4241.value" type="ref{LV.Structure}" uid="4241" uid_parent="4236" value=""/>
+  <Constant _name="pair" outputs="value:4242.value" type="int32" uid="4242" uid_parent="4236" value="2"/>
+    <Node _name="Multiply" inputs="x:4236.value,y:4242.value" outputs="x*y:4243.a" uid="4243" uid_parent="4236"/>
+    <Node _name="Increment" inputs="x:4243.a" outputs="x+1:4244.b" uid="4244" uid_parent="4236"/>
+    <Node _name="Index Array" inputs="array:4237.ints,index:4243.a,index:4244.b" outputs="element:4245.oi,element:4245.fi" uid="4245" uid_parent="4236"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4247.d,error in (no error):4239.err" outputs="All Objects[]:4249.objs,reference out:,error out:4249.err" uid="4249" uid_parent="4236"/>
+    <Node _name="Index Array" inputs="array:4249.objs,index:4245.oi" outputs="element:4250.obj" uid="4250" uid_parent="4236"/>
+    <Node _name="To More Specific Class" inputs="reference:4250.obj,error in:4249.err,target class:4241.value" outputs="specific class reference:4251.st,error out:4251.err" uid="4251" uid_parent="4236"/>
+    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4251.st,error in (no error):4251.err" outputs="Diagrams[]:4252.diags,reference out:,error out:4252.err" uid="4252" uid_parent="4236"/>
+    <Node _name="Index Array" inputs="array:4252.diags,index:4245.fi" outputs="element:4253.nd" uid="4253" uid_parent="4236"/>
+    <ShiftReg uid="4246" uid_parent="4236">
+      <Left inputs="value:4218.top" outputs="value:4247.d" uid="4247" uid_parent="4246"/>
+      <Right inputs="value:4253.nd" outputs="value:4248.d" uid="4248" uid_parent="4246"/>
     </ShiftReg>
-    <ShiftReg uid="4236" uid_parent="4234">
-      <Left inputs="value:4233.value" outputs="value:4237.err" uid="4237" uid_parent="4236"/>
-      <Right inputs="value:4250.err" outputs="value:4238.err" uid="4238" uid_parent="4236"/>
-    </ShiftReg>
-  </Structure>
-  <Node _name="Decimal String To Number" inputs="string:4225.f1,offset:,default (0L):" outputs="offset past number:,number:4252.n" uid="4252" uid_parent="4214"/>
-  <Node _name="Decimal String To Number" inputs="string:4225.f2,offset:,default (0L):" outputs="offset past number:,number:4253.n" uid="4253" uid_parent="4214"/>
-  <Node _name="Decimal String To Number" inputs="string:4225.f3,offset:,default (0L):" outputs="offset past number:,number:4254.n" uid="4254" uid_parent="4214"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4246.d,error in (no error):4238.err" outputs="All Objects[]:4255.objs,reference out:,error out:4255.err" uid="4255" uid_parent="4214"/>
-    <Node _name="Index Array" inputs="array:4255.objs,index:4252.n" outputs="element:4256.obj" uid="4256" uid_parent="4214"/>
-    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4256.obj,error in (no error):4255.err" outputs="Position:4257.pos,reference out:,error out:4257.err" uid="4257" uid_parent="4214"/>
-    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4253.n,Top:4254.n,input cluster:4257.pos" outputs="output cluster:4258.target" uid="4258" uid_parent="4214"/>
-  <Constant _name="duplicate" outputs="value:4259.value" type="bool" uid="4259" uid_parent="4214" value="false"/>
-    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4256.obj,error in (no error):4257.err,position:4258.target,owner:4246.d,duplicate:4259.value" outputs="reference out:,error out:4260.err" uid="4260" uid_parent="4214"/>
-    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4256.obj,error in (no error):4260.err" outputs="Position:4261.landed,reference out:,error out:4261.err" uid="4261" uid_parent="4214"/>
-    <Node _name="Add" inputs="x:4258.target,y:4258.target" outputs="x+y:4262.twice" uid="4262" uid_parent="4214"/>
-    <Node _name="Subtract" inputs="x:4262.twice,y:4261.landed" outputs="x-y:4263.corrected" uid="4263" uid_parent="4214"/>
-    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4256.obj,error in (no error):4261.err,position:4263.corrected,owner:4246.d,duplicate:4259.value" outputs="reference out:,error out:4264.err" uid="4264" uid_parent="4214"/>
-    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4256.obj,error in (no error):4264.err" outputs="Position\3ALeft:4265.l,Position\3ATop:4265.t,reference out:,error out:4265.err" uid="4265" uid_parent="4214"/>
-  <Constant _name="result separator" outputs="value:4266.value" type="string" uid="4266" uid_parent="4214" value=";"/>
-  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4265.err" outputs="code:4267.code" uid="4267" uid_parent="4214"/>
-  <Node _name="Number To Decimal String" inputs="number:4267.code" outputs="decimal integer string:4268.s" uid="4268" uid_parent="4214"/>
-  <Node _name="Number To Decimal String" inputs="number:4265.l" outputs="decimal integer string:4269.s" uid="4269" uid_parent="4214"/>
-  <Node _name="Number To Decimal String" inputs="number:4265.t" outputs="decimal integer string:4270.s" uid="4270" uid_parent="4214"/>
-  <Constant _name="record end" outputs="value:4271.value" type="string" uid="4271" uid_parent="4214" value="|"/>
-  <Node _name="Concatenate Strings" inputs="string:4268.s,string:4266.value,string:4269.s,string:4266.value,string:4270.s,string:4271.value" outputs="concatenated string:4272.s" uid="4272" uid_parent="4214"/>
-    <Tunnel _id="Out1" inputs="value:4272.s" mode="index" outputs="value:4273.value" uid="4273" uid_parent="4214"/>
-    <ShiftReg uid="4274" uid_parent="4214">
-      <Left inputs="value:4211.err" outputs="value:4275.err" uid="4275" uid_parent="4274"/>
-      <Right inputs="value:4275.err" outputs="value:4276.err" uid="4276" uid_parent="4274"/>
+    <ShiftReg uid="4238" uid_parent="4236">
+      <Left inputs="value:4235.value" outputs="value:4239.err" uid="4239" uid_parent="4238"/>
+      <Right inputs="value:4252.err" outputs="value:4240.err" uid="4240" uid_parent="4238"/>
     </ShiftReg>
   </Structure>
-  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4277" uid_parent="root">
-    <Tunnel _id="In1" inputs="value:4203.value" mode="index" outputs="value:4278.op" uid="4278" uid_parent="4277"/>
-    <Tunnel _id="In2" inputs="value:4213.top" outputs="value:4279.top" uid="4279" uid_parent="4277"/>
-  <Constant _name="text format" outputs="value:4280.value" type="string" uid="4280" uid_parent="4277" value="%s"/>
-  <Constant _name="text array" outputs="value:4281.value" type="array{string.String}" uid="4281" uid_parent="4277" value="[]"/>
-  <Constant _name="semicolon" outputs="value:4282.value" type="string" uid="4282" uid_parent="4277" value=";"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4280.value,spreadsheet string:4278.op,array type (2D Dbl):4281.value,delimiter (Tab):4282.value" outputs="array:4283.parts" uid="4283" uid_parent="4277"/>
-  <Constant _name="field 0" outputs="value:4284.value" type="int32" uid="4284" uid_parent="4277" value="0"/>
-  <Constant _name="field 1" outputs="value:4285.value" type="int32" uid="4285" uid_parent="4277" value="1"/>
-  <Constant _name="field 2" outputs="value:4286.value" type="int32" uid="4286" uid_parent="4277" value="2"/>
-  <Constant _name="field 3" outputs="value:4287.value" type="int32" uid="4287" uid_parent="4277" value="3"/>
-  <Node _name="Index Array" inputs="array:4283.parts,index:4284.value,index:4285.value,index:4286.value,index:4287.value" outputs="element:4288.f0,element:4288.f1,element:4288.f2,element:4288.f3" uid="4288" uid_parent="4277"/>
-  <Constant _name="int format" outputs="value:4289.value" type="string" uid="4289" uid_parent="4277" value="%d"/>
-  <Constant _name="int array" outputs="value:4290.value" type="array{int32}" uid="4290" uid_parent="4277" value="[]"/>
-  <Constant _name="space" outputs="value:4291.value" type="string" uid="4291" uid_parent="4277" value=" "/>
-  <Constant _name="two" outputs="value:4292.value" type="int32" uid="4292" uid_parent="4277" value="2"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4289.value,spreadsheet string:4288.f0,array type (2D Dbl):4290.value,delimiter (Tab):4291.value" outputs="array:4293.ints" uid="4293" uid_parent="4277"/>
-  <Node _name="Array Size" inputs="array:4293.ints" outputs="size(s):4294.n" uid="4294" uid_parent="4277"/>
-  <Node _name="Quotient &amp; Remainder" inputs="x:4294.n,y:4292.value" outputs="x-y*floor(x/y):,floor(x/y):4295.pairs" uid="4295" uid_parent="4277"/>
-  <Constant _name="no error" outputs="value:4296.value" type="cluster{bool.status,int32.code,string.source}" uid="4296" uid_parent="4277" value="[false,0,]"/>
-  <Structure _name="For Loop" count="4297.value" maxin="4295.pairs" maxout="" uid="4297" uid_parent="4277">
-    <Tunnel _id="In1" inputs="value:4293.ints" outputs="value:4298.ints" uid="4298" uid_parent="4297"/>
-  <Constant _name="structure class" outputs="value:4302.value" type="ref{LV.Structure}" uid="4302" uid_parent="4297" value=""/>
-  <Constant _name="pair" outputs="value:4303.value" type="int32" uid="4303" uid_parent="4297" value="2"/>
-    <Node _name="Multiply" inputs="x:4297.value,y:4303.value" outputs="x*y:4304.a" uid="4304" uid_parent="4297"/>
-    <Node _name="Increment" inputs="x:4304.a" outputs="x+1:4305.b" uid="4305" uid_parent="4297"/>
-    <Node _name="Index Array" inputs="array:4298.ints,index:4304.a,index:4305.b" outputs="element:4306.oi,element:4306.fi" uid="4306" uid_parent="4297"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4308.d,error in (no error):4300.err" outputs="All Objects[]:4310.objs,reference out:,error out:4310.err" uid="4310" uid_parent="4297"/>
-    <Node _name="Index Array" inputs="array:4310.objs,index:4306.oi" outputs="element:4311.obj" uid="4311" uid_parent="4297"/>
-    <Node _name="To More Specific Class" inputs="reference:4311.obj,error in:4310.err,target class:4302.value" outputs="specific class reference:4312.st,error out:4312.err" uid="4312" uid_parent="4297"/>
-    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4312.st,error in (no error):4312.err" outputs="Diagrams[]:4313.diags,reference out:,error out:4313.err" uid="4313" uid_parent="4297"/>
-    <Node _name="Index Array" inputs="array:4313.diags,index:4306.fi" outputs="element:4314.nd" uid="4314" uid_parent="4297"/>
-    <ShiftReg uid="4307" uid_parent="4297">
-      <Left inputs="value:4279.top" outputs="value:4308.d" uid="4308" uid_parent="4307"/>
-      <Right inputs="value:4314.nd" outputs="value:4309.d" uid="4309" uid_parent="4307"/>
-    </ShiftReg>
-    <ShiftReg uid="4299" uid_parent="4297">
-      <Left inputs="value:4296.value" outputs="value:4300.err" uid="4300" uid_parent="4299"/>
-      <Right inputs="value:4313.err" outputs="value:4301.err" uid="4301" uid_parent="4299"/>
+  <Node _name="Decimal String To Number" inputs="string:4227.f1,offset:,default (0L):" outputs="offset past number:,number:4254.n" uid="4254" uid_parent="4216"/>
+  <Node _name="Decimal String To Number" inputs="string:4227.f2,offset:,default (0L):" outputs="offset past number:,number:4255.n" uid="4255" uid_parent="4216"/>
+  <Node _name="Decimal String To Number" inputs="string:4227.f3,offset:,default (0L):" outputs="offset past number:,number:4256.n" uid="4256" uid_parent="4216"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4248.d,error in (no error):4240.err" outputs="All Objects[]:4257.objs,reference out:,error out:4257.err" uid="4257" uid_parent="4216"/>
+    <Node _name="Index Array" inputs="array:4257.objs,index:4254.n" outputs="element:4258.obj" uid="4258" uid_parent="4216"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4258.obj,error in (no error):4257.err" outputs="Position:4259.pos,reference out:,error out:4259.err" uid="4259" uid_parent="4216"/>
+    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4255.n,Top:4256.n,input cluster:4259.pos" outputs="output cluster:4260.target" uid="4260" uid_parent="4216"/>
+  <Constant _name="duplicate" outputs="value:4261.value" type="bool" uid="4261" uid_parent="4216" value="false"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4258.obj,error in (no error):4259.err,position:4260.target,owner:4248.d,duplicate:4261.value" outputs="reference out:,error out:4262.err" uid="4262" uid_parent="4216"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4258.obj,error in (no error):4262.err" outputs="Position:4263.landed,reference out:,error out:4263.err" uid="4263" uid_parent="4216"/>
+    <Node _name="Add" inputs="x:4260.target,y:4260.target" outputs="x+y:4264.twice" uid="4264" uid_parent="4216"/>
+    <Node _name="Subtract" inputs="x:4264.twice,y:4263.landed" outputs="x-y:4265.corrected" uid="4265" uid_parent="4216"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4258.obj,error in (no error):4263.err,position:4265.corrected,owner:4248.d,duplicate:4261.value" outputs="reference out:,error out:4266.err" uid="4266" uid_parent="4216"/>
+    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4258.obj,error in (no error):4266.err" outputs="Position\3ALeft:4267.l,Position\3ATop:4267.t,reference out:,error out:4267.err" uid="4267" uid_parent="4216"/>
+  <Constant _name="result separator" outputs="value:4268.value" type="string" uid="4268" uid_parent="4216" value=";"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4267.err" outputs="code:4269.code" uid="4269" uid_parent="4216"/>
+  <Node _name="Number To Decimal String" inputs="number:4269.code" outputs="decimal integer string:4270.s" uid="4270" uid_parent="4216"/>
+  <Node _name="Number To Decimal String" inputs="number:4267.l" outputs="decimal integer string:4271.s" uid="4271" uid_parent="4216"/>
+  <Node _name="Number To Decimal String" inputs="number:4267.t" outputs="decimal integer string:4272.s" uid="4272" uid_parent="4216"/>
+  <Constant _name="record end" outputs="value:4273.value" type="string" uid="4273" uid_parent="4216" value="|"/>
+  <Node _name="Concatenate Strings" inputs="string:4270.s,string:4268.value,string:4271.s,string:4268.value,string:4272.s,string:4273.value" outputs="concatenated string:4274.s" uid="4274" uid_parent="4216"/>
+    <Tunnel _id="Out1" inputs="value:4274.s" mode="index" outputs="value:4275.value" uid="4275" uid_parent="4216"/>
+    <ShiftReg uid="4276" uid_parent="4216">
+      <Left inputs="value:4213.err" outputs="value:4277.err" uid="4277" uid_parent="4276"/>
+      <Right inputs="value:4277.err" outputs="value:4278.err" uid="4278" uid_parent="4276"/>
     </ShiftReg>
   </Structure>
-  <Node _name="Decimal String To Number" inputs="string:4288.f1,offset:,default (0L):" outputs="offset past number:,number:4315.n" uid="4315" uid_parent="4277"/>
-  <Node _name="Decimal String To Number" inputs="string:4288.f2,offset:,default (0L):" outputs="offset past number:,number:4316.n" uid="4316" uid_parent="4277"/>
-  <Node _name="Decimal String To Number" inputs="string:4288.f3,offset:,default (0L):" outputs="offset past number:,number:4317.n" uid="4317" uid_parent="4277"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4309.d,error in (no error):4301.err" outputs="All Objects[]:4318.objs,reference out:,error out:4318.err" uid="4318" uid_parent="4277"/>
-    <Node _name="Index Array" inputs="array:4318.objs,index:4315.n" outputs="element:4319.obj" uid="4319" uid_parent="4277"/>
-  <Constant _name="structure class" outputs="value:4320.value" type="ref{LV.Structure}" uid="4320" uid_parent="4277" value=""/>
-    <Node _name="To More Specific Class" inputs="reference:4319.obj,error in:4318.err,target class:4320.value" outputs="specific class reference:4321.st,error out:4321.err" uid="4321" uid_parent="4277"/>
-    <Node _name="Property Node" fields="read+Frame Size" type="{LV.Structure}" inputs="reference:4321.st,error in (no error):4321.err" outputs="Frame Size:4322.fs,reference out:,error out:4322.err" uid="4322" uid_parent="4277"/>
-    <Node _name="Bundle By Name" fields="Width,Height" inputs="Width:4316.n,Height:4317.n,input cluster:4322.fs" outputs="output cluster:4323.fs" uid="4323" uid_parent="4277"/>
-    <Node _name="Property Node" fields="write+Frame Size" type="{LV.Structure}" inputs="reference:4321.st,error in (no error):4322.err,Frame Size:4323.fs" outputs="reference out:,error out:4324.err" uid="4324" uid_parent="4277"/>
-    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop,read+Bounds\3AArea Width,read+Bounds\3AArea Height" type="{LV.Structure}" inputs="reference:4321.st,error in (no error):4324.err" outputs="Position\3ALeft:4325.l,Position\3ATop:4325.t,Bounds\3AArea Width:4325.w,Bounds\3AArea Height:4325.h,reference out:,error out:4325.err" uid="4325" uid_parent="4277"/>
-  <Constant _name="result separator" outputs="value:4326.value" type="string" uid="4326" uid_parent="4277" value=";"/>
-  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4325.err" outputs="code:4327.code" uid="4327" uid_parent="4277"/>
-  <Node _name="Number To Decimal String" inputs="number:4327.code" outputs="decimal integer string:4328.s" uid="4328" uid_parent="4277"/>
-  <Node _name="Number To Decimal String" inputs="number:4325.l" outputs="decimal integer string:4329.s" uid="4329" uid_parent="4277"/>
-  <Node _name="Number To Decimal String" inputs="number:4325.t" outputs="decimal integer string:4330.s" uid="4330" uid_parent="4277"/>
-  <Node _name="Number To Decimal String" inputs="number:4325.w" outputs="decimal integer string:4331.s" uid="4331" uid_parent="4277"/>
-  <Node _name="Number To Decimal String" inputs="number:4325.h" outputs="decimal integer string:4332.s" uid="4332" uid_parent="4277"/>
-  <Constant _name="record end" outputs="value:4333.value" type="string" uid="4333" uid_parent="4277" value="|"/>
-  <Node _name="Concatenate Strings" inputs="string:4328.s,string:4326.value,string:4329.s,string:4326.value,string:4330.s,string:4326.value,string:4331.s,string:4326.value,string:4332.s,string:4333.value" outputs="concatenated string:4334.s" uid="4334" uid_parent="4277"/>
-    <Tunnel _id="Out1" inputs="value:4334.s" mode="index" outputs="value:4335.value" uid="4335" uid_parent="4277"/>
-    <ShiftReg uid="4336" uid_parent="4277">
-      <Left inputs="value:4276.err" outputs="value:4337.err" uid="4337" uid_parent="4336"/>
-      <Right inputs="value:4337.err" outputs="value:4338.err" uid="4338" uid_parent="4336"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4279" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4203.value" mode="index" outputs="value:4280.op" uid="4280" uid_parent="4279"/>
+    <Tunnel _id="In2" inputs="value:4215.top" outputs="value:4281.top" uid="4281" uid_parent="4279"/>
+  <Constant _name="text format" outputs="value:4282.value" type="string" uid="4282" uid_parent="4279" value="%s"/>
+  <Constant _name="text array" outputs="value:4283.value" type="array{string.String}" uid="4283" uid_parent="4279" value="[]"/>
+  <Constant _name="semicolon" outputs="value:4284.value" type="string" uid="4284" uid_parent="4279" value=";"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4282.value,spreadsheet string:4280.op,array type (2D Dbl):4283.value,delimiter (Tab):4284.value" outputs="array:4285.parts" uid="4285" uid_parent="4279"/>
+  <Constant _name="field 0" outputs="value:4286.value" type="int32" uid="4286" uid_parent="4279" value="0"/>
+  <Constant _name="field 1" outputs="value:4287.value" type="int32" uid="4287" uid_parent="4279" value="1"/>
+  <Constant _name="field 2" outputs="value:4288.value" type="int32" uid="4288" uid_parent="4279" value="2"/>
+  <Constant _name="field 3" outputs="value:4289.value" type="int32" uid="4289" uid_parent="4279" value="3"/>
+  <Node _name="Index Array" inputs="array:4285.parts,index:4286.value,index:4287.value,index:4288.value,index:4289.value" outputs="element:4290.f0,element:4290.f1,element:4290.f2,element:4290.f3" uid="4290" uid_parent="4279"/>
+  <Constant _name="int format" outputs="value:4291.value" type="string" uid="4291" uid_parent="4279" value="%d"/>
+  <Constant _name="int array" outputs="value:4292.value" type="array{int32}" uid="4292" uid_parent="4279" value="[]"/>
+  <Constant _name="space" outputs="value:4293.value" type="string" uid="4293" uid_parent="4279" value=" "/>
+  <Constant _name="two" outputs="value:4294.value" type="int32" uid="4294" uid_parent="4279" value="2"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4291.value,spreadsheet string:4290.f0,array type (2D Dbl):4292.value,delimiter (Tab):4293.value" outputs="array:4295.ints" uid="4295" uid_parent="4279"/>
+  <Node _name="Array Size" inputs="array:4295.ints" outputs="size(s):4296.n" uid="4296" uid_parent="4279"/>
+  <Node _name="Quotient &amp; Remainder" inputs="x:4296.n,y:4294.value" outputs="x-y*floor(x/y):,floor(x/y):4297.pairs" uid="4297" uid_parent="4279"/>
+  <Constant _name="no error" outputs="value:4298.value" type="cluster{bool.status,int32.code,string.source}" uid="4298" uid_parent="4279" value="[false,0,]"/>
+  <Structure _name="For Loop" count="4299.value" maxin="4297.pairs" maxout="" uid="4299" uid_parent="4279">
+    <Tunnel _id="In1" inputs="value:4295.ints" outputs="value:4300.ints" uid="4300" uid_parent="4299"/>
+  <Constant _name="structure class" outputs="value:4304.value" type="ref{LV.Structure}" uid="4304" uid_parent="4299" value=""/>
+  <Constant _name="pair" outputs="value:4305.value" type="int32" uid="4305" uid_parent="4299" value="2"/>
+    <Node _name="Multiply" inputs="x:4299.value,y:4305.value" outputs="x*y:4306.a" uid="4306" uid_parent="4299"/>
+    <Node _name="Increment" inputs="x:4306.a" outputs="x+1:4307.b" uid="4307" uid_parent="4299"/>
+    <Node _name="Index Array" inputs="array:4300.ints,index:4306.a,index:4307.b" outputs="element:4308.oi,element:4308.fi" uid="4308" uid_parent="4299"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4310.d,error in (no error):4302.err" outputs="All Objects[]:4312.objs,reference out:,error out:4312.err" uid="4312" uid_parent="4299"/>
+    <Node _name="Index Array" inputs="array:4312.objs,index:4308.oi" outputs="element:4313.obj" uid="4313" uid_parent="4299"/>
+    <Node _name="To More Specific Class" inputs="reference:4313.obj,error in:4312.err,target class:4304.value" outputs="specific class reference:4314.st,error out:4314.err" uid="4314" uid_parent="4299"/>
+    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4314.st,error in (no error):4314.err" outputs="Diagrams[]:4315.diags,reference out:,error out:4315.err" uid="4315" uid_parent="4299"/>
+    <Node _name="Index Array" inputs="array:4315.diags,index:4308.fi" outputs="element:4316.nd" uid="4316" uid_parent="4299"/>
+    <ShiftReg uid="4309" uid_parent="4299">
+      <Left inputs="value:4281.top" outputs="value:4310.d" uid="4310" uid_parent="4309"/>
+      <Right inputs="value:4316.nd" outputs="value:4311.d" uid="4311" uid_parent="4309"/>
+    </ShiftReg>
+    <ShiftReg uid="4301" uid_parent="4299">
+      <Left inputs="value:4298.value" outputs="value:4302.err" uid="4302" uid_parent="4301"/>
+      <Right inputs="value:4315.err" outputs="value:4303.err" uid="4303" uid_parent="4301"/>
     </ShiftReg>
   </Structure>
-  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4339" uid_parent="root">
-    <Tunnel _id="In1" inputs="value:4206.value" mode="index" outputs="value:4340.op" uid="4340" uid_parent="4339"/>
-    <Tunnel _id="In2" inputs="value:4213.top" outputs="value:4341.top" uid="4341" uid_parent="4339"/>
-  <Constant _name="text format" outputs="value:4342.value" type="string" uid="4342" uid_parent="4339" value="%s"/>
-  <Constant _name="text array" outputs="value:4343.value" type="array{string.String}" uid="4343" uid_parent="4339" value="[]"/>
-  <Constant _name="semicolon" outputs="value:4344.value" type="string" uid="4344" uid_parent="4339" value=";"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4342.value,spreadsheet string:4340.op,array type (2D Dbl):4343.value,delimiter (Tab):4344.value" outputs="array:4345.parts" uid="4345" uid_parent="4339"/>
-  <Constant _name="field 0" outputs="value:4346.value" type="int32" uid="4346" uid_parent="4339" value="0"/>
-  <Constant _name="field 1" outputs="value:4347.value" type="int32" uid="4347" uid_parent="4339" value="1"/>
-  <Constant _name="field 2" outputs="value:4348.value" type="int32" uid="4348" uid_parent="4339" value="2"/>
-  <Constant _name="field 3" outputs="value:4349.value" type="int32" uid="4349" uid_parent="4339" value="3"/>
-  <Constant _name="field 4" outputs="value:4350.value" type="int32" uid="4350" uid_parent="4339" value="4"/>
-  <Node _name="Index Array" inputs="array:4345.parts,index:4346.value,index:4347.value,index:4348.value,index:4349.value,index:4350.value" outputs="element:4351.f0,element:4351.f1,element:4351.f2,element:4351.f3,element:4351.f4" uid="4351" uid_parent="4339"/>
-  <Constant _name="int format" outputs="value:4352.value" type="string" uid="4352" uid_parent="4339" value="%d"/>
-  <Constant _name="int array" outputs="value:4353.value" type="array{int32}" uid="4353" uid_parent="4339" value="[]"/>
-  <Constant _name="space" outputs="value:4354.value" type="string" uid="4354" uid_parent="4339" value=" "/>
-  <Constant _name="two" outputs="value:4355.value" type="int32" uid="4355" uid_parent="4339" value="2"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4352.value,spreadsheet string:4351.f0,array type (2D Dbl):4353.value,delimiter (Tab):4354.value" outputs="array:4356.ints" uid="4356" uid_parent="4339"/>
-  <Node _name="Array Size" inputs="array:4356.ints" outputs="size(s):4357.n" uid="4357" uid_parent="4339"/>
-  <Node _name="Quotient &amp; Remainder" inputs="x:4357.n,y:4355.value" outputs="x-y*floor(x/y):,floor(x/y):4358.pairs" uid="4358" uid_parent="4339"/>
-  <Constant _name="no error" outputs="value:4359.value" type="cluster{bool.status,int32.code,string.source}" uid="4359" uid_parent="4339" value="[false,0,]"/>
-  <Structure _name="For Loop" count="4360.value" maxin="4358.pairs" maxout="" uid="4360" uid_parent="4339">
-    <Tunnel _id="In1" inputs="value:4356.ints" outputs="value:4361.ints" uid="4361" uid_parent="4360"/>
-  <Constant _name="structure class" outputs="value:4365.value" type="ref{LV.Structure}" uid="4365" uid_parent="4360" value=""/>
-  <Constant _name="pair" outputs="value:4366.value" type="int32" uid="4366" uid_parent="4360" value="2"/>
-    <Node _name="Multiply" inputs="x:4360.value,y:4366.value" outputs="x*y:4367.a" uid="4367" uid_parent="4360"/>
-    <Node _name="Increment" inputs="x:4367.a" outputs="x+1:4368.b" uid="4368" uid_parent="4360"/>
-    <Node _name="Index Array" inputs="array:4361.ints,index:4367.a,index:4368.b" outputs="element:4369.oi,element:4369.fi" uid="4369" uid_parent="4360"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4371.d,error in (no error):4363.err" outputs="All Objects[]:4373.objs,reference out:,error out:4373.err" uid="4373" uid_parent="4360"/>
-    <Node _name="Index Array" inputs="array:4373.objs,index:4369.oi" outputs="element:4374.obj" uid="4374" uid_parent="4360"/>
-    <Node _name="To More Specific Class" inputs="reference:4374.obj,error in:4373.err,target class:4365.value" outputs="specific class reference:4375.st,error out:4375.err" uid="4375" uid_parent="4360"/>
-    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4375.st,error in (no error):4375.err" outputs="Diagrams[]:4376.diags,reference out:,error out:4376.err" uid="4376" uid_parent="4360"/>
-    <Node _name="Index Array" inputs="array:4376.diags,index:4369.fi" outputs="element:4377.nd" uid="4377" uid_parent="4360"/>
-    <ShiftReg uid="4370" uid_parent="4360">
-      <Left inputs="value:4341.top" outputs="value:4371.d" uid="4371" uid_parent="4370"/>
-      <Right inputs="value:4377.nd" outputs="value:4372.d" uid="4372" uid_parent="4370"/>
-    </ShiftReg>
-    <ShiftReg uid="4362" uid_parent="4360">
-      <Left inputs="value:4359.value" outputs="value:4363.err" uid="4363" uid_parent="4362"/>
-      <Right inputs="value:4376.err" outputs="value:4364.err" uid="4364" uid_parent="4362"/>
+  <Node _name="Decimal String To Number" inputs="string:4290.f1,offset:,default (0L):" outputs="offset past number:,number:4317.n" uid="4317" uid_parent="4279"/>
+  <Node _name="Decimal String To Number" inputs="string:4290.f2,offset:,default (0L):" outputs="offset past number:,number:4318.n" uid="4318" uid_parent="4279"/>
+  <Node _name="Decimal String To Number" inputs="string:4290.f3,offset:,default (0L):" outputs="offset past number:,number:4319.n" uid="4319" uid_parent="4279"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4311.d,error in (no error):4303.err" outputs="All Objects[]:4320.objs,reference out:,error out:4320.err" uid="4320" uid_parent="4279"/>
+    <Node _name="Index Array" inputs="array:4320.objs,index:4317.n" outputs="element:4321.obj" uid="4321" uid_parent="4279"/>
+  <Constant _name="structure class" outputs="value:4322.value" type="ref{LV.Structure}" uid="4322" uid_parent="4279" value=""/>
+    <Node _name="To More Specific Class" inputs="reference:4321.obj,error in:4320.err,target class:4322.value" outputs="specific class reference:4323.st,error out:4323.err" uid="4323" uid_parent="4279"/>
+    <Node _name="Property Node" fields="read+Frame Size" type="{LV.Structure}" inputs="reference:4323.st,error in (no error):4323.err" outputs="Frame Size:4324.fs,reference out:,error out:4324.err" uid="4324" uid_parent="4279"/>
+    <Node _name="Bundle By Name" fields="Width,Height" inputs="Width:4318.n,Height:4319.n,input cluster:4324.fs" outputs="output cluster:4325.fs" uid="4325" uid_parent="4279"/>
+    <Node _name="Property Node" fields="write+Frame Size" type="{LV.Structure}" inputs="reference:4323.st,error in (no error):4324.err,Frame Size:4325.fs" outputs="reference out:,error out:4326.err" uid="4326" uid_parent="4279"/>
+    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop,read+Bounds\3AArea Width,read+Bounds\3AArea Height" type="{LV.Structure}" inputs="reference:4323.st,error in (no error):4326.err" outputs="Position\3ALeft:4327.l,Position\3ATop:4327.t,Bounds\3AArea Width:4327.w,Bounds\3AArea Height:4327.h,reference out:,error out:4327.err" uid="4327" uid_parent="4279"/>
+  <Constant _name="result separator" outputs="value:4328.value" type="string" uid="4328" uid_parent="4279" value=";"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4327.err" outputs="code:4329.code" uid="4329" uid_parent="4279"/>
+  <Node _name="Number To Decimal String" inputs="number:4329.code" outputs="decimal integer string:4330.s" uid="4330" uid_parent="4279"/>
+  <Node _name="Number To Decimal String" inputs="number:4327.l" outputs="decimal integer string:4331.s" uid="4331" uid_parent="4279"/>
+  <Node _name="Number To Decimal String" inputs="number:4327.t" outputs="decimal integer string:4332.s" uid="4332" uid_parent="4279"/>
+  <Node _name="Number To Decimal String" inputs="number:4327.w" outputs="decimal integer string:4333.s" uid="4333" uid_parent="4279"/>
+  <Node _name="Number To Decimal String" inputs="number:4327.h" outputs="decimal integer string:4334.s" uid="4334" uid_parent="4279"/>
+  <Constant _name="record end" outputs="value:4335.value" type="string" uid="4335" uid_parent="4279" value="|"/>
+  <Node _name="Concatenate Strings" inputs="string:4330.s,string:4328.value,string:4331.s,string:4328.value,string:4332.s,string:4328.value,string:4333.s,string:4328.value,string:4334.s,string:4335.value" outputs="concatenated string:4336.s" uid="4336" uid_parent="4279"/>
+    <Tunnel _id="Out1" inputs="value:4336.s" mode="index" outputs="value:4337.value" uid="4337" uid_parent="4279"/>
+    <ShiftReg uid="4338" uid_parent="4279">
+      <Left inputs="value:4278.err" outputs="value:4339.err" uid="4339" uid_parent="4338"/>
+      <Right inputs="value:4339.err" outputs="value:4340.err" uid="4340" uid_parent="4338"/>
     </ShiftReg>
   </Structure>
-  <Node _name="Decimal String To Number" inputs="string:4351.f1,offset:,default (0L):" outputs="offset past number:,number:4378.n" uid="4378" uid_parent="4339"/>
-  <Node _name="Decimal String To Number" inputs="string:4351.f2,offset:,default (0L):" outputs="offset past number:,number:4379.n" uid="4379" uid_parent="4339"/>
-  <Node _name="Decimal String To Number" inputs="string:4351.f3,offset:,default (0L):" outputs="offset past number:,number:4380.n" uid="4380" uid_parent="4339"/>
-  <Node _name="Decimal String To Number" inputs="string:4351.f4,offset:,default (0L):" outputs="offset past number:,number:4381.n" uid="4381" uid_parent="4339"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4372.d,error in (no error):4364.err" outputs="All Objects[]:4382.objs,reference out:,error out:4382.err" uid="4382" uid_parent="4339"/>
-    <Node _name="Index Array" inputs="array:4382.objs,index:4378.n" outputs="element:4383.obj" uid="4383" uid_parent="4339"/>
-  <Constant _name="structure class" outputs="value:4384.value" type="ref{LV.Structure}" uid="4384" uid_parent="4339" value=""/>
-    <Node _name="To More Specific Class" inputs="reference:4383.obj,error in:4382.err,target class:4384.value" outputs="specific class reference:4385.st,error out:4385.err" uid="4385" uid_parent="4339"/>
-    <Node _name="Property Node" fields="read+Tunnels[]" type="{LV.Structure}" inputs="reference:4385.st,error in (no error):4385.err" outputs="Tunnels[]:4386.tuns,reference out:,error out:4386.err" uid="4386" uid_parent="4339"/>
-    <Node _name="Index Array" inputs="array:4386.tuns,index:4379.n" outputs="element:4387.tun" uid="4387" uid_parent="4339"/>
-    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4387.tun,error in (no error):4386.err" outputs="Position:4388.pos,reference out:,error out:4388.err" uid="4388" uid_parent="4339"/>
-    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4380.n,Top:4381.n,input cluster:4388.pos" outputs="output cluster:4389.target" uid="4389" uid_parent="4339"/>
-  <Constant _name="duplicate" outputs="value:4390.value" type="bool" uid="4390" uid_parent="4339" value="false"/>
-    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4387.tun,error in (no error):4388.err,position:4389.target,owner:,duplicate:4390.value" outputs="reference out:,error out:4391.err" uid="4391" uid_parent="4339"/>
-    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4387.tun,error in (no error):4391.err" outputs="Position:4392.landed,reference out:,error out:4392.err" uid="4392" uid_parent="4339"/>
-    <Node _name="Add" inputs="x:4389.target,y:4389.target" outputs="x+y:4393.twice" uid="4393" uid_parent="4339"/>
-    <Node _name="Subtract" inputs="x:4393.twice,y:4392.landed" outputs="x-y:4394.corrected" uid="4394" uid_parent="4339"/>
-    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4387.tun,error in (no error):4392.err,position:4394.corrected,owner:,duplicate:4390.value" outputs="reference out:,error out:4395.err" uid="4395" uid_parent="4339"/>
-    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4387.tun,error in (no error):4395.err" outputs="Position\3ALeft:4396.l,Position\3ATop:4396.t,reference out:,error out:4396.err" uid="4396" uid_parent="4339"/>
-  <Constant _name="result separator" outputs="value:4397.value" type="string" uid="4397" uid_parent="4339" value=";"/>
-  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4396.err" outputs="code:4398.code" uid="4398" uid_parent="4339"/>
-  <Node _name="Number To Decimal String" inputs="number:4398.code" outputs="decimal integer string:4399.s" uid="4399" uid_parent="4339"/>
-  <Node _name="Number To Decimal String" inputs="number:4396.l" outputs="decimal integer string:4400.s" uid="4400" uid_parent="4339"/>
-  <Node _name="Number To Decimal String" inputs="number:4396.t" outputs="decimal integer string:4401.s" uid="4401" uid_parent="4339"/>
-  <Constant _name="record end" outputs="value:4402.value" type="string" uid="4402" uid_parent="4339" value="|"/>
-  <Node _name="Concatenate Strings" inputs="string:4399.s,string:4397.value,string:4400.s,string:4397.value,string:4401.s,string:4402.value" outputs="concatenated string:4403.s" uid="4403" uid_parent="4339"/>
-    <Tunnel _id="Out1" inputs="value:4403.s" mode="index" outputs="value:4404.value" uid="4404" uid_parent="4339"/>
-    <ShiftReg uid="4405" uid_parent="4339">
-      <Left inputs="value:4338.err" outputs="value:4406.err" uid="4406" uid_parent="4405"/>
-      <Right inputs="value:4406.err" outputs="value:4407.err" uid="4407" uid_parent="4405"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4341" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4206.value" mode="index" outputs="value:4342.op" uid="4342" uid_parent="4341"/>
+    <Tunnel _id="In2" inputs="value:4215.top" outputs="value:4343.top" uid="4343" uid_parent="4341"/>
+  <Constant _name="text format" outputs="value:4344.value" type="string" uid="4344" uid_parent="4341" value="%s"/>
+  <Constant _name="text array" outputs="value:4345.value" type="array{string.String}" uid="4345" uid_parent="4341" value="[]"/>
+  <Constant _name="semicolon" outputs="value:4346.value" type="string" uid="4346" uid_parent="4341" value=";"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4344.value,spreadsheet string:4342.op,array type (2D Dbl):4345.value,delimiter (Tab):4346.value" outputs="array:4347.parts" uid="4347" uid_parent="4341"/>
+  <Constant _name="field 0" outputs="value:4348.value" type="int32" uid="4348" uid_parent="4341" value="0"/>
+  <Constant _name="field 1" outputs="value:4349.value" type="int32" uid="4349" uid_parent="4341" value="1"/>
+  <Constant _name="field 2" outputs="value:4350.value" type="int32" uid="4350" uid_parent="4341" value="2"/>
+  <Constant _name="field 3" outputs="value:4351.value" type="int32" uid="4351" uid_parent="4341" value="3"/>
+  <Constant _name="field 4" outputs="value:4352.value" type="int32" uid="4352" uid_parent="4341" value="4"/>
+  <Node _name="Index Array" inputs="array:4347.parts,index:4348.value,index:4349.value,index:4350.value,index:4351.value,index:4352.value" outputs="element:4353.f0,element:4353.f1,element:4353.f2,element:4353.f3,element:4353.f4" uid="4353" uid_parent="4341"/>
+  <Constant _name="int format" outputs="value:4354.value" type="string" uid="4354" uid_parent="4341" value="%d"/>
+  <Constant _name="int array" outputs="value:4355.value" type="array{int32}" uid="4355" uid_parent="4341" value="[]"/>
+  <Constant _name="space" outputs="value:4356.value" type="string" uid="4356" uid_parent="4341" value=" "/>
+  <Constant _name="two" outputs="value:4357.value" type="int32" uid="4357" uid_parent="4341" value="2"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4354.value,spreadsheet string:4353.f0,array type (2D Dbl):4355.value,delimiter (Tab):4356.value" outputs="array:4358.ints" uid="4358" uid_parent="4341"/>
+  <Node _name="Array Size" inputs="array:4358.ints" outputs="size(s):4359.n" uid="4359" uid_parent="4341"/>
+  <Node _name="Quotient &amp; Remainder" inputs="x:4359.n,y:4357.value" outputs="x-y*floor(x/y):,floor(x/y):4360.pairs" uid="4360" uid_parent="4341"/>
+  <Constant _name="no error" outputs="value:4361.value" type="cluster{bool.status,int32.code,string.source}" uid="4361" uid_parent="4341" value="[false,0,]"/>
+  <Structure _name="For Loop" count="4362.value" maxin="4360.pairs" maxout="" uid="4362" uid_parent="4341">
+    <Tunnel _id="In1" inputs="value:4358.ints" outputs="value:4363.ints" uid="4363" uid_parent="4362"/>
+  <Constant _name="structure class" outputs="value:4367.value" type="ref{LV.Structure}" uid="4367" uid_parent="4362" value=""/>
+  <Constant _name="pair" outputs="value:4368.value" type="int32" uid="4368" uid_parent="4362" value="2"/>
+    <Node _name="Multiply" inputs="x:4362.value,y:4368.value" outputs="x*y:4369.a" uid="4369" uid_parent="4362"/>
+    <Node _name="Increment" inputs="x:4369.a" outputs="x+1:4370.b" uid="4370" uid_parent="4362"/>
+    <Node _name="Index Array" inputs="array:4363.ints,index:4369.a,index:4370.b" outputs="element:4371.oi,element:4371.fi" uid="4371" uid_parent="4362"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4373.d,error in (no error):4365.err" outputs="All Objects[]:4375.objs,reference out:,error out:4375.err" uid="4375" uid_parent="4362"/>
+    <Node _name="Index Array" inputs="array:4375.objs,index:4371.oi" outputs="element:4376.obj" uid="4376" uid_parent="4362"/>
+    <Node _name="To More Specific Class" inputs="reference:4376.obj,error in:4375.err,target class:4367.value" outputs="specific class reference:4377.st,error out:4377.err" uid="4377" uid_parent="4362"/>
+    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4377.st,error in (no error):4377.err" outputs="Diagrams[]:4378.diags,reference out:,error out:4378.err" uid="4378" uid_parent="4362"/>
+    <Node _name="Index Array" inputs="array:4378.diags,index:4371.fi" outputs="element:4379.nd" uid="4379" uid_parent="4362"/>
+    <ShiftReg uid="4372" uid_parent="4362">
+      <Left inputs="value:4343.top" outputs="value:4373.d" uid="4373" uid_parent="4372"/>
+      <Right inputs="value:4379.nd" outputs="value:4374.d" uid="4374" uid_parent="4372"/>
+    </ShiftReg>
+    <ShiftReg uid="4364" uid_parent="4362">
+      <Left inputs="value:4361.value" outputs="value:4365.err" uid="4365" uid_parent="4364"/>
+      <Right inputs="value:4378.err" outputs="value:4366.err" uid="4366" uid_parent="4364"/>
     </ShiftReg>
   </Structure>
-  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4408" uid_parent="root">
-    <Tunnel _id="In1" inputs="value:4205.value" mode="index" outputs="value:4409.op" uid="4409" uid_parent="4408"/>
-    <Tunnel _id="In2" inputs="value:4213.top" outputs="value:4410.top" uid="4410" uid_parent="4408"/>
-  <Constant _name="text format" outputs="value:4411.value" type="string" uid="4411" uid_parent="4408" value="%s"/>
-  <Constant _name="text array" outputs="value:4412.value" type="array{string.String}" uid="4412" uid_parent="4408" value="[]"/>
-  <Constant _name="semicolon" outputs="value:4413.value" type="string" uid="4413" uid_parent="4408" value=";"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4411.value,spreadsheet string:4409.op,array type (2D Dbl):4412.value,delimiter (Tab):4413.value" outputs="array:4414.parts" uid="4414" uid_parent="4408"/>
-  <Constant _name="field 0" outputs="value:4415.value" type="int32" uid="4415" uid_parent="4408" value="0"/>
-  <Constant _name="field 1" outputs="value:4416.value" type="int32" uid="4416" uid_parent="4408" value="1"/>
-  <Constant _name="field 2" outputs="value:4417.value" type="int32" uid="4417" uid_parent="4408" value="2"/>
-  <Constant _name="field 3" outputs="value:4418.value" type="int32" uid="4418" uid_parent="4408" value="3"/>
-  <Constant _name="field 4" outputs="value:4419.value" type="int32" uid="4419" uid_parent="4408" value="4"/>
-  <Node _name="Index Array" inputs="array:4414.parts,index:4415.value,index:4416.value,index:4417.value,index:4418.value,index:4419.value" outputs="element:4420.f0,element:4420.f1,element:4420.f2,element:4420.f3,element:4420.f4" uid="4420" uid_parent="4408"/>
-  <Constant _name="int format" outputs="value:4421.value" type="string" uid="4421" uid_parent="4408" value="%d"/>
-  <Constant _name="int array" outputs="value:4422.value" type="array{int32}" uid="4422" uid_parent="4408" value="[]"/>
-  <Constant _name="space" outputs="value:4423.value" type="string" uid="4423" uid_parent="4408" value=" "/>
-  <Constant _name="two" outputs="value:4424.value" type="int32" uid="4424" uid_parent="4408" value="2"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4421.value,spreadsheet string:4420.f0,array type (2D Dbl):4422.value,delimiter (Tab):4423.value" outputs="array:4425.ints" uid="4425" uid_parent="4408"/>
-  <Node _name="Array Size" inputs="array:4425.ints" outputs="size(s):4426.n" uid="4426" uid_parent="4408"/>
-  <Node _name="Quotient &amp; Remainder" inputs="x:4426.n,y:4424.value" outputs="x-y*floor(x/y):,floor(x/y):4427.pairs" uid="4427" uid_parent="4408"/>
-  <Constant _name="no error" outputs="value:4428.value" type="cluster{bool.status,int32.code,string.source}" uid="4428" uid_parent="4408" value="[false,0,]"/>
-  <Structure _name="For Loop" count="4429.value" maxin="4427.pairs" maxout="" uid="4429" uid_parent="4408">
-    <Tunnel _id="In1" inputs="value:4425.ints" outputs="value:4430.ints" uid="4430" uid_parent="4429"/>
-  <Constant _name="structure class" outputs="value:4434.value" type="ref{LV.Structure}" uid="4434" uid_parent="4429" value=""/>
-  <Constant _name="pair" outputs="value:4435.value" type="int32" uid="4435" uid_parent="4429" value="2"/>
-    <Node _name="Multiply" inputs="x:4429.value,y:4435.value" outputs="x*y:4436.a" uid="4436" uid_parent="4429"/>
-    <Node _name="Increment" inputs="x:4436.a" outputs="x+1:4437.b" uid="4437" uid_parent="4429"/>
-    <Node _name="Index Array" inputs="array:4430.ints,index:4436.a,index:4437.b" outputs="element:4438.oi,element:4438.fi" uid="4438" uid_parent="4429"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4440.d,error in (no error):4432.err" outputs="All Objects[]:4442.objs,reference out:,error out:4442.err" uid="4442" uid_parent="4429"/>
-    <Node _name="Index Array" inputs="array:4442.objs,index:4438.oi" outputs="element:4443.obj" uid="4443" uid_parent="4429"/>
-    <Node _name="To More Specific Class" inputs="reference:4443.obj,error in:4442.err,target class:4434.value" outputs="specific class reference:4444.st,error out:4444.err" uid="4444" uid_parent="4429"/>
-    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4444.st,error in (no error):4444.err" outputs="Diagrams[]:4445.diags,reference out:,error out:4445.err" uid="4445" uid_parent="4429"/>
-    <Node _name="Index Array" inputs="array:4445.diags,index:4438.fi" outputs="element:4446.nd" uid="4446" uid_parent="4429"/>
-    <ShiftReg uid="4439" uid_parent="4429">
-      <Left inputs="value:4410.top" outputs="value:4440.d" uid="4440" uid_parent="4439"/>
-      <Right inputs="value:4446.nd" outputs="value:4441.d" uid="4441" uid_parent="4439"/>
-    </ShiftReg>
-    <ShiftReg uid="4431" uid_parent="4429">
-      <Left inputs="value:4428.value" outputs="value:4432.err" uid="4432" uid_parent="4431"/>
-      <Right inputs="value:4445.err" outputs="value:4433.err" uid="4433" uid_parent="4431"/>
+  <Node _name="Decimal String To Number" inputs="string:4353.f1,offset:,default (0L):" outputs="offset past number:,number:4380.n" uid="4380" uid_parent="4341"/>
+  <Node _name="Decimal String To Number" inputs="string:4353.f3,offset:,default (0L):" outputs="offset past number:,number:4381.n" uid="4381" uid_parent="4341"/>
+  <Node _name="Decimal String To Number" inputs="string:4353.f4,offset:,default (0L):" outputs="offset past number:,number:4382.n" uid="4382" uid_parent="4341"/>
+  <Node _name="Decimal String To Number" inputs="string:4353.f2,offset:,default (0L):" outputs="offset past number:,number:4383.n" uid="4383" uid_parent="4341"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4374.d,error in (no error):4366.err" outputs="All Objects[]:4384.objs,reference out:,error out:4384.err" uid="4384" uid_parent="4341"/>
+    <Node _name="Index Array" inputs="array:4384.objs,index:4380.n" outputs="element:4385.obj" uid="4385" uid_parent="4341"/>
+  <Constant _name="structure class" outputs="value:4386.value" type="ref{LV.Structure}" uid="4386" uid_parent="4341" value=""/>
+    <Node _name="To More Specific Class" inputs="reference:4385.obj,error in:4384.err,target class:4386.value" outputs="specific class reference:4387.st,error out:4387.err" uid="4387" uid_parent="4341"/>
+    <Node _name="Property Node" fields="read+Tunnels[]" type="{LV.Structure}" inputs="reference:4387.st,error in (no error):4387.err" outputs="Tunnels[]:4388.tuns,reference out:,error out:4388.err" uid="4388" uid_parent="4341"/>
+    <Node _name="Index Array" inputs="array:4388.tuns,index:4383.n" outputs="element:4389.tun" uid="4389" uid_parent="4341"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4389.tun,error in (no error):4388.err" outputs="Position:4390.pos,reference out:,error out:4390.err" uid="4390" uid_parent="4341"/>
+    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4381.n,Top:4382.n,input cluster:4390.pos" outputs="output cluster:4391.target" uid="4391" uid_parent="4341"/>
+  <Constant _name="duplicate" outputs="value:4392.value" type="bool" uid="4392" uid_parent="4341" value="false"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4389.tun,error in (no error):4390.err,position:4391.target,owner:,duplicate:4392.value" outputs="reference out:,error out:4393.err" uid="4393" uid_parent="4341"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4389.tun,error in (no error):4393.err" outputs="Position:4394.landed,reference out:,error out:4394.err" uid="4394" uid_parent="4341"/>
+    <Node _name="Add" inputs="x:4391.target,y:4391.target" outputs="x+y:4395.twice" uid="4395" uid_parent="4341"/>
+    <Node _name="Subtract" inputs="x:4395.twice,y:4394.landed" outputs="x-y:4396.corrected" uid="4396" uid_parent="4341"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4389.tun,error in (no error):4394.err,position:4396.corrected,owner:,duplicate:4392.value" outputs="reference out:,error out:4397.err" uid="4397" uid_parent="4341"/>
+    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4389.tun,error in (no error):4397.err" outputs="Position\3ALeft:4398.l,Position\3ATop:4398.t,reference out:,error out:4398.err" uid="4398" uid_parent="4341"/>
+  <Constant _name="result separator" outputs="value:4399.value" type="string" uid="4399" uid_parent="4341" value=";"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4398.err" outputs="code:4400.code" uid="4400" uid_parent="4341"/>
+  <Node _name="Number To Decimal String" inputs="number:4400.code" outputs="decimal integer string:4401.s" uid="4401" uid_parent="4341"/>
+  <Node _name="Number To Decimal String" inputs="number:4398.l" outputs="decimal integer string:4402.s" uid="4402" uid_parent="4341"/>
+  <Node _name="Number To Decimal String" inputs="number:4398.t" outputs="decimal integer string:4403.s" uid="4403" uid_parent="4341"/>
+  <Constant _name="record end" outputs="value:4404.value" type="string" uid="4404" uid_parent="4341" value="|"/>
+  <Node _name="Concatenate Strings" inputs="string:4401.s,string:4399.value,string:4402.s,string:4399.value,string:4403.s,string:4404.value" outputs="concatenated string:4405.s" uid="4405" uid_parent="4341"/>
+    <Tunnel _id="Out1" inputs="value:4405.s" mode="index" outputs="value:4406.value" uid="4406" uid_parent="4341"/>
+    <ShiftReg uid="4407" uid_parent="4341">
+      <Left inputs="value:4340.err" outputs="value:4408.err" uid="4408" uid_parent="4407"/>
+      <Right inputs="value:4408.err" outputs="value:4409.err" uid="4409" uid_parent="4407"/>
     </ShiftReg>
   </Structure>
-  <Node _name="Decimal String To Number" inputs="string:4420.f1,offset:,default (0L):" outputs="offset past number:,number:4447.n" uid="4447" uid_parent="4408"/>
-  <Node _name="Decimal String To Number" inputs="string:4420.f2,offset:,default (0L):" outputs="offset past number:,number:4448.n" uid="4448" uid_parent="4408"/>
-  <Node _name="Decimal String To Number" inputs="string:4420.f3,offset:,default (0L):" outputs="offset past number:,number:4449.n" uid="4449" uid_parent="4408"/>
-  <Node _name="Decimal String To Number" inputs="string:4420.f4,offset:,default (0L):" outputs="offset past number:,number:4450.n" uid="4450" uid_parent="4408"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4441.d,error in (no error):4433.err" outputs="All Objects[]:4451.objs,reference out:,error out:4451.err" uid="4451" uid_parent="4408"/>
-    <Node _name="Index Array" inputs="array:4451.objs,index:4447.n" outputs="element:4452.obj" uid="4452" uid_parent="4408"/>
-  <Constant _name="loop class" outputs="value:4453.value" type="ref{LV.Loop}" uid="4453" uid_parent="4408" value=""/>
-    <Node _name="To More Specific Class" inputs="reference:4452.obj,error in:4451.err,target class:4453.value" outputs="specific class reference:4454.st,error out:4454.err" uid="4454" uid_parent="4408"/>
-    <Node _name="Property Node" fields="read+Shift Registers[]" type="{LV.Loop}" inputs="reference:4454.st,error in (no error):4454.err" outputs="Shift Registers[]:4455.tuns,reference out:,error out:4455.err" uid="4455" uid_parent="4408"/>
-    <Node _name="Index Array" inputs="array:4455.tuns,index:4448.n" outputs="element:4456.tun" uid="4456" uid_parent="4408"/>
-    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4456.tun,error in (no error):4455.err" outputs="Position:4457.pos,reference out:,error out:4457.err" uid="4457" uid_parent="4408"/>
-    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4449.n,Top:4450.n,input cluster:4457.pos" outputs="output cluster:4458.target" uid="4458" uid_parent="4408"/>
-  <Constant _name="duplicate" outputs="value:4459.value" type="bool" uid="4459" uid_parent="4408" value="false"/>
-    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4456.tun,error in (no error):4457.err,position:4458.target,owner:,duplicate:4459.value" outputs="reference out:,error out:4460.err" uid="4460" uid_parent="4408"/>
-    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4456.tun,error in (no error):4460.err" outputs="Position:4461.landed,reference out:,error out:4461.err" uid="4461" uid_parent="4408"/>
-    <Node _name="Add" inputs="x:4458.target,y:4458.target" outputs="x+y:4462.twice" uid="4462" uid_parent="4408"/>
-    <Node _name="Subtract" inputs="x:4462.twice,y:4461.landed" outputs="x-y:4463.corrected" uid="4463" uid_parent="4408"/>
-    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4456.tun,error in (no error):4461.err,position:4463.corrected,owner:,duplicate:4459.value" outputs="reference out:,error out:4464.err" uid="4464" uid_parent="4408"/>
-    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4456.tun,error in (no error):4464.err" outputs="Position\3ALeft:4465.l,Position\3ATop:4465.t,reference out:,error out:4465.err" uid="4465" uid_parent="4408"/>
-  <Constant _name="result separator" outputs="value:4466.value" type="string" uid="4466" uid_parent="4408" value=";"/>
-  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4465.err" outputs="code:4467.code" uid="4467" uid_parent="4408"/>
-  <Node _name="Number To Decimal String" inputs="number:4467.code" outputs="decimal integer string:4468.s" uid="4468" uid_parent="4408"/>
-  <Node _name="Number To Decimal String" inputs="number:4465.l" outputs="decimal integer string:4469.s" uid="4469" uid_parent="4408"/>
-  <Node _name="Number To Decimal String" inputs="number:4465.t" outputs="decimal integer string:4470.s" uid="4470" uid_parent="4408"/>
-  <Constant _name="record end" outputs="value:4471.value" type="string" uid="4471" uid_parent="4408" value="|"/>
-  <Node _name="Concatenate Strings" inputs="string:4468.s,string:4466.value,string:4469.s,string:4466.value,string:4470.s,string:4471.value" outputs="concatenated string:4472.s" uid="4472" uid_parent="4408"/>
-    <Tunnel _id="Out1" inputs="value:4472.s" mode="index" outputs="value:4473.value" uid="4473" uid_parent="4408"/>
-    <ShiftReg uid="4474" uid_parent="4408">
-      <Left inputs="value:4407.err" outputs="value:4475.err" uid="4475" uid_parent="4474"/>
-      <Right inputs="value:4475.err" outputs="value:4476.err" uid="4476" uid_parent="4474"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4410" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4205.value" mode="index" outputs="value:4411.op" uid="4411" uid_parent="4410"/>
+    <Tunnel _id="In2" inputs="value:4215.top" outputs="value:4412.top" uid="4412" uid_parent="4410"/>
+  <Constant _name="text format" outputs="value:4413.value" type="string" uid="4413" uid_parent="4410" value="%s"/>
+  <Constant _name="text array" outputs="value:4414.value" type="array{string.String}" uid="4414" uid_parent="4410" value="[]"/>
+  <Constant _name="semicolon" outputs="value:4415.value" type="string" uid="4415" uid_parent="4410" value=";"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4413.value,spreadsheet string:4411.op,array type (2D Dbl):4414.value,delimiter (Tab):4415.value" outputs="array:4416.parts" uid="4416" uid_parent="4410"/>
+  <Constant _name="field 0" outputs="value:4417.value" type="int32" uid="4417" uid_parent="4410" value="0"/>
+  <Constant _name="field 1" outputs="value:4418.value" type="int32" uid="4418" uid_parent="4410" value="1"/>
+  <Constant _name="field 2" outputs="value:4419.value" type="int32" uid="4419" uid_parent="4410" value="2"/>
+  <Constant _name="field 3" outputs="value:4420.value" type="int32" uid="4420" uid_parent="4410" value="3"/>
+  <Constant _name="field 4" outputs="value:4421.value" type="int32" uid="4421" uid_parent="4410" value="4"/>
+  <Node _name="Index Array" inputs="array:4416.parts,index:4417.value,index:4418.value,index:4419.value,index:4420.value,index:4421.value" outputs="element:4422.f0,element:4422.f1,element:4422.f2,element:4422.f3,element:4422.f4" uid="4422" uid_parent="4410"/>
+  <Constant _name="int format" outputs="value:4423.value" type="string" uid="4423" uid_parent="4410" value="%d"/>
+  <Constant _name="int array" outputs="value:4424.value" type="array{int32}" uid="4424" uid_parent="4410" value="[]"/>
+  <Constant _name="space" outputs="value:4425.value" type="string" uid="4425" uid_parent="4410" value=" "/>
+  <Constant _name="two" outputs="value:4426.value" type="int32" uid="4426" uid_parent="4410" value="2"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4423.value,spreadsheet string:4422.f0,array type (2D Dbl):4424.value,delimiter (Tab):4425.value" outputs="array:4427.ints" uid="4427" uid_parent="4410"/>
+  <Node _name="Array Size" inputs="array:4427.ints" outputs="size(s):4428.n" uid="4428" uid_parent="4410"/>
+  <Node _name="Quotient &amp; Remainder" inputs="x:4428.n,y:4426.value" outputs="x-y*floor(x/y):,floor(x/y):4429.pairs" uid="4429" uid_parent="4410"/>
+  <Constant _name="no error" outputs="value:4430.value" type="cluster{bool.status,int32.code,string.source}" uid="4430" uid_parent="4410" value="[false,0,]"/>
+  <Structure _name="For Loop" count="4431.value" maxin="4429.pairs" maxout="" uid="4431" uid_parent="4410">
+    <Tunnel _id="In1" inputs="value:4427.ints" outputs="value:4432.ints" uid="4432" uid_parent="4431"/>
+  <Constant _name="structure class" outputs="value:4436.value" type="ref{LV.Structure}" uid="4436" uid_parent="4431" value=""/>
+  <Constant _name="pair" outputs="value:4437.value" type="int32" uid="4437" uid_parent="4431" value="2"/>
+    <Node _name="Multiply" inputs="x:4431.value,y:4437.value" outputs="x*y:4438.a" uid="4438" uid_parent="4431"/>
+    <Node _name="Increment" inputs="x:4438.a" outputs="x+1:4439.b" uid="4439" uid_parent="4431"/>
+    <Node _name="Index Array" inputs="array:4432.ints,index:4438.a,index:4439.b" outputs="element:4440.oi,element:4440.fi" uid="4440" uid_parent="4431"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4442.d,error in (no error):4434.err" outputs="All Objects[]:4444.objs,reference out:,error out:4444.err" uid="4444" uid_parent="4431"/>
+    <Node _name="Index Array" inputs="array:4444.objs,index:4440.oi" outputs="element:4445.obj" uid="4445" uid_parent="4431"/>
+    <Node _name="To More Specific Class" inputs="reference:4445.obj,error in:4444.err,target class:4436.value" outputs="specific class reference:4446.st,error out:4446.err" uid="4446" uid_parent="4431"/>
+    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4446.st,error in (no error):4446.err" outputs="Diagrams[]:4447.diags,reference out:,error out:4447.err" uid="4447" uid_parent="4431"/>
+    <Node _name="Index Array" inputs="array:4447.diags,index:4440.fi" outputs="element:4448.nd" uid="4448" uid_parent="4431"/>
+    <ShiftReg uid="4441" uid_parent="4431">
+      <Left inputs="value:4412.top" outputs="value:4442.d" uid="4442" uid_parent="4441"/>
+      <Right inputs="value:4448.nd" outputs="value:4443.d" uid="4443" uid_parent="4441"/>
+    </ShiftReg>
+    <ShiftReg uid="4433" uid_parent="4431">
+      <Left inputs="value:4430.value" outputs="value:4434.err" uid="4434" uid_parent="4433"/>
+      <Right inputs="value:4447.err" outputs="value:4435.err" uid="4435" uid_parent="4433"/>
     </ShiftReg>
   </Structure>
-  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4477" uid_parent="root">
-    <Tunnel _id="In1" inputs="value:4207.value" mode="index" outputs="value:4478.op" uid="4478" uid_parent="4477"/>
-    <Tunnel _id="In2" inputs="value:4213.top" outputs="value:4479.top" uid="4479" uid_parent="4477"/>
-  <Constant _name="text format" outputs="value:4480.value" type="string" uid="4480" uid_parent="4477" value="%s"/>
-  <Constant _name="text array" outputs="value:4481.value" type="array{string.String}" uid="4481" uid_parent="4477" value="[]"/>
-  <Constant _name="semicolon" outputs="value:4482.value" type="string" uid="4482" uid_parent="4477" value=";"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4480.value,spreadsheet string:4478.op,array type (2D Dbl):4481.value,delimiter (Tab):4482.value" outputs="array:4483.parts" uid="4483" uid_parent="4477"/>
-  <Constant _name="field 0" outputs="value:4484.value" type="int32" uid="4484" uid_parent="4477" value="0"/>
-  <Constant _name="field 1" outputs="value:4485.value" type="int32" uid="4485" uid_parent="4477" value="1"/>
-  <Constant _name="field 2" outputs="value:4486.value" type="int32" uid="4486" uid_parent="4477" value="2"/>
-  <Constant _name="field 3" outputs="value:4487.value" type="int32" uid="4487" uid_parent="4477" value="3"/>
-  <Constant _name="field 4" outputs="value:4488.value" type="int32" uid="4488" uid_parent="4477" value="4"/>
-  <Node _name="Index Array" inputs="array:4483.parts,index:4484.value,index:4485.value,index:4486.value,index:4487.value,index:4488.value" outputs="element:4489.f0,element:4489.f1,element:4489.f2,element:4489.f3,element:4489.f4" uid="4489" uid_parent="4477"/>
-  <Constant _name="int format" outputs="value:4490.value" type="string" uid="4490" uid_parent="4477" value="%d"/>
-  <Constant _name="int array" outputs="value:4491.value" type="array{int32}" uid="4491" uid_parent="4477" value="[]"/>
-  <Constant _name="space" outputs="value:4492.value" type="string" uid="4492" uid_parent="4477" value=" "/>
-  <Constant _name="two" outputs="value:4493.value" type="int32" uid="4493" uid_parent="4477" value="2"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4490.value,spreadsheet string:4489.f0,array type (2D Dbl):4491.value,delimiter (Tab):4492.value" outputs="array:4494.ints" uid="4494" uid_parent="4477"/>
-  <Node _name="Array Size" inputs="array:4494.ints" outputs="size(s):4495.n" uid="4495" uid_parent="4477"/>
-  <Node _name="Quotient &amp; Remainder" inputs="x:4495.n,y:4493.value" outputs="x-y*floor(x/y):,floor(x/y):4496.pairs" uid="4496" uid_parent="4477"/>
-  <Constant _name="no error" outputs="value:4497.value" type="cluster{bool.status,int32.code,string.source}" uid="4497" uid_parent="4477" value="[false,0,]"/>
-  <Structure _name="For Loop" count="4498.value" maxin="4496.pairs" maxout="" uid="4498" uid_parent="4477">
-    <Tunnel _id="In1" inputs="value:4494.ints" outputs="value:4499.ints" uid="4499" uid_parent="4498"/>
-  <Constant _name="structure class" outputs="value:4503.value" type="ref{LV.Structure}" uid="4503" uid_parent="4498" value=""/>
-  <Constant _name="pair" outputs="value:4504.value" type="int32" uid="4504" uid_parent="4498" value="2"/>
-    <Node _name="Multiply" inputs="x:4498.value,y:4504.value" outputs="x*y:4505.a" uid="4505" uid_parent="4498"/>
-    <Node _name="Increment" inputs="x:4505.a" outputs="x+1:4506.b" uid="4506" uid_parent="4498"/>
-    <Node _name="Index Array" inputs="array:4499.ints,index:4505.a,index:4506.b" outputs="element:4507.oi,element:4507.fi" uid="4507" uid_parent="4498"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4509.d,error in (no error):4501.err" outputs="All Objects[]:4511.objs,reference out:,error out:4511.err" uid="4511" uid_parent="4498"/>
-    <Node _name="Index Array" inputs="array:4511.objs,index:4507.oi" outputs="element:4512.obj" uid="4512" uid_parent="4498"/>
-    <Node _name="To More Specific Class" inputs="reference:4512.obj,error in:4511.err,target class:4503.value" outputs="specific class reference:4513.st,error out:4513.err" uid="4513" uid_parent="4498"/>
-    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4513.st,error in (no error):4513.err" outputs="Diagrams[]:4514.diags,reference out:,error out:4514.err" uid="4514" uid_parent="4498"/>
-    <Node _name="Index Array" inputs="array:4514.diags,index:4507.fi" outputs="element:4515.nd" uid="4515" uid_parent="4498"/>
-    <ShiftReg uid="4508" uid_parent="4498">
-      <Left inputs="value:4479.top" outputs="value:4509.d" uid="4509" uid_parent="4508"/>
-      <Right inputs="value:4515.nd" outputs="value:4510.d" uid="4510" uid_parent="4508"/>
-    </ShiftReg>
-    <ShiftReg uid="4500" uid_parent="4498">
-      <Left inputs="value:4497.value" outputs="value:4501.err" uid="4501" uid_parent="4500"/>
-      <Right inputs="value:4514.err" outputs="value:4502.err" uid="4502" uid_parent="4500"/>
+  <Node _name="Decimal String To Number" inputs="string:4422.f1,offset:,default (0L):" outputs="offset past number:,number:4449.n" uid="4449" uid_parent="4410"/>
+  <Node _name="Decimal String To Number" inputs="string:4422.f3,offset:,default (0L):" outputs="offset past number:,number:4450.n" uid="4450" uid_parent="4410"/>
+  <Node _name="Decimal String To Number" inputs="string:4422.f4,offset:,default (0L):" outputs="offset past number:,number:4451.n" uid="4451" uid_parent="4410"/>
+  <Node _name="Decimal String To Number" inputs="string:4422.f2,offset:,default (0L):" outputs="offset past number:,number:4452.n" uid="4452" uid_parent="4410"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4443.d,error in (no error):4435.err" outputs="All Objects[]:4453.objs,reference out:,error out:4453.err" uid="4453" uid_parent="4410"/>
+    <Node _name="Index Array" inputs="array:4453.objs,index:4449.n" outputs="element:4454.obj" uid="4454" uid_parent="4410"/>
+  <Constant _name="loop class" outputs="value:4455.value" type="ref{LV.Loop}" uid="4455" uid_parent="4410" value=""/>
+    <Node _name="To More Specific Class" inputs="reference:4454.obj,error in:4453.err,target class:4455.value" outputs="specific class reference:4456.st,error out:4456.err" uid="4456" uid_parent="4410"/>
+    <Node _name="Property Node" fields="read+Shift Registers[]" type="{LV.Loop}" inputs="reference:4456.st,error in (no error):4456.err" outputs="Shift Registers[]:4457.tuns,reference out:,error out:4457.err" uid="4457" uid_parent="4410"/>
+    <Node _name="Index Array" inputs="array:4457.tuns,index:4452.n" outputs="element:4458.tun" uid="4458" uid_parent="4410"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4458.tun,error in (no error):4457.err" outputs="Position:4459.pos,reference out:,error out:4459.err" uid="4459" uid_parent="4410"/>
+    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4450.n,Top:4451.n,input cluster:4459.pos" outputs="output cluster:4460.target" uid="4460" uid_parent="4410"/>
+  <Constant _name="duplicate" outputs="value:4461.value" type="bool" uid="4461" uid_parent="4410" value="false"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4458.tun,error in (no error):4459.err,position:4460.target,owner:,duplicate:4461.value" outputs="reference out:,error out:4462.err" uid="4462" uid_parent="4410"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4458.tun,error in (no error):4462.err" outputs="Position:4463.landed,reference out:,error out:4463.err" uid="4463" uid_parent="4410"/>
+    <Node _name="Add" inputs="x:4460.target,y:4460.target" outputs="x+y:4464.twice" uid="4464" uid_parent="4410"/>
+    <Node _name="Subtract" inputs="x:4464.twice,y:4463.landed" outputs="x-y:4465.corrected" uid="4465" uid_parent="4410"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4458.tun,error in (no error):4463.err,position:4465.corrected,owner:,duplicate:4461.value" outputs="reference out:,error out:4466.err" uid="4466" uid_parent="4410"/>
+    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4458.tun,error in (no error):4466.err" outputs="Position\3ALeft:4467.l,Position\3ATop:4467.t,reference out:,error out:4467.err" uid="4467" uid_parent="4410"/>
+  <Constant _name="result separator" outputs="value:4468.value" type="string" uid="4468" uid_parent="4410" value=";"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4467.err" outputs="code:4469.code" uid="4469" uid_parent="4410"/>
+  <Node _name="Number To Decimal String" inputs="number:4469.code" outputs="decimal integer string:4470.s" uid="4470" uid_parent="4410"/>
+  <Node _name="Number To Decimal String" inputs="number:4467.l" outputs="decimal integer string:4471.s" uid="4471" uid_parent="4410"/>
+  <Node _name="Number To Decimal String" inputs="number:4467.t" outputs="decimal integer string:4472.s" uid="4472" uid_parent="4410"/>
+  <Constant _name="record end" outputs="value:4473.value" type="string" uid="4473" uid_parent="4410" value="|"/>
+  <Node _name="Concatenate Strings" inputs="string:4470.s,string:4468.value,string:4471.s,string:4468.value,string:4472.s,string:4473.value" outputs="concatenated string:4474.s" uid="4474" uid_parent="4410"/>
+    <Tunnel _id="Out1" inputs="value:4474.s" mode="index" outputs="value:4475.value" uid="4475" uid_parent="4410"/>
+    <ShiftReg uid="4476" uid_parent="4410">
+      <Left inputs="value:4409.err" outputs="value:4477.err" uid="4477" uid_parent="4476"/>
+      <Right inputs="value:4477.err" outputs="value:4478.err" uid="4478" uid_parent="4476"/>
     </ShiftReg>
   </Structure>
-  <Node _name="Decimal String To Number" inputs="string:4489.f1,offset:,default (0L):" outputs="offset past number:,number:4516.n" uid="4516" uid_parent="4477"/>
-  <Node _name="Decimal String To Number" inputs="string:4489.f2,offset:,default (0L):" outputs="offset past number:,number:4517.n" uid="4517" uid_parent="4477"/>
-  <Node _name="Decimal String To Number" inputs="string:4489.f3,offset:,default (0L):" outputs="offset past number:,number:4518.n" uid="4518" uid_parent="4477"/>
-  <Node _name="Decimal String To Number" inputs="string:4489.f4,offset:,default (0L):" outputs="offset past number:,number:4519.n" uid="4519" uid_parent="4477"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4510.d,error in (no error):4502.err" outputs="All Objects[]:4520.objs,reference out:,error out:4520.err" uid="4520" uid_parent="4477"/>
-    <Node _name="Index Array" inputs="array:4520.objs,index:4516.n" outputs="element:4521.obj" uid="4521" uid_parent="4477"/>
-  <Constant _name="case structure class" outputs="value:4522.value" type="ref{LV.CaseStructure}" uid="4522" uid_parent="4477" value=""/>
-    <Node _name="To More Specific Class" inputs="reference:4521.obj,error in:4520.err,target class:4522.value" outputs="specific class reference:4523.st,error out:4523.err" uid="4523" uid_parent="4477"/>
-    <Node _name="Property Node" fields="read+Selector" type="{LV.CaseStructure}" inputs="reference:4523.st,error in (no error):4523.err" outputs="Selector:4524.tuns,reference out:,error out:4524.err" uid="4524" uid_parent="4477"/>
-  <Constant _name="object class" outputs="value:4525.value" type="ref{LV.GObject}" uid="4525" uid_parent="4477" value=""/>
-    <Node _name="To More Generic Class" inputs="reference:4524.tuns,target class:4525.value" outputs="generic class reference:4526.tun" uid="4526" uid_parent="4477"/>
-    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4526.tun,error in (no error):4524.err" outputs="Position:4527.pos,reference out:,error out:4527.err" uid="4527" uid_parent="4477"/>
-    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4518.n,Top:4519.n,input cluster:4527.pos" outputs="output cluster:4528.target" uid="4528" uid_parent="4477"/>
-  <Constant _name="duplicate" outputs="value:4529.value" type="bool" uid="4529" uid_parent="4477" value="false"/>
-    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4526.tun,error in (no error):4527.err,position:4528.target,owner:,duplicate:4529.value" outputs="reference out:,error out:4530.err" uid="4530" uid_parent="4477"/>
-    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4526.tun,error in (no error):4530.err" outputs="Position:4531.landed,reference out:,error out:4531.err" uid="4531" uid_parent="4477"/>
-    <Node _name="Add" inputs="x:4528.target,y:4528.target" outputs="x+y:4532.twice" uid="4532" uid_parent="4477"/>
-    <Node _name="Subtract" inputs="x:4532.twice,y:4531.landed" outputs="x-y:4533.corrected" uid="4533" uid_parent="4477"/>
-    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4526.tun,error in (no error):4531.err,position:4533.corrected,owner:,duplicate:4529.value" outputs="reference out:,error out:4534.err" uid="4534" uid_parent="4477"/>
-    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4526.tun,error in (no error):4534.err" outputs="Position\3ALeft:4535.l,Position\3ATop:4535.t,reference out:,error out:4535.err" uid="4535" uid_parent="4477"/>
-  <Constant _name="result separator" outputs="value:4536.value" type="string" uid="4536" uid_parent="4477" value=";"/>
-  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4535.err" outputs="code:4537.code" uid="4537" uid_parent="4477"/>
-  <Node _name="Number To Decimal String" inputs="number:4537.code" outputs="decimal integer string:4538.s" uid="4538" uid_parent="4477"/>
-  <Node _name="Number To Decimal String" inputs="number:4535.l" outputs="decimal integer string:4539.s" uid="4539" uid_parent="4477"/>
-  <Node _name="Number To Decimal String" inputs="number:4535.t" outputs="decimal integer string:4540.s" uid="4540" uid_parent="4477"/>
-  <Constant _name="record end" outputs="value:4541.value" type="string" uid="4541" uid_parent="4477" value="|"/>
-  <Node _name="Concatenate Strings" inputs="string:4538.s,string:4536.value,string:4539.s,string:4536.value,string:4540.s,string:4541.value" outputs="concatenated string:4542.s" uid="4542" uid_parent="4477"/>
-    <Tunnel _id="Out1" inputs="value:4542.s" mode="index" outputs="value:4543.value" uid="4543" uid_parent="4477"/>
-    <ShiftReg uid="4544" uid_parent="4477">
-      <Left inputs="value:4476.err" outputs="value:4545.err" uid="4545" uid_parent="4544"/>
-      <Right inputs="value:4545.err" outputs="value:4546.err" uid="4546" uid_parent="4544"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4479" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4207.value" mode="index" outputs="value:4480.op" uid="4480" uid_parent="4479"/>
+    <Tunnel _id="In2" inputs="value:4215.top" outputs="value:4481.top" uid="4481" uid_parent="4479"/>
+  <Constant _name="text format" outputs="value:4482.value" type="string" uid="4482" uid_parent="4479" value="%s"/>
+  <Constant _name="text array" outputs="value:4483.value" type="array{string.String}" uid="4483" uid_parent="4479" value="[]"/>
+  <Constant _name="semicolon" outputs="value:4484.value" type="string" uid="4484" uid_parent="4479" value=";"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4482.value,spreadsheet string:4480.op,array type (2D Dbl):4483.value,delimiter (Tab):4484.value" outputs="array:4485.parts" uid="4485" uid_parent="4479"/>
+  <Constant _name="field 0" outputs="value:4486.value" type="int32" uid="4486" uid_parent="4479" value="0"/>
+  <Constant _name="field 1" outputs="value:4487.value" type="int32" uid="4487" uid_parent="4479" value="1"/>
+  <Constant _name="field 2" outputs="value:4488.value" type="int32" uid="4488" uid_parent="4479" value="2"/>
+  <Constant _name="field 3" outputs="value:4489.value" type="int32" uid="4489" uid_parent="4479" value="3"/>
+  <Constant _name="field 4" outputs="value:4490.value" type="int32" uid="4490" uid_parent="4479" value="4"/>
+  <Node _name="Index Array" inputs="array:4485.parts,index:4486.value,index:4487.value,index:4488.value,index:4489.value,index:4490.value" outputs="element:4491.f0,element:4491.f1,element:4491.f2,element:4491.f3,element:4491.f4" uid="4491" uid_parent="4479"/>
+  <Constant _name="int format" outputs="value:4492.value" type="string" uid="4492" uid_parent="4479" value="%d"/>
+  <Constant _name="int array" outputs="value:4493.value" type="array{int32}" uid="4493" uid_parent="4479" value="[]"/>
+  <Constant _name="space" outputs="value:4494.value" type="string" uid="4494" uid_parent="4479" value=" "/>
+  <Constant _name="two" outputs="value:4495.value" type="int32" uid="4495" uid_parent="4479" value="2"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4492.value,spreadsheet string:4491.f0,array type (2D Dbl):4493.value,delimiter (Tab):4494.value" outputs="array:4496.ints" uid="4496" uid_parent="4479"/>
+  <Node _name="Array Size" inputs="array:4496.ints" outputs="size(s):4497.n" uid="4497" uid_parent="4479"/>
+  <Node _name="Quotient &amp; Remainder" inputs="x:4497.n,y:4495.value" outputs="x-y*floor(x/y):,floor(x/y):4498.pairs" uid="4498" uid_parent="4479"/>
+  <Constant _name="no error" outputs="value:4499.value" type="cluster{bool.status,int32.code,string.source}" uid="4499" uid_parent="4479" value="[false,0,]"/>
+  <Structure _name="For Loop" count="4500.value" maxin="4498.pairs" maxout="" uid="4500" uid_parent="4479">
+    <Tunnel _id="In1" inputs="value:4496.ints" outputs="value:4501.ints" uid="4501" uid_parent="4500"/>
+  <Constant _name="structure class" outputs="value:4505.value" type="ref{LV.Structure}" uid="4505" uid_parent="4500" value=""/>
+  <Constant _name="pair" outputs="value:4506.value" type="int32" uid="4506" uid_parent="4500" value="2"/>
+    <Node _name="Multiply" inputs="x:4500.value,y:4506.value" outputs="x*y:4507.a" uid="4507" uid_parent="4500"/>
+    <Node _name="Increment" inputs="x:4507.a" outputs="x+1:4508.b" uid="4508" uid_parent="4500"/>
+    <Node _name="Index Array" inputs="array:4501.ints,index:4507.a,index:4508.b" outputs="element:4509.oi,element:4509.fi" uid="4509" uid_parent="4500"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4511.d,error in (no error):4503.err" outputs="All Objects[]:4513.objs,reference out:,error out:4513.err" uid="4513" uid_parent="4500"/>
+    <Node _name="Index Array" inputs="array:4513.objs,index:4509.oi" outputs="element:4514.obj" uid="4514" uid_parent="4500"/>
+    <Node _name="To More Specific Class" inputs="reference:4514.obj,error in:4513.err,target class:4505.value" outputs="specific class reference:4515.st,error out:4515.err" uid="4515" uid_parent="4500"/>
+    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4515.st,error in (no error):4515.err" outputs="Diagrams[]:4516.diags,reference out:,error out:4516.err" uid="4516" uid_parent="4500"/>
+    <Node _name="Index Array" inputs="array:4516.diags,index:4509.fi" outputs="element:4517.nd" uid="4517" uid_parent="4500"/>
+    <ShiftReg uid="4510" uid_parent="4500">
+      <Left inputs="value:4481.top" outputs="value:4511.d" uid="4511" uid_parent="4510"/>
+      <Right inputs="value:4517.nd" outputs="value:4512.d" uid="4512" uid_parent="4510"/>
+    </ShiftReg>
+    <ShiftReg uid="4502" uid_parent="4500">
+      <Left inputs="value:4499.value" outputs="value:4503.err" uid="4503" uid_parent="4502"/>
+      <Right inputs="value:4516.err" outputs="value:4504.err" uid="4504" uid_parent="4502"/>
     </ShiftReg>
   </Structure>
-  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4547" uid_parent="root">
-    <Tunnel _id="In1" inputs="value:4204.value" mode="index" outputs="value:4548.op" uid="4548" uid_parent="4547"/>
-    <Tunnel _id="In2" inputs="value:4213.top" outputs="value:4549.top" uid="4549" uid_parent="4547"/>
-  <Constant _name="int format" outputs="value:4550.value" type="string" uid="4550" uid_parent="4547" value="%d"/>
-  <Constant _name="int array" outputs="value:4551.value" type="array{int32}" uid="4551" uid_parent="4547" value="[]"/>
-  <Constant _name="space" outputs="value:4552.value" type="string" uid="4552" uid_parent="4547" value=" "/>
-  <Constant _name="two" outputs="value:4553.value" type="int32" uid="4553" uid_parent="4547" value="2"/>
-  <Node _name="Spreadsheet String To Array" inputs="format string:4550.value,spreadsheet string:4548.op,array type (2D Dbl):4551.value,delimiter (Tab):4552.value" outputs="array:4554.ints" uid="4554" uid_parent="4547"/>
-  <Node _name="Array Size" inputs="array:4554.ints" outputs="size(s):4555.n" uid="4555" uid_parent="4547"/>
-  <Node _name="Quotient &amp; Remainder" inputs="x:4555.n,y:4553.value" outputs="x-y*floor(x/y):,floor(x/y):4556.pairs" uid="4556" uid_parent="4547"/>
-  <Constant _name="no error" outputs="value:4557.value" type="cluster{bool.status,int32.code,string.source}" uid="4557" uid_parent="4547" value="[false,0,]"/>
-  <Structure _name="For Loop" count="4558.value" maxin="4556.pairs" maxout="" uid="4558" uid_parent="4547">
-    <Tunnel _id="In1" inputs="value:4554.ints" outputs="value:4559.ints" uid="4559" uid_parent="4558"/>
-  <Constant _name="structure class" outputs="value:4563.value" type="ref{LV.Structure}" uid="4563" uid_parent="4558" value=""/>
-  <Constant _name="pair" outputs="value:4564.value" type="int32" uid="4564" uid_parent="4558" value="2"/>
-    <Node _name="Multiply" inputs="x:4558.value,y:4564.value" outputs="x*y:4565.a" uid="4565" uid_parent="4558"/>
-    <Node _name="Increment" inputs="x:4565.a" outputs="x+1:4566.b" uid="4566" uid_parent="4558"/>
-    <Node _name="Index Array" inputs="array:4559.ints,index:4565.a,index:4566.b" outputs="element:4567.oi,element:4567.fi" uid="4567" uid_parent="4558"/>
-    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4569.d,error in (no error):4561.err" outputs="All Objects[]:4571.objs,reference out:,error out:4571.err" uid="4571" uid_parent="4558"/>
-    <Node _name="Index Array" inputs="array:4571.objs,index:4567.oi" outputs="element:4572.obj" uid="4572" uid_parent="4558"/>
-    <Node _name="To More Specific Class" inputs="reference:4572.obj,error in:4571.err,target class:4563.value" outputs="specific class reference:4573.st,error out:4573.err" uid="4573" uid_parent="4558"/>
-    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4573.st,error in (no error):4573.err" outputs="Diagrams[]:4574.diags,reference out:,error out:4574.err" uid="4574" uid_parent="4558"/>
-    <Node _name="Index Array" inputs="array:4574.diags,index:4567.fi" outputs="element:4575.nd" uid="4575" uid_parent="4558"/>
-    <ShiftReg uid="4568" uid_parent="4558">
-      <Left inputs="value:4549.top" outputs="value:4569.d" uid="4569" uid_parent="4568"/>
-      <Right inputs="value:4575.nd" outputs="value:4570.d" uid="4570" uid_parent="4568"/>
-    </ShiftReg>
-    <ShiftReg uid="4560" uid_parent="4558">
-      <Left inputs="value:4557.value" outputs="value:4561.err" uid="4561" uid_parent="4560"/>
-      <Right inputs="value:4574.err" outputs="value:4562.err" uid="4562" uid_parent="4560"/>
+  <Node _name="Decimal String To Number" inputs="string:4491.f1,offset:,default (0L):" outputs="offset past number:,number:4518.n" uid="4518" uid_parent="4479"/>
+  <Node _name="Decimal String To Number" inputs="string:4491.f3,offset:,default (0L):" outputs="offset past number:,number:4519.n" uid="4519" uid_parent="4479"/>
+  <Node _name="Decimal String To Number" inputs="string:4491.f4,offset:,default (0L):" outputs="offset past number:,number:4520.n" uid="4520" uid_parent="4479"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4512.d,error in (no error):4504.err" outputs="All Objects[]:4521.objs,reference out:,error out:4521.err" uid="4521" uid_parent="4479"/>
+    <Node _name="Index Array" inputs="array:4521.objs,index:4518.n" outputs="element:4522.obj" uid="4522" uid_parent="4479"/>
+  <Constant _name="case structure class" outputs="value:4523.value" type="ref{LV.CaseStructure}" uid="4523" uid_parent="4479" value=""/>
+    <Node _name="To More Specific Class" inputs="reference:4522.obj,error in:4521.err,target class:4523.value" outputs="specific class reference:4524.st,error out:4524.err" uid="4524" uid_parent="4479"/>
+    <Node _name="Property Node" fields="read+Selector" type="{LV.CaseStructure}" inputs="reference:4524.st,error in (no error):4524.err" outputs="Selector:4525.tuns,reference out:,error out:4525.err" uid="4525" uid_parent="4479"/>
+  <Constant _name="object class" outputs="value:4526.value" type="ref{LV.GObject}" uid="4526" uid_parent="4479" value=""/>
+    <Node _name="To More Generic Class" inputs="reference:4525.tuns,target class:4526.value" outputs="generic class reference:4527.tun" uid="4527" uid_parent="4479"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4527.tun,error in (no error):4525.err" outputs="Position:4528.pos,reference out:,error out:4528.err" uid="4528" uid_parent="4479"/>
+    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4519.n,Top:4520.n,input cluster:4528.pos" outputs="output cluster:4529.target" uid="4529" uid_parent="4479"/>
+  <Constant _name="duplicate" outputs="value:4530.value" type="bool" uid="4530" uid_parent="4479" value="false"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4527.tun,error in (no error):4528.err,position:4529.target,owner:,duplicate:4530.value" outputs="reference out:,error out:4531.err" uid="4531" uid_parent="4479"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4527.tun,error in (no error):4531.err" outputs="Position:4532.landed,reference out:,error out:4532.err" uid="4532" uid_parent="4479"/>
+    <Node _name="Add" inputs="x:4529.target,y:4529.target" outputs="x+y:4533.twice" uid="4533" uid_parent="4479"/>
+    <Node _name="Subtract" inputs="x:4533.twice,y:4532.landed" outputs="x-y:4534.corrected" uid="4534" uid_parent="4479"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4527.tun,error in (no error):4532.err,position:4534.corrected,owner:,duplicate:4530.value" outputs="reference out:,error out:4535.err" uid="4535" uid_parent="4479"/>
+    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4527.tun,error in (no error):4535.err" outputs="Position\3ALeft:4536.l,Position\3ATop:4536.t,reference out:,error out:4536.err" uid="4536" uid_parent="4479"/>
+  <Constant _name="result separator" outputs="value:4537.value" type="string" uid="4537" uid_parent="4479" value=";"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4536.err" outputs="code:4538.code" uid="4538" uid_parent="4479"/>
+  <Node _name="Number To Decimal String" inputs="number:4538.code" outputs="decimal integer string:4539.s" uid="4539" uid_parent="4479"/>
+  <Node _name="Number To Decimal String" inputs="number:4536.l" outputs="decimal integer string:4540.s" uid="4540" uid_parent="4479"/>
+  <Node _name="Number To Decimal String" inputs="number:4536.t" outputs="decimal integer string:4541.s" uid="4541" uid_parent="4479"/>
+  <Constant _name="record end" outputs="value:4542.value" type="string" uid="4542" uid_parent="4479" value="|"/>
+  <Node _name="Concatenate Strings" inputs="string:4539.s,string:4537.value,string:4540.s,string:4537.value,string:4541.s,string:4542.value" outputs="concatenated string:4543.s" uid="4543" uid_parent="4479"/>
+    <Tunnel _id="Out1" inputs="value:4543.s" mode="index" outputs="value:4544.value" uid="4544" uid_parent="4479"/>
+    <ShiftReg uid="4545" uid_parent="4479">
+      <Left inputs="value:4478.err" outputs="value:4546.err" uid="4546" uid_parent="4545"/>
+      <Right inputs="value:4546.err" outputs="value:4547.err" uid="4547" uid_parent="4545"/>
     </ShiftReg>
   </Structure>
-    <Node _name="Property Node" fields="read+Wires[]" type="{LV.Diagram}" inputs="reference:4570.d,error in (no error):4562.err" outputs="Wires[]:4576.wires,reference out:,error out:4576.err" uid="4576" uid_parent="4547"/>
-    <Structure _name="For Loop" count="" maxin="" maxout="" uid="4577" uid_parent="4547">
-      <Tunnel _id="In1" inputs="value:4576.wires" mode="index" outputs="value:4578.wire" uid="4578" uid_parent="4577"/>
-      <Node _name="Invoke Node" target="CleanUpWire" type="{LV.Wire}" inputs="reference:4578.wire,error in (no error):" outputs="reference out:,error out:4579.err" uid="4579" uid_parent="4577"/>
-      <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4579.err" outputs="status:4580.bad" uid="4580" uid_parent="4577"/>
-      <Tunnel _id="Out1" inputs="value:4580.bad" mode="index" outputs="value:4581.value" uid="4581" uid_parent="4577"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4548" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4208.value" mode="index" outputs="value:4549.op" uid="4549" uid_parent="4548"/>
+    <Tunnel _id="In2" inputs="value:4215.top" outputs="value:4550.top" uid="4550" uid_parent="4548"/>
+  <Constant _name="text format" outputs="value:4551.value" type="string" uid="4551" uid_parent="4548" value="%s"/>
+  <Constant _name="text array" outputs="value:4552.value" type="array{string.String}" uid="4552" uid_parent="4548" value="[]"/>
+  <Constant _name="semicolon" outputs="value:4553.value" type="string" uid="4553" uid_parent="4548" value=";"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4551.value,spreadsheet string:4549.op,array type (2D Dbl):4552.value,delimiter (Tab):4553.value" outputs="array:4554.parts" uid="4554" uid_parent="4548"/>
+  <Constant _name="field 0" outputs="value:4555.value" type="int32" uid="4555" uid_parent="4548" value="0"/>
+  <Constant _name="field 1" outputs="value:4556.value" type="int32" uid="4556" uid_parent="4548" value="1"/>
+  <Constant _name="field 2" outputs="value:4557.value" type="int32" uid="4557" uid_parent="4548" value="2"/>
+  <Constant _name="field 3" outputs="value:4558.value" type="int32" uid="4558" uid_parent="4548" value="3"/>
+  <Constant _name="field 4" outputs="value:4559.value" type="int32" uid="4559" uid_parent="4548" value="4"/>
+  <Node _name="Index Array" inputs="array:4554.parts,index:4555.value,index:4556.value,index:4557.value,index:4558.value,index:4559.value" outputs="element:4560.f0,element:4560.f1,element:4560.f2,element:4560.f3,element:4560.f4" uid="4560" uid_parent="4548"/>
+  <Constant _name="int format" outputs="value:4561.value" type="string" uid="4561" uid_parent="4548" value="%d"/>
+  <Constant _name="int array" outputs="value:4562.value" type="array{int32}" uid="4562" uid_parent="4548" value="[]"/>
+  <Constant _name="space" outputs="value:4563.value" type="string" uid="4563" uid_parent="4548" value=" "/>
+  <Constant _name="two" outputs="value:4564.value" type="int32" uid="4564" uid_parent="4548" value="2"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4561.value,spreadsheet string:4560.f0,array type (2D Dbl):4562.value,delimiter (Tab):4563.value" outputs="array:4565.ints" uid="4565" uid_parent="4548"/>
+  <Node _name="Array Size" inputs="array:4565.ints" outputs="size(s):4566.n" uid="4566" uid_parent="4548"/>
+  <Node _name="Quotient &amp; Remainder" inputs="x:4566.n,y:4564.value" outputs="x-y*floor(x/y):,floor(x/y):4567.pairs" uid="4567" uid_parent="4548"/>
+  <Constant _name="no error" outputs="value:4568.value" type="cluster{bool.status,int32.code,string.source}" uid="4568" uid_parent="4548" value="[false,0,]"/>
+  <Structure _name="For Loop" count="4569.value" maxin="4567.pairs" maxout="" uid="4569" uid_parent="4548">
+    <Tunnel _id="In1" inputs="value:4565.ints" outputs="value:4570.ints" uid="4570" uid_parent="4569"/>
+  <Constant _name="structure class" outputs="value:4574.value" type="ref{LV.Structure}" uid="4574" uid_parent="4569" value=""/>
+  <Constant _name="pair" outputs="value:4575.value" type="int32" uid="4575" uid_parent="4569" value="2"/>
+    <Node _name="Multiply" inputs="x:4569.value,y:4575.value" outputs="x*y:4576.a" uid="4576" uid_parent="4569"/>
+    <Node _name="Increment" inputs="x:4576.a" outputs="x+1:4577.b" uid="4577" uid_parent="4569"/>
+    <Node _name="Index Array" inputs="array:4570.ints,index:4576.a,index:4577.b" outputs="element:4578.oi,element:4578.fi" uid="4578" uid_parent="4569"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4580.d,error in (no error):4572.err" outputs="All Objects[]:4582.objs,reference out:,error out:4582.err" uid="4582" uid_parent="4569"/>
+    <Node _name="Index Array" inputs="array:4582.objs,index:4578.oi" outputs="element:4583.obj" uid="4583" uid_parent="4569"/>
+    <Node _name="To More Specific Class" inputs="reference:4583.obj,error in:4582.err,target class:4574.value" outputs="specific class reference:4584.st,error out:4584.err" uid="4584" uid_parent="4569"/>
+    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4584.st,error in (no error):4584.err" outputs="Diagrams[]:4585.diags,reference out:,error out:4585.err" uid="4585" uid_parent="4569"/>
+    <Node _name="Index Array" inputs="array:4585.diags,index:4578.fi" outputs="element:4586.nd" uid="4586" uid_parent="4569"/>
+    <ShiftReg uid="4579" uid_parent="4569">
+      <Left inputs="value:4550.top" outputs="value:4580.d" uid="4580" uid_parent="4579"/>
+      <Right inputs="value:4586.nd" outputs="value:4581.d" uid="4581" uid_parent="4579"/>
+    </ShiftReg>
+    <ShiftReg uid="4571" uid_parent="4569">
+      <Left inputs="value:4568.value" outputs="value:4572.err" uid="4572" uid_parent="4571"/>
+      <Right inputs="value:4585.err" outputs="value:4573.err" uid="4573" uid_parent="4571"/>
+    </ShiftReg>
+  </Structure>
+  <Node _name="Decimal String To Number" inputs="string:4560.f1,offset:,default (0L):" outputs="offset past number:,number:4587.n" uid="4587" uid_parent="4548"/>
+  <Node _name="Decimal String To Number" inputs="string:4560.f3,offset:,default (0L):" outputs="offset past number:,number:4588.n" uid="4588" uid_parent="4548"/>
+  <Node _name="Decimal String To Number" inputs="string:4560.f4,offset:,default (0L):" outputs="offset past number:,number:4589.n" uid="4589" uid_parent="4548"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4581.d,error in (no error):4573.err" outputs="All Objects[]:4590.objs,reference out:,error out:4590.err" uid="4590" uid_parent="4548"/>
+    <Node _name="Index Array" inputs="array:4590.objs,index:4587.n" outputs="element:4591.obj" uid="4591" uid_parent="4548"/>
+  <Constant _name="event structure class" outputs="value:4592.value" type="ref{LV.EventStructure}" uid="4592" uid_parent="4548" value=""/>
+    <Node _name="To More Specific Class" inputs="reference:4591.obj,error in:4590.err,target class:4592.value" outputs="specific class reference:4593.st,error out:4593.err" uid="4593" uid_parent="4548"/>
+    <Node _name="Property Node" fields="read+Dynamic Terminal (Left)" type="{LV.EventStructure}" inputs="reference:4593.st,error in (no error):4593.err" outputs="Dynamic Terminal (Left):4594.tuns,reference out:,error out:4594.err" uid="4594" uid_parent="4548"/>
+  <Constant _name="object class" outputs="value:4595.value" type="ref{LV.GObject}" uid="4595" uid_parent="4548" value=""/>
+    <Node _name="To More Generic Class" inputs="reference:4594.tuns,target class:4595.value" outputs="generic class reference:4596.tun" uid="4596" uid_parent="4548"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4596.tun,error in (no error):4594.err" outputs="Position:4597.pos,reference out:,error out:4597.err" uid="4597" uid_parent="4548"/>
+    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4588.n,Top:4589.n,input cluster:4597.pos" outputs="output cluster:4598.target" uid="4598" uid_parent="4548"/>
+  <Constant _name="duplicate" outputs="value:4599.value" type="bool" uid="4599" uid_parent="4548" value="false"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4596.tun,error in (no error):4597.err,position:4598.target,owner:,duplicate:4599.value" outputs="reference out:,error out:4600.err" uid="4600" uid_parent="4548"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4596.tun,error in (no error):4600.err" outputs="Position:4601.landed,reference out:,error out:4601.err" uid="4601" uid_parent="4548"/>
+    <Node _name="Add" inputs="x:4598.target,y:4598.target" outputs="x+y:4602.twice" uid="4602" uid_parent="4548"/>
+    <Node _name="Subtract" inputs="x:4602.twice,y:4601.landed" outputs="x-y:4603.corrected" uid="4603" uid_parent="4548"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4596.tun,error in (no error):4601.err,position:4603.corrected,owner:,duplicate:4599.value" outputs="reference out:,error out:4604.err" uid="4604" uid_parent="4548"/>
+    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4596.tun,error in (no error):4604.err" outputs="Position\3ALeft:4605.l,Position\3ATop:4605.t,reference out:,error out:4605.err" uid="4605" uid_parent="4548"/>
+  <Constant _name="result separator" outputs="value:4606.value" type="string" uid="4606" uid_parent="4548" value=";"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4605.err" outputs="code:4607.code" uid="4607" uid_parent="4548"/>
+  <Node _name="Number To Decimal String" inputs="number:4607.code" outputs="decimal integer string:4608.s" uid="4608" uid_parent="4548"/>
+  <Node _name="Number To Decimal String" inputs="number:4605.l" outputs="decimal integer string:4609.s" uid="4609" uid_parent="4548"/>
+  <Node _name="Number To Decimal String" inputs="number:4605.t" outputs="decimal integer string:4610.s" uid="4610" uid_parent="4548"/>
+  <Constant _name="record end" outputs="value:4611.value" type="string" uid="4611" uid_parent="4548" value="|"/>
+  <Node _name="Concatenate Strings" inputs="string:4608.s,string:4606.value,string:4609.s,string:4606.value,string:4610.s,string:4611.value" outputs="concatenated string:4612.s" uid="4612" uid_parent="4548"/>
+    <Tunnel _id="Out1" inputs="value:4612.s" mode="index" outputs="value:4613.value" uid="4613" uid_parent="4548"/>
+    <ShiftReg uid="4614" uid_parent="4548">
+      <Left inputs="value:4547.err" outputs="value:4615.err" uid="4615" uid_parent="4614"/>
+      <Right inputs="value:4615.err" outputs="value:4616.err" uid="4616" uid_parent="4614"/>
+    </ShiftReg>
+  </Structure>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4617" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4209.value" mode="index" outputs="value:4618.op" uid="4618" uid_parent="4617"/>
+    <Tunnel _id="In2" inputs="value:4215.top" outputs="value:4619.top" uid="4619" uid_parent="4617"/>
+  <Constant _name="text format" outputs="value:4620.value" type="string" uid="4620" uid_parent="4617" value="%s"/>
+  <Constant _name="text array" outputs="value:4621.value" type="array{string.String}" uid="4621" uid_parent="4617" value="[]"/>
+  <Constant _name="semicolon" outputs="value:4622.value" type="string" uid="4622" uid_parent="4617" value=";"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4620.value,spreadsheet string:4618.op,array type (2D Dbl):4621.value,delimiter (Tab):4622.value" outputs="array:4623.parts" uid="4623" uid_parent="4617"/>
+  <Constant _name="field 0" outputs="value:4624.value" type="int32" uid="4624" uid_parent="4617" value="0"/>
+  <Constant _name="field 1" outputs="value:4625.value" type="int32" uid="4625" uid_parent="4617" value="1"/>
+  <Constant _name="field 2" outputs="value:4626.value" type="int32" uid="4626" uid_parent="4617" value="2"/>
+  <Constant _name="field 3" outputs="value:4627.value" type="int32" uid="4627" uid_parent="4617" value="3"/>
+  <Constant _name="field 4" outputs="value:4628.value" type="int32" uid="4628" uid_parent="4617" value="4"/>
+  <Node _name="Index Array" inputs="array:4623.parts,index:4624.value,index:4625.value,index:4626.value,index:4627.value,index:4628.value" outputs="element:4629.f0,element:4629.f1,element:4629.f2,element:4629.f3,element:4629.f4" uid="4629" uid_parent="4617"/>
+  <Constant _name="int format" outputs="value:4630.value" type="string" uid="4630" uid_parent="4617" value="%d"/>
+  <Constant _name="int array" outputs="value:4631.value" type="array{int32}" uid="4631" uid_parent="4617" value="[]"/>
+  <Constant _name="space" outputs="value:4632.value" type="string" uid="4632" uid_parent="4617" value=" "/>
+  <Constant _name="two" outputs="value:4633.value" type="int32" uid="4633" uid_parent="4617" value="2"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4630.value,spreadsheet string:4629.f0,array type (2D Dbl):4631.value,delimiter (Tab):4632.value" outputs="array:4634.ints" uid="4634" uid_parent="4617"/>
+  <Node _name="Array Size" inputs="array:4634.ints" outputs="size(s):4635.n" uid="4635" uid_parent="4617"/>
+  <Node _name="Quotient &amp; Remainder" inputs="x:4635.n,y:4633.value" outputs="x-y*floor(x/y):,floor(x/y):4636.pairs" uid="4636" uid_parent="4617"/>
+  <Constant _name="no error" outputs="value:4637.value" type="cluster{bool.status,int32.code,string.source}" uid="4637" uid_parent="4617" value="[false,0,]"/>
+  <Structure _name="For Loop" count="4638.value" maxin="4636.pairs" maxout="" uid="4638" uid_parent="4617">
+    <Tunnel _id="In1" inputs="value:4634.ints" outputs="value:4639.ints" uid="4639" uid_parent="4638"/>
+  <Constant _name="structure class" outputs="value:4643.value" type="ref{LV.Structure}" uid="4643" uid_parent="4638" value=""/>
+  <Constant _name="pair" outputs="value:4644.value" type="int32" uid="4644" uid_parent="4638" value="2"/>
+    <Node _name="Multiply" inputs="x:4638.value,y:4644.value" outputs="x*y:4645.a" uid="4645" uid_parent="4638"/>
+    <Node _name="Increment" inputs="x:4645.a" outputs="x+1:4646.b" uid="4646" uid_parent="4638"/>
+    <Node _name="Index Array" inputs="array:4639.ints,index:4645.a,index:4646.b" outputs="element:4647.oi,element:4647.fi" uid="4647" uid_parent="4638"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4649.d,error in (no error):4641.err" outputs="All Objects[]:4651.objs,reference out:,error out:4651.err" uid="4651" uid_parent="4638"/>
+    <Node _name="Index Array" inputs="array:4651.objs,index:4647.oi" outputs="element:4652.obj" uid="4652" uid_parent="4638"/>
+    <Node _name="To More Specific Class" inputs="reference:4652.obj,error in:4651.err,target class:4643.value" outputs="specific class reference:4653.st,error out:4653.err" uid="4653" uid_parent="4638"/>
+    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4653.st,error in (no error):4653.err" outputs="Diagrams[]:4654.diags,reference out:,error out:4654.err" uid="4654" uid_parent="4638"/>
+    <Node _name="Index Array" inputs="array:4654.diags,index:4647.fi" outputs="element:4655.nd" uid="4655" uid_parent="4638"/>
+    <ShiftReg uid="4648" uid_parent="4638">
+      <Left inputs="value:4619.top" outputs="value:4649.d" uid="4649" uid_parent="4648"/>
+      <Right inputs="value:4655.nd" outputs="value:4650.d" uid="4650" uid_parent="4648"/>
+    </ShiftReg>
+    <ShiftReg uid="4640" uid_parent="4638">
+      <Left inputs="value:4637.value" outputs="value:4641.err" uid="4641" uid_parent="4640"/>
+      <Right inputs="value:4654.err" outputs="value:4642.err" uid="4642" uid_parent="4640"/>
+    </ShiftReg>
+  </Structure>
+  <Node _name="Decimal String To Number" inputs="string:4629.f1,offset:,default (0L):" outputs="offset past number:,number:4656.n" uid="4656" uid_parent="4617"/>
+  <Node _name="Decimal String To Number" inputs="string:4629.f3,offset:,default (0L):" outputs="offset past number:,number:4657.n" uid="4657" uid_parent="4617"/>
+  <Node _name="Decimal String To Number" inputs="string:4629.f4,offset:,default (0L):" outputs="offset past number:,number:4658.n" uid="4658" uid_parent="4617"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4650.d,error in (no error):4642.err" outputs="All Objects[]:4659.objs,reference out:,error out:4659.err" uid="4659" uid_parent="4617"/>
+    <Node _name="Index Array" inputs="array:4659.objs,index:4656.n" outputs="element:4660.obj" uid="4660" uid_parent="4617"/>
+  <Constant _name="event structure class" outputs="value:4661.value" type="ref{LV.EventStructure}" uid="4661" uid_parent="4617" value=""/>
+    <Node _name="To More Specific Class" inputs="reference:4660.obj,error in:4659.err,target class:4661.value" outputs="specific class reference:4662.st,error out:4662.err" uid="4662" uid_parent="4617"/>
+    <Node _name="Property Node" fields="read+Dynamic Terminal (Right)" type="{LV.EventStructure}" inputs="reference:4662.st,error in (no error):4662.err" outputs="Dynamic Terminal (Right):4663.tuns,reference out:,error out:4663.err" uid="4663" uid_parent="4617"/>
+  <Constant _name="object class" outputs="value:4664.value" type="ref{LV.GObject}" uid="4664" uid_parent="4617" value=""/>
+    <Node _name="To More Generic Class" inputs="reference:4663.tuns,target class:4664.value" outputs="generic class reference:4665.tun" uid="4665" uid_parent="4617"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4665.tun,error in (no error):4663.err" outputs="Position:4666.pos,reference out:,error out:4666.err" uid="4666" uid_parent="4617"/>
+    <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4657.n,Top:4658.n,input cluster:4666.pos" outputs="output cluster:4667.target" uid="4667" uid_parent="4617"/>
+  <Constant _name="duplicate" outputs="value:4668.value" type="bool" uid="4668" uid_parent="4617" value="false"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4665.tun,error in (no error):4666.err,position:4667.target,owner:,duplicate:4668.value" outputs="reference out:,error out:4669.err" uid="4669" uid_parent="4617"/>
+    <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4665.tun,error in (no error):4669.err" outputs="Position:4670.landed,reference out:,error out:4670.err" uid="4670" uid_parent="4617"/>
+    <Node _name="Add" inputs="x:4667.target,y:4667.target" outputs="x+y:4671.twice" uid="4671" uid_parent="4617"/>
+    <Node _name="Subtract" inputs="x:4671.twice,y:4670.landed" outputs="x-y:4672.corrected" uid="4672" uid_parent="4617"/>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4665.tun,error in (no error):4670.err,position:4672.corrected,owner:,duplicate:4668.value" outputs="reference out:,error out:4673.err" uid="4673" uid_parent="4617"/>
+    <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4665.tun,error in (no error):4673.err" outputs="Position\3ALeft:4674.l,Position\3ATop:4674.t,reference out:,error out:4674.err" uid="4674" uid_parent="4617"/>
+  <Constant _name="result separator" outputs="value:4675.value" type="string" uid="4675" uid_parent="4617" value=";"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4674.err" outputs="code:4676.code" uid="4676" uid_parent="4617"/>
+  <Node _name="Number To Decimal String" inputs="number:4676.code" outputs="decimal integer string:4677.s" uid="4677" uid_parent="4617"/>
+  <Node _name="Number To Decimal String" inputs="number:4674.l" outputs="decimal integer string:4678.s" uid="4678" uid_parent="4617"/>
+  <Node _name="Number To Decimal String" inputs="number:4674.t" outputs="decimal integer string:4679.s" uid="4679" uid_parent="4617"/>
+  <Constant _name="record end" outputs="value:4680.value" type="string" uid="4680" uid_parent="4617" value="|"/>
+  <Node _name="Concatenate Strings" inputs="string:4677.s,string:4675.value,string:4678.s,string:4675.value,string:4679.s,string:4680.value" outputs="concatenated string:4681.s" uid="4681" uid_parent="4617"/>
+    <Tunnel _id="Out1" inputs="value:4681.s" mode="index" outputs="value:4682.value" uid="4682" uid_parent="4617"/>
+    <ShiftReg uid="4683" uid_parent="4617">
+      <Left inputs="value:4616.err" outputs="value:4684.err" uid="4684" uid_parent="4683"/>
+      <Right inputs="value:4684.err" outputs="value:4685.err" uid="4685" uid_parent="4683"/>
+    </ShiftReg>
+  </Structure>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4686" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4204.value" mode="index" outputs="value:4687.op" uid="4687" uid_parent="4686"/>
+    <Tunnel _id="In2" inputs="value:4215.top" outputs="value:4688.top" uid="4688" uid_parent="4686"/>
+  <Constant _name="int format" outputs="value:4689.value" type="string" uid="4689" uid_parent="4686" value="%d"/>
+  <Constant _name="int array" outputs="value:4690.value" type="array{int32}" uid="4690" uid_parent="4686" value="[]"/>
+  <Constant _name="space" outputs="value:4691.value" type="string" uid="4691" uid_parent="4686" value=" "/>
+  <Constant _name="two" outputs="value:4692.value" type="int32" uid="4692" uid_parent="4686" value="2"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4689.value,spreadsheet string:4687.op,array type (2D Dbl):4690.value,delimiter (Tab):4691.value" outputs="array:4693.ints" uid="4693" uid_parent="4686"/>
+  <Node _name="Array Size" inputs="array:4693.ints" outputs="size(s):4694.n" uid="4694" uid_parent="4686"/>
+  <Node _name="Quotient &amp; Remainder" inputs="x:4694.n,y:4692.value" outputs="x-y*floor(x/y):,floor(x/y):4695.pairs" uid="4695" uid_parent="4686"/>
+  <Constant _name="no error" outputs="value:4696.value" type="cluster{bool.status,int32.code,string.source}" uid="4696" uid_parent="4686" value="[false,0,]"/>
+  <Structure _name="For Loop" count="4697.value" maxin="4695.pairs" maxout="" uid="4697" uid_parent="4686">
+    <Tunnel _id="In1" inputs="value:4693.ints" outputs="value:4698.ints" uid="4698" uid_parent="4697"/>
+  <Constant _name="structure class" outputs="value:4702.value" type="ref{LV.Structure}" uid="4702" uid_parent="4697" value=""/>
+  <Constant _name="pair" outputs="value:4703.value" type="int32" uid="4703" uid_parent="4697" value="2"/>
+    <Node _name="Multiply" inputs="x:4697.value,y:4703.value" outputs="x*y:4704.a" uid="4704" uid_parent="4697"/>
+    <Node _name="Increment" inputs="x:4704.a" outputs="x+1:4705.b" uid="4705" uid_parent="4697"/>
+    <Node _name="Index Array" inputs="array:4698.ints,index:4704.a,index:4705.b" outputs="element:4706.oi,element:4706.fi" uid="4706" uid_parent="4697"/>
+    <Node _name="Property Node" fields="read+All Objects[]" type="{LV.Diagram}" inputs="reference:4708.d,error in (no error):4700.err" outputs="All Objects[]:4710.objs,reference out:,error out:4710.err" uid="4710" uid_parent="4697"/>
+    <Node _name="Index Array" inputs="array:4710.objs,index:4706.oi" outputs="element:4711.obj" uid="4711" uid_parent="4697"/>
+    <Node _name="To More Specific Class" inputs="reference:4711.obj,error in:4710.err,target class:4702.value" outputs="specific class reference:4712.st,error out:4712.err" uid="4712" uid_parent="4697"/>
+    <Node _name="Property Node" fields="read+Diagrams[]" type="{LV.Structure}" inputs="reference:4712.st,error in (no error):4712.err" outputs="Diagrams[]:4713.diags,reference out:,error out:4713.err" uid="4713" uid_parent="4697"/>
+    <Node _name="Index Array" inputs="array:4713.diags,index:4706.fi" outputs="element:4714.nd" uid="4714" uid_parent="4697"/>
+    <ShiftReg uid="4707" uid_parent="4697">
+      <Left inputs="value:4688.top" outputs="value:4708.d" uid="4708" uid_parent="4707"/>
+      <Right inputs="value:4714.nd" outputs="value:4709.d" uid="4709" uid_parent="4707"/>
+    </ShiftReg>
+    <ShiftReg uid="4699" uid_parent="4697">
+      <Left inputs="value:4696.value" outputs="value:4700.err" uid="4700" uid_parent="4699"/>
+      <Right inputs="value:4713.err" outputs="value:4701.err" uid="4701" uid_parent="4699"/>
+    </ShiftReg>
+  </Structure>
+    <Node _name="Property Node" fields="read+Wires[]" type="{LV.Diagram}" inputs="reference:4709.d,error in (no error):4701.err" outputs="Wires[]:4715.wires,reference out:,error out:4715.err" uid="4715" uid_parent="4686"/>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="4716" uid_parent="4686">
+      <Tunnel _id="In1" inputs="value:4715.wires" mode="index" outputs="value:4717.wire" uid="4717" uid_parent="4716"/>
+      <Node _name="Invoke Node" target="CleanUpWire" type="{LV.Wire}" inputs="reference:4717.wire,error in (no error):" outputs="reference out:,error out:4718.err" uid="4718" uid_parent="4716"/>
+      <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4718.err" outputs="status:4719.bad" uid="4719" uid_parent="4716"/>
+      <Tunnel _id="Out1" inputs="value:4719.bad" mode="index" outputs="value:4720.value" uid="4720" uid_parent="4716"/>
     </Structure>
-    <Node _name="Array Size" inputs="array:4576.wires" outputs="size(s):4582.n" uid="4582" uid_parent="4547"/>
-  <Constant _name="result separator" outputs="value:4583.value" type="string" uid="4583" uid_parent="4547" value=";"/>
-  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4576.err" outputs="code:4584.code" uid="4584" uid_parent="4547"/>
-  <Node _name="Number To Decimal String" inputs="number:4584.code" outputs="decimal integer string:4585.s" uid="4585" uid_parent="4547"/>
-  <Node _name="Number To Decimal String" inputs="number:4582.n" outputs="decimal integer string:4586.s" uid="4586" uid_parent="4547"/>
-  <Constant _name="record end" outputs="value:4587.value" type="string" uid="4587" uid_parent="4547" value="|"/>
-  <Node _name="Concatenate Strings" inputs="string:4585.s,string:4583.value,string:4586.s,string:4587.value" outputs="concatenated string:4588.s" uid="4588" uid_parent="4547"/>
-    <Tunnel _id="Out1" inputs="value:4588.s" mode="index" outputs="value:4589.value" uid="4589" uid_parent="4547"/>
-    <ShiftReg uid="4590" uid_parent="4547">
-      <Left inputs="value:4546.err" outputs="value:4591.err" uid="4591" uid_parent="4590"/>
-      <Right inputs="value:4591.err" outputs="value:4592.err" uid="4592" uid_parent="4590"/>
+    <Node _name="Array Size" inputs="array:4715.wires" outputs="size(s):4721.n" uid="4721" uid_parent="4686"/>
+  <Constant _name="result separator" outputs="value:4722.value" type="string" uid="4722" uid_parent="4686" value=";"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4715.err" outputs="code:4723.code" uid="4723" uid_parent="4686"/>
+  <Node _name="Number To Decimal String" inputs="number:4723.code" outputs="decimal integer string:4724.s" uid="4724" uid_parent="4686"/>
+  <Node _name="Number To Decimal String" inputs="number:4721.n" outputs="decimal integer string:4725.s" uid="4725" uid_parent="4686"/>
+  <Constant _name="record end" outputs="value:4726.value" type="string" uid="4726" uid_parent="4686" value="|"/>
+  <Node _name="Concatenate Strings" inputs="string:4724.s,string:4722.value,string:4725.s,string:4726.value" outputs="concatenated string:4727.s" uid="4727" uid_parent="4686"/>
+    <Tunnel _id="Out1" inputs="value:4727.s" mode="index" outputs="value:4728.value" uid="4728" uid_parent="4686"/>
+    <ShiftReg uid="4729" uid_parent="4686">
+      <Left inputs="value:4685.err" outputs="value:4730.err" uid="4730" uid_parent="4729"/>
+      <Right inputs="value:4730.err" outputs="value:4731.err" uid="4731" uid_parent="4729"/>
     </ShiftReg>
   </Structure>
-  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4210.vi,error in (no error):4592.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4593.err" uid="4593" uid_parent="root"/>
-  <Node _name="Close Reference" inputs="reference:4210.vi,error in (no error):4593.err" outputs="error out:4594.err" uid="4594" uid_parent="root"/>
-  <Node _name="Concatenate Strings" inputs="string:4273.value" outputs="concatenated string:4595.s" uid="4595" uid_parent="root"/>
-  <Indicator _name="move results" conIdx="4" connection="recommended" type="string" uid="4596" uid_parent="root" value="" inputs="value:4595.s"/>
-  <Node _name="Concatenate Strings" inputs="string:4335.value" outputs="concatenated string:4597.s" uid="4597" uid_parent="root"/>
-  <Indicator _name="size results" conIdx="5" connection="recommended" type="string" uid="4598" uid_parent="root" value="" inputs="value:4597.s"/>
-  <Node _name="Concatenate Strings" inputs="string:4404.value" outputs="concatenated string:4599.s" uid="4599" uid_parent="root"/>
-  <Indicator _name="tunnel results" conIdx="7" connection="recommended" type="string" uid="4600" uid_parent="root" value="" inputs="value:4599.s"/>
-  <Node _name="Concatenate Strings" inputs="string:4473.value" outputs="concatenated string:4601.s" uid="4601" uid_parent="root"/>
-  <Indicator _name="shift register results" type="string" uid="4602" uid_parent="root" value="" inputs="value:4601.s"/>
-  <Node _name="Concatenate Strings" inputs="string:4543.value" outputs="concatenated string:4603.s" uid="4603" uid_parent="root"/>
-  <Indicator _name="selector results" type="string" uid="4604" uid_parent="root" value="" inputs="value:4603.s"/>
-  <Node _name="Concatenate Strings" inputs="string:4589.value" outputs="concatenated string:4605.s" uid="4605" uid_parent="root"/>
-  <Indicator _name="wire results" conIdx="6" connection="recommended" type="string" uid="4606" uid_parent="root" value="" inputs="value:4605.s"/>
-  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4607" uid_parent="root" value="[false,0,]" inputs="value:4594.err"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4212.vi,error in (no error):4731.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4732.err" uid="4732" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4212.vi,error in (no error):4732.err" outputs="error out:4733.err" uid="4733" uid_parent="root"/>
+  <Node _name="Concatenate Strings" inputs="string:4275.value" outputs="concatenated string:4734.s" uid="4734" uid_parent="root"/>
+  <Indicator _name="move results" conIdx="4" connection="recommended" type="string" uid="4735" uid_parent="root" value="" inputs="value:4734.s"/>
+  <Node _name="Concatenate Strings" inputs="string:4337.value" outputs="concatenated string:4736.s" uid="4736" uid_parent="root"/>
+  <Indicator _name="size results" conIdx="5" connection="recommended" type="string" uid="4737" uid_parent="root" value="" inputs="value:4736.s"/>
+  <Node _name="Concatenate Strings" inputs="string:4406.value" outputs="concatenated string:4738.s" uid="4738" uid_parent="root"/>
+  <Indicator _name="tunnel results" conIdx="7" connection="recommended" type="string" uid="4739" uid_parent="root" value="" inputs="value:4738.s"/>
+  <Node _name="Concatenate Strings" inputs="string:4475.value" outputs="concatenated string:4740.s" uid="4740" uid_parent="root"/>
+  <Indicator _name="shift register results" type="string" uid="4741" uid_parent="root" value="" inputs="value:4740.s"/>
+  <Node _name="Concatenate Strings" inputs="string:4544.value" outputs="concatenated string:4742.s" uid="4742" uid_parent="root"/>
+  <Indicator _name="selector results" type="string" uid="4743" uid_parent="root" value="" inputs="value:4742.s"/>
+  <Node _name="Concatenate Strings" inputs="string:4613.value" outputs="concatenated string:4744.s" uid="4744" uid_parent="root"/>
+  <Indicator _name="dynamic left results" type="string" uid="4745" uid_parent="root" value="" inputs="value:4744.s"/>
+  <Node _name="Concatenate Strings" inputs="string:4682.value" outputs="concatenated string:4746.s" uid="4746" uid_parent="root"/>
+  <Indicator _name="dynamic right results" type="string" uid="4747" uid_parent="root" value="" inputs="value:4746.s"/>
+  <Node _name="Concatenate Strings" inputs="string:4728.value" outputs="concatenated string:4748.s" uid="4748" uid_parent="root"/>
+  <Indicator _name="wire results" conIdx="6" connection="recommended" type="string" uid="4749" uid_parent="root" value="" inputs="value:4748.s"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4750" uid_parent="root" value="[false,0,]" inputs="value:4733.err"/>
 </VI>

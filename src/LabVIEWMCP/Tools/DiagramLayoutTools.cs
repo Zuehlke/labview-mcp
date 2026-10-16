@@ -118,7 +118,8 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
             var moveResults = Records(values, "move results");
             var sizeResults = Records(values, "size results");
             var tunnelResults = Records(values, "tunnel results").Concat(Records(values, "shift register results"))
-                .Concat(Records(values, "selector results")).ToList();
+                .Concat(Records(values, "selector results")).Concat(Records(values, "dynamic left results"))
+                .Concat(Records(values, "dynamic right results")).ToList();
             answer["helperErrorCode"] = error.Code;
             answer["moveErrors"] = moveResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
             answer["sizeErrors"] = sizeResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
@@ -176,19 +177,24 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         return (lines, null);
     }
 
-    /// <summary>The apply helper's inputs: one op string per move, size, tunnel, shift register and
-    /// case selector, and every diagram's path for the wire clean-up.</summary>
+    /// <summary>The apply helper's inputs: one op string per move, size, tunnel, shift register,
+    /// case selector and dynamic event terminal, and every diagram's path for the wire clean-up.</summary>
     internal static JsonObject ApplyInputs(string vi, LayoutPlan plan) => new()
     {
         ["vi path"] = vi,
         ["moves"] = GraftTools.ArrayXml("moves", plan.Moves.Select(m => $"{m.ApplyPath};{m.Index};{m.X};{m.Y}")),
         ["sizes"] = GraftTools.ArrayXml("sizes", plan.Sizes.Select(s => $"{s.ApplyPath};{s.Index};{s.FrameW};{s.FrameH}")),
-        ["tunnels"] = GraftTools.ArrayXml("tunnels", plan.Tunnels.Where(t => !t.ShiftRegister && !t.Selector)
+        ["tunnels"] = GraftTools.ArrayXml("tunnels", plan.Tunnels.Where(t => !t.ShiftRegister && !t.Selector && !t.Dynamic)
             .Select(t => $"{t.ApplyPath};{t.Index};{t.Tunnel};{t.X};{t.Y}")),
         ["shift registers"] = GraftTools.ArrayXml("shift registers", plan.Tunnels.Where(t => t.ShiftRegister)
             .Select(t => $"{t.ApplyPath};{t.Index};{t.Tunnel};{t.X};{t.Y}")),
         // a case structure's selector, read through {LV.CaseStructure} Selector: the third field unused
         ["selectors"] = GraftTools.ArrayXml("selectors", plan.Tunnels.Where(t => t.Selector)
+            .Select(t => $"{t.ApplyPath};{t.Index};0;{t.X};{t.Y}")),
+        // an event structure's dynamic event terminals, one pass per side
+        ["dynamic left"] = GraftTools.ArrayXml("dynamic left", plan.Tunnels.Where(t => t.Dynamic && t.Tunnel == 0)
+            .Select(t => $"{t.ApplyPath};{t.Index};0;{t.X};{t.Y}")),
+        ["dynamic right"] = GraftTools.ArrayXml("dynamic right", plan.Tunnels.Where(t => t.Dynamic && t.Tunnel == 1)
             .Select(t => $"{t.ApplyPath};{t.Index};0;{t.X};{t.Y}")),
         ["wires"] = GraftTools.ArrayXml("wires", plan.WireDiagrams),
     };

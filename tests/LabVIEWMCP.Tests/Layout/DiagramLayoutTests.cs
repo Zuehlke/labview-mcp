@@ -197,6 +197,35 @@ public sealed class DiagramLayoutTests
     }
 
     /// <summary>
+    /// An Event Structure's dynamic event terminals are not in Tunnels[] either. Left where NI's
+    /// clean-up put them they sat at the BOTTOM, and the registration refnum ran down the loop's
+    /// edge to them; Delacor's original has them 66 px down a 237 px structure, under the frame's
+    /// header note, with the loop's shift register level with them.
+    /// </summary>
+    [Fact]
+    public void The_dynamic_event_terminals_sit_at_the_top_of_the_event_structure()
+    {
+        var plan = DiagramLayout.Plan(Ni.Value);
+        var es = Ni.Value.Diagrams["0.14.0.1.0"].Objects.Single(o => o.Class == "EventStructure");
+        Assert.Equal(2, es.DynamicTerms.Count);
+        var ports = plan.Tunnels.Where(t => t.ApplyPath == "14 0 1 0" && t.Index == es.Index).ToList();
+        var dynamic = ports.Where(t => t.Dynamic).ToList();
+        Assert.Equal([0, 1], dynamic.Select(t => t.Tunnel).Order());
+        Assert.Equal(dynamic[0].Y, dynamic[1].Y);
+        var box = plan.Predicted[es.Key];
+        Assert.InRange(dynamic[0].Y - box.T, 0, box.H / 3);
+        Assert.All(ports.Where(t => !t.Dynamic), t => Assert.True(t.Y > dynamic[0].Y, $"port {t.Tunnel} at {t.Y}"));
+        var register = plan.Tunnels.Single(t => t.ApplyPath == "14 0" && t.Index == 1 && t.ShiftRegister);
+        Assert.InRange(register.Y - dynamic[0].Y, -4, 4);
+        var inputs = DiagramLayoutTools.ApplyInputs(@"C:\x\Main.vi", plan);
+        Assert.Contains("<Val>14 0 1 0;1;0;", inputs["dynamic left"]!.GetValue<string>());
+        Assert.Contains("<Val>14 0 1 0;1;0;", inputs["dynamic right"]!.GetValue<string>());
+        // the structure's own tunnels go to the tunnel pass, its dynamic terminals do not
+        var tunnels = inputs["tunnels"]!.GetValue<string>().Split("<Val>14 0 1 0;1;").Length - 1;
+        Assert.Equal(es.Tunnels.Count, tunnels);
+    }
+
+    /// <summary>
     /// DQMH's Dequeue Message feeds the message case's queue tunnel, its selector and its message
     /// data tunnel. Levelled each by its own inside wire, the three crossed, and CleanUpWire took
     /// the data wire right round the case structure.

@@ -2,7 +2,8 @@ namespace LabVIEWMcp.Layout;
 
 internal sealed record LayoutMove(string DiagramId, string ApplyPath, int Index, int X, int Y, int Depth, string Class);
 internal sealed record LayoutSize(string DiagramId, string ApplyPath, int Index, int FrameW, int FrameH, int Depth, Box Target);
-internal sealed record LayoutTunnel(string ApplyPath, int Index, int Tunnel, int X, int Y, bool ShiftRegister, bool Selector = false);
+internal sealed record LayoutTunnel(string ApplyPath, int Index, int Tunnel, int X, int Y, bool ShiftRegister,
+                                    bool Selector = false, bool Dynamic = false);
 
 /// <summary>What lvbd_layout_apply is handed, plus the geometry the engine expects afterwards.</summary>
 internal sealed class LayoutPlan
@@ -100,6 +101,8 @@ internal static class DiagramLayout
     {
         public bool ShiftRegister;
         public bool Selector;
+        /// <summary>An event structure's dynamic event terminal; Index 0 left, 1 right.</summary>
+        public bool Dynamic;
         public bool Error;
         /// <summary>The y the inside wire asks for, before the rail or the spread decide.</summary>
         public int? Inner;
@@ -598,6 +601,10 @@ internal static class DiagramLayout
         // the selector ("?") is not in Tunnels[], and an error cluster wired to it enters every frame
         // through it: left where it was it made the error rail bend down to it and back
         if (s.Selector is { } sel) ports.Add(new Port { Selector = true, Old = sel.Box });
+        // the dynamic event terminals go to the top, under the timeout terminal, where LabVIEW puts
+        // them and every DQMH Main has them: left where NI's clean-up had them they sat by the rail
+        foreach (var t in s.DynamicTerms)
+            ports.Add(new Port { Dynamic = true, Index = t.Box.L <= s.Box.L + 4 ? 0 : 1, Old = t.Box });
         foreach (var p in ports)
         {
             // Shift Registers[] hands back the RIGHT register of each pair (measured: on the right
@@ -608,8 +615,8 @@ internal static class DiagramLayout
             p.Left = left;
             var outer = s.Terms.FirstOrDefault(t => p.Old.Contains(t.Box.L, t.Box.T, 1));
             p.Error = outer is not null && IsError(outer.Name);
-            p.Inner = InnerY(ctx, shape, p.Old, p.ShiftRegister);
-            p.RelY = p.Inner ?? (shape.Top + 6 + p.Old.H / 2);
+            p.Inner = p.Dynamic ? null : InnerY(ctx, s, shape, p.Old, p.ShiftRegister);
+            p.RelY = p.Dynamic ? shape.Top + 2 + p.Old.H / 2 : p.Inner ?? (shape.Top + 6 + p.Old.H / 2);
             (p.OuterNode, p.OuterOffset) = OuterEnd(ctx, s, p.Old);
             shape.Ports.Add(p);
         }
@@ -617,7 +624,7 @@ internal static class DiagramLayout
         // feeds the queue, the message (the selector) and the message data, and levelled each by
         // its own inside wire the three crossed - CleanUpWire then took the data wire right round
         // the case structure. A port with nothing inside to level with goes next to its neighbour.
-        foreach (var group in shape.Ports.Where(p => !p.Error && p.OuterNode is not null)
+        foreach (var group in shape.Ports.Where(p => !p.Error && !p.Dynamic && p.OuterNode is not null)
                      .GroupBy(p => (p.Left, p.OuterNode)).Where(g => g.Count() > 1))
         {
             var ordered = group.OrderBy(p => p.OuterOffset).ToList();
@@ -653,7 +660,7 @@ internal static class DiagramLayout
                 errTop = top;
             }
             // everything else: in the order it asks for, without overlap, and above the error ports
-            var rest = onSide.Where(p => !p.Error || shape.Rail is null).OrderBy(p => p.RelY).ToList();
+            var rest = onSide.Where(p => !p.Error || shape.Rail is null).OrderBy(p => !p.Dynamic).ThenBy(p => p.RelY).ToList();
             var prevBottom = shape.Top - 2;
             foreach (var p in rest)
             {
@@ -694,9 +701,13 @@ internal static class DiagramLayout
     /// has one. Where the wire fans out inside that frame - DQMH's class wire runs to both loops -
     /// the LOWEST end wins: the wire then arrives near the rail, where its source outside sits, and
     /// branches up inside instead of climbing outside and coming back down.</summary>
-    private static int? InnerY(Context ctx, StructShape shape, Box port, bool shiftRegister)
+    private static int? InnerY(Context ctx, DObject s, StructShape shape, Box port, bool shiftRegister)
     {
-        bool AtPort((int X, int Y) e) => port.Contains(e.X, e.Y, 1) || (shiftRegister && Math.Abs(e.Y - port.T) <= 2);
+        // Shift Registers[] gives the RIGHT register; its LEFT twin is the end at the same height
+        // on the left border - and only there: a dynamic event terminal level with the register
+        // inside counted as the register too, and the port lost its inside end
+        bool AtPort((int X, int Y) e) => port.Contains(e.X, e.Y, 1)
+            || (shiftRegister && Math.Abs(e.Y - port.T) <= 2 && e.X <= s.Box.L + port.W + 2);
         foreach (var (f, (a, dy)) in shape.Frames)
         {
             var found = new List<int>();
@@ -1007,7 +1018,8 @@ internal static class DiagramLayout
                 PlaceLoopTerminals(ctx, o, box);
                 foreach (var port in shape.Ports)
                     ctx.Plan.Tunnels.Add(new LayoutTunnel(d.ApplyPath, o.Index, port.Index,
-                        port.Left ? box.L : box.R - port.Old.W, box.T + port.RelY - port.Old.H / 2, port.ShiftRegister, port.Selector));
+                        port.Left ? box.L : box.R - port.Old.W, box.T + port.RelY - port.Old.H / 2, port.ShiftRegister, port.Selector,
+                        port.Dynamic));
             }
         }
     }

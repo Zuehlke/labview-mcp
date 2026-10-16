@@ -48,6 +48,14 @@ internal sealed class DObject
     public Term? Selector => Class == "CaseStructure"
         ? Terms.FirstOrDefault(t => t.Box.L <= Box.L + 4 && !Tunnels.Any(b => b.L == t.Box.L && b.T == t.Box.T))
         : null;
+    /// <summary>An Event Structure's dynamic event terminals, the pair on its left and right
+    /// borders a registration refnum is wired to - not in Tunnels[] either. The timeout terminal in
+    /// the top-left corner is not one of them.</summary>
+    public List<Term> DynamicTerms => Class == "EventStructure"
+        ? Terms.Where(t => !Tunnels.Any(b => b.L == t.Box.L && b.T == t.Box.T)
+                           && !(t.Box.L == Box.L && t.Box.T == Box.T)
+                           && (t.Box.L <= Box.L + 4 || t.Box.R >= Box.R - 4)).ToList()
+        : [];
     /// <summary>How far the object's label reaches beyond its own bounds: left, top, right, bottom.</summary>
     public (int L, int T, int R, int B) Overhang => Total is { } t
         ? (Math.Max(0, Box.L - t.L), Math.Max(0, Box.T - t.T), Math.Max(0, t.R - Box.R), Math.Max(0, t.B - Box.B))

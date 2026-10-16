@@ -1,6 +1,6 @@
 """Writes scripts/lvbd_layout_apply.xml - edit this, not the XML.
 
-Six passes (moves, structure sizes, tunnels, shift registers, case selectors, wire clean-up) share one diagram
+Eight passes (moves, structure sizes, tunnels, shift registers, case selectors, an event structure's two dynamic event terminals, wire clean-up) share one diagram
 walk, so the helper is generated:
 
     python scripts/lvbd_layout_apply_gen.py scripts/lvbd_layout_apply.xml
@@ -171,6 +171,10 @@ tn = nu()
 e(f'  <Control _name="tunnels" type="array{{string}}" uid="{tn}" uid_parent="root" value="[]" outputs="value:{tn}.value"/>')
 sln = nu()
 e(f'  <Control _name="selectors" type="array{{string}}" uid="{sln}" uid_parent="root" value="[]" outputs="value:{sln}.value"/>')
+dln = nu()
+e(f'  <Control _name="dynamic left" type="array{{string}}" uid="{dln}" uid_parent="root" value="[]" outputs="value:{dln}.value"/>')
+drn = nu()
+e(f'  <Control _name="dynamic right" type="array{{string}}" uid="{drn}" uid_parent="root" value="[]" outputs="value:{drn}.value"/>')
 ei = nu()
 e(f'  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{{bool.status,int32.code,string.source}}" uid="{ei}" uid_parent="root" value="[false,0,]" outputs="value:{ei}.value"/>')
 u = nu()
@@ -284,7 +288,8 @@ def border_pass(ops, cls_name, cls_type, prop, prop_type, indexed):
     e(f'    <Tunnel _id="In2" inputs="value:{top}" outputs="value:{t2}.top" uid="{t2}" uid_parent="{L}"/>')
     f = split(L, f"{t1}.op", 5)
     d, err = walk(L, f[0], f"{t2}.top")
-    idx, ti, x, y = number(L, f[1]), number(L, f[2]), number(L, f[3]), number(L, f[4])
+    idx, x, y = number(L, f[1]), number(L, f[3]), number(L, f[4])
+    ti = number(L, f[2]) if indexed else None
     u = nu()
     e(f'    <Node _name="Property Node" fields="read+All Objects[]" type="{{LV.Diagram}}" inputs="reference:{d},error in (no error):{err}" outputs="All Objects[]:{u}.objs,reference out:,error out:{u}.err" uid="{u}" uid_parent="{L}"/>')
     objs, err = f"{u}.objs", f"{u}.err"
@@ -346,6 +351,10 @@ def border_pass(ops, cls_name, cls_type, prop, prop_type, indexed):
 to = border_pass(tn, "structure class", "ref{LV.Structure}", "Tunnels[]", "{LV.Structure}", True)
 sro = border_pass(srn, "loop class", "ref{LV.Loop}", "Shift Registers[]", "{LV.Loop}", True)
 sel = border_pass(sln, "case structure class", "ref{LV.CaseStructure}", "Selector", "{LV.CaseStructure}", False)
+# an event structure's dynamic event terminals, the pair a user event's registration refnum is
+# wired to: not in Tunnels[] either
+dyl = border_pass(dln, "event structure class", "ref{LV.EventStructure}", "Dynamic Terminal (Left)", "{LV.EventStructure}", False)
+dyr = border_pass(drn, "event structure class", "ref{LV.EventStructure}", "Dynamic Terminal (Right)", "{LV.EventStructure}", False)
 
 # ---- wires
 L = nu()
@@ -405,6 +414,11 @@ j = nu()
 e(f'  <Node _name="Concatenate Strings" inputs="string:{sel}.value" outputs="concatenated string:{j}.s" uid="{j}" uid_parent="root"/>')
 u = nu()
 e(f'  <Indicator _name="selector results" type="string" uid="{u}" uid_parent="root" value="" inputs="value:{j}.s"/>')
+for net, name in ((dyl, "dynamic left results"), (dyr, "dynamic right results")):
+    j = nu()
+    e(f'  <Node _name="Concatenate Strings" inputs="string:{net}.value" outputs="concatenated string:{j}.s" uid="{j}" uid_parent="root"/>')
+    u = nu()
+    e(f'  <Indicator _name="{name}" type="string" uid="{u}" uid_parent="root" value="" inputs="value:{j}.s"/>')
 j = nu()
 e(f'  <Node _name="Concatenate Strings" inputs="string:{wo2}.value" outputs="concatenated string:{j}.s" uid="{j}" uid_parent="root"/>')
 u = nu()
