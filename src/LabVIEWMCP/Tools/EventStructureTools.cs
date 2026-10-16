@@ -127,8 +127,12 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             return AixmlBackend.Refusal(bad);
         if (choice.Name == AixmlBackend.PyLabview)
         {
+            // the panel is LEFT ALONE, as on the grpc route: an event-driven VI is nearly always
+            // the application's main VI, whose panel is the user interface (NewFeatureCheck,
+            // 2026-10-16 - lvai_generate_vi's default would have rearranged it)
             var generated = await new BulkTools(connection).GenerateViAsync(
-                aiXmlFilePath, viPath, timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview, ct: ct);
+                aiXmlFilePath, viPath, timeoutSeconds: timeoutSeconds, backend: AixmlBackend.PyLabview,
+                cleanUpPanel: false, ct: ct);
             if (JsonNode.Parse(generated) is not JsonObject answer) return generated;
             answer["route"] = "composed in one step by lvai_generate_vi on pylabview: the composer " +
                               "registers the events itself";
