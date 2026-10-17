@@ -1786,7 +1786,18 @@ still replaced and the VI saved. The swap's cached helper VI is rebuilt when its
 (`HelperCache`), because this site used to key on existence alone and would otherwise keep running
 a helper with neither new output.
 
-### Clearing broken wires after a swap, a bind or a method add - 2026-10-11, NOT YET MEASURED
+### Clearing broken wires after a swap, a bind or a method add - 2026-10-11, swap measured 2026-10-17
+
+**Measured 2026-10-17 through `lvai_swap_subvis` on BOTH backends.** The cleanup helper was built by
+NI's converter on every route in the fork it came from; on merging it is COMPOSED and run over
+ActiveX on `pylabview`, like `DiagramCleanup`'s. Probe: a `path` constant `seed` wired to a `path`
+indicator `where`, beside an untouched `int32` pair, `seed` swapped to a class constant. Both arms
+answered `brokenWires: 1` (`seed @ LabVIEWClassConstant -> where @ TopLevelDiagram`),
+`inputsLeftUnwired: ["where @ TopLevelDiagram"]`, `ok: false` with
+`errorKind: badWireCleanupLostConnection`, `saved: true`, `execStateAfter: 1`, and the untouched
+pair still wired. The control arm - a swap over a diagram with no broken wire - answered
+`brokenWires: 0`, `saved: false`, `ok: true`. `lvai_bind_typedef_constants` and
+`lvai_add_class_method` share the step and were not run through it.
 
 The user's rule: **a VI at state 0 with a broken-wire text gets Remove Bad Wires before any
 rebuild.** Every `Replace` these tools make re-types the wires it can; one it cannot is left

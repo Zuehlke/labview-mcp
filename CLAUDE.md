@@ -2250,9 +2250,14 @@ removed wire as `terminal @ owner -> terminal @ owner`, and every sink of a brok
 source is read back - one with no wire afterwards is a lost connection (two sources on one input,
 a wrong-type source), named in `inputsLeftUnwired`, and the calling tool's `ok` turns false
 (`errorKind: badWireCleanupLostConnection`). A wire with no source is a loose fragment: cleared,
-reported, gates nothing. A VI with no broken wire is not touched or saved. NOT MEASURED against
-LabVIEW yet, and on a class member it is not established that `Save.Instrument` alone persists the
-removal - read the method cold. `docs/class-method-tooling.md` "Clearing broken wires".
+reported, gates nothing. A VI with no broken wire is not touched or saved. Measured 2026-10-17 on
+BOTH backends through `lvai_swap_subvis` (the helper composed and run over ActiveX on `pylabview`):
+a `path` seed wired to a `path` indicator, swapped to a class constant, came back with the one
+broken wire removed, `inputsLeftUnwired` naming the indicator, `ok: false` with
+`badWireCleanupLostConnection`, the untouched wire beside it kept and `execStateAfter: 1`; a swap
+with no broken wire answered `brokenWires: 0`, not saved, `ok: true`. Through `lvai_add_class_method`
+and on a class member, where `Save.Instrument` alone may not persist the removal, it is NOT
+measured - read the method cold. `docs/class-method-tooling.md` "Clearing broken wires".
 
 **THE PYLABVIEW FALLBACK IS NOT AN ANSWER FOR THIS, and it fails LOUDLY only on the second look.**
 `pylv_apply {"op":"retarget"}` reaches a nested node — it edits link records and never walks a

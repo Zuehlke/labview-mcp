@@ -33,8 +33,9 @@ namespace LabVIEWMcp.Tools;
 /// nothing. A cleanup that could not RUN is a warning, not a verdict, because the edit before it
 /// may well be sound.
 ///
-/// NOT MEASURED AGAINST LABVIEW YET as a whole - see the helper's own description for which of
-/// its parts are.
+/// MEASURED 2026-10-17 through lvai_swap_subvis on both backends - a lost connection reported, a
+/// clean diagram left unsaved (CLAUDE.md, "A VI AT STATE 0"). Through lvai_add_class_method and on
+/// a class member it is not measured yet.
 /// </summary>
 internal sealed class BadWireCleanup(LvaiConnection connection)
 {
