@@ -81,6 +81,18 @@ same LabVIEW instance:
 The fixed file shrank from 11 312 to 9 064 bytes. The fixed B was then opened in the IDE and both
 fixed VIs rendered; the only two DWarn events in the log are the two control files'.
 
+## A byte grep for VICD is not the check (2026-10-17)
+
+An AF message's `Do.vi`, made by NI's Message Maker through `lvai_create_message_class`, contains
+the four bytes `VICD` once - and its own resource map has NO `VICD` block, only a `VINS`: the VI
+embeds a malleable-VI instance, and that instance carries its compiled code inside. Read off two
+`Do.vi` of the AFDemo2 build with a port of `RsrcMap.BlockTypes`; a sibling `Write Setpoint.vi`
+had neither. An agent's `grep -c VICD` reported both as compiled. So check by the file's own map -
+`BulkTools.ContainsCompiledCode` / `RsrcMap.Lists` do - and never by the bytes.
+`lvai_create_message_class` checks its `Do.vi` and `Send` VI that way since the same day and strips
+a real `VICD` with the project closed (`compiledCode` in the answer); no run has hit a real one yet,
+so that branch is unexercised.
+
 ## Observations along the way, not investigated
 
 - **`ValidateAIXML` accepted the project-local Call after the first convert.** Arm A's validation

@@ -101,6 +101,34 @@ public sealed class LibraryCreateToolsTests
         finally { Directory.Delete(dir, recursive: true); }
     }
 
+    /// <summary>AFDemo2, 2026-10-17: a class listed on its own beside the library it now belongs to.</summary>
+    [Fact]
+    public void A_loose_member_entry_is_found_and_removed_and_a_folder_entry_is_not()
+    {
+        var dir = Directory.CreateTempSubdirectory("loose").FullName;
+        try
+        {
+            var project = Project(dir,
+                "\t\t<Item Name=\"Heater.lvlib\" Type=\"Library\" URL=\"../Heater/Heater.lvlib\"/>",
+                "\t\t<Item Name=\"Heater.lvclass\" Type=\"LVClass\" URL=\"../Heater/Heater.lvclass\"/>",
+                "\t\t<Item Name=\"Sub\" Type=\"Folder\">",
+                "\t\t\t<Item Name=\"Helper.vi\" Type=\"VI\" URL=\"../Helper.vi\"/>",
+                "\t\t</Item>");
+            string[] names = ["Heater.lvclass", "Helper.vi", "Gone.vi"];
+
+            Assert.Equal(["Heater.lvclass"], LibraryCreateTools.LooseAtTarget(project, names));
+            Assert.Equal(["Heater.lvclass"], LibraryCreateTools.RemoveLooseEntries(project, ["Heater.lvclass", "Helper.vi"]));
+            Assert.Empty(LibraryCreateTools.LooseAtTarget(project, names));
+
+            var all = XDocument.Load(project).Descendants("Item").Select(i => (string?)i.Attribute("Name")).ToList();
+            Assert.Contains("Heater.lvlib", all);
+            Assert.Contains("Helper.vi", all);      // inside a folder: named, not touched
+            Assert.DoesNotContain("Heater.lvclass", all);
+            Assert.Contains("\r\n", File.ReadAllText(project));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
     [Fact]
     public void The_helper_creates_saves_reads_back_and_closes_the_library()
     {

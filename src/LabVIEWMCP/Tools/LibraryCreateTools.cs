@@ -163,6 +163,8 @@ internal sealed class LibraryCreateTools(LvaiConnection connection)
             // ---- 5. members, through NI's AddItem ----
             JsonObject? filled = null;
             var looseRemoved = new JsonArray();
+            var looseGoneAlready = new JsonArray();
+            var looseLeft = new JsonArray();
             if (itemsJson is { Length: > 0 })
             {
                 var add = await new LibraryTools(connection).AddToLibraryAsync(
@@ -179,8 +181,18 @@ internal sealed class LibraryCreateTools(LvaiConnection connection)
                 steps.Add(new JsonObject { ["step"] = "closeProjectAfterMembers", ["answer"] = Read(close2) });
                 var loose = (filled?["projectEntriesToRemove"] as JsonArray)?
                     .Select(n => n?.GetValue<string>()).OfType<string>().ToList() ?? [];
-                foreach (var name in LvClass.RemoveTargetLevelVis(project, loose))
-                    looseRemoved.Add(name);
+                // THREE OUTCOMES, EACH NAMED, read off the FILE after the close. The AFDemo2 build
+                // (2026-10-17) showed `looseEntriesRemoved: []` beside the inner step's
+                // `projectEntriesToRemove: ["Heater.lvclass"]` - LabVIEW's own save had already
+                // swapped the class entry for the library, and the answer said nothing of it.
+                var (before, after) = (LooseAtTarget(project, loose), (HashSet<string>?)null);
+                foreach (var name in RemoveLooseEntries(project, before)) looseRemoved.Add(name);
+                after = LooseAtTarget(project, loose);
+                foreach (var name in loose)
+                {
+                    if (after.Contains(name)) looseLeft.Add(name);
+                    else if (!before.Contains(name)) looseGoneAlready.Add(name);
+                }
             }
 
             // ---- 6. verify from the files ----
@@ -194,7 +206,11 @@ internal sealed class LibraryCreateTools(LvaiConnection connection)
                 ["libraryPath"] = library,
                 ["projectPath"] = project,
                 ["projectEntryAdded"] = entryAdded,
+                // removed by this call; already gone because LabVIEW's save swapped it for the
+                // library; still listed on its own (inside a folder, or a line not edited by guesswork)
                 ["looseEntriesRemoved"] = looseRemoved,
+                ["looseEntriesGoneAlready"] = looseGoneAlready,
+                ["looseEntriesLeft"] = looseLeft,
                 ["projectLeftOpen"] = false,
                 ["verify"] = verify,
                 ["steps"] = steps,
@@ -204,6 +220,54 @@ internal sealed class LibraryCreateTools(LvaiConnection connection)
                     : "Something did not read back - `verify` names it, `steps` has every sub-answer.",
             }.ToJsonString(Indented);
         }));
+
+    /// <summary>The names of <paramref name="names"/> listed DIRECTLY under My Computer, any item kind.</summary>
+    internal static HashSet<string> LooseAtTarget(string project, IReadOnlyCollection<string> names)
+    {
+        var target = XDocument.Load(project).Root?.Elements("Item")
+            .FirstOrDefault(i => (string?)i.Attribute("Type") == "My Computer");
+        var wanted = names.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return (target?.Elements("Item") ?? [])
+            .Where(i => (string?)i.Attribute("Type") is not ("Library" or "Folder" or "Dependencies" or "Build"))
+            .Select(i => (string?)i.Attribute("Name") ?? "")
+            .Where(wanted.Contains)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Takes the named self-closing items out from directly under My Computer - a VI or a class
+    /// that belongs through the library now - as a line edit that keeps the file's own style.
+    /// The project must be CLOSED. A line that is not one self-closing item is left alone.
+    /// </summary>
+    internal static IReadOnlyList<string> RemoveLooseEntries(string project, IReadOnlyCollection<string> names)
+    {
+        if (names.Count == 0) return [];
+        var (text, style) = LvTextFile.Read(project);
+        var lines = text.Split(style.Newline).ToList();
+        var removed = new List<string>();
+        var depth = 0;
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var t = lines[i].Trim();
+            if (depth == 2 && t.StartsWith("<Item ", StringComparison.Ordinal) && t.EndsWith("/>", StringComparison.Ordinal))
+            {
+                var item = XElement.Parse(t);
+                var name = (string?)item.Attribute("Name") ?? "";
+                if (names.Contains(name, StringComparer.OrdinalIgnoreCase) &&
+                    (string?)item.Attribute("Type") is not ("Library" or "Folder"))
+                {
+                    removed.Add(name);
+                    lines.RemoveAt(i--);
+                    continue;
+                }
+            }
+            if (t.StartsWith("<Item ", StringComparison.Ordinal) && !t.EndsWith("/>", StringComparison.Ordinal)) depth++;
+            else if (t == "</Item>") depth--;
+            else if (t.StartsWith("<Project", StringComparison.Ordinal)) depth = 1;
+        }
+        if (removed.Count > 0) LvTextFile.Write(project, string.Join(style.Newline, lines), style);
+        return removed;
+    }
 
     /// <summary>What the files say: the library, its description and members, the project entry.</summary>
     internal static JsonObject Verify(string library, string project, string? description, JsonObject? filled)

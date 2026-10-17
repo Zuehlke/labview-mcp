@@ -332,12 +332,49 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                 verify["source"] = "the saved .lvclass, read with pylabview - no LabVIEW involved";
             }
 
+            // NO COMPILED CODE IN A WRITTEN VI. Message Maker's Build Do.vi saves Do.vi from the
+            // project's instance, where it was just compiled - measured 2026-10-17 in the AFDemo2
+            // build: Do.vi carried a VICD block, Send <Method>.vi from the same call did not. Both
+            // are checked off their own resource map; one that carries VICD is stripped through
+            // pylabview with the project CLOSED (an edit under a loaded VI is served stale), and
+            // the file is checked again.
+            var sendPath = Scalar(values, "new send method");
+            var doPath = Path.Combine(destination, "Do.vi");
+            JsonObject? compiled = null;
+            if (verified)
+            {
+                var carrying = new[] { doPath, sendPath }
+                    .Where(p => p is { Length: > 0 } && BulkTools.ContainsCompiledCode(p!))
+                    .Select(p => p!).ToList();
+                compiled = new JsonObject { ["found"] = new JsonArray([.. carrying.Select(p => (JsonNode)p)]) };
+                if (carrying.Count > 0)
+                {
+                    var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+                        projectPath: projectPath is { Length: > 0 } ? Path.GetFullPath(projectPath) : null,
+                        timeoutSeconds: timeoutSeconds, ct: ct, backend: BackendRoute.Current);
+                    steps.Add(new JsonObject { ["step"] = "closeProjectForStrip", ["answer"] = Read(closed) });
+                    var stripped = new JsonArray();
+                    var left = new JsonArray();
+                    foreach (var vi in carrying)
+                    {
+                        var strip = await new DiagramCleanup(connection).StripCompiledAsync(vi, timeoutSeconds, ct);
+                        steps.Add(new JsonObject { ["step"] = "stripCompiled", ["vi"] = vi, ["answer"] = strip });
+                        (BulkTools.ContainsCompiledCode(vi) ? left : stripped).Add(vi);
+                    }
+                    compiled["stripped"] = stripped;
+                    compiled["stillCompiled"] = left;
+                    compiled["projectLeftOpen"] = false;
+                    verified = left.Count == 0;
+                }
+            }
+
             return Json.Document(new JsonObject
             {
                 ["ok"] = verified,
+                ["compiledCode"] = compiled,
                 ["classPath"] = newClassPath,
-                ["sendMethodPath"] = Scalar(values, "new send method"),
-                ["doMethodPath"] = Path.Combine(destination, "Do.vi"),
+                ["sendMethodPath"] = sendPath,
+                ["doMethodPath"] = doPath,
                 ["payloadControlCount"] = Scalar(values, "payload control count"),
                 ["actorClassPath"] = actorFull,
                 ["actorMethodPath"] = methodPath,

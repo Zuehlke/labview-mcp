@@ -3014,7 +3014,7 @@ literally it argued away 600 usable palette VIs.
 | Is what is PUBLISHED actually the workflow's artefact? | `docs/release-versioning.md` §2a, §2b | `scripts/Assert-PublishedRelease.ps1` |
 | How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
-| A pylabview-edited VI returns a WRONG result with no error, or crashes 64-bit LabVIEW | `docs/pylabview-stale-compiled-code.md` | `pylv_apply` strips the compiled code since 2026-09-29; grep the file for `VICD` |
+| A pylabview-edited VI returns a WRONG result with no error, or crashes 64-bit LabVIEW | `docs/pylabview-stale-compiled-code.md` | `pylv_apply` strips the compiled code since 2026-09-29. Check a file by its OWN resource map (`RsrcMap.Lists`), NOT a byte grep for `VICD`: a VI that embeds a malleable VI carries the instance's VICD inside its VINS block - an AF message's `Do.vi` does, and a grep called two source-only `Do.vi` compiled on 2026-10-17 |
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
 | How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
 | Where does a session's time actually go, and what should we build next? | `docs/workflow-economics.md` | — |
