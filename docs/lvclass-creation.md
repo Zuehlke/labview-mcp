@@ -1924,11 +1924,11 @@ before LabVIEW is touched. It is a heuristic - a same-named file in another fold
 which is what `acceptUnlistedCallers` is for.
 
 **Only listed callers are saved.** `scripts/lvai_save_modified_vis.xml` lists every VI in memory of
-the project's instance with its Front Panel and Block Diagram Mods Bitsets and saves only those that are
-modified AND in the list; the rest are reported (`modifiedNotSaved`). The same helper runs first
-in read-only mode, and anything already modified refuses the call (`unsavedChangesBefore`), because
-the class save and the caller saves would write it. The kit helper it is ported from saved EVERY
-modified VI; the restriction is new and unmeasured.
+the project's instance with its Front Panel and Block Diagram Mods Bitsets and saves every one that
+is in the list - modified or not, since the relink sets no bitset (§10e); the rest are reported
+(`modifiedNotSaved`). The same helper runs first in read-only mode, and anything already modified
+refuses the call (`unsavedChangesBefore`), because the class save and the caller saves would write
+it. The kit helper it is ported from saved EVERY modified VI; the restriction is measured in §10e.
 
 **Refused from the files, before LabVIEW:** a file whose own `LIBN` resource names an owner (a
 class member or a library member - `LIBN` is a count plus length-prefixed names, read off NI's
@@ -1976,7 +1976,9 @@ for a `.vi` in 10d, and the `callersNotLoaded` and `projectActive` guards.
 | a `.ctl` into the class | `lvai_create_typedef` made a loose `uint16{Off,On}` typedef; `lvai_add_to_class` added it, `verified`, its `LIBN` naming the class, still `isTypedef` afterwards | both |
 | a `.ctl` moved into a folder | moved, `verified` - `Get All Descendents` with Type `VI` DOES list a `.ctl` member | both |
 | `itemsNotFoundByLabview` | NOT REACHED. The case it was written for - a `.ctl` member not listed under Type `VI` - does not occur (row above), and no other fixture made `Get All Descendents` miss a member the file lists. The refusal stays, unit-tested only | - |
-| `viHasUnsavedChanges`, `unsavedChangesBefore` | NOT REACHED BY SCRIPT. They read a VI's Front Panel and Block Diagram Mods Bitsets, and neither moved for a `VI Description` write nor for `Default Vals.Make Curr Default` - `VI Modifications Bitset Old` stayed 0 too. A hand edit in the IDE sets them (measured for the AF tools, `af-override-tools.md` §4); a VI changed only by another script's unsaved edit is not refused | - |
+| `viHasUnsavedChanges`, `unsavedChangesBefore` by SCRIPT | not reachable: they read a VI's Front Panel and Block Diagram Mods Bitsets, and neither moved for a `VI Description` write nor for `Default Vals.Make Curr Default` - `VI Modifications Bitset Old` stayed 0 too. A VI changed only by another script's unsaved edit is not refused | - |
+| `unsavedChangesBefore` with a HAND edit (a panel object of a class member moved in the IDE, not saved) | **first attempt: NOT refused, and the class save wrote the user's edit to disk.** Every line of the listing answered `Error 1025`: the helper closed its application reference on a wire that did not wait for its loop, and the C# side dropped every line with an error code as "not modified". Fixed in both halves (below); then refused, naming the VI, nothing written | both, after the fix |
+| `viHasUnsavedChanges` with a HAND edit (a VI open with no project, panel object moved) | refused, nothing written, once the Front Panel bitset read `0x80001000` through both routes. **One earlier attempt was not refused** and wrote the VI; its bitsets at that moment were not read, and it did not recur | both |
 
 **What the port changed to get there**, each one found by this run rather than by reading:
 
@@ -2004,5 +2006,25 @@ for a `.vi` in 10d, and the `callersNotLoaded` and `projectActive` guards.
 - **Two constants of `lvai_add_to_class.xml` sat on the root diagram** and were read inside a case
   frame; the composer refuses a net that crosses a diagram boundary without a tunnel. Moved into
   the frame that reads them.
+- **The modified-VI listing closed its application reference before its loop ran.** The
+  `Close Reference` hung on the error wire from BEFORE the loop, so it could run first; every
+  `Open VI Reference` then answered 1025, and `lvai_add_to_class`'s unsaved check saw a clean
+  instance whatever the user had open. It waits for the loop now (a pass-through shift
+  register), and a listing line that could not be read REFUSES the call (`unsavedCheckFailed`) -
+  except a `.ctl` answering 1035, which is what `Open VI Reference` answers for every control.
+- **`lvai_add_to_class` never saved a caller.** It saved a listed caller only when its Front Panel
+  or Block Diagram bitset was set, and the relink LabVIEW makes when an item joins the class sets
+  neither - measured on both backends: `callersSaved: []`, the caller absent from `filesChanged`,
+  the new link on disk only because the project close saved it later. Every listed caller is
+  saved now (the before-check has already refused anything unsaved), and `verified` requires it
+  (`callersNotSaved`). Re-measured on fresh fixtures: `callersSaved` names the caller, its file is
+  in `filesChanged`, it runs (42) cold.
+- **`lvai_set_vi_descriptions` on pylabview wrote a DIFFERENT file of the same name.** The helper
+  runs over ActiveX in LabVIEW's main instance, where a `Caller.vi` and an `M1.vi` from another
+  fixture were loaded; `Open VI Reference` by path handed those back, and the call wrote and saved
+  THEM - its own check then reported the asked-for files unchanged. The helper reads the opened VI's
+  `VI Path` now and writes nothing on a mismatch (`viPathMismatch`, with `openedPath`); measured
+  live, the other file untouched. On grpc the helper runs in the AI addon's instance, where the
+  same call wrote the right file.
 - **The fork read the resource blocks through `ViIconLayers`**, part of its icon tools. That reader
   is now `RsrcMap.Blocks`, beside the block-type reader this repository already had.

@@ -215,6 +215,23 @@ internal sealed class ViDescriptionTools(LvaiConnection connection)
             result["errorSource"] = open.Source;
             return result;
         }
+        // ANOTHER VI OF THE SAME NAME, ALREADY IN MEMORY, IS WHAT Open VI Reference HANDS BACK.
+        // Measured 2026-10-17 on pylabview, where the helper runs in LabVIEW's main instance: with
+        // a same-named Caller.vi and M1.vi from another folder loaded, the call wrote and saved
+        // THOSE files and reported only that the asked-for files did not change. The helper now
+        // writes nothing unless the opened VI's own path is the one asked for.
+        if (values.Any(v => string.Equals(v.Name, "path matches", StringComparison.OrdinalIgnoreCase))
+            && !HousekeepingHelpers.IsTrue(values, "path matches"))
+        {
+            var opened = HousekeepingHelpers.Scalar(values, "opened path");
+            result["errorKind"] = "viPathMismatch";
+            result["openedPath"] = opened;
+            result["note"] = "LabVIEW already has a VI of this name in memory from another path" +
+                             (string.IsNullOrEmpty(opened) ? "" : $" ('{opened}')") + ", and opening '" +
+                             entry.ViPath + "' handed that one back - so nothing was written. Close the " +
+                             "other VI (Don't Save if you do not want its changes), then call again.";
+            return result;
+        }
         if (HousekeepingHelpers.IsTrue(values, "unsaved"))
         {
             result["errorKind"] = "viHasUnsavedChanges";

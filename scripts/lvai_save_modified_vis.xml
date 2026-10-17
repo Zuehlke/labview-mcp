@@ -1,5 +1,6 @@
-<VI _name="lvai_save_modified_vis.vi" description="Lists every VI in memory of the ACTIVE PROJECT's application instance (Project\3AActive Project -&gt; Application -&gt; Application\3AAll VIs In Memory) with its Front Panel and Block Diagram Mods Bitsets (the third line field is always 0)\2C and with Save Listed TRUE saves - Save.Instrument - each VI that is MODIFIED and whose path is in Save Paths (compared ignoring case). Nothing outside that list is ever saved\2C so it is safe to run with Save Listed FALSE as a read-only listing. One line per VI\3A fp TAB bd TAB vi mods TAB saved (0/1) TAB error code TAB path TAB name\3B the error code is that VI's open\2C read and save\2C so a .ctl (Open VI Reference answers 1035 for one) shows up with its code and no bits. The listing and the bitset reads are a skill kit helper measured with the project OPEN and ACTIVE (LabVIEW 2026 Q3\2C 2026-10-11/12)\2C which saved every modified VI\3B restricting the save to Save Paths is new and unmeasured.">
-  <FreeLabel comment="Saves only listed VIs that are modified" uid="5100" uid_parent="root"/>
+<VI _name="lvai_save_modified_vis.vi" description="Lists every VI in memory of the ACTIVE PROJECT's application instance (Project\3AActive Project -&gt; Application -&gt; Application\3AAll VIs In Memory) with its Front Panel and Block Diagram Mods Bitsets (the third line field is always 0)\2C and with Save Listed TRUE saves - Save.Instrument - each VI whose path is in Save Paths\2C modified or not (a relink sets no bitset) (compared ignoring case). Nothing outside that list is ever saved\2C so it is safe to run with Save Listed FALSE as a read-only listing. One line per VI\3A fp TAB bd TAB vi mods TAB saved (0/1) TAB error code TAB path TAB name\3B the error code is that VI's open\2C read and save\2C so a .ctl (Open VI Reference answers 1035 for one) shows up with its code and no bits. The listing and the bitset reads are a skill kit helper measured with the project OPEN and ACTIVE (LabVIEW 2026 Q3\2C 2026-10-11/12)\2C which saved every modified VI\3B restricting the save to Save Paths is new and unmeasured.">
+  <FreeLabel comment="Saves every listed VI in memory" uid="5100" uid_parent="root"/>
+  <FreeLabel comment="App reference closes after the loop" uid="5099" uid_parent="root"/>
   <Control _name="save paths" type="array{string}" uid="5101" uid_parent="root" value="[]" outputs="value:5101.value"/>
   <Control _name="save listed" type="bool" uid="5102" uid_parent="root" value="false" outputs="value:5102.value"/>
   <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="5103" uid_parent="root" value="[false,0,]" outputs="value:5103.value"/>
@@ -19,16 +20,17 @@
     <Tunnel _id="In3" inputs="value:5133.wanted" outputs="value:5143.wanted" uid="5143" uid_parent="5140"/>
     <Tunnel _id="In4" inputs="value:5102.value" outputs="value:5144.save" uid="5144" uid_parent="5140"/>
     <Tunnel _id="In5" inputs="value:5104.value" outputs="value:5145.tab" uid="5145" uid_parent="5140"/>
+    <ShiftReg uid="5146" uid_parent="5140">
+      <Left inputs="value:5120.err" outputs="value:5147.err" uid="5147" uid_parent="5146"/>
+      <Right inputs="value:5147.err" outputs="value:5148.err" uid="5148" uid_parent="5146"/>
+    </ShiftReg>
     <Node _name="Open VI Reference" inputs="application reference (local):5142.app,vi path:5141.name,error in (no error):" outputs="vi reference:5150.vi,error out:5150.err" uid="5150" uid_parent="5140"/>
     <Node _name="Property Node" fields="read+Modifications\3AFront Panel Mods Bitset,read+Modifications\3ABlock Diagram Mods Bitset,read+VI Path" type="{LV.VI}" inputs="reference:5150.vi,error in (no error):5150.err" outputs="Modifications\3AFront Panel Mods Bitset:5151.fp,Modifications\3ABlock Diagram Mods Bitset:5151.bd,VI Path:5151.path,reference out:,error out:5151.err" uid="5151" uid_parent="5140"/>
-    <Node _name="Or" inputs="x:5151.fp,y:5151.bd" outputs="x .or. y?:5152.panel" uid="5152" uid_parent="5140"/>
-    <Node _name="Not Equal To 0?" inputs="x:5152.panel" outputs="x != 0?:5154.modified" uid="5154" uid_parent="5140"/>
     <Node _name="Path To String" inputs="path:5151.path" outputs="string:5155.p" uid="5155" uid_parent="5140"/>
     <Node _name="To Upper Case" inputs="string:5155.p" outputs="all upper case string:5156.up" uid="5156" uid_parent="5140"/>
     <Node _name="Search 1D Array" inputs="1D array:5143.wanted,element:5156.up,start index (0):" outputs="index of element:5157.idx" uid="5157" uid_parent="5140"/>
     <Node _name="Greater Or Equal To 0?" inputs="x:5157.idx" outputs="x &gt;= 0?:5158.listed" uid="5158" uid_parent="5140"/>
-    <Node _name="And" inputs="x:5154.modified,y:5158.listed" outputs="x .and. y?:5159.wanted" uid="5159" uid_parent="5140"/>
-    <Node _name="And" inputs="x:5159.wanted,y:5144.save" outputs="x .and. y?:5160.dosave" uid="5160" uid_parent="5140"/>
+    <Node _name="And" inputs="x:5158.listed,y:5144.save" outputs="x .and. y?:5160.dosave" uid="5160" uid_parent="5140"/>
     <Structure _name="Case Structure" selectin="5160.dosave" uid="5170" uid_parent="5140">
       <Tunnel _id="In1" inputs="value:5150.vi" uid="5171" uid_parent="5170"/>
       <Tunnel _id="In2" inputs="value:5151.err" uid="5172" uid_parent="5170"/>
@@ -57,7 +59,7 @@
     <Tunnel _id="Out1" inputs="value:5198.line" mode="index" outputs="value:5199.lines" uid="5199" uid_parent="5140"/>
   </Structure>
   <Indicator _name="lines" type="array{string}" uid="5200" uid_parent="root" value="[]" inputs="value:5199.lines"/>
-  <Node _name="Close Reference" inputs="reference:5115.app,error in (no error):5120.err" outputs="error out:5201.err" uid="5201" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:5115.app,error in (no error):5148.err" outputs="error out:5201.err" uid="5201" uid_parent="root"/>
   <Node _name="Close Reference" inputs="reference:5110.proj,error in (no error):5201.err" outputs="error out:5202.err" uid="5202" uid_parent="root"/>
   <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="5210" uid_parent="root" value="[false,0,]" inputs="value:5202.err"/>
 </VI>

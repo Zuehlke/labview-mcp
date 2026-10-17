@@ -5,13 +5,18 @@
   <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4703" uid_parent="root" value="[false,0,]" outputs="value:4703.value"/>
   <Node _name="Open VI Reference" inputs="application reference (local):,vi path:4701.value,error in (no error):4703.value" outputs="vi reference:4710.vi,error out:4710.err" uid="4710" uid_parent="root"/>
   <Indicator _name="open error" type="cluster{bool.status,int32.code,string.source}" uid="4711" uid_parent="root" value="[false,0,]" inputs="value:4710.err"/>
-  <Node _name="Property Node" fields="read+Modifications\3AFront Panel Mods Bitset,read+Modifications\3ABlock Diagram Mods Bitset" type="{LV.VI}" inputs="reference:4710.vi,error in (no error):4710.err" outputs="Modifications\3AFront Panel Mods Bitset:4720.fp,Modifications\3ABlock Diagram Mods Bitset:4720.bd,reference out:,error out:4720.err" uid="4720" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Modifications\3AFront Panel Mods Bitset,read+Modifications\3ABlock Diagram Mods Bitset,read+VI Path" type="{LV.VI}" inputs="reference:4710.vi,error in (no error):4710.err" outputs="Modifications\3AFront Panel Mods Bitset:4720.fp,Modifications\3ABlock Diagram Mods Bitset:4720.bd,VI Path:4720.path,reference out:,error out:4720.err" uid="4720" uid_parent="root"/>
   <Node _name="Or" inputs="x:4720.fp,y:4720.bd" outputs="x .or. y?:4721.panel" uid="4721" uid_parent="root"/>
   <Node _name="Not Equal To 0?" inputs="x:4721.panel" outputs="x != 0?:4723.dirty" uid="4723" uid_parent="root"/>
   <Indicator _name="unsaved" type="bool" uid="4724" uid_parent="root" value="false" inputs="value:4723.dirty"/>
+  <Node _name="Equal?" inputs="x:4720.path,y:4701.value" outputs="x = y?:4725.same" uid="4725" uid_parent="root"/>
+  <Indicator _name="path matches" type="bool" uid="4726" uid_parent="root" value="false" inputs="value:4725.same"/>
+  <Indicator _name="opened path" type="path" uid="4727" uid_parent="root" value="" inputs="value:4720.path"/>
+  <Node _name="Not" inputs="x:4725.same" outputs=".not. x?:4728.other" uid="4728" uid_parent="root"/>
+  <Node _name="Or" inputs="x:4723.dirty,y:4728.other" outputs="x .or. y?:4729.blocked" uid="4729" uid_parent="root"/>
   <Node _name="Property Node" fields="read+VI Description" type="{LV.VI}" inputs="reference:4710.vi,error in (no error):4720.err" outputs="VI Description:4730.before,reference out:,error out:4730.err" uid="4730" uid_parent="root"/>
   <Indicator _name="description before" type="string" uid="4731" uid_parent="root" value="" inputs="value:4730.before"/>
-  <Structure _name="Case Structure" selectin="4723.dirty" uid="4740" uid_parent="root">
+  <Structure _name="Case Structure" selectin="4729.blocked" uid="4740" uid_parent="root">
     <Tunnel _id="In1" inputs="value:4710.vi" uid="4741" uid_parent="4740"/>
     <Tunnel _id="In2" inputs="value:4730.err" uid="4742" uid_parent="4740"/>
     <Tunnel _id="In3" inputs="value:4702.value" uid="4743" uid_parent="4740"/>
@@ -29,7 +34,7 @@
       <Tunnel _id="Out2" inputs="value:4757.err" uid="4761" uid_parent="4750"/>
     </CaseFrame>
     <CaseFrame selector="True" selectout="" uid="4770" uid_parent="4740">
-      <FreeLabel comment="Unsaved changes - leave the VI alone" uid="4779" uid_parent="4770"/>
+      <FreeLabel comment="Unsaved, or another VI of that name" uid="4779" uid_parent="4770"/>
       <Tunnel _id="In1" outputs="value:" uid="4771" uid_parent="4770"/>
       <Tunnel _id="In2" outputs="value:4772.err" uid="4772" uid_parent="4770"/>
       <Tunnel _id="In3" outputs="value:" uid="4773" uid_parent="4770"/>

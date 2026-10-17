@@ -111,6 +111,21 @@ public class ViDescriptionToolsTests
     }
 
     [Fact]
+    public void A_same_named_VI_from_another_path_is_refused_before_the_unsaved_check()
+    {
+        // Measured 2026-10-17: Open VI Reference handed back a loaded Caller.vi from another
+        // folder, and the old helper wrote and saved THAT file.
+        var other = Clean("x");
+        other.Add(new("path matches", "Boolean", "FALSE", ""));
+        other.Add(OwnerDescriptionToolsTests.Text("opened path", @"C:\other\Caller.vi"));
+        var result = ViDescriptionTools.Verdict(new(0, GetCost, "x"), other, null, "A", "A");
+
+        Assert.Equal("viPathMismatch", result["errorKind"]!.GetValue<string>());
+        Assert.Equal(@"C:\other\Caller.vi", result["openedPath"]!.GetValue<string>());
+        Assert.False(result["ok"]!.GetValue<bool>());
+    }
+
+    [Fact]
     public void UnsavedChangesAndAFailedOpenAreNamedPerEntry()
     {
         var unsaved = Clean("x");

@@ -22,8 +22,9 @@ namespace LabVIEWMcp.Tools;
 /// 2026-10-11/12 (11 typedefs added to classes, project open and active): load the callers outside
 /// the class through the project first, <c>{LV.ProjectItem}</c> <c>AddItem</c> on the folder item,
 /// <c>Save All This Library.vi</c> on the class (a <c>.ctl</c> saves only through a library
-/// save - <c>Open VI Reference</c> answers 1035 for one), then save the callers LabVIEW marks
-/// modified.
+/// save - <c>Open VI Reference</c> answers 1035 for one), then save the callers. EVERY listed
+/// caller is saved: the relink sets no Mods bitset (measured 2026-10-17), so a save gated on them
+/// saved none and the new link reached the disk only through some later save.
 ///
 /// WHAT THIS TOOL DOES NOT GUESS: which VIs are callers. That needs LabVIEW to answer, and the
 /// one helper here that asks (<c>lvai_member_callers</c>) only sees callers that are ALREADY in
@@ -33,9 +34,9 @@ namespace LabVIEWMcp.Tools;
 /// would keep the old link. The scan is a heuristic and says so; <c>acceptUnlistedCallers</c>
 /// overrides it when the caller knows better.
 ///
-/// ONLY THE LISTED CALLERS ARE SAVED. The save step lists every modified VI in the project's
-/// instance and saves the ones in <c>callerPaths</c>; anything else that is modified is reported,
-/// never written. Before the add the same listing runs read-only, and the call is refused when
+/// ONLY THE LISTED CALLERS ARE SAVED. The save step lists every VI in the project's instance and
+/// saves the ones in <c>callerPaths</c>; anything else that is modified is reported, never
+/// written. A listed VI whose bitsets could not be read refuses the call (unsavedCheckFailed). Before the add the same listing runs read-only, and the call is refused when
 /// something is ALREADY modified - the class save and the caller saves would otherwise write
 /// someone's unsaved edits.
 /// </summary>
@@ -58,9 +59,11 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
         ADDING A TYPEDEF RENAMES IT (Class.lvclass:X.ctl), and every caller outside the class must
         relink - which happens only for callers that are LOADED. A caller that is not loaded keeps
         the old link with no error anywhere. So: pass every caller outside the class in callerPaths;
-        they are opened through the project before the add, and afterwards exactly those that
-        LabVIEW marks modified are saved with Save.Instrument. Nothing else is saved; other modified
-        VIs are reported under modifiedNotSaved.
+        they are opened through the project before the add, and afterwards every one of them is
+        saved with Save.Instrument - the relink sets no Mods bitset, so waiting for LabVIEW to mark
+        them saved none (measured 2026-10-17); `verified` requires each one saved (callersNotSaved).
+        Nothing else is saved; other modified VIs are reported under modifiedNotSaved. A VI in the
+        project's instance whose bitsets cannot be read refuses the call (unsavedCheckFailed).
         CALLERS ARE NOT GUESSED, BUT THEY ARE CHECKED: the project folder is scanned OFFLINE for
         files whose link records name an item's file name (a heuristic - same-named files in two
         folders are not told apart). A hit that is not in callerPaths and not a member of this class
@@ -96,8 +99,8 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
         bool createFolder = true,
         [Description("""
             JSON array of absolute paths of every VI OUTSIDE the class that uses one of the items.
-            They are loaded through the project before the add so they relink, and the modified ones
-            are saved afterwards. Omit when there are none.
+            They are loaded through the project before the add so they relink, and every one is
+            saved afterwards. Omit when there are none.
             """)]
         string? callerPaths = null,
         [Description("""
@@ -150,8 +153,18 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
                     new { steps });
             if (HousekeepingHelpers.FirstFailure(listing, "project error") is { } hop)
                 return HousekeepingHelpers.ProjectHopFailure(hop.Code, hop.Source, steps);
-            var dirtyBefore = ParseLines(HousekeepingHelpers.Strings(listing, "lines"))
-                .Where(l => l.Modified && l.Code == 0 && !DqmhHeadless.IsHelperName(l.Name)).ToList();
+            var listed = ParseLines(HousekeepingHelpers.Strings(listing, "lines"))
+                .Where(l => !DqmhHeadless.IsHelperName(l.Name)).ToList();
+            // A VI WHOSE BITS COULD NOT BE READ IS NOT A CLEAN VI. Measured 2026-10-17: the helper
+            // closed its application reference before its loop ran, every line answered Error 1025,
+            // this filter dropped them all, and a hand-edited member was saved with the class.
+            if (UnreadLines(listed) is { Count: > 0 } unread)
+                return Json.Error("unsavedCheckFailed",
+                    "The unsaved-changes check could not read " + unread.Count + " VI(s) in the project's " +
+                    "instance (" + string.Join(", ", unread.Take(5)) + (unread.Count > 5 ? ", ..." : "") +
+                    "), so it cannot say they are clean - and the class save would write them. Nothing was added.",
+                    new { unreadable = Names(unread), steps });
+            var dirtyBefore = listed.Where(l => l.Modified).ToList();
             steps.Add(new JsonObject { ["step"] = "listModifiedBefore", ["modified"] = Names(dirtyBefore.Select(l => l.Path)) });
             if (dirtyBefore.Count > 0)
                 return Json.Error("unsavedChangesBefore",
@@ -369,6 +382,17 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
     /// <summary>One line of lvai_save_modified_vis: fp, bd, vi mods, saved, code, path, name.</summary>
     internal sealed record VisLine(bool Modified, bool Saved, int Code, string Path, string Name);
 
+    /// <summary>
+    /// The VIs whose Mods bitsets the listing could not read (a nonzero error code) - except a
+    /// `.ctl` answering 1035, which is what Open VI Reference always answers for a control: those
+    /// cannot be checked by this route at all, and refusing on them would refuse every project
+    /// that has a typedef or a class private data control in memory.
+    /// </summary>
+    internal static List<string> UnreadLines(IEnumerable<VisLine> lines) =>
+        [.. lines.Where(l => l.Code != 0
+                             && !(l.Code == 1035 && l.Name.EndsWith(".ctl", StringComparison.OrdinalIgnoreCase)))
+                 .Select(l => l.Path.Length > 0 ? l.Path : l.Name)];
+
     internal static List<VisLine> ParseLines(IEnumerable<string> lines)
     {
         var parsed = new List<VisLine>();
@@ -454,6 +478,12 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
             .Select(l => $"{l.Path} (Error {l.Code})").ToList();
         var notModified = plan.Callers.Where(c => !listing.Any(l =>
             l.Modified && string.Equals(l.Path, c, StringComparison.OrdinalIgnoreCase))).ToList();
+        // EVERY LISTED CALLER IS SAVED, marked modified or not. Measured 2026-10-17 on both backends:
+        // the relink LabVIEW makes when the item joins the class sets neither the Front Panel nor the
+        // Block Diagram Mods Bitset, so a save gated on them saved no caller ever, and the new link
+        // reached the disk only if something saved the caller later. The before-check refuses any
+        // unsaved VI first, so saving a listed caller writes nothing but the relink.
+        var notSaved = plan.Callers.Where(c => !savedCallers.Contains(c, StringComparer.OrdinalIgnoreCase)).ToList();
         var modifiedNotSaved = listing.Where(l => l.Modified && !l.Saved && l.Code == 0
                                                   && !callerSet.Contains(l.Path)
                                                   && !DqmhHeadless.IsHelperName(l.Name))
@@ -487,7 +517,7 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
 
         var changed = after.ChangedSince(before);
         var verified = readNote is null && missing.Count == 0 && notOwned.Count == 0 && saveFailures.Count == 0
-                       && saved is not null;
+                       && notSaved.Count == 0 && saved is not null;
         var answer = new JsonObject
         {
             ["ok"] = verified,
@@ -501,6 +531,7 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
             ["notOwnedByClass"] = Names(notOwned),
             ["callersSaved"] = Names(savedCallers),
             ["callerSaveFailures"] = Names(saveFailures),
+            ["callersNotSaved"] = Names(notSaved),
             ["callersNotModified"] = Names(notModified),
             ["modifiedNotSaved"] = Names(modifiedNotSaved),
             ["unlistedCallersAccepted"] = Names(plan.UnlistedCallers),
@@ -509,14 +540,14 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
             ["steps"] = steps,
             ["note"] = readNote ?? (verified
                 ? "Verified from the files: the class lists every item where asked, each item's LIBN names " +
-                  "the class, and every listed caller LabVIEW marked modified was saved. callersNotModified " +
-                  "are callers LabVIEW did not mark - check them with lvai_exec_state; modifiedNotSaved were " +
-                  "left unsaved on purpose."
+                  "the class, and every listed caller was saved. callersNotModified are callers whose Mods " +
+                  "bitsets LabVIEW did not set - the relink sets none, so that is the usual case; " +
+                  "modifiedNotSaved were left unsaved on purpose."
                 : saved is null
                     ? "The add went through, but the caller save step did not answer - the callers are " +
                       "relinked in memory only. Save them, or re-run the listing."
-                    : "The files do not show the add as asked - read notListedAsRequested, notOwnedByClass " +
-                      "and callerSaveFailures."),
+                    : "The files do not show the add as asked - read notListedAsRequested, notOwnedByClass, " +
+                      "callerSaveFailures and callersNotSaved."),
         };
         foreach (var (key, value) in extra) answer[key] = value?.DeepClone();
         return Json.Document(answer);
