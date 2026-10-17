@@ -292,8 +292,9 @@ it again.
    message loop), `seriesAfter` on Stop Core and Handle Error. Build each hook VI as a class method
    FIRST, and place series hooks before branches. Run `dryRun` first; a refusal names its cause
    (`hookInputUnfed`, `wireIsBranched`, `handleErrorHookBeforeCallParent`, ...) and changes nothing.
-   **`lvai_af_remove_hook` takes out a BRANCH hook only**: a series hook is refused
-   (`seriesHookNotRemovable`), because its delete cuts the class wire and leaves the override eBad.
+   **`lvai_af_remove_hook` takes a hook out again**, a series one included: it reconnects the
+   wire's source to every sink before the node goes (`bypassed`), where a plain delete would cut
+   the class wire and leave the override eBad.
    Read every override **cold** with `lvai_exec_state` after the project is closed.
    `docs/af-override-tools.md`.
 

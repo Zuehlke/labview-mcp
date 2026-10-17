@@ -70,7 +70,8 @@ public sealed class AfOverrideHelperScriptTests
     [InlineData("lvai_af_add_hook",
         "Override VI Path,Hook VI Path,Series Panel Names,Series Hook Near,Series Hook Far,Branch Panel Names,Branch Hook Names,Source SubVI Name,Source Names,Hook Names",
         "Connected,Missing,Hook Terminal Names")]
-    [InlineData("lvai_af_remove_hook", "Override VI Path,Hook VI Name,Occurrence", "state before,state after,Matches")]
+    [InlineData("lvai_af_remove_hook", "Override VI Path,Hook VI Name,Occurrence,Bypass Near,Bypass Far",
+        "state before,state after,Matches,Bypassed,Bypass Missing,Sinks Reconnected")]
     [InlineData("lvai_af_save_members", "VI Paths,Class Path,Only If Modified", "Saved,Skipped")]
     [InlineData("lvai_member_callers", "Member Names", "Loaded Members,Callers")]
     [InlineData("lvai_af_modified_members", "VI Paths", "Modified")]

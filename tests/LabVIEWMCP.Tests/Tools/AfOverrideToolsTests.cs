@@ -384,16 +384,50 @@ public sealed class AfOverrideToolsTests
         """;
 
     [Theory]
-    [InlineData(SeriesByNi, 1, 1, "P out")]
-    [InlineData(SeriesByReader, 1, 1, "P out")]
-    [InlineData(BranchByNi, 1, 0, "")]
-    public void A_hook_whose_output_is_read_is_in_series(string aixml, int nodes, int series, string consumed)
+    [InlineData(SeriesByNi, 1, 1, "P out", "P in -> P out")]
+    // The reader leaves Call Parent out, so `P in` reads unwired there: pairing is by name.
+    [InlineData(SeriesByReader, 1, 1, "P out", "P in -> P out")]
+    [InlineData(BranchByNi, 1, 0, "", "")]
+    public void A_hook_whose_output_is_read_is_in_series_and_paired_for_a_bypass(
+        string aixml, int nodes, int series, string consumed, string pairs)
     {
         var shape = AfOverrideTools.HookShape(aixml, "P.lvclass:Pass.vi");
         Assert.NotNull(shape);
         Assert.Equal(nodes, shape!.Nodes);
         Assert.Equal(series, shape.SeriesNodes);
         Assert.Equal(consumed, string.Join(",", shape.ConsumedOutputs));
+        Assert.Equal(pairs, string.Join(",", shape.Pairs.Select(p => $"{p.Near} -> {p.Far}")));
+        Assert.Empty(shape.Unpaired);
+    }
+
+    [Fact]
+    public void The_error_wire_pairs_with_NI_s_error_in_spelling_too()
+    {
+        const string aixml = """
+            <VI _name="P.lvclass:Stop Core.vi" description="">
+              <Call inputs="P in:6.Actor out,error in (no error):6.error out" outputs="P out:17.P out,error out:17.error out" target="P.lvclass\3APass.vi" uid="17" uid_parent="root"/>
+              <Indicator _name="P out" inputs="value:17.P out" type="ref{UDClassInst}" uid="46" uid_parent="root" value=""/>
+              <Indicator _name="error out" inputs="value:17.error out" type="cluster{bool.status,int32.code,string.source}" uid="47" uid_parent="root" value="[false,0,]"/>
+            </VI>
+            """;
+        var shape = AfOverrideTools.HookShape(aixml, "Pass.vi")!;
+        Assert.Equal("P in -> P out,error in (no error) -> error out",
+            string.Join(",", shape.Pairs.Select(p => $"{p.Near} -> {p.Far}")));
+    }
+
+    [Fact]
+    public void An_output_with_no_input_of_its_stem_cannot_be_bypassed()
+    {
+        const string aixml = """
+            <VI _name="P.lvclass:Stop Core.vi" description="">
+              <Call inputs="P in:6.Actor out" outputs="P out:17.P out,count:17.count" target="P.lvclass\3APass.vi" uid="17" uid_parent="root"/>
+              <Indicator _name="P out" inputs="value:17.P out" type="ref{UDClassInst}" uid="46" uid_parent="root" value=""/>
+              <Indicator _name="count" inputs="value:17.count" type="int32" uid="47" uid_parent="root" value="0"/>
+            </VI>
+            """;
+        var shape = AfOverrideTools.HookShape(aixml, "Pass.vi")!;
+        Assert.Equal(["count"], shape.Unpaired);
+        Assert.Equal("P in -> P out", string.Join(",", shape.Pairs.Select(p => $"{p.Near} -> {p.Far}")));
     }
 
     [Fact]

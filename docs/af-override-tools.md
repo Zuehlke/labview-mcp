@@ -15,7 +15,9 @@ of `lvai_add_class_method` dropped a member (now refused, §5).
 again with `grpc` and with `pylabview` (§7a). Two defects showed and are fixed: the hook helper did
 not compose on pylabview (a constant at root read inside two loops - the composer refuses a net that
 crosses a diagram boundary where NI's converter adds the tunnel silently), and **`lvai_af_remove_hook`
-SAVED a broken override** after removing a series hook, answering `ok: true` (§4).
+SAVED a broken override** after removing a series hook, answering `ok: true` (§4). It now BYPASSES a
+series hook - the wire's source reconnected to every sink - and that is measured on both backends
+too (§7a).
 
 "The kit" below means the hand-run helper VIs of a companion LabVIEW skill whose measured routes
 these tools automate; its shape letters (A, B, B-after, C, D) are kept so the two can be compared.
@@ -195,10 +197,20 @@ Inputs: `overridePath`, `classPath`, `hookName` (path, file name or VI name), `o
    Those edits are someone else's work, and the rule is that unsaved files this call did not make
    are asked about, never saved along with the cleanup. A dry run reports this refusal too.
    Before that, the override's own AIXML export (on the backend in force) says whether the hook
-   sits **in series** - an output net that something else reads. One that does is refused,
-   `seriesHookNotRemovable`, with `hookShape` naming the consumed outputs, before anything changes.
-3. `scripts/lvai_af_remove_hook.xml` deletes exactly that node (the kit's delete removed every node
-   with a terminal name) and runs `BD.Remove Bad Wires`. It reports the exec state before and after.
+   sits **in series** - an output net that something else reads (`hookShape.consumedOutputs`).
+   Each such output is PAIRED by name with the hook input of the same stem: `<C> out` with
+   `<C> in`, `error out` with `error in` or NI's `error in (no error)` (`hookShape.bypassPairs`).
+   By name only, wired or not: the pylabview reader leaves the Call Parent node out of its export,
+   so a hook input that Call Parent feeds reads unwired there. An output with no input of its stem
+   cannot be bypassed and is refused, `seriesHookNotRemovable`, before anything changes.
+3. `scripts/lvai_af_remove_hook.xml` first **bypasses** a series node: per pair it reads the source
+   end of the wire at the input (`{LV.Terminal}` `Is Source?`) and every sink of the wire at the
+   output, deletes the output's wire, and connects the source to each sink with `Connect Wire` -
+   the inverse of the series insert (`bypassed`, `sinksReconnected`; a pair naming a terminal the
+   node does not have is `bypassMissing`, `failedAtStep: bypassSeries`, nothing saved). Then it
+   deletes exactly that node (the kit's delete removed every node with a terminal name) and runs
+   `BD.Remove Bad Wires`, which clears the loose end left at the input. It reports the exec state
+   before and after.
 4. Save the override. Then save the sibling overrides that **became** modified (every sibling was
    clean in step 2, so a modified one now was made so by this call), and then the class.
    **Not when the remove broke the override**: state 1 before and 0 after is `removeBrokeOverride`,
@@ -223,14 +235,16 @@ edit was NOT refused, and the sibling re-save, which reads the same bits, skippe
 (`{LV.Diagram} Modified` read TRUE on a clean VI as well, so it is no signal either). Unsaved work
 left by another scripting tool is therefore not caught: save or discard it before a remove.
 
-A **series** hook cannot be removed this way: the wire through it goes with it, and Remove Bad Wires
-leaves the override's output terminal unwired. **Until 2026-10-17 the tool did it anyway and saved
-the result**: `Fail Init.vi` removed from a `seriesAfter` hook on Pre Launch Init answered `ok: true`,
-`execStateBefore: 1`, `execStateAfter: 0`, on both backends, and the saved override read eBad cold -
-"Front Panel Terminal '<C> out': Run-time type not propagated from dynamic input to dynamic output".
-The launcher then failed with Error 1003 (`Launch Actor Core.vi` could not open `Actor.vi`). That is
-now refused before the delete (step 2) and held back after it (step 4). Restore the bare override
-from version control (project closed) and re-hook every shape in order (B, C, A).
+**A series hook is bypassed, not cut.** A plain delete takes the wire through it with it, and Remove
+Bad Wires then leaves the override's output terminal unwired. **Until 2026-10-17 the tool did exactly
+that and saved the result**: `Fail Init.vi` removed from a `seriesAfter` hook on Pre Launch Init
+answered `ok: true`, `execStateBefore: 1`, `execStateAfter: 0`, on both backends, and the saved
+override read eBad cold - "Front Panel Terminal '<C> out': Run-time type not propagated from dynamic
+input to dynamic output". The launcher then failed with Error 1003 (`Launch Actor Core.vi` could not
+open `Actor.vi`). For a few hours the same day the series shape was REFUSED instead; since the
+bypass (step 3) it is removed, and the bare override's wiring comes back - measured in §7a, NI's
+export of the result reading Call Parent's `Actor out` and `error out` straight into the panel
+terminals, exactly as `lvai_create_override` leaves them.
 
 ## 5. `lvai_add_class_method` on a re-run
 
@@ -286,7 +300,7 @@ WITHOUT the member (measured 2026-10-10). Such a call is now refused before anyt
 | `lvai_create_override.xml` | NI's `CLSUIP_CreateOverride`, then saves VI and class | yes | measured 2026-09-17 / 2026-10-09 |
 | `lvai_af_hook_read.xml` | lists panel terminals with wire ends, subVI names, node classes | no | measured 2026-10-10 |
 | `lvai_af_add_hook.xml` | places one hook; series cut, branch tap, node pairs | no | measured 2026-10-10, all four shapes |
-| `lvai_af_remove_hook.xml` | deletes one hook node, Remove Bad Wires | no | measured 2026-10-10 |
+| `lvai_af_remove_hook.xml` | bypasses a series node (source -> every sink), deletes one hook node, Remove Bad Wires | no | measured 2026-10-10; the bypass 2026-10-17, both backends |
 | `lvai_af_modified_members.xml` | which listed VIs carry unsaved edits (FP/BD modification bitsets) | no | measured 2026-10-10: sees a hand edit in the IDE, **reads 0 for scripted edits** |
 | `lvai_af_save_members.xml` | saves listed VIs (optionally only modified ones), then the class | yes | measured as a list 2026-10-10; `Only If Modified` skips everything (same bits) |
 | `lvai_member_callers.xml` | loaded members and their callers | no | measured 2026-10-10 |
@@ -326,8 +340,19 @@ predating the tools). Exec states read cold, project closed.
 | launcher (`Launch Root Actor` + `Send Normal Stop`) with the PLI hook | launch error `[true,5000,Fail Init]` | same |
 | remove the PLI **series** hook, old code | **`ok: true`, state 1 -> 0, saved broken** | same |
 | launcher after that | Error 1003, `Launch Actor Core.vi` | same |
-| remove the Stop Core **series** hook, new code | `seriesHookNotRemovable`, nothing changed, state 1 | same |
-| remove the Actor Core **branch** hook, new code | `ok`, `hookShape.seriesNodes: 0`, state 1 cold, no hook in the export | same |
+| remove the Stop Core **series** hook, refusal code (superseded the same day) | `seriesHookNotRemovable`, nothing changed, state 1 | same |
+| remove the Actor Core **branch** hook | `ok`, `hookShape.seriesNodes: 0`, state 1 cold, no hook in the export | same |
+
+**The series bypass, on fresh actors** (`AfByP` / `AfByG` under `C:\Temp\AfBypass`, built the same
+way, `seriesAfter` hooks on Pre Launch Init (`Fail Init.vi`) and Stop Core (`Pass.vi`)):
+
+| item | pylabview | grpc |
+|---|---|---|
+| launcher with both hooks | `[true,5000,Fail Init]` on launch and stop | same |
+| remove `Fail Init.vi` from Pre Launch Init | `ok`, state 1 -> 1, `bypassed: [error out, <C> out]`, `sinksReconnected: [1, 1]` | same |
+| remove `Pass.vi` from Stop Core | `ok`, state 1 -> 1, `bypassed: [<C> out]`, `sinksReconnected: [1]` | same |
+| both overrides, cold | state 1, no hook call in the export | state 1; NI's export: `error out` <- `6.error out`, `<C> out` <- `6.Actor out` (Call Parent) |
+| launcher after the removal | launch error 0, stop error 0 | same |
 
 The two exporters spell a member target differently - NI's `C.lvclass\3APass.vi`, the reader's
 `C.lvclass:Pass.vi` - and the reader leaves the Call Parent node out of its export
@@ -339,7 +364,8 @@ Still open:
 1. The folder a re-run over a member in a virtual folder puts it back into (item 4).
 2. Any hook shape on Handle Last Ack Core (§3b).
 3. Edits made by scripting are invisible to the unsaved-edit checks (§4), so they cannot refuse them.
-4. `removeBrokeOverride` (§4 step 4) is unit-tested only: with the series shape refused up front, no
-   live case reached it.
-5. Removing a series hook by reconnecting its source to its sinks (the inverse of the series insert)
-   is not built; a series hook still needs the bare override back.
+4. `removeBrokeOverride` and `bypassMissing` (§4 steps 3 and 4) are unit-tested only: no live case
+   reached them.
+5. The bypass is measured on `seriesAfter` hooks (Call Parent -> hook -> panel). A `series` hook
+   (panel -> hook -> Call Parent) and a series hook with a `branchFromNode` hook hanging off its
+   output (two sinks) take the same code path and are not measured.

@@ -1,7 +1,9 @@
-<VI _name="lvai_af_remove_hook.vi" description="Deletes ONE top-level subVI node from an override (or any class member) in the ACTIVE PROJECT's application instance\2C then runs BD.Remove Bad Wires on it. The node is the Occurrence-th (from 0\2C in SubVIs[] order) whose VI Name equals Hook VI Name exactly\3B Matches says how many there were\2C so a caller that read the diagram first with lvai_af_hook_read can refuse an ambiguous name before this runs. WHY REMOVE BAD WIRES IS NOT OPTIONAL\3A deleting a node that sat on a branched wire leaves a loose end\2C and the VI - and a sibling override of the same class - then reads state 0 with an error of type 1000088\3B Remove Bad Wires on the edited VI cleared both (the kit's pa_delete_subvi plus pa_clean_member route\2C measured). The kit's own delete removed EVERY node with a given terminal name\3B this one removes exactly one. Execution state before and after is read in this instance. It does NOT save\3A the caller saves in a separate run. UNMEASURED as a whole.">
+<VI _name="lvai_af_remove_hook.vi" description="Deletes ONE top-level subVI node from an override (or any class member) in the ACTIVE PROJECT's application instance\2C then runs BD.Remove Bad Wires on it. A SERIES hook is BYPASSED first\3A for each pair Bypass Near[i] / Bypass Far[i] (the hook's input and output terminal names\2C e.g. `&lt;C&gt; in` / `&lt;C&gt; out`\2C `error in` / `error out`) the source end of the wire at Near (Is Source? TRUE) and every sink of the wire at Far are read\2C the Far wire is deleted\2C and the source is connected to each sink with Connect Wire - the inverse of lvai_af_add_hook's series insert. A pair whose terminal is not on the node is listed under Bypass Missing and never guessed. With no pairs the helper behaves as before. The node is the Occurrence-th (from 0\2C in SubVIs[] order) whose VI Name equals Hook VI Name exactly\3B Matches says how many there were\2C so a caller that read the diagram first with lvai_af_hook_read can refuse an ambiguous name before this runs. WHY REMOVE BAD WIRES IS NOT OPTIONAL\3A deleting a node that sat on a branched wire leaves a loose end\2C and the VI - and a sibling override of the same class - then reads state 0 with an error of type 1000088\3B Remove Bad Wires on the edited VI cleared both (the kit's pa_delete_subvi plus pa_clean_member route\2C measured). The kit's own delete removed EVERY node with a given terminal name\3B this one removes exactly one. Execution state before and after is read in this instance. It does NOT save\3A the caller saves in a separate run. UNMEASURED as a whole.">
   <Control _name="Override VI Path" conIdx="0" connection="recommended" outputs="value:5000.value" type="path" uid="5000" uid_parent="root" value=""/>
   <Control _name="Hook VI Name" conIdx="1" connection="recommended" outputs="value:5001.value" type="string" uid="5001" uid_parent="root" value=""/>
   <Control _name="Occurrence" conIdx="2" connection="recommended" outputs="value:5002.value" type="int32" uid="5002" uid_parent="root" value="0"/>
+  <Control _name="Bypass Near" outputs="value:5006.value" type="array{string}" uid="5006" uid_parent="root" value="[]"/>
+  <Control _name="Bypass Far" outputs="value:5007.value" type="array{string}" uid="5007" uid_parent="root" value="[]"/>
   <Control _name="error in" conIdx="11" connection="recommended" outputs="value:5003.value" type="cluster{bool.status,int32.code,string.source}" uid="5003" uid_parent="root" value="[false,0,]"/>
 
   <FreeLabel comment="Deletes one node - the caller saves" uid="5004" uid_parent="root"/>
@@ -30,7 +32,95 @@
   <Indicator _name="Matches" inputs="value:5110.n" type="int32" uid="5111" uid_parent="root" value="0"/>
   <Node _name="Index Array" inputs="array:5108.matches,index:5002.value" outputs="element:5112.node" uid="5112" uid_parent="root"/>
 
-  <Node _name="Invoke Node" target="Delete" type="{LV.Node}" inputs="reference:5112.node,error in (no error):5016.error out" outputs="reference out:,error out:5120.error out" uid="5120" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Node}" inputs="reference:5112.node,error in (no error):5016.error out" outputs="Terminals[]:5200.terms,reference out:,error out:5200.error out" uid="5200" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="5210" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5200.terms" mode="index" outputs="value:5211.term" uid="5211" uid_parent="5210"/>
+    <Node _name="Property Node" fields="read+Name" type="{LV.Terminal}" inputs="reference:5211.term" outputs="Name:5212.name,reference out:,error out:5212.error out" uid="5212" uid_parent="5210"/>
+    <Call inputs="specific error code to clear (0\3A all):,error in (no error):5212.error out" outputs="specific error cleared?:,error out:" target="Clear Errors.vi" uid="5213" uid_parent="5210"/>
+    <Tunnel _id="Out1" inputs="value:5212.name" mode="index" outputs="value:5214.names" uid="5214" uid_parent="5210"/>
+  </Structure>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="5230" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5006.value" mode="index" outputs="value:5231.near" uid="5231" uid_parent="5230"/>
+    <Tunnel _id="In2" inputs="value:5007.value" mode="index" outputs="value:5232.far" uid="5232" uid_parent="5230"/>
+    <Tunnel _id="In3" inputs="value:5214.names" outputs="value:5233.hnames" uid="5233" uid_parent="5230"/>
+    <Tunnel _id="In4" inputs="value:5200.terms" outputs="value:5234.hterms" uid="5234" uid_parent="5230"/>
+    <ShiftReg uid="5235" uid_parent="5230">
+      <Left inputs="value:5200.error out" outputs="value:5236.err" uid="5236" uid_parent="5235"/>
+      <Right inputs="value:5290.err" outputs="value:5237.err" uid="5237" uid_parent="5235"/>
+    </ShiftReg>
+    <Node _name="Search 1D Array" inputs="1D array:5233.hnames,element:5231.near,start index (0):" outputs="index of element:5238.nidx" uid="5238" uid_parent="5230"/>
+    <Node _name="Search 1D Array" inputs="1D array:5233.hnames,element:5232.far,start index (0):" outputs="index of element:5239.fidx" uid="5239" uid_parent="5230"/>
+    <Node _name="Greater Or Equal To 0?" inputs="x:5238.nidx" outputs="x &gt;= 0?:5240.nok" uid="5240" uid_parent="5230"/>
+    <Node _name="Greater Or Equal To 0?" inputs="x:5239.fidx" outputs="x &gt;= 0?:5241.fok" uid="5241" uid_parent="5230"/>
+    <Node _name="And" inputs="x:5240.nok,y:5241.fok" outputs="x .and. y?:5242.both" uid="5242" uid_parent="5230"/>
+    <Node _name="Not" inputs="x:5242.both" outputs=".not. x?:5243.miss" uid="5243" uid_parent="5230"/>
+    <Structure _name="Case Structure" selectin="5242.both" uid="5250" uid_parent="5230">
+      <Tunnel _id="In1" inputs="value:5234.hterms" uid="5244" uid_parent="5250"/>
+      <Tunnel _id="In2" inputs="value:5238.nidx" uid="5245" uid_parent="5250"/>
+      <Tunnel _id="In3" inputs="value:5239.fidx" uid="5246" uid_parent="5250"/>
+      <Tunnel _id="In4" inputs="value:5236.err" uid="5247" uid_parent="5250"/>
+      <CaseFrame selector="True" selectout="" uid="5251" uid_parent="5250">
+        <Tunnel _id="In1" outputs="value:5252.hterms" uid="5252" uid_parent="5251"/>
+        <Tunnel _id="In2" outputs="value:5253.nidx" uid="5253" uid_parent="5251"/>
+        <Tunnel _id="In3" outputs="value:5254.fidx" uid="5254" uid_parent="5251"/>
+        <Tunnel _id="In4" outputs="value:5255.err" uid="5255" uid_parent="5251"/>
+        <Node _name="Index Array" inputs="array:5252.hterms,index:5253.nidx" outputs="element:5256.nterm" uid="5256" uid_parent="5251"/>
+        <Node _name="Index Array" inputs="array:5252.hterms,index:5254.fidx" outputs="element:5257.fterm" uid="5257" uid_parent="5251"/>
+        <Node _name="Property Node" fields="read+Connected Wire" type="{LV.Terminal}" inputs="reference:5256.nterm,error in (no error):5255.err" outputs="Connected Wire:5258.nwire,reference out:,error out:5258.error out" uid="5258" uid_parent="5251"/>
+        <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Wire}" inputs="reference:5258.nwire,error in (no error):5258.error out" outputs="Terminals[]:5259.nends,reference out:,error out:5259.error out" uid="5259" uid_parent="5251"/>
+        <Structure _name="For Loop" count="" maxin="" maxout="" uid="5260" uid_parent="5251">
+          <Tunnel _id="In1" inputs="value:5259.nends" mode="index" outputs="value:5261.end" uid="5261" uid_parent="5260"/>
+          <Node _name="Property Node" fields="read+Is Source?" type="{LV.Terminal}" inputs="reference:5261.end,error in (no error):" outputs="Is Source?:5262.src,reference out:,error out:" uid="5262" uid_parent="5260"/>
+          <Tunnel _id="Out1" cond="5262.src" inputs="value:5261.end" mode="index" outputs="value:5263.srcs" uid="5263" uid_parent="5260"/>
+        </Structure>
+        <Constant _name="first source" outputs="value:5248.value" type="int32" uid="5248" uid_parent="5251" value="0"/>
+        <Node _name="Index Array" inputs="array:5263.srcs,index:5248.value" outputs="element:5264.source" uid="5264" uid_parent="5251"/>
+        <Node _name="Property Node" fields="read+Connected Wire" type="{LV.Terminal}" inputs="reference:5257.fterm,error in (no error):5259.error out" outputs="Connected Wire:5265.fwire,reference out:,error out:5265.error out" uid="5265" uid_parent="5251"/>
+        <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Wire}" inputs="reference:5265.fwire,error in (no error):5265.error out" outputs="Terminals[]:5266.fends,reference out:,error out:5266.error out" uid="5266" uid_parent="5251"/>
+        <Structure _name="For Loop" count="" maxin="" maxout="" uid="5267" uid_parent="5251">
+          <Tunnel _id="In1" inputs="value:5266.fends" mode="index" outputs="value:5268.end" uid="5268" uid_parent="5267"/>
+          <Node _name="Property Node" fields="read+Is Source?" type="{LV.Terminal}" inputs="reference:5268.end,error in (no error):" outputs="Is Source?:5269.src,reference out:,error out:" uid="5269" uid_parent="5267"/>
+          <Node _name="Not" inputs="x:5269.src" outputs=".not. x?:5270.sink" uid="5270" uid_parent="5267"/>
+          <Tunnel _id="Out1" cond="5270.sink" inputs="value:5268.end" mode="index" outputs="value:5271.sinks" uid="5271" uid_parent="5267"/>
+        </Structure>
+        <Node _name="Invoke Node" target="Delete" type="{LV.Wire}" inputs="reference:5265.fwire,error in (no error):5266.error out" outputs="reference out:,error out:5272.error out" uid="5272" uid_parent="5251"/>
+        <Structure _name="For Loop" count="" maxin="" maxout="" uid="5273" uid_parent="5251">
+          <Tunnel _id="In1" inputs="value:5271.sinks" mode="index" outputs="value:5274.sink" uid="5274" uid_parent="5273"/>
+          <Tunnel _id="In2" inputs="value:5264.source" outputs="value:5275.source" uid="5275" uid_parent="5273"/>
+          <ShiftReg uid="5276" uid_parent="5273">
+            <Left inputs="value:5272.error out" outputs="value:5277.err" uid="5277" uid_parent="5276"/>
+            <Right inputs="value:5279.error out" outputs="value:5278.err" uid="5278" uid_parent="5276"/>
+          </ShiftReg>
+          <Constant _name="true" outputs="value:5280.value" type="bool" uid="5280" uid_parent="5273" value="true"/>
+          <Node _name="Invoke Node" target="Connect Wire" type="{LV.Terminal}" inputs="reference:5274.sink,error in (no error):5277.err,Wire Source:5275.source,Auto Wire? (T):5280.value,Wiring Specs:,Auto Route? (F):5280.value" outputs="reference out:,error out:5279.error out" uid="5279" uid_parent="5273"/>
+        </Structure>
+        <Node _name="Array Size" inputs="array:5271.sinks" outputs="size(s):5281.n" uid="5281" uid_parent="5251"/>
+        <Tunnel _id="Out1" inputs="value:5278.err" uid="5282" uid_parent="5251"/>
+        <Tunnel _id="Out2" inputs="value:5281.n" uid="5283" uid_parent="5251"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="5285" uid_parent="5250">
+        <Tunnel _id="In1" outputs="value:" uid="5284" uid_parent="5285"/>
+        <Tunnel _id="In2" outputs="value:" uid="5286" uid_parent="5285"/>
+        <Tunnel _id="In3" outputs="value:" uid="5287" uid_parent="5285"/>
+        <Tunnel _id="In4" outputs="value:5288.err" uid="5288" uid_parent="5285"/>
+        <Constant _name="no sinks" outputs="value:5289.value" type="int32" uid="5289" uid_parent="5285" value="0"/>
+        <Tunnel _id="Out1" inputs="value:5288.err" uid="5294" uid_parent="5285"/>
+        <Tunnel _id="Out2" inputs="value:5289.value" uid="5295" uid_parent="5285"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:5290.err" uid="5290" uid_parent="5250"/>
+      <Tunnel _id="Out2" outputs="value:5291.n" uid="5291" uid_parent="5250"/>
+    </Structure>
+    <Tunnel _id="Out1" cond="5242.both" inputs="value:5232.far" mode="index" outputs="value:5292.done" uid="5292" uid_parent="5230"/>
+    <Tunnel _id="Out2" cond="5242.both" inputs="value:5291.n" mode="index" outputs="value:5293.counts" uid="5293" uid_parent="5230"/>
+    <Tunnel _id="Out3" cond="5243.miss" inputs="value:5232.far" mode="index" outputs="value:5296.missing" uid="5296" uid_parent="5230"/>
+  </Structure>
+  <Indicator _name="bypass error" inputs="value:5237.err" type="cluster{bool.status,int32.code,string.source}" uid="5297" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="Bypassed" inputs="value:5292.done" type="array{string}" uid="5298" uid_parent="root" value="[]"/>
+  <Indicator _name="Sinks Reconnected" inputs="value:5293.counts" type="array{int32}" uid="5299" uid_parent="root" value="[]"/>
+  <Indicator _name="Bypass Missing" inputs="value:5296.missing" type="array{string}" uid="5201" uid_parent="root" value="[]"/>
+
+  <Node _name="Invoke Node" target="Delete" type="{LV.Node}" inputs="reference:5112.node,error in (no error):5237.err" outputs="reference out:,error out:5120.error out" uid="5120" uid_parent="root"/>
   <Indicator _name="delete error" inputs="value:5120.error out" type="cluster{bool.status,int32.code,string.source}" uid="5121" uid_parent="root" value="[false,0,]"/>
   <Node _name="Invoke Node" target="BD.Remove Bad Wires" type="{LV.VI}" inputs="reference:5012.vi,error in (no error):5120.error out" outputs="reference out:,error out:5122.error out" uid="5122" uid_parent="root"/>
   <Indicator _name="remove bad wires error" inputs="value:5122.error out" type="cluster{bool.status,int32.code,string.source}" uid="5123" uid_parent="root" value="[false,0,]"/>
