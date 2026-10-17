@@ -61,8 +61,10 @@ internal sealed class SwapTools(LvaiConnection connection)
         the VI saved - matching is by label, so two constants with one label cannot say which one
         is meant. A label no constant carries is `constantsNotOnDiagram`. `constantMatches` gives
         every label's count; `constantsSeen` is how many constants the traversal returned, and
-        zero there means the helper's class name matched nothing - whether a diagram constant
-        answers to `Constant` in that traversal is NOT MEASURED yet.
+        zero there means the helper's class name matched nothing. Measured 2026-10-17 on both
+        backends: `Constant` matched all five constants of a probe (path, bool), a path seed
+        inside a Case frame inside a While Loop became a class constant, and a label two
+        constants carried was refused with both left as they were.
         A CALL INSIDE A LOOP OR A CASE FRAME IS REACHED, and that is new as of 2026-09-16. The
         helper collected from {LV.Diagram} SubVIs[], which lists the diagram it is asked about and
         does NOT descend into structures, so a nested call came back under `socketsNotOnDiagram`

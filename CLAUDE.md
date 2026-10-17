@@ -2226,13 +2226,14 @@ references, so each needs `To More Specific Class` onto `ref{LV.SubVI}` before `
 `Replace` is invoked.
 
 **THE CONSTANTS HAD THE SAME BLIND SPOT FOR ANOTHER MONTH, and `constantsJson` reaches any depth as
-of 2026-10-11 - not measured against LabVIEW yet.** The class constants were still collected from
+of 2026-10-11 - measured 2026-10-17 on both backends.** The class constants were still collected from
 the top-level diagram's `All Objects[]`, so a `path` seed nested in a Case frame inside a loop was
 never found. A second `Traverse for GObjects.vi` call collects them now; its `Class Name` is ONE
 labelled constant, `Constant Class Name` = `Constant`, because a string constant reports
 `StringConstant` and a class constant `LabVIEWClassConstant`, so whether the traversal answers
-`Constant` for every kind depends on whether it matches descendant classes - the first live probe
-settles it, and `constantsSeen: 0` in the answer is the tell that it does not. **A label that MORE
+`Constant` for every kind depends on whether it matches descendant classes - and it does: a probe
+of five constants (path, bool) answered `constantsSeen: 5`, and a seed nested in a Case frame in a
+loop came out a class constant. **A label that MORE
 THAN ONE constant carries is REFUSED** (the user's decision of 2026-10-11): it is not replaced,
 `constantsAmbiguous` names it with its count, `ok` is false with `errorKind:
 constantLabelAmbiguous`, and every label that matched exactly once is still replaced and saved. So
