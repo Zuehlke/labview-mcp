@@ -287,6 +287,19 @@ it again.
    `lvai_add_class_method`: an Actor Core without its Call Parent has no message loop at all.
    No tool here creates them yet; stop and report the override as open work.
 
+   **When the class is an ACTOR** (parent `Actor.lvclass`), read `docs/labview-actor-framework.md`
+   §19 before designing it - how an actor behaves at run time, each fact with its evidence. The
+   points that change what you build:
+   - Pre Launch Init must not launch actors (it hangs); launch from Actor Core or a message.
+   - Every normal stop reaches Handle Error as error 43, and the base Handle Error always answers
+     `stop actor?` TRUE (read from NI's source) - so nothing chained on Handle Error's incoming
+     error runs at a stop.
+   - A helper loop needs its own stop signal, registered BEFORE Actor Core's Call Parent; generate
+     the stop BEFORE destroying its user event (Generate on a destroyed event is error 1, measured).
+   - Private members are static (above). Library before messages (CLAUDE.md).
+   - Architecture - tree shape, base actor, how a child talks up, where the stop is sent - is the
+     user's choice: propose, then return a `NEEDS CLARIFICATION` rather than pick one.
+
 7. **The declaration body may be empty, and usually should be.** An interface method exists to fix
    the signature; give it whatever a caller of the unimplemented contract should see — an empty
    string, a zero — and let the overrides carry the behaviour. Say in your report that it is a

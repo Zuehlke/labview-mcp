@@ -1322,3 +1322,144 @@ service. Open the project only once it has passed.
 **Leave nothing behind.** Moving the actor but not its `Strassenkarte Messages\` folder is the one
 way to break this: the two would then shift by different amounts and every `Do.vi` link would need
 repointing. The block is the whole class, messages included.
+
+## 19. How an actor BEHAVES at run time
+
+Sections 1-18 are about BUILDING an actor with this toolchain. This one is about what the code then
+DOES - the lifecycle, the overrides, helper loops and errors - so that an agent designing an actor
+gets the shape right before it generates anything. Adopted on 2026-10-17 from a colleague's
+`labview` skill (`github.com/JorgenSteen/labview-mcp-skills`, `knowledge/actor-framework.md`),
+condensed, and checked where it becomes a rule. Every entry says where its evidence comes from:
+
+- **NI source** - read on 2026-10-17 from NI's own AF VIs in `vi.lib\ActorFramework`, NI's export.
+- **measured here** - run on this station on 2026-10-17.
+- **documented** - NI's help, AF whitepaper or AF designers (AristosQueue) on the NI forum, as cited
+  by the source; not re-checked here.
+- **reported** - measured in the colleague's pilot project, NOT re-measured here. Treat it as a
+  strong hypothesis, and measure it before building a tool or a hard rule on it.
+
+### 19a. Lifecycle and call order
+
+- **Launch.** `Launch Root Actor.vi` starts the top of the tree from a plain VI; `Launch Nested
+  Actor.vi` starts a child, and the two sides get each other's enqueuer. *documented*
+- **Pre Launch Init (PLI) runs inside the launch call**, before Launch returns; an error from it
+  aborts the launch, and the launcher sees it. **PLI must not launch actors** - Launch Root or
+  Launch Nested from PLI hangs. Launch from Actor Core or from a message. *documented*
+- **Actor Core is the message loop.** An override runs its own code in parallel with Call Parent,
+  and Call Parent returns only once the loop has ended and Stop Core has run. *documented*
+- **Order, as reported:** PLI -> Actor Core -> (Normal Stop arrives) -> Handle Error -> Stop Core ->
+  Call Parent returns -> code after Call Parent. So **Stop Core runs INSIDE Actor Core's Call
+  Parent**, before anything placed after it. *reported; the Stop-Core-inside part also documented*
+- **Stop Core runs only if Actor Core started** - not after a failed PLI. A PLI that fails must
+  release what it already created itself. *documented, and reported*
+- **Handle Last Ack Core** runs in the caller when a nested actor stops; the base version returns
+  the child's error, so by default a child's error stops its caller and the stop travels up the
+  tree. *documented*
+
+### 19b. The overrides and their panes
+
+- **Panes, reported** (conIdx): Pre Launch Init `<C> in` 11, `<C> out` 3, `error out` 0, **no
+  `error in`**; Actor Core `error in` 8, `<C> in` 11, `Actor out` 3, `error out` 0; Stop Core
+  `<C> in` 11, `<C> out` 3, `final error code` 10, **no error terminals**; Handle Error
+  `error in (no error)` 8, `<C> in` 11, `<C> out` 3, `error out` 0, `stop actor?` 2 - the last
+  read from NI's own `Actor.lvclass:Handle Error.vi` here and matching.
+- **Actor Core's `Actor out` is typed `Actor`**, on the Call Parent node too; a child-typed VI fed
+  from it needs `To More Specific Class`. *reported*
+- **Every lifecycle override MUST call its parent** - Actor Core's Call Parent IS the message loop,
+  Stop Core's stops the nested actors. AIXML cannot author `Call Parent Class Method` (CLAUDE.md),
+  and `lvai_add_class_method` must not be used for these; no tool here creates them yet. The
+  colleague's fork has `lvai_create_override` (NI's provider places the node) and
+  `lvai_af_add_hook`.
+- **Scope:** `Read Self Enqueuer.vi` is protected - a non-member caller is broken (*reported*). A
+  **private dynamic-dispatch member is broken**, and every caller with it (*measured here*,
+  `docs/lvlib-lvclass-structure.md`); so private members are static.
+
+### 19c. Handle Error and the stop codes - read from NI's source
+
+- **`Stop Msg:Do.vi` returns error 43** for a normal stop and **1608** for an emergency stop (the
+  message's `is emergency?`). *NI source*
+- **The base `Actor.lvclass:Handle Error.vi` always returns `stop actor?` = TRUE**, a constant.
+  Its case structure on the error code CLEARS 43 (NI's own comment in that frame: *"Cancel Error"
+  means stop, but "No Error" to caller*) and passes EVERY other code through - **1608 included**,
+  which the source listed as an open question. *NI source*
+- Consequences: Handle Error runs on every normal stop, with 43 on its `error in`; a VI chained on
+  that incoming error is SKIPPED at every stop, so side work there (logging, file I/O) needs a
+  fresh error chain. Only code AFTER Call Parent can turn `stop actor?` back to FALSE. An override
+  that does not call the parent must clear 43 itself. *follows from the source; the skip also
+  reported*
+
+### 19d. Helper loops and user events
+
+- **Destroy before Generate: the event never arrives.** `Generate User Event` on a destroyed
+  refnum answers **error 1**, with `Destroy User Event` itself answering 0. *measured here* (plain
+  VI: Create -> Destroy -> Generate). In an actor this is a hang: if Stop Core destroys the stop
+  event and code after Call Parent then generates it, the helper loop never gets its stop and
+  Actor Core never returns. *the hang reported*
+- **Generate, then Destroy, does not lose the event** - already-queued events still fire. *reported
+  (4 of 4) and documented by NI R&D; the LabVIEW 2020 help says the opposite*
+- **Events generated before `Register For Events` are not seen.** Registration queues from the
+  moment it runs. With Register inside the helper-loop VI, a Call Parent that returns at once (an
+  error wired into it) lets the stop be generated before the loop has registered - the loop never
+  exits and the TREE stays in memory until LabVIEW restarts. **Register in an `init` member in
+  series BEFORE Call Parent.** *documented; the hang and the fix reported.* A probe here could not
+  settle it: a composed single-shot user-event handler never fired even in its control arm, and
+  the gRPC route refused to register it (`no dIdx on this event structure`) - a toolchain gap, not
+  evidence either way.
+- **`Register For Events` skips on an upstream error** - nothing is registered, and a loop whose
+  only exit is the stop event hangs the actor. Generating an event nobody registered for does
+  nothing, with no error. `Destroy User Event` and `Unregister For Events` run even with an error
+  in, so both are safe at the end of a chain. *documented*
+- **A hung helper loop cannot be freed through VI Server** (`Abort VI` answers 1000). Only a
+  LabVIEW restart frees it. *reported*
+- **A failed `Send` does not stop a helper loop** - the actor's queue lives until the Actor Core
+  override returns. The loop needs its own stop signal (user event, notifier, queue element, or a
+  local in the same VI); never abort it. *reported*
+- **`Value` written through VI Server fires no Value Change; only `Value (Signaling)` does**, and a
+  latched Boolean cannot be written at all (`Error 1193`). *reported; CLAUDE.md records the same*
+
+### 19e. Errors in an actor tree
+
+- **Default propagation:** an error from a message stops the actor (Handle Error answers TRUE), its
+  Last Ack carries the error to the caller, the caller's Handle Last Ack Core returns it, and the
+  caller stops too. *documented; reported 0.56-0.64 s for a three-level tree*
+- **Errors in Actor Core's own diagram and in helper loops never reach Handle Error** unless sent
+  with `Send Error Report.vi`. *documented*
+- **An error wired into Actor Core's Call Parent skips Handle Error**, but Stop Core runs and the
+  actor stops by itself; the launcher sees error 0 at Launch, and its next `Send` fails with 1556.
+  *documented, and reported*
+- **`Clear Errors.vi` in LabVIEW 2026 takes `specific error code to clear (0: all)`.** *reported*
+
+### 19f. Messages and libraries
+
+- A message's payload is its private data; `Do.vi` calls one actor method; never author `Do.vi` -
+  use `lvai_create_message_class` (section 4). *documented, and measured in this file*
+- **`Drop Message Core.vi`** runs on a message discarded because its actor is stopping - the place
+  to release a reference the message owns. **`Time-Delayed Send Message.vi`** sends once or
+  periodically; NI's template stops it in Stop Core. *documented*
+- **`Flatten To JSON` refuses an enum**, even inside a cluster. *reported*
+- **A library is a load unit.** Loading any member loads the whole `.lvlib` with every class in
+  it, so an abstract parent sharing a library with its concrete children drags every child's
+  toolkit into any caller. Pluggable children each get their own library. *documented*
+
+### 19g. Design choices - a menu, not rules
+
+The source lists patterns a project CHOOSES between; none is required by AF, and the choice is the
+user's: tree shape (root, managers, leaves; three or four levels), deferred start (`init` before
+Call Parent launches the children), a base actor carrying shared overrides, talking UP through an
+interface rather than an abstract message (NI's preference since LabVIEW 2020), periodic work
+(time-delayed message, timed helper loop, or Timeout frame - the last starves under event load),
+where the stop is sent (generate-then-destroy in Stop Core, or after Call Parent with the release
+after it), supervision through Handle Last Ack Core, and a `Receive Message.vi` override for
+tracing. The colleague's `conventions/defaults/af-shapes.md` turns these into 22 default rules; that
+convention system is not adopted here.
+
+### 19h. Proving an actor runs
+
+- Any member VI can be run directly, without launching the actor. *documented*
+- `Execution:State` read from inside a launcher is not a stop detector. Prove a stop with
+  timestamped log lines, `error out`, and a Normal Stop that succeeds. *reported*
+- A tree can be proved without a throwaway caller class: launch the top actor with `Launch
+  Actor.vi` and a proof-owned queue as its caller; the queue receives the top actor's Last Ack.
+  *reported*
+- Two VIs appending to one log file at the same moment overwrite each other's line; give each
+  writer its own file in a run that proves an order. *reported*
