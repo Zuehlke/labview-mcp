@@ -1788,6 +1788,18 @@ a helper with neither new output.
 
 ### Clearing broken wires after a swap, a bind or a method add - 2026-10-11, swap measured 2026-10-17
 
+**THE CLEANUP WAITS WHILE THE VI STILL CALLS A PLACEHOLDER SOCKET - fixed 2026-10-17.** Found by the
+AFDemo build on pylabview: `lvai_add_class_method`, default `removeBadWires`, over a method calling
+`LVMCP Stub 7ff4fe0e81.vi` answered `badWireCleanupLostConnection` with `Heater in @ SubVI` and
+`Heater out @ TopLevelDiagram` unwired and the method eBad. A socket's class terminals are `path`
+stand-ins, so the class wires into it READ as broken until `lvai_swap_subvis` puts the real member
+there, and Remove Bad Wires cut exactly those. `BadWireCleanup` now reads the VI's bytes for our
+socket names (`LVMCP Stub …`, `LVMCP Mth…`, `LVMCP Cls…`) first and, finding one, answers
+`skipped: true` with `pendingSockets` and removes nothing; the swap's own cleanup runs once the
+socket is gone. Re-measured the same day: the same method added with the default answered `ok`,
+`pendingSockets: ["LVMCP Stub 7ff4fe0e81.vi"]`; the swap onto `Write Setpoint.vi` answered
+`socketsLeft: 0`, its cleanup `brokenWires: 0`; `execState 1`.
+
 **Measured 2026-10-17 through `lvai_swap_subvis` on BOTH backends.** The cleanup helper was built by
 NI's converter on every route in the fork it came from; on merging it is COMPOSED and run over
 ActiveX on `pylabview`, like `DiagramCleanup`'s. Probe: a `path` constant `seed` wired to a `path`

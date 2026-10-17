@@ -1932,10 +1932,12 @@ class Composer:
         if cls_tree is None or not res or not res.get("owner"):
             raise Unsupported("Constant %r %s: a class constant (ref{UDClassInst}) must feed a "
                               "class terminal of a Call, which names its class" % (name, el.get("uid")))
+        # A CLASS INSIDE A LIBRARY is its whole qualified name - `Heater.lvlib`, `Heater.lvclass` -
+        # in the value (one Pascal string each, as below) AND in every link record. Read off
+        # LabVIEW's own saves of two VIs holding a Heater.lvlib:Heater.lvclass constant
+        # (2026-10-17): value 00000001 1D 0C Heater.lvlib 0E Heater.lvclass 00, FPPI/DDPI/VIPI
+        # named [Heater.lvlib, Heater.lvclass, 07 00]. This refused it until then.
         qual = [i.get("Text") for i in cls_tree.findall("Item")]
-        if len(qual) != 1:
-            raise Unsupported("Constant %r: class %s inside a library - not composable yet"
-                              % (name, ":".join(qual)))
         got = self.instantiate("const/udClassDDO/Refnum.UDClassInst")
         if got is None:
             raise Unsupported("no class-constant part harvested (const/udClassDDO/Refnum.UDClassInst)")
@@ -1968,7 +1970,7 @@ class Composer:
             self.net_type[net] = lvheap.strip_label(cls_tree)
         c = self.class_consts.setdefault(res["owner"], {"qual": qual, "lib_ref": res["lib_ref"], "uids": []})
         c["uids"].append(int(ddo.get("uid")))
-        self.report.append("Constant %r <- %s (class %s)" % (name, src, qual[0]))
+        self.report.append("Constant %r <- %s (class %s)" % (name, src, ":".join(qual)))
 
     def add_const(self, el):
         aixml_type = el.get("type")
@@ -4108,6 +4110,27 @@ class Composer:
         return dict(res, qual=libs + res["qual"], kind="library member", owner=owner,
                     lib_ref=self.resolver.ref(owner, getattr(self, "caller_file", None)))
 
+    def _class_in_library(self, res):
+        """A class member named WITHOUT its library (`Heater.lvclass:Read Setpoint.vi` for a class
+        in Heater.lvlib) gets the library in front, read off the class file's own
+        NI.Lib.ContainingLib - LabVIEW names every link of such a class with the library first,
+        and a link missing it names a class that does not exist."""
+        if res.get("kind") != "class member":
+            return res
+        qual = list(res.get("qual") or [])
+        if len(qual) < 2 or qual[0].lower().endswith(".lvlib"):
+            return res
+        try:
+            real = resolve.materialize(res["owner"])
+            root = ET.parse(real).getroot() if real else None
+        except (OSError, ET.ParseError):
+            root = None
+        lib = None
+        for prop in (root.iter("Property") if root is not None else []):
+            if prop.get("Name") == "NI.Lib.ContainingLib" and (prop.text or "").strip():
+                lib = prop.text.strip()
+        return dict(res, qual=[lib] + qual) if lib else res
+
     def add_call(self, el):
         """A subVI call, composed from the CALLEE'S OWN FILE - no LabVIEW, no gRPC.
 
@@ -4132,6 +4155,7 @@ class Composer:
         diag = self.diag_of(el)
         callee = lvheap.Bundle(_extract_callee(path))
         res = self._library_qualified(res, callee)
+        res = self._class_in_library(res)
         conp = int(callee.main.find("CONP/Section/TypeDesc").get("TypeID"))
         # dynamic dispatch is a PANE property: a terminal whose Flags carry 0x8000
         # (Infra/PaneDispatch.cs, measured against NI's IsStaticMethod) - the LVSR flag stays
@@ -4144,11 +4168,12 @@ class Composer:
             # dynIUse, with one dynLink child; its link is a DyOM naming that child, beside VIPI
             # records for the class and the method - read off LabVIEW's own saves of test VIs
             # calling a class's accessors and methods (write_links). A class inside a LIBRARY
-            # qualifies its names one level deeper, which no measured file shows yet.
-            if res.get("kind") != "class member" or len(res.get("qual") or []) != 2:
-                raise Unsupported("Call %s: %r is a dynamic-dispatch method of a class this "
-                                  "composer cannot link yet (only a class outside any library)"
-                                  % (el.get("uid"), target))
+            # qualifies its names one level deeper - [Heater.lvlib, Heater.lvclass, member],
+            # read off LabVIEW's saves of Caraya tests on Heater.lvlib:Heater.lvclass
+            # (2026-10-17); this refused it until then.
+            if res.get("kind") != "class member" or len(res.get("qual") or []) < 2:
+                raise Unsupported("Call %s: %r is a dynamic-dispatch method this composer cannot "
+                                  "link (not found as a member of a .lvclass)" % (el.get("uid"), target))
         # a STATIC class member (Caraya's Define Test.vi) stays an ordinary call with an IUVI that
         # names the class in VILSPathRef - composed and run that way since Phase 3
         pane = callee.tree(callee.flat_of_consolidated(conp))
@@ -4548,7 +4573,9 @@ class Composer:
         corrupt`, Error 74. t162_ten_class_links carries both values."""
         classes = {}
         for link in self.dyn_links.values():
-            classes.setdefault(link["owner"], {"qual": link["qual"][:1], "lib_ref": link["lib_ref"]})
+            # the CLASS's qualified name: everything but the member's own name - one item for a
+            # loose class, the library first for a class inside one (as LabVIEW names it)
+            classes.setdefault(link["owner"], {"qual": link["qual"][:-1], "lib_ref": link["lib_ref"]})
         for owner, c in self.class_consts.items():
             classes.setdefault(owner, {"qual": c["qual"], "lib_ref": c["lib_ref"]})
         if not classes:
@@ -4561,7 +4588,8 @@ class Composer:
                                    "APILinkIsInternal": "0", "APILinkBool2": "1",
                                    "APILinkCallParentNodes": "0", "APILinkTailByte": str(tail)})
             qual = ET.SubElement(rec, "LinkSaveQualName")
-            ET.SubElement(qual, "String").text = c["qual"][0]
+            for part in c["qual"]:
+                ET.SubElement(qual, "String").text = part
             ET.SubElement(qual, "String").text = second
             path_ref(rec, "LinkSavePathRef", *c["lib_ref"])
             ET.SubElement(rec, "APILinkContent").text = self._lit(content.to_bytes(2, "big"))

@@ -232,4 +232,35 @@ public sealed class BadWireCleanupTests
         Assert.Equal(typeof(bool), parameter.ParameterType);
         Assert.True((bool)parameter.DefaultValue!);
     }
+
+    /// <summary>
+    /// The AFDemo build of 2026-10-17: a method calling `LVMCP Stub 7ff4fe0e81.vi` lost its class
+    /// wires to the default cleanup, because a socket's `path` stand-ins make them read as broken
+    /// until the swap. The cleanup now waits while any of our socket names is linked.
+    /// </summary>
+    [Fact]
+    public void A_vi_still_calling_a_socket_is_left_for_the_swap()
+    {
+        var dir = Directory.CreateTempSubdirectory("sockets").FullName;
+        try
+        {
+            var vi = Path.Combine(dir, "Set Setpoint.vi");
+            File.WriteAllBytes(vi, System.Text.Encoding.Latin1.GetBytes(
+                "RSRC\r\n....\x18LVMCP Stub 7ff4fe0e81.vi....LVMCP MthW2.vi..LVMCP ClsR1.vi..Clear Errors.vi"));
+            Assert.Equal(["LVMCP Stub 7ff4fe0e81.vi", "LVMCP MthW2.vi", "LVMCP ClsR1.vi"],
+                         BadWireCleanup.PendingSockets(vi));
+
+            var done = Path.Combine(dir, "Done.vi");
+            File.WriteAllBytes(done, System.Text.Encoding.Latin1.GetBytes("RSRC\r\n..Heater.lvclass..Write Setpoint.vi"));
+            Assert.Empty(BadWireCleanup.PendingSockets(done));
+
+            // a socket VI is not pending on ITSELF
+            var stub = Path.Combine(dir, "LVMCP Stub abc123.vi");
+            File.WriteAllBytes(stub, System.Text.Encoding.Latin1.GetBytes("..LVMCP Stub abc123.vi.."));
+            Assert.Empty(BadWireCleanup.PendingSockets(stub));
+
+            Assert.Empty(BadWireCleanup.PendingSockets(Path.Combine(dir, "missing.vi")));
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
 }

@@ -1435,6 +1435,29 @@ three gaps, all closed; `docs/lvclass-creation.md` §10e has the acceptance on b
   `{LV.VI}`), and **a helper read two root constants inside a case frame**. Both fixed in the AIXML,
   which NI's converter had accepted as it was.
 
+## A class INSIDE A LIBRARY - constants and dynamic calls (2026-10-17)
+
+Until 2026-10-17 the composer refused both, by name: a class constant of
+`Heater.lvlib:Heater.lvclass` ("inside a library - not composable yet") and a dynamic-dispatch call
+to one of its members ("only a class outside any library"). The AFDemo build hit the first through
+`lvai_generate_class_test`'s direct route. What LabVIEW writes was read off its own saves of two VIs
+holding such a constant and calling four accessors:
+
+| where | loose class | class in a library |
+|---|---|---|
+| constant value | `00000001 13 11 Rectangle.lvclass 00` + pad | `00000001 1D 0C Heater.lvlib 0E Heater.lvclass 00` + pad - one Pascal string per name |
+| `VIPI`/`FPPI`/`DDPI` name | `[Rectangle.lvclass, 07 00]` | `[Heater.lvlib, Heater.lvclass, 07 00]` |
+| `VIPI`/`DyOM` per method | `[Rectangle.lvclass, 01 n Method.vi]` | `[Heater.lvlib, Heater.lvclass, 01 n Method.vi]` |
+
+The value code was already general; the link records wrote only the FIRST name, and the method
+links took `qual[:1]` as the class. They now write the whole class name (`qual[:-1]` for a method),
+and a target written without its library (`Heater.lvclass:Read Setpoint.vi`) gets the library from
+the class file's own `NI.Lib.ContainingLib`. Measured: a VI with a Heater constant feeding
+`Read Setpoint.vi`, composed and run over ActiveX, answered `Setpoint = 20` (the class default) and
+`error out` clean, every record and the constant value byte-identical to LabVIEW's; the same VI on
+the loose `TemperatureSensor.lvclass` still answered `Gain = 1`. A class in a library nested in
+another library is not measured.
+
 ## ActiveX reached the wrong LabVIEW on a mixed-bitness station - 2026-10-14
 
 **The symptom.** On a station with LabVIEW 2026 32-bit running and LabVIEW 2024 64-bit merely

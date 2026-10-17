@@ -61,6 +61,22 @@ internal sealed class BadWireCleanup(LvaiConnection connection)
     internal async Task<JsonObject> RunAsync(string viPath, int timeoutSeconds, CancellationToken ct)
     {
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
+        // A VI THAT STILL CALLS A PLACEHOLDER SOCKET IS NOT FINISHED. The socket's class terminals
+        // are `path` stand-ins, so every class wire into one reads as BROKEN until lvai_swap_subvis
+        // puts the real member there - and Remove Bad Wires would cut exactly those wires.
+        // Measured 2026-10-17 in the AFDemo build: lvai_add_class_method's default cleanup took
+        // `Heater in @ SubVI` and `Heater out @ TopLevelDiagram` off a method calling
+        // `LVMCP Stub 7ff4fe0e81.vi`, and the method was eBad. The swap's own cleanup runs after the
+        // socket is gone.
+        if (PendingSockets(viPath) is { Count: > 0 } sockets)
+        {
+            var skipped = Skipped("The VI still calls placeholder socket(s) " +
+                string.Join(", ", sockets.Select(n => $"'{n}'")) + ": their class wires are broken " +
+                "until lvai_swap_subvis replaces them, so nothing was removed. The swap clears what " +
+                "is left afterwards.");
+            skipped["pendingSockets"] = new JsonArray([.. sockets.Select(n => (JsonNode)n)]);
+            return skipped;
+        }
         try
         {
             if (StatusTools.ScriptsDirectory() is not { } scripts)
@@ -118,6 +134,26 @@ internal sealed class BadWireCleanup(LvaiConnection connection)
         {
             return NotRun("cleanupFailed", failure.Message);
         }
+    }
+
+    /// <summary>
+    /// The placeholder sockets a VI still links to, read off its bytes: our socket names
+    /// (lvai_placeholder_subvi's `LVMCP Stub <hash>.vi`, the test generators' `LVMCP Mth…`,
+    /// `LVMCP Cls…`) sit in the link records as plain text. Empty for a VI that cannot be read.
+    /// </summary>
+    internal static IReadOnlyList<string> PendingSockets(string viPath)
+    {
+        try
+        {
+            var text = System.Text.Encoding.Latin1.GetString(File.ReadAllBytes(viPath));
+            var own = Path.GetFileName(viPath);
+            return [.. System.Text.RegularExpressions.Regex
+                .Matches(text, @"LVMCP (?:Stub [0-9a-fA-F]+|Mth[A-Z]?\d+(?:_\d+)?|Cls[RW]\d+)\.vi")
+                .Select(m => m.Value)
+                .Where(n => !string.Equals(n, own, StringComparison.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase)];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return []; }
     }
 
     /// <summary>The field for a cleanup that was deliberately not run.</summary>
