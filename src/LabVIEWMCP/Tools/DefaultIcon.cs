@@ -17,11 +17,17 @@ namespace LabVIEWMcp.Tools;
 /// definition asks. So the tool that writes the VI draws the icon itself; an agent can still pass a
 /// better text, it can no longer forget.
 ///
-/// TWO SAFETY RULES. It runs LAST in each tool - a later ConvertAIXMLToVI over the path destroys
-/// it. And lvai_set_vi_icon FLATTENS the icon, so a VI whose owning class or library carries an icon
-/// (`NI.Lib.Icon` in the owner file) is left alone: its member icon is the owner's template, and
-/// replacing it would destroy that (docs/class-icons.md). The save leaves compiled code behind, so a
-/// VI that was source-only before is stripped again (the no-compiled-code rule).
+/// IT RUNS LAST in each tool - a later ConvertAIXMLToVI over the path destroys it - and the save
+/// leaves compiled code behind, so a VI that was source-only before is stripped again.
+///
+/// THE OWNER IS NOT CONSULTED. The first version skipped any member whose class carried
+/// `NI.Lib.Icon`, and the cold build of 2026-10-17 drew NOT ONE method or accessor icon: NI's class
+/// and interface providers write that property into EVERY new class, and NI's accessor wizard lays the
+/// class's default icon on each accessor as a template layer (three `Layer.lvclass` objects in a fresh
+/// accessor). A default and a hand-set class icon are both compressed blobs that differ per class, so
+/// the file cannot tell them apart. So the step always draws, and says so when it flattened a template
+/// layer (`templateLayerReplaced`): `lvai_set_owner_icon applyToMembers` puts a chosen class icon back
+/// over every member afterwards - the order docs/class-icons.md already prescribes.
 /// </summary>
 internal static class DefaultIcon
 {
@@ -30,7 +36,8 @@ internal static class DefaultIcon
         The VI's ICON, drawn as the last step: "L1|L2|L3" - banner text and up to two lines, 5
         characters each, drawable A-Z 0-9 space - . / : + #. Omit it to have one DERIVED from the
         VI's name (and its class or the tested subject); pass "none" to leave LabVIEW's blank icon.
-        A VI whose class or library has its own icon keeps that template and is not touched.
+        It FLATTENS any class template layer the VI had (reported as templateLayerReplaced); set a
+        class icon afterwards with lvai_set_owner_icon applyToMembers.
         """;
 
     /// <summary>The kind of VI, which decides the banner of a derived icon.</summary>
@@ -78,33 +85,6 @@ internal static class DefaultIcon
     }
 
     /// <summary>
-    /// The owner file of a VI that carries its OWN icon - the class or library within three folders
-    /// up that lists the VI and has an <c>NI.Lib.Icon</c> line - or null. Such a member's icon is the
-    /// owner's template layer, which a flattening set would destroy.
-    /// </summary>
-    internal static string? OwnerWithIcon(string viPath)
-    {
-        var name = Path.GetFileName(viPath);
-        var dir = Path.GetDirectoryName(Path.GetFullPath(viPath));
-        for (var up = 0; up < 4 && dir is not null; up++, dir = Path.GetDirectoryName(dir))
-        {
-            IEnumerable<string> owners;
-            try { owners = Directory.EnumerateFiles(dir, "*.lvclass").Concat(Directory.EnumerateFiles(dir, "*.lvlib")); }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { continue; }
-            foreach (var owner in owners)
-            {
-                string text;
-                try { text = File.ReadAllText(owner); }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { continue; }
-                if (text.Contains($"URL=\"../{name}\"", StringComparison.OrdinalIgnoreCase)
-                    || text.Contains($"Name=\"{name}\"", StringComparison.OrdinalIgnoreCase))
-                    return text.Contains("NI.Lib.Icon", StringComparison.Ordinal) ? owner : null;
-            }
-        }
-        return null;
-    }
-
-    /// <summary>
     /// Draw and set the icon, never throwing: a failed icon is reported in the step and does not
     /// fail the tool - the VI is written and sound either way.
     /// </summary>
@@ -125,14 +105,13 @@ internal static class DefaultIcon
             step["skipped"] = "no VI on disk";
             return step;
         }
-        if (OwnerWithIcon(viPath) is { } iconOwner)
+        var layers = ViIconLayers.Read(viPath);
+        if (layers.HasLibraryLayer)
         {
-            step["ok"] = true;
-            step["skipped"] = "ownerIconPresent";
-            step["owner"] = iconOwner;
-            step["note"] = "Its class or library has its own icon, which a member carries as a template " +
-                           "layer; drawing one would flatten it. Use lvai_set_owner_icon for the owner.";
-            return step;
+            step["templateLayerReplaced"] = true;
+            step["templateNote"] = "The VI carried its class or library's icon as a template layer; the " +
+                                   "drawn icon replaces it. lvai_set_owner_icon applyToMembers lays a " +
+                                   "chosen owner icon back over every member.";
         }
 
         var lines = requested is { Length: > 0 } ? Parse(requested) ?? Derive(viPath, kind, owner)

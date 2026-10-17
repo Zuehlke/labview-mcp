@@ -156,6 +156,24 @@ internal sealed class BulkTools(LvaiConnection connection)
     }
 
     /// <summary>
+    /// Whether a generate answer left a VI that will be KEPT: ok, stopped at execState (the gRPC
+    /// loaded-subVI route), or - on pylabview - written by the composer and only not executable yet.
+    /// That last one is the routine state of a class test whose seeds are still paths, and leaving it
+    /// out drew no icon on lvai_generate_class_test's test VI in the cold build of 2026-10-17.
+    /// </summary>
+    internal static bool IconWanted(JsonObject answer)
+    {
+        if (answer["ok"]?.GetValue<bool>() == true) return true;
+        var failedAt = answer["failedAtStep"]?.GetValue<string>();
+        if (failedAt == "execState") return true;
+        if (failedAt != "convert") return false;
+        var convert = answer["steps"]?.AsArray()
+            .LastOrDefault(s => s?["step"]?.GetValue<string>() == "convert")?["answer"];
+        return convert?["errorCode"]?.GetValue<int>() == 0
+               && convert["executable"]?.GetValue<bool>() == false;
+    }
+
+    /// <summary>
     /// The `icon` step of lvai_generate_vi: on a written deliverable whose run got past the
     /// diagram - ok, or stopped only at execState (the routine state of a class method or a caller
     /// whose class seed is still a path, repaired later by a Replace that keeps the icon).
@@ -164,8 +182,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                                               string backend, int timeoutSeconds, CancellationToken ct)
     {
         if (!wanted || !File.Exists(viPath) || Parsed(answer) is not JsonObject o) return answer;
-        var ok = o["ok"]?.GetValue<bool>() == true;
-        if (!ok && Field(answer, "failedAtStep") != "execState") return answer;
+        if (!IconWanted(o)) return answer;
         var step = await DefaultIcon.ApplyAsync(connection, viPath, icon, DefaultIcon.Kind.Plain,
                                                 owner: null, backend, timeoutSeconds, ct);
         return DefaultIcon.AppendTo(answer, step);

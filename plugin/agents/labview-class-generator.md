@@ -637,8 +637,9 @@ A child class gets accessors for **its own** fields only. It inherits the parent
 and `lvai_generate_vi` (`icon`) end with an `icon` step that derives the lines from the class and
 the VI name. So this phase is now a CHECK: read `iconSet` per method and `iconsSet` / `icons` on
 the accessor answer, and call `lvai_set_vi_icon` only for a VI whose step is not `ok`, or to
-replace a derived text with a better one. A class with its OWN icon is skipped by design
-(`ownerIconPresent`) - its members carry its template. Report "Icons: n of m" in your final report.
+replace a derived text with a better one. The step FLATTENS the class template a wizard
+accessor carries (`templateLayerReplaced`); a class icon is set AFTER, with `lvai_set_owner_icon
+applyToMembers`. Report "Icons: n of m" in your final report.
 
 **This is the step that gets forgotten.** A class whose methods all carry the default blank icon
 is unreadable on a caller's diagram: every call node looks the same, so a reader cannot tell

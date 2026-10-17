@@ -277,7 +277,11 @@ So the producing tools draw the icon themselves now (`Tools/DefaultIcon.cs`):
 
 `"L1|L2|L3"` sets the text, `"none"` leaves the blank icon. Words longer than five characters lose
 their vowels after the first letter (`SAMPLE` -> `SMPL`). The step runs last, never gates `ok`,
-strips the compiled code the icon save brings in, and SKIPS a member whose class or library has its
-own icon (`ownerIconPresent`), because `lvai_set_vi_icon` flattens and would destroy that template.
+strips the compiled code the icon save brings in, and ALWAYS draws: the first version skipped a
+member whose class had `NI.Lib.Icon` and drew no method or accessor icon at all in the next cold
+build, because NI's providers write that property into EVERY new class and the accessor wizard lays
+its default as a three-layer template on each accessor - a default and a chosen class icon cannot be
+told apart from the file. A flattened template is reported (`templateLayerReplaced`); a class icon is
+set afterwards with `lvai_set_owner_icon applyToMembers`.
 Helpers and carriers (`measureDiagram: false`) get no icon. Measured only in unit tests so far; a
 live build is the acceptance test.

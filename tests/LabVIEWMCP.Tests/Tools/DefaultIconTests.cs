@@ -60,26 +60,6 @@ public sealed class DefaultIconTests : IDisposable
     public void None_means_no_icon() => Assert.Null(DefaultIcon.Parse(" none "));
 
     [Fact]
-    public void A_member_of_an_owner_with_its_own_icon_is_left_alone()
-    {
-        var vi = Path.Combine(_dir, "Open.vi");
-        File.WriteAllText(vi, "");
-        File.WriteAllText(Path.Combine(_dir, "Logger.lvclass"),
-            "<Library><Property Name=\"NI.Lib.Icon\" Type=\"Bin\">x</Property><Item Name=\"Open.vi\" Type=\"VI\" URL=\"../Open.vi\"/></Library>");
-        Assert.EndsWith("Logger.lvclass", DefaultIcon.OwnerWithIcon(vi));
-    }
-
-    [Fact]
-    public void A_member_of_an_owner_without_an_icon_gets_one()
-    {
-        var vi = Path.Combine(_dir, "Open.vi");
-        File.WriteAllText(vi, "");
-        File.WriteAllText(Path.Combine(_dir, "Logger.lvclass"),
-            "<Library><Item Name=\"Open.vi\" Type=\"VI\" URL=\"../Open.vi\"/></Library>");
-        Assert.Null(DefaultIcon.OwnerWithIcon(vi));
-    }
-
-    [Fact]
     public async Task Apply_sets_the_derived_lines_and_reports_them()
     {
         var vi = Path.Combine(_dir, "Write Sample.vi");
@@ -125,4 +105,13 @@ public sealed class DefaultIconTests : IDisposable
         Assert.Single(answer["steps"]!.AsArray());
         Assert.Contains("NOT SET", answer["note"]!.GetValue<string>());
     }
+
+    [Theory]
+    [InlineData("""{"ok":true}""", true)]
+    [InlineData("""{"ok":false,"failedAtStep":"execState"}""", true)]
+    [InlineData("""{"ok":false,"failedAtStep":"convert","steps":[{"step":"convert","answer":{"errorCode":0,"executable":false}}]}""", true)]
+    [InlineData("""{"ok":false,"failedAtStep":"convert","steps":[{"step":"convert","answer":{"errorCode":1}}]}""", false)]
+    [InlineData("""{"ok":false,"failedAtStep":"connectorPane"}""", false)]
+    public void The_icon_follows_every_VI_that_is_kept(string answer, bool wanted) =>
+        Assert.Equal(wanted, BulkTools.IconWanted((JsonObject)JsonNode.Parse(answer)!));
 }
