@@ -16,6 +16,7 @@ session.
 | implement a SUPPLIED VI whose front panel must be kept (exam template) | `labview-vi-generator` - pass the supplied VI; it grafts (Phase 6g) |
 | change an existing VI | `labview-vi-editor` |
 | a class, class hierarchy or interface | `labview-class-generator` |
+| a library (`.lvlib`), its members, description and icon | `labview-class-generator` |
 | unit tests (default framework) | `labview-caraya-unit-test` |
 | LUnit / VI Tester tests, only when named | `labview-lunit-unit-test` / `labview-vitester-unit-test` |
 | documentation | `labview-doc-generator` |
@@ -2935,6 +2936,7 @@ literally it argued away 600 usable palette VIs.
 | What is the ACTOR FRAMEWORK made of? | `docs/labview-actor-framework.md` | the actor half is `lvai_create_class` (parent `Actor.lvclass`) + `lvai_create_accessors` + `lvai_add_class_method` for its own methods; its lifecycle OVERRIDES come from `lvai_create_override`, never from `lvai_add_class_method` |
 | How do I override Pre Launch Init / Actor Core / Stop Core / Handle Error, and hook a body into it? | `docs/af-override-tools.md` | `lvai_create_override` (NI's provider places Call Parent, which AIXML cannot author), then `lvai_af_add_hook` (`branch`, `series`, `seriesAfter`, `branchFromNode`; refuses an unfed required input and a Handle Error hook before Call Parent), `lvai_af_remove_hook` to take one out - a series hook is BYPASSED (source reconnected to every sink) before the node goes, because a plain delete cuts the class wire and leaves the override eBad. Overrides come after the library and the messages |
 | How does an actor BEHAVE at run time - lifecycle, error 43 at Handle Error, helper-loop stop, error propagation? | `docs/labview-actor-framework.md` §19 | — each fact marked NI source / measured here / documented / reported |
+| How do I CREATE a library (`.lvlib`), and list a VI at TARGET level in a project? | `docs/library-creation.md` | `lvai_create_library` - NI's `Library.Create` + `Save`, the project entry, description and members in one call, both backends; `lvai_add_vis_to_project targetLevel=true` for a VI directly under My Computer (without it every VI goes into a folder) |
 | How do I put a class or VI INTO a `.lvlib`? | `docs/labview-actor-framework.md` §8 | `lvai_add_to_library` — NEVER write `NI.Lib.ContainingLib` by hand: it changes the class's QUALIFIED NAME without relinking the members that call each other by it, and every file-level check stays green while every VI goes `eBad`. NI's `{LV.Library}` `AddItem` + `Save All This Library.vi` writes both halves and relinks |
 | How do I create an Actor Framework MESSAGE? | `docs/labview-actor-framework.md` | `lvai_create_message_class` — NEVER author `Do.vi`: a GENERATED override of `Message.lvclass:Do.vi` is `eBad` whatever its diagram, measured down to a pass-through with zero nodes. The tool drives NI's own Message Maker instead |
 | How is a `.lvproj` structured? | `docs/lvproj-structure.md` | `lvai_lvproj_reference` |

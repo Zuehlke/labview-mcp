@@ -1199,16 +1199,22 @@ internal sealed class TestTools(LvaiConnection connection)
         are swept as on every close. A path with no file behind it is NOT listed (`notOnDisk`).
         `lvai_open_file` refuses a project that lists a file twice (`duplicateProjectEntries`);
         this call with that projectPath and the VIs you meant to list is the repair.
+        TARGET LEVEL ONLY WHEN ASKED: `targetLevel: true` lists the VIs directly under My Computer,
+        beside the classes and libraries - a top-level application VI, say - and then a VI already
+        at target level stays there. Without it every VI goes into a folder, because an entry at
+        target level is also what LabVIEW's own save writes for a VI it adopts.
         """)]
     public async Task<string> AddVisToProjectAsync(
         [Description("The .lvproj to list the VIs in")] string projectPath,
         [Description("The VIs to list, one absolute path per line")] string viPaths,
-        [Description("Virtual folder to list them under; created at target level if missing. Every " +
-                     "VI goes into a folder - there is no target-level listing - so NAME IT for what it " +
-                     "holds: the default suits subVIs, a top-level GUI belongs in e.g. \"Application\"")]
+        [Description("Virtual folder to list them under; created at target level if missing. NAME " +
+                     "IT for what it holds: the default suits subVIs. Ignored with targetLevel")]
         string folderName = "SubVIs",
         [Description("Open the project again afterwards. Leave false when the next step generates")]
         bool reopen = false,
+        [Description("List the VIs directly under My Computer instead of in a folder - for a " +
+                     "top-level VI the user starts from the Project Explorer")]
+        bool targetLevel = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
@@ -1222,19 +1228,21 @@ internal sealed class TestTools(LvaiConnection connection)
             if (PathListFault(viPaths, nameof(viPaths)) is { } listFault)
                 return Json.Error("badArguments", listFault,
                     new { parameter = nameof(viPaths), arrived = viPaths });
-            if (string.IsNullOrWhiteSpace(folderName))
+            if (!targetLevel && string.IsNullOrWhiteSpace(folderName))
                 return Json.Error("badArguments",
-                    "folderName is empty. Name the virtual folder the VIs belong under - an entry " +
-                    "at target level is exactly what LabVIEW's own save produces, so it cannot be " +
-                    "told apart from an adopted stray afterwards.");
+                    "folderName is empty. Name the virtual folder the VIs belong under, or pass " +
+                    "targetLevel: true to list them directly under My Computer - an empty folder " +
+                    "name is not taken to mean target level, because that is also what LabVIEW's " +
+                    "own save writes for a VI it adopts.");
 
             var paths = (viPaths ?? "")
                 .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries |
                                      StringSplitOptions.TrimEntries)
                 .ToList();
-            var step = await ListInProjectAsync(Path.GetFullPath(projectPath), folderName.Trim(),
+            var step = await ListInProjectAsync(Path.GetFullPath(projectPath),
+                                                targetLevel ? "" : folderName.Trim(),
                                                 paths, timeoutSeconds, ct, reopen,
-                                                moveTargetLevel: true);
+                                                moveTargetLevel: !targetLevel);
             return Json.Document(step);
         });
 
@@ -1756,9 +1764,13 @@ internal sealed class TestTools(LvaiConnection connection)
             // stays where it is.
             // `moveTargetLevel` - the explicit listing tool - moves a requested VI out of target
             // level whoever put it there: the caller named the VI AND the folder.
-            var adopted = JustAdopted(entries.Select(e => e.Name),
-                                      moveTargetLevel ? [] : listedBefore.Select(v => v.Name),
-                                      LvClass.ListedViPlaces(projectPath));
+            // AT TARGET LEVEL NOTHING IS MOVED: an entry LabVIEW's save made there is already where
+            // the caller asked for it.
+            var adopted = folderName.Length == 0
+                ? []
+                : JustAdopted(entries.Select(e => e.Name),
+                              moveTargetLevel ? [] : listedBefore.Select(v => v.Name),
+                              LvClass.ListedViPlaces(projectPath));
             var moved = LvClass.RemoveTargetLevelVis(projectPath, adopted);
 
             // RESTORE, ADD, THEN TIDY - in that order. Tidy last is what makes the pass safe: it
@@ -1808,6 +1820,7 @@ internal sealed class TestTools(LvaiConnection connection)
             step["added"] = added;
             step["restored"] = restored;
             step["folder"] = folderName;
+            step["targetLevel"] = folderName.Length == 0;
             // THE REQUESTED FOLDER, AS A FIELD RATHER THAN A SENTENCE. Measured 2026-09-15 on the
             // WeighBridge build: two calls with identical arguments (`testFolderName: "Tests"`)
             // produced two different layouts - one runner under `Tests`, the other left at target
@@ -1848,7 +1861,7 @@ internal sealed class TestTools(LvaiConnection connection)
                          string.Join(", ", notListed.Select(v => $"'{v}'")) +
                          ". The tidy pass took them back out; list them by hand with the project " +
                          "CLOSED, because LabVIEW's close saves over the file.");
-            if (added > 0) note.Add($"Listed under '{folderName}'.");
+            if (added > 0) note.Add(folderName.Length == 0 ? "Listed at target level." : $"Listed under '{folderName}'.");
             else if (notOnDisk.Count == 0 && notListed.Count == 0)
                 note.Add("Already listed; nothing added.");
             if (moved.Count > 0)
@@ -1869,7 +1882,7 @@ internal sealed class TestTools(LvaiConnection connection)
                                                                   StringComparer.OrdinalIgnoreCase))
                                   .ToList();
             if (chosen.Count > 0)
-                note.Add("BUT NOT UNDER '" + folderName + "': " +
+                note.Add((folderName.Length == 0 ? "BUT NOT AT TARGET LEVEL: " : "BUT NOT UNDER '" + folderName + "': ") +
                          string.Join(", ", chosen.Select(e => $"'{e.Name}' is in {e.Folder}")) +
                          ". Left there deliberately - only an entry THIS call's own save created " +
                          "at target level is moved, and this one was in the project before the " +

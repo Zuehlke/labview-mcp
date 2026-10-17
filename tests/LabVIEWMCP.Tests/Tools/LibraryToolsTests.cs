@@ -85,7 +85,7 @@ public class LibraryToolsTests
 
         Assert.Equal("libraryMissing", Kind(answer));
         // Refusing without saying where to go just moves the caller's cost.
-        Assert.Contains("lvai_create_actor_library", answer["error"]!.GetValue<string>());
+        Assert.Contains("lvai_create_library", answer["error"]!.GetValue<string>());
     }
 
     [Fact]

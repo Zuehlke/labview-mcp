@@ -1055,18 +1055,26 @@ internal static class LvClass
     /// <c>File.WriteAllText</c>, which writes none: every class added this way dropped the BOM
     /// LabVIEW had saved. <see cref="LvTextFile"/> is the reader and writer now.
     /// </summary>
-    public static bool AddToProject(string projectPath, string className, string relativeUrl)
-    {
-        var name = $"{className}.lvclass";
+    public static bool AddToProject(string projectPath, string className, string relativeUrl) =>
+        AddOwnerToProject(projectPath, $"{className}.lvclass", "LVClass", relativeUrl);
 
+    /// <summary>
+    /// <see cref="AddToProject"/> for a library: one <c>Type="Library"</c> item at target level,
+    /// written the same way and refused the same way when it is already listed.
+    /// </summary>
+    public static bool AddLibraryToProject(string projectPath, string libraryFileName, string relativeUrl) =>
+        AddOwnerToProject(projectPath, libraryFileName, "Library", relativeUrl);
+
+    private static bool AddOwnerToProject(string projectPath, string name, string type, string relativeUrl)
+    {
         var document = XDocument.Load(projectPath);
         var target = document.Root?.Elements("Item")
             .FirstOrDefault(i => (string?)i.Attribute("Type") == "My Computer")
             ?? throw new InvalidDataException(
-                $"'{projectPath}' has no <Item Type=\"My Computer\"> target to add the class to.");
+                $"'{projectPath}' has no <Item Type=\"My Computer\"> target to add the {type} to.");
 
         var already = target.Elements("Item").Any(i =>
-            (string?)i.Attribute("Type") == "LVClass" &&
+            (string?)i.Attribute("Type") == type &&
             (string.Equals((string?)i.Attribute("Name"), name, StringComparison.OrdinalIgnoreCase) ||
              string.Equals((string?)i.Attribute("URL"), relativeUrl, StringComparison.OrdinalIgnoreCase)));
         if (already) return false;
@@ -1089,7 +1097,7 @@ internal static class LvClass
 
         var indent = lines[anchor][..(lines[anchor].Length - lines[anchor].TrimStart().Length)];
         lines.Insert(anchor,
-            $"{indent}<Item Name=\"{Xml(name)}\" Type=\"LVClass\" URL=\"{Xml(relativeUrl)}\"/>");
+            $"{indent}<Item Name=\"{Xml(name)}\" Type=\"{type}\" URL=\"{Xml(relativeUrl)}\"/>");
 
         LvTextFile.Write(projectPath, string.Join(newline, lines), style);
         return true;
@@ -1235,6 +1243,24 @@ internal static class LvClass
         var (text, style) = LvTextFile.Read(projectPath);
         var newline = style.Newline;
         var lines = text.Split(newline).ToList();
+
+        // NO FOLDER = TARGET LEVEL, beside the classes and libraries: the caller asked for it by
+        // name (lvai_add_vis_to_project's targetLevel). Same anchor as the folder case below.
+        if (string.IsNullOrEmpty(folderName))
+        {
+            var top = lines.FindIndex(l => IsItemOfType(l, "Dependencies"));
+            if (top < 0) top = lines.FindIndex(l => IsItemOfType(l, "Build"));
+            if (top < 0)
+                throw new InvalidDataException(
+                    $"'{projectPath}' has neither a Dependencies nor a Build Specifications item, " +
+                    "so there is no anchor to insert before.");
+            var topIndent = Indent(lines[top]);
+            foreach (var vi in Enumerable.Reverse(missing))
+                lines.Insert(top,
+                    $"{topIndent}<Item Name=\"{Xml(vi.Name)}\" Type=\"VI\" URL=\"{Xml(vi.Url)}\"/>");
+            LvTextFile.Write(projectPath, string.Join(newline, lines), style);
+            return missing.Count;
+        }
 
         var folderOpen = $"<Item Name=\"{Xml(folderName)}\" Type=\"Folder\">";
         var folderIndex = lines.FindIndex(l => l.TrimStart().StartsWith(folderOpen,

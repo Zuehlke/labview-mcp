@@ -109,7 +109,7 @@ internal sealed class LibraryTools(LvaiConnection connection)
             if (!File.Exists(libraryPath))
                 return Json.Error("libraryMissing",
                     $"No .lvlib at '{libraryPath}'. This tool adds to a library that already " +
-                    "exists; scripts/lvai_create_actor_library.xml creates one.",
+                    "exists; lvai_create_library creates one.",
                     new { libraryPath });
 
             var library = Path.GetFullPath(libraryPath);
