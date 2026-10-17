@@ -118,6 +118,9 @@ internal static class VisInMemory
     public const string OriginInstallation = "installation";
     public const string OriginOther = "other";
 
+    /// <summary>What Path To String makes of an empty path - an unsaved VI's (measured 2026-10-17).</summary>
+    internal const string NotAPath = "<Not A Path>";
+
     public static VisInMemoryReading Parse(IEnumerable<string> lines, Func<string, bool> isHelper,
                                            string? installationRoot = null)
     {
@@ -132,7 +135,8 @@ internal static class VisInMemory
                 long.TryParse(parts[1].Trim(), out var bd) &&
                 int.TryParse(parts[2].Trim(), out var code))
             {
-                var path = parts.Length == 5 && parts[3].Trim() is { Length: > 0 } p ? p : null;
+                // A VI never saved has no path: LabVIEW's Path To String writes `<Not A Path>`.
+                var path = parts.Length == 5 && parts[3].Trim() is { Length: > 0 } p && p != NotAPath ? p : null;
                 var name = parts[^1].Trim();
                 entries.Add(new VisInMemoryEntry(fp, bd, code, name,
                                                  OriginOf(name, isHelper, path, installationRoot), path));

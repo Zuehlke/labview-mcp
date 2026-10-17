@@ -82,9 +82,28 @@ register and its close takes it from the right terminal - 0 errors on the readab
 afterwards. The same shape as `lvai_save_modified_vis.xml`'s fix of 2026-10-17
 (`lvclass-creation.md` §10e); a unit test pins it.
 
-## 4. Not measured yet
+## 4. The hand-edit acceptance, 2026-10-17
 
-- A HAND EDIT in each instance, which is the whole point - the bits of `LVMCP Validate…` show the
-  read works in `main`; a user edit in the project instance has not been read back yet.
+The user made two unsaved edits by hand, with `IconDemo.lvproj` active: moved a control on the
+panel of `Celsius To Fahrenheit.vi` (opened through the project), and made a new VI with
+File > New VI and dropped a control on it. Both backends then answered the same:
+
+| VI | context it was reported in | front panel bits | diagram bits | path |
+|---|---|---|---|---|
+| `TemperatureUtils.lvlib:Celsius To Fahrenheit.vi` | `project` | `2147487744` | `0` | the file |
+| `Untitled 195` | `project` | `2147483649` | `0` | none (`<Not A Path>`, an unsaved VI) |
+| `LVMCP Validate.vi` … `Validate4vi` | `main` | `2751463428` | `3355443488` | none |
+
+**The new VI was in the PROJECT instance, not the main one**, and that is right: it was made from
+the project's context - `lvai_labview_state` lists its window as `Untitled 195 Front Panel on
+IconDemo.lvproj/My Computer *`. A VI is in the instance it was created or opened in, which is the
+whole reason the context has to be chosen. Nothing was reported in an instance it is not in. The
+`main` read of a user's own edit is covered by the scratch VIs' bits rather than by a hand edit.
+
+`lvai_labview_state` showed the same four unsaved windows from outside, plus the Project
+Explorer's `*` - a project change, which no VI bit carries.
+
+## 5. Not measured yet
+
 - `possible-dialog` and its screenshot on this station: no dialog was up.
 - Which instance a VI opened with `lvai_open_file` WITHOUT a project lands in.

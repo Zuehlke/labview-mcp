@@ -108,6 +108,16 @@ public class VisInMemoryTests
         Assert.Equal(1, reading.ToJson()["byOrigin"]![VisInMemory.OriginInstallation]!.GetValue<int>());
     }
 
+    /// <summary>Measured 2026-10-17: a VI made with File > New VI and edited, in the project instance.</summary>
+    [Fact]
+    public void An_unsaved_vi_has_no_path_and_is_the_user_s()
+    {
+        var reading = VisInMemory.Parse(["2147483649\t0\t0\t<Not A Path>\tUntitled 195"], Helpers, Install);
+        var entry = Assert.Single(reading.Modified);
+        Assert.Null(entry.Path);
+        Assert.Equal(VisInMemory.OriginOther, entry.Origin);
+    }
+
     [Fact]
     public void Installation_code_still_stops_the_instance_being_empty()
     {
