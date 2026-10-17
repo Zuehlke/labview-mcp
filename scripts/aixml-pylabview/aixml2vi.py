@@ -3073,7 +3073,12 @@ class Composer:
             if not label and ty.get("Type") == "TypeDef":
                 inner = next((c for c in ty if c.tag == "TypeDesc"), None)
                 label = (inner.get("Label") or "") if inner is not None else ""
-            names[label + ("\x00out" if out else "\x00in")] = t
+            # THE FIRST ROW WITH A LABEL KEEPS IT. Two parameters of one type share ONE type
+            # descriptor, labelled after the first: ProjectItem.Move's `New Parent` and
+            # `Insert After` are both "New Parent". Last-wins wired New Parent's net to Insert
+            # After - "Invoke Node: Contains unwired or bad terminal", where NI's converter wires
+            # the first row (measured 2026-10-17 on lvai_move_to_folder_class.xml).
+            names.setdefault(label + ("\x00out" if out else "\x00in"), t)
         # The RETURN value is the output side of the method's first row, labelled with the
         # method's DISPLAY name (`Open Library`, `Get Control Value Variant`). An AIXML output
         # name that matches no output terminal is that return value: NI's converter's builds

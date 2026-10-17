@@ -1404,6 +1404,31 @@ memory.
 Together the two took the ATM project's 45 VIs from 228 s to 62 s in `lvai_layout_diagram`
 (`docs/diagram-layout.md` §4a).
 
+## Two parameters of one type, and the class housekeeping helpers (fixed 2026-10-17)
+
+Porting the class housekeeping tools (`lvai_set_class_description`, `lvai_move_to_folder`,
+`lvai_set_vi_descriptions`, `lvai_add_to_class`) onto this backend found one composer defect and
+three gaps, all closed; `docs/lvclass-creation.md` §10e has the acceptance on both backends.
+
+- **The composer wired an invoke parameter by its TYPE's label, and two parameters of one type
+  share one label.** LabVIEW folds identical types into one descriptor, labelled after the first
+  parameter: `ProjectItem.Move`'s `New Parent` and `Insert After` are both "New Parent". The label
+  map kept the LAST row, so the `New Parent` net went to `Insert After` and the helper loaded with
+  "Invoke Node: Contains unwired or bad terminal". Bisected with one probe per invoke node of the
+  helper - `LVClass.Open`, `Get All Descendents`, `AddItem` and `LVClassLibrary.Save` loaded
+  executable, `Move` alone did not - then compared with NI's build of the same probe, which flags
+  the FIRST invoke item as wired. The map keeps the first row now. A/B over every document in
+  `scripts\` (`helper_coverage.py --skip-ni`): 98 of 103 composed and executable before, 99 after,
+  nothing lost. (The two builds' `nodeName` differ too - NI's `Instr`, the composer's
+  `ProjectItem` - which is the 2026-10-14 finding above, not a fault.)
+- **`{LV.Library}` `Modifications Bit Set` was not in the table**; harvested from the NI-built
+  helpers with `harvest_parts.py --props` (code 1292953627, on `LV.Library` and
+  `LV.LVClassLibrary`). The ordinary second pass without `--props` brought nothing new: every key
+  already had a part, and the first sighting wins.
+- **Two helper property names did not exist** (`Modifications:VI Modifications Bitset`, `Path` on
+  `{LV.VI}`), and **a helper read two root constants inside a case frame**. Both fixed in the AIXML,
+  which NI's converter had accepted as it was.
+
 ## ActiveX reached the wrong LabVIEW on a mixed-bitness station - 2026-10-14
 
 **The symptom.** On a station with LabVIEW 2026 32-bit running and LabVIEW 2024 64-bit merely

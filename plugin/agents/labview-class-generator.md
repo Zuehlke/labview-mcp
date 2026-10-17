@@ -645,7 +645,8 @@ regenerating a VI over an existing path destroys its icon.
 ### Phase 4c — Housekeeping on the finished class, with the project still ACTIVE
 
 Never hand-edit the `.lvclass` for any of these; each tool goes through NI's own VI Server and
-verifies from the saved file. `docs/lvclass-creation.md` §10.
+verifies from the saved file, on either backend (all four measured on grpc and pylabview,
+2026-10-17). `docs/lvclass-creation.md` §10, §10e.
 
 - **The class's description** (when the task gives one, or the class needs a one-line purpose):
   `lvai_set_class_description ownerPath=<abs .lvclass> text=<English, ASCII is safest>`. Text

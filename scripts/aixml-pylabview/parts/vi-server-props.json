@@ -43419,7 +43419,7 @@
     "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0002\" HasItem=\"0\" Format=\"inline\" />"
    },
    "Description": {
-    "access": "r",
+    "access": "rw",
     "code": 1292953602,
     "declaredBy": "LV.LVClassLibrary",
     "label": "Description",
@@ -43498,6 +43498,14 @@
     "label": "Member Data",
     "source": "<labview>\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Add Member Data to Private Data Control.vi",
     "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0002\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Modifications Bit Set": {
+    "access": "r",
+    "code": 1292953627,
+    "declaredBy": "LV.LVClassLibrary",
+    "label": "Mods",
+    "source": "lvai_set_class_description.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Name": {
     "access": "r",
@@ -44502,6 +44510,14 @@
     "declaredBy": "LV.Library",
     "label": "Locked",
     "source": "<labview>\\project\\Delacor\\DQMH\\_DQMH New Event\\Query Library for Module Info.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Modifications Bit Set": {
+    "access": "r",
+    "code": 1292953627,
+    "declaredBy": "LV.Library",
+    "label": "Mods",
+    "source": "lvai_set_library_description.vi",
     "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Mods": {

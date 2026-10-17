@@ -1808,7 +1808,8 @@ Four tools that change a class or library AFTER it exists, ported from a field r
 (LabVIEW 2026 Q3 32-bit, 2026-10-11/12, 15 classes). Each goes through NI's own VI Server, never
 through a hand edit of the `.lvclass`, and each verifies from the FILE LabVIEW saved. What was
 measured in that run is said per tool; what the port adds is marked unmeasured until the
-acceptance run.
+acceptance run. **§10e is that acceptance run, on BOTH backends (2026-10-17)**: it says which of
+the "unmeasured" marks below it settles, and what the port had to change to get there.
 
 ### 10a. `lvai_set_class_description` - `NI.Lib.Description`
 
@@ -1941,3 +1942,57 @@ that never reached the item's file. `filesChanged` lists every file under the pr
 the class folder) whose write time or length moved: that is the "every file it re-saved" list.
 **Unmeasured until acceptance:** the class-root route (AddItem on the class reference rather than a
 folder item), `Type VI` for a `.vi` (the kit used it for typedefs), and every guard.
+
+### 10e. Both backends, 2026-10-17
+
+The four tools take `backend` like every tool that reaches LabVIEW. On `pylabview` each helper is
+COMPOSED (`ComposedHelpers`) and run over ActiveX; the project and the callers are opened through
+`lvai_open_file`, which follows the calling tool's backend. Measured on two fresh fixtures, one per
+backend (`C:\Temp\AfHouse\{P,G}`: a class with two dynamic-dispatch methods, a plain `.lvlib` with
+one VI, a loose `Helper.vi` and a `Caller.vi` that calls it), every call driven over raw stdio:
+
+| call | pylabview | grpc |
+|---|---|---|
+| class description with an arrow | `textNotCp1252`, nothing sent | same |
+| class description, two lines | `verified`, on disk with its line break, only the `.lvclass` changed | same |
+| **library** description | `verified`, only the `.lvlib` changed | same |
+| two methods into a new class folder `Methods` | `verified`, `folderCreated`, only the `.lvclass` changed | same |
+| **library** member into a new folder `Sub` | `verified`, `folderCreated`, only the `.lvlib` changed | same |
+| move of a non-member | `itemNotInOwner` | same |
+| `Helper.vi` into the class, caller NOT listed | `callersNotLoaded`, naming `Caller.vi` | same |
+| `Helper.vi` into the class, `callerPaths: [Caller.vi]` | `verified`; the class and `Helper.vi` changed | same |
+| `Caller.vi` afterwards, cold | state 1, runs (21 -> 42), its link names `HkP.lvclass` | state 1, 42, NI's export `target="HkG.lvclass\3AHelper.vi"` |
+| two VI descriptions, project closed | both `verified`, `iconUnchanged`, state 1 cold, no `VICD` in either file | same |
+| VI descriptions with a project active | `projectActive` | same |
+
+So these marks are settled: the `.lvlib` routes of 10a and 10b, the class-ROOT route and `Type VI`
+for a `.vi` in 10d, and the `callersNotLoaded` and `projectActive` guards. **Still unmeasured:** the
+unsaved-changes refusals (`ownerHasUnsavedChanges`, `viHasUnsavedChanges`, `unsavedChangesBefore`),
+the all-or-nothing `itemsNotFoundByLabview`, and `lvai_add_to_class` with a `.ctl` (the fork's 11
+typedefs ran on gRPC only).
+
+**What the port changed to get there**, each one found by this run rather than by reading:
+
+- **Two helper properties did not exist under the names the fork used.** `{LV.VI}`
+  `Modifications:VI Modifications Bitset` is in neither the catalogue nor the composer's table
+  (only `... Bitset Old` is), and `Path` on `{LV.VI}` is `VI Path`. Both are gone from
+  `lvai_set_vi_description.xml` and `lvai_save_modified_vis.xml`: the unsaved check reads the
+  Front Panel and Block Diagram Mods Bitsets - the two `lvai_af_modified_members.xml` reads, measured -
+  and the third field of a listing line is always 0. A wrong property name is the shape that has
+  killed LabVIEW in `ConvertAIXMLToVI` (CLAUDE.md), so they were not left to chance.
+- **`{LV.Library}` `Modifications Bit Set` was missing from the composer's table**, which refused
+  five of the seven helpers. Harvested from the NI-built helpers (`harvest_parts.py --props`):
+  code 1292953627 on `LV.Library` and `LV.LVClassLibrary`, plus `Description` on
+  `LV.LVClassLibrary` marked writable.
+- **The composer wired `ProjectItem.Move`'s `New Parent` net to `Insert After`.** Two parameters of
+  one type share ONE type descriptor, labelled after the first, and the composer's label map kept
+  the LAST row - "Invoke Node: Contains unwired or bad terminal", the move helpers broken while
+  every probe of the other four invoke nodes loaded executable. `aixml2vi.py` now keeps the first
+  row, the one NI's converter wires. Checked as an A/B over every helper document in `scripts\`
+  (`helper_coverage.py --skip-ni`): 98 of 103 composed and executable before, 99 after, the one
+  difference being the next item, nothing lost.
+- **Two constants of `lvai_add_to_class.xml` sat on the root diagram** and were read inside a case
+  frame; the composer refuses a net that crosses a diagram boundary without a tunnel. Moved into
+  the frame that reads them.
+- **The fork read the resource blocks through `ViIconLayers`**, part of its icon tools. That reader
+  is now `RsrcMap.Blocks`, beside the block-type reader this repository already had.

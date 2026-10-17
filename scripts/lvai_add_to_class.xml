@@ -5,8 +5,6 @@
   <Control _name="folder" type="string" uid="4803" uid_parent="root" value="" outputs="value:4803.value"/>
   <Control _name="use folder" type="bool" uid="4804" uid_parent="root" value="false" outputs="value:4804.value"/>
   <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4809" uid_parent="root" value="[false,0,]" outputs="value:4809.value"/>
-  <Constant _name="VI Type" type="string" uid="4805" uid_parent="root" value="VI" outputs="value:4805.value"/>
-  <Constant _name="only modified" type="bool" uid="4808" uid_parent="root" value="true" outputs="value:4808.value"/>
   <Constant _name="none" type="array{int32}" uid="4813" uid_parent="root" value="[]" outputs="value:4813.value"/>
   <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4809.value" outputs="Project\3AActive Project:4810.proj,reference out:,error out:4810.err" uid="4810" uid_parent="root"/>
   <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4810.proj,error in (no error):4810.err" outputs="Application:4815.app,reference out:,error out:4815.err" uid="4815" uid_parent="root"/>
@@ -101,6 +99,8 @@
         <Tunnel _id="Out2" outputs="value:4931.err" uid="4931" uid_parent="4850"/>
         <Tunnel _id="Out3" outputs="value:4932.created" uid="4932" uid_parent="4850"/>
       </Structure>
+      <Constant _name="VI Type" type="string" uid="4805" uid_parent="4840" value="VI" outputs="value:4805.value"/>
+      <Constant _name="only modified" type="bool" uid="4808" uid_parent="4840" value="true" outputs="value:4808.value"/>
       <Structure _name="For Loop" count="" maxin="" maxout="" uid="4940" uid_parent="4840">
         <Tunnel _id="In1" inputs="value:4843.paths" mode="index" outputs="value:4941.path" uid="4941" uid_parent="4940"/>
         <Tunnel _id="In2" inputs="value:4930.target" outputs="value:4942.target" uid="4942" uid_parent="4940"/>
