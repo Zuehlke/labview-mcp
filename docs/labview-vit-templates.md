@@ -1292,6 +1292,16 @@ have not established as wired.
 
 #### The RIGHT side, and the tunnel it leaves unwired - added 2026-10-12
 
+**Accepted on BOTH backends on 2026-10-17**, on one probe: the user-event skeleton with its Event
+Structure moved into the True frame of a Case Structure inside the While Loop, and `Unregister For
+Events` left unwired. On `grpc` (`lvai_generate_vi_with_events`, then this tool) one call found the
+structure at that depth (`eventStructuresFound: 1`), branched the left side, wired the right side
+(`wireEndsAfter: 2`), set `Use Default if Unwired` on the one new case tunnel, finished the
+user-event frame and answered `execState 1`. On `pylabview` the composer had already wired the left
+side and registered the frame, so the call answered `alreadyWired` for it and still wired the right
+side and set the flag - the composed helper reads the new string indicators. Both VIs then ran:
+`Ticks Received = 5`, `error out` 0.
+
 **`wireRightSide` (default true) wires the other end too**: the structure's SOURCE-side
 `Event Registration Refnum` terminal (`Is Source?` TRUE) to the `event registration refnum` input
 of `Unregister For Events`, `Auto Wire` and `Auto Route` TRUE, LabVIEW making the tunnels on the
