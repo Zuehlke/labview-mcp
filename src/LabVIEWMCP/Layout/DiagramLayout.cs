@@ -198,21 +198,30 @@ internal static class DiagramLayout
     /// because a band is right for a generated test's cases and wrong for a diagram whose second
     /// chain is a stray constant next to a loop: on the fixtures DQMH Main grew 50 px and a small
     /// LayoutCheck VI went from 1 crossing to 4 when bands were applied unconditionally
-    /// (2026-10-17). A tie keeps the columns, which every earlier measurement was made with.
+    /// (2026-10-17). On equal crossings the shorter vertical wire run wins: a grpc method test
+    /// tied at 0 and kept columns that stacked both cases' Reads in one column, and LabVIEW drew
+    /// the class wires across each other. That tie-break needs two bands that are real chains fed
+    /// by constants - three nodes or more besides constants and no panel terminal, a test's cases.
+    /// On two small LayoutCheck helpers, whose chains start at panel terminals, it only added
+    /// height or lifted error-chain nodes off the rail. A full tie keeps the columns.
     /// </summary>
     private static Arrangement Arrange(Context ctx, Diagram d, bool isTop)
     {
-        var plain = ArrangeCore(ctx, d, isTop, useBands: false, out var plainCrossings, out var bandsPossible);
+        var plain = ArrangeCore(ctx, d, isTop, useBands: false, out var plainScore, out var bandsPossible, out var chains);
         if (!bandsPossible || !ctx.Bands) return plain;
-        var banded = ArrangeCore(ctx, d, isTop, useBands: true, out var bandedCrossings, out _);
-        return bandedCrossings < plainCrossings ? banded : plain;
+        var banded = ArrangeCore(ctx, d, isTop, useBands: true, out var bandedScore, out _, out _);
+        return bandedScore.Crossings < plainScore.Crossings
+               || (chains && bandedScore.Crossings == plainScore.Crossings && bandedScore.Vertical < plainScore.Vertical)
+            ? banded : plain;
     }
 
-    private static Arrangement ArrangeCore(Context ctx, Diagram d, bool isTop, bool useBands, out int crossings,
-                                           out bool bandsPossible)
+    private static Arrangement ArrangeCore(Context ctx, Diagram d, bool isTop, bool useBands,
+                                           out (int Crossings, double Vertical) score, out bool bandsPossible,
+                                           out bool chains)
     {
-        crossings = 0;
+        score = (0, 0);
         bandsPossible = false;
+        chains = false;
         // structures first, so their sizes are known
         foreach (var s in d.Objects.Where(o => o.IsStructure))
             ctx.Shapes[s] = Shape(ctx, s);
@@ -276,6 +285,9 @@ internal static class DiagramLayout
         // and a frame's contents were never the case that needed it
         var possible = d.Owner is null ? Bands(graph, layoutNodes, mainChain) : null;
         bandsPossible = possible is not null;
+        chains = possible is not null
+                 && possible.GroupBy(kv => kv.Value).Count(gr => gr.Count(kv => !kv.Key.IsConstant) >= 3
+                                                                 && !gr.Any(kv => kv.Key.IsControlTerminal)) >= 2;
         var band = useBands ? possible : null;
         var inBand = band is null ? [] : band.GroupBy(kv => kv.Value).Where(g => g.Count() >= 2)
                                               .SelectMany(g => g.Select(kv => kv.Key)).ToHashSet();
@@ -617,11 +629,12 @@ internal static class DiagramLayout
                 foreach (var (t, _) in order) a.Pinned.Add(t);
         }
 
-        crossings = OrthogonalCrossings(layoutNodes.SelectMany(n => graph.Out(n))
+        var dataWires = layoutNodes.SelectMany(n => graph.Out(n))
             .Where(e => !e.Error && e.From != e.To && a.Pos.ContainsKey(e.From) && a.Pos.ContainsKey(e.To))
             .Select(e => (A: ((double)a.Pos[e.From].X + Size(ctx, e.From).W, (double)a.Pos[e.From].Y + TermY(ctx, e.From, e.FromTerm)),
                           B: ((double)a.Pos[e.To].X, (double)a.Pos[e.To].Y + TermY(ctx, e.To, e.ToTerm)),
-                          (object)e.From, (object)e.To)).ToList());
+                          (object)e.From, (object)e.To)).ToList();
+        score = (OrthogonalCrossings(dataWires), dataWires.Sum(w => Math.Abs(w.A.Item2 - w.B.Item2)));
 
         // normalise to (0,0)
         var boxes = a.Pos.Select(kv => Extent(ctx, kv.Key, kv.Value.X, kv.Value.Y)).ToList();

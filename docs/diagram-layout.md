@@ -502,6 +502,18 @@ The render shows four straight bands: each class constant is left of its accesso
 constant is below and left of its Write, and every error wire runs forward into the Merge Errors
 behind the last band.
 
+**The grpc twin's method test tied, and the tie kept the columns** (2026-10-17). Its two cases
+crossed nothing in the model either way, so the columns stayed, with both Reads stacked in one
+column. LabVIEW then drew the class wires across each other. On equal crossings the variant with the
+shorter vertical wire run now wins. That tie-break applies only where at least two bands are real
+chains fed by constants: three nodes or more besides constants, and no panel terminal.
+
+Without that restriction, two LayoutCheck helpers switched as well. One grew from 161 to 193 px
+high. On the other, send-block, the bands lifted two error-chain functions off the rail. Both
+helpers' chains start at panel terminals. The two grpc tests are fixtures now
+(`test-heater-methods-grpc.txt`, `test-heater-accessors-grpc.txt`), as LabVIEW left them after
+the generators.
+
 **Still open:**
 
 - LabVIEW routes `written 1` into the Assert's `Expected` from the right, round the `Label`

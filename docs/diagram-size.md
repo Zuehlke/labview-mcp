@@ -124,6 +124,13 @@ the size step, and the class method of the same build came back with no size at 
 before returning there now; the answer is still `failedAtStep: execState`, with `diagramSize`
 beside it.
 
+**And on the grpc direct route the class and method test generators measured BEFORE the last
+layout** (found 2026-10-17). The generate step rendered the test VI. Then the swap or seeds step
+ran `lvai_swap_subvis`, whose own clean-up lays the diagram out again. So `diagramSize` read
+758 x 462 and 668 x 527 for diagrams that were planned at 876 x 509 and 1080 x 264. When a later
+step laid the diagram out, the generators now render once more and report that size, as the
+`diagramSize` step.
+
 ## 6. Found on the way
 
 `lvai_render_diagrams` gave two VIs of one file name the same HTML base, so rendering the main VI of

@@ -58,6 +58,23 @@ public class LayoutBandTests(ITestOutputHelper output)
         Assert.Empty(backward);
     }
 
+    /// <summary>The grpc twin's two tests as they came out of the generators (2026-10-17). The
+    /// method test tied with columns at 0 crossings and kept them, both Reads stacked in one
+    /// column; the shorter vertical run now decides that tie for chains fed by constants.</summary>
+    [Theory]
+    [InlineData("test-heater-methods-grpc.txt")]
+    [InlineData("test-heater-accessors-grpc.txt")]
+    public void A_test_built_on_grpc_is_laid_out_in_bands(string fixture)
+    {
+        var columns = DiagramLayout.Plan(Load(fixture), bands: false);
+        var model = Load(fixture);
+        var plan = DiagramLayout.Plan(model);
+        Assert.Equal(0, DiagramLayout.DataCrossings(model, plan));
+        Assert.Empty(DiagramLayout.BackwardWires(model, plan));
+        Assert.NotEqual(columns.Moves.Select(m => (m.ApplyPath, m.Index, m.X, m.Y)),
+                        plan.Moves.Select(m => (m.ApplyPath, m.Index, m.X, m.Y)));
+    }
+
     /// <summary>Every other fixture keeps exactly the plan it had: bands are tried only on the top
     /// level, and kept only where they cross fewer wires.</summary>
     [Theory]

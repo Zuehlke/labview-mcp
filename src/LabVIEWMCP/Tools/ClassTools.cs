@@ -1308,8 +1308,12 @@ internal sealed class ClassTools(LvaiConnection connection)
         if (!File.Exists(full)) LvTextFile.WriteNew(full, LvClass.Project([], lvVersion));
 
         // The parent is listed for the READER's benefit - a hierarchy the project does not show is
-        // confusing - not because anything in the run needs it there.
-        if (parentClassPath is { Length: > 0 } && File.Exists(parentClassPath))
+        // confusing - not because anything in the run needs it there. NOT a parent from the
+        // LabVIEW installation: Actor.lvclass came out at target level with a URL running into
+        // Program Files (a grpc build of 2026-10-17), where LabVIEW itself keeps it under
+        // Dependencies and drops the entry on its next save.
+        if (parentClassPath is { Length: > 0 } && File.Exists(parentClassPath)
+            && !InLabViewInstallation(parentClassPath))
         {
             try
             {
@@ -1323,6 +1327,16 @@ internal sealed class ClassTools(LvaiConnection connection)
         }
 
         return full;
+    }
+
+    /// <summary>A file under a LabVIEW installation - some folder above it holds LabVIEW.exe:
+    /// vi.lib, user.lib, instr.lib, LVAddons, resource.</summary>
+    internal static bool InLabViewInstallation(string path)
+    {
+        for (var dir = Path.GetDirectoryName(Path.GetFullPath(path)); dir is { Length: > 0 };
+             dir = Path.GetDirectoryName(dir))
+            if (File.Exists(Path.Combine(dir, "LabVIEW.exe"))) return true;
+        return false;
     }
 
     private static (string Path, bool Scratch, JsonObject Step) PrepareProject(

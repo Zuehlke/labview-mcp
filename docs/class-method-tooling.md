@@ -1275,8 +1275,16 @@ validates each method's AIXML and **classifies** the verdict:
 | verdict | what happens |
 |---|---|
 | `clean` | convert, as before |
-| `classWireStrictness` — the message names a `.lvclass`, `UDClassInst` or `LabVIEW Object` | convert anyway; this is what the tool is for |
+| `validatorFailed` — NI's validator failed inside its own `Get Errors` call | convert anyway; nothing checked the wiring, so read the method with `lvai_exec_state` |
+| `classWireStrictness` — the message names a `.lvclass`, `UDClassInst` or `LabVIEW Object`, outside its `occurred at` call chain | convert anyway; this is what the tool is for |
 | `realFault` — anything else | **STOP**, with the validator's message and the AIXML path |
+
+**The call chain does not count, measured 2026-10-17 on a grpc build.** The validator answered
+`Error 1018 occurred at Invoke Node in LV AI gRPC Service.lvlibp:...ValidateAIXML.vi->...LVAI.lvclass:Start Sync.vi ... Method Name: Get Errors`.
+The `.lvclass` was NI's own service class in the call chain, and the classifier took it for a class
+wire. Nothing in the message was about the document, and the convert wrote a correct, executable
+method. It is `validatorFailed` now, and a class named only in the `occurred at` line is not a
+class-wire complaint.
 
 The classifier is deliberately conservative: an unrecognised message counts as a real fault, because
 waving one through is the failure being fixed. `validateFirst: false` restores the old behaviour for

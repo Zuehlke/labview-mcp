@@ -24,6 +24,13 @@ The helper that drives them is `scripts/lvai_create_class.xml`. **A project must
 the helper reaches LabVIEW through `Project:Active Project` and finds a parent class only among the
 classes that project has loaded; the tool opens one for you. pylabview is no longer involved.
 
+**A parent from the LabVIEW installation is not listed in the project**, measured 2026-10-17 on a
+grpc build. The tool used to list every parent class beside the new class, for the reader. That put
+`Actor.lvclass` at target level, with a URL running into `Program Files`, where LabVIEW keeps it
+under Dependencies and drops the entry on its next save. A parent under any folder that holds
+`LabVIEW.exe` (vi.lib, user.lib, instr.lib, LVAddons) is left to LabVIEW now; a parent of your own
+is still listed.
+
 Section 1 below is the route this replaced — a private data control built from a converted VI. It
 is kept because every step of it is a thing that does *not* work, and §2a says exactly why.
 

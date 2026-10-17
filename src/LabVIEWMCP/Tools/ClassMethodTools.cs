@@ -723,16 +723,23 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                         // refused the same document a second time.
                         var composerRefused = (Read(check) as JsonObject)?["errorKind"]?
                             .GetValue<string>() == "composerRefused";
-                        var classWire = Code(check) != 0 && !composerRefused
+                        var validatorFailed = Code(check) != 0 && !composerRefused
+                                              && IsValidatorInternalError(message);
+                        var classWire = Code(check) != 0 && !composerRefused && !validatorFailed
                                         && IsClassTypeComplaint(message);
                         steps.Add(new JsonObject
                         {
                             ["step"] = "preValidate",
                             ["answer"] = Read(check),
                             ["verdict"] = Code(check) == 0 ? "clean"
+                                : validatorFailed ? "validatorFailed"
                                 : classWire ? "classWireStrictness" : "realFault",
                             ["note"] = Code(check) == 0
                                 ? "The AIXML validates on its own, so nothing here is being waved through."
+                                : validatorFailed
+                                    ? "NI's validator failed INSIDE itself (an error from its own Get Errors " +
+                                      "call) and gave no verdict on the document. Converting anyway, so " +
+                                      "nothing has checked this method's wiring: run lvai_exec_state on it."
                                 : classWire
                                     ? "Refused for a CLASS-TYPED wire, which is the documented case " +
                                       "where ValidateAIXML is stricter than ConvertAIXMLToVI. " +
@@ -743,7 +750,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                                       "Error 1003 at run time with every file-level check green.",
                         });
 
-                        if (Code(check) != 0 && !classWire)
+                        if (Code(check) != 0 && !classWire && !validatorFailed)
                         {
                             results.Add(Failed(method, viPath, "preValidate", steps, new JsonObject
                             {
@@ -1421,10 +1428,29 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     /// through is the failure this method was added to stop, and the caller has
     /// <c>validateFirst: false</c> when the classifier is wrong.
     /// </summary>
-    internal static bool IsClassTypeComplaint(string message) =>
-        message.Contains(".lvclass", StringComparison.OrdinalIgnoreCase)
-        || message.Contains("UDClassInst", StringComparison.OrdinalIgnoreCase)
-        || message.Contains("LabVIEW Object", StringComparison.OrdinalIgnoreCase);
+    internal static bool IsClassTypeComplaint(string message)
+    {
+        var text = WithoutCallChain(message);
+        return text.Contains(".lvclass", StringComparison.OrdinalIgnoreCase)
+               || text.Contains("UDClassInst", StringComparison.OrdinalIgnoreCase)
+               || text.Contains("LabVIEW Object", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The validator ITSELF failed and said nothing about the document. Measured 2026-10-17 on a
+    /// grpc build: <c>Error 1018 occurred at Invoke Node in LV AI gRPC
+    /// Service.lvlibp:...ValidateAIXML.vi-&gt;...LVAI.lvclass:Start Sync.vi ... Method Name: Get
+    /// Errors</c>. The classifier read the <c>.lvclass</c> of NI's own call chain as a class wire;
+    /// the convert then wrote a correct VI.
+    /// </summary>
+    internal static bool IsValidatorInternalError(string message) =>
+        message.Contains("Method Name: Get Errors", StringComparison.OrdinalIgnoreCase)
+        && message.Contains("ValidateAIXML.vi", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>A LabVIEW error message names where it occurred - "occurred at &lt;VI&gt;-&gt;&lt;VI&gt;..."
+    /// up to the end of that line - and those are the SERVICE's VIs, never the document's.</summary>
+    internal static string WithoutCallChain(string message) =>
+        System.Text.RegularExpressions.Regex.Replace(message, @"occurred at [^\r\n]*", "occurred at <call chain>");
 
     private static JsonNode? Read(string answer)
     {

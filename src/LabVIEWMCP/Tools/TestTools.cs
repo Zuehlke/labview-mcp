@@ -826,6 +826,7 @@ internal sealed class TestTools(LvaiConnection connection)
                     "THE TEST VI WAS WRITTEN and still calls the sockets, so it would test " +
                     "nothing. Read the swap step - `socketsNotOnDiagram` and `socketsLeft` say " +
                     "which half failed.", route: route);
+            await TestTools.AddFinalDiagramSizeAsync(connection, steps, testViPath, timeoutSeconds, ct);
 
             if (!keepAixml)
             {
@@ -1045,6 +1046,7 @@ internal sealed class TestTools(LvaiConnection connection)
                     "THE TEST VI WAS WRITTEN and calls the real accessors, but its seed constants are " +
                     "still paths, so it cannot run. Read the seeds step.", route: Direct(route)), null);
             }
+            await TestTools.AddFinalDiagramSizeAsync(connection, steps, testViPath, timeoutSeconds, ct);
         }
 
         // 5b. a written value feeding a TYPEDEF terminal carries the typedef, or it wears a dot
@@ -3475,12 +3477,44 @@ internal sealed class TestTools(LvaiConnection connection)
     /// 4345 x 4084 px, and nothing said so, because the test generators passed
     /// <c>measureDiagram: false</c> on the grounds that a test VI was internal.
     /// </summary>
-    internal static JsonObject? GeneratedDiagramSize(JsonArray steps) =>
-        steps.OfType<JsonObject>()
+    internal static JsonObject? GeneratedDiagramSize(JsonArray steps)
+    {
+        // a re-measure after a later layout wins: that is the diagram the caller gets
+        if (steps.OfType<JsonObject>().LastOrDefault(s => s["step"]?.GetValue<string>() == "diagramSize")
+            is { } final && final["size"] is JsonObject after)
+            return (JsonObject)after.DeepClone();
+        return steps.OfType<JsonObject>()
              .LastOrDefault(s => s["step"]?.GetValue<string>() == "generate")?["answer"]
              is JsonObject answer && answer["diagramSize"] is JsonObject size
             ? (JsonObject)size.DeepClone()
             : null;
+    }
+
+    /// <summary>
+    /// Measures the test VI again when a step AFTER the generate laid its diagram out once more -
+    /// the swap or seeds step's own clean-up. Until 2026-10-17 `diagramSize` was the generate
+    /// step's render, taken before that layout: a grpc build reported 758 x 462 and 668 x 527 for
+    /// diagrams the later layout made 876 x 509 and 1080 x 264. Adds nothing when nothing was
+    /// measured to begin with (measureDiagram: false) or no later step laid the diagram out.
+    /// </summary>
+    internal static async Task AddFinalDiagramSizeAsync(LvaiConnection connection, JsonArray steps,
+                                                       string viPath, int timeoutSeconds,
+                                                       CancellationToken ct)
+    {
+        var list = steps.OfType<JsonObject>().ToList();
+        var generate = list.FindLastIndex(s => s["step"]?.GetValue<string>() == "generate");
+        if (generate < 0 || (list[generate]["answer"] as JsonObject)?["diagramSize"] is not JsonObject) return;
+        var laidOutLater = list.Skip(generate + 1)
+            .Any(s => (s["answer"] as JsonObject)?["cleanUpDiagram"] is JsonObject);
+        if (!laidOutLater) return;
+        var size = await new BulkTools(connection).DiagramSizeStepAsync(null, viPath, timeoutSeconds, ct);
+        steps.Add(new JsonObject
+        {
+            ["step"] = "diagramSize",
+            ["size"] = size,
+            ["note"] = "Measured again after the layout a later step ran; this is the size reported.",
+        });
+    }
 
     /// <summary>The `measureDiagram` switch of the three Caraya test generators.</summary>
     internal const string MeasureTestDiagramDescription = """

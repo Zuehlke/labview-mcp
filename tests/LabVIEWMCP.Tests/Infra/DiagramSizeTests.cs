@@ -311,6 +311,20 @@ public sealed class DiagramSizeTests
     }
 
     [Fact]
+    public void A_size_measured_after_the_later_layout_wins_over_the_generate_steps()
+    {
+        // The grpc build of 2026-10-17: generate measured 668 x 527, the seeds step's layout
+        // then made the method test 1080 x 264.
+        var steps = new JsonArray(
+            new JsonObject { ["step"] = "generate", ["answer"] = new JsonObject
+                { ["diagramSize"] = new JsonObject { ["width"] = 668, ["height"] = 527 } } },
+            new JsonObject { ["step"] = "seeds", ["answer"] = new JsonObject { ["cleanUpDiagram"] = new JsonObject() } },
+            new JsonObject { ["step"] = "diagramSize", ["size"] = new JsonObject { ["width"] = 1080, ["height"] = 264 } });
+
+        Assert.Equal(1080, TestTools.GeneratedDiagramSize(steps)!["width"]!.GetValue<int>());
+    }
+
+    [Fact]
     public void A_test_VI_within_budget_or_unmeasured_adds_no_note()
     {
         var within = new JsonObject { ["width"] = 900, ["height"] = 600, ["withinBudget"] = true };

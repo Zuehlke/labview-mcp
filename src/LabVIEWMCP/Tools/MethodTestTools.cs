@@ -516,6 +516,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     "THE TEST VI WAS WRITTEN and still calls the sockets, so it would test " +
                     "nothing. Read the swap step - `socketsNotOnDiagram` and `socketsLeft` say " +
                     "which half failed.", route: route);
+            await TestTools.AddFinalDiagramSizeAsync(connection, steps, testViPath, timeoutSeconds, ct);
 
             if (!keepAixml)
             {
@@ -906,6 +907,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                     "THE TEST VI WAS WRITTEN and calls the real methods, but its seed constants are " +
                     "still paths, so it cannot run. Read the seeds step.", route: Direct(route)), null);
             }
+            await TestTools.AddFinalDiagramSizeAsync(connection, steps, testViPath, timeoutSeconds, ct);
         }
 
         // 5b. every generated constant that feeds a TYPEDEF terminal carries the typedef - seeds,
