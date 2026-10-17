@@ -648,6 +648,12 @@ Never hand-edit the `.lvclass` for any of these; each tool goes through NI's own
 verifies from the saved file, on either backend (all four measured on grpc and pylabview,
 2026-10-17). `docs/lvclass-creation.md` §10, §10e.
 
+**`checkUnsaved` - the user's rule of 2026-10-17.** All four refuse by default when something
+already carries unsaved changes, because their save would write it too. That protects an
+EXISTING project where someone may have VIs open with edits of their own - keep the default
+there. In a project YOU are building from scratch in this task there is nobody else's work to
+protect: pass `checkUnsaved=false` on every one of these calls.
+
 - **The class's description** (when the task gives one, or the class needs a one-line purpose):
   `lvai_set_class_description ownerPath=<abs .lvclass> text=<English, ASCII is safest>`. Text
   outside Windows-1252 is refused (`textNotCp1252`) because LabVIEW would store it as `?` in

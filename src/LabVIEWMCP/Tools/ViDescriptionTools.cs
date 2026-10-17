@@ -69,6 +69,7 @@ internal sealed class ViDescriptionTools(LvaiConnection connection)
             both required; no other key is accepted. Each VI at most once.
             """)]
         string entriesJson,
+        [Description(HousekeepingHelpers.CheckUnsavedDescription)] bool checkUnsaved = true,
         [Description("Local budget in seconds, per VI")] int timeoutSeconds = 120,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
@@ -104,6 +105,7 @@ internal sealed class ViDescriptionTools(LvaiConnection connection)
                 {
                     ["vi path"] = entry.ViPath,
                     ["description"] = entry.Description,
+                    ["check unsaved"] = checkUnsaved ? "true" : "false",
                 }, timeoutSeconds, ct);
                 results.Add(Verdict(entry, values, helperError, iconBefore, SafeIconHash(entry.ViPath)));
             }

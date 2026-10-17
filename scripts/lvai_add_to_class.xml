@@ -12,7 +12,9 @@
   <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4815.app,Path:4801.value,error in (no error):4815.err" outputs="reference out:,error out:4820.err,LVClass.Open:4820.cls" uid="4820" uid_parent="root"/>
   <Indicator _name="open error" type="cluster{bool.status,int32.code,string.source}" uid="4821" uid_parent="root" value="[false,0,]" inputs="value:4820.err"/>
   <Node _name="Property Node" fields="read+Modifications Bit Set" type="{LV.Library}" inputs="reference:4820.cls,error in (no error):4820.err" outputs="Modifications Bit Set:4825.mods,reference out:,error out:4825.err" uid="4825" uid_parent="root"/>
-  <Node _name="Not Equal To 0?" inputs="x:4825.mods" outputs="x != 0?:4826.dirty" uid="4826" uid_parent="root"/>
+  <Node _name="Not Equal To 0?" inputs="x:4825.mods" outputs="x != 0?:4826.raw" uid="4826" uid_parent="root"/>
+  <Control _name="check unsaved" type="bool" uid="5041" uid_parent="root" value="true" outputs="value:5041.value"/>
+  <Node _name="And" inputs="x:4826.raw,y:5041.value" outputs="x .and. y?:4826.dirty" uid="5042" uid_parent="root"/>
   <Indicator _name="unsaved" type="bool" uid="4827" uid_parent="root" value="false" inputs="value:4826.dirty"/>
   <Structure _name="Case Structure" selectin="4826.dirty" uid="4830" uid_parent="root">
     <Tunnel _id="In1" inputs="value:4820.cls" uid="4831" uid_parent="4830"/>

@@ -2026,5 +2026,13 @@ for a `.vi` in 10d, and the `callersNotLoaded` and `projectActive` guards.
   `VI Path` now and writes nothing on a mismatch (`viPathMismatch`, with `openedPath`); measured
   live, the other file untouched. On grpc the helper runs in the AI addon's instance, where the
   same call wrote the right file.
+- **The unsaved checks can be switched off: `checkUnsaved`** (default true) on all four tools -
+  the user's rule of 2026-10-17. The checks protect an EXISTING project where someone may have VIs
+  open with edits of their own; in a project this session builds itself there is nobody else's
+  work to protect, and a refusal only stops the build. Each helper gates its own verdict with a
+  `check unsaved` input, and `lvai_add_to_class` skips its listing (`listModifiedBefore` answers
+  `skipped`). Measured on both backends with a class left unsaved by a probe: `true` refused
+  `lvai_set_class_description`, `lvai_move_to_folder` and `lvai_add_to_class`; `false` let all three
+  write and save, verified from the files.
 - **The fork read the resource blocks through `ViIconLayers`**, part of its icon tools. That reader
   is now `RsrcMap.Blocks`, beside the block-type reader this repository already had.

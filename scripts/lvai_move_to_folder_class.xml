@@ -15,7 +15,9 @@
   <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4415.app,Path:4401.value,error in (no error):4415.err" outputs="reference out:,error out:4420.err,LVClass.Open:4420.own" uid="4420" uid_parent="root"/>
   <Indicator _name="open error" type="cluster{bool.status,int32.code,string.source}" uid="4421" uid_parent="root" value="[false,0,]" inputs="value:4420.err"/>
   <Node _name="Property Node" fields="read+Modifications Bit Set" type="{LV.Library}" inputs="reference:4420.own,error in (no error):4420.err" outputs="Modifications Bit Set:4425.mods,reference out:,error out:4425.err" uid="4425" uid_parent="root"/>
-  <Node _name="Not Equal To 0?" inputs="x:4425.mods" outputs="x != 0?:4426.dirty" uid="4426" uid_parent="root"/>
+  <Node _name="Not Equal To 0?" inputs="x:4425.mods" outputs="x != 0?:4426.raw" uid="4426" uid_parent="root"/>
+  <Control _name="check unsaved" type="bool" uid="4661" uid_parent="root" value="true" outputs="value:4661.value"/>
+  <Node _name="And" inputs="x:4426.raw,y:4661.value" outputs="x .and. y?:4426.dirty" uid="4662" uid_parent="root"/>
   <Indicator _name="unsaved" type="bool" uid="4427" uid_parent="root" value="false" inputs="value:4426.dirty"/>
   <Node _name="Invoke Node" target="Get All Descendents" type="{LV.Library}" inputs="reference:4420.own,error in (no error):4425.err,Type:4404.value,Exclude Dependencies:,ExcludeBuilds:,ExcludeTargets:" outputs="All Descendents:4430.vis,reference out:,error out:4430.err" uid="4430" uid_parent="root"/>
   <Structure _name="For Loop" count="" maxin="" maxout="" uid="4440" uid_parent="root">

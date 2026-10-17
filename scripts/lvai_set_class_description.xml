@@ -9,7 +9,9 @@
   <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4215.app,Path:4201.value,error in (no error):4215.err" outputs="reference out:,error out:4220.err,LVClass.Open:4220.cls" uid="4220" uid_parent="root"/>
   <Indicator _name="open error" type="cluster{bool.status,int32.code,string.source}" uid="4221" uid_parent="root" value="[false,0,]" inputs="value:4220.err"/>
   <Node _name="Property Node" fields="read+Modifications Bit Set" type="{LV.Library}" inputs="reference:4220.cls,error in (no error):4220.err" outputs="Modifications Bit Set:4225.mods,reference out:,error out:4225.err" uid="4225" uid_parent="root"/>
-  <Node _name="Not Equal To 0?" inputs="x:4225.mods" outputs="x != 0?:4226.dirty" uid="4226" uid_parent="root"/>
+  <Node _name="Not Equal To 0?" inputs="x:4225.mods" outputs="x != 0?:4226.raw" uid="4226" uid_parent="root"/>
+  <Control _name="check unsaved" type="bool" uid="4311" uid_parent="root" value="true" outputs="value:4311.value"/>
+  <Node _name="And" inputs="x:4226.raw,y:4311.value" outputs="x .and. y?:4226.dirty" uid="4312" uid_parent="root"/>
   <Indicator _name="skipped" type="bool" uid="4227" uid_parent="root" value="false" inputs="value:4226.dirty"/>
   <Node _name="Property Node" fields="read+Description" type="{LV.LVClassLibrary}" inputs="reference:4220.cls,error in (no error):4225.err" outputs="Description:4230.before,reference out:,error out:4230.err" uid="4230" uid_parent="root"/>
   <Indicator _name="description before" type="string" uid="4231" uid_parent="root" value="" inputs="value:4230.before"/>

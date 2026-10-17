@@ -77,6 +77,7 @@ internal sealed class FolderTools(LvaiConnection connection)
         bool createFolder = true,
         [Description("The .lvproj to open (and make active) first; it is not edited")]
         string? projectPath = null,
+        [Description(HousekeepingHelpers.CheckUnsavedDescription)] bool checkUnsaved = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 120,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
@@ -118,6 +119,7 @@ internal sealed class FolderTools(LvaiConnection connection)
                 ["folder"] = plan.Folder!,
                 ["item names"] = DqmhFrameTools.StringArrayXml("item names", plan.ToMove),
                 ["item type"] = plan.ItemType!,
+                ["check unsaved"] = checkUnsaved ? "true" : "false",
             }, timeoutSeconds, ct);
             var after = FileStamps.Take([directory]);
 

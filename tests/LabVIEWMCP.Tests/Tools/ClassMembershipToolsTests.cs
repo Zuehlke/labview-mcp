@@ -271,4 +271,22 @@ public class ClassMembershipToolsTests
         Assert.False(answer["verified"]!.GetValue<bool>());
         Assert.Single(answer["notOwnedByClass"]!.AsArray());
     }
+
+    [Theory]
+    [InlineData("lvai_set_class_description")]
+    [InlineData("lvai_set_library_description")]
+    [InlineData("lvai_move_to_folder_class")]
+    [InlineData("lvai_move_to_folder_library")]
+    [InlineData("lvai_set_vi_description")]
+    [InlineData("lvai_add_to_class")]
+    public void Every_housekeeping_helper_gates_its_unsaved_check_on_a_control_that_defaults_to_on(string helper)
+    {
+        // The user's rule of 2026-10-17: checkUnsaved is switched off only in a build of our own.
+        var vi = System.Xml.Linq.XElement.Load(LabVIEWMcp.Tests.Support.RepoTree.Path("scripts", helper + ".xml"));
+        var control = Assert.Single(vi.Descendants("Control"), c => (string?)c.Attribute("_name") == "check unsaved");
+        Assert.Equal("true", (string?)control.Attribute("value"));
+        var net = ((string?)control.Attribute("outputs"))!.Split(':')[1];
+        Assert.Contains(vi.Descendants("Node"), n => (string?)n.Attribute("_name") == "And"
+                                                     && ((string?)n.Attribute("inputs"))!.Contains(net));
+    }
 }

@@ -23,6 +23,20 @@ namespace LabVIEWMcp.Tools;
 /// </summary>
 internal sealed class HousekeepingHelpers(LvaiConnection connection)
 {
+    /// <summary>
+    /// The `checkUnsaved` parameter the four housekeeping tools share. The user's rule of
+    /// 2026-10-17: the unsaved-changes refusals guard an EXISTING project where someone may have VIs
+    /// open with edits of their own; in a build this session made itself there is nobody else's
+    /// work to protect, and the refusal only gets in the way.
+    /// </summary>
+    internal const string CheckUnsavedDescription = """
+        Refuse when the target (or, for lvai_add_to_class, any VI in the project's instance) already
+        carries UNSAVED changes, because this call's save would write them too. Default true - keep
+        it for any EXISTING project, where someone may have VIs open with edits of their own. Pass
+        false only in a project this session is building itself: the save then writes whatever is
+        unsaved, which is what a build wants. The user's rule of 2026-10-17.
+        """;
+
     /// <summary>A helper VI ready to run, or the error answer that stopped it.</summary>
     internal async Task<(string? HelperVi, bool Generated, string? Failure)> EnsureAsync(
         string helperName, int timeoutSeconds, CancellationToken ct)

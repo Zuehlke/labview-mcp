@@ -7,7 +7,9 @@
   <Indicator _name="open error" type="cluster{bool.status,int32.code,string.source}" uid="4711" uid_parent="root" value="[false,0,]" inputs="value:4710.err"/>
   <Node _name="Property Node" fields="read+Modifications\3AFront Panel Mods Bitset,read+Modifications\3ABlock Diagram Mods Bitset,read+VI Path" type="{LV.VI}" inputs="reference:4710.vi,error in (no error):4710.err" outputs="Modifications\3AFront Panel Mods Bitset:4720.fp,Modifications\3ABlock Diagram Mods Bitset:4720.bd,VI Path:4720.path,reference out:,error out:4720.err" uid="4720" uid_parent="root"/>
   <Node _name="Or" inputs="x:4720.fp,y:4720.bd" outputs="x .or. y?:4721.panel" uid="4721" uid_parent="root"/>
-  <Node _name="Not Equal To 0?" inputs="x:4721.panel" outputs="x != 0?:4723.dirty" uid="4723" uid_parent="root"/>
+  <Node _name="Not Equal To 0?" inputs="x:4721.panel" outputs="x != 0?:4723.raw" uid="4723" uid_parent="root"/>
+  <Control _name="check unsaved" type="bool" uid="4800" uid_parent="root" value="true" outputs="value:4800.value"/>
+  <Node _name="And" inputs="x:4723.raw,y:4800.value" outputs="x .and. y?:4723.dirty" uid="4801" uid_parent="root"/>
   <Indicator _name="unsaved" type="bool" uid="4724" uid_parent="root" value="false" inputs="value:4723.dirty"/>
   <Node _name="Equal?" inputs="x:4720.path,y:4701.value" outputs="x = y?:4725.same" uid="4725" uid_parent="root"/>
   <Indicator _name="path matches" type="bool" uid="4726" uid_parent="root" value="false" inputs="value:4725.same"/>

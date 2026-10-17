@@ -108,6 +108,7 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
             callerPaths. They will keep the old link unless something loads and saves them.
             """)]
         bool acceptUnlistedCallers = false,
+        [Description(HousekeepingHelpers.CheckUnsavedDescription)] bool checkUnsaved = true,
         [Description("Local budget in seconds, per LabVIEW step")] int timeoutSeconds = 180,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
@@ -142,36 +143,42 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
                         new { callers = failed, steps });
             }
 
-            // READ-ONLY LISTING FIRST: anything already modified would be written by the saves below.
-            var (listing, listingError) = await helpers.RunAsync(saveVi!, new()
+            // READ-ONLY LISTING FIRST, unless the caller builds this project itself (checkUnsaved false):
+            // anything already modified would be written by the saves below.
+            if (!checkUnsaved)
+                steps.Add(new JsonObject { ["step"] = "listModifiedBefore", ["skipped"] = "checkUnsaved is false" });
+            else
             {
-                ["save listed"] = "false",
-            }, timeoutSeconds, ct);
-            if (listing is null || listing.Count == 0)
-                return Json.Error("helperDidNotAnswer",
-                    "The modified-VI listing returned nothing" + (listingError is null ? "." : $": {listingError}"),
-                    new { steps });
-            if (HousekeepingHelpers.FirstFailure(listing, "project error") is { } hop)
-                return HousekeepingHelpers.ProjectHopFailure(hop.Code, hop.Source, steps);
-            var listed = ParseLines(HousekeepingHelpers.Strings(listing, "lines"))
-                .Where(l => !DqmhHeadless.IsHelperName(l.Name)).ToList();
-            // A VI WHOSE BITS COULD NOT BE READ IS NOT A CLEAN VI. Measured 2026-10-17: the helper
-            // closed its application reference before its loop ran, every line answered Error 1025,
-            // this filter dropped them all, and a hand-edited member was saved with the class.
-            if (UnreadLines(listed) is { Count: > 0 } unread)
-                return Json.Error("unsavedCheckFailed",
-                    "The unsaved-changes check could not read " + unread.Count + " VI(s) in the project's " +
-                    "instance (" + string.Join(", ", unread.Take(5)) + (unread.Count > 5 ? ", ..." : "") +
-                    "), so it cannot say they are clean - and the class save would write them. Nothing was added.",
-                    new { unreadable = Names(unread), steps });
-            var dirtyBefore = listed.Where(l => l.Modified).ToList();
-            steps.Add(new JsonObject { ["step"] = "listModifiedBefore", ["modified"] = Names(dirtyBefore.Select(l => l.Path)) });
-            if (dirtyBefore.Count > 0)
-                return Json.Error("unsavedChangesBefore",
-                    "VIs in the project's instance already carry unsaved changes: " +
-                    string.Join(", ", dirtyBefore.Select(l => l.Name)) + ". The class save and the caller " +
-                    "saves would write those too, so nothing was added. Save or revert them first.",
-                    new { modified = Names(dirtyBefore.Select(l => l.Path)), steps });
+                var (listing, listingError) = await helpers.RunAsync(saveVi!, new()
+                {
+                    ["save listed"] = "false",
+                }, timeoutSeconds, ct);
+                if (listing is null || listing.Count == 0)
+                    return Json.Error("helperDidNotAnswer",
+                        "The modified-VI listing returned nothing" + (listingError is null ? "." : $": {listingError}"),
+                        new { steps });
+                if (HousekeepingHelpers.FirstFailure(listing, "project error") is { } hop)
+                    return HousekeepingHelpers.ProjectHopFailure(hop.Code, hop.Source, steps);
+                var listed = ParseLines(HousekeepingHelpers.Strings(listing, "lines"))
+                    .Where(l => !DqmhHeadless.IsHelperName(l.Name)).ToList();
+                // A VI WHOSE BITS COULD NOT BE READ IS NOT A CLEAN VI. Measured 2026-10-17: the helper
+                // closed its application reference before its loop ran, every line answered Error 1025,
+                // this filter dropped them all, and a hand-edited member was saved with the class.
+                if (UnreadLines(listed) is { Count: > 0 } unread)
+                    return Json.Error("unsavedCheckFailed",
+                        "The unsaved-changes check could not read " + unread.Count + " VI(s) in the project's " +
+                        "instance (" + string.Join(", ", unread.Take(5)) + (unread.Count > 5 ? ", ..." : "") +
+                        "), so it cannot say they are clean - and the class save would write them. Nothing was added.",
+                        new { unreadable = Names(unread), steps });
+                var dirtyBefore = listed.Where(l => l.Modified).ToList();
+                steps.Add(new JsonObject { ["step"] = "listModifiedBefore", ["modified"] = Names(dirtyBefore.Select(l => l.Path)) });
+                if (dirtyBefore.Count > 0)
+                    return Json.Error("unsavedChangesBefore",
+                        "VIs in the project's instance already carry unsaved changes: " +
+                        string.Join(", ", dirtyBefore.Select(l => l.Name)) + ". The class save and the caller " +
+                        "saves would write those too, so nothing was added. Save or revert them first.",
+                        new { modified = Names(dirtyBefore.Select(l => l.Path)), steps });
+            }
 
             var root = Path.GetDirectoryName(plan.ProjectPath!)!;
             var before = FileStamps.Take([root, Path.GetDirectoryName(plan.ClassPath!)!]);
@@ -181,6 +188,7 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
                 ["class path"] = plan.ClassPath!,
                 ["item paths"] = DqmhFrameTools.StringArrayXml("item paths", plan.Items),
                 ["use folder"] = plan.Folder is null ? "false" : "true",
+                ["check unsaved"] = checkUnsaved ? "true" : "false",
             };
             if (plan.Folder is not null) addInputs["folder"] = plan.Folder;
             var (added, addError) = await helpers.RunAsync(addVi!, addInputs, timeoutSeconds, ct);
