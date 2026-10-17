@@ -1266,6 +1266,37 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     }
 
     /// <summary>
+    /// Which of <paramref name="viPaths"/> the class file ALREADY lists as members, by file name.
+    ///
+    /// Read from the `.lvclass` rather than asked of LabVIEW, for the reason every other check in
+    /// this file is: the file is the authority and it costs nothing. It is deliberately the same
+    /// name-only comparison <see cref="RemoveMemberEntries"/> makes, so the two can never disagree
+    /// about what is about to be dropped.
+    /// </summary>
+    internal static IReadOnlyList<string> MembersAlreadyListed(
+        string classPath, IEnumerable<string> viPaths)
+    {
+        var wanted = new HashSet<string>(
+            viPaths.Select(p => Path.GetFileName(p)), StringComparer.OrdinalIgnoreCase);
+        if (wanted.Count == 0) return [];
+
+        string text;
+        try { text = File.ReadAllText(classPath); }
+        catch (IOException) { return []; }
+        catch (UnauthorizedAccessException) { return []; }
+
+        return [.. wanted
+            .Where(name => text.Contains($"<Item Name=\"{name}\"", StringComparison.Ordinal))
+            .OrderBy(n => n, StringComparer.Ordinal)];
+    }
+
+    /// <summary>The file names of methods given as `vi` only that the class already lists.</summary>
+    internal static List<string> ViOnlyReruns(IEnumerable<MethodRequest> methods, IReadOnlyList<string> alreadyListed) =>
+        [.. methods.Where(m => m.Aixml is null)
+            .Select(m => Path.GetFileName(m.Vi))
+            .Where(n => alreadyListed.Contains(n, StringComparer.OrdinalIgnoreCase))];
+
+    /// <summary>
     /// Delete the <c>&lt;Item … Type="VI"&gt;</c> blocks naming these VIs from a <c>.lvclass</c>,
     /// returning the names actually removed. Nothing is written when nothing matched.
     ///
@@ -1300,37 +1331,6 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     /// it needs the project OPEN, which is the opposite of what the convert needs, so it would buy a
     /// second open/close cycle per call in exchange for replacing an edit already measured to work.
     /// </summary>
-    /// <summary>
-    /// Which of <paramref name="viPaths"/> the class file ALREADY lists as members, by file name.
-    ///
-    /// Read from the `.lvclass` rather than asked of LabVIEW, for the reason every other check in
-    /// this file is: the file is the authority and it costs nothing. It is deliberately the same
-    /// name-only comparison <see cref="RemoveMemberEntries"/> makes, so the two can never disagree
-    /// about what is about to be dropped.
-    /// </summary>
-    /// <summary>The file names of methods given as `vi` only that the class already lists.</summary>
-    internal static List<string> ViOnlyReruns(IEnumerable<MethodRequest> methods, IReadOnlyList<string> alreadyListed) =>
-        [.. methods.Where(m => m.Aixml is null)
-            .Select(m => Path.GetFileName(m.Vi))
-            .Where(n => alreadyListed.Contains(n, StringComparer.OrdinalIgnoreCase))];
-
-    internal static IReadOnlyList<string> MembersAlreadyListed(
-        string classPath, IEnumerable<string> viPaths)
-    {
-        var wanted = new HashSet<string>(
-            viPaths.Select(p => Path.GetFileName(p)), StringComparer.OrdinalIgnoreCase);
-        if (wanted.Count == 0) return [];
-
-        string text;
-        try { text = File.ReadAllText(classPath); }
-        catch (IOException) { return []; }
-        catch (UnauthorizedAccessException) { return []; }
-
-        return [.. wanted
-            .Where(name => text.Contains($"<Item Name=\"{name}\"", StringComparison.Ordinal))
-            .OrderBy(n => n, StringComparer.Ordinal)];
-    }
-
     internal static IReadOnlyList<string> RemoveMemberEntries(
         string classPath, IEnumerable<string> viPaths)
     {

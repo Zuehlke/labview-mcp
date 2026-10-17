@@ -968,12 +968,10 @@ internal static class LvClass
     /// </summary>
     public static string? SetProjectSourceOnly(string projectPath)
     {
-        var bytes = File.ReadAllBytes(projectPath);
-        var bom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
-        var text = new UTF8Encoding(false).GetString(bytes, bom ? 3 : 0, bytes.Length - (bom ? 3 : 0));
+        var (text, style) = LvTextFile.Read(projectPath);
         var (changed, action) = WithProjectSourceOnly(text);
         if (action is null or "alreadyTrue") return action;
-        File.WriteAllText(projectPath, changed, new UTF8Encoding(bom));
+        LvTextFile.Write(projectPath, changed, style);
         return action;
     }
 

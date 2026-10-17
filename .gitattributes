@@ -15,3 +15,10 @@
 # Windows runner has too) the script writes LF back and the round trip can never be identical -
 # green in a checkout that predates the fixture, red in a fresh clone and in the release workflow.
 tests/LabVIEWMCP.Tests/Fixtures/pane/thrall/*.xml  text eol=lf
+
+# Byte copies of LabVIEW-saved project files. Their BOM and line endings ARE the data under
+# test (LvTextFileTests), so git must store and check them out unconverted -
+# core.autocrlf=true would otherwise normalise them, and an assertion would test git, not us.
+tests/LabVIEWMCP.Tests/Fixtures/**/*.lvproj   -text
+tests/LabVIEWMCP.Tests/Fixtures/**/*.lvclass  -text
+tests/LabVIEWMCP.Tests/Fixtures/**/*.lvlib    -text
