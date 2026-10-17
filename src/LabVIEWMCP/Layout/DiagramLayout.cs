@@ -288,7 +288,8 @@ internal static class DiagramLayout
 
         // ---- columns
         var layer = Layers(graph, layoutNodes, isTop);
-        var columns = layoutNodes.GroupBy(n => layer[n]).OrderBy(g => g.Key).Select(g => g.ToList()).ToList();
+        if (inBand.Count > 0) CollectAfterBands(graph, layoutNodes, layer, inBand);
+        var columns =layoutNodes.GroupBy(n => layer[n]).OrderBy(g => g.Key).Select(g => g.ToList()).ToList();
 
         // ---- the rail
         var railOf = new Dictionary<DObject, int>();
@@ -393,7 +394,8 @@ internal static class DiagramLayout
         }
 
         if (band is not null && colPlans.Count > 1)
-            BandRows(colPlans, blocks, band, a.Pos, anyRail ? railY : null);
+            BandRows(colPlans, blocks, band, a.Pos, anyRail ? railY : null,
+                     layoutNodes.Where(n => n.IsConstant && graph.Out(n).Select(e => e.To).Where(t => t != n).Distinct().Count() >= 2).ToHashSet());
         else if (colPlans.Count > 1)
             AlignToNeighbours(ctx, graph, colPlans, blocks, a.Pos, anyRail ? railY : null);
 
@@ -1387,6 +1389,24 @@ internal static class DiagramLayout
 
     // ------------------------------------------------------------------ layers and rails
 
+    /// <summary>
+    /// In bands, what collects the bands' errors (Merge Errors, error out) goes after the last band
+    /// column. By longest path the first Merge Errors of Test Heater.vi took the column of the
+    /// round-trip assertions, and LabVIEW routed the short bands' error wires back round it
+    /// (2026-10-17). Everything off the bands from the first collector on moves by the same
+    /// amount, so the rail keeps its order; nothing moves if a band node comes after a collector.
+    /// </summary>
+    private static void CollectAfterBands(Graph g, List<DObject> nodes, Dictionary<DObject, int> layer, HashSet<DObject> inBand)
+    {
+        var collectors = nodes.Where(n => !inBand.Contains(n) && g.In(n).Any(e => e.From != n && inBand.Contains(e.From))).ToList();
+        if (collectors.Count == 0) return;
+        var start = collectors.Min(n => layer[n]);
+        if (inBand.Any(n => layer[n] >= start && g.In(n).Any(e => collectors.Contains(e.From)))) return;
+        var shift = inBand.Max(n => layer[n]) + 1 - start;
+        if (shift <= 0) return;
+        foreach (var n in nodes.Where(n => !inBand.Contains(n) && layer[n] >= start && !n.IsConstant)) layer[n] += shift;
+    }
+
     private static Dictionary<DObject, int> Layers(Graph g, List<DObject> nodes, bool isTop)
     {
         var layer = new Dictionary<DObject, int>();
@@ -1452,6 +1472,17 @@ internal static class DiagramLayout
                 layer[n] = n.OwnSource ? 0 : max + 1;
             if (nodes.Any(n => n.IsControlTerminal && n.OwnSource))
                 foreach (var n in nodes.Where(n => !n.IsControlTerminal)) layer[n] = Math.Max(layer[n], 1);
+            // that floor lifted a constant into the column of what it feeds, where it was stacked
+            // under it and its wire ran back: Test Heater.vi's `written 1`, feeding a Write and its
+            // assertion, sat under the Write (2026-10-17). What it feeds moves one column on
+            var lifted = nodes.Where(c => c.IsConstant && g.Out(c).Any(e => e.To != c && layer.ContainsKey(e.To)
+                                                                            && layer[e.To] <= layer[c])).ToList();
+            if (lifted.Count > 0)
+            {
+                var from = lifted.Min(c => layer[c]);
+                foreach (var n in nodes.Where(n => !n.IsControlTerminal && !n.IsConstant && layer[n] >= from)) layer[n]++;
+                foreach (var n in nodes.Where(n => n.IsControlTerminal && !n.OwnSource)) layer[n]++;
+            }
         }
         // compact: no empty columns
         var used = layer.Values.Distinct().OrderBy(v => v).Select((v, i) => (v, i)).ToDictionary(p => p.v, p => p.i);
@@ -1717,7 +1748,8 @@ internal static class DiagramLayout
     /// nodes on the rail stay where they are; x is left to the columns and the compaction.
     /// </summary>
     private static void BandRows(List<(List<DObject> Above, DObject? OnRail)> cols, Dictionary<DObject, Block> blocks,
-                                 Dictionary<DObject, int> band, Dictionary<DObject, (int X, int Y)> pos, int? railY)
+                                 Dictionary<DObject, int> band, Dictionary<DObject, (int X, int Y)> pos, int? railY,
+                                 HashSet<DObject> under)
     {
         var rows = new SortedDictionary<int, List<(int Col, DObject N)>>();
         for (var c = 0; c < cols.Count; c++)
@@ -1734,8 +1766,12 @@ internal static class DiagramLayout
         var laid = new List<(List<(DObject N, int Y)> Nodes, int Top, int Bottom)>();
         foreach (var (_, members) in rows)
         {
-            var stacks = members.GroupBy(m => m.Col)
+            // a constant feeding several nodes of its band goes UNDER the chain: level with it, its
+            // wire to the far node ran at the chain's height and ClearCorridors stepped the nodes
+            // between down out of its way, a staircase per band (Test Heater.vi, 2026-10-17)
+            var stacks = members.Where(m => !under.Contains(m.N)).GroupBy(m => m.Col)
                 .Select(g => g.Select(m => m.N).OrderBy(n => pos[n].Y).ToList()).ToList();
+            if (stacks.Count == 0) stacks = members.GroupBy(m => m.Col).Select(g => g.Select(m => m.N).ToList()).ToList();
             var line = stacks.Max(s => -blocks[s[0]].Box.T);    // room for what hangs above the first
             var nodes = new List<(DObject N, int Y)>();
             foreach (var s in stacks)
@@ -1745,6 +1781,16 @@ internal static class DiagramLayout
                 {
                     nodes.Add((n, y));
                     y += blocks[n].Box.B + RowGap - (s.IndexOf(n) + 1 < s.Count ? blocks[s[s.IndexOf(n) + 1]].Box.T : 0);
+                }
+            }
+            var low = nodes.Max(p => p.Y + blocks[p.N].Box.B) + RowGap;
+            foreach (var g in members.Where(m => under.Contains(m.N) && !nodes.Any(p => p.N == m.N)).GroupBy(m => m.Col))
+            {
+                var y = low;
+                foreach (var n in g.Select(m => m.N).OrderBy(n => pos[n].Y))
+                {
+                    nodes.Add((n, y - blocks[n].Box.T));
+                    y += blocks[n].Box.H + RowGap;
                 }
             }
             laid.Add((nodes, nodes.Min(p => p.Y + blocks[p.N].Box.T), nodes.Max(p => p.Y + blocks[p.N].Box.B)));
@@ -1801,6 +1847,19 @@ internal static class DiagramLayout
         }
         return OrthogonalCrossings(nodes.SelectMany(n => g.Out(n)).Where(e => !e.Error && e.From != e.To)
             .Select(e => (At(e.From, e.FromTerm, true), At(e.To, e.ToTerm, false), (object)e.From, (object)e.To)).ToList());
+    }
+
+    /// <summary>Wires of the top diagram, data or error, whose sink lies left of their source's
+    /// right edge - LabVIEW routes those backwards round a node.</summary>
+    internal static List<string> BackwardWires(DiagramModel model, LayoutPlan plan)
+    {
+        var d = model.Top;
+        var nodes = d.Objects.Where(o => !o.IsText && !o.IsDecoration && !o.IsLoopTerminal).ToList();
+        var g = Graph.Build(d, nodes);
+        Box At(DObject o) => plan.Predicted.TryGetValue(o.Key, out var p) ? p : o.Box;
+        return nodes.SelectMany(n => g.Out(n)).Where(e => e.From != e.To && At(e.To).L < At(e.From).R)
+            .Select(e => $"{e.From.Class} {e.From.Key} @{At(e.From).L}-{At(e.From).R} -> {e.To.Class} {e.To.Key} @{At(e.To).L}{(e.Error ? " (error)" : "")}")
+            .ToList();
     }
 
     /// <summary>

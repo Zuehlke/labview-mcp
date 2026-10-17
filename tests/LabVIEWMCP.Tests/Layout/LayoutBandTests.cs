@@ -44,6 +44,20 @@ public class LayoutBandTests(ITestOutputHelper output)
         Assert.True(bands.PredictedTop.W <= columns.PredictedTop.W, "and it is no wider");
     }
 
+    /// <summary>The error wires too run forward: Merge Errors and error out come after the last
+    /// band column, where the first Merge Errors of Test Heater.vi had sat among the round-trip
+    /// assertions and LabVIEW routed two error wires back round it.</summary>
+    [Theory]
+    [MemberData(nameof(GeneratedTests))]
+    public void No_wire_of_a_banded_test_runs_backwards(string fixture)
+    {
+        var model = Load(fixture);
+        var plan = DiagramLayout.Plan(model);
+        var backward = DiagramLayout.BackwardWires(model, plan);
+        foreach (var w in backward) output.WriteLine(w);
+        Assert.Empty(backward);
+    }
+
     /// <summary>Every other fixture keeps exactly the plan it had: bands are tried only on the top
     /// level, and kept only where they cross fewer wires.</summary>
     [Theory]

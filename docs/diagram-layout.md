@@ -468,27 +468,43 @@ Both arms are needed. Applied unconditionally, bands made DQMH Main 50 px taller
 LayoutCheck VI from 1 crossing to 4. Inside a structure they broke the frame-note rule, so bands
 are top-level only.
 
+The user's review of the first render added three rules, all measured on the same fixtures:
+
+- **What collects the bands' errors comes after the last band column** (`CollectAfterBands`).
+  By longest path, the first `Merge Errors` took the column of the round-trip assertions, and
+  LabVIEW routed two error wires backwards round it.
+- **A constant never shares the column of what it feeds.** On the top level, the floor that gives
+  the controls their own column lifted `written 1` into its Write's column. There it was stacked
+  under the Write and its wire ran back up. What it feeds now moves one column on.
+- **In a band, a constant that feeds several nodes goes UNDER the chain.** Level with the chain,
+  its wire to the Assert ran at the chain's height, and `ClearCorridors` stepped the Read and the
+  Assert down out of its way, one staircase per band.
+
 | fixture | columns | bands |
 |---|---|---|
-| `test-heater3-generated.txt` (Test Heater.vi) | 8 crossings, 986 x 468 | **0**, 896 x 468 |
-| `test-heater1-generated.txt` (accessor test) | 7 crossings, 1042 x 407 | **0**, 928 x 439 |
-| `test-sensor-generated.txt` (round trips) | 5 crossings | **0**, same size |
+| `test-heater3-generated.txt` (Test Heater.vi) | 5 crossings, 1104 px wide | **0**, 918 px |
+| `test-heater1-generated.txt` (accessor test) | 5 crossings, 1148 px | **0**, 853 px |
+| `test-sensor-generated.txt` (round trips) | 4 crossings, 1135 px | **0**, 903 px |
 | every other layout fixture (ATM, DQMH Main, LayoutCheck) | | plan unchanged, move for move |
 
-`LayoutBandTests` asserts both halves.
+`LayoutBandTests` asserts both halves, plus no backward wire (`BackwardWires`, data and error) in a
+banded test. The column numbers moved from the first version of this section (8, 7, 5) because the
+constant rule changes the columns variant too.
 
 **Live, on the pylabview backend.** `lvai_layout_diagram` on the real `Test Heater.vi`:
 
-- the width went from 966 to 855 px, and 30 of 30 objects landed where planned;
+- 30 of 30 objects landed where planned;
 - `execState` stayed 1;
 - `Test Heater Methods.vi` was left unchanged;
 - the Caraya suite stayed 5 of 5 green.
 
-The render shows four bands, each class constant left of its accessor.
+The render shows four straight bands: each class constant is left of its accessor, each `written`
+constant is below and left of its Write, and every error wire runs forward into the Merge Errors
+behind the last band.
 
 **Still open:**
 
-- The error wires climb from the bottom rail to each band's assertion.
-- A constant that feeds two nodes (`written 1` into Write and Assert) sits below its first sink,
-  not left of it.
-- A free comment can land between two bands.
+- LabVIEW routes `written 1` into the Assert's `Expected` from the right, round the `Label`
+  constant beside it.
+- The error wires still climb from the rail to each band's Assert.
+
