@@ -139,11 +139,14 @@ internal sealed class LvaiConnection : IAsyncDisposable
             Environment.NewLine + string.Join(Environment.NewLine, tried.Select(t => "  - " + t)) +
             Environment.NewLine +
             "Is LabVIEW running, and is the 'LV AI gRPC Service' active? " +
-            "MEASURED: a running LabVIEW is not enough - the service starts with NIGEL, the AI " +
-            "assistant, not with the IDE. " +
+            "The service comes up WITH LabVIEW, about 45 s after a cold start, with no Nigel chat " +
+            "opened (measured 2026-10-17, NI.NigelLocalService running) - so right after a start " +
+            "this answer is normal: call again. " +
             "THE STATUS CODE ABOVE SAYS WHICH OF TWO VERY DIFFERENT PROBLEMS THIS IS, and reading " +
             "it saves restarting LabVIEW for nothing: LabVIEW.exe listeners answering " +
-            "**Unavailable** mean the IDE is up and the service has not started - open Nigel. " +
+            "**Unavailable** mean the IDE is up and the service has not started YET - wait and " +
+            "call again; only if it is still missing after about two minutes ask the user to " +
+            "open Nigel. " +
             "Listeners answering **DeadlineExceeded** mean the service is there but did not answer " +
             "in time, and that is TWO different situations - CHECK WHICH BEFORE KILLING " +
             "ANYTHING. (Get-Process LabVIEW).Responding decides it: **False** with a title " +

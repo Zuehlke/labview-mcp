@@ -137,8 +137,9 @@ internal static class CommandLine
           --help            print this text
 
         LABVIEW_GRPC_PORT works instead of --port, LABVIEWMCP_LVVERSION instead of
-        --lvversion, LABVIEWMCP_AIXML_BACKEND instead of --aixml-backend. The self-test needs the LabVIEW this server connects to running WITH its
-        AI assistant open: the lvai gRPC service starts with Nigel, not with the IDE.
+        --lvversion, LABVIEWMCP_AIXML_BACKEND instead of --aixml-backend. The self-test needs the LabVIEW this server connects to running,
+        with its lvai gRPC service up: it comes up with LabVIEW itself, about 45 s after a cold
+        start (no Nigel chat needed); open Nigel only if it is still missing after two minutes.
         """;
 
     public static bool HasFlag(string[] args, string name) =>

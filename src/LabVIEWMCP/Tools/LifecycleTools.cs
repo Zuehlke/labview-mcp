@@ -39,11 +39,14 @@ internal sealed class LifecycleTools(LvaiConnection connection)
         launch routes and keeps only one whose process is still alive two seconds later. The
         winner is reported as launchMethod; if none survives you get errorKind
         'launch-did-not-survive' listing every attempt, never a hopeful 'starting'.
-        IT CANNOT FINISH THE JOB ALONE. Measured: the 'LV AI gRPC Service' starts with NIGEL,
-        the AI assistant - not with the IDE. A LabVIEW that has been up for twenty minutes can
-        hold 30 open listener ports and serve lvai.LVAI on none of them. So a persistent
-        'starting' with LabVIEW visibly running is not this tool being slow: ask whoever is at
-        the machine to open Nigel, then call lvai_status once.
+        THE SERVICE COMES UP WITH LabVIEW ITSELF, about 45 s after a cold start, with no Nigel
+        chat opened - measured 2026-10-17 with NI.NigelLocalService running. This text said for
+        weeks that the 'LV AI gRPC Service' starts with NIGEL and not with the IDE; that is
+        refuted. What still stands is the earlier observation that a LabVIEW up for twenty
+        minutes once held 30 listener ports and served lvai.LVAI on none of them - so a
+        'starting' that persists for more than about two minutes, with LabVIEW visibly
+        running, is not this tool being slow: then ask whoever is at the machine to open
+        Nigel, and call lvai_status once.
         Otherwise, when LabVIEW is still coming up, calling again is right - the second call
         finds the instance and waits. For an unattended long wait use the CLI:
         LabVIEWMCP --ensure-labview.
@@ -244,9 +247,10 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                       "the first call spent its whole 45 s budget and the second answered ready in " +
                       "1.2 s, 12.1 s, 27.7 s and 1.2 s. Do NOT read `lastError: \"The operation " +
                       "was canceled.\"` as a failure; it is this call's own budget expiring. Only " +
-                      "if a SECOND call also comes back `starting` is something wrong - then the " +
-                      "service may be waiting on Nigel, which starts it, or use the CLI " +
-                      "--ensure-labview for an unattended long wait.",
+                      "if a SECOND call also comes back `starting` is something wrong - the service " +
+                      "comes up with LabVIEW itself, about 45 s after a cold start (measured " +
+                      "2026-10-17); if it is still missing after about two minutes, ask the user to " +
+                      "open Nigel, or use the CLI --ensure-labview for an unattended long wait.",
             }.ToJsonString(Indented);
         });
 

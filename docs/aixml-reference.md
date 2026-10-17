@@ -3022,8 +3022,9 @@ from the corpus sweep, where a single slow export left every later RPC queued be
 
 Consequences: never fan out `lvai_*` calls hoping for throughput — you get the same total, plus the
 risk that one slow VI blocks the rest. Real RPC parallelism would need several LabVIEW instances,
-each with its own port, which is expensive (the handle leak above, ~1 GB apiece) and fragile (the
-service starts with Nigel, not with the IDE).
+each with its own port, which is expensive (the handle leak above, ~1 GB apiece) and fragile (each
+instance's service has to come up on its own; this said "it starts with Nigel, not with the IDE"
+until a cold start on 2026-10-17 brought it up in about 45 s with no Nigel chat opened).
 
 What *does* parallelise is anything that never reaches LabVIEW — reading files. That is exactly
 what the export cache turns candidate triage into.
