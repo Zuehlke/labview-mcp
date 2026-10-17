@@ -15,10 +15,6 @@
 
   <Constant _name="true" outputs="value:5020.value" type="bool" uid="5020" uid_parent="root" value="true"/>
   <Constant _name="no terminal" outputs="value:5021.value" type="ref{LV.Terminal}" uid="5021" uid_parent="root" value=""/>
-  <Constant _name="arrow" outputs="value:5022.value" type="string" uid="5022" uid_parent="root" value="->"/>
-  <Constant _name="series mark" outputs="value:5023.value" type="string" uid="5023" uid_parent="root" value="series:"/>
-  <Constant _name="branch mark" outputs="value:5024.value" type="string" uid="5024" uid_parent="root" value="branch:"/>
-  <Constant _name="far mark" outputs="value:5025.value" type="string" uid="5025" uid_parent="root" value="|far:"/>
   <Constant _name="subVI class" outputs="value:5026.value" type="ref{LV.SubVI}" uid="5026" uid_parent="root" value=""/>
   <Constant _name="style" outputs="value:5027.value" type="variant" uid="5027" uid_parent="root" value=""/>
   <Constant _name="location" outputs="value:5028.value" type="cluster{int16.Horizontal,int16.Vertical}" uid="5028" uid_parent="root" value="[120,260]"/>
@@ -142,7 +138,10 @@
     <Node _name="Not" inputs="x:5391.status" outputs=".not. x?:5392.clean" uid="5392" uid_parent="5300"/>
     <Node _name="And" inputs="x:5327.all,y:5392.clean" outputs="x .and. y?:5393.done" uid="5393" uid_parent="5300"/>
     <Node _name="Not" inputs="x:5393.done" outputs=".not. x?:5394.miss" uid="5394" uid_parent="5300"/>
-    <Node _name="Concatenate Strings" inputs="string:5023.value,string:5301.panel,string:5022.value,string:5302.near,string:5025.value,string:5303.far" outputs="concatenated string:5395.pair" uid="5395" uid_parent="5300"/>
+    <Constant _name="series mark" outputs="value:5600.value" type="string" uid="5600" uid_parent="5300" value="series:"/>
+    <Constant _name="arrow" outputs="value:5601.value" type="string" uid="5601" uid_parent="5300" value="-&gt;"/>
+    <Constant _name="far mark" outputs="value:5602.value" type="string" uid="5602" uid_parent="5300" value="|far:"/>
+    <Node _name="Concatenate Strings" inputs="string:5600.value,string:5301.panel,string:5601.value,string:5302.near,string:5602.value,string:5303.far" outputs="concatenated string:5395.pair" uid="5395" uid_parent="5300"/>
     <Tunnel _id="Out1" cond="5393.done" inputs="value:5395.pair" mode="index" outputs="value:5396.connected" uid="5396" uid_parent="5300"/>
     <Tunnel _id="Out2" cond="5394.miss" inputs="value:5395.pair" mode="index" outputs="value:5397.missing" uid="5397" uid_parent="5300"/>
   </Structure>
@@ -199,7 +198,9 @@
     <Node _name="Not" inputs="x:5470.status" outputs=".not. x?:5471.clean" uid="5471" uid_parent="5400"/>
     <Node _name="And" inputs="x:5424.both,y:5471.clean" outputs="x .and. y?:5472.done" uid="5472" uid_parent="5400"/>
     <Node _name="Not" inputs="x:5472.done" outputs=".not. x?:5473.miss" uid="5473" uid_parent="5400"/>
-    <Node _name="Concatenate Strings" inputs="string:5024.value,string:5401.panel,string:5022.value,string:5402.hname" outputs="concatenated string:5474.pair" uid="5474" uid_parent="5400"/>
+    <Constant _name="branch mark" outputs="value:5603.value" type="string" uid="5603" uid_parent="5400" value="branch:"/>
+    <Constant _name="arrow" outputs="value:5604.value" type="string" uid="5604" uid_parent="5400" value="-&gt;"/>
+    <Node _name="Concatenate Strings" inputs="string:5603.value,string:5401.panel,string:5604.value,string:5402.hname" outputs="concatenated string:5474.pair" uid="5474" uid_parent="5400"/>
     <Tunnel _id="Out1" cond="5472.done" inputs="value:5474.pair" mode="index" outputs="value:5475.connected" uid="5475" uid_parent="5400"/>
     <Tunnel _id="Out2" cond="5473.miss" inputs="value:5474.pair" mode="index" outputs="value:5476.missing" uid="5476" uid_parent="5400"/>
   </Structure>
