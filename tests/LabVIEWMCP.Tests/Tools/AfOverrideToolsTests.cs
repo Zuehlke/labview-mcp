@@ -355,6 +355,63 @@ public sealed class AfOverrideToolsTests
         Assert.Null(AfOverrideTools.RemovalTarget(nodes, "Actor Core", null).Exact);
     }
 
+    // Both shapes are cut from real exports of the 2026-10-17 probe, one per exporter: NI's spells
+    // the target `C.lvclass\3APass.vi`, the pylabview reader `C.lvclass:Pass.vi`.
+    private const string SeriesByNi = """
+        <VI _name="P.lvclass:Stop Core.vi" description="">
+          <Control _name="P in" conIdx="11" connection="dynamic" outputs="value:41.value" type="ref{UDClassInst}" uid="41" uid_parent="root" value=""/>
+          <Node _name="Call Parent Class Method" inputs="Actor in:41.value" outputs="Actor out:6.Actor out" uid="6" uid_parent="root"/>
+          <Call inputs="P in:6.Actor out,error in:" outputs="P out:17.P out,error out:" target="P.lvclass\3APass.vi" uid="17" uid_parent="root"/>
+          <Indicator _name="P out" conIdx="3" connection="dynamic" inputs="value:17.P out" type="ref{UDClassInst}" uid="46" uid_parent="root" value=""/>
+        </VI>
+        """;
+
+    private const string SeriesByReader = """
+        <VI _name="P.lvclass:Stop Core.vi" description="">
+          <Indicator _name="P out" type="ref{UDClassInst}" uid="46" uid_parent="root" value="" conIdx="3" connection="dynamic" inputs="value:119.P out" />
+          <Call uid="119" uid_parent="root" target="P.lvclass:Pass.vi" outputs="error out:,P out:119.P out" inputs="error in:,P in:" />
+          <!-- vi2aixml: diagram node of class callParentDynIUse (uid 6) not read -->
+        </VI>
+        """;
+
+    private const string BranchByNi = """
+        <VI _name="P.lvclass:Actor Core.vi" description="">
+          <Control _name="P in" conIdx="11" connection="dynamic" outputs="value:54.value" type="ref{UDClassInst}" uid="54" uid_parent="root" value=""/>
+          <Node _name="Call Parent Class Method" inputs="Actor in:54.value" outputs="Actor out:8.Actor out" uid="8" uid_parent="root"/>
+          <Call inputs="P in:54.value,error in:" outputs="P out:,error out:" target="P.lvclass\3APass.vi" uid="49" uid_parent="root"/>
+          <Indicator _name="Actor out" conIdx="3" connection="recommended" inputs="value:8.Actor out" type="ref{UDClassInst}" uid="509" uid_parent="root" value=""/>
+        </VI>
+        """;
+
+    [Theory]
+    [InlineData(SeriesByNi, 1, 1, "P out")]
+    [InlineData(SeriesByReader, 1, 1, "P out")]
+    [InlineData(BranchByNi, 1, 0, "")]
+    public void A_hook_whose_output_is_read_is_in_series(string aixml, int nodes, int series, string consumed)
+    {
+        var shape = AfOverrideTools.HookShape(aixml, "P.lvclass:Pass.vi");
+        Assert.NotNull(shape);
+        Assert.Equal(nodes, shape!.Nodes);
+        Assert.Equal(series, shape.SeriesNodes);
+        Assert.Equal(consumed, string.Join(",", shape.ConsumedOutputs));
+    }
+
+    [Fact]
+    public void A_hook_of_another_name_is_not_counted()
+    {
+        Assert.Equal(0, AfOverrideTools.HookShape(SeriesByNi, "P.lvclass:Fail Init.vi")!.Nodes);
+        Assert.Null(AfOverrideTools.HookShape("<VI", "Pass.vi"));
+    }
+
+    [Theory]
+    [InlineData(1, 0, true)]
+    [InlineData(null, 0, true)]
+    [InlineData(1, 1, false)]
+    [InlineData(0, 0, false)]  // already broken before: not this call's doing
+    [InlineData(1, null, false)]
+    public void Only_a_remove_that_broke_a_working_override_is_held_back(int? before, int? after, bool broke) =>
+        Assert.Equal(broke, AfOverrideTools.BrokeOverride(before, after));
+
     [Fact]
     public void Sibling_overrides_are_the_other_lifecycle_members_on_disk()
     {

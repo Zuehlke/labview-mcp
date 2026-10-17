@@ -11,6 +11,12 @@ LabVIEW 2026 Q3 (32-bit) on 2026-10-10**, on two throwaway actors (one in no lib
 check sees edits made by hand in the IDE but not edits made by scripting (§4), and a `vi`-only re-run
 of `lvai_add_class_method` dropped a member (now refused, §5).
 
+**On both backends since 2026-10-17.** The three tools take `backend`, and every route was run
+again with `grpc` and with `pylabview` (§7a). Two defects showed and are fixed: the hook helper did
+not compose on pylabview (a constant at root read inside two loops - the composer refuses a net that
+crosses a diagram boundary where NI's converter adds the tunnel silently), and **`lvai_af_remove_hook`
+SAVED a broken override** after removing a series hook, answering `ok: true` (§4).
+
 "The kit" below means the hand-run helper VIs of a companion LabVIEW skill whose measured routes
 these tools automate; its shape letters (A, B, B-after, C, D) are kept so the two can be compared.
 
@@ -188,10 +194,17 @@ Inputs: `overridePath`, `classPath`, `hookName` (path, file name or VI name), `o
    has unsaved edits is refused, by name: `overrideHasUnsavedEdits` or `siblingHasUnsavedEdits`.
    Those edits are someone else's work, and the rule is that unsaved files this call did not make
    are asked about, never saved along with the cleanup. A dry run reports this refusal too.
+   Before that, the override's own AIXML export (on the backend in force) says whether the hook
+   sits **in series** - an output net that something else reads. One that does is refused,
+   `seriesHookNotRemovable`, with `hookShape` naming the consumed outputs, before anything changes.
 3. `scripts/lvai_af_remove_hook.xml` deletes exactly that node (the kit's delete removed every node
    with a terminal name) and runs `BD.Remove Bad Wires`. It reports the exec state before and after.
 4. Save the override. Then save the sibling overrides that **became** modified (every sibling was
    clean in step 2, so a modified one now was made so by this call), and then the class.
+   **Not when the remove broke the override**: state 1 before and 0 after is `removeBrokeOverride`,
+   `failedAtStep: overrideBroken`, and nothing is saved - the file on disk stays the working one.
+   The broken copy is in memory only; `lvai_close_active_project` SAVES before it closes, so
+   discard it in the IDE (Don't Save) or by restarting LabVIEW.
 
 **Why the siblings.** A node deleted from a branched wire leaves a loose end. The override and a
 sibling override of the same class then read state 0, "error of type 1000088". Remove Bad Wires on
@@ -210,8 +223,14 @@ edit was NOT refused, and the sibling re-save, which reads the same bits, skippe
 (`{LV.Diagram} Modified` read TRUE on a clean VI as well, so it is no signal either). Unsaved work
 left by another scripting tool is therefore not caught: save or discard it before a remove.
 
-A **series** hook cannot be removed this way: the wire through it goes with it. Restore the bare
-override from version control (project closed) and re-hook every shape in order (B, C, A).
+A **series** hook cannot be removed this way: the wire through it goes with it, and Remove Bad Wires
+leaves the override's output terminal unwired. **Until 2026-10-17 the tool did it anyway and saved
+the result**: `Fail Init.vi` removed from a `seriesAfter` hook on Pre Launch Init answered `ok: true`,
+`execStateBefore: 1`, `execStateAfter: 0`, on both backends, and the saved override read eBad cold -
+"Front Panel Terminal '<C> out': Run-time type not propagated from dynamic input to dynamic output".
+The launcher then failed with Error 1003 (`Launch Actor Core.vi` could not open `Actor.vi`). That is
+now refused before the delete (step 2) and held back after it (step 4). Restore the bare override
+from version control (project closed) and re-hook every shape in order (B, C, A).
 
 ## 5. `lvai_add_class_method` on a re-run
 
@@ -293,8 +312,34 @@ project closed.
 | 4 re-run over a hooked member | pass: `memberHasLoadedCallers`, class unchanged; re-run after unhooking ok |
 | 4 re-run over a protected member in a folder | scope: pass; folder: unmeasured; `vi`-only re-run: failed, now refused (`rerunNeedsAixml`) |
 
+### 7a. Both backends, 2026-10-17
+
+Two throwaway actors, `AfProbeP` built with `backend: pylabview` and `AfProbeG` with `grpc` (parent
+`Actor.lvclass`, one `int32` field, members `Fail Init.vi` returning error 5000 and `Pass.vi`), each
+in its own project, each call driven over raw stdio (`scripts/mcp_drive.py`, the client's tool list
+predating the tools). Exec states read cold, project closed.
+
+| item | pylabview | grpc |
+|---|---|---|
+| `lvai_create_override` x4 (Pre Launch Init, Actor Core, Stop Core, Handle Error) | protected, dynamic, state 1 | same |
+| `lvai_af_add_hook`: `seriesAfter` PLI (Fail Init), `branch` Actor Core, `seriesAfter` Stop Core and Handle Error (Pass) | all state 1 | same |
+| launcher (`Launch Root Actor` + `Send Normal Stop`) with the PLI hook | launch error `[true,5000,Fail Init]` | same |
+| remove the PLI **series** hook, old code | **`ok: true`, state 1 -> 0, saved broken** | same |
+| launcher after that | Error 1003, `Launch Actor Core.vi` | same |
+| remove the Stop Core **series** hook, new code | `seriesHookNotRemovable`, nothing changed, state 1 | same |
+| remove the Actor Core **branch** hook, new code | `ok`, `hookShape.seriesNodes: 0`, state 1 cold, no hook in the export | same |
+
+The two exporters spell a member target differently - NI's `C.lvclass\3APass.vi`, the reader's
+`C.lvclass:Pass.vi` - and the reader leaves the Call Parent node out of its export
+(`callParentDynIUse ... not read`). Neither matters to the series check: it compares the target's
+file name and looks only at the hook's own outputs.
+
 Still open:
 
 1. The folder a re-run over a member in a virtual folder puts it back into (item 4).
 2. Any hook shape on Handle Last Ack Core (§3b).
 3. Edits made by scripting are invisible to the unsaved-edit checks (§4), so they cannot refuse them.
+4. `removeBrokeOverride` (§4 step 4) is unit-tested only: with the series shape refused up front, no
+   live case reached it.
+5. Removing a series hook by reconnecting its source to its sinks (the inverse of the series insert)
+   is not built; a series hook still needs the bare override back.

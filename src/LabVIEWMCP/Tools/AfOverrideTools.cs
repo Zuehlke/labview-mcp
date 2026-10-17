@@ -609,10 +609,13 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         wire leaves a loose end, and both the override and a sibling override of the same class then
         read state 0 ("error of type 1000088"); Remove Bad Wires on the edited VI cleared both
         (measured). The node is chosen by the hook's VI name; with two of the same name pass
-        `occurrence`. A dry run lists the subVIs on the diagram. A series hook cannot be put back by
-        a delete: the wire through it is gone, and Remove Bad Wires leaves the override's terminal
-        unwired - for a series hook restore the bare override from version control and re-hook
-        instead. NEEDS THE PROJECT OPEN AND ACTIVE. The kit's delete + clean route is measured;
+        `occurrence`. A dry run lists the subVIs on the diagram. A SERIES HOOK IS REFUSED before
+        anything changes (`seriesHookNotRemovable`, with `hookShape` read off the override's own
+        export): a delete cuts the wire through it, and on Pre Launch Init that left the override
+        eBad on both backends, measured 2026-10-17 - restore the bare override from version control
+        or recreate it with lvai_create_override, and hook again. And a remove that leaves the
+        override broken anyway is NOT SAVED (`removeBrokeOverride`): the file on disk stays the
+        working one. NEEDS THE PROJECT OPEN AND ACTIVE. The kit's delete + clean route is measured;
         Measured 2026-10-10: one hook removed (matches 1, state 1 cold for the override and every
         sibling), `hookNodeAmbiguous` and `occurrence`. NOT RELIABLE: the unsaved-edit check and the
         sibling re-save both read the FP/BD Mods Bitsets. A hand edit in the IDE sets them - a sibling
@@ -683,6 +686,30 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
             var siblings = SiblingOverrides(target);
             detail["siblingOverrides"] = DqmhHeadless.Array(siblings);
 
+            // A SERIES HOOK IS REFUSED BEFORE ANYTHING CHANGES. Its output feeds the rest of the
+            // override, so a delete leaves that sink unwired - measured 2026-10-17 on Pre Launch Init
+            // on both backends: state 1 before, 0 after ("Run-time type not propagated from dynamic
+            // input to dynamic output"), and the call then SAVED that over the working override.
+            // The override's own export says which shape it is, on the backend in force.
+            var (aixml, exportCode, exportMessage) = await BackendRoute.ExportAsync(
+                connection, target.OverridePath, "af-remove", timeoutSeconds, ct);
+            var shape = exportCode == 0 && aixml is not null ? HookShape(aixml, exact) : null;
+            detail["hookShape"] = shape is null
+                ? new JsonObject { ["read"] = false, ["reason"] = exportMessage ?? "the export did not parse" }
+                : new JsonObject
+                {
+                    ["read"] = true,
+                    ["nodes"] = shape.Nodes,
+                    ["seriesNodes"] = shape.SeriesNodes,
+                    ["consumedOutputs"] = DqmhHeadless.Array(shape.ConsumedOutputs),
+                };
+            if (shape is { Nodes: > 0 } && shape.SeriesNodes == shape.Nodes)
+                return Json.Error("seriesHookNotRemovable",
+                    $"'{exact}' sits IN SERIES: its output ({string.Join(", ", shape.ConsumedOutputs)}) " +
+                    "feeds the rest of the override, so deleting it would leave that wire cut and the " +
+                    "override not executable. Nothing was changed. Restore the bare override from " +
+                    "version control (or recreate it with lvai_create_override) and hook again.", detail);
+
             // UNSAVED EDITS THIS CALL DID NOT MAKE ARE NOT ITS TO SAVE. The sibling re-save below
             // exists for the 1000088 loose end the delete leaves, so a sibling that is ALREADY
             // modified before anything changes carries someone else's work - refused, named, and
@@ -712,7 +739,12 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                 return Json.Error("helperFailed", "The hook could not be removed.",
                     DqmhHeadless.Merge(detail, new JsonObject { ["helperError"] = removeError, ["steps"] = steps }));
             var failed = FirstFailedStage(removed, RemoveStages);
-            var removedOk = failed is null;
+            var stateBefore = Int(DqmhTools.Scalar(removed, "state before"));
+            var stateAfter = Int(DqmhTools.Scalar(removed, "state after"));
+            // A REMOVE THAT BROKE THE OVERRIDE IS NOT SAVED: saving would write the broken VI over
+            // the working one. The pre-check above refuses the series shape; this catches the rest.
+            var brokeIt = failed is null && BrokeOverride(stateBefore, stateAfter);
+            var removedOk = failed is null && !brokeIt;
 
             JsonObject? save = null, siblingSave = null;
             if (removedOk)
@@ -731,10 +763,11 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
             return Json.Document(DqmhHeadless.Merge(new JsonObject
             {
                 ["ok"] = removedOk && saved,
-                ["failedAtStep"] = !removedOk ? failed?.Label : !saved ? "save" : null,
+                ["failedAtStep"] = brokeIt ? "overrideBroken" : !removedOk ? failed?.Label : !saved ? "save" : null,
+                ["errorKind"] = brokeIt ? "removeBrokeOverride" : null,
                 ["errorCode"] = failed is null ? null : StageCode(removed, failed.Value.Indicator),
-                ["execStateBefore"] = Int(DqmhTools.Scalar(removed, "state before")),
-                ["execStateAfter"] = Int(DqmhTools.Scalar(removed, "state after")),
+                ["execStateBefore"] = stateBefore,
+                ["execStateAfter"] = stateAfter,
                 ["save"] = save,
                 ["siblingSave"] = siblingSave,
                 ["projectPath"] = project,
@@ -743,8 +776,13 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                 ["note"] = removedOk && saved
                     ? "Removed, bad wires cleared, saved. Close the project and read the override and " +
                       "every sibling override COLD with lvai_exec_state."
-                    : "Not fully done - read failedAtStep. Anything unsaved is in memory only: close " +
-                      "the project WITHOUT saving to discard it.",
+                    : brokeIt
+                        ? "The delete left the override NOT executable, so NOTHING WAS SAVED - the file on " +
+                          "disk is still the working override. The broken copy is in LabVIEW's memory only: " +
+                          "close the project in the IDE with Don't Save (lvai_close_active_project SAVES " +
+                          "first and would write it), or restart LabVIEW."
+                        : "Not fully done - read failedAtStep. Anything unsaved is in memory only: close " +
+                          "the project WITHOUT saving to discard it.",
             }, detail));
         }));
 
@@ -805,6 +843,58 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         var count = matches.Count;
         var choice = occurrence ?? (count == 1 ? 0 : null);
         return (spellings[0], count, choice is { } c && c < count ? c : null);
+    }
+
+    /// <summary>True when the remove turned an executable override into a broken one.</summary>
+    internal static bool BrokeOverride(int? stateBefore, int? stateAfter) =>
+        stateBefore is not 0 && stateAfter is 0;
+
+    /// <summary>How the hook's nodes sit on the override, read off its AIXML export.</summary>
+    internal sealed record HookShapeResult(int Nodes, int SeriesNodes, List<string> ConsumedOutputs);
+
+    /// <summary>
+    /// The nodes calling <paramref name="hookViName"/> and how many of them are IN SERIES: an output
+    /// net that any other element reads. The two exporters spell the target differently - NI's
+    /// `C.lvclass\3AHook.vi`, the reader's `C.lvclass:Hook.vi` - so the file name after the last
+    /// `:` or `\` is compared. Null when the export does not parse.
+    /// </summary>
+    internal static HookShapeResult? HookShape(string aixml, string hookViName)
+    {
+        XDocument doc;
+        try { doc = XDocument.Parse(aixml); }
+        catch (System.Xml.XmlException) { return null; }
+        var wanted = LeafName(hookViName);
+        var elements = doc.Descendants().ToList();
+        var read = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var e in elements)
+        {
+            foreach (var net in Pairs(e.Attribute("inputs")?.Value).Select(p => p.Net))
+                if (net.Length > 0) read.Add(net);
+            foreach (var name in new[] { "cond", "selectin" })
+                if (e.Attribute(name)?.Value is { Length: > 0 } v) read.Add(v);
+        }
+        int nodes = 0, series = 0;
+        var consumed = new List<string>();
+        foreach (var call in elements.Where(e => e.Name.LocalName == "Call"
+                     && string.Equals(LeafName(Decode(e.Attribute("target")?.Value ?? "")), wanted,
+                         StringComparison.OrdinalIgnoreCase)))
+        {
+            nodes++;
+            var outs = Pairs(call.Attribute("outputs")?.Value)
+                .Where(p => p.Net.Length > 0 && read.Contains(p.Net)).Select(p => p.Terminal).ToList();
+            if (outs.Count == 0) continue;
+            series++;
+            consumed.AddRange(outs.Where(o => !consumed.Contains(o)));
+        }
+        return new HookShapeResult(nodes, series, consumed);
+
+        static string Decode(string s) => s.Replace(@"\3A", ":").Replace(@"\5C", @"\");
+        static string LeafName(string s) => s[(s.LastIndexOfAny([':', '\\']) + 1)..];
+        static IEnumerable<(string Terminal, string Net)> Pairs(string? list) =>
+            (list ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(p => p.Split(':', 2))
+                .Where(p => p.Length == 2)
+                .Select(p => (p[0], p[1]));
     }
 
     /// <summary>
