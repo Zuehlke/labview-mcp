@@ -194,7 +194,9 @@ instance holds its own copy of the VI.
 
 1. `lvai_status`; if `ok: false`, `lvai_ensure_labview` once, then `lvai_status` again. Still
    nothing → stop. If the probed ports are `LabVIEW.exe` listeners all answering `Unavailable`,
-   LabVIEW is up and the AI service has not started — it starts with **Nigel**, not the IDE.
+   LabVIEW is up and the AI service has not started YET — it comes up with LabVIEW itself, about
+   45 s after a cold start, no Nigel chat needed (measured 2026-10-17). Wait and call `lvai_status`
+   again; only if it is still missing after about two minutes ask the user to open Nigel.
 2. The `.vi` path comes from the task prompt. If it is missing or several VIs match, that is a
    `NEEDS CLARIFICATION`, not a guess — you would be overwriting the wrong file.
 3. `lvai_describe_vi` on the target → `owningProjectPath`, and the terminals you will have to

@@ -1639,6 +1639,20 @@ terminals** for a VI that is not yet a class member, so every wire is refused
 chicken-and-egg with no way round it. An override reads what it needs through the parent's public
 accessors instead. Note a *static* call to the parent's method would be wrong anyway: a dynamic
 dispatch subVI dispatches on the object, so a child's wire recurses into the child's own override.
+**That workaround does NOT apply to Actor Framework lifecycle overrides** (Pre Launch Init, Actor
+Core, Stop Core, Handle Error): they must call the parent - Actor Core's Call Parent is the message
+loop, Stop Core's stops the nested actors - so never build one with `lvai_add_class_method`. No
+tool here creates them yet; a colleague's fork has `lvai_create_override`, which lets NI's provider
+place the Call Parent node, and it is a candidate to port.
+
+**A PRIVATE CLASS MEMBER MUST BE STATIC - measured 2026-10-17.** A private dynamic-dispatch VI is
+`eBad` (*"Dynamic dispatch VIs cannot be in private scope"*, linker text `error of type 2000000`)
+and so is every caller; a private static member in the same class stayed executable. It is the one
+exception to "dynamic dispatch is the default". And setting the scope by editing
+`NI.ClassItem.MethodScope` in the `.lvclass` does NOTHING - LabVIEW ignored it through a cold
+restart, and a caller outside the class still ran. Through VI Server (`{LV.Project}` `Proj Item
+From Ref` -> `{LV.LVClassLibrary}` `Set Source Scope` -> `Save`) LabVIEW writes `NI.LibItem.Scope`
+beside it and changes `NI.ClassItem.State`, and only then is the member private.
 
 **CLOSE EVERY REFNUM A PROVIDER HANDS BACK, and treat a leak as a correctness bug rather than an
 untidiness.** `Add Class to Project (path).vi` returns a `Class` reference; leaving it open kept the

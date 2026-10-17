@@ -52,6 +52,12 @@ they were all measured, most of them twice.
   data accessors is a judgement the user did not ask for — it cost a full rebuild of twelve
   accessors once, and the correction was explicit: *"stelle bitte alles noch auf dynamic dispatch
   um. Das sollte Default sein, wenn wir klassen erstellen!"* Only an explicit request changes it.
+  **The one exception is a PRIVATE member: it must be STATIC** (`dynamicDispatch: false`). Measured
+  2026-10-17 with LabVIEW setting the scope itself: a private dynamic-dispatch VI is `eBad` -
+  *"Dynamic dispatch VIs cannot be in private scope"*, linker text `VI has an error of type
+  2000000` - and every caller with it, while a private STATIC member stayed executable. So when
+  the task makes a member private (an actor's accessors used only by its own helper VIs are the
+  common case), create it static and say so in your report.
 
 - **Back-to-back class calls on one project USUALLY work — do not restart pre-emptively, but be
   ready to.** Closing the `Class` refnum NI's provider returns (a leak the helper had for months)
@@ -143,7 +149,9 @@ they were all measured, most of them twice.
 ### Phase 0 — LabVIEW, and the project you are writing into
 
 1. `lvai_status`. If it answers `Unavailable` on LabVIEW.exe listeners, the IDE is up but the
-   service is not — the user has to open Nigel. If it answers `DeadlineExceeded`, LabVIEW is
+   service is not YET — it comes up with LabVIEW itself, about 45 s after a cold start, no Nigel
+   chat needed (measured 2026-10-17); carry on with step 2 and call `lvai_status` again. Only if it
+   is still `Unavailable` after about two minutes ask the user to open Nigel. If it answers `DeadlineExceeded`, LabVIEW is
    **hung**: confirm with `(Get-Process LabVIEW).Responding` and kill it.
 2. `lvai_ensure_labview` until `state: ready`. The first call after a start often returns
    `starting`; calling again is normal and is not an error.
@@ -273,6 +281,11 @@ it again.
    conversion, so it is chicken-and-egg with no way round. An override reads what it needs through
    the parent's public accessors instead. A *static* call to the parent would be wrong anyway: a
    dynamic dispatch subVI dispatches on the object, so a child's wire recurses into its own override.
+   **This workaround does NOT apply to Actor Framework lifecycle overrides** (Pre Launch Init, Actor
+   Core, Stop Core, Handle Error): they MUST call the parent - Actor Core's Call Parent IS the
+   message loop, Stop Core's stops the nested actors. Never build one with
+   `lvai_add_class_method`: an Actor Core without its Call Parent has no message loop at all.
+   No tool here creates them yet; stop and report the override as open work.
 
 7. **The declaration body may be empty, and usually should be.** An interface method exists to fix
    the signature; give it whatever a caller of the unimplemented contract should see — an empty

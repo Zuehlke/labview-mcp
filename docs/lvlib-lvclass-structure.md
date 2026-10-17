@@ -75,6 +75,17 @@ writes the *effective* scope onto each class member.
   corpus carry their own `NI.LibItem.Scope`**, and an item's own value wins over the folder's.
 - **`.lvclass`: every member VI carries its own effective scope** in `NI.ClassItem.MethodScope`.
   No propagation needed — read it per item.
+- **READING `MethodScope` IS SAFE; WRITING IT IS NOT.** Measured 2026-10-17 on a two-field probe
+  class: changing `NI.ClassItem.MethodScope` from `1` to `2` in the file (project closed) changed
+  nothing LabVIEW enforced - through a LabVIEW restart, a VI outside the class still called the
+  "private" member and ran. Setting the scope through VI Server (`{LV.Project}` `Proj Item From
+  Ref` on the member's VI reference, then `{LV.LVClassLibrary}` `Set Source Scope` with `Scope` 2,
+  then `Save`) made LabVIEW write THREE things: `MethodScope` 2, a new `NI.LibItem.Scope` 2 on the
+  item, and a different `NI.ClassItem.State` - and only then was the outside caller broken
+  (*"This VI cannot access the referenced item in private scope"*). So a private class member is
+  made through LabVIEW, never by a file edit. The same probe measured that a PRIVATE
+  DYNAMIC-DISPATCH member is broken (*"Dynamic dispatch VIs cannot be in private scope"*, linker
+  text `error of type 2000000`) while a private static member stays executable.
 
 ### Never read the folder name
 

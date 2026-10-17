@@ -242,7 +242,9 @@ it an icon.
    documentation generator there is no useful offline mode, since nothing can be validated,
    generated or run. Report what was tried.
    If the probed ports are `LabVIEW.exe` listeners all answering `Unavailable`, LabVIEW is up and
-   the AI service simply has not started — it starts with **Nigel**, not with the IDE. Say that.
+   the AI service has not started YET — it comes up with LabVIEW itself, about 45 s after a cold
+   start, no Nigel chat needed (measured 2026-10-17). Wait and call `lvai_status` again; only if it
+   is still missing after about two minutes, say that and ask the user to open Nigel.
 2. Resolve the project, in this order. Stop at the first that answers:
    1. a `.lvproj` in the task prompt,
    2. `lvai_describe_vi` on a VI the user named → its `owningProjectPath`,
