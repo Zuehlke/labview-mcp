@@ -1418,8 +1418,14 @@ three gaps, all closed; `docs/lvclass-creation.md` §10e has the acceptance on b
   helper - `LVClass.Open`, `Get All Descendents`, `AddItem` and `LVClassLibrary.Save` loaded
   executable, `Move` alone did not - then compared with NI's build of the same probe, which flags
   the FIRST invoke item as wired. The map keeps the first row now. A/B over every document in
-  `scripts\` (`helper_coverage.py --skip-ni`): 98 of 103 composed and executable before, 99 after,
-  nothing lost. (The two builds' `nodeName` differ too - NI's `Instr`, the composer's
+  `scripts\` (`helper_coverage.py --skip-ni`): of 99 composed, 97 executable before - the two
+  move helpers not - and 99 after, nothing else changed.
+- **Testing a composer change means changing the CHECKOUT's copy.** A server started from a
+  source checkout takes `aixml2vi.py` and `parts\` from the checkout's `scripts\aixml-pylabview`
+  (`AixmlComposer.Locate` walks up from the exe before it looks beside it), and the resident worker
+  reads that live copy. The first A/B of the fix above swapped the copy in `bin\` and so ran the
+  new composer in both arms - "98 before, 99 after", where the one difference was an unrelated
+  AIXML edit. (The two builds' `nodeName` differ too - NI's `Instr`, the composer's
   `ProjectItem` - which is the 2026-10-14 finding above, not a fault.)
 - **`{LV.Library}` `Modifications Bit Set` was not in the table**; harvested from the NI-built
   helpers with `harvest_parts.py --props` (code 1292953627, on `LV.Library` and

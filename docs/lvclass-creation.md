@@ -1966,10 +1966,17 @@ one VI, a loose `Helper.vi` and a `Caller.vi` that calls it), every call driven 
 | VI descriptions with a project active | `projectActive` | same |
 
 So these marks are settled: the `.lvlib` routes of 10a and 10b, the class-ROOT route and `Type VI`
-for a `.vi` in 10d, and the `callersNotLoaded` and `projectActive` guards. **Still unmeasured:** the
-unsaved-changes refusals (`ownerHasUnsavedChanges`, `viHasUnsavedChanges`, `unsavedChangesBefore`),
-the all-or-nothing `itemsNotFoundByLabview`, and `lvai_add_to_class` with a `.ctl` (the fork's 11
-typedefs ran on gRPC only).
+for a `.vi` in 10d, and the `callersNotLoaded` and `projectActive` guards.
+
+**The open marks, measured the same day on the same fixtures:**
+
+| what | result | backends |
+|---|---|---|
+| `ownerHasUnsavedChanges` | a probe wrote the class's description through VI Server WITHOUT saving: `{LV.Library}` `Modifications Bit Set` went 0 -> 512, and `lvai_set_class_description` and `lvai_move_to_folder` both refused, nothing written; the same on the `.lvlib`. After the probe saved, the next call went through | both, each call on each |
+| a `.ctl` into the class | `lvai_create_typedef` made a loose `uint16{Off,On}` typedef; `lvai_add_to_class` added it, `verified`, its `LIBN` naming the class, still `isTypedef` afterwards | both |
+| a `.ctl` moved into a folder | moved, `verified` - `Get All Descendents` with Type `VI` DOES list a `.ctl` member | both |
+| `itemsNotFoundByLabview` | NOT REACHED. The case it was written for - a `.ctl` member not listed under Type `VI` - does not occur (row above), and no other fixture made `Get All Descendents` miss a member the file lists. The refusal stays, unit-tested only | - |
+| `viHasUnsavedChanges`, `unsavedChangesBefore` | NOT REACHED BY SCRIPT. They read a VI's Front Panel and Block Diagram Mods Bitsets, and neither moved for a `VI Description` write nor for `Default Vals.Make Curr Default` - `VI Modifications Bitset Old` stayed 0 too. A hand edit in the IDE sets them (measured for the AF tools, `af-override-tools.md` §4); a VI changed only by another script's unsaved edit is not refused | - |
 
 **What the port changed to get there**, each one found by this run rather than by reading:
 
@@ -1989,8 +1996,11 @@ typedefs ran on gRPC only).
   the LAST row - "Invoke Node: Contains unwired or bad terminal", the move helpers broken while
   every probe of the other four invoke nodes loaded executable. `aixml2vi.py` now keeps the first
   row, the one NI's converter wires. Checked as an A/B over every helper document in `scripts\`
-  (`helper_coverage.py --skip-ni`): 98 of 103 composed and executable before, 99 after, the one
-  difference being the next item, nothing lost.
+  (`helper_coverage.py --skip-ni`): 99 composed, **97 executable before - the two move helpers
+  not - and 99 after**, nothing else changed. **A first attempt at that A/B measured nothing**:
+  the old composer was copied into `bin\`, and a server started from a checkout loads the
+  composer and its parts from the CHECKOUT (`AixmlComposer.Locate` walks up from the exe first),
+  so both arms ran the new code and agreed. To test a composer change, change the checkout's copy.
 - **Two constants of `lvai_add_to_class.xml` sat on the root diagram** and were read inside a case
   frame; the composer refuses a net that crosses a diagram boundary without a tunnel. Moved into
   the frame that reads them.
