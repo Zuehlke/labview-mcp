@@ -36,6 +36,18 @@ internal sealed class HousekeepingHelpers(LvaiConnection connection)
         if (!File.Exists(aixml))
             return (null, false, Json.Error("scriptsMissing", $"No helper AIXML at '{aixml}'."));
 
+        // ON pylabview THE HELPER IS COMPOSED, not built by NI's converter, and runs over ActiveX
+        // (RunAsync below routes the same way) - so none of these tools needs NI's service there.
+        if (DqmhTools.OnPyLabview)
+        {
+            var (composed, problem) = await ComposedHelpers.EnsureAsync(helperName + ".xml", timeoutSeconds, ct);
+            return composed is not null
+                ? (composed, false, null)
+                : (null, false, Json.Error("helperNotComposable",
+                    $"The helper {helperName}.xml could not be composed for the pylabview backend: {problem}",
+                    new { aiXmlPath = aixml }));
+        }
+
         var helperVi = Path.Combine(DqmhTools.HelperDirectory(), helperName + ".vi");
         if (!HelperCache.NeedsRebuild(aixml, helperVi)) return (helperVi, false, null);
         Directory.CreateDirectory(Path.GetDirectoryName(helperVi)!);
@@ -102,22 +114,21 @@ internal sealed class HousekeepingHelpers(LvaiConnection connection)
     internal async Task<JsonArray> OpenThroughProjectAsync(
         IEnumerable<string> viPaths, string projectPath, int timeoutSeconds, CancellationToken ct)
     {
+        // THROUGH lvai_open_file, which follows the calling tool's backend: NI's OpenFile on grpc,
+        // the composed lvai_open_vi_in_project over ActiveX on pylabview.
         var opened = new JsonArray();
+        var actions = new ActionTools(connection);
         foreach (var vi in viPaths)
         {
-            var response = await connection.InvokeAsync((c, t) =>
-                c.OpenFileAsync(new OpenFileRequest
-                {
-                    ViPath = vi,
-                    ViName = Path.GetFileName(vi),
-                    ProjectPath = projectPath,
-                    ProjectName = Path.GetFileName(projectPath),
-                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+            var answer = Parse(await actions.OpenFileAsync(viPath: vi, viName: Path.GetFileName(vi),
+                projectPath: projectPath, projectName: Path.GetFileName(projectPath), checkActive: false,
+                timeoutSeconds, ct: ct)) as JsonObject;
+            var code = answer?["errorCode"] is JsonValue c && c.TryGetValue<int>(out var n) ? n : -1;
             opened.Add(new JsonObject
             {
                 ["viPath"] = vi,
-                ["errorCode"] = response.ErrorCode,
-                ["errorMessage"] = response.ErrorMessage,
+                ["errorCode"] = code,
+                ["errorMessage"] = answer?["errorMessage"]?.DeepClone() ?? answer?["error"]?.DeepClone(),
             });
         }
         return opened;

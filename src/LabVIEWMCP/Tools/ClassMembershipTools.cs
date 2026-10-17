@@ -106,8 +106,9 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
             """)]
         bool acceptUnlistedCallers = false,
         [Description("Local budget in seconds, per LabVIEW step")] int timeoutSeconds = 180,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_add_to_class", async () =>
         {
             var plan = Plan(lvclassPath, itemPaths, projectPath, folder, createFolder, callerPaths,
                             acceptUnlistedCallers);
@@ -193,7 +194,7 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
                               ["addHelperViPath"] = addVi, ["saveHelperViPath"] = saveVi,
                               ["helpersGenerated"] = addGenerated || saveGenerated,
                           });
-        });
+        }));
 
     /// <summary>Everything settled from the files, before LabVIEW.</summary>
     internal sealed record AddPlan(

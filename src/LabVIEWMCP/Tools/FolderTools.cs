@@ -78,8 +78,9 @@ internal sealed class FolderTools(LvaiConnection connection)
         [Description("The .lvproj to open (and make active) first; it is not edited")]
         string? projectPath = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 120,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_move_to_folder", async () =>
         {
             var plan = Plan(ownerPath, folder, itemNames, createFolder);
             if (plan.Refusal is not null) return plan.Refusal;
@@ -121,7 +122,7 @@ internal sealed class FolderTools(LvaiConnection connection)
             var after = FileStamps.Take([directory]);
 
             return Classify(owner, plan, values, helperError, before, after, helperVi!, generated, steps);
-        });
+        }));
 
     /// <summary>What a call will do, settled from the owner file alone - or why it will not.</summary>
     internal sealed record MovePlan(string? Refusal, OwnerFile? Owner, string? Folder, bool FolderExists,

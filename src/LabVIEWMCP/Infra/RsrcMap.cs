@@ -56,6 +56,44 @@ internal static class RsrcMap
         }
     }
 
+    /// <summary>
+    /// The raw sections of one block type, in map order - the same map <see cref="BlockTypes"/>
+    /// reads, followed further: each 12-byte entry is the type, a section count minus one and an
+    /// offset (from the block-info list) to that many 20-byte section records, whose field at 12 is
+    /// the section's offset into the DATA area named by the first header (byte 24), where a 4-byte
+    /// length precedes the bytes. Ported from a colleague's fork (ViIconLayers.Blocks, 2026-10-12),
+    /// which reads STRG, LIBN, the link records and the icon resources with it. Throws
+    /// <see cref="InvalidDataException"/> for bytes that are not a resource file it can read.
+    /// </summary>
+    internal static IReadOnlyList<byte[]> Blocks(byte[] file, string type)
+    {
+        if (BlockTypes(file) is null)
+            throw new InvalidDataException("not a LabVIEW resource file this reader understands");
+        int U32(int at) => checked((int)BinaryPrimitives.ReadUInt32BigEndian(file.AsSpan(at, 4)));
+
+        int current = -1, next = 0;
+        while (current != next) { current = next; next = U32(current + 16); }
+        var dataOffset = U32(24);
+        var blockInfo = current + U32(current + HeaderSize + 12);
+        var count = U32(blockInfo) + 1;
+
+        var sections = new List<byte[]>();
+        for (var i = 0; i < count; i++)
+        {
+            var entry = blockInfo + 4 + i * 12;
+            if (Encoding.Latin1.GetString(file, entry, 4) != type) continue;
+            var sectionCount = U32(entry + 4) + 1;
+            var listOffset = U32(entry + 8);
+            for (var s = 0; s < sectionCount; s++)
+            {
+                var record = blockInfo + listOffset + s * 20;
+                var at = dataOffset + U32(record + 12);
+                sections.Add(file.AsSpan(at + 4, U32(at)).ToArray());
+            }
+        }
+        return sections;
+    }
+
     /// <summary>Whether the file's own map lists <paramref name="type"/>. A file the reader cannot
     /// parse falls back to the byte search, so an unreadable file is never called clean.</summary>
     public static bool Lists(ReadOnlySpan<byte> file, string type) =>

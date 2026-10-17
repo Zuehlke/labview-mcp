@@ -70,8 +70,9 @@ internal sealed class ViDescriptionTools(LvaiConnection connection)
             """)]
         string entriesJson,
         [Description("Local budget in seconds, per VI")] int timeoutSeconds = 120,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_set_vi_descriptions", async () =>
         {
             var (entries, refusal) = Parse(entriesJson);
             if (refusal is not null) return refusal;
@@ -130,7 +131,7 @@ internal sealed class ViDescriptionTools(LvaiConnection connection)
                           "during the call - read otherFilesChanged."
                     : "At least one VI was not verified - read each result's errorKind and note.",
             });
-        });
+        }));
 
     internal sealed record Entry(int Index, string ViPath, string Description);
 

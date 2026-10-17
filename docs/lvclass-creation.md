@@ -1898,7 +1898,7 @@ and compared with the text, line breaks as LF. The icon PIXELS - the `icl8`, `ic
 resources - are hashed before and after, and an entry whose icon changed is not `ok`, because this
 call must never touch one. The CP1252 check refuses the whole batch for one bad entry, so entry 40
 of a batch cannot be refused after 39 VIs were already changed. **New in the port, unmeasured:** a VI
-that already carries unsaved changes (any of the three Modifications bitsets nonzero) is left alone,
+that already carries unsaved changes (the Front Panel or Block Diagram Mods Bitset nonzero) is left alone,
 because `Save.Instrument` would write those changes too.
 
 ### 10d. `lvai_add_to_class` - an existing `.ctl` or VI into a class
@@ -1923,7 +1923,7 @@ before LabVIEW is touched. It is a heuristic - a same-named file in another fold
 which is what `acceptUnlistedCallers` is for.
 
 **Only listed callers are saved.** `scripts/lvai_save_modified_vis.xml` lists every VI in memory of
-the project's instance with its three Modifications bitsets and saves only those that are
+the project's instance with its Front Panel and Block Diagram Mods Bitsets and saves only those that are
 modified AND in the list; the rest are reported (`modifiedNotSaved`). The same helper runs first
 in read-only mode, and anything already modified refuses the call (`unsavedChangesBefore`), because
 the class save and the caller saves would write it. The kit helper it is ported from saved EVERY
