@@ -1430,7 +1430,11 @@ fails `errorKind: comStartedLabView`.
 `LabViewCom.Attach`, which ends the started process and answers `labviewNotAnswering`. The merge
 keeps that guard and that answer, and takes the fork's bitness choice for the activation itself, so
 `comStartedLabView` does not occur. Only a single-bitness station was available for the merge, so
-the mixed-bitness case is the fork's measurement, not re-run here.
+the mixed-bitness case is the fork's measurement, not re-run here. What was re-run on 2026-10-17,
+with the same build: every pylabview call of the merge's acceptance attached to the running
+LabVIEW 2026 32-bit through the new activation, and three `lvai_exec_state` calls fired together
+all read the Error List (`errorsRead: true`) - where the same three, before the fork's process-wide
+ActiveX gate came in with the smoke-test fixes, had answered `Get Errors answered error 1026` on one.
 
 **Accepted the same day over raw stdio**, the built server, `backend: pylabview`, a six-terminal VI
 (`y = x * gain + offset`, error cluster passed through), with main's build as the control arm:
