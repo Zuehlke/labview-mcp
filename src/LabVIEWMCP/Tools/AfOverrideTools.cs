@@ -92,8 +92,9 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
             """)]
         string? newViPath = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_create_override", async () =>
         {
             var (plan, refusal) = PlanCreate(classPath, parentMethod, newViPath);
             if (refusal is not null) return refusal;
@@ -168,7 +169,7 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                     : "The helper reported no error but the class file does not show a dynamic member at " +
                       "the new path. Treat this as a failure and read `verify`.",
             });
-        });
+        }));
 
     /// <summary>The helper's stages in diagram order, each with the name a failure reports.</summary>
     internal static readonly (string Indicator, string Label)[] CreateStages =
@@ -433,8 +434,9 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         [Description("The .lvproj to open first; omit when it is already open and active")]
         string? projectPath = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_af_add_hook", async () =>
         {
             if (AfOverrides.ParseShape(shape) is not { } parsed)
                 return Json.Error("badArguments",
@@ -580,7 +582,7 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                           "control with the project closed) before trying again.",
             };
             return Json.Document(DqmhHeadless.Merge(answer, detail));
-        });
+        }));
 
     internal static readonly (string Indicator, string Label)[] AddStages =
     [
@@ -629,8 +631,9 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         [Description("The .lvproj to open first; omit when it is already open and active")]
         string? projectPath = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_af_remove_hook", async () =>
         {
             var (target, targetError) = Target(overridePath, classPath);
             if (targetError is not null) return targetError;
@@ -743,7 +746,7 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                     : "Not fully done - read failedAtStep. Anything unsaved is in memory only: close " +
                       "the project WITHOUT saving to discard it.",
             }, detail));
-        });
+        }));
 
     internal const string ModifiedHelper = "lvai_af_modified_members";
 
@@ -987,21 +990,11 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
     private async Task<(ViTerminals.Result? Terms, string? Error)> TerminalsAsync(
         string vi, int timeoutSeconds, CancellationToken ct)
     {
-        var export = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", $"af-hook.{Guid.NewGuid():N}.xml");
-        Directory.CreateDirectory(Path.GetDirectoryName(export)!);
-        var exported = await connection.InvokeAsync((c, t) =>
-            c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest { ViPath = vi, AiXMLFilePath = export },
-                deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-        try
-        {
-            if (exported.ErrorCode != 0 || !File.Exists(export)) return (null, exported.ErrorMessage);
-            return ViTerminals.Parse(File.ReadAllText(export)) is { } parsed
-                ? (parsed, null) : (null, "the export did not parse");
-        }
-        finally
-        {
-            if (File.Exists(export)) File.Delete(export);
-        }
+        // ON THE BACKEND IN FORCE: NI's converter on grpc, our reader on pylabview - so a hook's
+        // terminals are read without NI's service when the call runs without it.
+        var (aixml, code, message) = await BackendRoute.ExportAsync(connection, vi, "af-hook", timeoutSeconds, ct);
+        if (code != 0 || aixml is null) return (null, message);
+        return ViTerminals.Parse(aixml) is { } parsed ? (parsed, null) : (null, "the export did not parse");
     }
 
     // ------------------------------------------------------------------ reading helper output

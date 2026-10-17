@@ -1165,14 +1165,15 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             timeoutSeconds: timeoutSeconds, ct: ct);
         step["closeProject"] = Read(closed);
 
-        var (text, notes) = ClassMemberPlacement.Restore(File.ReadAllText(classPath), placements);
+        var (classText, classStyle) = LvTextFile.Read(classPath);
+        var (text, notes) = ClassMemberPlacement.Restore(classText, placements);
         step["notes"] = new JsonArray([.. notes.Select(n => (JsonNode)n)]);
         var restored = false;
         if (text is not null)
         {
             try
             {
-                File.WriteAllText(classPath, text);
+                LvTextFile.Write(classPath, text, classStyle);
                 restored = true;
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
