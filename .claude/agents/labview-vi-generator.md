@@ -788,6 +788,11 @@ paste each other's diagrams.
 
 ### Phase 7 — The icon, last
 
+**`lvai_generate_vi` already drew one** (since 2026-10-17, its `icon` step, lines derived from the
+VI name). Pass `icon="DAQ|3AI|TDMS"` to that call to choose the text up front - then this phase is
+only a check of that step's `ok`. Use the call below when the step failed or the VI was changed
+afterwards by a route that does not keep it.
+
 **One call. Do not draw the PNG yourself.**
 
 ```

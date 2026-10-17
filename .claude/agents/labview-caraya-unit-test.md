@@ -441,6 +441,11 @@ not demonstrated.
 
 ### Phase 6 — Hand over clean
 
+**The generators draw a default icon themselves since 2026-10-17** (`lvai_generate_vi` and every
+tool built on it end with an `icon` step - `TEST` / `RUN` plus the subject), so check that step's
+`ok` in each answer and report "Icons: n of m"; call `lvai_set_vi_icon` only for a VI whose step
+failed or to replace the derived text.
+
 **Give EVERY test VI and the runner an icon — this is the step that gets forgotten**, and a suite
 whose VIs all carry the default blank icon is unreadable in the project tree and on the runner's
 diagram. One call each, and let the tool draw the PNG rather than building one yourself:

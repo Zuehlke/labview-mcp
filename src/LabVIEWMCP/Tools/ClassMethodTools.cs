@@ -973,6 +973,12 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                                 && cleaned["skipped"]?.GetValue<bool>() != true;
                 }
 
+                // THE ICON LAST - after membership, retype, cleanup and layout, every one a save that
+                // keeps it, and a convert over the path would destroy it. Never gating.
+                var iconStep = await DefaultIcon.ApplyAsync(connection, viPath, method.Icon,
+                    DefaultIcon.Kind.ClassMember, classPath, choice.Name, timeoutSeconds, ct);
+                steps.Add(iconStep);
+
                 added++;
                 var methodResult = new JsonObject
                 {
@@ -980,6 +986,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                     ["vi"] = viPath,
                     ["ok"] = true,
                     ["diagramCleanedUp"] = cleanedUp,
+                    ["iconSet"] = iconStep["ok"]?.GetValue<bool>() == true && iconStep["skipped"] is null,
                     ["terminalsRetyped"] = retyped,
                     ["dynamicDispatchTerminals"] = new JsonArray([.. (indices ?? []).Select(i => (JsonNode)i)]),
                     ["verifiedOnDisk"] = verify,
@@ -1870,7 +1877,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     internal sealed record MethodRequest(string Vi, string? Aixml,
                                          List<ClassTerminal> ClassTerminals,
                                          List<string>? DispatchTerminals,
-                                         List<int>? DispatchTerminalIndices)
+                                         List<int>? DispatchTerminalIndices,
+                                         string? Icon = null)
     {
         public static List<MethodRequest> ParseAll(string json)
         {
@@ -1926,7 +1934,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
 
                 all.Add(new MethodRequest(Path.GetFullPath(vi),
                                           string.IsNullOrWhiteSpace(aixml) ? null : Path.GetFullPath(aixml),
-                                          terminals, dispatchNames, dispatchIndices));
+                                          terminals, dispatchNames, dispatchIndices,
+                                          o["icon"]?.GetValue<string>()));
             }
 
             if (all.Select(m => m.Vi).Distinct(StringComparer.OrdinalIgnoreCase).Count() != all.Count)

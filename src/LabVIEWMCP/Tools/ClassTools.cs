@@ -2091,7 +2091,14 @@ internal sealed class ClassTools(LvaiConnection connection)
             wizard is the same VI either way. helperViPath is ignored there - composed helpers live
             in their own folder. LabVIEW must already be running.
             """)]
-        string? backend = null)
+        string? backend = null,
+        [Description("""
+            Draw an icon on every accessor this call creates - the class's first word as the
+            banner, READ or WRITE and the field under it - as the last step of each slice. Default
+            true; a class that has its OWN icon keeps the template the wizard laid on and is not
+            touched. Reported per VI under `icons`, never gating.
+            """)]
+        bool setIcons = true)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_create_accessors", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
@@ -2370,6 +2377,18 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // answer to use; these raw counts stay as they are and decode nothing.
                 final["memberNames"] = MemberNamesOnDisk(lvclassPath);
                 final["dispatchFlags"] = DispatchFlagsOnDisk(lvclassPath);
+
+                // THE ICONS, before the source-only read: the icon save brings compiled code in and
+                // the icon step strips it again, so the check below sees the final file.
+                if (setIcons)
+                {
+                    var icons = new JsonArray();
+                    foreach (var vi in createdPaths.Distinct(StringComparer.OrdinalIgnoreCase))
+                        icons.Add(await DefaultIcon.ApplyAsync(connection, vi, null,
+                            DefaultIcon.Kind.ClassMember, lvclassPath, choice.Name, timeoutSeconds, ct));
+                    final["icons"] = icons;
+                    final["iconsSet"] = icons.Count(i => i?["ok"]?.GetValue<bool>() == true && i["skipped"] is null);
+                }
 
                 // SOURCE-ONLY, READ FROM EACH SAVED FILE - the user's standing rule is that every
                 // VI this server writes is source-only, asserted rather than assumed.

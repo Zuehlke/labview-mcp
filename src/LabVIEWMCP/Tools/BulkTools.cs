@@ -137,7 +137,12 @@ internal sealed class BulkTools(LvaiConnection connection)
             Omit it to follow cleanUpDiagram. A panel holding a tab control or a splitter is left
             alone (the algorithm answers it with a modal dialog), reported as skipped.
             """)]
-        bool? cleanUpPanel = null)
+        bool? cleanUpPanel = null,
+        [Description(DefaultIcon.ParameterDescription + """
+             Drawn on every deliverable (whenever the diagram is measured), after every other
+            step; helpers and carriers get none.
+            """)]
+        string? icon = null)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_generate_vi", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
@@ -145,7 +150,25 @@ internal sealed class BulkTools(LvaiConnection connection)
         var answer = AixmlTools.WithBackend(await GenerateViCoreAsync(
             aiXmlFilePath, viPath, openVI, measurePane, panePattern, timeoutSeconds, measureDiagram,
             choice, cleanDiagram, cleanUpPanel ?? cleanDiagram, ct), choice);
-        return choice.Name == AixmlBackend.PyLabview ? WithUnmeasuredExecutability(answer) : answer;
+        answer = choice.Name == AixmlBackend.PyLabview ? WithUnmeasuredExecutability(answer) : answer;
+        return await WithIconAsync(answer, viPath, icon, measureDiagram && !openVI, choice.Name,
+                                   timeoutSeconds, ct);
+    }
+
+    /// <summary>
+    /// The `icon` step of lvai_generate_vi: on a written deliverable whose run got past the
+    /// diagram - ok, or stopped only at execState (the routine state of a class method or a caller
+    /// whose class seed is still a path, repaired later by a Replace that keeps the icon).
+    /// </summary>
+    internal async Task<string> WithIconAsync(string answer, string viPath, string? icon, bool wanted,
+                                              string backend, int timeoutSeconds, CancellationToken ct)
+    {
+        if (!wanted || !File.Exists(viPath) || Parsed(answer) is not JsonObject o) return answer;
+        var ok = o["ok"]?.GetValue<bool>() == true;
+        if (!ok && Field(answer, "failedAtStep") != "execState") return answer;
+        var step = await DefaultIcon.ApplyAsync(connection, viPath, icon, DefaultIcon.Kind.Plain,
+                                                owner: null, backend, timeoutSeconds, ct);
+        return DefaultIcon.AppendTo(answer, step);
     }
 
     /// <summary>

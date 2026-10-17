@@ -632,6 +632,14 @@ A child class gets accessors for **its own** fields only. It inherits the parent
 
 ### Phase 4b — Icons on the methods you wrote. Do not skip this.
 
+**THE TOOLS DRAW A DEFAULT ICON THEMSELVES since 2026-10-17** - `lvai_add_class_method` (an
+`icon` key per method, `"L1|L2|L3"` or `"none"`), `lvai_create_accessors` (`setIcons`, default true)
+and `lvai_generate_vi` (`icon`) end with an `icon` step that derives the lines from the class and
+the VI name. So this phase is now a CHECK: read `iconSet` per method and `iconsSet` / `icons` on
+the accessor answer, and call `lvai_set_vi_icon` only for a VI whose step is not `ok`, or to
+replace a derived text with a better one. A class with its OWN icon is skipped by design
+(`ownerIconPresent`) - its members carry its template. Report "Icons: n of m" in your final report.
+
 **This is the step that gets forgotten.** A class whose methods all carry the default blank icon
 is unreadable on a caller's diagram: every call node looks the same, so a reader cannot tell
 `Write Setpoint` from `Read Status` without opening them. One call per VI, and the tool draws the

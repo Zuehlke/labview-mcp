@@ -261,3 +261,23 @@ cache emptied first, two 32x32 web-safe PNGs (A: blue banner, B: red banner):
 Before the `Set Icon` part was harvested, the class icon calls answered `helperNotComposable` on
 pylabview and everything else above already held - the cache included (first read 2046 ms, second
 168 ms).
+
+## 8. The default icon step (2026-10-17)
+
+Every agent definition had an icon phase marked "do not skip", and on 2026-10-17 a class build
+still shipped fifteen VIs and its Caraya suite with LabVIEW's blank icon - the report listed it
+under "Not done". A step that does not change whether a VI works is the first one an agent drops.
+So the producing tools draw the icon themselves now (`Tools/DefaultIcon.cs`):
+
+| tool | parameter | derived lines |
+|---|---|---|
+| `lvai_generate_vi` (and every tool built on it: tests, runner, events) | `icon` | first word of the VI name, then the next two |
+| `lvai_add_class_method` | `icon` key per method | class's first word, then the method name |
+| `lvai_create_accessors` | `setIcons` | class's first word, READ/WRITE, the field |
+
+`"L1|L2|L3"` sets the text, `"none"` leaves the blank icon. Words longer than five characters lose
+their vowels after the first letter (`SAMPLE` -> `SMPL`). The step runs last, never gates `ok`,
+strips the compiled code the icon save brings in, and SKIPS a member whose class or library has its
+own icon (`ownerIconPresent`), because `lvai_set_vi_icon` flattens and would destroy that template.
+Helpers and carriers (`measureDiagram: false`) get no icon. Measured only in unit tests so far; a
+live build is the acceptance test.
