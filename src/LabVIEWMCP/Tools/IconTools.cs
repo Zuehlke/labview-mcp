@@ -139,10 +139,10 @@ internal sealed class IconTools(LvaiConnection connection)
                         "keepOwnLayer re-applies only the class or library template and sets no pixels; " +
                         "iconImagePath and line1/line2/line3 set the VI's pixels and flatten its layers. " +
                         "Pass one or the other.");
-                return await new OwnerIconTools(connection).ReapplyTemplateAsync(
+                return await BackendRoute.WithBackendAsync(choice.Name, "lvai_set_vi_icon", () => new OwnerIconTools(connection).ReapplyTemplateAsync(
                     viPath, ownerPath, readBackPath,
                     helperViPath is { Length: > 0 } ? Path.GetDirectoryName(Path.GetFullPath(helperViPath)) : null,
-                    regenerateHelper, timeoutSeconds, ct);
+                    regenerateHelper, timeoutSeconds, ct));
             }
             if (ownerPath is { Length: > 0 })
                 return Json.Error("badArguments",

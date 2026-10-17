@@ -62,40 +62,8 @@ internal static class ViIconLayers
     }
 
     /// <summary>
-    /// The raw sections of one resource type. Layout: the header names the info and data offsets
-    /// (bytes 16..31); the info block's own header names the block table; each table entry is a
-    /// four-character type, a section count minus one and an offset to that many 20-byte section
-    /// records, whose last field is the section's offset into the data area, where a 4-byte length
-    /// precedes the bytes.
+    /// The raw sections of one resource type - <see cref="RsrcMap.Blocks"/>, the one reader of the
+    /// block table in this repository (the fork carried its own copy here).
     /// </summary>
-    internal static IReadOnlyList<byte[]> Blocks(byte[] file, string type)
-    {
-        if (file.Length < 32 || Encoding.ASCII.GetString(file, 0, 6) != "RSRC\r\n")
-            throw new InvalidDataException("not a LabVIEW resource file (no RSRC header)");
-
-        int U32(int at) => checked((int)BinaryPrimitives.ReadUInt32BigEndian(file.AsSpan(at, 4)));
-
-        var infoOffset = U32(16);
-        var dataOffset = U32(24);
-        var tableOffset = infoOffset + U32(infoOffset + 32 + 12);
-        var types = U32(tableOffset) + 1;
-
-        var sections = new List<byte[]>();
-        for (var i = 0; i < types; i++)
-        {
-            var entry = tableOffset + 4 + i * 12;
-            if (Encoding.Latin1.GetString(file, entry, 4) != type) continue;
-
-            var count = U32(entry + 4) + 1;
-            var listOffset = U32(entry + 8);
-            for (var s = 0; s < count; s++)
-            {
-                var record = tableOffset + listOffset + s * 20;
-                var at = dataOffset + U32(record + 12);
-                var size = U32(at);
-                sections.Add(file.AsSpan(at + 4, size).ToArray());
-            }
-        }
-        return sections;
-    }
+    internal static IReadOnlyList<byte[]> Blocks(byte[] file, string type) => RsrcMap.Blocks(file, type);
 }

@@ -135,8 +135,9 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
         [Description("Regenerate the helper VIs even when they are current")]
         bool regenerateHelpers = false,
         [Description("Local budget in seconds, per LabVIEW call")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_set_owner_icon", async () =>
         {
             // ---------------------------------------------------------- the files, no LabVIEW
             if (CheckOwner(ownerPath, out var owner) is { } ownerProblem) return ownerProblem;
@@ -323,7 +324,7 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
                       "earlier LVClass.Open in this LabVIEW (a restart with this call first cured it, " +
                       "measured; restart only with the user's go-ahead).",
             });
-        });
+        }));
 
     // ================================================================== lvai_read_icons
 
@@ -374,13 +375,20 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
         [Description("Per-channel difference still counted as equal in the compare (default 0)")]
         int tolerance = 0,
         [Description("Compare RGB only, ignoring alpha")] bool ignoreAlpha = false,
+        [Description("""
+            Read every class and library icon through LabVIEW again instead of from the owner-icon
+            cache. The cache is keyed on the owner file's own NI.Lib.Icon line, so a changed icon is
+            never served stale; this is for doubting the cache itself.
+            """)]
+        bool refreshOwnerIcons = false,
         [Description("Where to keep the generated helper VIs. Defaults to %TEMP%\\LabVIEWMCP\\helpers")]
         string? helperDirectory = null,
         [Description("Regenerate the helper VIs even when they are current")]
         bool regenerateHelpers = false,
         [Description("Local budget in seconds, per LabVIEW call")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(async () =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_read_icons", async () =>
         {
             // ---------------------------------------------------------- the files, no LabVIEW
             var (items, expandProblem) = ExpandPaths(paths);
@@ -460,14 +468,16 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
                     codes[vis[k]] = reads.Codes[k];
                 }
             }
+            var ownersFromCache = 0;
             foreach (var i in owners)
             {
                 var o = ownerInfo[i];
                 var result = await ReadOwnerIconAsync(o, helpers[CarrierHelper],
                     helpers[o.Kind == IconOwners.Class ? GetClassIconHelper : GetLibraryIconHelper],
-                    pngs[i], started, timeoutSeconds, steps, ct);
+                    pngs[i], started, timeoutSeconds, steps, ct, useCache: !refreshOwnerIcons);
                 written[i] = result["written"]?.GetValue<bool>() is true;
                 codes[i] = result["code"]?.GetValue<int>();
+                if (result["fromCache"]?.GetValue<bool>() is true) ownersFromCache++;
             }
 
             // ---------------------------------------------------------- verify, compare
@@ -530,6 +540,7 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
                 ["requested"] = items.Count,
                 ["written"] = results.Count - notWritten,
                 ["compared"] = expected is null ? null : compared,
+                ["ownersFromCache"] = ownersFromCache,
                 ["matched"] = expected is null ? null : matched,
                 ["outDir"] = output,
                 ["baseDir"] = root,
@@ -541,7 +552,7 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
                 ["warnings"] = warnings,
                 ["steps"] = steps,
             });
-        });
+        }));
 
     // ================================================================== keepOwnLayer
 
@@ -806,8 +817,25 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
 
     /// <summary>Read a class or library icon to a PNG through the carrier VI.</summary>
     private async Task<JsonObject> ReadOwnerIconAsync(IconOwners.Owner owner, string carrier, string helper,
-        string png, DateTime started, int timeoutSeconds, JsonArray steps, CancellationToken ct)
+        string png, DateTime started, int timeoutSeconds, JsonArray steps, CancellationToken ct,
+        bool useCache = true)
     {
+        // READ ONCE, KEEP IT (OwnerIconCache): keyed on the owner file's own NI.Lib.Icon line, so a
+        // hit needs no LabVIEW and an icon changed by anyone has another key.
+        if (useCache && OwnerIconCache.TryRestore(owner.Path, png, out var hitKey))
+        {
+            steps.Add(new JsonObject { ["step"] = "readOwnerIcon", ["fromCache"] = true, ["cacheKey"] = hitKey });
+            return new JsonObject
+            {
+                ["png"] = png,
+                ["written"] = WrittenSince(png, started),
+                ["code"] = 0,
+                ["failedAtStep"] = null,
+                ["fromCache"] = true,
+                ["cacheKey"] = hitKey,
+            };
+        }
+
         var (values, answer) = await RunAsync(helper, new JsonObject
         {
             ["carrier vi path"] = carrier,
@@ -821,12 +849,16 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
             ("get icon error", "getIcon"), ("write png error", "writePng"), ("error out", "closeReferences"),
         };
         var failure = FirstFailure(values, stages);
+        var written = WrittenSince(png, started);
+        var storedKey = failure is null && values is not null && written ? OwnerIconCache.Store(owner.Path, png) : null;
         return new JsonObject
         {
             ["png"] = png,
-            ["written"] = WrittenSince(png, started),
+            ["written"] = written,
             ["code"] = failure?.Code ?? (values is null ? null : 0),
             ["failedAtStep"] = failure?.Step ?? (values is null ? "runReadHelper" : null),
+            ["fromCache"] = false,
+            ["cacheKey"] = storedKey,
         };
     }
 
@@ -1197,7 +1229,8 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
     {
         var answer = await new RunTools(connection).RunViAndReadValuesAsync(
             helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
-            helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+            helperAixmlPath: null, regenerateHelper: false, timeoutSeconds,
+            backend: DqmhTools.OnPyLabview ? AixmlBackend.PyLabview : AixmlBackend.Grpc, ct: ct);
         JsonNode? node;
         try { node = JsonNode.Parse(answer); }
         catch (JsonException) { node = JsonValue.Create(answer); }
@@ -1221,6 +1254,17 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
         string name, string? helperDirectory, bool force, int timeoutSeconds, CancellationToken ct)
     {
         var aixml = Path.Combine(scripts, name + ".xml");
+        // ON pylabview THE HELPER IS COMPOSED and run over ActiveX (RunAsync follows the same
+        // backend), so no icon tool needs NI's service there.
+        if (DqmhTools.OnPyLabview)
+        {
+            var (composed, problem) = await ComposedHelpers.EnsureAsync(name + ".xml", timeoutSeconds, ct);
+            return composed is not null
+                ? (composed, false, null)
+                : ("", false, Json.Error("helperNotComposable",
+                    $"The helper {name}.xml could not be composed for the pylabview backend: {problem}",
+                    new { aiXmlPath = aixml }));
+        }
         var folder = Path.GetFullPath(helperDirectory ?? Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "helpers"));
         Directory.CreateDirectory(folder);
         var vi = Path.Combine(folder, name + ".vi");

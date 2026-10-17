@@ -67,26 +67,28 @@ internal static class RsrcMap
     /// </summary>
     internal static IReadOnlyList<byte[]> Blocks(byte[] file, string type)
     {
-        if (BlockTypes(file) is null)
-            throw new InvalidDataException("not a LabVIEW resource file this reader understands");
+        // The fork's reader verbatim: the info header is the one the FIRST header names (byte 16).
+        // A version that followed the header chain like BlockTypes first refused the icon tests'
+        // fixture VIs, whose second header does not point at itself.
+        if (file.Length < HeaderSize || Encoding.ASCII.GetString(file, 0, 6) != "RSRC\r\n")
+            throw new InvalidDataException("not a LabVIEW resource file (no RSRC header)");
         int U32(int at) => checked((int)BinaryPrimitives.ReadUInt32BigEndian(file.AsSpan(at, 4)));
 
-        int current = -1, next = 0;
-        while (current != next) { current = next; next = U32(current + 16); }
+        var infoOffset = U32(16);
         var dataOffset = U32(24);
-        var blockInfo = current + U32(current + HeaderSize + 12);
-        var count = U32(blockInfo) + 1;
+        var tableOffset = infoOffset + U32(infoOffset + HeaderSize + 12);
+        var count = U32(tableOffset) + 1;
 
         var sections = new List<byte[]>();
         for (var i = 0; i < count; i++)
         {
-            var entry = blockInfo + 4 + i * 12;
+            var entry = tableOffset + 4 + i * 12;
             if (Encoding.Latin1.GetString(file, entry, 4) != type) continue;
             var sectionCount = U32(entry + 4) + 1;
             var listOffset = U32(entry + 8);
             for (var s = 0; s < sectionCount; s++)
             {
-                var record = blockInfo + listOffset + s * 20;
+                var record = tableOffset + listOffset + s * 20;
                 var at = dataOffset + U32(record + 12);
                 sections.Add(file.AsSpan(at + 4, U32(at)).ToArray());
             }
