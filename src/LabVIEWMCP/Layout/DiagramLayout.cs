@@ -154,18 +154,19 @@ internal static class DiagramLayout
         public bool Opaque;
     }
 
-    private sealed class Context(DiagramModel model, LayoutPlan plan)
+    private sealed class Context(DiagramModel model, LayoutPlan plan, bool bands)
     {
+        public bool Bands { get; } = bands;
         public DiagramModel Model { get; } = model;
         public LayoutPlan Plan { get; } = plan;
         public Dictionary<DObject, StructShape> Shapes { get; } = [];
         public Dictionary<DObject, Box> Final { get; } = [];
     }
 
-    public static LayoutPlan Plan(DiagramModel model)
+    public static LayoutPlan Plan(DiagramModel model, bool bands = true)
     {
         var plan = new LayoutPlan();
-        var ctx = new Context(model, plan);
+        var ctx = new Context(model, plan, bands);
         var top = Arrange(ctx, model.Top, isTop: true);
 
         // keep the diagram where it was: its contents, labels included, start at the old top-left
@@ -191,8 +192,27 @@ internal static class DiagramLayout
 
     // ------------------------------------------------------------------ one diagram
 
+    /// <summary>
+    /// One diagram, arranged in columns - and, where it is several independent chains, ALSO in
+    /// bands (<see cref="Bands"/>), the one kept that crosses fewer data wires. Both are tried
+    /// because a band is right for a generated test's cases and wrong for a diagram whose second
+    /// chain is a stray constant next to a loop: on the fixtures DQMH Main grew 50 px and a small
+    /// LayoutCheck VI went from 1 crossing to 4 when bands were applied unconditionally
+    /// (2026-10-17). A tie keeps the columns, which every earlier measurement was made with.
+    /// </summary>
     private static Arrangement Arrange(Context ctx, Diagram d, bool isTop)
     {
+        var plain = ArrangeCore(ctx, d, isTop, useBands: false, out var plainCrossings, out var bandsPossible);
+        if (!bandsPossible || !ctx.Bands) return plain;
+        var banded = ArrangeCore(ctx, d, isTop, useBands: true, out var bandedCrossings, out _);
+        return bandedCrossings < plainCrossings ? banded : plain;
+    }
+
+    private static Arrangement ArrangeCore(Context ctx, Diagram d, bool isTop, bool useBands, out int crossings,
+                                           out bool bandsPossible)
+    {
+        crossings = 0;
+        bandsPossible = false;
         // structures first, so their sizes are known
         foreach (var s in d.Objects.Where(o => o.IsStructure))
             ctx.Shapes[s] = Shape(ctx, s);
@@ -249,6 +269,16 @@ internal static class DiagramLayout
         }
 
         var mainChain = graph.MainErrorChain(layoutNodes);
+        // independent chains each keep a band of their own, in the order they meet the rail; a
+        // node of a chain of two or more then stays in its band rather than going on the rail,
+        // which keeps only the pure error chain (Merge Errors, the test's Define Test)
+        // TOP LEVEL ONLY: inside a frame a band moved DQMH Main's frame notes off the frame's top,
+        // and a frame's contents were never the case that needed it
+        var possible = d.Owner is null ? Bands(graph, layoutNodes, mainChain) : null;
+        bandsPossible = possible is not null;
+        var band = useBands ? possible : null;
+        var inBand = band is null ? [] : band.GroupBy(kv => kv.Value).Where(g => g.Count() >= 2)
+                                              .SelectMany(g => g.Select(kv => kv.Key)).ToHashSet();
 
         // ---- blocks: a node with what hangs on it, in coordinates relative to the node
         var blocks = new Dictionary<DObject, Block>();
@@ -269,10 +299,12 @@ internal static class DiagramLayout
         var colPlans = new List<(List<DObject> Above, DObject? OnRail)>();
         (List<DObject> Above, DObject? OnRail) ColumnPlan(List<DObject> col)
         {
-            var candidates = col.Where(railOf.ContainsKey).ToList();
+            var candidates = col.Where(n => railOf.ContainsKey(n) && !inBand.Contains(n)).ToList();
             var onRail = candidates.OrderByDescending(n => graph.ErrorDegree(n))
                                    .ThenByDescending(n => n.Box.T).FirstOrDefault();
-            var above = col.Where(n => n != onRail).OrderBy(n => n.Box.T + n.Box.H / 2).ToList();
+            var above = col.Where(n => n != onRail)
+                           .OrderBy(n => band?.GetValueOrDefault(n) ?? 0)
+                           .ThenBy(n => n.Box.T + n.Box.H / 2).ToList();
             return (above, onRail);
         }
         foreach (var col in columns)
@@ -360,7 +392,9 @@ internal static class DiagramLayout
             x = nx + reach + ColumnGap + Lanes(column);
         }
 
-        if (colPlans.Count > 1)
+        if (band is not null && colPlans.Count > 1)
+            BandRows(colPlans, blocks, band, a.Pos, anyRail ? railY : null);
+        else if (colPlans.Count > 1)
             AlignToNeighbours(ctx, graph, colPlans, blocks, a.Pos, anyRail ? railY : null);
 
         // ---- compaction: a node moves left as far as nothing beside it and no wire into it
@@ -580,6 +614,12 @@ internal static class DiagramLayout
             if (d.Owner is not null)
                 foreach (var (t, _) in order) a.Pinned.Add(t);
         }
+
+        crossings = OrthogonalCrossings(layoutNodes.SelectMany(n => graph.Out(n))
+            .Where(e => !e.Error && e.From != e.To && a.Pos.ContainsKey(e.From) && a.Pos.ContainsKey(e.To))
+            .Select(e => (A: ((double)a.Pos[e.From].X + Size(ctx, e.From).W, (double)a.Pos[e.From].Y + TermY(ctx, e.From, e.FromTerm)),
+                          B: ((double)a.Pos[e.To].X, (double)a.Pos[e.To].Y + TermY(ctx, e.To, e.ToTerm)),
+                          (object)e.From, (object)e.To)).ToList());
 
         // normalise to (0,0)
         var boxes = a.Pos.Select(kv => Extent(ctx, kv.Key, kv.Value.X, kv.Value.Y)).ToList();
@@ -1625,5 +1665,173 @@ internal static class DiagramLayout
             }
             return g;
         }
+    }
+
+    // ------------------------------------------------------------------ bands
+
+    /// <summary>
+    /// The band of each node when the diagram is SEVERAL INDEPENDENT CHAINS that share nothing but
+    /// the error wire - the cases of a generated Caraya test, each a constant, a Write, a Read and
+    /// an assertion. Columns alone put every case's constant in one column, every accessor in the
+    /// next and every assertion at the end, in whatever order the generator left them, so each
+    /// case's wires crossed every other's (the AFDemo3 test, 2026-10-17). A band is one connected
+    /// component of the DATA wires; bands are ranked by where they meet the error rail, left to
+    /// right, so the first case sits on top. Null when there are not two chains of two nodes - a
+    /// diagram that is one chain keeps the order it had.
+    /// </summary>
+    private static Dictionary<DObject, int>? Bands(Graph g, List<DObject> nodes, HashSet<DObject> chain)
+    {
+        var set = nodes.ToHashSet();
+        var groups = new List<List<DObject>>();
+        var seen = new HashSet<DObject>();
+        foreach (var n in nodes)
+        {
+            if (!seen.Add(n)) continue;
+            var group = new List<DObject>();
+            var stack = new Stack<DObject>([n]);
+            while (stack.Count > 0)
+            {
+                var x = stack.Pop();
+                group.Add(x);
+                foreach (var e in g.Out(x).Concat(g.In(x)).Where(e => !e.Error))
+                    foreach (var y in new[] { e.From, e.To })
+                        if (set.Contains(y) && seen.Add(y)) stack.Push(y);
+            }
+            groups.Add(group);
+        }
+        if (groups.Count(gr => gr.Count >= 2) < 2) return null;
+        var ranked = groups
+            .OrderBy(gr => gr.Where(chain.Contains).Select(n => n.Box.L).DefaultIfEmpty(int.MaxValue).Min())
+            .ThenBy(gr => gr.Min(n => n.Box.T))
+            .ToList();
+        var band = new Dictionary<DObject, int>();
+        for (var i = 0; i < ranked.Count; i++)
+            foreach (var n in ranked[i]) band[n] = i;
+        return band;
+    }
+
+    /// <summary>
+    /// The heights of a diagram made of bands: each band one row across the columns - its nodes'
+    /// tops on one line, so a chain of equal-sized calls runs straight - with nodes of one band
+    /// in one column stacked in it; the bands stacked from the rail up, the first on top. The
+    /// nodes on the rail stay where they are; x is left to the columns and the compaction.
+    /// </summary>
+    private static void BandRows(List<(List<DObject> Above, DObject? OnRail)> cols, Dictionary<DObject, Block> blocks,
+                                 Dictionary<DObject, int> band, Dictionary<DObject, (int X, int Y)> pos, int? railY)
+    {
+        var rows = new SortedDictionary<int, List<(int Col, DObject N)>>();
+        for (var c = 0; c < cols.Count; c++)
+            foreach (var n in cols[c].Above)
+            {
+                var b = band.GetValueOrDefault(n);
+                if (!rows.TryGetValue(b, out var list)) rows[b] = list = [];
+                list.Add((c, n));
+            }
+        if (rows.Count == 0) return;
+
+        // each band laid out on its own, its top at 0: per column a stack, the columns' first
+        // nodes on one line
+        var laid = new List<(List<(DObject N, int Y)> Nodes, int Top, int Bottom)>();
+        foreach (var (_, members) in rows)
+        {
+            var stacks = members.GroupBy(m => m.Col)
+                .Select(g => g.Select(m => m.N).OrderBy(n => pos[n].Y).ToList()).ToList();
+            var line = stacks.Max(s => -blocks[s[0]].Box.T);    // room for what hangs above the first
+            var nodes = new List<(DObject N, int Y)>();
+            foreach (var s in stacks)
+            {
+                var y = line;
+                foreach (var n in s)
+                {
+                    nodes.Add((n, y));
+                    y += blocks[n].Box.B + RowGap - (s.IndexOf(n) + 1 < s.Count ? blocks[s[s.IndexOf(n) + 1]].Box.T : 0);
+                }
+            }
+            laid.Add((nodes, nodes.Min(p => p.Y + blocks[p.N].Box.T), nodes.Max(p => p.Y + blocks[p.N].Box.B)));
+        }
+
+        // stacked: from the rail up when there is one, the last band lowest; else from 0 down
+        var railTop = cols.Select(c => c.OnRail).OfType<DObject>()
+            .Select(n => pos[n].Y + blocks[n].Box.T).DefaultIfEmpty(int.MaxValue).Min();
+        if (railY is { } ry) railTop = Math.Min(railTop, ry);
+        if (railTop != int.MaxValue)
+        {
+            var limit = railTop - RowGap;
+            for (var i = laid.Count - 1; i >= 0; i--)
+            {
+                var (nodes, top, bottom) = laid[i];
+                var dy = limit - bottom;
+                foreach (var (n, y) in nodes) pos[n] = (pos[n].X, y + dy);
+                limit = top + dy - RowGap;
+            }
+        }
+        else
+        {
+            var y0 = 0;
+            foreach (var (nodes, top, bottom) in laid)
+            {
+                var dy = y0 - top;
+                foreach (var (n, y) in nodes) pos[n] = (pos[n].X, y + dy);
+                y0 = bottom + dy + RowGap;
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ measuring a plan
+
+    /// <summary>
+    /// How many DATA wires of the top-level diagram cross one another in the plan, each wire taken
+    /// as the straight line between its two terminals - LabVIEW's router bends them, so this is a
+    /// measure for comparing two plans of one diagram, not a count of what will be drawn. Error
+    /// wires run on the rail and are left out, as are wires sharing a source (a fan-out meets at
+    /// its source by design).
+    /// </summary>
+    internal static int DataCrossings(DiagramModel model, LayoutPlan plan)
+    {
+        var d = model.Top;
+        var nodes = d.Objects.Where(o => !o.IsText && !o.IsDecoration && !o.IsLoopTerminal).ToList();
+        var g = Graph.Build(d, nodes);
+        (double X, double Y) At(DObject o, Term? t, bool source)
+        {
+            var b = plan.Predicted.TryGetValue(o.Key, out var p) ? p : o.Box;
+            double dx = b.L - o.Box.L, dy = b.T - o.Box.T;
+            return t is { } tt
+                ? (tt.Box.L + tt.Box.W / 2.0 + dx, tt.Box.T + tt.Box.H / 2.0 + dy)
+                : (source ? b.R : b.L, b.T + b.H / 2.0);
+        }
+        return OrthogonalCrossings(nodes.SelectMany(n => g.Out(n)).Where(e => !e.Error && e.From != e.To)
+            .Select(e => (At(e.From, e.FromTerm, true), At(e.To, e.ToTerm, false), (object)e.From, (object)e.To)).ToList());
+    }
+
+    /// <summary>
+    /// Crossings of wires routed as LabVIEW's CleanUpWire routes a simple one: out of the source
+    /// horizontally, a vertical just after it, then horizontally into the sink. Wires that share an
+    /// end are not counted - they meet there by design.
+    /// </summary>
+    private static int OrthogonalCrossings(List<((double X, double Y) A, (double X, double Y) B, object From, object To)> wires)
+    {
+        const double Turn = 10;
+        var routes = wires.Select(w =>
+        {
+            var xt = w.A.X + Turn;
+            var horizontal = new List<(double X1, double X2, double Y)>
+            {
+                (Math.Min(w.A.X, xt), Math.Max(w.A.X, xt), w.A.Y),
+                (Math.Min(xt, w.B.X), Math.Max(xt, w.B.X), w.B.Y),
+            };
+            var vertical = (X: xt, Y1: Math.Min(w.A.Y, w.B.Y), Y2: Math.Max(w.A.Y, w.B.Y));
+            return (w.From, w.To, H: horizontal, V: vertical);
+        }).ToList();
+        static bool Hits((double X1, double X2, double Y) h, (double X, double Y1, double Y2) v) =>
+            h.X1 < v.X && v.X < h.X2 && v.Y1 < h.Y && h.Y < v.Y2;
+        var count = 0;
+        for (var i = 0; i < routes.Count; i++)
+            for (var j = i + 1; j < routes.Count; j++)
+            {
+                var (r, q) = (routes[i], routes[j]);
+                if (Equals(r.From, q.From) || Equals(r.To, q.To) || Equals(r.From, q.To) || Equals(r.To, q.From)) continue;
+                count += r.H.Count(h => Hits(h, q.V)) + q.H.Count(h => Hits(h, r.V));
+            }
+        return count;
     }
 }

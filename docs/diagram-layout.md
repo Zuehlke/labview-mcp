@@ -442,3 +442,53 @@ The DQMH-Main skip stays in the automatic pipeline until the user lifts it. A di
 `lvai_layout_diagram` call does lay out a DQMH `Main.vi`.
 
 The front panel is still LabVIEW's own algorithm (`cleanUpPanel`).
+
+## 6. Independent chains as bands, 2026-10-17
+
+The symptom was a generated Caraya test, `Test Heater.vi` of an AF demo build. Its four cases
+share nothing but the error wire, yet the column layout put every case's nodes into common
+columns sorted by height, so every case's data wires crossed the others'.
+
+**The rule.** On the TOP-LEVEL diagram, the data graph without error edges is split into
+connected components. Where at least two of them have two or more nodes, the diagram is ALSO laid
+out in bands, and both plans are scored:
+
+- One band per component, stacked above the error rail. The component that met the rail furthest
+  left in the original is the top band.
+- Inside a band, each column's first node shares one top line, so a chain reads left to right.
+- A node of a band stays in its band rather than going onto the rail. Only the pure error chain
+  (`Merge Errors`, the test's `Define Test`) stays on the rail.
+
+**The choice.** The plan with fewer data-wire crossings wins, and a tie keeps the columns. The
+crossings are counted with orthogonal routing: out horizontally, a vertical 10 px after the
+source, then horizontally into the sink. Error wires and wires that share an end are not counted.
+Straight lines tied where the picture was plainly better.
+
+Both arms are needed. Applied unconditionally, bands made DQMH Main 50 px taller and took a small
+LayoutCheck VI from 1 crossing to 4. Inside a structure they broke the frame-note rule, so bands
+are top-level only.
+
+| fixture | columns | bands |
+|---|---|---|
+| `test-heater3-generated.txt` (Test Heater.vi) | 8 crossings, 986 x 468 | **0**, 896 x 468 |
+| `test-heater1-generated.txt` (accessor test) | 7 crossings, 1042 x 407 | **0**, 928 x 439 |
+| `test-sensor-generated.txt` (round trips) | 5 crossings | **0**, same size |
+| every other layout fixture (ATM, DQMH Main, LayoutCheck) | | plan unchanged, move for move |
+
+`LayoutBandTests` asserts both halves.
+
+**Live, on the pylabview backend.** `lvai_layout_diagram` on the real `Test Heater.vi`:
+
+- the width went from 966 to 855 px, and 30 of 30 objects landed where planned;
+- `execState` stayed 1;
+- `Test Heater Methods.vi` was left unchanged;
+- the Caraya suite stayed 5 of 5 green.
+
+The render shows four bands, each class constant left of its accessor.
+
+**Still open:**
+
+- The error wires climb from the bottom rail to each band's assertion.
+- A constant that feeds two nodes (`written 1` into Write and Assert) sits below its first sink,
+  not left of it.
+- A free comment can land between two bands.
