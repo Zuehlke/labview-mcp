@@ -30,6 +30,20 @@ leftovers sit in a context of NI's own that neither VI Server nor the converter'
 reaches. The 2026-09-09 measurement of a validate burning a name (`LVMCP Poison Probe.vi`, recorded
 in `Infra/ValidationScratch.cs`) did not reproduce on this LabVIEW; that is recorded, not explained.
 
+## 1a. Over ActiveX they ARE visible - measured 2026-10-17
+
+`lvai_vis_in_memory` with `context=main` runs its helper over LabVIEW's ActiveX server, which is
+LabVIEW's main application instance, and there `Application:All VIs In Memory` listed five VIs:
+`LVMCP Validate.vi`, `LVMCP Validate2vi`, `LVMCP Validate3vi`, `LVMCP Validate4vi` (spelled so,
+no dot before `vi`) and the helper itself. Each opened by that listed name with error 0, and each
+scratch VI read front-panel bits `2751463428` and diagram bits `3355443488` - unsaved, matching the
+`*` windows `lvai_labview_state` lists for them. The same answer came on both backends.
+
+So §1's "none was found anywhere" holds for the routes it measured - `Open Application Reference`
+over TCP answered `1032` to `All VIs In Memory` - and not for ActiveX, which lists them, opens
+them and reads their bits. Whether a `Close` or an `FP.Close` through that reference releases
+them is NOT measured.
+
 ## 2. What was changed: ONE validation name instead of one per call
 
 `ValidationScratch` now hands every VALIDATION the fixed name `LVMCP Validate.vi`; a CONVERSION keeps

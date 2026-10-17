@@ -189,7 +189,10 @@ application, and `grep -a` a generated caller's link paths. `docs/aixml-call-loa
 validation name now, not one per call.** The user's exit dialog of 2026-09-26 listed 54 unsaved
 `LVMCP Validate <hash>.vi`. By name they are in NONE of the instances VI Server reaches (helpers',
 IDE main over TCP, active project), with positive controls, and the converter's `1051` does not see
-them either - so they cannot be closed afterwards. `ValidationScratch` hands every validation
+them either - so they cannot be closed afterwards. **Qualified 2026-10-17: over ActiveX they ARE
+visible** - `lvai_vis_in_memory context=main` lists `LVMCP Validate.vi`, `LVMCP Validate2vi` …
+in LabVIEW's main instance, opens each by that listed name and reads nonzero modification bits;
+closing them that way is not measured. `docs/scratch-vis-in-memory.md` §1a. `ValidationScratch` hands every validation
 `LVMCP Validate.vi`; a validation under a reused name answers exactly as a fresh one, measured, and
 conversion keeps a unique name because a failed convert burns its own. **It does NOT shrink to one
 entry - measured 2026-10-06**: LabVIEW NUMBERS a name already in memory, and after one long day the
@@ -3034,6 +3037,7 @@ literally it argued away 600 usable palette VIs.
 | How do I put a diagram comment WHERE I MEAN? | `docs/diagram-comments.md` | `scripts/pylv-place-labels.py` |
 | How do I LOOK at a diagram I just changed? | `docs/diagram-comments.md` | `lvai_render_diagrams` |
 | How do I check that an event-driven VI REACTS, not just that it starts? | `docs/cold-build-atm-agents-7.md` | `lvai_run_vi_and_read_values` `runForMs` + `signalsJson` |
+| What does LabVIEW look like from OUTSIDE - processes, dialogs, unsaved windows - and which VIs in memory carry UNSAVED changes, in which application instance? | `docs/labview-state.md` | `lvai_labview_state` (no LabVIEW call, a screenshot per possible dialog), `lvai_vis_in_memory` (`context` main / project / addon / all - a VI lives in ONE instance, and the fork read only NI's add-on's) |
 | WHY is a VI broken - what does LabVIEW's Error List say? | `docs/error-list.md` | `errors` in every executability answer (`lvai_exec_state`, `lvai_generate_vi`'s `execState` step, the test generators, `lvai_convert_aixml_to_vi`) - the Error List's own lines for that VI, read from disk; `lvai_error_list` for every broken VI IN MEMORY, main instance and the active project's, run over ActiveX because through NI's service it sees the addon's instance and answers an EMPTY list |
 | Why does a consumer loop act on stale panel values? | `docs/cold-build-atm-agents-7.md` | `lvai_check_aixml` `controlReadBeforeWait` |
 | Why does LabVIEW's exit ask to save dozens of `LVMCP Validate` VIs, or the Error list show them, and can they be closed? | `docs/scratch-vis-in-memory.md` §2a | — safe to discard; the fixed name still piles up as `LVMCP Validate2` … `12`, and their windows and dialogs can report themselves invisible |

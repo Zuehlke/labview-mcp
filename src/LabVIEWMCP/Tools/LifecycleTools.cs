@@ -137,6 +137,7 @@ internal sealed class LifecycleTools(LvaiConnection connection)
 
                 startedNow = true;
                 launched = pick.Describe();
+                RecordOwnership(launch.Pid);
             }
 
             // Poll until the service answers. A cold LabVIEW start is far slower than this
@@ -302,5 +303,18 @@ internal sealed class LifecycleTools(LvaiConnection connection)
             ["rule"] = "newest release first, 32-bit preferred within a release, NXG excluded",
             ["installations"] = list,
         }.ToJsonString(Indented);
+    }
+
+    /// <summary>
+    /// Record the LabVIEW this server just started, with its start time (pids are reused), so
+    /// lvai_labview_state can say `startedByThisServer`. From the colleague's fork, where the
+    /// restart's ownership rule reads it; here only the state tool does.
+    /// </summary>
+    private static void RecordOwnership(int? pid)
+    {
+        if (pid is not { } id) return;
+        var process = Win32LabViewMachine.Instance.Processes(LabViewState.LabViewProcess)
+            .FirstOrDefault(p => p.Id == id);
+        if (process is not null) LabViewOwnership.Record(id, process.StartTime);
     }
 }

@@ -6,11 +6,11 @@ counts on this page against the registration in the source, so they cannot drift
 
 ## What is served
 
-**110 tools over 23 RPCs.** Seventy-one map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**112 tools over 23 RPCs.** Seventy-three map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon`, `lvai_render_diagrams`, `lvai_layout_diagram` and `lvai_discuss_file` — which compose three RPCs
 rather than wrapping one — `lvai_check_aixml`, which reads an AIXML file, `lvai_describe_class` and `lvai_describe_ctl`, which read a `.lvclass`
 and a `.ctl` off disk and need no LabVIEW at all, the knowledge tools below, and the five `pylv_*`
-tools. 38 carry `readOnlyHint`,
+tools. 40 carry `readOnlyHint`,
 67 carry `destructiveHint`, so a client can gate the writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
@@ -55,6 +55,8 @@ reaches a running LabVIEW over its ActiveX server where a question needs one.
 | `lvai_describe_class` | — (parses the `.lvclass` XML directly; **needs no LabVIEW**, so it is the one honest reading after a timeout) |
 | `lvai_coercion_dots` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + VI Server reads) — every subVI call terminal with its `Coercion Dot?`. The placeholder route leaves one on each terminal whose real subVI carries a typedef, and validation, the retarget and a run all pass in that state; this is the only thing that sees it. Needs no active project |
 | `lvai_exec_state` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + VI Server reads) — a VI's `Execution:State` and `VI Linker Errors`, so "is this executable?" is answerable WITHOUT running it. That matters because a top-level UI loop never ends on its own. `0` is eBad; `-1` means the reference never opened, which is kept apart on purpose so it cannot read as broken. Since 2026-10-14 it also answers `errors` - the lines LabVIEW's Error List shows for the VI, through `{LV.VI}` `Get Errors` - and so does every tool that checks executability through it. Needs no active project |
+| `lvai_labview_state` | — (Windows only: processes, windows, LVAutoSave, CPU) | **LabVIEW from OUTSIDE, with no LabVIEW call**, so it answers while the service is blocked and the same on both backends: the LabVIEW and Nigel processes, whether THIS server started LabVIEW, LVAutoSave, one CPU sample, and every LabVIEW window sorted into kinds - `unsaved` (`*`, our scratch VIs marked), `possibleDialogs` with a SCREENSHOT to read (LabVIEW draws its dialogs, so Windows shows neither text nor buttons), and HIDDEN windows nothing explains. Presses, fronts and closes nothing. From a colleague's fork, without its restart. [Looking at a running LabVIEW](../labview-state.md) |
+| `lvai_vis_in_memory` | — (a helper, run through NI's service or over ActiveX) | **which VIs in memory carry UNSAVED changes, per APPLICATION INSTANCE**: `context` `main` (VIs opened loose, reached over ActiveX on both backends), `project` (the ACTIVE project's instance; `projectPath` pins it, nothing is opened), `addon` (NI's service's own, grpc only) or `all`. Each VI with its front-panel and diagram modification bits and its PATH, sorted into service, helper, installation and `other` - the user's code, listed first. Measured on both backends: the same lists in every instance, a project instance of 876 VIs reduced to its 7 user VIs. [Looking at a running LabVIEW](../labview-state.md) |
 | `lvai_error_list` | — (a helper composed by our composer, NI's converter as fallback, run over LabVIEW's ActiveX server) | **what LabVIEW's Error List window shows**: every BROKEN VI in memory, each with the Error List's own lines (`Add: Contains unwired or bad terminal`, `Wire: Wire has loose ends.`) and the explanation under them. `lvai_exec_state` says THAT a VI is broken; this says WHY - a loose wire, an unwired input or a type conflict, which nothing else here names. Built on `{LV.Application}` `Get Broken VI List` and `{LV.VI}` `Get Errors`, two methods the public catalogue does not list. Reads the IDE's main instance and the ACTIVE PROJECT's; the helper is composed by our composer (NI's converter as fallback) and must run over ActiveX, because through NI's service it runs in the addon's own instance and sees an empty list, measured. Needs no NI service. Memory only, not disk - open a file first with `lvai_open_file`. [Reading the Error List](../error-list.md) |
 | `lvai_list_labview_installations` | — (reads the installed versions off the machine) |
 

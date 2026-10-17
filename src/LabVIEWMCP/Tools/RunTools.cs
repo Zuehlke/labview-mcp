@@ -573,7 +573,7 @@ internal sealed class RunTools(LvaiConnection connection)
     /// convert to its type, and a broken VI. Signals go through the composed timed helper
     /// (<see cref="RunSignalledOverComAsync"/>), because ActiveX has no Value (Signaling).
     /// </summary>
-    private static async Task<string> RunOverComAsync(string viPath, string? inputsJson, int runForMs,
+    internal static async Task<string> RunOverComAsync(string viPath, string? inputsJson, int runForMs,
                                                       string? signalsJson, int signalGapMs,
                                                       int timeoutSeconds, CancellationToken ct)
     {
