@@ -652,7 +652,10 @@ lvai_set_owner_icon  ownerPath=<abs .lvclass>  pngPath=<abs 32x32 .png>  applyTo
 ```
 
 Judge it by `ok`, `ownerIcon.pixelsDifferent` and each member's `templateMissing`, not by the codes
-alone; `lvai_read_icons` reads any icon back to a PNG to look at. Details and the unmeasured parts:
+alone; `lvai_read_icons` reads any icon back to a PNG to look at. A member VI added LATER gets the
+class template with `lvai_set_vi_icon viPath=<vi> keepOwnLayer=true` - the class icon is read
+through LabVIEW once and then served from a cache keyed on the `.lvclass`'s own icon data, so
+doing this per new VI costs no extra LabVIEW read. Both backends. Details and the unmeasured parts:
 `docs/class-icons.md`.
 
 ### Phase 4c — Housekeeping on the finished class, with the project still ACTIVE

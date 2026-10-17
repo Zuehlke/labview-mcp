@@ -7525,6 +7525,10 @@
     "code": 1292952590,
     "source": "<labview>\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Copy Class.vi"
    },
+   "Set Icon": {
+    "code": 1292952586,
+    "source": "lvai_icon_set_class_icon.vi"
+   },
    "Set Lib Tag": {
     "code": 1292952581,
     "source": "<labview>\\vi.lib\\Utility\\LVClass\\Set or Clear LVClass Default Menu.vi"

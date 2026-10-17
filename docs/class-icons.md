@@ -6,6 +6,9 @@ pixel by pixel, and `lvai_set_vi_icon keepOwnLayer` re-applies only the class or
 one VI instead of flattening its icon. They exist because the route under them has **four silent
 failures**: four ways to get `errorCode 0` and no change on disk.
 
+**Both backends and an owner-icon cache since 2026-10-17** (§7): the three tools take `backend`,
+and a class's or library's icon is read through LabVIEW once and kept - the user's wish.
+
 The route was measured in a pilot project before the tools existed. The tools carry its helpers over
 (`scripts\lvai_icon_*.xml`, each naming the run that measured it). What the tools themselves add,
 which is the file checks, the read-back verdicts and `keepOwnLayer`, was measured through the tools
@@ -212,3 +215,49 @@ Still open:
 
 1. The apply list-file twin (`lvai_icon_apply_and_save_n_file.xml`), used above 100 members.
 2. `keepOwnLayer` on an own layer of editable text made in the icon editor.
+
+## 7. Both backends, and the owner-icon cache (2026-10-17)
+
+**The owner's icon is read once and kept.** Reading a class's or library's icon as a PNG takes
+LabVIEW - the carrier VI, `LVClass.Open` / `Library.Open`, `Get Icon`, `Save VI Icon to File` - and
+the tools needed it on every call: `keepOwnLayer` once per VI, `lvai_read_icons` once per owner,
+`lvai_set_owner_icon` for its own check. The user asked for it to be cached, and the fork had no
+cache. `Infra/OwnerIconCache.cs` keeps the read-back PNG under
+`%USERPROFILE%\.labviewmcp\cache\owner-icons\<key>.png`, where the KEY is a SHA-256 over the owner
+file's own `NI.Lib.Icon` line. So:
+
+- whether a cached PNG still describes the owner is one XML read, no LabVIEW;
+- an icon changed by anyone - the IDE, `lvai_set_owner_icon`, a merge - has another key, so nothing
+  stale is ever served and nothing has to be invalidated;
+- two owners with identical icon data share an entry (measured: a library set to the icon a class
+  already had was answered from the class's read-back);
+- an owner with no `NI.Lib.Icon` line, LabVIEW's default, is not cached;
+- a fresh LabVIEW read is stored, filed under the key taken AFTER the read, so the read that checks a
+  `Set Icon` lands under the icon it actually read.
+
+Every owner read reports `fromCache` and `cacheKey`; `lvai_read_icons` adds `ownersFromCache` and
+takes `refreshOwnerIcons` to read through LabVIEW anyway.
+
+**The tools on `pylabview`.** Each helper is COMPOSED and run over ActiveX; `keepOwnLayer` in
+`lvai_set_vi_icon` follows the backend that call resolved. The composer lacked one invoke part,
+`{LV.LVClassLibrary}` `Set Icon`, harvested from the NI-built `lvai_icon_set_class_icon.vi` (code
+1292952586). The fork's resource-block reader is `RsrcMap.Blocks` now, which `ViIconLayers`
+delegates to.
+
+Measured on two fixtures, one per backend (a class with two methods, a library with one VI), the
+cache emptied first, two 32x32 web-safe PNGs (A: blue banner, B: red banner):
+
+| call | pylabview | grpc |
+|---|---|---|
+| class icon A, applied to two members | `ok`, owner 0 px off, `templateMissing` 0 on both | same |
+| read class + library + a member, first | `ok`, 488 ms (both owners already cached: the class by the call above, the library's icon data matching it) | `ok`, 593 ms, the library read through LabVIEW |
+| the same, second | `ownersFromCache: 2`, 155 ms | `ownersFromCache: 2`, 65 ms |
+| the same with `refreshOwnerIcons`, compared with the cached run | 3 of 3 pixel-identical | same |
+| class icon B, not applied | `ok`, owner 0 px off | same |
+| `keepOwnLayer` on each member | `ok`, owner icon from the cache, `templateMissing` 0, 0 px changed outside the template | same |
+| library icon A, applied to its VI | `ok`, owner check answered from the cache, `templateMissing` 0 | same |
+| the members afterwards, cold | state 1, no `VICD` | state 1 |
+
+Before the `Set Icon` part was harvested, the class icon calls answered `helperNotComposable` on
+pylabview and everything else above already held - the cache included (first read 2046 ms, second
+168 ms).
