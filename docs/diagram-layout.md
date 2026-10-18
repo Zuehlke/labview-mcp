@@ -748,3 +748,27 @@ of its own. LabVIEW's router lays each wire out alone and put `column 3`'s verti
 Over all 76 VIs: **11 backward wires** (13 before), every one in Delacor's VIs (Main.vi 7, the
 two `Obtain ... Events.vi` 2 each). All stayed executable. `Run Verify Account.vi` grew from 552 to
 700 px wide, where a stack of constants no longer rises.
+
+### 6g. Wire geometry of our own for a constant fan, measured, 2026-10-18
+
+**Not through `Connect Wire`.** Its `Wiring Specs` input is a two-dimensional STRING array, read off
+the composer's harvested part (`invoke__LV_Terminal__Connect Wire.xml`). The strings' format is
+documented nowhere, and none of the five cached exports that call `Connect Wire`, NI's scripting
+examples among them, wires it. Probing it would mean guessing at a VI Server input, which is how
+LabVIEW has been killed here before.
+
+**Through the heap, with the composer's encoders.** `scripts/lvbd_fan_route.py` reads a
+block-diagram heap through `wire_route.Geometry` and `Hotpoints` (the composer's terminal
+rectangles and calibrated hotpoints). It finds every node fed by two or more two-ended wires from
+constants and writes each wire's `compressedWireTable` as east, vertical, east, with the verticals
+staggered across the gap. Where the fan rises, the lower constant turns farther right; where it
+falls, the upper one does. The first vertical stands 6 px right of the constants' hotpoints.
+
+**Measured on a copy of Find Account** after the layout had saved it. One fan of three wires was
+rewritten (`040801000C0A`, `040801001219`, `040801001828`: 12, 18 and 24 px east, up 10, 25 and
+40 px). LabVIEW kept that geometry on load. The render shows three straight steps where
+`Clean Up Wire` had crossed `column 2` and `column 3`, and the VI stayed executable.
+
+**It must run after the layout's save.** The layout's own `Clean Up Wire` replaces every table.
+The tool's pylabview step after the save (where it strips compiled code) is the place for it.
+It is not wired into `lvai_layout_diagram` yet.
