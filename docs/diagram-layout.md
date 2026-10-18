@@ -690,3 +690,38 @@ Array reset to the composer's neutral table for its end count (`parts/wiretables
 then laid them out afresh. A native NI Index Array of five indices
 (`General Least Squares Fitting.vi`) has exactly the composer's geometry, so the node itself was
 right.
+
+### 6e. Constants keep a node's wired inputs clear, 2026-10-18
+
+**Cause of the twelve.** An assert's `Expected` (row 0) and `Label` (8 px in, rows 0-16) constants
+were stacked one under the other and centred on their terminals. That put the `Label` constant
+directly left of the node on rows 6-21, over the row of `Actual` (8-16, fed by the subVI under
+test) and 3 px above `error in` (24-32). The error fan-out from `Define Test` found no way in
+from the left, came down from above and turned 25 px back into every assert.
+
+**Rule.** A stack of constants hanging left of a node keeps the rows of the node's OTHER inputs,
+the ones a wire feeds, clear by `WireClear` (6 px). When it cannot, it is lifted above them.
+Structures are exempt: their left border is ports, placed by `Ports`. Without that exemption the
+ATM command loop's shift-register constants were lifted over the loop and two wires turned back
+in the main VI and its four copies.
+
+**Measured** with `scripts/lvbd_backward_wires.py` over all 76 VIs of ATM_DQMH_Cold:
+
+| | backward wires |
+|---|---|
+| before | 46 |
+| after | **13** |
+
+Every Caraya test VI is free of them; `Test Find Account.vi` went from 12 to 0. 11 of the 13 left
+are in Delacor's own VIs (Main.vi 7, the two `Obtain ... Events.vi` 2 each), and one each in
+`Apply ATM UI State.vi` and `Find Account.vi`. All 76 VIs stayed executable.
+
+**The cost is height.** A test VI's band is about 25 px taller per assert, because Expected and
+Label now stand above the assert: `Test Find Account.vi` 839 -> 1136 px. Left of the assert the
+only free row is 8 px high (`Register with caller test`), too low for a constant.
+
+Two wire tables are not decoded yet (`Get Sync Refnums.vi`, `Apply ATM UI State.vi`). The script
+counts them as `undecoded` instead of guessing.
+
+Test: `LayoutDqmhFrameworkTests.Constants_left_of_an_assert_keep_its_wired_inputs_clear`, which
+fails without the rule (a Label constant on an assert's `error in` row).

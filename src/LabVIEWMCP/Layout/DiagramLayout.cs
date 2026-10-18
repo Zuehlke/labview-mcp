@@ -81,6 +81,8 @@ internal static class DiagramLayout
     /// <summary>Extra inset where a structure inside sits against the border: room for a wire
     /// between its ports and ours to run up or down.</summary>
     public const int Lane = 14;
+    /// <summary>How far a constant hanging left of a node stays off the row of an input a wire feeds.</summary>
+    public const int WireClear = 6;
     /// <summary>Extra width a gap between columns gets per wire crossing it beyond the second.</summary>
     public const int WireLane = 6;
     /// <summary>How far a constant may rise above its terminal to let its node move left. With no
@@ -299,7 +301,9 @@ internal static class DiagramLayout
         var blocks = new Dictionary<DObject, Block>();
         foreach (var n in layoutNodes)
             blocks[n] = MakeBlock(ctx, n, attached.GetValueOrDefault(n), anchored.GetValueOrDefault(n),
-                                  onRail: d.Owner is not null && mainChain.Contains(n) && RailOffset(ctx, n, graph) is not null);
+                                  onRail: d.Owner is not null && mainChain.Contains(n) && RailOffset(ctx, n, graph) is not null,
+                                  wired: graph.In(n).Where(e => e.From != n && !e.From.IsConstant && e.ToTerm is not null)
+                                                    .Select(e => e.ToTerm!).ToList());
 
         // ---- columns
         var layer = Layers(graph, layoutNodes, isTop);
@@ -1370,7 +1374,8 @@ internal static class DiagramLayout
         public List<(DObject O, int Dx, int Dy)> Members { get; } = [];
     }
 
-    private static Block MakeBlock(Context ctx, DObject n, List<(DObject C, Term? To)>? constants, List<DObject>? labels, bool onRail = false)
+    private static Block MakeBlock(Context ctx, DObject n, List<(DObject C, Term? To)>? constants, List<DObject>? labels,
+                                   bool onRail = false, List<Term>? wired = null)
     {
         var (w, h) = Size(ctx, n);
         var block = new Block();
@@ -1404,6 +1409,22 @@ internal static class DiagramLayout
             prevBottom = b.B;
         }
         var lift = stacked.Count == 0 ? 0 : (stacked.Sum(x => x.B.T) - wanted.Sum(x => x.B.T)) / stacked.Count;
+        // the stack keeps the rows of the node's OTHER inputs clear, those a wire feeds: an
+        // assert's Label constant, stacked under its Expected, sat on the rows of Actual and of
+        // error in, and the error fan-out from Define Test came in from above and turned 25 px
+        // back into every assert of Test Find Account (2026-10-18). Lifted above them instead.
+        // Not on a structure: its border is ports, which Ports places - lifted, the ATM command
+        // loop's shift-register constants stood over the loop with two wires turning back
+        var rows = (wired ?? []).Select(t => (T: t.Box.T - n.Box.T, B: t.Box.B - n.Box.T)).ToList();
+        if (!n.IsStructure && stacked.Count > 0 && rows.Count > 0)
+        {
+            bool Covers(int dl) => stacked.Any(x => rows.Any(r => x.B.T - dl < r.B + WireClear && x.B.B - dl > r.T - WireClear));
+            if (Covers(lift))
+            {
+                var up = stacked.Max(x => x.B.B) - (rows.Min(r => r.T) - WireClear);
+                if (!Covers(up)) lift = Math.Max(lift, up);
+            }
+        }
         foreach (var (c, b0, cL, cT) in stacked)
         {
             var cb = b0.Offset(0, -lift);

@@ -86,6 +86,39 @@ public class LayoutDqmhFrameworkTests(ITestOutputHelper output)
         Assert.Empty(DiagramLayout.BackwardWires(model, plan));
     }
 
+    /// <summary>
+    /// A constant hanging left of a node keeps the rows of the node's wire-fed inputs clear. An
+    /// assert's Label constant, stacked under its Expected, sat on the rows of Actual and error in,
+    /// and the error fan-out from Define Test turned 25 px back into each of the twelve asserts.
+    /// </summary>
+    [Fact]
+    public void Constants_left_of_an_assert_keep_its_wired_inputs_clear()
+    {
+        var model = Load("test-find-account-ours.txt");
+        var plan = DiagramLayout.Plan(model);
+        var asserts = model.Top.Objects.Where(o => o.Terms.Any(t => t.Name == "Expected")).ToList();
+        Assert.Equal(12, asserts.Count);
+        var constants = model.Top.Objects.Where(o => o.IsConstant && plan.Predicted.ContainsKey(o.Key)).ToList();
+        foreach (var a in asserts)
+        {
+            var p = plan.Predicted[a.Key];
+            foreach (var name in new[] { "error in (no error)", "Actual" })
+            {
+                var t = a.Terms.Single(x => x.Name == name);
+                var top = p.T + t.Box.T - a.Box.T - 4;
+                var bottom = p.T + t.Box.B - a.Box.T + 4;
+                foreach (var c in constants)
+                {
+                    var b = plan.Predicted[c.Key];
+                    var (l, tt, r, bb) = c.Overhang;
+                    var whole = new Box(b.L - l, b.T - tt, b.W + l + r, b.H + tt + bb);
+                    if (whole.R > p.L || whole.R < p.L - 120) continue;
+                    Assert.False(whole.T < bottom && whole.B > top, $"{c} sits on the {name} row of {a}");
+                }
+            }
+        }
+    }
+
     /// <summary>A one-line label keeps the old rule: NI's converter clips it, so the structure
     /// grows to the label's text - "Append one line per channel" (LayoutCheck).</summary>
     [Fact]
