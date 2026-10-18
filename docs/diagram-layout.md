@@ -839,3 +839,13 @@ The render of the last one: the error rail straight along the bottom, both loops
 overlapping. One cosmetic point: the `External Launch?` label of the right-hand case sits on that
 case's top border. The goal of about 1600 x 950 px is not reached; section 3 says what is left.
 
+
+**The whole of `C:\Temp\ATM_DQMH_Cold`, the same day** (already laid out once by the earlier
+engine): 76 of 76 VIs laid out, every object where planned, no helper error, all 76 executable
+afterwards. 40 of Delacor's Bank VIs carry compiled code before and after alike; the layout leaves
+a VI that already had it as it was. Sizes now against the previous layout: Bank `Main.vi`
+2224 x 1095 -> 1815 x 958, `Stop Module.vi` 2744 -> 2164 px wide, the four request API VIs
+(`Verify Account.vi`, `Withdraw.vi`, `Get Balance.vi`, `Deposit.vi`) about 2700 -> 2320 px - still
+over 1920, one long Delacor chain each - and `Test Find Account.vi` 1183 -> 1003 px wide. In the
+message loop's short frames the code still sits low under an empty field: all frames share the
+tallest frame's size and one error rail.
