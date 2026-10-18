@@ -41,7 +41,8 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         vertically; on the top level controls go to the first column and indicators to the last; a
         constant hangs left of the terminal it feeds; a comment moves with the object it describes;
         every While/For Loop, Case and Event Structure is sized to its contents (Frame Size), its
-        tunnels levelled with what they connect, and every wire cleaned up.
+        tunnels levelled with what they connect, and every wire cleaned up. After the save, each
+        constant fan (two or more constants into one node) gets staggered wire geometry of its own.
         Measured on a DQMH Main.vi: NI's Clean Up spread its diagram to 3805 x 1692 px; the
         original Delacor layout was 1344 x 805.
         Structures of a kind not yet measured (sequences, timed loops, in-place, disable) move as a
@@ -60,10 +61,11 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         [Description("Render the laid-out diagram to PNG, into renderDirectory")] bool render = false,
         [Description("Where the PNGs go when render is true; a temp folder otherwise")] string? renderDirectory = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 240,
+        [Description("After the save, give each CONSTANT FAN - two or more constants wired into one node - staggered wire geometry of our own through the heap, where Clean Up Wire may cross them. Skipped on a VI that carries compiled code")] bool routeFans = true,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_layout_diagram",
-            () => LayoutCoreAsync(viPath, dryRun, verify, render, renderDirectory, timeoutSeconds, ct)));
+            () => LayoutCoreAsync(viPath, dryRun, verify, render, renderDirectory, timeoutSeconds, ct, routeFans)));
 
     /// <summary>
     /// The whole layout of one VI - hold, dump, plan, apply, strip, verify, render - on the backend
@@ -71,7 +73,8 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
     /// goes through (<see cref="DiagramCleanup"/>).
     /// </summary>
     internal async Task<string> LayoutCoreAsync(string viPath, bool dryRun, bool verify, bool render,
-                                                string? renderDirectory, int timeoutSeconds, CancellationToken ct)
+                                                string? renderDirectory, int timeoutSeconds, CancellationToken ct,
+                                                bool routeFans = true)
     {
         if (string.IsNullOrWhiteSpace(viPath))
             return Json.Error("badArguments", "viPath is required.");
@@ -156,6 +159,14 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
             {
                 if (hold is not null) { await hold.DisposeAsync(); hold = null; }
                 answer["compiledCodeStripped"] = await new DiagramCleanup(connection).StripCompiledAsync(vi, timeoutSeconds, ct);
+            }
+
+            // ---- 4b. constant fans: wire geometry of our own, after the save whose Clean Up Wire
+            // would replace it (measured on Find Account, docs/diagram-layout.md section 6g)
+            if (routeFans)
+            {
+                if (hold is not null) { await hold.DisposeAsync(); hold = null; }
+                answer["fanRouting"] = await new DiagramCleanup(connection).FanRouteAsync(vi, timeoutSeconds, ct);
             }
 
             // ---- 5. what LabVIEW made of it

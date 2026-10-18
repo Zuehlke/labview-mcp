@@ -81,6 +81,9 @@ def main(argv):
         for uid, src, snk in wires:
             if snk[0] == src[0] and snk[1] > src[1]:
                 tables[uid] = "0208"
+    if not tables:
+        print("fans %d, wires rewritten 0" % sum(1 for w in fans.values() if len(w) >= 2))
+        return 0
     text = open(heap_path, encoding="utf-8", newline="").read()
     for uid, table in tables.items():
         text, n = re.subn(r'(<SL__arrayElement class="signal" uid="%s">.*?<compressedWireTable>)[0-9A-Fa-f]*(</compressedWireTable>)' % uid,

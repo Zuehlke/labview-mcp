@@ -261,6 +261,85 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
         }
     }
 
+    internal const string FanRouteScript = "lvbd_fan_route.py";
+
+    /// <summary>
+    /// Extract, lvbd_fan_route.py, rebuild: each constant fan's wires get staggered geometry of our
+    /// own - two or more constants into one node, which LabVIEW's Clean Up Wire lays out one wire
+    /// at a time and may cross (Find Account's column constants, 2026-10-18). Runs AFTER the
+    /// layout's save, whose Clean Up Wire would replace it, on a VI LabVIEW does not hold; the
+    /// VI is rebuilt only when a table changed. A VI carrying compiled code is left alone, as every
+    /// pylabview edit in this repository leaves it (CLAUDE.md, "close the project").
+    /// </summary>
+    internal async Task<JsonObject> FanRouteAsync(string viPath, int timeoutSeconds, CancellationToken ct)
+    {
+        var answer = new JsonObject();
+        if (BulkTools.ContainsCompiledCode(viPath))
+        {
+            answer["ok"] = true;
+            answer["skipped"] = "The VI carries compiled code; its wires are left as LabVIEW routed them.";
+            return answer;
+        }
+        if (PyLabview.Locate() is not { } bundle || StatusTools.ScriptsDirectory() is not { } scripts)
+        {
+            answer["ok"] = false;
+            answer["note"] = "pylabview or the scripts folder is not available.";
+            return answer;
+        }
+        var directory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "fanroute", Path.GetRandomFileName());
+        try
+        {
+            var pylv = new PyLabviewTools(connection);
+            var extract = JsonNode.Parse(await pylv.ExtractAsync(viPath, directory, annotate: false,
+                                                                 timeoutSeconds, ct: ct));
+            if (extract?["mainXml"]?.GetValue<string>() is not { } mainXml)
+            {
+                answer["ok"] = false;
+                answer["extract"] = extract?.DeepClone();
+                return answer;
+            }
+            var heap = Path.Combine(directory, Path.GetFileNameWithoutExtension(mainXml) + "_BDHb.xml");
+            if (!File.Exists(heap))
+            {
+                answer["ok"] = true;
+                answer["wiresRewritten"] = 0;
+                answer["note"] = "No block-diagram heap in the file.";
+                return answer;
+            }
+            var run = await EventStructureTools.RunScriptAsync(bundle, scripts, FanRouteScript, [heap], "fanRoute",
+                                                               timeoutSeconds, ct);
+            if (run["exitCode"]?.GetValue<int>() != 0)
+            {
+                answer["ok"] = false;
+                answer["fanRoute"] = run;
+                return answer;
+            }
+            var (fans, rewritten) = ParseFanRoute(run["stdout"]?.GetValue<string>());
+            answer["fans"] = fans;
+            answer["wiresRewritten"] = rewritten;
+            if (rewritten == 0)
+            {
+                answer["ok"] = true;
+                return answer;
+            }
+            var rebuild = JsonNode.Parse(await pylv.RebuildAsync(mainXml, viPath, timeoutSeconds, ct: ct));
+            answer["ok"] = rebuild?["ok"]?.GetValue<bool>() == true && !BulkTools.ContainsCompiledCode(viPath);
+            if (answer["ok"]?.GetValue<bool>() != true) answer["rebuild"] = rebuild?.DeepClone();
+            return answer;
+        }
+        finally
+        {
+            try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    /// <summary>The script's first line: "fans N, wires rewritten M".</summary>
+    internal static (int Fans, int Rewritten) ParseFanRoute(string? stdout)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(stdout ?? "", @"fans (\d+), wires rewritten (\d+)");
+        return m.Success ? (int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value)) : (0, 0);
+    }
+
     private static JsonObject Fail(JsonObject step, string note)
     {
         step["ok"] = false;

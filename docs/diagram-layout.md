@@ -769,6 +769,14 @@ rewritten (`040801000C0A`, `040801001219`, `040801001828`: 12, 18 and 24 px east
 40 px). LabVIEW kept that geometry on load. The render shows three straight steps where
 `Clean Up Wire` had crossed `column 2` and `column 3`, and the VI stayed executable.
 
-**It must run after the layout's save.** The layout's own `Clean Up Wire` replaces every table.
-The tool's pylabview step after the save (where it strips compiled code) is the place for it.
-It is not wired into `lvai_layout_diagram` yet.
+**It runs after the layout's save, as step 4b of `lvai_layout_diagram`** (`routeFans`, default
+true, `DiagramCleanup.FanRouteAsync`). The layout's own `Clean Up Wire` would replace every table,
+so the step comes after the save and after any compiled-code strip, with the VI released from
+LabVIEW, and rebuilds only when a table changed. A VI that carries compiled code is skipped and
+says so (`fanRouting.skipped`), as every pylabview edit here leaves one alone. The answer reports
+`fanRouting.fans` and `wiresRewritten`. Tests: `FanRouteTests` (a composed fan of three
+constants gets staggered verticals in the non-crossing order; the summary is parsed).
+
+Applied to all 76 VIs of ATM_DQMH_Cold: 190 wires in 21 VIs rewritten, no step failed, every VI
+still executable, and 12 backward wires (11 in Delacor's VIs). Find Account's column constants
+and every assert's Expected and Label now run in straight steps.
