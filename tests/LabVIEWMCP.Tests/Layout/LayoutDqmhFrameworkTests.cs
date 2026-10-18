@@ -34,6 +34,34 @@ public class LayoutDqmhFrameworkTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// The user's reviews of 2026-10-18: Delacor's Main.vi, 1331 x 801 px, came out 2224 x 1176 -
+    /// too large, with about 1600 x 950 named as the goal. Tighter spacing, a label band sized to
+    /// its wrapped text and a node label bounded to its gap plan it 1752 x 1044 now. A guard against
+    /// the size creeping up again; the goal itself needs a chain packed in two dimensions.
+    /// </summary>
+    [Fact]
+    public void A_dqmh_main_vi_is_not_planned_larger_than_after_the_2026_10_18_reviews()
+    {
+        var plan = DiagramLayout.Plan(Load("dqmh-bank-main-original.txt"));
+        output.WriteLine($"Main.vi planned {plan.PredictedTop}");
+        Assert.True(plan.PredictedTop.W <= 1780, $"Main.vi planned {plan.PredictedTop.W} px wide (2224 before the reviews)");
+        Assert.True(plan.PredictedTop.H <= 1060, $"Main.vi planned {plan.PredictedTop.H} px high (1176 before the reviews)");
+    }
+
+    /// <summary>
+    /// A six-line subdiagram label keeps six lines' height only while its structure is as narrow as
+    /// before: LabVIEW re-wraps it to the structure's width, so a wider structure needs fewer lines.
+    /// </summary>
+    [Fact]
+    public void A_multi_line_label_band_shrinks_with_the_lines_its_text_needs()
+    {
+        var label = new DObject { DiagramId = "0", Index = 0, Class = "Text",
+            Box = new Box(0, 0, 132, 6 * TextMetrics.LineHeight + 7), Text = string.Join(" ", Enumerable.Repeat("word", 60)) };
+        Assert.Equal(label.Box.H, DiagramLayout.LabelBand(label, 140));
+        Assert.True(DiagramLayout.LabelBand(label, 1000) < label.Box.H, "two lines of text at 1000 px");
+    }
+
+    /// <summary>
     /// A node's own label above it took column width: "Fract/Exp String To Number" counted 150 px
     /// for a 32 px icon (Bounds is icon and label together), and Find Account's indicators stood
     /// 118 px right of it. The icon is the outline of its terminals now, and a label above or

@@ -76,17 +76,60 @@ before its own diagram is arranged.
 **The spacing.** The user's review of 2026-10-16 found the compacted layout good but squeezed:
 "in X and in Y a little more room". The values went up as follows:
 
-| constant | was | now |
-|---|---|---|
-| between columns (`ColumnGap`) | 28 px | 40 px |
-| between rows (`RowGap`) | 14 px | 24 px |
-| from a constant to its node (`ConstantGap`) | 12 px | 18 px |
-| between stacked constants and between ports (`StackGap`) | 2 px | 6 px |
+| constant | first | 2026-10-16 | now (2026-10-18) |
+|---|---|---|---|
+| between columns (`ColumnGap`) | 28 px | 40 px | 24 px |
+| between rows (`RowGap`) | 14 px | 24 px | 18 px |
+| from a constant to its node (`ConstantGap`) | 12 px | 18 px | 10 px |
+| between stacked constants and between ports (`StackGap`) | 2 px | 6 px | 6 px |
+| per wire crossing a gap beyond the second (`WireLane`) | 6 px | 6 px | 2 px |
+| beside a structure inside, at the border (`Lane`) | 14 px | 14 px | 8 px |
 
-Every structure's inset grew by 8 px, 6 px at the top. Constants and ports share `StackGap`, so a
-constant stays level with the port it feeds. Over the 45 ATM VIs, measured on the renders, the
-median width went from 0.93 to 1.00 of the original's and the height from 0.73 to 0.83, with none
-wider than 1920 px.
+On 2026-10-16 every structure's inset grew by 8 px, 6 px at the top. Constants and ports share
+`StackGap`, so a constant stays level with the port it feeds. Over the 45 ATM VIs, measured on the
+renders, the median width went from 0.93 to 1.00 of the original's and the height from 0.73 to 0.83,
+with none wider than 1920 px.
+
+**The user's two reviews of 2026-10-18 found the result too large**, the second naming a goal: about
+1600 x 950 px for DQMH's `Main.vi`. The spacing above is now the tightest the tests allow, and each
+structure's SIDE inset is 4 px tighter (top and bottom unchanged). Planned from the fixtures:
+
+| VI | original | 2026-10-16 values | now |
+|---|---|---|---|
+| DQMH `Main.vi` (`dqmh-bank-main-original.txt`) | 1331 x 801 | 2224 x 1176 | 1752 x 1044 |
+| DQMH `Main.vi` after NI's clean-up (`dqmh-main-ni-cleanup.txt`) | 3805 x 1692 | - | 1879 x 960 |
+| DQMH `Stop Module.vi` | 1600 x 528 | 2780 x 591 | 2192 x 516 |
+| ATM main | 1866 x 793 | 1837 x 537 | 1592 x 511 |
+| `Test Find Account.vi` | 1183 x 839 | 1224 x 1136 | 1044 x 1070 |
+
+Three things came out of getting there, each found by a test failing at a tighter value:
+
+- **A multi-line subdiagram label's band follows its wrapped text** (`DiagramLayout.LabelBand`).
+  The band above a structure's code was the label's OLD height, while LabVIEW re-wraps the label
+  to the structure's width (section 6b saw the empty field it left). Delacor's six-line note over
+  the Error frame's inner case took 103 px for what fits three lines there. This alone took
+  Main.vi from 1089 to 1029 px high, with every spacing unchanged.
+- **A node's label may reach into the gap beside it, never past it.** A label above or below a
+  node takes no column width (section 6d), and at `ColumnGap` 28 or less "Fract/Exp String To
+  Number" reached over the gap onto Find Account's indicator. The width box now takes the part of
+  the label beyond `ColumnGap - LabelGap`.
+- **`RowGap` below 18 is refused by two tests**: at 16 the Samples constant of LayoutCheck's Main
+  sat in the run of the TDMS File Path wire, and a frame note was no longer at its frame's top.
+  At 14 px it bought 14 px of Main.vi's height, so it stays at 18.
+
+**Not taken: the top and bottom insets 3-4 px tighter.** That planned Main.vi 1752 x 1003, but in the
+NI-cleanup fixture a refnum wire then left the case at the height of its top, the #DQMH_HowTo block
+found every spot beside the case crossed by it and went ABOVE the case: 1879 x 1070 against 960.
+`A_top_level_note_goes_beside_the_structure_it_belongs_to` refuses it. The wire test uses a
+wire's bounding box, which over-states an L-shaped wire; settling that is open.
+
+**The goal is not reached, and spacing is not what is left.** With every gap at its minimum (10, 6,
+6, no lanes) Main.vi still plans 1530 x 1026: the height is the event loop over the message loop,
+each sized to its tallest frame, and the width the data-flow columns where Delacor packs a chain
+in two dimensions (section 6b). The remaining 150 x 95 px need that packing.
+
+Applied live to `C:\Temp\CleanupDemo`'s `Main.vi`, restored to Delacor's original first: see
+section 6h.
 
 - **Columns follow data flow.** The column is the longest path from a source, the old Sugiyama
   layering.
@@ -100,7 +143,7 @@ wider than 1920 px.
   came three columns after its producer, behind the panel set-up only it waits for, and the two
   loops ran next to each other across 2295 px. The user's review of 2026-10-16: the original,
   stacked layout was better than ours.
-- **A gap is as wide as the wires crossing it.** `ColumnGap` plus 6 px (`WireLane`) per
+- **A gap is as wide as the wires crossing it.** `ColumnGap` plus 2 px (`WireLane`, 6 until 2026-10-18) per
   wire beyond the second, counting wires from node to node and, in a frame, wires from the left
   border and to the right border. The frame's insets grow the same way. At a plain 28 px, five
   wires from the ATM consumer loop's shift registers crossed the gaps around its three subVIs, and
@@ -780,3 +823,19 @@ constants gets staggered verticals in the non-crossing order; the summary is par
 Applied to all 76 VIs of ATM_DQMH_Cold: 190 wires in 21 VIs rewritten, no step failed, every VI
 still executable, and 12 backward wires (11 in Delacor's VIs). Find Account's column constants
 and every assert's Expected and Label now run in straight steps.
+
+### 6h. Applied live to CleanupDemo's Main.vi, 2026-10-18
+
+`C:\Temp\CleanupDemo` is a fresh Singleton DQMH module. Its `Main.vi` was restored to Delacor's
+original before each run, then laid out by a server built from the changed tree, over raw stdio:
+
+| engine | planned and landed | objects where planned | executable |
+|---|---|---|---|
+| 2026-10-16 spacing | 2224 x 1176 | 140 of 140 | yes |
+| first review (gaps half way back) | 1990 x 1089 | 140 of 140 | yes |
+| second review (section 3, "The spacing") | 1752 x 1044 | 140 of 140 | yes |
+
+The render of the last one: the error rail straight along the bottom, both loops stacked, nothing
+overlapping. One cosmetic point: the `External Launch?` label of the right-hand case sits on that
+case's top border. The goal of about 1600 x 950 px is not reached; section 3 says what is left.
+
