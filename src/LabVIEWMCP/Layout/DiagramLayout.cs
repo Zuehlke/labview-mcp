@@ -350,7 +350,10 @@ internal static class DiagramLayout
         int Lanes(int i)
         {
             var crossing = nets.Count(g => colOf[g.Key.From] <= i && g.Any(e => colOf[e.To] > i))
-                + colOf.Where(kv => kv.Value > i).Sum(kv => graph.LeftFed.GetValueOrDefault(kv.Key))
+                // per WIRE from the left border, not per node it feeds: DQMH's Initialize frame
+                // fans its queue and admin refnums out to many nodes, and counted per node they
+                // reserved 140 px of lanes left of the code (ATM_DQMH_Cold, 2026-10-18)
+                + graph.LeftWires.Count(w => w.Any(k => colOf.TryGetValue(k, out var c) && c > i))
                 + colOf.Where(kv => kv.Value <= i).Sum(kv => graph.RightFed.GetValueOrDefault(kv.Key));
             return WireLane * Math.Max(0, crossing - 2);
         }
@@ -638,6 +641,38 @@ internal static class DiagramLayout
                           B: ((double)a.Pos[e.To].X, (double)a.Pos[e.To].Y + TermY(ctx, e.To, e.ToTerm)),
                           (object)e.From, (object)e.To)).ToList();
         score = (OrthogonalCrossings(dataWires), dataWires.Sum(w => Math.Abs(w.A.Item2 - w.B.Item2)));
+
+        // a comment never becomes the leftmost thing on the diagram: the arrangement starts at its
+        // leftmost object, so a comment hanging further left than any code moved ALL the code right
+        // behind empty diagram - 172 px in DQMH's Initialize frame. Slid right to where the code
+        // starts, at the nearest height where it lands on nothing - level with where it was it
+        // touched the Initialize frame's Initial Message constant 4 px above it
+        var codeBoxes = a.Pos.Where(kv => !kv.Key.IsText).Select(kv => Extent(ctx, kv.Key, kv.Value.X, kv.Value.Y)).ToList();
+        if (codeBoxes.Count > 0)
+        {
+            var codeL = codeBoxes.Min(b => b.L);
+            foreach (var t in a.Pos.Keys.Where(o => o.IsText && !a.Notes.Contains(o)).ToList())
+            {
+                var e = Extent(ctx, t, a.Pos[t].X, a.Pos[t].Y);
+                if (e.L >= codeL) continue;
+                var others = a.Pos.Where(kv => kv.Key != t).Select(kv => Extent(ctx, kv.Key, kv.Value.X, kv.Value.Y)).ToList();
+                int? found = null;
+                for (var k = 0; k <= 40 && found is null; k++)
+                {
+                    var dy = (k % 2 == 0 ? 1 : -1) * ((k + 1) / 2) * 4;
+                    if (!others.Any(b => b.Overlaps(e.Offset(codeL - e.L, dy), LabelGap))) found = dy;
+                }
+                // the code is dense there: above all of it, which costs a line of height where
+                // staying put cost the comment's width - 142 px in the Initialize frame
+                if (found is null)
+                {
+                    var top = others.Min(b => b.T);
+                    for (var y = top - e.H - LabelGap; found is null && y > top - 400; y -= 4)
+                        if (!others.Any(b => b.Overlaps(e.Offset(codeL - e.L, y - e.T), LabelGap))) found = y - e.T;
+                }
+                if (found is { } fy) a.Pos[t] = (a.Pos[t].X + codeL - e.L, a.Pos[t].Y + fy);
+            }
+        }
 
         // normalise to (0,0)
         var boxes = a.Pos.Select(kv => Extent(ctx, kv.Key, kv.Value.X, kv.Value.Y)).ToList();
@@ -1378,13 +1413,15 @@ internal static class DiagramLayout
             // a comment never reaches LEFT of its block: kept as far left of its node as it sat,
             // Delacor's "#CodeNeeded - Initialize your state data here." hung 180 px out and held
             // every node of the Initialize frame that far right of empty diagram (the user's review
-            // of ATM_DQMH_Cold, 2026-10-18). Pulled in, it goes above its node, or below a subVI
-            if (dx < block.WidthBox.L)
+            // of ATM_DQMH_Cold, 2026-10-18). Pulled in, it goes above its node, or below a subVI.
+            // Only a comment BESIDE its node: one above or below may still reach left - Delacor's
+            // long note under Synchronize Caller Events' case, pulled right, made it 1144 px wide
+            // against 791, over diagram it held nothing back on
+            if (dx < block.WidthBox.L && dy > -t.Box.H && dy < h)
             {
                 dx = block.WidthBox.L;
-                if (dy > -t.Box.H && dy < h)
-                    dy = n.Class is "SubVI" or "DynamicDispatchSubVI" or "PolymorphicSubVI" && !onRail
-                        ? h + LabelGap : -t.Box.H - LabelGap;
+                dy = n.Class is "SubVI" or "DynamicDispatchSubVI" or "PolymorphicSubVI" && !onRail
+                    ? h + LabelGap : -t.Box.H - LabelGap;
             }
             var lb = new Box(dx, dy, t.Box.W, t.Box.H);
             parts.Add(lb);
@@ -1651,6 +1688,9 @@ internal static class DiagramLayout
         /// RIGHT border: they cross every gap between the border and the node.</summary>
         public Dictionary<DObject, int> LeftFed { get; } = [];
         public Dictionary<DObject, int> RightFed { get; } = [];
+        /// <summary>Per wire from the frame's LEFT border, the nodes it feeds: a fan-out takes ONE
+        /// lane across a gap, however many nodes beyond it hang on its branches.</summary>
+        public List<HashSet<DObject>> LeftWires { get; } = [];
 
         /// <summary>
         /// The error chain the rail carries: the one that enters or leaves by the border, else the
@@ -1719,9 +1759,12 @@ internal static class DiagramLayout
                     : e.O is { } o && !e.Source && !nodes.Contains(o) && !o.IsText && !o.IsDecoration
                       && (o.IsLoopTerminal || d.Owner is { } ow && o.Box.L > ow.Box.L + ow.Box.W / 2);
                 if (s.Border && s.Source)
-                    foreach (var k in ends.Where((e, i) => i != src && !e.Border && e.O is not null && nodes.Contains(e.O))
-                                          .Select(e => e.O!).Distinct())
-                        g.LeftFed[k] = g.LeftFed.GetValueOrDefault(k) + 1;
+                {
+                    var fed = ends.Where((e, i) => i != src && !e.Border && e.O is not null && nodes.Contains(e.O))
+                                  .Select(e => e.O!).ToHashSet();
+                    foreach (var k in fed) g.LeftFed[k] = g.LeftFed.GetValueOrDefault(k) + 1;
+                    if (fed.Count > 0) g.LeftWires.Add(fed);
+                }
                 if (s.O is not null && nodes.Contains(s.O) && ends.Where((_, i) => i != src).Any(e => e.Border && !e.Source))
                     g.RightFed[s.O] = g.RightFed.GetValueOrDefault(s.O) + 1;
                 if (s.O is not null && nodes.Contains(s.O) && ends.Where((_, i) => i != src).Any(RightSink))

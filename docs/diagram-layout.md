@@ -582,13 +582,26 @@ own data node (`StructShape.FrameDx`). Frame 7's code went from 212 to 88 px in.
 executable, and every object landed where planned. Fixtures `dqmh-bank-main-original.txt` and
 `dqmh-bank-stop-module-original.txt`, tests in `LayoutDqmhFrameworkTests`.
 
-**Cause 3: a comment kept its distance to the LEFT of its node** (the user's review the same
-day). A comment moves with the node it describes and keeps the offset it had, up to
-`AnchorReach`. Delacor's "#CodeNeeded - Initialize your state data here." sat 180 px left of its
-node, so the code of the message loop's Initialize frame started 172 px right of the border, behind
-empty diagram. A comment may no longer reach left of its node's block (the node with its
-constants). Pulled in, it goes above its node, or below a subVI. The Initialize frame's code now
-starts 30 px in, and Main.vi is planned 2240 px wide where it was 2289.
+**Cause 3: a comment became the leftmost object of its diagram** (the user's review the same
+day). An arrangement starts at its leftmost object. Delacor's "#CodeNeeded - Initialize your state
+data here." kept its old offset left of its node, so the code of the message loop's Initialize
+frame started 172 px right of the border, behind empty diagram.
+
+Three guesses were wrong before a measurement settled it, which is worth recording:
+
+- Clamping the comment to its node's block helped only while the comment sat BESIDE its node. It
+  stood below, so it changed nothing there, and it made `Synchronize Caller Events.vi` 1144 px wide
+  against 791 by pulling a long note right that held nothing back.
+- The lanes reserved for wires from the frame's left border were the next suspect. They were
+  counted per fed node instead of per wire, which is wrong and is fixed (`Graph.LeftWires`), but
+  it was not the cause here.
+- Logging the arrangement before normalisation showed it: the comment at x = -142, the code at 0,
+  and no free spot for it within 80 px in the dense code column.
+
+Now a comment hanging left of all code slides to where the code starts, at the nearest free
+height, and above all code when there is none. A comment beside its node is still pulled above
+it, or below a subVI. The Initialize frame's code starts 30 px in. Main.vi is planned
+2228 x 1176 px (2289 x 1143 before).
 
 **Backward wires in `Find Account.vi` were a COMPOSER defect, not a layout one.** Its Index Array
 reads three columns, and the composer had put all three index inputs on one pin. Fixed in
@@ -607,3 +620,30 @@ until it is recomposed or patched.
   engine cannot keep the two together.
 - **The label band keeps the label's old height** after the structure grew wider. LabVIEW's
   behaviour for that height on a widened structure is not measured.
+
+### 6c. Backward wires, measured, 2026-10-18
+
+`scripts/lvbd_backward_wires.py` reads every saved wire through pylabview, with no LabVIEW. It
+decodes the `compressedWireTable` (two-ended and fan-out formats, FINDINGS section 4) and counts
+each horizontal segment that runs west for 8 px or more. **Wires inside an XNode are left out.**
+Its generated diagram is never shown, and the Error Ring of every DQMH `--error.vi` carried two
+backward wires nobody can see. The first count included them: 57 instead of 42.
+
+Over `C:\Temp\ATM_DQMH_Cold`, all 76 VIs re-laid out with the rules above:
+
+| | backward wires | of wires |
+|---|---|---|
+| after the first project layout | 42 | 2177 |
+| after this section's fixes | 42 | 2177 |
+
+The total did not move, but the distribution did:
+
+- `Find Account.vi`'s backward wires came from the composer's collapsed Index Array, now 0.
+- 31 of the 42 are in the generated Caraya test VIs. In `Test Find Account.vi` all twelve are one
+  pattern: an Assert's `error out` going 25 px WEST into the Merge Errors tree behind the bands.
+- 7 are in Delacor's Main.vi and 4 in its `Obtain ... Events.vi`.
+
+So LabVIEW's router is not what produces most of them: the Merge Errors tree is placed so that
+each Assert's error wire has to come back to reach it. That is a placement rule to fix next. A
+router of our own would go through `Connect Wire` with Wiring Specs (`Joints[]` is read-only) and
+is not needed for that pattern.
