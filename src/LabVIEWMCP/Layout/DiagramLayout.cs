@@ -1375,6 +1375,17 @@ internal static class DiagramLayout
             // in a frame nothing hangs below the rail: there it would make every frame of the
             // structure taller by its height, since all frames share one size and one rail
             if (onRail && dy >= h) dy = -t.Box.H - LabelGap;
+            // a comment never reaches LEFT of its block: kept as far left of its node as it sat,
+            // Delacor's "#CodeNeeded - Initialize your state data here." hung 180 px out and held
+            // every node of the Initialize frame that far right of empty diagram (the user's review
+            // of ATM_DQMH_Cold, 2026-10-18). Pulled in, it goes above its node, or below a subVI
+            if (dx < block.WidthBox.L)
+            {
+                dx = block.WidthBox.L;
+                if (dy > -t.Box.H && dy < h)
+                    dy = n.Class is "SubVI" or "DynamicDispatchSubVI" or "PolymorphicSubVI" && !onRail
+                        ? h + LabelGap : -t.Box.H - LabelGap;
+            }
             var lb = new Box(dx, dy, t.Box.W, t.Box.H);
             parts.Add(lb);
             block.Members.Add((t, dx, dy));

@@ -685,7 +685,14 @@ one probe: Build Array, Bundle and Unbundle 32 px wide and 8 n + 1 high, termina
 on row 8 k. **"17 at least" was written here until 2026-10-18 and was wrong**: it held for the
 probe's two and more terminals only. With ONE terminal NI's converter draws all three 9 px high,
 measured on a one-element probe. The floor drew the one-element Build Array of IfaceUE_TDMS3's
-`Write Sample.vi` twice its height, with the input in its upper half; Get Waveform Components as Unbundle By Name, 16 px a row; Build Waveform's fields from
+`Write Sample.vi` twice its height, with the input in its upper half. **Index Array had no
+geometry at all until the same day**: every further index and output stayed on the part's one
+terminal, so the three columns the ATM's `Find Account.vi` reads through one Index Array arrived
+on one pin and LabVIEW routed their wires backwards round the node. Measured on NI's converter
+(1D with one and three indices, 2D with a disabled column, 2D with two groups): 32 px wide, the
+array input (0, 0, 18, 16), group g from y = 18 + 8 dims g with its indices 8 px apart on the
+left, group 0's output (0, 16, 18 + 8 dims + 1, 32), a later group's (y, 16, y + 8 dims, 32), the
+node 18 + 8 dims groups + 1 high (`_index_array_geometry`); Get Waveform Components as Unbundle By Name, 16 px a row; Build Waveform's fields from
 12 px down, its output the right 16 px; the Event Data Node 16 px a row, the longest name + 16 wide
 (all eleven of Delacor's), and placed 8 px in from its frame's left edge where LabVIEW keeps it - at
 30 px it floated in the frame (`PylabviewGrowableNodeTests`).

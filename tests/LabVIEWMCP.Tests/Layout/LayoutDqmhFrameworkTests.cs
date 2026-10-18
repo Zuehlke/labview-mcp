@@ -47,6 +47,26 @@ public class LayoutDqmhFrameworkTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// A comment that sat far left of the node it describes kept that distance: in the message
+    /// loop's Initialize frame, "#CodeNeeded - Initialize your state data here." hung 180 px out
+    /// and the frame's code started 169 px right of its border, behind empty diagram. No comment
+    /// may reach left of the block of the node it describes.
+    /// </summary>
+    [Fact]
+    public void A_comment_leaves_no_empty_field_left_of_the_code()
+    {
+        var model = Load("dqmh-bank-main-original.txt");
+        var plan = DiagramLayout.Plan(model);
+        var cases = plan.Predicted["0.11.0.2.0#2"];
+        var frame = model.Diagrams["0.11.0.2.0.2.0"];
+        var placed = frame.Objects.Where(o => !o.IsDecoration && plan.Predicted.ContainsKey(o.Key)).ToList();
+        var code = placed.Where(o => !o.IsText).Min(o => plan.Predicted[o.Key].L) - cases.L;
+        var anything = placed.Min(o => plan.Predicted[o.Key].L) - cases.L;
+        output.WriteLine($"Initialize: code starts {code} px in, first object {anything} px in; top {plan.PredictedTop}");
+        Assert.True(code <= 60, $"the Initialize frame's code starts {code} px inside the case");
+    }
+
+    /// <summary>
     /// The event structure's twelve frames all started right of the WIDEST data node among them
     /// (149 px, the Stop Module event), 191 px in. A frame whose data node is 39 px wide now starts
     /// right of its own.

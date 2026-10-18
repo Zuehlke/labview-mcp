@@ -582,6 +582,19 @@ own data node (`StructShape.FrameDx`). Frame 7's code went from 212 to 88 px in.
 executable, and every object landed where planned. Fixtures `dqmh-bank-main-original.txt` and
 `dqmh-bank-stop-module-original.txt`, tests in `LayoutDqmhFrameworkTests`.
 
+**Cause 3: a comment kept its distance to the LEFT of its node** (the user's review the same
+day). A comment moves with the node it describes and keeps the offset it had, up to
+`AnchorReach`. Delacor's "#CodeNeeded - Initialize your state data here." sat 180 px left of its
+node, so the code of the message loop's Initialize frame started 172 px right of the border, behind
+empty diagram. A comment may no longer reach left of its node's block (the node with its
+constants). Pulled in, it goes above its node, or below a subVI. The Initialize frame's code now
+starts 30 px in, and Main.vi is planned 2240 px wide where it was 2289.
+
+**Backward wires in `Find Account.vi` were a COMPOSER defect, not a layout one.** Its Index Array
+reads three columns, and the composer had put all three index inputs on one pin. Fixed in
+`aixml2vi.py` (`docs/aixml-backends.md`). A VI composed before the fix keeps the collapsed node
+until it is recomposed or patched.
+
 **Still open, and these are the larger part:**
 
 - **Data-flow columns against Delacor's two-dimensional packing.** In the message loop's

@@ -3283,6 +3283,29 @@ class Composer:
         self._set_term(agg, agg_box(h))
         return h
 
+    def _index_array_geometry(self, node, tl, dims, groups):
+        """Index Array grows 8 px a dimension and group. The harvested part carries one index,
+        and every further index and output was cloned onto it: the three columns of the ATM's
+        Find Account read through one Index Array arrived on ONE pin, and LabVIEW routed their
+        wires round the node and back (the user's review of ATM_DQMH_Cold, 2026-10-18).
+        Measured on NI's converter, 1D with one and three indices, 2D with a disabled column and
+        2D with two groups: 32 px wide; the array input (0, 0, 18, 16); group g starts at
+        y = 18 + 8 dims g, its indices 8 px apart on the left; group 0's output spans
+        (0, 16, 18 + 8 dims + 1, 32), a later group's (y, 16, y + 8 dims, 32); the node is
+        18 + 8 dims groups + 1 high."""
+        terms = list(tl)
+        h = 18 + 8 * dims * groups + 1
+        self._set_box(node, h, 32)
+        self._set_term(terms[0], (0, 0, 18, 16))
+        k = 1
+        for g in range(groups):
+            y = 18 + 8 * dims * g
+            self._set_term(terms[k], (0, 16, 18 + 8 * dims + 1, 32) if g == 0 else (y, 16, y + 8 * dims, 32))
+            k += 1
+            for d in range(dims):
+                self._set_term(terms[k], (y + 8 * d, 0, y + 8 * d + 8, 16))
+                k += 1
+
     def _waveform_bundle_geometry(self, node, agg, field_terms, names):
         """Build Waveform: its fields start 12 px down, under the waveform input, 16 px a row; the
         output takes the right 16 px - NI's converter, Y and dt: 35 x 45, fields (12, 0, 28, 19)
@@ -3495,6 +3518,7 @@ class Composer:
                     tl.append(t)
                     ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
                     self.ends[(el.get("uid"), key)] = (t.get("uid"), diag)
+            self._index_array_geometry(node, tl, n, len(idx_ins) // n)
             if len(idx_ins) // n > 1:
                 f = node.find("objFlags")
                 if f is None:
