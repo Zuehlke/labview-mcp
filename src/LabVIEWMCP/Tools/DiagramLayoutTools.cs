@@ -67,6 +67,107 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_layout_diagram",
             () => LayoutCoreAsync(viPath, dryRun, verify, render, renderDirectory, timeoutSeconds, ct, routeFans)));
 
+    [McpServerTool(Name = "lvai_layout_diagrams", Destructive = true, OpenWorld = true,
+                   Title = "Lay out many VIs' block diagrams, in parallel workers")]
+    [Description("""
+        MUTATING: lvai_layout_diagram over MANY VIs in one call - each saved in place, each with a
+        backup - with `parallel` workers in THIS server process. viPaths takes one absolute path per
+        line; a line naming a FOLDER takes every .vi under it, so a whole project is one call.
+        PARALLEL ONLY ON pylabview. There each worker has an ActiveX lane of its own and helper VIs
+        of its own, so the workers' LabVIEW operations run beside each other; measured over
+        ATM_DQMH_Cold's 76 VIs with four server processes: 46 s against 73 s, every VI where
+        planned and executable. On grpc the work runs one VI after the other (`parallel` is
+        reported as 1): NI's service is not measured running two helper VIs at once.
+        A worker never shares a VI with another, and the default ActiveX operations of every other
+        tool still run alone. Answers one compact row per VI and the totals; a VI that failed is
+        named with its errorKind, and the others go on.
+        """)]
+    public async Task<string> LayoutDiagramsAsync(
+        [Description("The VIs, one absolute path per line; a folder takes every .vi under it")] string viPaths,
+        [Description("Workers, 1-8. Parallel on pylabview only")] int parallel = 4,
+        [Description("Dump each diagram again afterwards and compare it with the plan")] bool verify = true,
+        [Description("Local budget in seconds, per step and VI")] int timeoutSeconds = 240,
+        [Description("Give each constant fan wire geometry of our own, as lvai_layout_diagram does")] bool routeFans = true,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_layout_diagrams",
+            () => LayoutManyAsync(viPaths, parallel, verify, timeoutSeconds, routeFans, ct)));
+
+    internal async Task<string> LayoutManyAsync(string viPaths, int parallel, bool verify, int timeoutSeconds,
+                                                bool routeFans, CancellationToken ct)
+    {
+        var targets = new List<string>();
+        foreach (var line in (viPaths ?? "").Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (Directory.Exists(line))
+                targets.AddRange(Directory.EnumerateFiles(line, "*.vi", SearchOption.AllDirectories).Order(StringComparer.OrdinalIgnoreCase));
+            else if (File.Exists(line)) targets.Add(Path.GetFullPath(line));
+            else return Json.Error("viNotFound", $"No file or folder at '{line}'. Every line is checked before LabVIEW is asked anything.",
+                                   new { line });
+        }
+        targets = targets.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (targets.Count == 0)
+            return Json.Error("badArguments", "viPaths named no VI. Pass one absolute .vi path or folder per line.", new { viPaths });
+
+        var workers = BackendRoute.OnPyLabview ? Math.Clamp(parallel, 1, 8) : 1;
+        workers = Math.Min(workers, targets.Count);
+        var queue = new System.Collections.Concurrent.ConcurrentQueue<(int Index, string Vi)>(targets.Select((v, i) => (i, v)));
+        var rows = new JsonObject?[targets.Count];
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        async Task Worker(int w)
+        {
+            // a lane and helper VIs of its own; one worker alone keeps the default lane, so a
+            // sequential run is exactly lvai_layout_diagram's
+            if (workers > 1) LabViewCom.Lane.Value = $"lane{w}";
+            while (queue.TryDequeue(out var job))
+            {
+                var t = System.Diagnostics.Stopwatch.StartNew();
+                JsonObject row;
+                try
+                {
+                    var answer = JsonNode.Parse(await LayoutCoreAsync(job.Vi, dryRun: false, verify, render: false,
+                        renderDirectory: null, timeoutSeconds, ct, routeFans)) as JsonObject ?? new JsonObject();
+                    row = new JsonObject
+                    {
+                        ["viPath"] = job.Vi,
+                        ["ok"] = answer["ok"]?.DeepClone() ?? false,
+                        ["errorKind"] = answer["errorKind"]?.DeepClone(),
+                        ["before"] = answer["before"]?.DeepClone(),
+                        ["after"] = (answer["after"] ?? answer["planned"])?.DeepClone(),
+                        ["landedOff"] = answer["landedOff"]?.DeepClone(),
+                        ["backupPath"] = answer["backupPath"]?.DeepClone(),
+                        ["ms"] = t.ElapsedMilliseconds,
+                    };
+                    if (answer["ok"]?.GetValue<bool>() != true)
+                        row["message"] = (answer["message"] ?? answer["note"])?.DeepClone();
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    row = new JsonObject { ["viPath"] = job.Vi, ["ok"] = false, ["errorKind"] = "exception",
+                                           ["message"] = e.Message, ["ms"] = t.ElapsedMilliseconds };
+                }
+                rows[job.Index] = row;
+            }
+        }
+        await Task.WhenAll(Enumerable.Range(0, workers).Select(w => Task.Run(() => Worker(w), ct)));
+
+        var failed = rows.Where(r => r?["ok"]?.GetValue<bool>() != true).ToList();
+        var off = rows.Sum(r => r?["landedOff"]?.GetValue<int>() ?? 0);
+        return Json.Document(new JsonObject
+        {
+            ["ok"] = failed.Count == 0 && off == 0,
+            ["vis"] = targets.Count,
+            ["laidOut"] = targets.Count - failed.Count,
+            ["failed"] = failed.Count,
+            ["landedOff"] = off,
+            ["parallel"] = workers,
+            ["parallelNote"] = workers == 1 && parallel > 1 && !BackendRoute.OnPyLabview
+                ? "On grpc the VIs are laid out one after the other." : null,
+            ["wallMs"] = clock.ElapsedMilliseconds,
+            ["results"] = new JsonArray(rows.Select(r => (JsonNode?)r).ToArray()),
+        });
+    }
+
     /// <summary>
     /// The whole layout of one VI - hold, dump, plan, apply, strip, verify, render - on the backend
     /// the caller's route carries. The tool's body, and the `cleanUpDiagram` step every VI we write

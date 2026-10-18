@@ -46,7 +46,12 @@ internal static class ComposedHelpers
             return (null, missing);
         var scripts = StatusTools.ScriptsDirectory() ?? Path.GetDirectoryName(aixml)!;
 
-        var vi = Path.Combine(Folder, viName ?? Path.ChangeExtension(Path.GetFileName(aixml), ".vi"));
+        // in an ActiveX lane (lvai_layout_diagrams' workers) the helper is the lane's own copy: one
+        // helper VI in memory, its controls written by two workers at once, read the other's answers
+        var lane = LabViewCom.Lane.Value;
+        var vi = Path.Combine(Folder, viName ?? (lane is null
+            ? Path.ChangeExtension(Path.GetFileName(aixml), ".vi")
+            : $"{Path.GetFileNameWithoutExtension(aixml)} {lane}.vi"));
         var stamp = vi + ".parts";
         // a helper composed for one LabVIEW release is not one for another (Error 1125 in 2025)
         var partsInUse = ExpectedStamp(PartsStamp(setup.PartsDirectory) + "|" +

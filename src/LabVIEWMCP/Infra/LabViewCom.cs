@@ -84,19 +84,72 @@ internal static class LabViewCom
         // anyway, so waiting here costs nothing but the race.
         var budget = TimeSpan.FromSeconds(Math.Clamp(timeoutSeconds, 1, 3600));
         var clock = Stopwatch.StartNew();
-        if (!await ComGate.WaitAsync(budget, ct))
-            throw new ComException("comCallTimedOut",
-                $"Another ActiveX call to LabVIEW was still running after {timeoutSeconds} s, so this " +
-                "one never started. Call again when it has finished.");
+        var timedOut = new ComException("comCallTimedOut",
+            $"Another ActiveX call to LabVIEW was still running after {timeoutSeconds} s, so this " +
+            "one never started. Call again when it has finished.");
+        TimeSpan Left() => budget - clock.Elapsed > TimeSpan.Zero ? budget - clock.Elapsed : TimeSpan.Zero;
+        if (!await ComGate.WaitAsync(budget, ct)) throw timedOut;
+        if (Lane.Value is not { } lane)
+        {
+            // the default: alone - after every lane operation still running has finished
+            try
+            {
+                Task idle;
+                lock (LaneCount) idle = LanesIdle.Task;
+                if (!await idle.WaitAsync(Left(), ct).ContinueWith(t => t.IsCompletedSuccessfully,
+                        TaskScheduler.Default))
+                    throw timedOut;
+                return await RunOnLabViewAsync(body, Left(), timeoutSeconds, ct);
+            }
+            finally { ComGate.Release(); }
+        }
+        // a LANE: alone within its lane, beside the other lanes. Only lvai_layout_diagrams opens
+        // lanes, one per worker, each on VIs of its own and with helper VIs of its own
+        // (ComposedHelpers): what the race above needs - two operations on ONE VI, or one helper
+        // VI's controls written by two callers - cannot happen between two lanes. Measured
+        // 2026-10-18 with four server processes over ATM_DQMH_Cold's 76 VIs: 76 of 76 laid out where
+        // planned and executable, 46 s against 73 s for one, while the same four sharing one set of
+        // helper VIs read each other's dumps (49 of 76 failed or landed off)
+        var gate = LaneGates.GetOrAdd(lane, _ => new SemaphoreSlim(1, 1));
+        lock (LaneCount)
+        {
+            if (LaneCount.Value++ == 0) LanesIdle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+        ComGate.Release();
         try
         {
-            return await RunOnLabViewAsync(body, budget - clock.Elapsed, timeoutSeconds, ct);
+            if (!await gate.WaitAsync(Left(), ct)) throw timedOut;
+            try { return await RunOnLabViewAsync(body, Left(), timeoutSeconds, ct); }
+            finally { gate.Release(); }
         }
-        finally { ComGate.Release(); }
+        finally
+        {
+            lock (LaneCount)
+            {
+                if (--LaneCount.Value == 0) LanesIdle.TrySetResult();
+            }
+        }
     }
 
     /// <summary>The gate <see cref="WithLabViewAsync{T}"/> holds for the length of one operation.</summary>
     private static readonly SemaphoreSlim ComGate = new(1, 1);
+
+    /// <summary>
+    /// The ActiveX lane of the current async flow: null for everything but the workers of
+    /// lvai_layout_diagrams. An operation in a lane runs beside the other lanes, never beside a
+    /// default one; ComposedHelpers names the helper VIs after it.
+    /// </summary>
+    internal static readonly AsyncLocal<string?> Lane = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> LaneGates = new();
+    private sealed class Counter { public int Value; }
+    private static readonly Counter LaneCount = new();
+    private static TaskCompletionSource LanesIdle = Completed();
+    private static TaskCompletionSource Completed()
+    {
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        done.SetResult();
+        return done;
+    }
 
     private static async Task<T> RunOnLabViewAsync<T>(Func<object, T> body, TimeSpan remaining,
                                                       int timeoutSeconds, CancellationToken ct)

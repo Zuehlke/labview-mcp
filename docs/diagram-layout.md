@@ -897,3 +897,31 @@ height.
 
 **Result on ATM_DQMH_Cold**: 76 of 76 laid out, every object where planned, 76 of 76 executable;
 Bank `Main.vi` 1815 x 958 -> 1815 x 943, the `error out` local above the rail in the Error frame.
+
+### 6j. Parallel layout in one process: `lvai_layout_diagrams`, 2026-10-18
+
+**Two server processes sharing one set of helper VIs read each other's answers.** Both ran
+`lvbd_layout_dump.vi` and `lvbd_layout_apply.vi` - one VI each in LabVIEW's memory - and wrote and
+read their controls at the same time: 49 of 76 VIs came back `dumpFailed` or with `landedExactly: 0`
+(the verify dump had read another VI). With helper VIs named per process the same two processes
+laid out 76 of 76 where planned, and four processes took 46 s against 73 s for one.
+
+**In ONE process every ActiveX operation was serialised** by `LabViewCom`'s gate, added 2026-10-14
+after two operations on the same VI raced (`Error 1026`). So the gate has LANES now: an operation in
+a lane runs beside the other lanes and never beside a default one; everything that is not a worker
+of `lvai_layout_diagrams` is in the default lane and runs alone exactly as before. Each worker gets
+`lane<N>` and `ComposedHelpers` names its helper VIs after it (`lvbd_layout_dump lane0.vi`); a
+worker never shares a VI with another.
+
+**Measured over ATM_DQMH_Cold's 76 VIs, one call, one process, fresh copies of the same state:**
+
+| workers | wall | result |
+|---|---|---|
+| 1 | 78.2 s (117.5 s on a first run) | 76 of 76 where planned |
+| 2 | 46.2 s | 76 of 76 |
+| 4 | 35.1 s (35.2 s twice) | 76 of 76, all 76 executable afterwards |
+| 8 | 31.8 s | 76 of 76 |
+
+The first call with a new number of workers composes that many helper sets (63 s for four instead
+of 35). Four is the default. On grpc the tool runs one VI after the other: NI's service running two
+helper VIs at once is not measured.
