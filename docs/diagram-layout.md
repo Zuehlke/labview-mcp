@@ -554,3 +554,43 @@ applies only to band connectivity.
   that cross the bands. LabVIEW's wire clean-up places them, and NI's Clean Up shows the same.
 - A `written` constant that feeds both the Write and the Assert sits under its band at the far
   left, so its wire to the Assert's `Expected` runs across the whole band.
+
+### 6b. Delacor's own VIs in a DQMH module, 2026-10-18
+
+**Symptom.** Laid out together with the whole of `C:\Temp\ATM_DQMH_Cold`, the Bank module's VIs
+grew. `Main.vi` went from 1344 x 805 to 2530 x 1143 px, `Stop Module.vi` from 1604 to 3081 px wide,
+`Test Bank API.vi` from 1295 to 1896 px. The frames showed large empty fields. All 76 VIs stayed
+executable and every object landed where planned, so nothing but the picture showed it.
+
+**Cause 1: a multi-line subdiagram label was measured as one line.** Delacor documents frames
+with subdiagram labels of up to six lines. One example is "User specified a timeout of -1, so don't
+wait ..." at 132 x 97 in a case 176 px wide. The rule that widens a structure to its label's text
+(written for a one-line label NI's converter had clipped) took the 96 characters as one line. The
+case was planned 502 px wide around 161 px of code. Its old six-line height was also kept as the
+label band, so LabVIEW re-wrapped the label into fewer lines and left an empty field above the code.
+Now a label holds `height / 15` lines, and the structure widens only until the word-wrapped text
+fits those lines (`DiagramLayout.LabelWidth`, `TextMetrics.WrappedLines`). A one-line label behaves
+as before. That case went from 502 to 209 px.
+
+**Cause 2: one left inset for every event frame.** The code of an event frame starts right of its
+Event Data Node. The inset was taken over ALL frames, so the widest data node (149 px, the Stop
+Module event) pushed the code of all twelve frames 191 px in. Each frame now starts right of its
+own data node (`StructShape.FrameDx`). Frame 7's code went from 212 to 88 px in.
+
+**Measured.** Re-applied live to the five enlarged VIs: Main 2530 -> 2289 px, Stop Module
+3081 -> 2756 px, Test Bank API 1896 -> 1813 px, Init Module 235 -> 165 px high. All five stayed
+executable, and every object landed where planned. Fixtures `dqmh-bank-main-original.txt` and
+`dqmh-bank-stop-module-original.txt`, tests in `LayoutDqmhFrameworkTests`.
+
+**Still open, and these are the larger part:**
+
+- **Data-flow columns against Delacor's two-dimensional packing.** In the message loop's
+  `Initialize` frame, Delacor stacks independent property and invoke nodes into 497 px. The engine
+  gives each data-flow stage a column and needs 761 px. Stop Module's chain through four nested
+  cases is the same at every level.
+- **A comment with an ARROW to a node.** Delacor's "If the module isn't running anymore ..." points
+  at the node it explains. The comment moves, the arrow stays attached to the node, and the result
+  is a long diagonal across the diagram. The dump does not read where the arrow points, so the
+  engine cannot keep the two together.
+- **The label band keeps the label's old height** after the structure grew wider. LabVIEW's
+  behaviour for that height on a widened structure is not measured.

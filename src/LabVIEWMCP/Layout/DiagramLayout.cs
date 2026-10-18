@@ -149,6 +149,9 @@ internal static class DiagramLayout
         public int PortTop;               // where ports may start on the side borders: room
                                           // added for them goes between this and Top
         public int Left;
+        /// <summary>Per frame, how far right of <see cref="Left"/> its contents start: an event
+        /// frame's code begins right of its own data node.</summary>
+        public Dictionary<Diagram, int> FrameDx { get; } = [];
         public Dictionary<Diagram, (Arrangement A, int Dy)> Frames { get; } = [];
         public List<Port> Ports { get; } = [];
         public bool Opaque;
@@ -797,10 +800,12 @@ internal static class DiagramLayout
             contentW = Math.Max(contentW, a.W);
         }
         FitNotes(ctx, shape, ref contentW, ref contentH, ref rail);
-        // an event frame's data node sits on the left border: the contents start right of it
-        var dataNode = s.Frames.SelectMany(f => f.Objects.Where(o => IsBorderNode(f, o) && IsEventDataNode(o)))
-                               .Select(o => o.Box.R - s.Box.L).DefaultIfEmpty(0).Max();
-        if (dataNode > 0) il = Math.Max(il, dataNode + ColumnGap / 2);
+        // an event frame's data node sits on the left border: THAT frame's contents start right of
+        // it. Taken over all frames, the widest data node of DQMH's Main (149 px, Stop Module's
+        // event) pushed the code of all twelve frames 191 px in, the narrowest data node 39 px
+        var dataNode = s.Frames.ToDictionary(f => f, f => f.Objects
+            .Where(o => IsBorderNode(f, o) && IsEventDataNode(o))
+            .Select(o => o.Box.R - s.Box.L + ColumnGap / 2).DefaultIfEmpty(0).Max());
         // a lane between a structure inside and this border, where a wire from its port to ours
         // runs up or down: with the plain inset that lane was 7 px wide, and CleanUpWire routed the
         // event loop's error wire backwards round its corner to get down it
@@ -810,18 +815,28 @@ internal static class DiagramLayout
         if (StructureAt(b => b.L <= 0)) il += Lane;
         if (StructureAt(b => b.R >= cw)) ir += Lane;
         shape.Left = il;
+        var used = il + contentW;
+        foreach (var (f, (a, _)) in shape.Frames)
+        {
+            if (dataNode[f] <= il) continue;
+            shape.FrameDx[f] = dataNode[f] - il;
+            var right = a.Pos.Select(kv => Extent(ctx, kv.Key, kv.Value.X, kv.Value.Y).R).DefaultIfEmpty(0).Max();
+            used = Math.Max(used, dataNode[f] + right);
+        }
         shape.Top = it + labelH;
         shape.PortTop = shape.Top;
         var labels = s.Frames.SelectMany(f => SubdiagramLabels(f, s)).ToList();
         var labelW = labels.Select(t => t.Box.W).DefaultIfEmpty(0).Max();
-        shape.W = Math.Max(Math.Max(il + contentW + ir, 60), Math.Min(labelW, SubdiagramLabelKeep) + (s.Box.W - labelW > 0 && s.Box.W - labelW < 40 ? s.Box.W - labelW : 12));
+        shape.W = Math.Max(Math.Max(used + ir, 60), Math.Min(labelW, SubdiagramLabelKeep) + (s.Box.W - labelW > 0 && s.Box.W - labelW < 40 ? s.Box.W - labelW : 12));
         // a label whose TEXT the dump read is as wide as its text: NI's converter sizes a
         // structure to its contents and clips the label - "Append one line per" of "Append one
         // line per channel" (the gRPC cold build of LayoutCheck, 2026-10-16) - and LabVIEW widens
-        // the label with the structure, measured. The box alone carried only the clipped width
-        var textW = labels.Where(t => t.Text is not null)
-            .Select(t => TextMetrics.Lines(t.Text!).Max(l => TextMetrics.Width(l)) + LabelTextPad)
-            .DefaultIfEmpty(0).Max();
+        // the label with the structure, measured. The box alone carried only the clipped width.
+        // A label taller than one line WRAPS its text: it needs only the width at which the text
+        // fits the lines its box holds. Measured as if on one line, Delacor's six-line notes in
+        // DQMH's Main and Stop Module widened their cases to ~500 px, and the empty band their old
+        // height left above the code made Stop Module 3081 px wide against 1600 (2026-10-18)
+        var textW = labels.Where(t => t.Text is not null).Select(LabelWidth).DefaultIfEmpty(0).Max();
         shape.W = Math.Max(shape.W, Math.Min(textW, SubdiagramLabelMax));
         shape.H = Math.Max(shape.Top + contentH + ib, 50);
         shape.Rail = rail >= 0 ? shape.Top + rail : null;
@@ -841,6 +856,20 @@ internal static class DiagramLayout
         }
         Ports(ctx, s, shape, ib);
         return shape;
+    }
+
+    /// <summary>The width a subdiagram label needs to show its text in the lines its box holds:
+    /// on one line for a one-line label, else the narrowest width (from its own box up) at which
+    /// the wrapped text fits.</summary>
+    internal static int LabelWidth(DObject t)
+    {
+        var text = t.Text!;
+        var oneLine = TextMetrics.Lines(text).Max(l => TextMetrics.Width(l)) + LabelTextPad;
+        var capacity = Math.Max(1, t.Box.H / TextMetrics.LineHeight);
+        if (capacity == 1) return oneLine;
+        for (var w = Math.Max(t.Box.W, 2 * LabelTextPad); w < oneLine && w < SubdiagramLabelMax; w += 8)
+            if (TextMetrics.WrappedLines(text, w - LabelTextPad) <= capacity) return w;
+        return Math.Min(oneLine, SubdiagramLabelMax);
     }
 
     /// <summary>
@@ -1561,7 +1590,7 @@ internal static class DiagramLayout
                 var dH = o.FrameSize is { } fs2 ? o.Box.H - fs2.H : 0;
                 ctx.Plan.Sizes.Add(new LayoutSize(d.Id, d.ApplyPath, o.Index, shape.W - dW, shape.H - dH, d.Depth, box));
                 foreach (var (f, (fa, fdy)) in shape.Frames)
-                    Place(ctx, f, fa, x + shape.Left, y + shape.Top, fdy);
+                    Place(ctx, f, fa, x + shape.Left + shape.FrameDx.GetValueOrDefault(f), y + shape.Top, fdy);
                 PlaceLoopTerminals(ctx, o, box);
                 foreach (var port in shape.Ports)
                     ctx.Plan.Tunnels.Add(new LayoutTunnel(d.ApplyPath, o.Index, port.Index,

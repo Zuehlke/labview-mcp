@@ -19,6 +19,29 @@ internal static class TextMetrics
 
     public static string[] Lines(string text) => text.Split('\n');
 
+    /// <summary>How many lines the text takes when LabVIEW wraps it at word boundaries into
+    /// <paramref name="width"/> px; a word wider than the line takes a line of its own.</summary>
+    public static int WrappedLines(string text, int width)
+    {
+        var count = 0;
+        foreach (var line in Lines(text))
+        {
+            count++;
+            var used = 0;
+            foreach (var word in line.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var w = Width(word);
+                if (used > 0 && used + Width(" ") + w > width)
+                {
+                    count++;
+                    used = w;
+                }
+                else used += (used > 0 ? Width(" ") : 0) + w;
+            }
+        }
+        return count;
+    }
+
     private static Dictionary<int, double> Load()
     {
         var table = new Dictionary<int, double>();
