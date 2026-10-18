@@ -520,3 +520,37 @@ the generators.
   constant beside it.
 - The error wires still climb from the rail to each band's Assert.
 
+
+### 6a. A case that asserts an error code, 2026-10-18
+
+**Symptom.** The user's review of `IfaceUE_TDMS3\Tests\TDMS Logger\Test TDMS Logger Methods.vi`:
+some class constants sat far from the Assert they belong to. In the case `Open creates file without
+error (error code)`, the class constant and `Open` were at the bottom of the diagram and the
+`Unbundle By Name` and the Assert were at the top, 520 px apart. NI's Clean Up did better on that VI.
+
+**Cause.** A band is one connected component of the DATA wires (`Bands`). Such a case reads `Open`'s
+`error out` through `Unbundle By Name` -> `code` into the Assert's `Actual`. That wire has an
+error-named end, so it counted as part of the error chain, and the case fell apart into two bands.
+`Group Name survives Close (error code)` split the same way at `Close`.
+
+**Rule.** For the bands, an edge counts as data when an error cluster runs into a NAMED input that
+is not an error input, such as `input cluster` (`ReadsErrorAsData`). The rail is untouched: the rule
+applies only to band connectivity.
+
+**Measured.**
+
+- The plan for the dump `test-tdms-logger-methods-ours.txt` (the VI as our layout had left it) puts
+  each class constant within 120 px of the Assert it feeds. Before the fix it was 471 px for case 1.
+  It has 0 data crossings and no backward wire.
+- Every other layout fixture keeps its plan, move for move. 72 of 72 layout tests pass.
+- Live on a copy of the VI (pylabview backend, the branch build driven through
+  `scripts/mcp_drive.py`): 38 of 38 objects landed where planned, the diagram went from 1134 x 717
+  to 1134 x 624 px, and `execState` stayed 1.
+- `Test TDMS Logger.vi`, which has no error-code case, came out unchanged.
+
+**Still open:**
+
+- The error fan-out from `Define Test` into every Assert climbs from the rail in vertical trunks
+  that cross the bands. LabVIEW's wire clean-up places them, and NI's Clean Up shows the same.
+- A `written` constant that feeds both the Write and the Assert sits under its band at the far
+  left, so its wire to the Assert's `Expected` runs across the whole band.

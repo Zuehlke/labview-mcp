@@ -75,6 +75,33 @@ public class LayoutBandTests(ITestOutputHelper output)
                         plan.Moves.Select(m => (m.ApplyPath, m.Index, m.X, m.Y)));
     }
 
+    /// <summary>
+    /// A case whose assertion checks an ERROR CODE is one band too. IfaceUE_TDMS3's method test
+    /// (2026-10-18): `Open`'s error out feeds `Unbundle By Name` -> `code` -> the Assert, and that
+    /// wire counted as part of the error chain, so the case split in two - class constant and `Open`
+    /// at the bottom, unbundle and Assert at the top, 520 px apart. Pairs are (class constant,
+    /// Assert) by object index in the dump.
+    /// </summary>
+    [Theory]
+    [InlineData(34, 10)]   // Open creates file without error (error code)
+    [InlineData(29, 6)]    // Open stores File Path
+    [InlineData(23, 4)]    // Group Name survives Close
+    [InlineData(23, 5)]    // Group Name survives Close (error code)
+    public void A_case_that_asserts_an_error_code_stays_in_one_band(int constant, int assert)
+    {
+        var model = Load("test-tdms-logger-methods-ours.txt");
+        var plan = DiagramLayout.Plan(model);
+        foreach (var o in model.Top.Objects.Where(o => !o.IsText && plan.Predicted.ContainsKey(o.Key)))
+            output.WriteLine($"{o.Index,3} {o.Class,-24} {plan.Predicted[o.Key]}");
+        var c = plan.Predicted[$"0#{constant}"];
+        var a = plan.Predicted[$"0#{assert}"];
+        output.WriteLine($"constant {c}, assert {a}");
+        Assert.True(Math.Abs((c.T + c.B) / 2 - (a.T + a.B) / 2) <= 120,
+            $"the class constant ({c}) sits in the band of its Assert ({a})");
+        Assert.Equal(0, DiagramLayout.DataCrossings(model, plan));
+        Assert.Empty(DiagramLayout.BackwardWires(model, plan));
+    }
+
     /// <summary>Every other fixture keeps exactly the plan it had: bands are tried only on the top
     /// level, and kept only where they cross fewer wires.</summary>
     [Theory]

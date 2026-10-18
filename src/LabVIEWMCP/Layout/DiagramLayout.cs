@@ -1737,7 +1737,7 @@ internal static class DiagramLayout
             {
                 var x = stack.Pop();
                 group.Add(x);
-                foreach (var e in g.Out(x).Concat(g.In(x)).Where(e => !e.Error))
+                foreach (var e in g.Out(x).Concat(g.In(x)).Where(e => !e.Error || ReadsErrorAsData(e)))
                     foreach (var y in new[] { e.From, e.To })
                         if (set.Contains(y) && seen.Add(y)) stack.Push(y);
             }
@@ -1753,6 +1753,15 @@ internal static class DiagramLayout
             foreach (var n in ranked[i]) band[n] = i;
         return band;
     }
+
+    /// <summary>
+    /// An error cluster wired into a NAMED input that is not an error input - `Unbundle By Name`'s
+    /// `input cluster`, to assert the code - is data the case reads, not the chain passing on.
+    /// Counted as error, it split such a case in two: IfaceUE_TDMS3's method test (2026-10-18) put
+    /// the class constant and `Open` at the bottom and the unbundle and its Assert at the top.
+    /// </summary>
+    private static bool ReadsErrorAsData(Edge e) =>
+        e.ToTerm is { Name.Length: > 0 } t && !IsError(t.Name) && e.From != e.To;
 
     /// <summary>
     /// The heights of a diagram made of bands: each band one row across the columns - its nodes'
