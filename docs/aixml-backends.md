@@ -681,8 +681,11 @@ wide as its longest item, the arrow and the frame following it (`_fit_inline`,
 and every further terminal was cloned onto it - a Build Array of four elements 17 px high with its
 inputs on one spot, an Event Data Node showing `Source` with the Samples wire leaving it, a
 one-field Get Waveform Components over an empty second row. Measured on NI's converter's build of
-one probe: Build Array, Bundle and Unbundle 32 px wide and 8 n + 1 high (17 at least), terminal k
-on row 8 k; Get Waveform Components as Unbundle By Name, 16 px a row; Build Waveform's fields from
+one probe: Build Array, Bundle and Unbundle 32 px wide and 8 n + 1 high, terminal k
+on row 8 k. **"17 at least" was written here until 2026-10-18 and was wrong**: it held for the
+probe's two and more terminals only. With ONE terminal NI's converter draws all three 9 px high,
+measured on a one-element probe. The floor drew the one-element Build Array of IfaceUE_TDMS3's
+`Write Sample.vi` twice its height, with the input in its upper half; Get Waveform Components as Unbundle By Name, 16 px a row; Build Waveform's fields from
 12 px down, its output the right 16 px; the Event Data Node 16 px a row, the longest name + 16 wide
 (all eleven of Delacor's), and placed 8 px in from its frame's left edge where LabVIEW keeps it - at
 30 px it floated in the frame (`PylabviewGrowableNodeTests`).

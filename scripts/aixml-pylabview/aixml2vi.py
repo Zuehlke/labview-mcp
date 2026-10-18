@@ -3273,9 +3273,12 @@ class Composer:
         harvested part carries ONE row, and every further terminal was cloned onto it: a Build
         Array of four elements stayed 17 px high with its four inputs on one spot, and the wires
         into it ran past a box too small for them (LayoutCheck, 2026-10-16). Measured on NI's
-        converter: 32 px wide, height 8 n + 1 (17 at least), terminal k on row 8 k, 16 px wide on
-        its side; the other side's terminal spans the height. agg_box(h) gives that one."""
-        h = max(17, self.AGG_ROW * len(row_terms) + 1)
+        converter: 32 px wide, height 8 n + 1, terminal k on row 8 k, 16 px wide on its side; the
+        other side's terminal spans the height. agg_box(h) gives that one. ONE terminal is 9 px:
+        a floor of 17 drew a one-element Build Array twice its height with the input in its upper
+        half (IfaceUE_TDMS3's Write Sample.vi, 2026-10-18); NI's converter draws Build Array,
+        Bundle and Unbundle with one row all 9 px high, measured."""
+        h = max(9, self.AGG_ROW * len(row_terms) + 1)
         self._set_box(node, h)
         self._set_term(agg, agg_box(h))
         return h

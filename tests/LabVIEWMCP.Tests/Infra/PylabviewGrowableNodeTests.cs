@@ -110,6 +110,54 @@ public sealed class PylabviewGrowableNodeTests
         }
     }
 
+    private const string OneRowProbe = """
+        <VI _name="One Row Probe.vi" description="Growable nodes with one terminal each.">
+          <Control _name="A" outputs="value:4201.v" type="double" uid="4201" uid_parent="root" value="0"/>
+          <Node _name="Build Array" inputs="element:4201.v" outputs="appended array:4210.a" uid="4210" uid_parent="root"/>
+          <Indicator _name="Array" inputs="value:4210.a" type="array{double}" uid="4211" uid_parent="root" value="[]"/>
+          <Control _name="In" outputs="value:4230.v" type="cluster{double.a}" uid="4230" uid_parent="root" value="[0]"/>
+          <Node _name="Unbundle" inputs="cluster:4230.v" outputs="a:4231.a" uid="4231" uid_parent="root"/>
+          <Node _name="Bundle" inputs="cluster:4230.v,a:4231.a" outputs="output cluster:4233.c" uid="4233" uid_parent="root"/>
+          <Indicator _name="Out" inputs="value:4233.c" type="cluster{double.a}" uid="4234" uid_parent="root" value="[0]"/>
+        </VI>
+        """;
+
+    /// <summary>
+    /// ONE terminal is one 8 px row and a node 9 px high - NI's converter, read off its build of
+    /// this document (2026-10-18), for Build Array, Bundle and Unbundle alike. The composer had a
+    /// floor of 17 px, so a one-element Build Array stood twice its height with its input in the
+    /// upper half and its output spanning both (IfaceUE_TDMS3's Write Sample.vi).
+    /// </summary>
+    [Fact]
+    public async Task A_growable_node_with_one_terminal_is_one_row_high()
+    {
+        var setup = AixmlComposer.Locate(out _);
+        var bundle = PyLabview.Locate();
+        if (setup is null || bundle is null) return;
+        var dir = Path.Combine(Path.GetTempPath(), "grow1-" + Guid.NewGuid().ToString("n")[..8]);
+        Directory.CreateDirectory(Path.Combine(dir, "x"));
+        try
+        {
+            var xml = Path.Combine(dir, "probe.xml");
+            var vi = Path.Combine(dir, "One Row Probe.vi");
+            await File.WriteAllTextAsync(xml, OneRowProbe);
+            var composed = await AixmlComposer.ComposeAsync(setup, xml, vi, [], 300, default);
+            Assert.True(File.Exists(vi), composed.Message);
+            var extract = await PyLabview.RunAsync(bundle, bundle.ReadRsrcPy,
+                ["-x", "-i", vi, "-m", Path.Combine(dir, "x", "OneRowProbe.xml")], 120, default);
+            Assert.True(extract.ExitCode == 0, extract.StdErr);
+            var heap = XElement.Load(Directory.GetFiles(Path.Combine(dir, "x"), "*_BDHb.xml").Single());
+
+            Assert.Equal((9, new[] { 0 }), Single(Nodes(heap, "aBuild", 8)), Comparer);
+            Assert.Equal((9, new[] { 0 }), Single(Nodes(heap, "demux", 8)), Comparer);
+            Assert.Equal((9, new[] { 0 }), Single(Nodes(heap, "mux", 8)), Comparer);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
+        }
+    }
+
     private static (int, int[]) Single(List<(int H, int L, List<int> Rows)> nodes)
     {
         var n = Assert.Single(nodes);
