@@ -176,6 +176,16 @@ internal sealed class DiagramModel
             if (o.Total is { } t && (t.W, t.H) == (o.Box.W, o.Box.H) && (t.L, t.T) != (o.Box.L, o.Box.T)
                 && t.R > o.Box.L && t.B > o.Box.T)
                 o.Box = o.Box with { W = t.R - o.Box.L, H = t.B - o.Box.T };
+            // a node's terminals tile its icon: where they start at its Position, their outline IS
+            // the node, and the rest of Bounds is its label. Taken whole, Find Account's
+            // "Fract/Exp String To Number" stood 150 px wide for a 32 px icon and pushed every
+            // indicator 118 px right (ATM_DQMH_Cold, 2026-10-18)
+            if (o.Total is not null && o.Terms.Count > 0 && !o.IsStructure)
+            {
+                var u = Box.Union(o.Terms.Select(x => x.Box));
+                if (u.L == o.Box.L && u.T == o.Box.T && u.R <= o.Box.R && u.B <= o.Box.B && (u.W, u.H) != (o.Box.W, o.Box.H))
+                    o.Box = u;
+            }
             if (model.Diagrams.TryGetValue(o.DiagramId, out var d)) d.Objects.Add(o);
         }
         foreach (var d in model.Diagrams.Values) d.Objects.Sort((a, b) => a.Index.CompareTo(b.Index));

@@ -33,6 +33,59 @@ public class LayoutDqmhFrameworkTests(ITestOutputHelper output)
         Assert.True(plan.PredictedTop.W < 2900, $"Stop Module planned {plan.PredictedTop.W} px wide (3085 before)");
     }
 
+    /// <summary>
+    /// A node's own label above it took column width: "Fract/Exp String To Number" counted 150 px
+    /// for a 32 px icon (Bounds is icon and label together), and Find Account's indicators stood
+    /// 118 px right of it. The icon is the outline of its terminals now, and a label above or
+    /// below it takes no column width - while nothing may land on it.
+    /// </summary>
+    [Fact]
+    public void A_label_above_its_node_takes_no_column_width()
+    {
+        var model = Load("find-account-ours.txt");
+        var before = LabVIEWMcp.Tools.DiagramLayoutTools.TopOutline(model);
+        var fract = model.Top.Objects.Single(o => o.Index == 1);
+        Assert.Equal((32, 32), (fract.Box.W, fract.Box.H));
+        var plan = DiagramLayout.Plan(model);
+        output.WriteLine($"before {before.W} px, planned {plan.PredictedTop.W} px");
+        // the fixture still shows the label (dumped before the composer hid primitive labels), so
+        // the indicator beside it holds its column: what is asserted here is the icon, and that
+        // the label is still kept clear of everything
+        var placed = model.Top.Objects.Where(o => !o.IsDecoration && plan.Predicted.ContainsKey(o.Key)).ToList();
+        Box Whole(DObject o)
+        {
+            var p = plan.Predicted[o.Key];
+            var (l, t, r, b) = o.Overhang;
+            return new Box(p.L - l, p.T - t, p.W + l + r, p.H + t + b);
+        }
+        foreach (var a in placed)
+            foreach (var b in placed.Where(b => b.Index > a.Index))
+                Assert.False(Whole(a).Overlaps(Whole(b)), $"{a} overlaps {b}");
+    }
+
+    /// <summary>
+    /// The Merge Errors tree behind a Caraya test's bands sits at the height of what it collects:
+    /// each first-level merge between its two asserts, not stacked at the bottom. Stacked, twelve
+    /// error wires ran down a 100 px gap and LabVIEW routed ten of them 25 px back west.
+    /// </summary>
+    [Fact]
+    public void A_merge_errors_tree_sits_beside_what_it_collects()
+    {
+        var model = Load("test-find-account-ours.txt");
+        var plan = DiagramLayout.Plan(model);
+        var objs = model.Top.Objects.ToDictionary(o => o.Index);
+        // Merge 11 collects the asserts 23 and 22, Merge 6 the asserts 13 and 12 (dump indices)
+        foreach (var (merge, a, b) in new[] { (11, 23, 22), (6, 13, 12) })
+        {
+            var m = plan.Predicted[objs[merge].Key];
+            var top = Math.Min(plan.Predicted[objs[a].Key].T, plan.Predicted[objs[b].Key].T);
+            var bottom = Math.Max(plan.Predicted[objs[a].Key].B, plan.Predicted[objs[b].Key].B);
+            output.WriteLine($"merge {merge} {m}, asserts {top}..{bottom}");
+            Assert.True(m.T >= top - 20 && m.B <= bottom + 20, $"merge {merge} at {m.T}..{m.B}, its asserts {top}..{bottom}");
+        }
+        Assert.Empty(DiagramLayout.BackwardWires(model, plan));
+    }
+
     /// <summary>A one-line label keeps the old rule: NI's converter clips it, so the structure
     /// grows to the label's text - "Append one line per channel" (LayoutCheck).</summary>
     [Fact]

@@ -1184,6 +1184,14 @@ class Composer:
                 flags = int(label.findtext("objFlags"))
                 if flags & LABEL_FLAG_DONOR_ONLY:
                     label.find("objFlags").text = str(flags & ~LABEL_FLAG_DONOR_ONLY)
+        if key.startswith("prim/"):
+            # a primitive shows no label, as LabVIEW places one: 12 of the harvested prims carry
+            # their donor's VISIBLE label (objFlags 1507650, 0x8 clear) - Find Account's
+            # "Fract/Exp String To Number" stood over its icon, 150 px wide, and held the
+            # indicators 118 px right of it (ATM_DQMH_Cold, 2026-10-18). 0x8 hides it
+            own = heap.find("label")
+            if own is not None and own.findtext("objFlags"):
+                own.find("objFlags").text = str(int(own.findtext("objFlags")) | 0x8)
         if heap.get("_images"):
             # Images EMBEDDED in the donor (DSIM sections, positive ImageResIDs) come along under
             # numbers free in this VI: a waveform control without them was "Could not load the

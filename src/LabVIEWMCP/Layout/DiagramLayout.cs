@@ -412,10 +412,13 @@ internal static class DiagramLayout
         }
 
         if (band is not null && colPlans.Count > 1)
+        {
             BandRows(colPlans, blocks, band, a.Pos, anyRail ? railY : null,
                      layoutNodes.Where(n => n.IsConstant && graph.Out(n).Select(e => e.To).Where(t => t != n).Distinct().Count() >= 2).ToHashSet());
+        }
         else if (colPlans.Count > 1)
             AlignToNeighbours(ctx, graph, colPlans, blocks, a.Pos, anyRail ? railY : null);
+        if (colPlans.Count > 1) TreeRows(ctx, graph, colPlans, blocks, a.Pos, anyRail ? railY : null);
 
         // ---- compaction: a node moves left as far as nothing beside it and no wire into it
         // forbids. Columns alone kept the ATM's Init ATM Panel 300 px to the right, across empty
@@ -1374,6 +1377,10 @@ internal static class DiagramLayout
         // the node's own label (DQMH_REG_EVENTS above a node) takes room too
         var (oL, oT, oR, oB) = n.Overhang;
         var parts = new List<Box> { new(-oL, -oT, w + oL + oR, h + oT + oB) };
+        // a label ABOVE or BELOW the node takes no column width: it stays an obstacle (Box) but
+        // the next column may start beside it, where Find Account's indicators stood 118 px right
+        // of "Fract/Exp String To Number" for nothing but its label
+        var widthParts = new List<Box> { oT > 0 || oB > 0 ? new Box(0, -oT, w, h + oT + oB) : parts[0] };
         var wanted = new List<(DObject C, Box B, int L, int T)>();
         foreach (var (c, to) in constants ?? new List<(DObject C, Term? To)>())
         {
@@ -1401,9 +1408,10 @@ internal static class DiagramLayout
         {
             var cb = b0.Offset(0, -lift);
             parts.Add(cb);
+            widthParts.Add(cb);
             block.Members.Add((c, cb.L + cL, cb.T + cT));
         }
-        block.WidthBox = Box.Union(parts);
+        block.WidthBox = Box.Union(widthParts);
         foreach (var t in labels ?? new List<DObject>())
         {
             var (dx, dy) = LabelOffset(t, n, w, h);
@@ -1925,6 +1933,55 @@ internal static class DiagramLayout
                 foreach (var (n, y) in nodes) pos[n] = (pos[n].X, y + dy);
                 y0 = bottom + dy + RowGap;
             }
+        }
+    }
+
+    /// <summary>
+    /// What collects the bands' errors - a Caraya test's tree of Merge Errors - sits at the height
+    /// of what it collects, column by column: each node centred on its inputs, the next level on
+    /// those. Stacked from the rail up instead, the first-level merges of Test Find Account sat at
+    /// y 618-828 under asserts spread from 52 to 809; twelve error wires ran up to 570 px down a
+    /// 100 px gap, and LabVIEW took ten of them past the merges and 25 px back (2026-10-18).
+    /// The node on the rail stays there, and a column is moved only when everything above its rail
+    /// is such a collector.
+    /// </summary>
+    private static void TreeRows(Context ctx, Graph g, List<(List<DObject> Above, DObject? OnRail)> cols,
+                                 Dictionary<DObject, Block> blocks, Dictionary<DObject, (int X, int Y)> pos, int? railY)
+    {
+        // a pure error collector: two inputs or more, every one an error wire
+        bool Collector(DObject n)
+        {
+            var ins = g.In(n).Where(e => e.From != n).ToList();
+            return ins.Count >= 2 && ins.All(e => e.Error) && g.Out(n).All(e => e.Error);
+        }
+        for (var c = 0; c < cols.Count; c++)
+        {
+            if (cols[c].Above.Count == 0 || !cols[c].Above.All(Collector)) continue;
+            var movers = cols[c].Above;
+            var wanted = new List<(DObject N, int Top)>();
+            foreach (var n in movers)
+            {
+                var ins = g.In(n).Where(e => e.From != n && pos.ContainsKey(e.From) && !e.From.IsConstant).ToList();
+                if (ins.Count == 0) { wanted.Clear(); break; }
+                var mid = (int)ins.Average(e => pos[e.From].Y + TermY(ctx, e.From, e.FromTerm));
+                var meet = (int)ins.Average(e => TermY(ctx, n, e.ToTerm));
+                wanted.Add((n, mid - meet));
+            }
+            if (wanted.Count == 0) continue;
+            // in order, without overlap, and clear above the rail's node of this column
+            var placed = new List<(DObject N, int Top)>();
+            var prevBottom = int.MinValue / 2;
+            foreach (var (n, top0) in wanted.OrderBy(w => w.Top))
+            {
+                var b = blocks[n].Box;
+                var top = Math.Max(top0, prevBottom + RowGap - b.T);
+                placed.Add((n, top));
+                prevBottom = top + b.B;
+            }
+            var limit = cols[c].OnRail is { } onRail ? pos[onRail].Y + blocks[onRail].Box.T - RowGap
+                      : railY is { } ry ? ry - RowGap : int.MaxValue;
+            var excess = Math.Max(0, prevBottom - limit);
+            foreach (var (n, top) in placed) pos[n] = (pos[n].X, top - excess);
         }
     }
 

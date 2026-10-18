@@ -647,3 +647,46 @@ So LabVIEW's router is not what produces most of them: the Merge Errors tree is 
 each Assert's error wire has to come back to reach it. That is a placement rule to fix next. A
 router of our own would go through `Connect Wire` with Wiring Specs (`Joints[]` is read-only) and
 is not needed for that pattern.
+
+### 6d. The Merge Errors tree, labelled primitives and Find Account, 2026-10-18
+
+The user's review of the re-laid-out project named three more faults.
+
+**The Merge Errors tree behind a Caraya test sat at the bottom.** Its first-level merges were
+stacked from the rail up, so in `Test Find Account.vi` they sat at y 618-828 under asserts spread
+from y 52 to 809. That test lays out in COLUMNS, not bands (no crossing to save), so the band-only
+`CollectAfterBands` never touched it. `TreeRows` now runs in both variants. It moves a column only
+when everything above its rail is a pure error collector (two inputs or more, all error wires),
+centres each such node on its inputs, and keeps the rail's node in place. The merges now form a
+tree beside their asserts (`LayoutDqmhFrameworkTests.A_merge_errors_tree_sits_beside_what_it_collects`).
+
+**Backward wires did not fall with it.** `scripts/lvbd_backward_wires.py`, over all 76 VIs:
+
+| | backward wires |
+|---|---|
+| before this section | 42 |
+| after | 46 |
+
+`Test Find Account.vi` still has 12, one per assert. The pattern is now the fan-out from
+`Define Test` into each assert's `error in` (bottom left of the assert). That is the row where the
+assert's `Label` constant hangs, so LabVIEW's router comes in from above and turns 25 px back.
+This is a placement question about the constants, not about the merges. It is open.
+
+**A composed primitive showed its donor's label.** 12 of the harvested prim parts carry a VISIBLE
+label (objFlags `0x170142`, bit `0x8` clear). Find Account's "Fract/Exp String To Number" stood
+over its icon, 150 px wide. The composer now hides a primitive's own label (`|0x8`, as
+`_hide_label` already wrote for cluster fields), as LabVIEW places a primitive
+(`PylabviewPrimLabelTests`). Three composed VIs of the project had one and were patched.
+
+**A node was as wide as its label.** Bounds is icon and label together, and the parser widened the
+object to the label's end. For a node with terminals, the outline of its terminals is now the
+node; the rest is overhang (`DiagramModel.Parse`). A label above or below a node takes no column
+width in `MakeBlock`, but it stays an obstacle.
+
+**Find Account's Index Array wires left the node underneath.** The heap patch that gave its Index
+Arrays NI's geometry moved the terminals and not the saved wires. LabVIEW repaired the old wires
+on load, and `Clean Up Wire` did not straighten them. Re-patched with every wire touching an Index
+Array reset to the composer's neutral table for its end count (`parts/wiretables.json`). LabVIEW
+then laid them out afresh. A native NI Index Array of five indices
+(`General Least Squares Fitting.vi`) has exactly the composer's geometry, so the node itself was
+right.
