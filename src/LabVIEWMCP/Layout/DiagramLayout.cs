@@ -317,7 +317,7 @@ internal static class DiagramLayout
         // ---- the rail
         var railOf = new Dictionary<DObject, int>();
         foreach (var n in layoutNodes.Where(mainChain.Contains))
-            if (RailOffset(ctx, n, graph) is { } r) railOf[n] = r;
+            if (!IsErrorBranchSink(graph, n) && RailOffset(ctx, n, graph) is { } r) railOf[n] = r;
 
         // per column: one node on the rail, the rest stacked above it in their current order
         var colPlans = new List<(List<DObject> Above, DObject? OnRail)>();
@@ -745,10 +745,17 @@ internal static class DiagramLayout
             }
         var best = start;
         var bestCost = long.MaxValue;
+        // a comment that reaches past the code makes the diagram bigger by that much, wider most of
+        // all: DQMH's "If the module is running standalone ..." kept its place right of its subVI and
+        // made the Error frame's inner case 260 px wider, with room for it above the code (the
+        // user's review, 2026-10-18)
+        var code = objects.Count == 0 ? (Box?)null : Box.Union(objects);
+        int Growth(Box c) => code is not { } k ? 0
+            : 3 * (Math.Max(0, c.R - k.R) + Math.Max(0, k.L - c.L)) + 2 * (Math.Max(0, k.T - c.T) + Math.Max(0, c.B - k.B));
         foreach (var c in candidates)
         {
             if (objects.Any(o => o.Overlaps(c, 4))) continue;
-            var cost = wires.Count(b => b.Overlaps(c, 1)) * 10_000L + Math.Abs(c.L - start.L) + Math.Abs(c.T - start.T);
+            var cost = wires.Count(b => b.Overlaps(c, 1)) * 10_000L + Math.Abs(c.L - start.L) + Math.Abs(c.T - start.T) + Growth(c);
             if (cost < bestCost) { bestCost = cost; best = c; }
         }
         return best;
@@ -968,7 +975,11 @@ internal static class DiagramLayout
                 if (wide is not null)
                 {
                     var extraW = Math.Max(0, wide.Values.Max(b => b.R) - contentW);
-                    if ((long)extraW * contentH < (long)Math.Max(0, stackH - codeTop0) * contentW)
+                    // width counts double: a diagram runs out of width first (a 1920 px screen,
+                    // and the user's goal of about 1600 x 950 for DQMH's Main). Counted alike, the
+                    // Error frame's notes went beside its code once the Initialize frame was
+                    // balanced lower, and the message loop grew 340 px wider for 137 px less height
+                    if (2L * extraW * contentH < (long)Math.Max(0, stackH - codeTop0) * contentW)
                     {
                         spots = wide;
                         contentW += extraW;
@@ -1360,6 +1371,23 @@ internal static class DiagramLayout
     /// that indicator stayed where it was and a constant was laid over it (LayoutCheck,
     /// 2026-10-16).
     /// </summary>
+    /// <summary>
+    /// A node the error chain only BRANCHES into: it reads the error and passes nothing on - no wire
+    /// out, no border - while the node feeding it carries the error on elsewhere. DQMH's Error frame
+    /// writes its `error out` local that way; on the rail the local stood between Merge Errors and
+    /// the border, with the rail running through it (the user's review, 2026-10-18). It goes above.
+    /// </summary>
+    private static bool IsErrorBranchSink(Graph g, DObject n)
+    {
+        // by the SOURCE's terminal too: a local variable's own terminal carries no error name, so
+        // the edge into DQMH's `error out` local is not an error edge by its sink
+        static bool Err(Edge e) => e.Error || (e.FromTerm is { } t && IsError(t.Name));
+        return g.Out(n).Count == 0
+               && g.In(n).Where(e => e.From != n && Err(e)).ToList() is { Count: > 0 } ins
+               // carried on elsewhere: to another node, or out by the right border
+               && ins.All(e => g.FeedsRight.Contains(e.From) || g.Out(e.From).Any(o => Err(o) && o.To != n));
+    }
+
     internal static bool IsBorderNode(Diagram d, DObject o) =>
         d.Owner is { Class: "EventStructure" } && (IsEventDataNode(o) || IsFilterNode(o));
 

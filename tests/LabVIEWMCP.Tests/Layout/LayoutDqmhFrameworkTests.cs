@@ -49,6 +49,22 @@ public class LayoutDqmhFrameworkTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// DQMH's Error frame writes its `error out` local from the Merge Errors whose output also leaves
+    /// by the right border. On the rail the local stood between the two with the rail running through
+    /// it (the user's review, 2026-10-18); it is a branch of the chain and sits above it now.
+    /// </summary>
+    [Fact]
+    public void An_error_local_the_chain_only_branches_into_sits_above_the_rail()
+    {
+        var model = Load("dqmh-bank-main-original.txt");
+        var plan = DiagramLayout.Plan(model);
+        var local = plan.Predicted["0.11.0.2.0.2.9#1"];
+        var merge = plan.Predicted["0.11.0.2.0.2.9#6"];
+        output.WriteLine($"local {local}, merge errors {merge}");
+        Assert.True(local.B < merge.T + 4, $"the local ends at {local.B}, the rail's Merge Errors starts at {merge.T}");
+    }
+
+    /// <summary>
     /// A six-line subdiagram label keeps six lines' height only while its structure is as narrow as
     /// before: LabVIEW re-wraps it to the structure's width, so a wider structure needs fewer lines.
     /// </summary>

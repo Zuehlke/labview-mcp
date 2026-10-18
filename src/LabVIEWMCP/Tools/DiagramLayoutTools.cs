@@ -86,7 +86,12 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
 
         // ---- 0. the VI stays loaded from the dump to the apply: each helper opens it by path, and
         // a Caraya test VI took 1.6-2.5 s to load every time, twice per call (measured 2026-10-16)
+        // where the time goes, per step, in the answer: a whole project is laid out VI by VI
+        var timings = new JsonObject();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        void Lap(string step) { timings[step] = clock.ElapsedMilliseconds; clock.Restart(); }
         var hold = await LabViewCom.HoldAsync(vi, timeoutSeconds, ct);
+        Lap("hold");
         try
         {
             // ---- 1. read
@@ -94,9 +99,11 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
             if (dump.Failure is not null) return dump.Failure;
             var model = DiagramModel.Parse(dump.Lines!);
             var before = TopOutline(model);
+            Lap("dump");
 
             // ---- 2. decide
             var plan = DiagramLayout.Plan(model);
+            Lap("plan");
             var answer = new JsonObject
             {
                 ["viPath"] = vi,
@@ -110,6 +117,7 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
                 ["tunnelsMoved"] = plan.Tunnels.Count,
                 ["structuresKeptAsTheyAre"] = new JsonArray(plan.StructuresKeptAsTheyAre.Select(s => (JsonNode)s).ToArray()),
                 ["heldInMemory"] = hold is not null,
+                ["timingsMs"] = timings,
             };
             if (dryRun)
             {
@@ -145,6 +153,7 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
             answer["sizeErrors"] = sizeResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal))
                                    + fitResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
             answer["tunnelErrors"] = tunnelResults.Count(r => !r.StartsWith("0;", StringComparison.Ordinal));
+            Lap("apply");
             if (error.Code is not null && error.Code != 0)
             {
                 answer["ok"] = false;
@@ -153,23 +162,10 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
                 return Json.Document(answer);
             }
 
-            // ---- 4. no compiled code may stay in a VI we wrote - and a pylabview edit must not run
-            // under a VI LabVIEW holds, or LabVIEW keeps serving the copy it holds
-            if (!compiledBefore && BulkTools.ContainsCompiledCode(vi))
-            {
-                if (hold is not null) { await hold.DisposeAsync(); hold = null; }
-                answer["compiledCodeStripped"] = await new DiagramCleanup(connection).StripCompiledAsync(vi, timeoutSeconds, ct);
-            }
-
-            // ---- 4b. constant fans: wire geometry of our own, after the save whose Clean Up Wire
-            // would replace it (measured on Find Account, docs/diagram-layout.md section 6g)
-            if (routeFans)
-            {
-                if (hold is not null) { await hold.DisposeAsync(); hold = null; }
-                answer["fanRouting"] = await new DiagramCleanup(connection).FanRouteAsync(vi, timeoutSeconds, ct);
-            }
-
-            // ---- 5. what LabVIEW made of it
+            // ---- 4. what LabVIEW made of it - while the VI is still held. The steps after it change
+            // wire geometry and compiled code, never where an object is; run after them, the dump
+            // had to load the VI cold again, and that was the largest step of a whole project:
+            // 37 of 102 s over ATM_DQMH_Cold's 76 VIs, a Caraya test 1.8-2.1 s each (2026-10-18)
             if (verify)
             {
                 var again = await DumpAsync(Path.Combine(scripts, DumpHelper), vi, timeoutSeconds, ct);
@@ -182,12 +178,32 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
                     answer["landedOff"] = off;
                     answer["worstOffsetPx"] = worst;
                 }
+                Lap("verify");
             }
+            // ---- 5. no compiled code may stay in a VI we wrote - and a pylabview edit must not run
+            // under a VI LabVIEW holds, or LabVIEW keeps serving the copy it holds
+            if (!compiledBefore && BulkTools.ContainsCompiledCode(vi))
+            {
+                if (hold is not null) { await hold.DisposeAsync(); hold = null; }
+                answer["compiledCodeStripped"] = await new DiagramCleanup(connection).StripCompiledAsync(vi, timeoutSeconds, ct);
+                Lap("stripCompiled");
+            }
+
+            // ---- 5b. constant fans: wire geometry of our own, after the save whose Clean Up Wire
+            // would replace it (measured on Find Account, docs/diagram-layout.md section 6g)
+            if (routeFans)
+            {
+                if (hold is not null) { await hold.DisposeAsync(); hold = null; }
+                answer["fanRouting"] = await new DiagramCleanup(connection).FanRouteAsync(vi, timeoutSeconds, ct);
+                Lap("fanRouting");
+            }
+
             if (render)
             {
                 var dir = renderDirectory ?? Path.Combine(work, "render");
                 answer["render"] = JsonNode.Parse(await new RenderTools(connection).RenderDiagramsAsync(
                     vi, dir, timeoutSeconds: timeoutSeconds, backend: BackendRoute.Current, ct: ct));
+                Lap("render");
             }
             answer["ok"] = true;
             return Json.Document(answer);

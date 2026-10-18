@@ -849,3 +849,51 @@ a VI that already had it as it was. Sizes now against the previous layout: Bank 
 over 1920, one long Delacor chain each - and `Test Find Account.vi` 1183 -> 1003 px wide. In the
 message loop's short frames the code still sits low under an empty field: all frames share the
 tallest frame's size and one error rail.
+
+### 6i. The user's third review, and where the time goes, 2026-10-18
+
+The user pointed at Bank `Main.vi`'s Error frame: less "exactly one behind the other", the
+`error out` local higher, comments placed so the code has room, and speed.
+
+**Time per step, measured.** `lvai_layout_diagram` answers `timingsMs` per step now (hold, dump,
+plan, apply, verify, stripCompiled, fanRouting, render). Over ATM_DQMH_Cold's 76 VIs through ONE
+server process, as an agent calls it: hold 29.6 s (loading each VI, a Caraya test 1.6-2.5 s), dump
+11.1 s, plan 0.2 s, apply 15.2 s, **verify 36.8 s**, fan routing 9.0 s - 102 s in all. The verify
+dump ran after the fan routing, which releases the VI for its pylabview edit, so it loaded every VI
+cold a second time. Fan routing and compiled-code stripping change wire geometry and compiled code,
+never where an object is, so the verify now runs while the VI is still held: verify 10.9 s, the run
+81.7 s on a fresh copy of the same state (-20 %). A process per VI instead of one cost only about
+4 % - the time is LabVIEW's, not the server's start. Fan routing on a VI with no fan cost 1.0 s over
+15 VIs, so it keeps its extract.
+
+**An error branch sink leaves the rail** (`IsErrorBranchSink`). A node that reads the error and
+passes nothing on, while its source carries the error on to another node or out by the right
+border, goes above the rail. The error edge is told by the SOURCE's terminal too - a local
+variable's own terminal is named after the local, so the edge into DQMH's `error out` local was not
+an error edge by its sink. Test `An_error_local_the_chain_only_branches_into_sits_above_the_rail`.
+
+**Comments.** A node comment that reaches past the code costs its growth in `PlaceComment` (width
+3x, height 2x per px). A frame note goes beside the code only where widening costs less than HALF
+the area of growing - width counts double, since a diagram runs out of width first. With area
+counted alike, the Error frame's notes went beside the code once another frame came out lower and
+the message loop grew 340 px wider for 137 px less height.
+
+**Tried and taken out: balancing the columns.** Longest path puts every node with nothing before it
+into the first column, and the tallest column of a frame was given nodes to later columns, each
+kept before what it feeds and no wider than its new column. The Initialize frame of
+`dqmh-main-original.txt` went from 568 x 279 to 539 x 216 - but the frames of one case share one
+rail and one size, and the whole case did not come down: Bank Main 1044 -> 1014 px high, while
+`dqmh-main-original.txt` grew 32 px wider at the same height and the NI-cleanup fixture 9 px
+higher, and a frame note lost its place at the frame's top. A frame's height is the maximum over
+its case's frames of code above the shared rail plus code below it; lowering one frame pays only
+when it is that maximum.
+
+**Also tried and not shipped: putting a frame's notes side by side**, re-wrapped narrower. The
+apply helper can be taught to write a comment's `Bounds:Area Width` and `Area Height` (whether
+LabVIEW accepts the write is NOT measured), and LabVIEW's free labels wrap at about their width
+minus 20 px (fixtures, `Bold` underestimated). It was dropped because the Error frame, whose two
+`#CodeRecommended` notes it would put side by side, is not the frame that sets the message loop's
+height.
+
+**Result on ATM_DQMH_Cold**: 76 of 76 laid out, every object where planned, 76 of 76 executable;
+Bank `Main.vi` 1815 x 958 -> 1815 x 943, the `error out` local above the rail in the Error frame.
