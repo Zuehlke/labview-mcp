@@ -725,3 +725,26 @@ counts them as `undecoded` instead of guessing.
 
 Test: `LayoutDqmhFrameworkTests.Constants_left_of_an_assert_keep_its_wired_inputs_clear`, which
 fails without the rule (a Label constant on an assert's `error in` row).
+
+### 6f. Index constants beside their indices, 2026-10-18
+
+The user's next review: Find Account's second Index Array still looked wrong. Its three column
+constants stood over the node and their wires knotted in the gap. Two rules had put them there.
+
+- **6e lifted the stack over every wired row.** The wired row here is the array input (0-18),
+  directly above the indices (18-42). Now the stack goes above OR below the wired rows, whichever
+  is the shorter way, and for an Index Array that is below the array input, beside its indices.
+- **The compaction's staircase lifted all three.** It lifts a node's constants so that the node
+  can move left, written for a chain of subVIs with ONE long constant each. Now it lifts only a
+  node holding exactly one constant.
+
+Planned: the constants at 82/105/128 against an array row that ends at 76, in index order
+(`LayoutDqmhFrameworkTests.Index_constants_go_under_the_wired_array_input`, which fails without the
+change). Live, the wires run straight into the indices, except that `column 2`'s crosses
+`column 3`'s. The constants are 23 px apart and the indices 8 px, so each wire needs a vertical
+of its own. LabVIEW's router lays each wire out alone and put `column 3`'s vertical left of
+`column 2`'s. A layout cannot force that order; only wire geometry of our own could.
+
+Over all 76 VIs: **11 backward wires** (13 before), every one in Delacor's VIs (Main.vi 7, the
+two `Obtain ... Events.vi` 2 each). All stayed executable. `Run Verify Account.vi` grew from 552 to
+700 px wide, where a stack of constants no longer rises.

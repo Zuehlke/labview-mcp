@@ -119,6 +119,23 @@ public class LayoutDqmhFrameworkTests(ITestOutputHelper output)
         }
     }
 
+    /// <summary>
+    /// Clear of a wired row the shorter way: an Index Array's index constants go UNDER its wired
+    /// array input, beside the indices they feed. Lifted over the node, Find Account's three column
+    /// constants dropped their wires into an 18 px gap and LabVIEW knotted them.
+    /// </summary>
+    [Fact]
+    public void Index_constants_go_under_the_wired_array_input()
+    {
+        var model = Load("find-account-ours.txt");
+        var plan = DiagramLayout.Plan(model);
+        var node = plan.Predicted["0#2"];
+        var tops = new[] { 10, 9, 8 }.Select(i => plan.Predicted[$"0#{i}"].T).ToList();   // column 1, 2, 3
+        output.WriteLine($"index array {node}, constants at {string.Join(", ", tops)}");
+        Assert.All(tops, t => Assert.True(t >= node.T + 18, $"a column constant at {t}, the array row ends at {node.T + 18}"));
+        Assert.Equal(tops.OrderBy(t => t), tops);
+    }
+
     /// <summary>A one-line label keeps the old rule: NI's converter clips it, so the structure
     /// grows to the label's text - "Append one line per channel" (LayoutCheck).</summary>
     [Fact]

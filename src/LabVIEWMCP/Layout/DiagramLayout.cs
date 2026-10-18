@@ -512,7 +512,11 @@ internal static class DiagramLayout
                     var xNode = own.Aggregate(PredX(n, c), (x, p) => Math.Max(x, Clear(p.B, py, true, c, int.MinValue)));
                     var xFull = held.Aggregate(xNode, (x, p) => Math.Max(x, Clear(p.B, py, false, c, int.MinValue)));
                     var nx = xFull;
-                    if (xFull - xNode > ColumnGap && held.Count > 0)
+                    // ONE constant rises: the staircase is for a chain of subVIs with a long
+                    // constant each. Several - an Index Array's indices - feed terminals 8 px apart,
+                    // and lifted together over the node Find Account's three column constants
+                    // dropped their wires into an 18 px gap that LabVIEW knotted (2026-10-18)
+                    if (xFull - xNode > ColumnGap && held.Count == 1)
                     {
                         for (var lift = 4; lift <= MaxLift; lift += 4)
                         {
@@ -1421,8 +1425,14 @@ internal static class DiagramLayout
             bool Covers(int dl) => stacked.Any(x => rows.Any(r => x.B.T - dl < r.B + WireClear && x.B.B - dl > r.T - WireClear));
             if (Covers(lift))
             {
+                // above the wired rows or below them, whichever is the shorter way: an Index
+                // Array's index constants belong UNDER its wired array input - lifted over the
+                // node, Find Account's three column constants dropped into an 18 px gap and
+                // LabVIEW knotted their wires (the user's review, 2026-10-18)
                 var up = stacked.Max(x => x.B.B) - (rows.Min(r => r.T) - WireClear);
-                if (!Covers(up)) lift = Math.Max(lift, up);
+                var down = stacked.Min(x => x.B.T) - (rows.Max(r => r.B) + WireClear);
+                var options = new[] { up, down }.Where(v => !Covers(v)).OrderBy(v => Math.Abs(v - lift)).ToList();
+                if (options.Count > 0) lift = options[0];
             }
         }
         foreach (var (c, b0, cL, cT) in stacked)
