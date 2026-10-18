@@ -29,6 +29,8 @@ without the third argument.
 Write calls.json with an editor or a file-writing tool, never through a shell heredoc: the
 backslashes in Windows paths are eaten on the way.
 
+Each answer's header carries the call's wall clock in seconds: "==== label [12.3 s] ====".
+
 Exit code 0 when every call got an answer (an answer may still report ok: false); 1 when the
 server closed its output early.
 """
@@ -36,6 +38,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 
 def main(argv):
@@ -91,14 +94,17 @@ def main(argv):
 
     for entry in calls:
         batch = entry["parallel"] if "parallel" in entry else [entry]
+        started = time.monotonic()
         ids = [request("tools/call", {"name": c["name"], "arguments": c.get("arguments", {})})
                for c in batch]
         answers = read_until(ids)
+        seconds = time.monotonic() - started
         if answers is None:
             print("the server closed its output mid-run", file=sys.stderr)
             return 1
         for c, i in zip(batch, ids):
-            print("=" * 20, c.get("label", c["name"]), "=" * 20)
+            # the wall clock of the call (of the whole batch for a parallel entry), in the header
+            print("=" * 20, "%s [%.1f s]" % (c.get("label", c["name"]), seconds), "=" * 20)
             print(text_of(answers[i]))
             sys.stdout.flush()
 
