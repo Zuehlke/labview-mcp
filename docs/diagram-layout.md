@@ -925,3 +925,39 @@ worker never shares a VI with another.
 The first call with a new number of workers composes that many helper sets (63 s for four instead
 of 35). Four is the default. On grpc the tool runs one VI after the other: NI's service running two
 helper VIs at once is not measured.
+
+### 6k. Layout at compose time on pylabview: measured, not built, 2026-10-19
+
+**The question** (the user's): a VI we generate is AIXML first, so why load it into LabVIEW and
+read it back for the layout? AIXML carries no coordinate, no size and no terminal position, so the
+engine cannot plan from it. What could plan from it is our COMPOSER, which knows node sizes from its
+parts, terminal hotpoints and wire geometry when it writes the heap - so the layout could be
+written at compose time and the `cleanUpDiagram` step skipped.
+
+**What that step costs on a freshly composed VI**, measured through `lvai_layout_diagrams`
+(`parallel: 1`, `verify: false`, as the step runs it) on four VIs composed from
+`accumulate-across-a-loop.xml`, `user-event-two-loops.xml`, `lvbd_coercion_dots.xml` and
+`lvai_exec_state.xml`:
+
+| VI | hold | dump | plan | apply | fan routing | total |
+|---|---|---|---|---|---|---|
+| accumulate-across-a-loop | 86 | 257 | 68 | 387 | 386 | 1189 ms |
+| coercion | 92 | 194 | 14 | 337 | 99 | 739 ms |
+| exec state | 67 | 112 | 4 | 216 | 59 | 461 ms |
+| user-event-two-loops | 60 | 252 | 18 | 348 | 77 | 758 ms |
+
+Composing the same VIs took 0.5-1.9 s each. A layout written at compose time would save the hold,
+the dump and the apply - **0.4 to 0.7 s per new VI**. An agent build of thirteen VIs would gain about
+7 s, about one model turn (`docs/workflow-economics.md`: 7.1 s median per turn).
+
+**What it would cost**: a model of the diagram built from the composer's guesses rather than from
+LabVIEW, where LabVIEW decides several sizes itself on load - constants sized to their text, a
+structure's Frame Size, tunnel positions, subdiagram labels re-wrapped - and the apply's
+`CleanUpWire` over every wire, which the composer's own wire geometry does not reproduce. A layout
+planned on geometry that LabVIEW then changes lands off, and only a render shows it.
+
+**Decision: no-go**, on these numbers. The time in a layout run goes to LabVIEW loading VIs that are
+NOT new - an existing project's test hierarchies took 14.8 s for one VI (section 6j) - and to model
+turns, not to the 0.4-0.7 s a new VI's layout costs inside the same tool call. Revisit if a build
+generates hundreds of VIs in one call, or if the composer's geometry is ever measured to match
+LabVIEW's dump object for object.
