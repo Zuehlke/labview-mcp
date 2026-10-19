@@ -137,6 +137,7 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
                         ["landedOff"] = answer["landedOff"]?.DeepClone(),
                         ["backupPath"] = answer["backupPath"]?.DeepClone(),
                         ["ms"] = t.ElapsedMilliseconds,
+                        ["timingsMs"] = answer["timingsMs"]?.DeepClone(),
                     };
                     if (answer["ok"]?.GetValue<bool>() != true)
                         row["message"] = (answer["message"] ?? answer["note"])?.DeepClone();
