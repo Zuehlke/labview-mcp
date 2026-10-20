@@ -1,0 +1,6 @@
+
+/archify
+ I want two diagrams:
+  - The first that shows how the code in this repo is built, if you want the "Architecture" of the source code, showing all its parts with the components that are involved
+  - a runtime "Sequence" diagram of how those components interact during runtime and how the flow of data is
+      Save them in the directory /docs/diagrams/ folder
