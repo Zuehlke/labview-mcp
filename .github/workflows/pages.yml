@@ -1,7 +1,18 @@
-name: download-stats
+name: pages
 
-# Daily snapshot of release-asset download counts (and, with a token, repository traffic) into
-# CSV files on the `stats` branch, published as a GitHub Pages dashboard.
+# The ONE workflow that deploys GitHub Pages - a Pages deployment replaces the whole site, so a
+# second deploying workflow would wipe this one's pages. .github/site/build.py assembles it:
+#   /              landing page listing everything below
+#   /stats/        daily snapshot of release-asset download counts (and, with a token,
+#                  repository traffic), kept as CSV files on the `stats` branch
+#   /diagrams/     every docs/diagrams/*.html (architecture and sequence diagrams)
+#
+# The daily cron and a manual run take a new stats snapshot; a push that changes a diagram or
+# the site only republishes, with the stats data the `stats` branch already holds. GitHub keeps
+# one PENDING run per concurrency group, so a push queued behind a waiting cron run replaces it
+# and that day gets no snapshot. Download counts are cumulative and traffic is re-read for 14 days,
+# so this only coarsens the deltas - unless snapshots stop for more than 14 days.
+# https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/control-the-concurrency-of-workflows-and-jobs
 #
 # Why release assets and not only the traffic API: every plugin install or update fetches
 # /releases/latest/download/labview-mcp.zip (.claude-plugin/marketplace.json is an `archive`
@@ -24,22 +35,29 @@ on:
     # timestamp between snapshots, so a late cron on either side is harmless.
     - cron: '41 8 * * *'
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/diagrams/**'
+      - '.github/site/**'
+      - '.github/stats/site/**'
+      - '.github/workflows/pages.yml'
 
-permissions:
-  contents: write     # push the snapshot to the stats branch
-  actions: read       # list release.yml / verify-release.yml runs
-  pages: write
-  id-token: write
+permissions: {}      # granted per job below
 
 concurrency:
-  group: download-stats
+  group: pages
   cancel-in-progress: false
 
 jobs:
-  collect:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write     # push the snapshot to the stats branch
+      actions: read       # list release.yml / verify-release.yml runs
     steps:
-      - name: Checkout (collector and page)
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Check out the stats branch, or start it
@@ -52,12 +70,14 @@ jobs:
           fi
 
       - name: Snapshot
+        if: github.event_name != 'push'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STATS_TRAFFIC_TOKEN: ${{ secrets.STATS_TRAFFIC_TOKEN }}
         run: python3 .github/stats/collect.py stats-data/data
 
       - name: Commit to the stats branch
+        if: github.event_name != 'push'
         working-directory: stats-data
         run: |
           git config user.name 'github-actions[bot]'
@@ -68,18 +88,19 @@ jobs:
           git push origin stats
 
       - name: Assemble the site
-        run: |
-          mkdir -p _site
-          cp .github/stats/site/index.html _site/
-          cp -r stats-data/data _site/data
+        run: python3 .github/site/build.py stats-data/data _site
 
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
   deploy:
-    needs: collect
+    needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -1,0 +1,470 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "lvai_generate_vi Runtime Sequence (grpc backend)",
+    "output": "docs/diagrams/sequence.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Zuehlke/labview-mcp.git",
+      "provider": "github",
+      "revision": "3e5f1618a8e76eca0103c3aa311bb045440f9a9b"
+    }
+  },
+  "participants": [
+    {
+      "id": "client",
+      "type": "external",
+      "label": "MCP client",
+      "sublabel": "agent session",
+      "sources": [
+        {
+          "path": "plugin/.mcp.json",
+          "line": 1,
+          "end_line": 9
+        }
+      ]
+    },
+    {
+      "id": "host",
+      "type": "backend",
+      "label": "MCP host",
+      "sublabel": "DiagnosingTool",
+      "sources": [
+        {
+          "path": "src/LabVIEWMCP/Program.cs",
+          "line": 167,
+          "end_line": 181
+        },
+        {
+          "path": "src/LabVIEWMCP/Infra/DiagnosingTool.cs",
+          "line": 19,
+          "end_line": 40
+        }
+      ]
+    },
+    {
+      "id": "gen",
+      "type": "backend",
+      "label": "BulkTools",
+      "sublabel": "lvai_generate_vi",
+      "sources": [
+        {
+          "path": "src/LabVIEWMCP/Tools/BulkTools.cs",
+          "line": 147,
+          "end_line": 154
+        },
+        {
+          "path": "src/LabVIEWMCP/Tools/BulkTools.cs",
+          "line": 211,
+          "end_line": 260
+        },
+        {
+          "path": "src/LabVIEWMCP/Tools/BulkTools.cs",
+          "line": 528,
+          "end_line": 600
+        }
+      ]
+    },
+    {
+      "id": "check",
+      "type": "security",
+      "label": "AixmlCheck",
+      "sublabel": "local pre-check",
+      "sources": [
+        {
+          "path": "src/LabVIEWMCP/Tools/BulkTools.cs",
+          "line": 255,
+          "end_line": 265
+        },
+        {
+          "path": "src/LabVIEWMCP/Tools/AixmlTools.cs",
+          "line": 818,
+          "end_line": 818
+        }
+      ]
+    },
+    {
+      "id": "conn",
+      "type": "backend",
+      "label": "LvaiConnection",
+      "sublabel": "gRPC channel",
+      "sources": [
+        {
+          "path": "src/LabVIEWMCP/Grpc/LvaiConnection.cs",
+          "line": 85,
+          "end_line": 127
+        },
+        {
+          "path": "src/LabVIEWMCP/Tools/AixmlTools.cs",
+          "line": 738,
+          "end_line": 739
+        },
+        {
+          "path": "src/LabVIEWMCP/Tools/AixmlTools.cs",
+          "line": 840,
+          "end_line": 841
+        }
+      ]
+    },
+    {
+      "id": "nigel",
+      "type": "external",
+      "label": "NI AI service",
+      "sublabel": "lvai.LVAI",
+      "sources": [
+        {
+          "path": "src/LabVIEWMCP/Protos/lvai_grpc_interface.proto",
+          "line": 320,
+          "end_line": 324
+        }
+      ]
+    },
+    {
+      "id": "labview",
+      "type": "external",
+      "label": "LabVIEW",
+      "sublabel": "IDE + add-on",
+      "sources": [
+        {
+          "path": "src/LabVIEWMCP/Infra/LabViewCom.cs",
+          "line": 28,
+          "end_line": 30
+        }
+      ]
+    },
+    {
+      "id": "layout",
+      "type": "backend",
+      "label": "DiagramCleanup",
+      "sublabel": "Layout/* engine",
+      "sources": [
+        {
+          "path": "src/LabVIEWMCP/Tools/DiagramCleanup.cs",
+          "line": 50,
+          "end_line": 60
+        },
+        {
+          "path": "src/LabVIEWMCP/Layout/DiagramLayout.cs",
+          "line": 53,
+          "end_line": 53
+        }
+      ]
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 236,
+      "label": "Call"
+    },
+    {
+      "from": 244,
+      "to": 334,
+      "label": "Local check"
+    },
+    {
+      "from": 342,
+      "to": 510,
+      "label": "Validate"
+    },
+    {
+      "from": 520,
+      "to": 664,
+      "label": "Convert"
+    },
+    {
+      "from": 672,
+      "to": 942,
+      "label": "Post-process"
+    },
+    {
+      "from": 950,
+      "to": 1000,
+      "label": "Answer"
+    }
+  ],
+  "messages": [
+    {
+      "id": "call",
+      "from": "client",
+      "to": "host",
+      "y": 160,
+      "label": "tools/call lvai_generate_vi",
+      "variant": "emphasis"
+    },
+    {
+      "id": "invoke",
+      "from": "host",
+      "to": "gen",
+      "y": 188,
+      "label": "invoke with arguments",
+      "note": "Near-miss names folded (vi_path to viPath), unknown names refused"
+    },
+    {
+      "id": "precheck",
+      "from": "gen",
+      "to": "check",
+      "y": 256,
+      "label": "PreCheck + repair",
+      "variant": "security",
+      "note": "Static checks, no LabVIEW needed"
+    },
+    {
+      "id": "findings",
+      "from": "check",
+      "to": "gen",
+      "y": 322,
+      "label": "findings",
+      "variant": "return"
+    },
+    {
+      "id": "validate-call",
+      "from": "gen",
+      "to": "conn",
+      "y": 352,
+      "label": "ValidateAixmlAsync"
+    },
+    {
+      "id": "validate-rpc",
+      "from": "conn",
+      "to": "nigel",
+      "y": 380,
+      "label": "ValidateAIXML",
+      "variant": "emphasis",
+      "note": "First call probes port candidates, then reuses the channel"
+    },
+    {
+      "id": "validate-lv",
+      "from": "nigel",
+      "to": "labview",
+      "y": 446,
+      "label": "parse + type-check"
+    },
+    {
+      "id": "validate-result",
+      "from": "labview",
+      "to": "nigel",
+      "y": 474,
+      "label": "errors / ok",
+      "variant": "return"
+    },
+    {
+      "id": "validate-step",
+      "from": "nigel",
+      "to": "gen",
+      "y": 500,
+      "label": "validate step",
+      "variant": "return"
+    },
+    {
+      "id": "convert-call",
+      "from": "gen",
+      "to": "conn",
+      "y": 532,
+      "label": "ConvertAixmlToViAsync"
+    },
+    {
+      "id": "convert-rpc",
+      "from": "conn",
+      "to": "nigel",
+      "y": 560,
+      "label": "ConvertAIXMLToVI",
+      "variant": "emphasis"
+    },
+    {
+      "id": "convert-lv",
+      "from": "nigel",
+      "to": "labview",
+      "y": 588,
+      "label": "build + save .vi",
+      "note": "VI written at viPath; the target folder is created first"
+    },
+    {
+      "id": "convert-step",
+      "from": "nigel",
+      "to": "gen",
+      "y": 654,
+      "label": "errorCode",
+      "variant": "return"
+    },
+    {
+      "id": "cleanup",
+      "from": "gen",
+      "to": "layout",
+      "y": 684,
+      "label": "clean up diagram",
+      "note": "Our layout engine places nodes; panel arranged by a helper VI"
+    },
+    {
+      "id": "cleanup-done",
+      "from": "layout",
+      "to": "gen",
+      "y": 750,
+      "label": "layout saved",
+      "variant": "return"
+    },
+    {
+      "id": "measure",
+      "from": "gen",
+      "to": "conn",
+      "y": 780,
+      "label": "diagram size + pane",
+      "note": "Helper VIs built once from scripts/*.xml (HelperCache)"
+    },
+    {
+      "id": "run-helper",
+      "from": "conn",
+      "to": "nigel",
+      "y": 846,
+      "label": "RunVIAsTopLevel",
+      "variant": "emphasis"
+    },
+    {
+      "id": "helper-lv",
+      "from": "nigel",
+      "to": "labview",
+      "y": 874,
+      "label": "run helper VI"
+    },
+    {
+      "id": "helper-values",
+      "from": "labview",
+      "to": "nigel",
+      "y": 904,
+      "label": "values",
+      "variant": "return"
+    },
+    {
+      "id": "measure-step",
+      "from": "nigel",
+      "to": "gen",
+      "y": 932,
+      "label": "size, pane verdict",
+      "variant": "return"
+    },
+    {
+      "id": "steps",
+      "from": "gen",
+      "to": "host",
+      "y": 962,
+      "label": "steps[] JSON",
+      "variant": "return"
+    },
+    {
+      "id": "result",
+      "from": "host",
+      "to": "client",
+      "y": 990,
+      "label": "tool result",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "host",
+      "from": 156,
+      "to": 996,
+      "type": "backend"
+    },
+    {
+      "participant": "gen",
+      "from": 184,
+      "to": 968,
+      "type": "backend"
+    },
+    {
+      "participant": "check",
+      "from": 252,
+      "to": 328,
+      "type": "security"
+    },
+    {
+      "participant": "conn",
+      "from": 348,
+      "to": 386,
+      "type": "backend"
+    },
+    {
+      "participant": "nigel",
+      "from": 376,
+      "to": 506,
+      "type": "external"
+    },
+    {
+      "participant": "labview",
+      "from": 442,
+      "to": 480,
+      "type": "external"
+    },
+    {
+      "participant": "conn",
+      "from": 528,
+      "to": 566,
+      "type": "backend"
+    },
+    {
+      "participant": "nigel",
+      "from": 556,
+      "to": 660,
+      "type": "external"
+    },
+    {
+      "participant": "labview",
+      "from": 584,
+      "to": 620,
+      "type": "external"
+    },
+    {
+      "participant": "layout",
+      "from": 680,
+      "to": 756,
+      "type": "backend"
+    },
+    {
+      "participant": "conn",
+      "from": 776,
+      "to": 852,
+      "type": "backend"
+    },
+    {
+      "participant": "nigel",
+      "from": 842,
+      "to": 938,
+      "type": "external"
+    },
+    {
+      "participant": "labview",
+      "from": 870,
+      "to": 910,
+      "type": "external"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Data in, data out",
+      "items": [
+        "In: an AIXML file path plus the target .vi path",
+        "Out: one JSON answer, every step's sub-answer under steps[]",
+        "Rpc.GuardAsync turns any exception into {ok:false}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "pylabview backend",
+      "items": [
+        "Validate is skipped, and convert runs AixmlComposer through a resident Python worker",
+        "Executability and renders go over ActiveX (LabViewCom) instead of gRPC"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Stops early",
+      "items": [
+        "The first failing step ends the call and is named in failedAtStep",
+        "Calls to project-local subVIs convert anyway and are then gated on execState"
+      ]
+    }
+  ]
+}

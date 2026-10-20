@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Snapshot the repository's download and traffic numbers into CSV files.
 
-Run daily by .github/workflows/download-stats.yml against a checkout of the `stats` branch.
+Run by the snapshot step of .github/workflows/pages.yml (daily cron and manual dispatch; skipped on push) against a checkout of the `stats` branch.
 Standard library only, so the workflow needs no install step.
 
 Why each file exists:

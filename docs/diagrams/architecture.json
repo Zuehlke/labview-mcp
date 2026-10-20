@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "LabVIEW MCP Server Architecture",
+    "output": "docs/diagrams/architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Zuehlke/labview-mcp.git",
+      "provider": "github",
+      "revision": "3e5f1618a8e76eca0103c3aa311bb045440f9a9b"
+    }
+  },
+  "components": [
+    { "id": "agents", "type": "frontend", "label": "Agent definitions", "sublabel": ".claude/agents, plugin", "pos": [40, 40], "size": [150, 64],
+      "sources": [{ "path": ".claude/agents/labview-vi-generator.md", "line": 1, "end_line": 20 }] },
+    { "id": "client", "type": "external", "label": "MCP client", "sublabel": "Claude Code / Desktop", "pos": [40, 190], "size": [150, 64],
+      "sources": [{ "path": "plugin/.mcp.json", "line": 1, "end_line": 9 }] },
+    { "id": "cli", "type": "backend", "label": "CLI modes", "sublabel": "Cli/* --selftest, --palette", "pos": [290, 40], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Program.cs", "line": 85, "end_line": 156 }, { "path": "src/LabVIEWMCP/Cli/CommandLine.cs", "line": 1, "end_line": 40 }] },
+    { "id": "host", "type": "backend", "label": "MCP host", "sublabel": "Program.cs, stdio", "tag": "DiagnosingTool", "pos": [290, 190], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Program.cs", "line": 158, "end_line": 181 }, { "path": "src/LabVIEWMCP/Infra/DiagnosingTool.cs", "line": 19, "end_line": 40 }] },
+    { "id": "indexes", "type": "backend", "label": "Indexes", "sublabel": "palette + examples", "pos": [290, 340], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Program.cs", "line": 212, "end_line": 227 }, { "path": "src/LabVIEWMCP/Infra/ExampleIndex.cs", "line": 172, "end_line": 173 }, { "path": "src/LabVIEWMCP/Infra/PaletteIndex.cs", "line": 150, "end_line": 151 }] },
+    { "id": "install", "type": "database", "label": "LabVIEW install", "sublabel": "vi.lib, examples, menus", "pos": [290, 490], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Infra/PaletteIndex.cs", "line": 150, "end_line": 151 }] },
+    { "id": "cache", "type": "database", "label": "Disk cache", "sublabel": "~\\.labviewmcp\\cache", "pos": [40, 340], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Infra/CacheDirectory.cs", "line": 16, "end_line": 80 }, { "path": "src/LabVIEWMCP/Infra/AixmlExportStore.cs", "line": 57, "end_line": 90 }] },
+    { "id": "docs", "type": "database", "label": "Embedded docs", "sublabel": "docs/*.md in the DLL", "pos": [540, 40], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/LabVIEWMCP.csproj", "line": 56, "end_line": 58 }, { "path": "src/LabVIEWMCP/Tools/KnowledgeTools.cs", "line": 198, "end_line": 199 }] },
+    { "id": "tools", "type": "backend", "label": "Tool classes", "sublabel": "Tools/* lvai_*, pylv_*", "tag": "AixmlBackend route", "pos": [540, 190], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Tools/BulkTools.cs", "line": 49, "end_line": 50 }, { "path": "src/LabVIEWMCP/Infra/AixmlBackend.cs", "line": 30, "end_line": 50 }, { "path": "src/LabVIEWMCP/Infra/Rpc.cs", "line": 14, "end_line": 48 }] },
+    { "id": "composer", "type": "backend", "label": "AIXML composer", "sublabel": "AixmlComposer, workers", "pos": [540, 340], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Infra/AixmlComposer.cs", "line": 153, "end_line": 163 }, { "path": "src/LabVIEWMCP/Infra/PythonWorkers.cs", "line": 53, "end_line": 54 }] },
+    { "id": "python", "type": "backend", "label": "Python bundle", "sublabel": "aixml2vi.py, pylabview", "pos": [540, 490], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Infra/PyLabview.cs", "line": 177, "end_line": 186 }, { "path": "scripts/aixml-pylabview/aixml2vi.py", "line": 96, "end_line": 106 }] },
+    { "id": "grpc", "type": "backend", "label": "LvaiConnection", "sublabel": "Grpc/*, port discovery", "pos": [790, 190], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Grpc/LvaiConnection.cs", "line": 85, "end_line": 127 }, { "path": "src/LabVIEWMCP/Grpc/PortDiscovery.cs", "line": 29, "end_line": 30 }] },
+    { "id": "com", "type": "backend", "label": "LabViewCom", "sublabel": "ActiveX, attach only", "pos": [790, 340], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Infra/LabViewCom.cs", "line": 28, "end_line": 30 }, { "path": "src/LabVIEWMCP/Infra/LabViewCom.cs", "line": 75, "end_line": 76 }] },
+    { "id": "nigel", "type": "external", "label": "NI AI service", "sublabel": "lvai.LVAI gRPC", "pos": [1040, 190], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Protos/lvai_grpc_interface.proto", "line": 305, "end_line": 327 }] },
+    { "id": "labview", "type": "external", "label": "LabVIEW IDE", "sublabel": "LabVIEW.exe", "pos": [1040, 340], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Infra/LabViewCom.cs", "line": 28, "end_line": 30 }] },
+    { "id": "files", "type": "database", "label": "VI files", "sublabel": ".vi .lvclass .lvproj", "pos": [1040, 490], "size": [150, 64],
+      "sources": [{ "path": "src/LabVIEWMCP/Tools/AixmlTools.cs", "line": 828, "end_line": 841 }] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "LabVIEWMCP.exe (.NET 8)", "wraps": ["cli", "host", "indexes", "docs", "tools", "composer", "grpc", "com"] },
+    { "kind": "region", "label": "NI LabVIEW", "wraps": ["nigel", "labview"] }
+  ],
+  "connections": [
+    { "id": "agent-prompts", "from": "agents", "to": "client", "label": "prompts" },
+    { "id": "client-host", "from": "client", "to": "host", "label": "stdio", "variant": "emphasis" },
+    { "id": "host-cli", "from": "host", "to": "cli", "label": "--flags" },
+    { "id": "host-tools", "from": "host", "to": "tools", "label": "dispatch", "variant": "emphasis" },
+    { "id": "host-indexes", "from": "host", "to": "indexes", "label": "warm" },
+    { "id": "indexes-install", "from": "indexes", "to": "install", "label": "scan" },
+    { "id": "indexes-cache", "from": "indexes", "to": "cache", "label": "persist" },
+    { "id": "tools-docs", "from": "tools", "to": "docs", "label": "serve" },
+    { "id": "tools-grpc", "from": "tools", "to": "grpc", "label": "grpc route", "variant": "emphasis" },
+    { "id": "grpc-nigel", "from": "grpc", "to": "nigel", "label": "lvai.LVAI", "variant": "emphasis" },
+    { "id": "nigel-labview", "from": "nigel", "to": "labview", "label": "drives" },
+    { "id": "tools-composer", "from": "tools", "to": "composer", "label": "pylabview" },
+    { "id": "composer-python", "from": "composer", "to": "python", "label": "run script" },
+    { "id": "tools-com", "from": "tools", "to": "com", "label": "run/check", "variant": "dashed" },
+    { "id": "com-labview", "from": "com", "to": "labview", "label": "ActiveX" },
+    { "id": "python-files", "from": "python", "to": "files", "label": "write .vi" },
+    { "id": "labview-files", "from": "labview", "to": "files", "label": "save" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Request path", "items": ["Client speaks MCP over stdio; DiagnosingTool wraps every tool to fold or refuse bad argument names", "Each Tools/* class is one [McpServerTool] group; Rpc.GuardAsync turns failures into JSON"] },
+    { "dot": "cyan", "title": "Two AIXML backends", "items": ["grpc (default): NI's ValidateAIXML / ConvertAIXMLToVI via LvaiConnection", "pylabview: our composer in Python writes the VI; running checks go over ActiveX"] },
+    { "dot": "violet", "title": "Helpers and layout", "items": ["scripts/*.xml helper VIs are built once into %TEMP% (HelperCache) and run via RunVIAsTopLevel", "Layout/* is our own block-diagram layout engine, used by DiagramCleanup"] },
+    { "dot": "amber", "title": "Build and ship", "items": ["build.ps1 + LabVIEWMCP.csproj; tests in tests/LabVIEWMCP.Tests", "release.yml packages exe, docs, scripts and plugin/ into one zip"] }
+  ]
+}

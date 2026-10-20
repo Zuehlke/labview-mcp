@@ -8,12 +8,12 @@
 <style>
   :root {
     --bg: #fbfbfa; --surface: #ffffff; --text: #1d1d1f; --muted: #6b6b70; --border: #e4e4e2;
-    --plugin: #2f6fdb; --manual: #e0892b; --ci: #9a9aa0; --views: #2f9e72; --clones: #8a5cd6;
+    --plugin: #2f6fdb; --manual: #e0892b; --ci: #9a9aa0; --views: #2f9e72; --clones: #8a5cd6; --err: #c62828;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #141416; --surface: #1c1c1f; --text: #ececee; --muted: #9a9aa2; --border: #2e2e33;
-      --plugin: #6d9cf0; --manual: #f0a75a; --ci: #77777e; --views: #52c493; --clones: #ab86ec;
+      --plugin: #6d9cf0; --manual: #f0a75a; --ci: #77777e; --views: #52c493; --clones: #ab86ec; --err: #ff7a7a;
     }
   }
   * { box-sizing: border-box; }
@@ -37,11 +37,12 @@
   th { color: var(--muted); font-weight: 500; }
   code { font-size: 13px; }
   a { color: var(--plugin); }
-  .err { color: #d33; }
+  .err { color: var(--err); }
 </style>
 </head>
 <body>
 <main>
+  <p class="note"><a href="../"><span aria-hidden="true">←</span> all labview-mcp pages</a></p>
   <h1>labview-mcp downloads</h1>
   <p class="lead">Release asset downloads and repository traffic for
     <a href="https://github.com/Zuehlke/labview-mcp">Zuehlke/labview-mcp</a>.
