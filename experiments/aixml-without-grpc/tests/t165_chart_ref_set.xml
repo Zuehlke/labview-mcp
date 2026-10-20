@@ -1,0 +1,10 @@
+<VI _name="T165 Chart Ref Set.vi" description="A subVI that takes a STRICTLY TYPED reference to a waveform chart of doubles on its connector pane and writes the chart's Y scale range through it - the shape of NI's Helper - Modify Chart.vi.">
+  <Control _name="Chart ref" conIdx="5" connection="required" description="The chart to change." outputs="value:4200.value" type="ref{LV.WaveformChart}{double}" uid="4200" uid_parent="root" value=""/>
+  <Control _name="minimum" conIdx="7" connection="recommended" description="New Y scale minimum." outputs="value:4202.value" type="double" uid="4202" uid_parent="root" value="0"/>
+  <Control _name="maximum" conIdx="4" connection="recommended" description="New Y scale maximum." outputs="value:4203.value" type="double" uid="4203" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Error in." outputs="value:4205.value" type="cluster{bool.status,int32.code,string.source}" uid="4205" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Property Node" fields="write+Y Scale.Range\3AMinimum,write+Y Scale.Range\3AMaximum" inputs="reference:4200.value,error in (no error):4205.value,Y Scale.Range\3AMinimum:4202.value,Y Scale.Range\3AMaximum:4203.value" outputs="reference out:4220.ref,error out:4220.err" type="{LV.WaveformChart}" uid="4220" uid_parent="root"/>
+  <Indicator _name="Chart ref out" conIdx="6" connection="recommended" description="The same reference." inputs="value:4220.ref" type="ref{LV.WaveformChart}{double}" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Error out." inputs="value:4220.err" type="cluster{bool.status,int32.code,string.source}" uid="4330" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Sets the caller's chart Y range" uid="0" uid_parent="root"/>
+</VI>

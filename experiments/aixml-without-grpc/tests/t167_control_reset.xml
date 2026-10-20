@@ -1,0 +1,7 @@
+<VI _name="T167 Control Reset.vi" description="A subVI that takes a reference to ANY control on its connector pane and resets that control to its default value with an Invoke Node - a method called on a control reference.">
+  <Control _name="Control ref" conIdx="5" connection="required" description="The control to reset." outputs="value:4200.value" type="ref{LV.Control}" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Error in." outputs="value:4205.value" type="cluster{bool.status,int32.code,string.source}" uid="4205" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Invoke Node" inputs="reference:4200.value,error in (no error):4205.value" outputs="reference out:,error out:4220.err" target="Reinit To Dflt" type="{LV.Control}" uid="4220" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Error out." inputs="value:4220.err" type="cluster{bool.status,int32.code,string.source}" uid="4330" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Resets the caller's control" uid="0" uid_parent="root"/>
+</VI>

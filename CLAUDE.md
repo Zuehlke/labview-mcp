@@ -1248,7 +1248,9 @@ found were closed that night - comments, descriptions, a bare name resolving NI'
 wide fan-outs, constants stacked into one tall column, five unnamed terminals - and a queue
 refnum as a subVI terminal the next night (`ref{Queue}{string}`, a container like an array),
 typed control refnums (`ref{LV.String}`: the TYPE is the plain class refnum, only the panel
-object nests one of the control's class), notifier wires and `Update While Typing?` - whose row
+object nests one of the control's class - and since 2026-10-20 the STRICTLY typed
+`ref{LV.WaveformChart}{double}` too, whose TYPE does nest the data type; NI's Control
+References example composes whole, subVI included), notifier wires and `Update While Typing?` - whose row
 came from LabVIEW's own VIs through a pylabview scan of `resource\` (`scan_props.py`), because a
 row from NI's build of our own AIXML is not committed; FINDINGS §7a.
 **No `.ctl` link

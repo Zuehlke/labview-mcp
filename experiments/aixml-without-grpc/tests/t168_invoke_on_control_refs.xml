@@ -1,0 +1,20 @@
+<VI _name="T168 Invoke On Control Refs.vi" description="Writes new values into its own string and numeric controls through their references, reads them back, then hands each reference to a subVI that resets the control with an Invoke Node, and reads them again.">
+  <Control _name="Text" outputs="value:" type="string" uid="4200" uid_parent="root" value="start"/>
+  <Control _name="Level" outputs="value:" type="double" uid="4201" uid_parent="root" value="7"/>
+  <Constant _name="new text" outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value="changed"/>
+  <Constant _name="new level" outputs="value:4203.value" type="double" uid="4203" uid_parent="root" value="99"/>
+  <Node _name="VI Server Reference" element="Text" outputs="Text:4210.Text" uid="4210" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="Level" outputs="Level:4211.Level" uid="4211" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value,read+Value" inputs="reference:4210.Text,error in (no error):,Value:4202.value" outputs="Value:4220.val,reference out:4220.ref,error out:4220.err" type="{LV.String}" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value,read+Value" inputs="reference:4211.Level,error in (no error):4220.err,Value:4203.value" outputs="Value:4221.val,reference out:4221.ref,error out:4221.err" type="{LV.Digital}" uid="4221" uid_parent="root"/>
+  <Indicator _name="text written" inputs="value:4220.val" type="string" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="level written" inputs="value:4221.val" type="double" uid="4301" uid_parent="root" value="0"/>
+  <Call inputs="Control ref:4220.ref,error in:4221.err" outputs="error out:4230.err" target="Control Reset {stamp}.vi" uid="4230" uid_parent="root"/>
+  <Call inputs="Control ref:4221.ref,error in:4230.err" outputs="error out:4231.err" target="Control Reset {stamp}.vi" uid="4231" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Value" inputs="reference:4220.ref,error in (no error):4231.err" outputs="Value:4240.val,reference out:,error out:4240.err" type="{LV.String}" uid="4240" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Value" inputs="reference:4221.ref,error in (no error):4240.err" outputs="Value:4241.val,reference out:,error out:4241.err" type="{LV.Digital}" uid="4241" uid_parent="root"/>
+  <Indicator _name="text reset" inputs="value:4240.val" type="string" uid="4310" uid_parent="root" value=""/>
+  <Indicator _name="level reset" inputs="value:4241.val" type="double" uid="4311" uid_parent="root" value="0"/>
+  <Indicator _name="error out" inputs="value:4241.err" type="cluster{bool.status,int32.code,string.source}" uid="4600" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Write, read, reset through references" uid="0" uid_parent="root"/>
+</VI>

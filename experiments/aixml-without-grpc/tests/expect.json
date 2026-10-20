@@ -1843,5 +1843,49 @@
     }
    }
   ]
+ },
+ "t166_control_references": {
+  "callees": {
+   "Chart Ref Set {stamp}.vi": "t165_chart_ref_set"
+  },
+  "cases": [
+   {
+    "inputs": "pick=0;minimum=-5;maximum=12.5",
+    "outputs": {
+     "chart min": -5,
+     "chart max": 12.5,
+     "picked visible": "False",
+     "text visible": "True",
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "pick=1;minimum=2;maximum=3",
+    "outputs": {
+     "chart min": 2,
+     "chart max": 3,
+     "picked visible": "False",
+     "text visible": "False",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t168_invoke_on_control_refs": {
+  "callees": {
+   "Control Reset {stamp}.vi": "t167_control_reset"
+  },
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "text written": "changed",
+     "level written": 99,
+     "text reset": "start",
+     "level reset": 7,
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

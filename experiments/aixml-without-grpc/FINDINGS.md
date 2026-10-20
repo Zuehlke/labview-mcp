@@ -2581,6 +2581,61 @@ Every Express and malleable call over the corpus is named as NI names it now; XN
 Over the 747: **253 identical** (223), elements 97.7 %, values 96.4 % (94.8); the round trip
 unchanged.
 
+### Control references - NI's example (2026-10-20)
+
+The question was whether the composer can do what NI's `Application Control\VI Server\Control
+References\Control References.vi` shows. **The main VI already could**: NI's cached export composed
+first time, `execState 1` - three `VI Server Reference element=` nodes (the chart, and a Boolean
+and a String in two Case frames merged by an output tunnel into one `{LV.Control}` property node),
+an implicit property node, and a Call. What failed was its subVI, `support\Helper - Modify
+Chart.vi`: its `Chart Reference` terminal is `ref{LV.WaveformChart}{double}` and `type_tree`
+answered `is not composable yet`.
+
+**That is a STRICTLY TYPED control refnum, a different thing from the 2026-10-12 `ref{LV.String}`.**
+That section measured NI's converter writing `ref{LV.String}` as the PLAIN class refnum, nothing
+nested, and stands. A reference made from a control carries the control's data type as well, and
+NI's exporter spells it with a second brace - its own cached exports have
+`ref{LV.TreeControl}{array{string}}`, `ref{LV.Ring}{uint16}` and
+`ref{LV.SceneGraphDisplay}{ref{LV.SceneNode}}` (entries keyed without `pylabview@`, so not our
+reader's). VCTP of NI's helper: `Refnum LVObjCtl CtlFlags=0x0017` around `TypeID 8`, a bare
+`NumFloat64` with no label - exactly what `control_ref_type` already wrote for a VI Server
+Reference node. So `type_tree` reads `ref{LV.<Class>}{<type>}` as `refnum_type(class)` with
+`type_tree(<type>)` nested and its label stripped; the front-panel part is the one already filed
+by class (`fpdco/stdRefNum/ctl/Refnum.LVObjCtl.0x0017`).
+
+Measured:
+
+- NI's helper from its reader export: composes, `execState 1`; read back, the terminal is
+  `ref{LV.WaveformChart}{double}` again. NI's main VI composed against THAT helper: `execState 1`.
+- Composed and read back unchanged: `{double}` on WaveformChart and Digital, `{bool}` on Boolean,
+  `{array{string}}` on TreeControl, `{uint16}` on Ring. `ref{LV.SceneGraphDisplay}{...}` is refused
+  by name - the class is not in `refnum-classes.tsv`.
+- `t165`/`t166` (run): the caller passes a reference to its own chart into a composed subVI taking
+  `ref{LV.WaveformChart}{double}`, which writes `Y Scale.Range:Minimum/Maximum`; read back through
+  the returned reference, -5/12.5 and 2/3. A Case on an enum picks the Boolean's or the String's
+  reference, an output tunnel merges them, and one `{LV.Control}` property node writes `Visible`
+  false and reads it back - the String's own implicit node reads `True` when the Boolean was
+  picked and `False` when the String was. No unexpected DWarn, no insanity.
+- `t167`/`t168` (run): an Invoke Node on a control reference - `Reinit To Dflt` in a subVI whose
+  terminal is the generic `ref{LV.Control}`, called with a string's and a numeric's reference
+  after their values were written through them (`changed`, 99, read back), then read again:
+  `start` and 7, the controls' defaults.
+
+**`t168` found a second defect on its first run, and it had nothing to do with references.** Its
+property nodes are `fields="write+Value,read+Value"` - one node writing and reading the same
+property - and the composed VI was `Insane Wire {sub}` twice, `ownersig unexpected` twice and a
+FATAL `DAbort` on load, with LabVIEW left spinning a core and the harness reading `ExecState None`.
+The two terminals were registered in `self.ends` under ONE key, `(uid, "Value")`, so the write's
+constant and the read's indicator were both wired to the read terminal. It is the defect `out_key`
+was written for on 2026-10-10 (a subVI's `Item` in and `Item` out), which listed only `Call`,
+Invoke Node and Register For Events; the Property Node is on the list now and a read field takes
+`out_key`. A/B: `t168` insane before, `PASS` after; `t91`, `t92`, `t93`, `t122`-`t124`, `t153`,
+`t166` pass with it.
+
+The full suite on the grammar change, before the `out_key` fix: 131 PASS, 5 LOADS, 3 FAIL - `t133`, `t136`, `t138`, the live tests
+driven by window messages, which failed identically with the composer change stashed (same
+LabVIEW, restarted), so they are not this change's.
+
 ## 7b. Completing the parts from more sources (2026-10-13)
 
 The user's question: are all parts of the AIXML cache extracted yet, and what do the Project

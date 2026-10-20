@@ -1,0 +1,32 @@
+<VI _name="T166 Control References.vi" description="NI's Control References example as a test: a reference to its own chart goes to a subVI that sets the Y scale range through it, and one of two control references, picked in a Case structure, hides that control through a generic Control property node.">
+  <Control _name="pick" outputs="value:4205.value" type="uint32{Boolean,String}" uid="4205" uid_parent="root" value="0"/>
+  <Control _name="minimum" outputs="value:4206.value" type="double" uid="4206" uid_parent="root" value="0"/>
+  <Control _name="maximum" outputs="value:4207.value" type="double" uid="4207" uid_parent="root" value="0"/>
+  <Control _name="Flag" outputs="value:" type="bool" uid="4208" uid_parent="root" value="false"/>
+  <Control _name="Text" outputs="value:" type="string" uid="4209" uid_parent="root" value=""/>
+  <Indicator _name="Chart" inputs="value:" style="graph21717" type="double" uid="4210" uid_parent="root" value="0"/>
+  <Node _name="VI Server Reference" element="Chart" outputs="Chart:4220.Chart" uid="4220" uid_parent="root"/>
+  <Call inputs="Chart ref:4220.Chart,minimum:4206.value,maximum:4207.value" outputs="Chart ref out:4230.ref,error out:4230.err" target="Chart Ref Set {stamp}.vi" uid="4230" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Y Scale.Range\3AMinimum,read+Y Scale.Range\3AMaximum" inputs="reference:4230.ref,error in (no error):4230.err" outputs="Y Scale.Range\3AMinimum:4240.min,Y Scale.Range\3AMaximum:4240.max,reference out:,error out:4240.err" type="{LV.WaveformChart}" uid="4240" uid_parent="root"/>
+  <Indicator _name="chart min" inputs="value:4240.min" type="double" uid="4300" uid_parent="root" value="0"/>
+  <Indicator _name="chart max" inputs="value:4240.max" type="double" uid="4301" uid_parent="root" value="0"/>
+  <Structure _name="Case Structure" selectin="4205.value" uid="4400" uid_parent="root">
+    <CaseFrame selector="&quot;Boolean&quot;" selectout="" uid="4410" uid_parent="4400">
+      <Node _name="VI Server Reference" element="Flag" outputs="Flag:4411.Flag" uid="4411" uid_parent="4410"/>
+      <Tunnel _id="Out1" inputs="value:4411.Flag" uid="4412" uid_parent="4410"/>
+    </CaseFrame>
+    <CaseFrame selector="&quot;String&quot;" selectout="" uid="4420" uid_parent="4400">
+      <Node _name="VI Server Reference" element="Text" outputs="Text:4421.Text" uid="4421" uid_parent="4420"/>
+      <Tunnel _id="Out1" inputs="value:4421.Text" uid="4422" uid_parent="4420"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4430.value" uid="4430" uid_parent="4400"/>
+  </Structure>
+  <Constant _name="Visible" outputs="value:4440.value" type="bool" uid="4440" uid_parent="root" value="false"/>
+  <Node _name="Property Node" fields="write+Visible" inputs="reference:4430.value,error in (no error):4240.err,Visible:4440.value" outputs="reference out:4450.ref,error out:4450.err" type="{LV.Control}" uid="4450" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Visible" inputs="reference:4450.ref,error in (no error):4450.err" outputs="Visible:4460.vis,reference out:,error out:4460.err" type="{LV.Control}" uid="4460" uid_parent="root"/>
+  <Indicator _name="picked visible" inputs="value:4460.vis" type="bool" uid="4500" uid_parent="root" value="false"/>
+  <Node _name="Property Node" fields="read+Visible" inputs="error in (no error):4460.err" link="Text" outputs="Visible:4470.vis,error out:4470.err" type="{LV.String}" uid="4470" uid_parent="root"/>
+  <Indicator _name="text visible" inputs="value:4470.vis" type="bool" uid="4501" uid_parent="root" value="false"/>
+  <Indicator _name="error out" inputs="value:4470.err" type="cluster{bool.status,int32.code,string.source}" uid="4600" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Control references, typed and generic" uid="0" uid_parent="root"/>
+</VI>

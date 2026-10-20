@@ -503,6 +503,8 @@ ref{Queue}{ELEM}                               refnum, kind + payload
 ref{Notifier}{ELEM}
 ref{UserEvent}{ELEM}
 ref{LV.Boolean} | ref{LV.Control} | ref{LV.String}      control refnums
+ref{LV.WaveformChart}{double}                  STRICTLY TYPED control refnum: class + data type
+ref{LV.TreeControl}{array{string}}             (NI writes it for a reference made from a control)
 ref{LV.VI}                                     VI refnum
 ref{UDClassInst}                               reference to a user-defined class instance
 tag{14}                                        IO name control (a DAQmx physical channel)

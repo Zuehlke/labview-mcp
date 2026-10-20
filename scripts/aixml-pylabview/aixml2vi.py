@@ -198,6 +198,19 @@ def type_tree(aixml_type, label=None, constant=False):
         if label:
             el.set("Label", label)
         return el
+    ms = re.fullmatch(r"ref\{(LV\.[A-Za-z0-9_]+)\}\{(.*)\}", aixml_type, re.S)
+    if ms:
+        # a STRICTLY TYPED control refnum - ref{LV.WaveformChart}{double}, as NI's exporter writes
+        # a subVI's chart reference terminal: the class's plain refnum with the control's data type
+        # nested, unlabelled - VCTP of NI's Control References example's Helper - Modify Chart.vi
+        # (CtlFlags 0x0017 around a bare NumFloat64), the shape control_ref_type gives a VI Server
+        # Reference node (2026-10-20)
+        el = refnum_type(ms.group(1))
+        t, _ = split_field(ms.group(2))
+        el.append(lvheap.strip_label(type_tree(t)))
+        if label:
+            el.set("Label", label)
+        return el
     m = re.match(r"([A-Za-z0-9_]+)(?:\.(\d+))?\{(.*)\}$", aixml_type, re.S)
     if m and m.group(1) == "cluster":
         el = ET.Element("TypeDesc", {"Type": "Cluster", "Format": "inline"})
@@ -804,8 +817,11 @@ def out_key(el, tname):
     label - mxLvGetProjectPath.vi's `Item` in and `Item` out - and keyed by name alone both ends
     landed on ONE terminal: a wire into it and a wire out of it, three "Insane Wire {sub}" and a
     FATAL DAbort (NI's Get Item Info.vi, 2026-10-10). Only subVI calls and invoke nodes, which
-    name terminals after the callee's labels; a primitive keeps its own naming rules."""
-    if el.tag == "Call" or (el.tag == "Node" and el.get("_name") in ("Invoke Node", "Register For Events")):
+    name terminals after the callee's labels; a primitive keeps its own naming rules. A PROPERTY
+    NODE too: `write+Value,read+Value` is two terminals both named Value, and keyed by name the
+    write's constant and the read's indicator met on one - the same three insane wires and DAbort,
+    found by the suite's t168 on 2026-10-20."""
+    if el.tag == "Call" or (el.tag == "Node" and el.get("_name") in ("Invoke Node", "Register For Events", "Property Node")):
         if tname in {t for t, _ in pairs(el.get("inputs"))}:
             return tname + "\x00out"
     return tname
@@ -2970,7 +2986,7 @@ class Composer:
                 t.remove(tf)
             tl.append(t)
             ET.SubElement(dl, "SL__arrayElement", {"uid": d.get("uid")})
-            self.ends[(el.get("uid"), name)] = (t.get("uid"), diag)
+            self.ends[(el.get("uid"), out_key(el, name) if mode == "read" else name)] = (t.get("uid"), diag)
             if mode == "read" and outs.get(name):
                 self.net_type[outs[name]] = dt
         tl.set("elements", str(len(tl)))

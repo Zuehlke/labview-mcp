@@ -739,6 +739,21 @@ rule: **an error terminal is never part of a polymorphic group** - the notifier 
 an error cluster as its data, and a string notification typed `error out` String until it was
 excluded by name. FINDINGS §7a, "Typed control refnums, notifiers and named uids".
 
+**A STRICTLY TYPED control refnum composes as a subVI terminal since 2026-10-20** -
+`ref{LV.WaveformChart}{double}`, the class AND the control's data type, which is what LabVIEW
+writes for a reference made from a control (*Create > Reference*) and what NI's exporter writes
+as `ref{LV.TreeControl}{array{string}}` or `ref{LV.Ring}{uint16}`. It was refused while the plain
+`ref{LV.String}` and a `VI Server Reference element=` node to the same control both composed - so
+NI's **Control References** example composed whole while its `Helper - Modify Chart.vi` did not.
+VCTP holds it as the class's plain refnum with the data type nested and unlabelled (`LVObjCtl
+0x0017` around a bare `NumFloat64` in NI's file), the shape the composer already gave a VI Server
+Reference node. Proven by run, not by `execState` alone: the suite's `t166` passes a chart
+reference to a composed subVI that sets the Y range and reads it back, and hides whichever of two
+controls a Case picked through one generic `{LV.Control}` property node; `t168` calls an Invoke
+Node (`Reinit To Dflt`) on a string and a numeric control through a `ref{LV.Control}` subVI
+terminal. A class missing from `parts/refnum-classes.tsv` is still refused by name
+(`ref{LV.SceneGraphDisplay}`). FINDINGS §7a, "Control references - NI's example".
+
 **A user-event and a notifier refnum compose as a subVI's CONTROL too, since 2026-10-16**
 (`ref{UserEvent}{<type>}`, `ref{Notifier}{<type>}`, held in VCTP as `Refnum UserEvent` and
 `Refnum NotifierRef` around their data type, the parts chosen by RefType as for a queue). They were
