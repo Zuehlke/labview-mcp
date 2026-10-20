@@ -1,5 +1,15 @@
 # A bound control reference: what it is, and what it would take to create one
 
+> **Superseded 2026-10-20: a bound control reference IS authorable**, and the array-of-references
+> design this page calls unreachable runs. The probes below asked the wrong elements (`link=` on a
+> `<Constant>`, an implicit node's `reference out`); the node that makes one is
+> `<Node _name="VI Server Reference" element="<control label>" outputs="<label>:<net>"/>`, on
+> grpc (measured 2026-10-02) and on the pylabview composer. `Build Array` over two of them into a
+> generic subVI taking `array{ref{LV.Control}}` hid exactly those two controls and left a third
+> visible - composer suite `t169`/`t170`; typed subVI terminals (`ref{LV.WaveformChart}{double}`)
+> and an Invoke Node on a reference are `t165`-`t168`. FINDINGS §7a, "Control references - NI's
+> example". The measurements below stand as what they probed; their conclusion does not.
+
 Measured 2026-09-16, after a user asked for a subVI that takes an **array of control references**
 rather than a whole front panel filtered by label. That is the right design; it is not reachable
 from AIXML today. This page records everything established about the artefact, so the next attempt

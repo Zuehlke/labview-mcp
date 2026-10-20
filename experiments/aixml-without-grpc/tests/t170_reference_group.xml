@@ -1,0 +1,18 @@
+<VI _name="T170 Reference Group.vi" description="Collects bound references to two of its own controls into an array with Build Array and hands the group to a generic subVI that hides them; a third control stays out of the group. Each control's Visible is read back through implicit property nodes.">
+  <Control _name="Flag" outputs="value:" type="bool" uid="4200" uid_parent="root" value="false"/>
+  <Control _name="Level" outputs="value:" type="double" uid="4201" uid_parent="root" value="0"/>
+  <Control _name="Note" outputs="value:" type="string" uid="4202" uid_parent="root" value=""/>
+  <Node _name="VI Server Reference" element="Flag" outputs="Flag:4210.Flag" uid="4210" uid_parent="root"/>
+  <Node _name="VI Server Reference" element="Level" outputs="Level:4211.Level" uid="4211" uid_parent="root"/>
+  <Node _name="Build Array" inputs="element:4210.Flag,element:4211.Level" outputs="appended array:4220.group" uid="4220" uid_parent="root"/>
+  <Constant _name="Visible" outputs="value:4221.value" type="bool" uid="4221" uid_parent="root" value="false"/>
+  <Call inputs="Controls:4220.group,Visible:4221.value" outputs="error out:4230.err" target="Set Controls Visible {stamp}.vi" uid="4230" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Visible" inputs="error in (no error):4230.err" link="Flag" outputs="Visible:4240.vis,error out:4240.err" type="{LV.Boolean}" uid="4240" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Visible" inputs="error in (no error):4240.err" link="Level" outputs="Visible:4241.vis,error out:4241.err" type="{LV.Digital}" uid="4241" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Visible" inputs="error in (no error):4241.err" link="Note" outputs="Visible:4242.vis,error out:4242.err" type="{LV.String}" uid="4242" uid_parent="root"/>
+  <Indicator _name="flag visible" inputs="value:4240.vis" type="bool" uid="4300" uid_parent="root" value="false"/>
+  <Indicator _name="level visible" inputs="value:4241.vis" type="bool" uid="4301" uid_parent="root" value="false"/>
+  <Indicator _name="note visible" inputs="value:4242.vis" type="bool" uid="4302" uid_parent="root" value="false"/>
+  <Indicator _name="error out" inputs="value:4242.err" type="cluster{bool.status,int32.code,string.source}" uid="4600" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="A group of references, one generic subVI" uid="0" uid_parent="root"/>
+</VI>

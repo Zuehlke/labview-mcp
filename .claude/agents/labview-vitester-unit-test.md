@@ -257,13 +257,24 @@ only in which control they point at is the canonical case: one call taking the g
 replaces them. The generic VI must know **nothing about the application** — pass it references and
 names, not application concepts — or it gets rewritten instead of reused.
 
-**To act on the caller's own controls**, read the panel with two property nodes whose `reference`
-input is left UNWIRED, which means *this VI*:
+**To act on the caller's own controls, take a BOUND REFERENCE to each one.** Until 2026-10-20
+this paragraph said such a reference cannot be authored and sent you to an array of control NAMES
+plus a lookup VI. That was wrong: it works on both backends, measured by running.
+`<Node _name="VI Server Reference" element="<control label>" outputs="<label>:<net>"/>` is the
+reference. Wire it into a `Property Node` or `Invoke Node` (`type="{LV.Boolean}"`, `{LV.Digital}`,
+`{LV.String}`, `{LV.WaveformChart}`, or `{LV.Control}` for any control), or pass it to a subVI
+whose pane terminal is a refnum: `ref{LV.Control}` for any control, `ref{LV.String}`, or STRICTLY
+typed with the control's data type - `ref{LV.Boolean}{bool}`, `ref{LV.Digital}{double}`,
+`ref{LV.WaveformChart}{double}` (NI's own spelling; also converts executable on grpc). A GROUP is
+`Build Array` over the references into a generic subVI taking `array{ref{LV.Control}}` that indexes
+them in a For Loop - no names, so a renamed control stays in its group. Worked examples to copy
+spellings from, in the source tree: `experiments\aixml-without-grpc\tests\t153`, `t165`-`t170`
+(a typed chart reference into a subVI, two references merged by a Case tunnel into one
+`{LV.Control}` node, an Invoke Node `Reinit To Dflt` through `ref{LV.Control}`, a reference group).
+NOT for a Web Browser control, which AIXML writes as a string: use a stand-in and
+`lvai_bind_control_references`. To read the WHOLE panel, the pair with an UNWIRED `reference`
+(*this VI*) still applies:
 `{LV.VI}` `read+Front Panel` -> `{LV.Panel}` `read+Controls[]` -> `array{ref{LV.Control}}`.
-A control reference **bound to a named control cannot be authored** (measured: `link` is not
-declared for `<Constant>`, and an implicit property node has no `reference out`), so the group
-travels as an array of NAMES and a generic lookup VI turns it into references. Say in the caller's
-documentation that renaming a control silently drops it out of its group.
 
 **Know what factoring buys.** Width follows the longest data-dependency CHAIN, height follows what
 sits in PARALLEL — measured, 1094 -> 880 px of height for ten nodes pulled out, with the width

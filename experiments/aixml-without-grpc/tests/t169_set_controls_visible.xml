@@ -1,0 +1,16 @@
+<VI _name="T169 Set Controls Visible.vi" description="A generic subVI: takes an array of control references and one boolean, and writes Visible on every control in the array. It knows nothing about the caller's application.">
+  <Control _name="Controls" conIdx="5" connection="required" description="The controls to change." outputs="value:4200.value" type="array{ref{LV.Control}}" uid="4200" uid_parent="root" value="[]"/>
+  <Control _name="Visible" conIdx="7" connection="recommended" description="The new Visible state." outputs="value:4201.value" type="bool" uid="4201" uid_parent="root" value="false"/>
+  <Control _name="error in" conIdx="11" connection="recommended" description="Error in." outputs="value:4205.value" type="cluster{bool.status,int32.code,string.source}" uid="4205" uid_parent="root" value="[false,0,]"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4310.ref" uid="4310" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4201.value" outputs="value:4311.vis" uid="4311" uid_parent="4300"/>
+    <ShiftReg uid="4320" uid_parent="4300">
+      <Left inputs="value:4205.value" outputs="value:4321.err" uid="4321" uid_parent="4320"/>
+      <Right inputs="value:4330.err" outputs="value:4322.err" uid="4322" uid_parent="4320"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="write+Visible" inputs="reference:4310.ref,error in (no error):4321.err,Visible:4311.vis" outputs="reference out:,error out:4330.err" type="{LV.Control}" uid="4330" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="Error out." inputs="value:4322.err" type="cluster{bool.status,int32.code,string.source}" uid="4400" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Writes Visible on every control given" uid="0" uid_parent="root"/>
+</VI>

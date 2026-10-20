@@ -322,6 +322,11 @@ So the 1920 guideline splits into two different problems:
 
 ### 11a. A BOUND CONTROL REFERENCE CANNOT BE AUTHORED — and the generic split that replaces it
 
+> **Corrected 2026-10-20: it can.** `<Node _name="VI Server Reference" element="<label>"/>` is a
+> bound reference, and the user's design below - references bundled into an array, handed to a
+> generic VI - runs (composer suite `t169`/`t170`). The names workaround is obsolete.
+> `docs/control-reference-binding.md`.
+
 The user's follow-up was sharper than "use a subVI": *put the references for the controls you mean
 on the diagram, bundle them into an array, hand that over — then the VI is generic and reusable.*
 That is the right design and it is **blocked by the format**, refused twice and explicitly:

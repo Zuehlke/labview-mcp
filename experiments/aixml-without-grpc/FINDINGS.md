@@ -2620,6 +2620,14 @@ Measured:
   terminal is the generic `ref{LV.Control}`, called with a string's and a numeric's reference
   after their values were written through them (`changed`, 99, read back), then read again:
   `start` and 7, the controls' defaults.
+- `t169`/`t170` (run): a GROUP of references - `Build Array` over two `VI Server Reference` nodes
+  (a Boolean and a numeric) into a generic subVI taking `array{ref{LV.Control}}`, which writes
+  `Visible` false on each in a For Loop with the error on a shift register. Read back: both hidden,
+  a third control outside the group still visible. This is the design the 2026-09-16 ATM build
+  wanted and `docs/control-reference-binding.md` called unreachable; that page and every agent
+  definition said a bound reference cannot be authored, and are corrected.
+- grpc: `t165` converts on NI's service too, `execState 1`, and our reader reads the saved file
+  back as `ref{LV.WaveformChart}{double}` - the strict type kept.
 
 **`t168` found a second defect on its first run, and it had nothing to do with references.** Its
 property nodes are `fields="write+Value,read+Value"` - one node writing and reading the same

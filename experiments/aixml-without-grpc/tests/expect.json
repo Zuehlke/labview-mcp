@@ -1887,5 +1887,21 @@
     }
    }
   ]
+ },
+ "t170_reference_group": {
+  "callees": {
+   "Set Controls Visible {stamp}.vi": "t169_set_controls_visible"
+  },
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "flag visible": "False",
+     "level visible": "False",
+     "note visible": "True",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

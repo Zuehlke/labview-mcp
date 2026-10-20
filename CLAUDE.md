@@ -963,17 +963,20 @@ Controls Disabled.vi` is the shape - references plus names plus one boolean, no 
 
 **THE CALLER READS ITS OWN PANEL WITH TWO PROPERTY NODES AND AN UNWIRED `reference`.**
 `{LV.VI}` `read+Front Panel` -> `{LV.Panel}` `read+Controls[]`, and the `reference` input of the
-first is left EMPTY, which means *the VI it sits on*. That is the only way a generated VI gets its
-own control references, and NI's own exports carry the shape. `array{ref{LV.Control}}` and
-`ref{LV.Control}` are valid AIXML type literals.
+first is left EMPTY, which means *the VI it sits on*. NI's own exports carry the shape - use it to
+read the WHOLE panel. `array{ref{LV.Control}}` and `ref{LV.Control}` are valid AIXML type literals.
 
-**A BOUND CONTROL REFERENCE CANNOT BE AUTHORED, so the group travels as an array of NAMES.** Measured
-twice: `link` is not declared for `<Constant>` (the schema is closed), and an implicitly linked
-property node has NO `reference out` terminal. The user approved names as the workaround. Keep the
-lookup in its own generic VI - `Get Controls By Label.vi` - rather than welding it into the worker,
-and say in the caller's documentation that RENAMING A CONTROL SILENTLY DROPS IT OUT OF ITS GROUP,
-because nothing checks the list against the panel. `docs/control-reference-binding.md` has the heap
-structure for the day the creation route is settled.
+**A BOUND CONTROL REFERENCE IS AUTHORABLE, so a GROUP is an array of REFERENCES, not of names - the
+user's original design, measured 2026-10-20.** This paragraph said "CANNOT BE AUTHORED, so the group
+travels as an array of NAMES" from 2026-09-16, and every agent definition repeated it: it probed
+`link=` on a `<Constant>` and an implicit node's missing `reference out`, and never the node that
+does it, `<Node _name="VI Server Reference" element="<label>"/>` - recorded as working on grpc on
+2026-10-02 in another section, with this one left standing. `Build Array` over such references into
+a generic subVI taking `array{ref{LV.Control}}` hid exactly the two controls in the group and left a
+third alone (composer suite `t169`/`t170`); a subVI terminal can also be STRICTLY typed,
+`ref{LV.WaveformChart}{double}`, on both backends (`t165`/`t166`), and an Invoke Node runs on one
+(`t168`). The names route (`Get Controls By Label.vi`) is obsolete: a rename silently dropped a
+control out of its group. `docs/control-reference-binding.md`.
 
 **WIDTH FOLLOWS THE LONGEST DEPENDENCY CHAIN; HEIGHT FOLLOWS WHAT SITS IN PARALLEL.** Measured over
 three rounds on one main VI: pulling ten parallel nodes into subVIs took the height from 1094 to
@@ -3002,7 +3005,7 @@ literally it argued away 600 usable palette VIs.
 | Can a generated test call other VIs FIRST - a write before a read? How do I break an ARRAY expectation for a negative control? | `docs/cold-build-atm-agents-3.md` | `lvai_generate_test` `setup` (direct route; every expectation is labelled `expected <n>` and listed in `expectedConstants`), then `lvai_set_constant` with the AIXML literal |
 | How do I load SEVERAL callees before a direct Call, and which ones does an `Error 53` want? | `docs/cold-build-atm-agents-3.md` | `lvai_open_file` `viPaths`; `lvai_generate_vi_with_events` names them under `unsupportedSubVIs` |
 | How do I list VIs under a folder of a `.lvproj` without breaking it? | `docs/cold-build-atm-agents-pc.md` §2 | `lvai_add_vis_to_project` — never by hand: a file listed twice makes the project answer `Error 74` on open, and `lvai_open_file` refuses one now (`duplicateProjectEntries`) |
-| Why can I not put a CONTROL REFERENCE on a generated diagram, and what would it take? | `docs/control-reference-binding.md` | — |
+| How do I use CONTROL REFERENCES - a bound reference, a typed refnum subVI terminal, a GROUP of references, a Property or Invoke Node on one? | `docs/control-reference-binding.md` (its banner), FINDINGS §7a "Control references - NI's example" | `<Node _name="VI Server Reference" element="<label>"/>`; worked examples t153, t165-t170 in the composer suite |
 | How do I MOCK a dependency, for LUnit or Caraya? | `docs/labview-lmock-mocking.md` | `lvai_generate_mock_class` — the source MUST be an interface, and it is checked from the file first because every LMock refusal is a MODAL dialog that stops the gRPC service |
 | How do I write an LUnit test, and why can't AIXML do it alone? | `docs/labview-lunit-testing.md` | `lvai_lunit_add_test_method`, `lvai_run_lunit_tests` |
 | How do I generate a whole LUnit suite over a class? | `docs/labview-lunit-testing.md` §14, `scripts/templates/lunit/README.md` | `lvai_lunit_scaffold_class_tests` |
