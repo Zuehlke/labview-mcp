@@ -868,7 +868,7 @@ reference. Wire it into a `Property Node` or `Invoke Node` (`type="{LV.Boolean}"
 `{LV.String}`, `{LV.WaveformChart}`, or `{LV.Control}` for any control), or pass it to a subVI
 whose pane terminal is a refnum: `ref{LV.Control}` for any control, `ref{LV.String}`, or STRICTLY
 typed with the control's data type - `ref{LV.Boolean}{bool}`, `ref{LV.Digital}{double}`,
-`ref{LV.WaveformChart}{double}` (NI's own spelling; also converts executable on grpc). A GROUP is
+`ref{LV.WaveformChart}{double}` (NI's own spelling). Everything in this paragraph runs on BOTH backends, measured. A GROUP is
 `Build Array` over the references into a generic subVI taking `array{ref{LV.Control}}` that indexes
 them in a For Loop - no names, so a renamed control stays in its group. Worked examples to copy
 spellings from, in the source tree: `experiments\aixml-without-grpc\tests\t153`, `t165`-`t170`

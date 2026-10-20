@@ -2627,7 +2627,11 @@ Measured:
   wanted and `docs/control-reference-binding.md` called unreachable; that page and every agent
   definition said a bound reference cannot be authored, and are corrected.
 - grpc: `t165` converts on NI's service too, `execState 1`, and our reader reads the saved file
-  back as `ref{LV.WaveformChart}{double}` - the strict type kept.
+  back as `ref{LV.WaveformChart}{double}` - the strict type kept. And the whole set RUNS there:
+  `t165`, `t167`, `t169` converted over grpc and opened loose, then `t166`, `t168`, `t170`
+  generated over grpc (validation passed, the callees being loaded) and run through NI's helper -
+  chart range 2/3 with the String hidden, `changed`/99 then `start`/7, Flag and Level hidden with
+  Note visible, every `error out` clean. The same answers as the composer gives.
 
 **`t168` found a second defect on its first run, and it had nothing to do with references.** Its
 property nodes are `fields="write+Value,read+Value"` - one node writing and reading the same

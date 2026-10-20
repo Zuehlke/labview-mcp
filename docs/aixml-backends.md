@@ -751,7 +751,8 @@ Reference node. Proven by run, not by `execState` alone: the suite's `t166` pass
 reference to a composed subVI that sets the Y range and reads it back, and hides whichever of two
 controls a Case picked through one generic `{LV.Control}` property node; `t168` calls an Invoke
 Node (`Reinit To Dflt`) on a string and a numeric control through a `ref{LV.Control}` subVI
-terminal. A class missing from `parts/refnum-classes.tsv` is still refused by name
+terminal. NI's grpc route runs the same three cases with the same answers (callees loaded first, as
+for any Call to own code). A class missing from `parts/refnum-classes.tsv` is still refused by name
 (`ref{LV.SceneGraphDisplay}`). FINDINGS §7a, "Control references - NI's example".
 
 **A user-event and a notifier refnum compose as a subVI's CONTROL too, since 2026-10-16**
