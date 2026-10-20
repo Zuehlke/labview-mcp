@@ -330,6 +330,18 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         if ((error.Code is not null && error.Code != 0) || lines.Count == 0)
             return (null, Json.Error("dumpFailed",
                 $"The diagram could not be read (error {error.Code}: {error.Source}).", new { viPath = vi }));
+        // LABVIEWMCP_LAYOUT_DUMP names a folder that receives each dump as a fixture for the
+        // layout tests (tests/.../Fixtures/layout), "<VI name>.txt", the last dump winning
+        if (Environment.GetEnvironmentVariable("LABVIEWMCP_LAYOUT_DUMP") is { Length: > 0 } dumpDir)
+        {
+            try
+            {
+                Directory.CreateDirectory(dumpDir);
+                File.WriteAllLines(Path.Combine(dumpDir, Path.GetFileNameWithoutExtension(vi) + ".txt"), lines);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
         return (lines, null);
     }
 

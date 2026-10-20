@@ -961,3 +961,163 @@ NOT new - an existing project's test hierarchies took 14.8 s for one VI (section
 turns, not to the 0.4-0.7 s a new VI's layout costs inside the same tool call. Revisit if a build
 generates hundreds of VIs in one call, or if the composer's geometry is ever measured to match
 LabVIEW's dump object for object.
+
+### 6l. The user's review of Bank `Main.vi`, 2026-10-19
+
+Four points on `C:\Temp\ATM_DQMH_Cold\Libraries\Bank\Main.vi`, each with the rule that answers
+it. The dump of the VI as the previous engine had left it is the fixture
+`dqmh-bank-main-ours.txt`; tests in `LayoutDqmhFrameworkTests`.
+
+**"The cluster constant belongs above the Bundle."** A Bundle's or Bundle By Name's cluster input
+is the full-height strip left of the output, and a wire comes down onto its top. The engine hung
+the constant left of the strip's middle like any constant, and its wire climbed round the node's
+elements. Delacor's own Main has it over the node (Stop Module: bottom 29 px above the node, right
+edge left of the strip). Now a constant feeding that terminal (`DiagramLayout.IsTopEntered`) goes
+above the node, its right edge 8 px short of the strip's middle, `StackGap` above the node and its
+label.
+
+That made two other rules necessary:
+
+- **Column stacking by parts, not rectangles** (`Clearance`). The taller block pushed the Status
+  local in the same column 41 px up, though nothing stood above IT but air beside the constant. Two
+  blocks in one column now keep `RowGap` only between parts that share an x. A part BESIDE its node
+  (a constant hanging left, a comment right) counts as reaching over its node, because its wire
+  crosses that row: slid beside another block's node, a Caraya test's label constant sat on that
+  node's `error in` row (`Constants_left_of_an_assert_keep_its_wired_inputs_clear` caught it).
+- **A frame note may make the frame a little taller instead of wider** (`FitNotes`). The Stop
+  Module frame's note no longer fitted under its code by 7 px and went beside it at 174 px more
+  width. The frame may now grow up to `3 x RowGap` in height where that costs less area than the
+  width (counted double, as before) or the stack at the top.
+
+**"Rather a wire crossing than wires running backwards."** In the Verify Account and Get Balance
+event frames the Account Number wire went right past the Enqueue and came back. The cause was
+placement: the cluster constant and the message-name string constant stood in the column the wire
+had to come down, the string lifted there by the compaction staircase.
+
+**"If you have the room, use it."** Every frame of a structure takes the size of the largest, so
+those two frames held 250 px of code in 770. `UseTheRoom` arranges such a frame again with wider
+gaps (48, 36, 24 or 12 px more, widest first) and keeps the first variant that stays inside what the
+structure has anyway: no wider than the widest frame, no higher above the shared rail or below it
+than the highest. In that variant:
+
+- the extra gap also holds before the first column (the Event Data Node's wires come down there)
+  and between a constant and the column before it;
+- no constant is lifted over the node before it (the staircase saves width, and width is free
+  there), and the columns stay strictly left to right;
+- a constant keeps clear of the rows its node gets from the frame's LEFT border as well, such as
+  the Enqueue's Message Queue. Applied everywhere, this lifted every Enqueue's constant and made
+  Main 80 px higher, so only here.
+
+A frame with a note of its own is not spread: the code of the NI-cleaned Main's Start Measurement
+frame rose, and its `#CodeNeeded` block left the frame's top left. A structure's shape no longer
+depends on where it is arranged, so it is computed once and reused by every variant
+(`ctx.Shapes`).
+
+**A wire from the left border keeps its run clear** (`ClearCorridors`). The Verify Account frame's
+Message Queue port is levelled with the Enqueue's queue input, and the Bundle stood at that height:
+LabVIEW took the queue wire under the rail and back up. A free node in that run now moves out of it,
+like one in the run of a wire between two nodes.
+
+**"The Boolean wire runs flush with the case structure's border."** In the Deposit and Withdraw
+message frames, `wait for reply` selects the notifier case. Its selector has no wire inside to be
+level with; at its height the reply payload constant stood in the way, at the source's height the
+subVI on the rail, and LabVIEW routed the wire under the rail along the frame's bottom border.
+`FreeSelectors` moves the selector to the nearest height on its border from which a plain step
+reaches it - out, one vertical, in - past no object, and where none exists moves the case itself
+(off the rail only, onto nothing, up to `MaxLift`). A crossing with another wire is accepted. The
+chosen height is kept in the arrangement (`PortY`), not on the shared shape, so a variant that is
+not chosen moves nothing.
+
+**Measured live** on Main.vi (pylabview backend, the branch build over `scripts/mcp_drive.py`):
+
+| | before | after |
+|---|---|---|
+| top level | 1815 x 943 | 1767 x 949 |
+| objects where planned | | 193 of 193 |
+| `execState` | 1 | 1 |
+| backward wire segments (`lvbd_backward_wires.py`) | 18 | 10 |
+
+The render shows all four points answered: each Bundle's cluster constant over it, no wire
+running back in the event frames, the `wait for reply` wire reaching the selector in the open, and
+Verify Account and Get Balance using their frame's width.
+
+**Over the other 75 VIs of the project, planned dry** (nothing written): 38 would change, and the
+committed engine plans those 38 to the same sizes, so the project on disk is simply not a fixed
+point of the current engine; it was laid out by an earlier one. Only `Main.vi` and `Status
+Updated.vi` (647 x 325 -> 647 x 259) differ from the committed engine's plan.
+
+`LABVIEWMCP_LAYOUT_DUMP` names a folder that receives every dump `lvai_layout_diagram` reads, as
+`<VI name>.txt` - a fixture taken from the VI the user is looking at, with `dryRun` changing nothing.
+`scripts/lvbd_backward_wires.py` needs the bundled pylabview's own interpreter
+(`pylabview\python.exe` beside the exe); a system Python answers `no diagram heap` for every VI.
+
+**"A small gap from the cluster constant to the wires"** (the user's next review, 2026-10-20). In
+Get Balance and Verify Account the Event Data Node's Account Number wire ran level with the top
+of the cluster constant over the Bundle and turned down its left side, touching its corner. A
+constant over its node now keeps `WireClear` from the wires coming into that node wherever they
+would run along its top or bottom edge; a wire well inside its height ends left of it and is
+left alone (`AlongEdge`). The constant moves on its own - between the wire and its node, or up
+into the band the shared rail leaves above that frame's code - and never into the run of a wire
+from the left border. For wires between laid-out nodes that is `OverNodeOffWires`; for the Event
+Data Node, which is not laid out, `DataNodeOffConstants` runs once the frame's place in its
+structure is known. Two attempts were taken back, both on the live render:
+
+- moving the Bundle with its constants instead: in Stop Module the Bundle By Name went down under
+  the Event Data Node's rows;
+- an unbounded step for a node in the run of a left-border wire: the same Bundle By Name went
+  32 px down out of the Message Queue's run. That step is now at most `RowGap`.
+
+**Still open:** the message loop's short frames still have their code at the bottom under an empty
+field - the frames share the tallest frame's height and one rail, and "use the room" works on
+width only. The Deposit frame's Wait Notifier wire climbs over the Merge Errors to the case it moved.
+
+### 6m. The wires that still ran back, 2026-10-20
+
+The user's next review of Bank `Main.vi`: almost right, but single wires still ran backwards.
+`scripts/lvbd_backward_wires.py --list` now names each one's ends (kind and rectangle in its
+diagram, through `wire_route.Geometry`), and `--detours N` lists every two-ended wire drawn N px
+or more longer than the plain step between its ends - a wire taken round something without going
+west, such as one run along a frame's bottom border. From 11 backward segments:
+
+- **A constant in the column of what it feeds, inside a frame.** In the Initialize frame
+  `Initial Message` feeds the Status indicator and the Status bundle; by longest path both it and
+  the indicator took the first column, and its wire ran back up. The rule held on the top level
+  only. In a frame now only what the constant feeds moves a column on, and after it what must stay
+  right of that: moving every node from that column on, as the top level does, gave the
+  Initialize frame - most of whose nodes start in the first column - a column more and Main.vi
+  200 px of width.
+- **A tunnel on the TOP border** (`TopTunnels`). The reply payload enters the notifier case of the
+  four request-and-reply frames through its top border, and the scripting put it at the right; its
+  wire ran 33 px west to Send Notification in all four. A top tunnel now stands left of the
+  terminal it feeds, and the structure gets the room for that on its left (`TopTunnelRoom`). Four
+  segments, and two detours from a Merge Errors to a selector with them.
+
+Measured live: **11 -> 4 backward segments**, every object where planned, `execState 1`.
+
+**What remains is LabVIEW's router, not the placement.** The plan has a free plain step for most of
+the remaining detours - the four `wait for reply` wires going down to the frame's bottom border
+first, the refnums passed through a frame jumping over a node, the Stop Module frame's Message
+Queue - and `Clean Up Wire` still goes round. So the fan routing step (section 6g) gets a second
+pass in `lvbd_fan_route.py`: a two-ended wire with a segment west, or `DETOUR` (40) px longer than
+the plain step, is written as out, one vertical, in, past no object of its diagram (`MARGIN` 3 px),
+crossing other wires if it must - the user's rule of 2026-10-19. Where no single vertical is free
+it tries two, and keeps that only where it is shorter than LabVIEW's own route: over a column of
+nodes LabVIEW's way round IS the short way (`Apply ATM UI State`, five such wires, all left
+alone). The answer reports `fanRouting.detours`. Two heap differences mattered: the composer
+keeps a diagram's objects in `nodeList` and LabVIEW in `zPlaneList`, and the composer's top-level
+diagram is no `SL__arrayElement`; and a wire's own end objects are found as the objects holding
+its end terminals, a front-panel terminal being its own object. Test:
+`FanRouteTests.A_wire_drawn_backwards_gets_the_plain_step`.
+
+On Main.vi it would rewrite 6 detours - but **the fan routing step skips a VI that carries compiled
+code**, and Delacor's scripting saves every Bank VI with it. So for Main.vi the second pass needs
+the compiled code stripped first, which makes it source-only; that is not done without the user's
+word.
+
+**The user agreed, 2026-10-20**, for Main.vi: stripped with `pylv-strip-compiled.py` (33 -> 18
+bundle files, `SourceOnly="1"`), then laid out again. Fan routing ran: 7 detours given the plain
+step, **4 -> 1 backward segment**, 193 of 193 objects where planned, `execState 1` with an empty
+Error List, the file source-only after the layout's save. The render shows `wait for reply`
+reaching the selector directly. What stays is what has no free plain step: the refnums passed
+through three message frames jump over a node on their line, and the Stop Module frame's Message
+Queue goes under the Bundle By Name.

@@ -317,6 +317,8 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
             var (fans, rewritten) = ParseFanRoute(run["stdout"]?.GetValue<string>());
             answer["fans"] = fans;
             answer["wiresRewritten"] = rewritten;
+            // wires LabVIEW drew the long way, given the plain step (docs/diagram-layout.md 6m)
+            answer["detours"] = ParseDetours(run["stdout"]?.GetValue<string>());
             if (rewritten == 0)
             {
                 answer["ok"] = true;
@@ -338,6 +340,13 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
     {
         var m = System.Text.RegularExpressions.Regex.Match(stdout ?? "", @"fans (\d+), wires rewritten (\d+)");
         return m.Success ? (int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value)) : (0, 0);
+    }
+
+    /// <summary>The script's "detours N" line: wires drawn the long way that got the plain step.</summary>
+    internal static int ParseDetours(string? stdout)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(stdout ?? "", @"detours (\d+)");
+        return m.Success ? int.Parse(m.Groups[1].Value) : 0;
     }
 
     private static JsonObject Fail(JsonObject step, string note)

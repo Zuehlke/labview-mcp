@@ -296,8 +296,12 @@ public sealed class DiagramLayoutTests
         var note = frame.Objects.Single(o => o.IsText && o.Box.H == 122);
         var code = frame.Objects.Where(o => !o.IsText && plan.Predicted.ContainsKey(o.Key)).Select(o => plan.Predicted[o.Key]).ToList();
         var n = plan.Predicted[note.Key];
-        Assert.True(n.B < code.Min(b => b.T), "the note is above the code");
-        Assert.True(n.L <= code.Min(b => b.L), "and at its left edge");
+        // above the code at its left edge, or - where the frame is too short for that - beside the
+        // code at the top: FitNotes tries the top left first, then beside the code (2026-10-20, the
+        // message loop 50 px lower once a constant no longer shared its indicator's column)
+        var above = n.B < code.Min(b => b.T) && n.L <= code.Min(b => b.L);
+        var beside = !code.Any(b => b.Overlaps(n)) && n.T <= code.Min(b => b.T);
+        Assert.True(above || beside, $"the note {n} is neither above the code nor beside it at the top");
         // and it is the frame's top: the same top as the notes of the other frames
         var other = model.Diagrams["0.14.0.2.0.2.9"].Objects.Single(o => o.IsText && o.Box.H == 71);
         Assert.Equal(plan.Predicted[other.Key].T, n.T);

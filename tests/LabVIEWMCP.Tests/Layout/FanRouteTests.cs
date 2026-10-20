@@ -72,4 +72,53 @@ public sealed class FanRouteTests
             try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
         }
     }
+
+    [Theory]
+    [InlineData("fans 1, wires rewritten 4\ndetours 1\n  signal 20 -> 0208", 1)]
+    [InlineData("fans 0, wires rewritten 0", 0)]
+    public void The_detour_count_is_read(string stdout, int detours) =>
+        Assert.Equal(detours, DiagramCleanup.ParseDetours(stdout));
+
+    /// <summary>
+    /// A wire LabVIEW drew the long way - here made to run back west on purpose - gets the plain
+    /// step between its ends where one is free: the user's rule of 2026-10-19, rather a crossing
+    /// than a wire running back.
+    /// </summary>
+    [Fact]
+    public async Task A_wire_drawn_backwards_gets_the_plain_step()
+    {
+        var setup = AixmlComposer.Locate(out _);
+        var bundle = PyLabview.Locate();
+        if (setup is null || bundle is null) return;
+        var dir = Path.Combine(Path.GetTempPath(), "detour-" + Guid.NewGuid().ToString("n")[..8]);
+        Directory.CreateDirectory(Path.Combine(dir, "x"));
+        try
+        {
+            var xml = Path.Combine(dir, "probe.xml");
+            var vi = Path.Combine(dir, "Fan Probe.vi");
+            await File.WriteAllTextAsync(xml, Probe);
+            var composed = await AixmlComposer.ComposeAsync(setup, xml, vi, [], 300, default);
+            Assert.True(File.Exists(vi), composed.Message);
+            var extract = await PyLabview.RunAsync(bundle, bundle.ReadRsrcPy,
+                ["-x", "-i", vi, "-m", Path.Combine(dir, "x", "FanProbe.xml")], 120, default);
+            Assert.True(extract.ExitCode == 0, extract.StdErr);
+            var heap = Directory.GetFiles(Path.Combine(dir, "x"), "*_BDHb.xml").Single();
+            var text = await File.ReadAllTextAsync(heap);
+            // the indicator A's wire: east 60, down 30, WEST 20, up 30, east into the indicator
+            var m = Regex.Matches(text, @"<compressedWireTable>([0-9A-F]+)</compressedWireTable>").Last();
+            const string Back = "060800010100" + "3C1E141E";
+            text = text[..m.Groups[1].Index] + Back + text[(m.Groups[1].Index + m.Groups[1].Length)..];
+            await File.WriteAllTextAsync(heap, text);
+            var run = await PyLabview.RunAsync(bundle, RepoTree.Path("scripts", "lvbd_fan_route.py"), [heap], 120, default);
+            Assert.True(run.ExitCode == 0, run.StdErr + run.StdOut);
+            Assert.True(DiagramCleanup.ParseDetours(run.StdOut) == 1, run.StdOut);
+            var after = Regex.Matches(await File.ReadAllTextAsync(heap), @"<compressedWireTable>([0-9A-F]+)</compressedWireTable>")
+                             .Select(x => x.Groups[1].Value).ToList();
+            Assert.DoesNotContain(Back, after);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch { /* best effort */ }
+        }
+    }
 }

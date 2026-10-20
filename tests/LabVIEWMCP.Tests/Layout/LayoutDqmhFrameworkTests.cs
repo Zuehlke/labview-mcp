@@ -232,4 +232,138 @@ public class LayoutDqmhFrameworkTests(ITestOutputHelper output)
         output.WriteLine($"frame 7 code starts {left} px in; events {events}");
         Assert.True(left < 120, $"frame 7's code starts {left} px inside the structure");
     }
+
+    /// <summary>
+    /// A Bundle's cluster input is entered from the TOP, and Delacor puts the cluster constant over
+    /// the node. Hung left of the strip's middle, the Stop Module constant of DQMH's Main wired up
+    /// round the node's elements (the user's review of ATM_DQMH_Cold, 2026-10-19).
+    /// </summary>
+    [Theory]
+    [InlineData("0.11.0.1.0.1.6", 0, 1)]      // Stop Module: Bundle By Name, MOD STOP ARG
+    [InlineData("0.11.0.1.0.1.9", 0, 1)]      // Get Balance: Bundle, MOD GET BALANCE ARG
+    public void A_bundle_cluster_constant_goes_above_the_node(string frame, int bundle, int constant)
+    {
+        var plan = DiagramLayout.Plan(Load("dqmh-bank-main-ours.txt"));
+        var b = plan.Predicted[$"{frame}#{bundle}"];
+        var c = plan.Predicted[$"{frame}#{constant}"];
+        output.WriteLine($"bundle {b}, constant {c}");
+        Assert.True(c.B <= b.T, $"the constant ends at {c.B}, the bundle starts at {b.T}");
+        Assert.True(c.R > b.L - 4 && c.R <= b.R, $"the constant spans {c.L}-{c.R} over the bundle at {b.L}-{b.R}");
+    }
+
+    /// <summary>
+    /// "If you have the room, use it" (the user's review, 2026-10-19). The Get Balance event frame
+    /// has 250 px of code in a structure 770 px wide; squeezed, its string constant was lifted over
+    /// the Bundle, where the Event Data Node's Account Number wire had to come down, and LabVIEW
+    /// took that wire round the far side and back. With room, it keeps level with what it feeds.
+    /// </summary>
+    [Fact]
+    public void A_short_frame_spreads_into_the_room_its_structure_has()
+    {
+        var plan = DiagramLayout.Plan(Load("dqmh-bank-main-ours.txt"));
+        var bundle = plan.Predicted["0.11.0.1.0.1.9#0"];
+        var text = plan.Predicted["0.11.0.1.0.1.9#2"];
+        var enqueue = plan.Predicted["0.11.0.1.0.1.9#3"];
+        output.WriteLine($"bundle {bundle}, string {text}, enqueue {enqueue}");
+        Assert.True(text.L >= bundle.R, $"the string constant starts at {text.L}, left of the bundle's end at {bundle.R}");
+        Assert.True(text.T > bundle.T, $"the string constant at {text.T} is lifted over the bundle at {bundle.T}");
+    }
+
+    /// <summary>
+    /// The inner case of DQMH's Deposit and Withdraw frames is selected by `wait for reply`. Its
+    /// selector has nothing inside to be level with, and at the height the border spread gave it
+    /// the reply payload constant stood in the way, at the source's height the subVI on the rail:
+    /// LabVIEW took the wire under the rail and along the frame's bottom border, flush with it (the
+    /// user's review, 2026-10-19). The selector goes to a height a plain step reaches.
+    /// </summary>
+    [Theory]
+    [InlineData("0.11.0.2.0.2.4")]            // Deposit
+    [InlineData("0.11.0.2.0.2.5")]            // Withdraw
+    public void A_case_selector_goes_where_its_wire_runs_free(string frame)
+    {
+        var model = Load("dqmh-bank-main-ours.txt");
+        var plan = DiagramLayout.Plan(model);
+        var d = model.Diagrams[frame];
+        var unbundler = d.Objects.Single(o => o.Class == "NamedUnbundler");
+        var inner = d.Objects.Single(o => o.Class == "CaseStructure");
+        var sel = plan.Tunnels.Single(t => t.Selector && t.ApplyPath == d.ApplyPath && t.Index == inner.Index);
+        var src = plan.Predicted[unbundler.Key];
+        var term = unbundler.Terms.Single(t => t.Name == "wait for reply");
+        var (xs, ys) = (src.R, src.T + term.Box.T - unbundler.Box.T + term.Box.H / 2);
+        var (xt, yt) = (sel.X, sel.Y + inner.Selector!.Box.H / 2);
+        var boxes = d.Objects.Where(o => o != unbundler && o != inner && plan.Predicted.ContainsKey(o.Key))
+                             .Select(o => plan.Predicted[o.Key]).ToList();
+        bool Blocked(int x1, int y1, int x2, int y2) => boxes.Any(b => b.L < Math.Max(x1, x2) && Math.Min(x1, x2) < b.R
+                                                                    && b.T < Math.Max(y1, y2) && Math.Min(y1, y2) < b.B);
+        var free = Enumerable.Range(0, Math.Max(0, (xt - xs) / 2)).Select(k => xs + 2 * k)
+            .Any(vx => !Blocked(xs, ys, vx, ys) && !Blocked(vx, ys, vx, yt) && !Blocked(vx, yt, xt, yt));
+        output.WriteLine($"wait for reply {xs},{ys} -> selector {xt},{yt}");
+        Assert.True(free, $"no plain step from {xs},{ys} to the selector at {xt},{yt}");
+    }
+
+    /// <summary>
+    /// The Account Number wire from the Event Data Node ran level with the top of Get Balance's
+    /// cluster constant, touching it (the user's review, 2026-10-20): a constant over its node keeps
+    /// a little room from the wires coming into that node.
+    /// </summary>
+    [Theory]
+    [InlineData("0.11.0.1.0.1.8")]            // Verify Account
+    [InlineData("0.11.0.1.0.1.9")]            // Get Balance
+    public void A_constant_over_its_bundle_keeps_clear_of_the_wires_into_it(string frame)
+    {
+        var model = Load("dqmh-bank-main-ours.txt");
+        var plan = DiagramLayout.Plan(model);
+        var d = model.Diagrams[frame];
+        var data = d.Objects.Single(o => o.Class == "NamedUnbundler");
+        var constant = plan.Predicted[d.Objects.Single(o => o.Class == "ClusterConstant").Key];
+        // the data node is not moved: LabVIEW keeps it on the frame's border, where the structure goes
+        var events = d.Owner!;
+        var dy = plan.Predicted[events.Key].T - events.Box.T;
+        foreach (var t in data.Terms.Where(t => t.Source && t.Box.W > 0))
+        {
+            var y = t.Box.T + t.Box.H / 2 + dy;
+            output.WriteLine($"{t.Name} at {y}, constant {constant.T}-{constant.B}");
+            // a wire inside the constant's height ends left of it; one at its top or bottom edge runs along it
+            Assert.True(Math.Abs(y - constant.T) >= 6 && Math.Abs(y - constant.B) >= 6,
+                        $"{t.Name} runs at {y}, along the constant's edge at {constant.T}-{constant.B}");
+        }
+    }
+
+    /// <summary>
+    /// In DQMH's Initialize frame a string constant feeding the Status indicator and the Status
+    /// bundle stood in the indicator's column, and its wire ran back up into it (the user's review,
+    /// 2026-10-20). In a frame too, a constant never shares the column of what it feeds - and only
+    /// what it feeds moves, not every node of that column.
+    /// </summary>
+    [Fact]
+    public void No_wire_runs_back_in_the_initialize_frame()
+    {
+        var model = Load("dqmh-bank-main-ours.txt");
+        var plan = DiagramLayout.Plan(model);
+        var back = DiagramLayout.BackwardWires(model, plan, model.Diagrams["0.11.0.2.0.2.0"]);
+        foreach (var w in back) output.WriteLine(w);
+        Assert.Empty(back);
+        Assert.True(plan.PredictedTop.W <= 1780, $"Main.vi planned {plan.PredictedTop.W} px wide");
+    }
+
+    /// <summary>
+    /// The reply payload enters DQMH's notifier case through its TOP border. Left at the right of
+    /// that border, its wire ran 33 px west to Send Notification in four frames (the user's review,
+    /// 2026-10-20). A top tunnel stands left of the terminal it feeds.
+    /// </summary>
+    [Theory]
+    [InlineData("0.11.0.2.0.2.4")]            // Deposit
+    [InlineData("0.11.0.2.0.2.5")]            // Withdraw
+    public void A_top_tunnel_stands_left_of_what_it_feeds(string frame)
+    {
+        var model = Load("dqmh-bank-main-ours.txt");
+        var plan = DiagramLayout.Plan(model);
+        var inner = model.Diagrams[frame].Objects.Single(o => o.Class == "CaseStructure");
+        var top = plan.Tunnels.Single(t => t.ApplyPath == model.Diagrams[frame].ApplyPath && t.Index == inner.Index
+                                           && !t.Selector && plan.Predicted[inner.Key].T == t.Y);
+        var send = inner.Frames.SelectMany(f => f.Objects).Single(o => o.Class == "Function");
+        var sb = plan.Predicted[send.Key];
+        output.WriteLine($"tunnel at {top.X},{top.Y}, Send Notification {sb}");
+        Assert.True(top.X + 9 <= sb.L - 4, $"the tunnel ends at {top.X + 9}, Send Notification starts at {sb.L}");
+    }
 }

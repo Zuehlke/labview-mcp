@@ -11,6 +11,11 @@ backward wire. Wires inside an XNode are left out - its diagram is generated and
 shown. The table is what LabVIEW last SAVED, so measure after the layout's save.
 
 Prints one line per VI and a total; a table it cannot decode is counted under `undecoded`.
+--detours N lists every two-ended wire whose drawn length exceeds the plain step between its
+ends (|dx| + |dy| of their rectangles' centres) by N px or more - a wire taken round something,
+west or not, such as one run along a frame's bottom border.
+--list adds one line per backward wire: its ends' kinds and rectangles (top, left, bottom,
+right) in their diagram, as the composer's wire_route.Geometry reads them.
 Python 3 standard library plus the bundled pylabview's readRSRC.py.
 """
 import glob
@@ -101,7 +106,52 @@ def readrsrc():
     raise SystemExit("readRSRC.py of the bundled pylabview not found")
 
 
-def measure(vi, rd, minimum):
+def describe(root, signal):
+    here = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(here, "aixml-pylabview"))
+    import wire_route
+    geo = wire_route.Geometry(root)
+    out = []
+    tl = signal.find("termList")
+    for x in tl if tl is not None else []:
+        r = geo.rect(x.get("uid"))
+        out.append("?" if r is None else "%s %s" % (r[3], r[0]))
+    return " | ".join(out)
+
+
+def centre(r):
+    t, l, b, rr = r
+    return ((t + b) / 2.0, (l + rr) / 2.0)
+
+
+def detours(root, tables, signal_of, extra):
+    here = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(here, "aixml-pylabview"))
+    import wire_route
+    geo = wire_route.Geometry(root)
+    found = 0
+    for i, t in enumerate(tables):
+        sig = signal_of[i]
+        tl = sig.find("termList") if sig is not None else None
+        if tl is None or len(tl) != 2:
+            continue
+        rects = [geo.rect(x.get("uid")) for x in tl]
+        if None in rects:
+            continue
+        segs = segments(t)
+        if not segs:
+            continue
+        known = sum(L for _, L in segs if L is not None)
+        (y1, x1), (y2, x2) = centre(rects[0][0]), centre(rects[1][0])
+        plain = abs(x2 - x1) + abs(y2 - y1)
+        # the last segment's length is implied: the drawn length is at least what the table spells
+        if known - plain >= extra:
+            found += 1
+            print("    detour +%d px %s: %s" % (known - plain, t, describe(root, sig)))
+    return found
+
+
+def measure(vi, rd, minimum, listing=False, extra=None):
     with tempfile.TemporaryDirectory() as tmp:
         subprocess.run([sys.executable, "-I", rd, "-x", "-i", vi, "-m", os.path.join(tmp, "x.xml")],
                        capture_output=True, check=False)
@@ -113,6 +163,7 @@ def measure(vi, rd, minimum):
     # Error Ring of every DQMH --error.vi carried two backward wires nobody can see
     parent = {c: p for p in root.iter() for c in p}
     tables = []
+    signal_of = {}
     for e in root.iter("compressedWireTable"):
         p, hidden = parent.get(e), False
         while p is not None:
@@ -122,8 +173,11 @@ def measure(vi, rd, minimum):
             p = parent.get(p)
         if not hidden and e.text:
             tables.append(e.text.strip())
+            signal_of[len(tables) - 1] = parent.get(e)
+    if extra is not None:
+        detours(root, tables, signal_of, extra)
     wires = back_wires = back_segs = undecoded = 0
-    for t in tables:
+    for i, t in enumerate(tables):
         wires += 1
         segs = segments(t)
         if segs is None:
@@ -132,11 +186,21 @@ def measure(vi, rd, minimum):
         west = [L for d, L in segs if d == W and (L is None or L >= minimum)]
         back_segs += len(west)
         back_wires += 1 if west else 0
+        if west and listing:
+            print("    back %s: %s" % (t, describe(root, signal_of[i])))
     return wires, back_wires, back_segs, undecoded
 
 
 def main(argv):
     minimum = 8
+    extra = None
+    if "--detours" in argv:
+        i = argv.index("--detours")
+        extra = int(argv[i + 1])
+        del argv[i:i + 2]
+    listing = "--list" in argv
+    if listing:
+        argv.remove("--list")
     if "--min" in argv:
         i = argv.index("--min")
         minimum = int(argv[i + 1])
@@ -150,7 +214,7 @@ def main(argv):
     rd = readrsrc()
     tot = [0, 0, 0, 0]
     for vi in files:
-        r = measure(vi, rd, minimum)
+        r = measure(vi, rd, minimum, listing, extra)
         if r is None:
             print("  ?  %s (no diagram heap)" % vi)
             continue
