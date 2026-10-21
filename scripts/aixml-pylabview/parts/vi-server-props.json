@@ -1,5 +1,33 @@
 {
  "classes": {
+  "GenClassTag.DAQmx Channel.NIDAQ": {
+   "nodeName": "DAQmx Channel",
+   "oMId": "0018"
+  },
+  "GenClassTag.DAQmx Read.NIDAQ": {
+   "nodeName": "DAQmx Read",
+   "oMId": "0012"
+  },
+  "GenClassTag.DAQmx Task.NIDAQ": {
+   "nodeName": "DAQmx Task",
+   "oMId": "0010"
+  },
+  "GenClassTag.DAQmx Timing.NIDAQ": {
+   "nodeName": "DAQmx Timing",
+   "oMId": "0017"
+  },
+  "GenClassTag.DAQmx Trigger.NIDAQ": {
+   "nodeName": "DAQmx Trigger",
+   "oMId": "0019"
+  },
+  "GenClassTag.NetworkStream.DataExchange": {
+   "nodeName": "Network Stream Endpoint",
+   "oMId": "0006"
+  },
+  "GenClassTag.nisyscfgSession.nisyscfg": {
+   "nodeName": "System Session",
+   "oMId": "000D"
+  },
   "LV.AbsTime": {
    "nodeName": "AbsTime (strict)",
    "oMId": "000E"
@@ -14924,6 +14952,522 @@
   }
  },
  "props": {
+  "GenClassTag.DAQmx Channel.NIDAQ": {
+   "Analog Input:General Properties:Filter:Enable": {
+    "access": "w",
+    "code": 12659,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "AI.Filter.Enable",
+    "infoFlags": 4096,
+    "label": "AI.Filter.Enable",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Analog Input:General Properties:Filter:Frequency": {
+    "access": "rw",
+    "code": 12660,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "AI.Filter.Freq",
+    "infoFlags": 4096,
+    "label": "AI.Filter.Freq",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Analog Input:General Properties:Filter:Order": {
+    "access": "rw",
+    "code": 12662,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "AI.Filter.Order",
+    "label": "AI.Filter.Order",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Analog Input:General Properties:Filter:Remove Filter Delay": {
+    "access": "w",
+    "code": 12221,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "AI.RemoveFilterDelay",
+    "label": "AI.RemoveFilterDelay",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Analog Input:General Properties:Filter:Response": {
+    "access": "rw",
+    "code": 12661,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "AI.Filter.Response",
+    "label": "AI.Filter.Response",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Power Supply:Current:Advanced:Device Scaling Coefficients": {
+    "access": "r",
+    "code": 12762,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "Pwr.Current.DevScalingCoeff",
+    "label": "Pwr.Current.DevScalingCoeff",
+    "source": "Power - Continuous Measurement (Unscaled).vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Power Supply:Current:Setpoint": {
+    "access": "w",
+    "code": 12757,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "Pwr.Current.Setpoint",
+    "label": "Pwr.Current.Setpoint",
+    "source": "Power - Continuous Measurement.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Power Supply:Idle Output Behavior": {
+    "access": "w",
+    "code": 12760,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "Pwr.IdleOutputBehavior",
+    "infoFlags": 4096,
+    "label": "Pwr.IdleOutputBehavior",
+    "source": "Power - Continuous Measurement (Unscaled).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Power Supply:Output Enable": {
+    "access": "w",
+    "code": 12758,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "Pwr.OutputEnable",
+    "label": "Pwr.OutputEnable",
+    "source": "Power - Continuous Measurement.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Power Supply:Output State": {
+    "access": "r",
+    "code": 12759,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "Pwr.OutputState",
+    "label": "Pwr.OutputState",
+    "source": "Power - Continuous Measurement (Unscaled).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Power Supply:Remote Sense:Remote Sense": {
+    "access": "w",
+    "code": 12763,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "Pwr.RemoteSense",
+    "label": "Pwr.RemoteSense",
+    "source": "Power - Continuous Measurement (Unscaled).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Power Supply:Voltage:Advanced:Device Scaling Coefficients": {
+    "access": "r",
+    "code": 12761,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "Pwr.Voltage.DevScalingCoeff",
+    "label": "Pwr.Voltage.DevScalingCoeff",
+    "source": "Power - Continuous Measurement (Unscaled).vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Power Supply:Voltage:Setpoint": {
+    "access": "w",
+    "code": 12756,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "heapName": "Pwr.Voltage.Setpoint",
+    "label": "Pwr.Voltage.Setpoint",
+    "source": "Power - Continuous Measurement.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "GenClassTag.DAQmx Read.NIDAQ": {
+   "Status:Overtemperature:Overtemperature Channels": {
+    "access": "r",
+    "code": 12418,
+    "declaredBy": "GenClassTag.DAQmx Read.NIDAQ",
+    "heapName": "OvertemperatureChans",
+    "label": "OvertemperatureChans",
+    "source": "Power - Continuous Measurement.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Status:Overtemperature:Overtemperature Channels Exist": {
+    "access": "r",
+    "code": 12417,
+    "declaredBy": "GenClassTag.DAQmx Read.NIDAQ",
+    "heapName": "OvertemperatureChansExist",
+    "label": "OvertemperatureChansExist",
+    "source": "Power - Continuous Measurement.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "GenClassTag.DAQmx Task.NIDAQ": {
+   "Channels": {
+    "access": "r",
+    "code": 4723,
+    "declaredBy": "GenClassTag.DAQmx Task.NIDAQ",
+    "label": "Channels",
+    "source": "Strain (Rosette) - SW-Timed Input.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"UsrDefndTag\" Ident=\"Channel\" FirstClient=\"0\" TypeName=\"NIDAQ\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc></TypeDesc>"
+   }
+  },
+  "GenClassTag.DAQmx Timing.NIDAQ": {
+   "More:Master Timebase:Rate": {
+    "access": "rw",
+    "code": 5269,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "infoFlags": 4096,
+    "label": "MasterTimebase.Rate",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "More:Master Timebase:Source": {
+    "access": "rw",
+    "code": 4931,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "infoFlags": 4096,
+    "label": "MasterTimebase.Src",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "More:Reference Clock:Rate": {
+    "access": "rw",
+    "code": 4885,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "infoFlags": 4096,
+    "label": "RefClk.Rate",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "More:Reference Clock:Source": {
+    "access": "rw",
+    "code": 4886,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "infoFlags": 4096,
+    "label": "RefClk.Src",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "More:Synchronization Pulse:Digital Edge:Source": {
+    "access": "w",
+    "code": 8765,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "heapName": "More:Synchronization Pulse:Source",
+    "infoFlags": 4096,
+    "label": "SyncPulse.Src",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "More:Synchronization Pulse:Minimum Delay To Start": {
+    "access": "w",
+    "code": 8767,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "heapName": "SyncPulse.MinDelayToStart",
+    "label": "SyncPulse.MinDelayToStart",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "More:Synchronization Pulse:Reset Delay": {
+    "access": "w",
+    "code": 12157,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "heapName": "SyncPulse.ResetDelay",
+    "infoFlags": 4096,
+    "label": "SyncPulse.ResetDelay",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "More:Synchronization Pulse:Reset Time": {
+    "access": "r",
+    "code": 12156,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "heapName": "SyncPulse.ResetTime",
+    "infoFlags": 4096,
+    "label": "SyncPulse.ResetTime",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "More:Synchronization Pulse:Synchronization Time": {
+    "access": "r",
+    "code": 8766,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "heapName": "SyncPulse.SyncTime",
+    "label": "SyncPulse.SyncTime",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "More:Synchronization Pulse:Terminal": {
+    "access": "r",
+    "code": 12165,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "heapName": "SyncPulse.Term",
+    "label": "SyncPulse.Term",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "Sample Clock:Rate": {
+    "access": "r",
+    "code": 4932,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "heapName": "SampClk.Rate",
+    "infoFlags": 4096,
+    "label": "SampClk.Rate",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Sample Clock:Timebase:Source": {
+    "access": "w",
+    "code": 4872,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "infoFlags": 4096,
+    "label": "SampClk.Timebase.Src",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   }
+  },
+  "GenClassTag.DAQmx Trigger.NIDAQ": {
+   "Advanced:Synchronization Type": {
+    "access": "w",
+    "code": 12160,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "heapName": "SyncType",
+    "infoFlags": 4096,
+    "label": "SyncType",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "More:Pause:Analog Level:Level": {
+    "access": "w",
+    "code": 4969,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "heapName": "Pause.AnlgLvl.Lvl",
+    "infoFlags": 4096,
+    "label": "Pause.AnlgLvl.Lvl",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "More:Pause:Analog Level:Pause When": {
+    "access": "w",
+    "code": 4977,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "heapName": "Pause.AnlgLvl.When",
+    "infoFlags": 4096,
+    "label": "Pause.AnlgLvl.When",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "More:Pause:Analog Level:Source": {
+    "access": "w",
+    "code": 4976,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "heapName": "Pause.AnlgLvl.Src",
+    "infoFlags": 4096,
+    "label": "Pause.AnlgLvl.Src",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "More:Pause:Digital Level:Pause When": {
+    "access": "w",
+    "code": 4992,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "infoFlags": 4096,
+    "label": "Pause.DigLvl.When",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "More:Pause:Digital Level:Source": {
+    "access": "w",
+    "code": 4985,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "infoFlags": 4096,
+    "label": "Pause.DigLvl.Src",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "More:Pause:Trigger Type": {
+    "access": "w",
+    "code": 4966,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "heapName": "Pause.TrigType",
+    "infoFlags": 4096,
+    "label": "Pause.TrigType",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Start:Analog Edge:Hysteresis": {
+    "access": "w",
+    "code": 5013,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "heapName": "Start.AnlgEdge.Hyst",
+    "infoFlags": 4096,
+    "label": "Start.AnlgEdge.Hyst",
+    "source": "Analog Input - Filtering.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Start:Terminal": {
+    "access": "r",
+    "code": 12062,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "heapName": "Start.Term",
+    "label": "Start.Term",
+    "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   }
+  },
+  "GenClassTag.NetworkStream.DataExchange": {
+   "Available Elements for Reading": {
+    "access": "r",
+    "code": 25,
+    "dataType": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "GenClassTag.NetworkStream.DataExchange",
+    "heapName": "AvallableElementsForReading",
+    "infoFlags": 4096,
+    "label": "AvailElmntsForRead",
+    "source": "<labview>\\examples\\Data Communication\\Network Streams\\Simple Network Streams\\Simple Network Streams - Host.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Available Elements for Writing": {
+    "access": "r",
+    "code": 24,
+    "dataType": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "GenClassTag.NetworkStream.DataExchange",
+    "heapName": "AvallableElementsForWriting",
+    "infoFlags": 4096,
+    "label": "AvailElmntsForWrite",
+    "source": "<labview>\\examples\\Data Communication\\Network Streams\\Simple Network Streams\\Simple Network Streams - Target.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Buffer Size": {
+    "access": "r",
+    "code": 23,
+    "dataType": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "GenClassTag.NetworkStream.DataExchange",
+    "heapName": "BufferSize",
+    "infoFlags": 4096,
+    "label": "BufferSize",
+    "source": "<labview>\\examples\\Data Communication\\Network Streams\\Simple Network Streams\\Simple Network Streams - Target.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Remote Endpoint Destroyed": {
+    "access": "r",
+    "code": 28,
+    "declaredBy": "GenClassTag.NetworkStream.DataExchange",
+    "heapName": "RemoteEndptDestroyed",
+    "label": "RemoteEndptDestroyed",
+    "source": "<labview>\\examples\\Data Communication\\Network Streams\\Simple Network Streams\\Simple Network Streams - Host.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "GenClassTag.nisyscfgSession.nisyscfg": {
+   "Advanced:System Resource": {
+    "access": "r",
+    "code": 16941086,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "SystemResource",
+    "label": "SystemResource",
+    "source": "Get and Set Time.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"UsrDefined\" Ident=\"nisysapiHardware\" FirstClient=\"0\" TypeName=\"nisysapi\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "Hostname": {
+    "access": "w",
+    "code": 16941063,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "infoFlags": 4096,
+    "label": "Hostname",
+    "source": "Format Real-Time Target.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Primary NIC:IP Address": {
+    "access": "rw",
+    "code": 16941064,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "IPAddr",
+    "infoFlags": 4096,
+    "label": "IPAddr",
+    "source": "Format Real-Time Target.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Primary NIC:IP Address Request Mode": {
+    "access": "w",
+    "code": 16941065,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "IPAddrMode",
+    "label": "IPAddrMode",
+    "source": "Format Real-Time Target.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Primary NIC:Subnet Mask": {
+    "access": "w",
+    "code": 16941083,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "SubnetMask",
+    "label": "SubnetMask",
+    "source": "Format Real-Time Target.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "System Resources:Free Physical Memory": {
+    "access": "r",
+    "code": 219484160,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "FreeMem",
+    "infoFlags": 4096,
+    "label": "FreePhysMem",
+    "source": "Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "System Resources:Free Virtual Memory": {
+    "access": "r",
+    "code": 219496448,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "FreeVirtMem",
+    "label": "FreeVirtMem",
+    "source": "Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "System Resources:Largest Available Memory Block": {
+    "access": "r",
+    "code": 219488256,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "LargestMem",
+    "infoFlags": 4096,
+    "label": "LargestMemBlock",
+    "source": "Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "System Resources:Primary Disk Capacity": {
+    "access": "r",
+    "code": 219291648,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "TotalDisk",
+    "infoFlags": 4096,
+    "label": "TotalDisk",
+    "source": "Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "System Resources:Primary Disk Free": {
+    "access": "r",
+    "code": 219295744,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "FreeDisk",
+    "infoFlags": 4096,
+    "label": "FreeDisk",
+    "source": "Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "System Resources:Total Physical Memory": {
+    "access": "r",
+    "code": 219480064,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "TotalMem",
+    "infoFlags": 4096,
+    "label": "TotalPhysMem",
+    "source": "Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "System Resources:Total Virtual Memory": {
+    "access": "r",
+    "code": 219492352,
+    "declaredBy": "GenClassTag.nisyscfgSession.nisyscfg",
+    "heapName": "TotalVirtMem",
+    "infoFlags": 4096,
+    "label": "TotalVirtMem",
+    "source": "Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
   "LV.AbsTime": {
    "Auto-Update From Typedef": {
     "access": "r",

@@ -770,6 +770,8 @@ class Reader:
         self.instance_names = self._express_instances()
         self.prop_items = {}     # property node uid -> its items' code paths, in field order
         self.diags = []         # every diagram walked, for wiring
+        self.attachments = None  # comment attachment objects by uid (comments())
+        self.anchored = {}       # anchored comments: object uid -> text, set as comment= in read()
         self.ordered_inputs = {}   # element -> its inputs in TERMINAL order, unwired ones listed
         self.ordered_ports = []    # (element, attr, [(term uid, name)]) rewritten after wiring
         self.term_net = {}
@@ -1149,6 +1151,30 @@ class Reader:
             attr = "inputs" if el.tag == "Indicator" else "outputs"
             if not el.get(attr):
                 el.set(attr, "value:")
+        if self.anchored:
+            by_uid = {}
+            for e in self.out.iter():
+                if isinstance(e.tag, str) and e.get("uid"):
+                    by_uid.setdefault(e.get("uid"), e)
+            # a comment anchored to a TERMINAL names its term or its dco - a control's terminal on
+            # the diagram, a tunnel's inner side (Map Collection - Comparing Test Results.vi,
+            # Replicate Core.vi): its owner is the element that terminal belongs to
+            term_of_dco = {}
+            for t in self.b.bd.iter("SL__arrayElement"):
+                if t.get("class") == "term" and t.find("dco") is not None and t.find("dco").get("uid"):
+                    term_of_dco.setdefault(t.find("dco").get("uid"), t.get("uid"))
+            for uid, text in self.anchored.items():
+                e = by_uid.get(uid)
+                if e is None:
+                    owner = self.term_owner.get(uid) if uid in self.term_owner else \
+                        self.term_owner.get(term_of_dco.get(uid)) if term_of_dco.get(uid) in self.term_owner else None
+                    if owner is not None and owner is not IGNORED and owner is not MISSING:
+                        e = owner[0]
+                if e is None:
+                    self.notes.append("comment anchored to object %s, which has no element here: %r"
+                                      % (uid, text[:60]))
+                else:
+                    e.set("comment", escape_description(text))
         for n in self.notes:
             self.out.append(ET.Comment(" vi2aixml: " + n + " "))
         return self.out
@@ -1183,7 +1209,7 @@ class Reader:
                         container.append(c)
                 continue
             el = None
-            if cls == "prim":
+            if cls in aixml2vi.PRIM_CLASSES:
                 el = self.prim(node, parent_uid)
             elif cls in ("whileLoop", "forLoop"):
                 el = self.loop(node, parent_uid)
@@ -1211,6 +1237,44 @@ class Reader:
                 self.notes.append("diagram node of class %s (uid %s) not read" % (cls, node.get("uid")))
             if el is not None:
                 container.append(el)
+        self.comments(diag, parent_uid, container)
+
+    def comments(self, diag, parent_uid, container):
+        """The diagram's comments, as NI's exporter writes them. A comment is a `label` with no
+        partID straight in the diagram's zPlaneList (a control's or node's own label sits in a
+        partsList, a subdiagram label carries partID 8024), and each points at an `attachment`.
+        An attachment holding an `attachedObject` is a comment ANCHORED to that object: NI writes
+        it as `comment=` on the object's element (Call, Node, Constant, Structure ... 178 of them
+        in the cached exports), collected here and set once every element exists. One without is
+        a free comment: `<FreeLabel comment="..." uid=<the label's uid>/>` in this diagram -
+        2 603 in the cached exports, escaped like a description."""
+        if self.attachments is None:
+            self.attachments = {e.get("uid"): e for e in self.b.bd.iter("SL__arrayElement")
+                                if e.get("class") == "attachment"}
+        z = diag.find("zPlaneList")
+        for o in (z if z is not None else []):
+            if o.get("class") != "label" or o.find("textRec") is None or o.findtext("partID") is not None:
+                continue
+            t = o.findtext("textRec/text")
+            # pylabview writes a byte with no printable form as the literal text `&#xNN;` - a CR
+            # or a NUL in a comment - and NI keeps both (`\0D`, `\00`), so they are decoded,
+            # not dropped (DW Test Copy.vi, the TLS example, 2026-10-21)
+            text = "" if t in (None, "[NULL]") else \
+                re.sub(r"&#x([0-9A-Fa-f]{2});", lambda m: chr(int(m.group(1), 16)), unquote(t))
+            # and it renders the bytes as MacRoman where LabVIEW on Windows wrote CP1252: NI's
+            # `devices’ sample` came back `devicesí sample` (Analog Input - Synchronization.vi)
+            try:
+                text = text.encode("mac_roman").decode("cp1252")
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                pass
+            a = o.find("attachment")
+            att = self.attachments.get(a.get("uid")) if a is not None else None
+            owner = att.find("attachedObject") if att is not None else None
+            if owner is not None and owner.get("uid"):
+                self.anchored.setdefault(owner.get("uid"), text)
+                continue
+            container.append(ET.Element("FreeLabel", {"comment": escape_description(text),
+                                                      "uid": o.get("uid"), "uid_parent": parent_uid}))
 
     # ---- elements ----------------------------------------------------------------------------
     def default_value(self, tree, dd):
@@ -1261,7 +1325,7 @@ class Reader:
         return el
 
     def prim(self, node, parent_uid):
-        rid = node.findtext("primResID")
+        rid = aixml2vi.prim_res_id(node)     # a stream Read/Write node's too (aixml2vi.PRIM_CLASSES)
         self.prim_rid = getattr(self, "prim_rid", {})
         self.prim_rid[node.get("uid")] = rid
         name = self.prim_name.get(rid)
@@ -1283,7 +1347,7 @@ class Reader:
                         el.set("elements", str(len(aixml2vi.fields(tree))))
         for term in node.find("termList"):
             dco = term.find("dco")
-            pidx = dco.findtext("parmIndex") or "out"
+            pidx = aixml2vi.term_slot(dco, node.get("class"))
             tname = self.term_names.get((rid, pidx), "?parm%s" % pidx)
             sink = bool(int(term.findtext("objFlags") or 0) & SINK)
             self.term_owner[term.get("uid")] = (el, tname, sink)
@@ -2024,7 +2088,8 @@ class Reader:
     def _vi_server_class(self, node):
         """The class NI's export writes on a property or invoke node, read off its reference
         input's refnum - each rule taken from NI's exports by learn_node_classes.py: a user-
-        defined TAG refnum is `GenClassTag.<node name>.<TypeName>` (a DAQmx Task's Trigger
+        defined TAG refnum is `GenClassTag.<Ident>.<TypeName>` (`GenClassTag.NetworkStream.
+        DataExchange`) - but `GenClassTag.<node name>.<TypeName>` for DAQmx (a Task's Trigger
         properties: `GenClassTag.DAQmx Trigger.NIDAQ`), a user-defined refnum
         `GenClass.<Ident>.<TypeName>`, ActiveX `ActiveX`, .NET `DotNet`, .NET Core (refnum type
         39) `DotNetCore`, VISA `Visa.<Ident>`."""
@@ -2046,8 +2111,8 @@ class Reader:
                     # a VISA session's properties: NI exports the node as type="{Visa.Instr}"
                     # (Simple Serial.vi), the class from the refnum's Ident
                     return "Visa." + (tree.get("Ident") or "Instr")
-                if rt == "UsrDefndTag" and node_name and tree.get("TypeName"):
-                    return "GenClassTag.%s.%s" % (node_name, tree.get("TypeName"))
+                if rt == "UsrDefndTag" and aixml2vi.tag_class(tree, node_name):
+                    return aixml2vi.tag_class(tree, node_name)     # DAQmx by node, else by Ident
                 if rt == "UsrDefined" and tree.get("Ident") and tree.get("TypeName"):
                     return "GenClass.%s.%s" % (tree.get("Ident"), tree.get("TypeName"))
                 return {"AutoRef": "ActiveX", "DotNet": "DotNet", "39": "DotNetCore"}.get(rt)

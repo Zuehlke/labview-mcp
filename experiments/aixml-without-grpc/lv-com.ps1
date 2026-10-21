@@ -19,7 +19,7 @@ param(
     [string]$Outputs = '',
     [switch]$Run,
     [int]$TimeoutMs = 10000,
-    # -Post 'close', 'sysclose', 'char:<code>' or 'down:<virtual key>', several separated by ';',
+    # -Post 'close', 'sysclose', 'activate', 'char:<code>' or 'down:<virtual key>', several separated by ';',
     # each sent -PostAfterMs after the last (the first after the run starts) to the VI's own FRONT
     # PANEL window - LabVIEW's window titled with the VI's file name, its block diagram excluded -
     # to fire the VI's Panel Close? and Key Down? as a person would. Prints whether the panel is
@@ -42,6 +42,11 @@ public static class LvWin {
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
     [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
     [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code, uint mapType);
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+    [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
     [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
@@ -195,7 +200,17 @@ foreach ($p in $ViPath) {
                     $wins = Panel-Windows $p
                     Write-Output ('  post ' + $one + ' to ' + $wins.Count + ' panel window(s)')
                     foreach ($h in $wins) {
-                        if ($one -eq 'close') { [void][LvWin]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }
+                        # activate: the panel window made the ACTIVE window of the desktop, which is what
+                        # raises the application's VI Activation event (t136). Windows refuses
+                        # SetForegroundWindow to a process not in the foreground unless a key was just
+                        # pressed, so an Alt press and release goes first - the usual way round it
+                        # (2026-10-21). It takes the focus from whatever had it.
+                        if ($one -eq 'activate') {
+                            [LvWin]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero); [LvWin]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
+                            [void][LvWin]::ShowWindow($h, 9); [void][LvWin]::BringWindowToTop($h); [void][LvWin]::SetForegroundWindow($h)
+                            Write-Output ('  activated: ' + ([LvWin]::GetForegroundWindow() -eq $h))
+                        }
+                        elseif ($one -eq 'close') { [void][LvWin]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) }
                         # WM_SYSCOMMAND SC_CLOSE - what the X sends, and what raises Panel Close?:
                         # a plain WM_CLOSE closed the panel and raised NO event (2026-10-11)
                         elseif ($one -eq 'sysclose') { [void][LvWin]::PostMessage($h, 0x0112, [IntPtr]0xF060, [IntPtr]::Zero) }

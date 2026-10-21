@@ -373,10 +373,16 @@ class LVVariant(LVObject):
 
             if td is None:
                 raise AttributeError("LVVariant has no linked TD  but is supposed to have DataFill")
-            df = LVdatafill.newDataFillObjectWithTD(self.vi, self.blockref,
-                                                    -1, 0, td, self.po, expectContentKind=self.expectContentKind)
-            self.datafill.append(df)
-            df.initWithRSRC(bldata)
+            depth = getattr(self.vi, 'nonConsolidatedVariantDepth', 0)
+            if not usesConsolidatedTD:
+                self.vi.nonConsolidatedVariantDepth = depth + 1
+            try:
+                df = LVdatafill.newDataFillObjectWithTD(self.vi, self.blockref,
+                                                        -1, 0, td, self.po, expectContentKind=self.expectContentKind)
+                self.datafill.append(df)
+                df.initWithRSRC(bldata)
+            finally:
+                self.vi.nonConsolidatedVariantDepth = depth
             pass
         # Read attributes
         self.attrs += self.parseRSRCAttribs(bldata)
@@ -556,11 +562,17 @@ class LVVariant(LVObject):
                                       attrib.name, attrib.nested, attrib.value))
                     self.attrs.append(attrib)
             elif (subelem.tag == "DataFill"):
-                for df_elem in subelem:
-                    df = LVdatafill.newDataFillObjectWithTag(self.vi, self.blockref, df_elem.tag, self.po)
-                    self.datafill.append(df)
-                    df.expectContentKind = self.expectContentKind
-                    df.initWithXML(df_elem)
+                depth = getattr(self.vi, 'nonConsolidatedVariantDepth', 0)
+                if not self.useConsolidatedTypes:
+                    self.vi.nonConsolidatedVariantDepth = depth + 1
+                try:
+                    for df_elem in subelem:
+                        df = LVdatafill.newDataFillObjectWithTag(self.vi, self.blockref, df_elem.tag, self.po)
+                        self.datafill.append(df)
+                        df.expectContentKind = self.expectContentKind
+                        df.initWithXML(df_elem)
+                finally:
+                    self.vi.nonConsolidatedVariantDepth = depth
             else:
                 raise AttributeError("LVVariant subtree contains unexpected tag '{}'".format(subelem.tag))
         pass

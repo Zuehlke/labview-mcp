@@ -1,0 +1,148 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/23798" source="&lt;labview&gt;\examples\Data Communication\Network Streams\Simple Network Streams\Simple Network Streams - Host.vi"><types><TypeDesc Type="Refnum" RefType="UsrDefndTag" Ident="NetworkStream" FirstClient="1" TypeName="DataExchange" Format="inline" Label="writer name"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="UserDefined" Format="inline"><Ident>DataExchange</Ident>
+        <LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          <Attributes>
+            <LVVariant Name="NI_VAR_ACCESS" HasVarItem2="1" VarType2="0" Version="auto">
+              <DataType Index="0" Type="NumUInt32" Prop1="0" Format="inline" />
+              <DataFill>
+                <U32>2</U32>
+                </DataFill>
+              </LVVariant>
+            <LVVariant Name="NI_VAR_DATATYPE" HasVarItem2="1" VarType2="2" Version="auto">
+              <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" />
+              <DataType Index="1" Type="LVVariant" Format="inline" Label="Message Data" />
+              <DataType Index="2" Type="TypeDef" Flag1="0x0" Format="inline">
+                <TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster">
+                  <TypeDesc TypeID="0" />
+                  <TypeDesc TypeID="1" />
+                  </TypeDesc>
+                <Label Text="Network Stream Command.ctl" />
+                </DataType>
+              <DataFill>
+                <TypeDef>
+                  <Cluster>
+                    <String />
+                    <LVVariant HasVarItem2="1" VarType2="0" Version="auto">
+                      <DataType Index="0" Type="Void" Format="inline" />
+                      <DataFill>
+                        <Void />
+                        </DataFill>
+                      </LVVariant>
+                    </Cluster>
+                  </TypeDef>
+                </DataFill>
+              </LVVariant>
+            </Attributes>
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Refnum" RefType="UsrDefndTag" Ident="NetworkStream" FirstClient="1" TypeName="DataExchange" Format="inline" Label="writer name"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="UserDefined" Format="inline"><Ident>DataExchange</Ident>
+        <LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          <Attributes>
+            <LVVariant Name="NI_VAR_ACCESS" HasVarItem2="1" VarType2="0" Version="auto">
+              <DataType Index="0" Type="NumUInt32" Prop1="0" Format="inline" />
+              <DataFill>
+                <U32>2</U32>
+                </DataFill>
+              </LVVariant>
+            <LVVariant Name="NI_VAR_DATATYPE" HasVarItem2="1" VarType2="2" Version="auto">
+              <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" />
+              <DataType Index="1" Type="LVVariant" Format="inline" Label="Message Data" />
+              <DataType Index="2" Type="TypeDef" Flag1="0x0" Format="inline">
+                <TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster">
+                  <TypeDesc TypeID="0" />
+                  <TypeDesc TypeID="1" />
+                  </TypeDesc>
+                <Label Text="Network Stream Command.ctl" />
+                </DataType>
+              <DataFill>
+                <TypeDef>
+                  <Cluster>
+                    <String />
+                    <LVVariant HasVarItem2="1" VarType2="0" Version="auto">
+                      <DataType Index="0" Type="Void" Format="inline" />
+                      <DataFill>
+                        <Void />
+                        </DataFill>
+                      </LVVariant>
+                    </Cluster>
+                  </TypeDef>
+                </DataFill>
+              </LVVariant>
+            </Attributes>
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" /><TypeDesc Type="LVVariant" Format="inline" Label="Message Data" /></TypeDesc><Label Text="Network Stream Command.ctl" />
+        </TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Boolean" Format="inline" /></types><heap><SL__arrayElement class="sharedVariableDynamicWrite" uid="1887">
+        <objFlags>512</objFlags>
+        <termList elements="7">
+          <SL__arrayElement class="term" uid="1896">
+            <objFlags>32768</objFlags>
+            <dco class="sharedVariableDynamicDCO" uid="1890">
+              <objFlags>128</objFlags>
+              <typeDesc>TypeID(71)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <terminal_ID>0B</terminal_ID>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1900">
+            <dco class="sharedVariableDynamicDCO" uid="1898">
+              <objFlags>513</objFlags>
+              <typeDesc>TypeID(72)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <terminal_ID>03</terminal_ID>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1904">
+            <objFlags>32768</objFlags>
+            <dco class="sharedVariableDynamicDCO" uid="1901">
+              <objFlags>512</objFlags>
+              <typeDesc>TypeID(73)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <terminal_ID>08</terminal_ID>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1907">
+            <dco class="sharedVariableDynamicDCO" uid="1905">
+              <objFlags>513</objFlags>
+              <typeDesc>TypeID(74)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1911">
+            <objFlags>32768</objFlags>
+            <dco class="sharedVariableDynamicDCO" uid="1908">
+              <objFlags>128</objFlags>
+              <typeDesc>TypeID(75)</typeDesc>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <terminal_ID>0A</terminal_ID>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1919">
+            <dco class="sharedVariableDynamicDCO" uid="1915">
+              <objFlags>512</objFlags>
+              <typeDesc>TypeID(76)</typeDesc>
+              <termBounds>(16, 0, 24, 8)</termBounds>
+              <terminal_ID>09</terminal_ID>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1925">
+            <dco class="sharedVariableDynamicDCO" uid="1921">
+              <objFlags>513</objFlags>
+              <typeDesc>TypeID(77)</typeDesc>
+              <termBounds>(16, 24, 24, 32)</termBounds>
+              <terminal_ID>04</terminal_ID>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(712, 548, 744, 580)</bounds>
+        <shortCount>16</shortCount>
+        <clumpNum>196611</clumpNum>
+        <SharedVariableDynamicResID>5CF6</SharedVariableDynamicResID>
+        </SL__arrayElement>
+      </heap></part>

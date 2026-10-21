@@ -625,3 +625,13 @@ primResID	node	parmIndex	terminal	seen	competing
 9102	Release Notifier	2	force destroy? (F)	1	
 9102	Release Notifier	8	notifier name	1	
 9102	Release Notifier	9	last notification	1	
+# Network Stream create/flush slots no example wires (issue #96, 2026-10-21). 5 and 8: NI's export of a
+# composed probe wiring ?parm5/?parm8 named them. 6 and 10: the last free input of each node, and the
+# donor heap's own terminal type label carries exactly this name.
+23810	Create Network Stream Writer Endpoint	5	timeout in ms (-1)	1	
+23810	Create Network Stream Writer Endpoint	6	element allocation mode	0	
+23810	Create Network Stream Writer Endpoint	8	error in (no error)	1	
+23811	Create Network Stream Reader Endpoint	5	timeout in ms (-1)	1	
+23811	Create Network Stream Reader Endpoint	6	element allocation mode	0	
+23811	Create Network Stream Reader Endpoint	8	error in (no error)	1	
+23808	Flush Stream	10	wait condition	0	

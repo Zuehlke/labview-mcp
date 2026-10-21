@@ -1438,7 +1438,8 @@
      "Self": "True",
      "Window": 0,
      "Error Out": "[False,0,]"
-    }
+    },
+    "post": "activate"
    }
   ]
  },
@@ -1899,6 +1900,30 @@
      "flag visible": "False",
      "level visible": "False",
      "note visible": "True",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t171_network_stream": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "data out": "42.5",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t172_network_stream_property": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "buffer": "10",
+     "available": "0",
+     "data out": "42.5",
      "error out": "[False,0,]"
     }
    }

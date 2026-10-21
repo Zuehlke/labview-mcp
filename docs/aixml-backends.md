@@ -1344,7 +1344,7 @@ they say nothing about the reader. What the 368 others are made of, by element:
 | **shift registers missing**: 58 in 36 VIs, 53 of them one cause - the rSR DCO is DEFINED nested in the lSR (`<dco class="lSR"> … <rsrDCO class="rSR" uid=…>`), so the loop's own term is a bare `<dco uid=…/>` with no class and `loop()` skips it | the register, its Left/Right and every wire through them | **yes** - a defect, not a gap; the loop reads as if it had no state |
 | **constants read back as their DEFAULT** - 34 VIs. The three LabVIEW **9.0** VIs lose every value (`Dictionary Example.vi` 57 of 57); in current VIs a cluster holding a variant (77 constants), a units numeric, a picture, an enum read 0 | silent wrong values, not missing ones | **yes** - `0`, `false` and `""` look like real data |
 | **terminal descriptions**: NI writes 1 507 on controls and indicators, the reader **0** | documentation only | for the doc tools |
-| **comments attached to a node** (`comment=` on Node, Call, Constant, Structure) | ~160 | for documentation |
+| **comments attached to a node** (`comment=` on Node, Call, Constant, Structure) | ~160 - read since 2026-10-21, "Diagram comments on the reader" | for documentation |
 | **terminal NAMES** differ on a wire whose ends agree (`Drink Type`/`Drink type`, `?parm11`, `value2`, `Rectangle.bottom`/`bottom`, `delta`/`?`) | 647 edges; 121 VIs differ ONLY in these (plus unread constructs) | for re-composing; the wiring itself is right |
 | **types**: units (`double{m}` read `?UnitFloat64`), sets and maps (`?115`), a strict VI refnum's connector pane (read plain `ref{LV.VI}`), a VI Server Reference's class (`{LV.SubPanel}` read untyped) | ~125 elements | yes for strict VI refnums (Call By Reference / Start Asynchronous Call need the pane) |
 | `adapt="true"` on 202 calls NI writes WITHOUT it - DAQmx Trigger/Create Virtual Channel/Read, Panel Type Selector, MAPro: polymorphic calls whose instance is FIXED | 202 | yes for re-composing - it lets LabVIEW pick an instance the author fixed |
@@ -1393,6 +1393,38 @@ worse - except the two LabVIEW 9.0 VIs whose DEFAULT constants (`0`, `false`) we
 accident before and are now reported undecoded with the rest. `ReaderShiftRegisterAndConstantTests`
 pins one case of each against NI's export, every assertion checked to fail on the old reader's
 output.
+
+## Diagram comments on the reader (2026-10-21)
+
+`vi2aixml.py` wrote no `<FreeLabel>` at all until 2026-10-21 - found while comparing the reader with
+NI's export for issue #96, where all 8 comments of NI's Simple Network Streams Host were missing.
+It reads them now, in both of NI's forms:
+
+- **A comment is a `label` with no partID straight in a diagram's `zPlaneList`** (a control's or a
+  node's own label sits in a `partsList`, a subdiagram label carries partID 8024), and every one
+  points at an `attachment` object.
+- **An attachment holding an `<attachedObject uid>` is a comment ANCHORED to that object**, and
+  NI's exporter writes it as `comment=` on the object's element - a Call, Node, Constant,
+  Structure, Indicator, Tunnel. The object is often a TERMINAL (a control's terminal on the
+  diagram, a tunnel's inner side), so its owner is looked up through the reader's terminal map.
+  One without is a free comment: `<FreeLabel comment=... uid=<the label's uid>/>` in its diagram.
+- **The text**: escaped like a description (`,` `:` and control characters as `\XX`, a backslash
+  doubled - counted over 2 603 comments in the cache), a CR or NUL decoded from pylabview's literal
+  `&#xNN;` and kept as NI keeps it, and the bytes read as CP1252 where pylabview rendered them as
+  MacRoman (`devices' sample` came back `devicesí sample`).
+
+Measured over every cached NI export holding a comment, 658 VIs:
+
+| | match NI |
+|---|---|
+| free comments, text | **2 534 of 2 534** |
+| free comments, parent | 2 529 - the 5 others are the one-frame Event Structure of the table above, where NI writes no `CaseFrame` |
+| anchored comments | **166 of 176** - the rest anchored to objects the reader does not read (an XNode, the Channel Probe's nodes) |
+| free comments missed | 4, inside constructs the reader does not read |
+
+Free comments survive a compose: reader -> composer -> reader kept 1/1, 1/1, 2/2 and 9/9 on four
+examples. Anchored ones do NOT - the composer reports and skips `comment=` on a node ("comments are
+not composed yet"), so they are read and not yet written back.
 
 ## The run route's panel read is cached, and a VI can be held (2026-10-16)
 

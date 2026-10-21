@@ -24,6 +24,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # the bundle's ._pth leaves it off
+import aixml2vi  # noqa: E402
 import lvheap  # noqa: E402
 
 
@@ -359,6 +360,55 @@ class Harvester:
                 row["access"] = "".join(sorted(row["access"] + access))
             owner = ref_class(dt) if not last else None
 
+    def tag_props(self, b, node, cname, terms, source):
+        """A Property Node on a user-defined TAG refnum - a Network Stream endpoint, an NI System
+        Configuration session, a DAQmx task - as rows of the same table (issue #96, 2026-10-21).
+        Three things differ from a VI Server class, all read off NI's Simple Network Streams
+        example: the row is keyed by the name NI's EXPORT writes (`Available Elements for
+        Reading`, learned into property-export-names.json by code) with the heap's own
+        `AvallableElementsForReading` as heapName; the terminal's type (I32, labelled with the
+        short name) and the propItemInfo's dataTypeDesc (U32) are different types, so the latter
+        is kept as dataType; and propItemInfo carries objFlags 4096, kept as infoFlags. No part
+        is cut: the composer builds the node on the VI Server template and types its reference
+        with the refnum WIRED into it, which carries the stream's data type."""
+        cl = self.props["classes"].setdefault(cname, {})
+        if not cl:
+            cl.update({"oMId": node.findtext("oMId"), "nodeName": (node.findtext("nodeName") or "").strip('"')})
+            self.props_new += 1
+        names = getattr(self, "_export_names", None)
+        if names is None:
+            p = os.path.join(aixml2vi.OWN_PARTS, "property-export-names.json")
+            names = self._export_names = json.load(open(p, encoding="utf-8")).get("names", {}) if os.path.exists(p) else {}
+        table = self.props["props"].setdefault(cname, {})
+        for t in terms:
+            dco = t.find("dco")
+            if dco is None or dco.get("class") != "propItem":
+                continue
+            plist = dco.find("propList")
+            if plist is None or len(plist) != 1:
+                continue
+            info = plist[0]
+            heap = (info.findtext("PropItemName") or "").strip('"')
+            code = int(info.findtext("PropItemCode") or 0)
+            name = names.get("%s|%d" % (cname, code)) or names.get(str(code)) or heap
+            dt = resolve_types(b, dco)[0]
+            m = lvheap.TYPEID_RE.fullmatch((info.findtext("dataTypeDesc") or "").strip())
+            data = b.heap_type_tree(int(m.group(1))) if m else None
+            access = "r" if int(dco.findtext("objFlags") or 0) & 1 else "w"
+            row = table.get(name)
+            if row is None:
+                table[name] = row = {"code": code, "label": dt.get("Label") or "", "type": type_xml(dt),
+                                     "declaredBy": cname, "access": "", "source": source}
+                if heap != name:
+                    row["heapName"] = heap
+                if data is not None and type_xml(data) != type_xml(dt):
+                    row["dataType"] = type_xml(data)
+                if info.findtext("objFlags"):
+                    row["infoFlags"] = int(info.findtext("objFlags"))
+                self.props_new += 1
+            if access not in row["access"]:
+                row["access"] = "".join(sorted(row["access"] + access))
+
     def vi_server_node(self, b, node, source):
         """A Property Node or an Invoke Node on a VI Server class. A property node is composed
         item by item, so what is kept is a TABLE: per class its oMId and nodeName, per property
@@ -372,6 +422,11 @@ class Harvester:
             return
         rt = resolve_types(b, ref)
         cname = ref_class(rt[0] if rt else None)
+        if cname is None and rt and node.get("class") == "propNode":
+            cname = aixml2vi.tag_class(rt[0], node.findtext("nodeName"))
+            if cname is not None:
+                self.tag_props(b, node, cname, terms, source)
+            return
         if cname is None:
             return
         if node.get("class") == "propNode":
@@ -600,8 +655,8 @@ class Harvester:
                 # unbundling one (measured: 0x50000 against 0x40000 on an AIXML-generated pair)
                 kind = "unbundle" if int(e.findtext("objFlags") or 0) & 0x10000 else "bundle"
                 self.save("node", "node/nMux/%s" % kind, source, e, resolve_types(b, e))
-            elif cls == "prim":
-                rid = e.findtext("primResID")
+            elif cls in aixml2vi.PRIM_CLASSES:
+                rid = aixml2vi.prim_res_id(e)
                 if rid is None:
                     continue
                 types = resolve_types(b, e)

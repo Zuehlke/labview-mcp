@@ -99,6 +99,38 @@
       "replace": "    elif ident in (b'VRPI',):\r\n        ctor = LinkObjHeapObjToUDClassAPILink\r\n    elif ident in (b'TCPI',):\r\n        ctor = LinkObjHeapTypeCastToUDClassAPILink\r\n",
       "why": "Maps the TCPI ident to its class (class-link-tcpi-class). Without it newLinkObject has no constructor for TCPI and the LIbd block holding one stays binary - 138 blocks of NI's class-linked examples before this entry, none after.",
       "upstream": "not reported yet - the layout is LabVIEW 2016 and later, newer than upstream's samples. Remove the class-link-tail entries together once upstream reads it."
+    },
+    {
+      "id": "typedef-datafill-error-name",
+      "file": "pylabview/LVdatafill.py",
+      "find": "                sub_df = newDataFillObjectWithTD(self.vi, self.blockref, -1, self.tm_flags, sub_td, self.po)\r\n                self.value.append(sub_df)\r\n                sub_df.initWithRSRC(bldata)\r\n            except Exception as e:\r\n                raise RuntimeError(\"Data type {}: {}\".format(enumOrIntToName(client.nested.fullType()), str(e)))\r\n",
+      "replace": "                sub_df = newDataFillObjectWithTD(self.vi, self.blockref, -1, self.tm_flags, sub_td, self.po)\r\n                self.value.append(sub_df)\r\n                sub_df.initWithRSRC(bldata)\r\n            except Exception as e:\r\n                raise RuntimeError(\"Data type {}: {}\".format(enumOrIntToName(sub_td.fullType()), str(e)))\r\n",
+      "why": "DataFillTypeDef.initWithRSRCParse names an undefined `client` in its error handler, so ANY failure while reading a typedef's default data surfaces as `NameError: name 'client' is not defined` and the real exception is lost. The sibling class a few hundred lines up writes sub_td.fullType(), which is what is meant. Found through issue #96 (2026-10-21), where it hid the variant-consolidation fault below for a whole diagnosis: the user's report and the first run on NI's Simple Network Streams example both showed only the NameError and a later TypeError on TDObjectTag.ident. The Find spans the -1/tm_flags call above the handler because the corrected line alone already occurs in the sibling class, which provision.ps1 then reads as 'already present' and skips - measured on the first provisioning of this entry.",
+      "upstream": "not reported yet - a one-word fix, report together with the variant-consolidation entries."
+    },
+    {
+      "id": "variant-consolidation-inherit",
+      "file": "pylabview/LVdatafill.py",
+      "find": "class DataFillLVVariant(DataFill):\r\n    def __init__(self, *args):\r\n        super().__init__(*args)\r\n        self.useConsolidatedTypes = True\r\n",
+      "replace": "class DataFillLVVariant(DataFill):\r\n    def __init__(self, *args):\r\n        super().__init__(*args)\r\n        # A variant nested in the fill of a variant whose types are NOT consolidated stores its own\r\n        # types too (varcount + TDs). LVVariant raises this counter while it reads such a fill.\r\n        self.useConsolidatedTypes = (getattr(self.vi, 'nonConsolidatedVariantDepth', 0) == 0)\r\n",
+      "why": "ROOT CAUSE of issue #96 (Network Stream endpoints). A variant that is part of a TYPE DESCRIPTOR - the LVVariant inside a TDObjectTag - stores its types inline (varcount + TDs) instead of as VCTP indices, and pylabview reads it so. But a variant in the DEFAULT DATA of such a variant was always created with useConsolidatedTypes=True, so it read a varcount as a VCTP index, found no type there, and raised `LVVariant has no linked TD but is supposed to have DataFill` - upstream's own comment at that spot reads 'the lack of use of ConsolidatedTD should be propagated'. A Network Stream endpoint refnum is exactly that shape: its tag's NI_VAR_DATATYPE attribute holds the stream's data type with a default value, and a cluster element of type Variant (NI's own Simple Network Streams example streams cluster{string Message, variant Message Data}) puts a nested variant in it. The TDObjectTag then aborted before reading its ident, and checkSanity died on len(None). Measured 2026-10-21 on that example (LabVIEW 2026): unpatched readRSRC exits 1 with 0 files for Host and Target; patched it extracts 39 and 34 files, rebuilds, and the rebuilt VIs re-extract to byte-identical XML in every file. Paired with variant-consolidation-rsrc and -xml, which raise the counter.",
+      "upstream": "not reported yet - fixes upstream's own TODO in LVclasses.LVVariant.parseRSRCVariant. Remove the three variant-consolidation entries together."
+    },
+    {
+      "id": "variant-consolidation-rsrc",
+      "file": "pylabview/LVclasses.py",
+      "find": "            df = LVdatafill.newDataFillObjectWithTD(self.vi, self.blockref,\r\n                                                    -1, 0, td, self.po, expectContentKind=self.expectContentKind)\r\n            self.datafill.append(df)\r\n            df.initWithRSRC(bldata)\r\n",
+      "replace": "            depth = getattr(self.vi, 'nonConsolidatedVariantDepth', 0)\r\n            if not usesConsolidatedTD:\r\n                self.vi.nonConsolidatedVariantDepth = depth + 1\r\n            try:\r\n                df = LVdatafill.newDataFillObjectWithTD(self.vi, self.blockref,\r\n                                                        -1, 0, td, self.po, expectContentKind=self.expectContentKind)\r\n                self.datafill.append(df)\r\n                df.initWithRSRC(bldata)\r\n            finally:\r\n                self.vi.nonConsolidatedVariantDepth = depth\r\n",
+      "why": "Read half of variant-consolidation-inherit: while a variant whose types are inline (not consolidated) reads its default data, every DataFillLVVariant created underneath - at any depth of cluster or array - inherits useConsolidatedTypes=False. A counter on the VI rather than a parameter, because the nested fills are built through newDataFillObjectWithTD several classes away, none of which takes a flag.",
+      "upstream": "see variant-consolidation-inherit."
+    },
+    {
+      "id": "variant-consolidation-xml",
+      "file": "pylabview/LVclasses.py",
+      "find": "            elif (subelem.tag == \"DataFill\"):\r\n                for df_elem in subelem:\r\n                    df = LVdatafill.newDataFillObjectWithTag(self.vi, self.blockref, df_elem.tag, self.po)\r\n                    self.datafill.append(df)\r\n                    df.expectContentKind = self.expectContentKind\r\n                    df.initWithXML(df_elem)\r\n",
+      "replace": "            elif (subelem.tag == \"DataFill\"):\r\n                depth = getattr(self.vi, 'nonConsolidatedVariantDepth', 0)\r\n                if not self.useConsolidatedTypes:\r\n                    self.vi.nonConsolidatedVariantDepth = depth + 1\r\n                try:\r\n                    for df_elem in subelem:\r\n                        df = LVdatafill.newDataFillObjectWithTag(self.vi, self.blockref, df_elem.tag, self.po)\r\n                        self.datafill.append(df)\r\n                        df.expectContentKind = self.expectContentKind\r\n                        df.initWithXML(df_elem)\r\n                finally:\r\n                    self.vi.nonConsolidatedVariantDepth = depth\r\n",
+      "why": "XML half of variant-consolidation-inherit, so a REBUILD writes the nested variant back in the inline form it was read in. Without it the extract succeeds and the rebuild writes a VCTP index where LabVIEW expects a type list. Measured as the round trip in variant-consolidation-inherit: rebuilt Host and Target re-extract identically.",
+      "upstream": "see variant-consolidation-inherit."
     }
   ]
 }

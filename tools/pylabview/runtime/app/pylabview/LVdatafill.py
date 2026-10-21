@@ -809,7 +809,9 @@ class DataFillCluster(DataFill):
 class DataFillLVVariant(DataFill):
     def __init__(self, *args):
         super().__init__(*args)
-        self.useConsolidatedTypes = True
+        # A variant nested in the fill of a variant whose types are NOT consolidated stores its own
+        # types too (varcount + TDs). LVVariant raises this counter while it reads such a fill.
+        self.useConsolidatedTypes = (getattr(self.vi, 'nonConsolidatedVariantDepth', 0) == 0)
 
     def initWithRSRCParse(self, bldata):
         from pylabview.LVclasses import LVVariant, OleVariant
@@ -1814,7 +1816,7 @@ class DataFillTypeDef(DataFill):
                 self.value.append(sub_df)
                 sub_df.initWithRSRC(bldata)
             except Exception as e:
-                raise RuntimeError("Data type {}: {}".format(enumOrIntToName(client.nested.fullType()), str(e)))
+                raise RuntimeError("Data type {}: {}".format(enumOrIntToName(sub_td.fullType()), str(e)))
         pass
 
     def prepareRSRCData(self, avoid_recompute=False):

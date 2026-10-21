@@ -465,3 +465,38 @@ primResID	node	parmIndex	terminal
 9129	Enqueue Element At Opposite End	3	error in (no error)
 9129	Enqueue Element At Opposite End	8	queue out
 9154	Get Drag Drop Data	6	error in (no error)
+23794	Destroy Stream Endpoint	11	endpoint in
+23794	Destroy Stream Endpoint	8	error in (no error)
+23794	Destroy Stream Endpoint	out	error out
+23797	Read Single Element from Stream	11	endpoint in
+23797	Read Single Element from Stream	2	data out
+23797	Read Single Element from Stream	3	endpoint out
+23797	Read Single Element from Stream	4	timed out?
+23797	Read Single Element from Stream	8	error in (no error)
+23797	Read Single Element from Stream	9	timeout ms (-1)
+23797	Read Single Element from Stream	out	error out
+23798	Write Single Element to Stream	10	data in
+23798	Write Single Element to Stream	11	endpoint in
+23798	Write Single Element to Stream	3	endpoint out
+23798	Write Single Element to Stream	8	error in (no error)
+23798	Write Single Element to Stream	9	timeout ms (-1)
+23798	Write Single Element to Stream	out	error out
+23808	Flush Stream	11	endpoint in
+23808	Flush Stream	3	endpoint out
+23808	Flush Stream	8	error in (no error)
+23808	Flush Stream	9	timeout in ms (-1)
+23808	Flush Stream	out	error out
+23810	Create Network Stream Writer Endpoint	10	reader url
+23810	Create Network Stream Writer Endpoint	11	writer name
+23810	Create Network Stream Writer Endpoint	3	writer endpoint
+23810	Create Network Stream Writer Endpoint	7	writer buffer size
+23810	Create Network Stream Writer Endpoint	9	data type
+23810	Create Network Stream Writer Endpoint	out	error out
+23811	Create Network Stream Reader Endpoint	10	writer url
+23811	Create Network Stream Reader Endpoint	11	reader name
+23811	Create Network Stream Reader Endpoint	3	reader endpoint
+23811	Create Network Stream Reader Endpoint	7	reader buffer size
+23811	Create Network Stream Reader Endpoint	9	data type
+23811	Create Network Stream Reader Endpoint	out	error out
+23798	Write Single Element to Stream	4	timed out?
+23808	Flush Stream	1	timed out?

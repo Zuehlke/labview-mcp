@@ -1,0 +1,131 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/23810" source="&lt;labview&gt;\examples\Data Communication\Network Streams\Simple Network Streams\Simple Network Streams - Host.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="UsrDefndTag" Ident="NetworkStream" FirstClient="1" TypeName="DataExchange" Format="inline" Label="writer name"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="UserDefined" Format="inline"><Ident>DataExchange</Ident>
+        <LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          <Attributes>
+            <LVVariant Name="NI_VAR_ACCESS" HasVarItem2="1" VarType2="0" Version="auto">
+              <DataType Index="0" Type="NumUInt32" Prop1="0" Format="inline" />
+              <DataFill>
+                <U32>2</U32>
+                </DataFill>
+              </LVVariant>
+            <LVVariant Name="NI_VAR_DATATYPE" HasVarItem2="1" VarType2="2" Version="auto">
+              <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" />
+              <DataType Index="1" Type="LVVariant" Format="inline" Label="Message Data" />
+              <DataType Index="2" Type="TypeDef" Flag1="0x0" Format="inline">
+                <TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster">
+                  <TypeDesc TypeID="0" />
+                  <TypeDesc TypeID="1" />
+                  </TypeDesc>
+                <Label Text="Network Stream Command.ctl" />
+                </DataType>
+              <DataFill>
+                <TypeDef>
+                  <Cluster>
+                    <String />
+                    <LVVariant HasVarItem2="1" VarType2="0" Version="auto">
+                      <DataType Index="0" Type="Void" Format="inline" />
+                      <DataFill>
+                        <Void />
+                        </DataFill>
+                      </LVVariant>
+                    </Cluster>
+                  </TypeDef>
+                </DataFill>
+              </LVVariant>
+            </Attributes>
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="timeout in ms (-1)" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="element allocation mode" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="writer buffer size" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" /><TypeDesc Type="LVVariant" Format="inline" Label="Message Data" /></TypeDesc><Label Text="Network Stream Command.ctl" />
+        </TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="reader url" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="writer name" /></types><heap><SL__arrayElement class="prim" uid="1804">
+        <objFlags>640</objFlags>
+        <termList elements="9">
+          <SL__arrayElement class="term" uid="1811">
+            <dco class="parm" uid="1807">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(101)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>558</primIndex>
+              <inplace>6</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1818">
+            <dco class="parm" uid="1812">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(102)</typeDesc>
+              <termBounds>(0, 24, 8, 32)</termBounds>
+              <primIndex>558</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1822">
+            <dco class="parm" uid="1819">
+              <typeDesc>TypeID(103)</typeDesc>
+              <termBounds>(0, 16, 16, 24)</termBounds>
+              <primIndex>558</primIndex>
+              <parmIndex>5</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1835">
+            <dco class="parm" uid="1829">
+              <typeDesc>TypeID(104)</typeDesc>
+              <termBounds>(16, 8, 32, 16)</termBounds>
+              <primIndex>558</primIndex>
+              <parmIndex>6</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1841">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1836">
+              <typeDesc>TypeID(105)</typeDesc>
+              <termBounds>(0, 8, 16, 16)</termBounds>
+              <primIndex>558</primIndex>
+              <parmIndex>7</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1848">
+            <dco class="parm" uid="1844">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(106)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>558</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1856">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1853">
+              <typeDesc>TypeID(107)</typeDesc>
+              <termBounds>(16, 0, 24, 8)</termBounds>
+              <primIndex>558</primIndex>
+              <parmIndex>9</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1862">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1857">
+              <typeDesc>TypeID(108)</typeDesc>
+              <termBounds>(8, 0, 16, 8)</termBounds>
+              <primIndex>558</primIndex>
+              <parmIndex>10</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1871">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="1865">
+              <typeDesc>TypeID(109)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>558</primIndex>
+              <parmIndex>11</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(712, 438, 744, 470)</bounds>
+        <shortCount>14</shortCount>
+        <clumpNum>196611</clumpNum>
+        <primResID>23810</primResID>
+        <primIndex>558</primIndex>
+        </SL__arrayElement>
+      </heap></part>

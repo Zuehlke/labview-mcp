@@ -2786,3 +2786,18 @@ tools/pylabview/runtime/python.exe experiments/aixml-without-grpc/compare_with_n
 tools/pylabview/runtime/python.exe experiments/aixml-without-grpc/coverage.py
 tools/pylabview/runtime/python.exe experiments/aixml-without-grpc/call_coverage.py
 ```
+
+### t136 needs its panel ACTIVATED, and the driver does it now (2026-10-21)
+
+`t136_application_events` failed in every suite run since it was written, the composed VI as much
+as anything: `VI Activation` fires when a VI's window becomes the desktop's ACTIVE window, and the
+suite ran LabVIEW in the background, where the panel the VI opens itself never becomes active.
+`lv-com.ps1 -Post activate` makes it so - an Alt press and release (Windows refuses
+`SetForegroundWindow` to a background process otherwise), `ShowWindow(SW_RESTORE)`,
+`BringWindowToTop`, `SetForegroundWindow` on the panel - and the case posts it. Two runs in a row:
+`Last Frame=1, Self=True, Window=0`, against FAIL in every earlier run on this branch and on `main`.
+It takes the desktop's focus for a moment. `t140_xcontrol_facade` read STALE in the same run for an
+unrelated reason - an XControl served from memory by an earlier run under `--no-restart` - and
+PASSes on a fresh LabVIEW (`Degrees Fahrenheit=212`), which the suite starts by itself without
+`--no-restart`.
+

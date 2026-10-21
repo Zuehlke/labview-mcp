@@ -47,3 +47,9 @@ primResID	name	seen	primIndex
 23066	Text to UTF-8	1	
 23067	UTF-8 to Text	1	
 24135	Preallocated Read from Binary File	1	
+23794	Destroy Stream Endpoint	4	
+23797	Read Single Element from Stream	2	
+23798	Write Single Element to Stream	4	
+23808	Flush Stream	4	
+23810	Create Network Stream Writer Endpoint	2	
+23811	Create Network Stream Reader Endpoint	2	

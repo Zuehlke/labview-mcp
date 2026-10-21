@@ -30,7 +30,7 @@ Where upstream has an outright defect, the fix goes in `patches\patches.json` an
 applies it to the **assembled copy**. `vendor\` stays byte-identical to upstream, so a new release
 can still be taken by copying the package over it.
 
-Two fixes, six entries.
+Four fixes, fifteen entries.
 
 `probe-table-guard`: `LVblock.py` calls `getNumRepeats()` on the probe table
 without checking it is a `RepeatedBlock`, and a VI whose probe table resolves to a `Cluster`,
@@ -49,6 +49,18 @@ NI's 509 class-linked examples (all but three LabVIEW 8.2 files) extract every L
 rebuild it byte-identical; it is also what lets the composer write class calls at all
 (`docs/aixml-backends.md`, "Calling a class DIRECTLY"). Both version bounds are bracketed by
 loading composed files in LabVIEW 2026 with and without each part.
+
+`variant-consolidation-*` (`LVdatafill.py`, `LVclasses.py`, 2026-10-21, issue #96): a variant
+inside a TYPE descriptor stores its types inline, and pylabview reads it so - but a variant in that
+variant's DEFAULT DATA was always read as if its types were VCTP indices, which upstream's own
+comment there calls a TODO. A Network Stream endpoint refnum is exactly that shape (its tag's
+`NI_VAR_DATATYPE` attribute holds the stream's data type, and a cluster with a variant element puts
+a nested variant in it), so every VI with an endpoint failed to extract - NI's own *Simple Network
+Streams* example included - with `TypeError: object of type 'NoneType' has no len()` on
+`TDObjectTag.ident`, the third error of a chain. `typedef-datafill-error-name` fixes the second: a
+`NameError` on an undefined `client` in the TypeDef data-fill's error handler, which hid the real
+exception. Swept over 1 824 VIs (every example plus the stream VIs in `vi.lib`), old against new
+runtime: 2 fixed, 0 broken, every other extract byte-identical. `docs/network-streams.md`.
 
 **The failure mode the mechanism is built against is silence.** A Find/Replace against a line of
 upstream source stops matching when upstream edits that line - and then the bundle assembles
@@ -74,7 +86,11 @@ The Python runtime. `provision.ps1` assembles it into `runtime\`, about **32 MB*
 stays out of git: 32 MB of binaries do not belong in version control, and a runtime assembled from
 whatever CPython the machine has is more honest than a pinned copy that silently rots.
 
-`runtime\` is in `.gitignore`.
+`runtime\` is in `.gitignore`. **But 659 of its files ARE tracked** (measured 2026-10-21 with
+`git ls-files tools/pylabview/runtime`) - added past the ignore rule at some point - so a
+re-provisioning shows up as a diff: the patched `app\pylabview\*.py`, `bundle.json`, and deleted
+stdlib `__pycache__` files. Commit the first two with the patch that changed them; restore the
+`.pyc` files (`git ls-files -d tools/pylabview/runtime | xargs git checkout --`).
 
 ## Why a real CPython has to travel with us
 

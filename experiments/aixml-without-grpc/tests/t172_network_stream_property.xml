@@ -1,0 +1,24 @@
+<VI _name="T172 Network Stream Property.vi" description="Sends one double through a Network Stream inside one VI, then reads the reader endpoint's Buffer Size and Available Elements for Reading through a Property Node on the tag refnum - composed with no NI service. Issue #96.">
+  <Control _name="error in" outputs="value:4200.value" type="cluster{bool.status,int32.code,string.source}" uid="4200" uid_parent="root" value="[false,0,]" conIdx="11" connection="recommended"/>
+  <Constant _name="reader name" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value="t172_{stamp}_r"/>
+  <Constant _name="writer name" outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value="t172_{stamp}_w"/>
+  <Constant _name="reader url" outputs="value:4203.value" type="string" uid="4203" uid_parent="root" value="//localhost/t172_{stamp}_r"/>
+  <Constant _name="data type" outputs="value:4204.value" type="double" uid="4204" uid_parent="root" value="0"/>
+  <Constant _name="data in" outputs="value:4205.value" type="double" uid="4205" uid_parent="root" value="42.5"/>
+  <Constant _name="timeout ms" outputs="value:4206.value" type="int32" uid="4206" uid_parent="root" value="5000"/>
+  <Constant _name="buffer size" outputs="value:4207.value" type="int32" uid="4207" uid_parent="root" value="10"/>
+  <Node _name="Create Network Stream Reader Endpoint" inputs="reader name:4201.value,reader buffer size:4207.value,data type:4204.value,error in (no error):4200.value" outputs="reader endpoint:4210.reader endpoint,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Create Network Stream Writer Endpoint" inputs="writer name:4202.value,writer buffer size:4207.value,reader url:4203.value,data type:4204.value,error in (no error):4200.value" outputs="writer endpoint:4211.writer endpoint,error out:4211.error out" uid="4211" uid_parent="root"/>
+  <Node _name="Write Single Element to Stream" inputs="endpoint in:4211.writer endpoint,data in:4205.value,error in (no error):4211.error out" outputs="endpoint out:4212.endpoint out,error out:4212.error out" uid="4212" uid_parent="root"/>
+  <Node _name="Flush Stream" inputs="endpoint in:4212.endpoint out,error in (no error):4212.error out" outputs="endpoint out:4213.endpoint out,error out:4213.error out" uid="4213" uid_parent="root"/>
+  <Node _name="Read Single Element from Stream" inputs="endpoint in:4210.reader endpoint,timeout ms (-1):4206.value,error in (no error):4210.error out" outputs="endpoint out:4214.endpoint out,data out:4214.data out,error out:4214.error out" uid="4214" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Buffer Size,read+Available Elements for Reading" inputs="reader endpoint:4214.endpoint out,error in (no error):4214.error out" outputs="Buffer Size:4218.size,Available Elements for Reading:4218.available,reader endpoint:4218.reader out,error out:4218.error out" type="{GenClassTag.NetworkStream.DataExchange}" uid="4218" uid_parent="root"/>
+  <Node _name="Destroy Stream Endpoint" inputs="endpoint in:4213.endpoint out,error in (no error):4213.error out" outputs="error out:4215.error out" uid="4215" uid_parent="root"/>
+  <Node _name="Destroy Stream Endpoint" inputs="endpoint in:4218.reader out,error in (no error):4218.error out" outputs="error out:4216.error out" uid="4216" uid_parent="root"/>
+  <Node _name="Merge Errors" inputs="error in:4215.error out,error in:4216.error out" outputs="error out:4217.error out" uid="4217" uid_parent="root"/>
+  <Indicator _name="buffer" inputs="value:4218.size" type="int32" uid="4222" uid_parent="root" value="0" conIdx="0" connection="recommended"/>
+  <Indicator _name="available" inputs="value:4218.available" type="int32" uid="4219" uid_parent="root" value="0" conIdx="1" connection="recommended"/>
+  <Indicator _name="data out" inputs="value:4214.data out" type="double" uid="4220" uid_parent="root" value="0" conIdx="2" connection="recommended"/>
+  <Indicator _name="error out" inputs="value:4217.error out" type="cluster{bool.status,int32.code,string.source}" uid="4221" uid_parent="root" value="[false,0,]" conIdx="15" connection="recommended"/>
+  <FreeLabel comment="Stream state read through a tag refnum" uid="0" uid_parent="root"/>
+</VI>

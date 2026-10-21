@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/23794" source="&lt;labview&gt;\examples\Data Communication\Network Streams\Simple Network Streams\Simple Network Streams - Host.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="UsrDefndTag" Ident="NetworkStream" FirstClient="1" TypeName="DataExchange" Format="inline" Label="writer name"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="UserDefined" Format="inline"><Ident>DataExchange</Ident>
+        <LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          <Attributes>
+            <LVVariant Name="NI_VAR_ACCESS" HasVarItem2="1" VarType2="0" Version="auto">
+              <DataType Index="0" Type="NumUInt32" Prop1="0" Format="inline" />
+              <DataFill>
+                <U32>2</U32>
+                </DataFill>
+              </LVVariant>
+            <LVVariant Name="NI_VAR_DATATYPE" HasVarItem2="1" VarType2="2" Version="auto">
+              <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Message" />
+              <DataType Index="1" Type="LVVariant" Format="inline" Label="Message Data" />
+              <DataType Index="2" Type="TypeDef" Flag1="0x0" Format="inline">
+                <TypeDesc Type="Cluster" Nested="True" Format="inline" Label="Message Cluster">
+                  <TypeDesc TypeID="0" />
+                  <TypeDesc TypeID="1" />
+                  </TypeDesc>
+                <Label Text="Network Stream Command.ctl" />
+                </DataType>
+              <DataFill>
+                <TypeDef>
+                  <Cluster>
+                    <String />
+                    <LVVariant HasVarItem2="1" VarType2="0" Version="auto">
+                      <DataType Index="0" Type="Void" Format="inline" />
+                      <DataFill>
+                        <Void />
+                        </DataFill>
+                      </LVVariant>
+                    </Cluster>
+                  </TypeDef>
+                </DataFill>
+              </LVVariant>
+            </Attributes>
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="2151">
+        <objFlags>512</objFlags>
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="2161">
+            <dco class="parm" uid="2159">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(117)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>556</primIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2164">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="2162">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(118)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>556</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="2167">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="2165">
+              <typeDesc>TypeID(119)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>556</primIndex>
+              <parmIndex>11</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(712, 1284, 744, 1316)</bounds>
+        <shortCount>38</shortCount>
+        <clumpNum>196611</clumpNum>
+        <primResID>23794</primResID>
+        <primIndex>556</primIndex>
+        </SL__arrayElement>
+      </heap></part>

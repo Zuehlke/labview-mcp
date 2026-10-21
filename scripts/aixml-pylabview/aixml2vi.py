@@ -786,6 +786,48 @@ def unescape(s):
     return "".join(out)
 
 
+# Heap classes read and composed as primitives. The Network Streams' Write/Read Single Element
+# nodes are sharedVariableDynamicWrite/Read: a resource ID in hex (SharedVariableDynamicResID 5CF6
+# = 23798, beside the stream prims 23794-23811) and each input's slot as a hex terminal_ID where a
+# prim writes a decimal parmIndex (issue #96, 2026-10-21).
+PRIM_CLASSES = ("prim", "sharedVariableDynamicRead", "sharedVariableDynamicWrite")
+
+
+def tag_class(tree, node_name=None):
+    """The VI Server class NI's exporter writes for a property or invoke node on a user-defined TAG
+    refnum (RefType UsrDefndTag): `GenClassTag.<Ident>.<TypeName>` - `NetworkStream.DataExchange`,
+    `nisyscfgSession.nisyscfg` - except DAQmx, whose one `Task` refnum carries five property classes
+    and is named by the NODE: `GenClassTag.DAQmx Timing.NIDAQ` (learn_node_classes.py over 21 VIs,
+    98 nodes, 2026-10-21; issue #96). None for any other refnum."""
+    if tree is None or tree.get("RefType") != "UsrDefndTag" or not tree.get("TypeName"):
+        return None
+    node_name = (node_name or "").strip('"')
+    if tree.get("TypeName") == "NIDAQ" and node_name:
+        return "GenClassTag.%s.%s" % (node_name, tree.get("TypeName"))
+    if tree.get("Ident"):
+        return "GenClassTag.%s.%s" % (tree.get("Ident"), tree.get("TypeName"))
+    return "GenClassTag.%s.%s" % (node_name, tree.get("TypeName")) if node_name else None
+
+
+def prim_res_id(node):
+    """A primitive-like node's resource ID as the name tables key it (decimal text), or None."""
+    rid = node.findtext("primResID")
+    if rid is None and node.findtext("SharedVariableDynamicResID"):
+        rid = str(int(node.findtext("SharedVariableDynamicResID"), 16))
+    return rid
+
+
+def term_slot(dco, node_class="prim"):
+    """A primitive terminal's slot as the name tables key it: its parmIndex, else - on a
+    sharedVariableDynamic node - its hex terminal_ID in decimal, else 'out'."""
+    pidx = dco.findtext("parmIndex")
+    if pidx:
+        return pidx
+    if node_class != "prim" and dco.findtext("terminal_ID"):
+        return str(int(dco.findtext("terminal_ID"), 16))
+    return "out"
+
+
 def pairs(attr):
     """'x:5.value,y:7.out' -> [('x', '5.value'), ('y', '7.out')]; an empty net is None."""
     out = []
@@ -1071,9 +1113,18 @@ class Parts:
         # A part harvested before 2026-10-10 may carry its DONOR's type ids inside a typedef's
         # inline type (lvheap.Bundle._inline); composed from, it yields a VI whose typedef points
         # at unrelated types and loads broken. Refused by name - repair_nested_types.py fixes it.
+        # NOT inside an LVVariant: a variant that stores its types inline numbers them in its OWN
+        # list (<DataType Index="0">), and a typedef there names them by that index - a Network
+        # Stream endpoint's NI_VAR_DATATYPE does (issue #96, 2026-10-21).
+        def outside_variants(el):
+            for c in el:
+                if c.tag != "LVVariant":
+                    yield c
+                    yield from outside_variants(c)
         for t in types:
-            for n in t.iter("TypeDesc"):
-                if n.get("Nested") == "True" and any(c.tag == "TypeDesc" and c.get("TypeID") is not None for c in n):
+            for n in [t] + list(outside_variants(t)):
+                if n.tag == "TypeDesc" and n.get("Nested") == "True" and \
+                        any(c.tag == "TypeDesc" and c.get("TypeID") is not None for c in n):
                     raise Unsupported("part %s carries its donor's type ids inside a typedef - run "
                                       "repair_nested_types.py on %s" % (key, self.d))
         heap = copy.deepcopy(list(root.find("heap"))[0])
@@ -2421,7 +2472,7 @@ class Composer:
         terms = [t for t in prim.find("termList") if t.get("class") == "term"]
         by_name = {}
         for t in terms:
-            pidx = t.find("dco").findtext("parmIndex") or "out"
+            pidx = term_slot(t.find("dco"), prim.get("class"))
             tname = self.term_names.get((rid, pidx))
             if tname is None:
                 # a terminal the name tables do not know is only a problem when the AIXML WIRES
@@ -2462,7 +2513,7 @@ class Composer:
         # type: a string notification typed `error out` String and the VI went "from good to bad
         # after compiling" (t154, 2026-10-12)
         for i, t in enumerate(terms):
-            if self.term_names.get((rid, t.find("dco").findtext("parmIndex") or "out")) in \
+            if self.term_names.get((rid, term_slot(t.find("dco"), prim.get("class")))) in \
                     ("error in (no error)", "error in", "error out"):
                 canon[i] = b"error terminal %d" % i
         wired_in = {}
@@ -2576,6 +2627,26 @@ class Composer:
             out_term = next(t for t in terms if int(t.find("dco").findtext("objFlags") or 0) & 1)
             arr_net = next((n for k, n in ins if k.lower() == "array"), None)
             new_types[idx_of[id(out_term)]] = self._array_to_cluster_type(el, arr_net)
+        # A Network Stream's DATA TYPE travels with its endpoint: the parts carry their donor's
+        # (the Host example's, which reads waveform arrays), and LabVIEW re-derives the refnum
+        # from `data type` on load - but a node AFTER Read Single Element needs `data out` typed
+        # at compose time: the Target example's Unbundle By Name met the donor's array (issue
+        # #96, 2026-10-21). So the type wired into Create ... Endpoint follows the endpoint
+        # wire through Write/Read/Flush and a tag property node, and types `data out`.
+        stream_types = self.__dict__.setdefault("stream_types", {})
+        insd, outsd = dict(ins), dict(outs)
+        if name in ("Create Network Stream Writer Endpoint", "Create Network Stream Reader Endpoint"):
+            st = self.net_type.get(insd.get("data type")) if insd.get("data type") else None
+            for o in ("writer endpoint", "reader endpoint"):
+                if st is not None and outsd.get(o):
+                    stream_types[outsd[o]] = st
+        elif name in ("Read Single Element from Stream", "Write Single Element to Stream", "Flush Stream"):
+            st = self._stream_type(insd.get("endpoint in"))
+            if st is not None:
+                if outsd.get("endpoint out"):
+                    stream_types[outsd["endpoint out"]] = st
+                if name == "Read Single Element from Stream" and "data out" in by_name:
+                    new_types[idx_of[id(by_name["data out"])]] = plain(lvheap.strip_label(copy.deepcopy(st)))
         for tname, net in outs:
             if net:
                 self.net_type[net] = new_types[idx_of[id(by_name[tname])]]
@@ -2604,6 +2675,54 @@ class Composer:
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
         diag.placed.append((prim, el))
         self.report.append("Node %r = primResID %s <- %s" % (name, rid, src))
+
+    STREAM_PASS = {"Read Single Element from Stream": ("endpoint in", "endpoint out"),
+                   "Write Single Element to Stream": ("endpoint in", "endpoint out"),
+                   "Flush Stream": ("endpoint in", "endpoint out")}
+
+    def _stream_type(self, net, depth=0):
+        """The data type of the Network Stream whose endpoint travels on `net`, followed BACK
+        through the AIXML - shift registers, tunnels, stream nodes, a tag property node - to the
+        `data type` wired into its Create ... Endpoint. Read off the document, not off what is
+        composed so far: the Target example's Read sits in a loop and its endpoint arrives
+        through a shift register (`<Left inputs="value:82.reader endpoint">`). None when unknown."""
+        st = self.__dict__.get("stream_types", {}).get(net)
+        if st is not None or not net or depth > 20:
+            return st
+        for e in self._by_uid.values():
+            if e.tag in ("Left", "Right", "Tunnel"):
+                srcs, sinks = self.endpoints(e)
+                if any(n == net for n, _ in srcs):
+                    for n, _ in sinks:
+                        r = self._stream_type(n, depth + 1)
+                        if r is not None:
+                            return r
+            elif e.tag == "Node":
+                nm = unescape(e.get("_name") or "")
+                outs = dict(pairs(e.get("outputs")))
+                ins = dict(pairs(e.get("inputs")))
+                if nm in ("Create Network Stream Writer Endpoint", "Create Network Stream Reader Endpoint") \
+                        and net in (outs.get("writer endpoint"), outs.get("reader endpoint")) and ins.get("data type"):
+                    return self.net_type.get(ins["data type"]) or self._constant_type(ins["data type"])
+                if nm in self.STREAM_PASS and outs.get(self.STREAM_PASS[nm][1]) == net:
+                    return self._stream_type(ins.get(self.STREAM_PASS[nm][0]), depth + 1)
+                if nm == "Property Node" and (e.get("type") or "").startswith("{GenClassTag."):
+                    errs = ("error in (no error)", "error in", "error out")
+                    fields_ = {unescape(f).partition("+")[2] for f in split_top(e.get("fields") or "") if f}
+                    if any(n == net and t not in errs and t not in fields_ for t, n in pairs(e.get("outputs"))):
+                        ref = next((n for t, n in pairs(e.get("inputs")) if t not in errs and t not in fields_), None)
+                        return self._stream_type(ref, depth + 1)
+        return None
+
+    def _constant_type(self, net):
+        """The declared type of the Constant or Control driving `net`, from its AIXML `type`."""
+        for e in self._by_uid.values():
+            if e.tag in ("Constant", "Control") and any(n == net for _, n in pairs(e.get("outputs"))):
+                try:
+                    return type_tree(e.get("type"))
+                except Exception:
+                    return None
+        return None
 
     # A primitive that takes its input WHOLE: its output does not follow the input's array shape
     # (Flatten To XML's `xml string` stays one string for an array in - the shape rule above made
@@ -2666,8 +2785,31 @@ class Composer:
         return t
 
     @staticmethod
+    def _tag_reference_names(el):
+        """NI's export names a TAG refnum node's reference terminals after the refnum wired into
+        it - `writer name`/`writer name`, `System Session`/`System Session out`, `task out`/`task
+        out` (every GenClassTag node in the cached exports) - where a VI Server node says
+        `reference`/`reference out`. So on such a node the one input that is not the error
+        cluster IS the reference, and an output that is neither a field nor `error out` is its
+        `reference out`; both are renamed here so the rest composes as for any class."""
+        fields_ = {unescape(f).partition("+")[2] for f in split_top(el.get("fields") or "") if f}
+        for attr, err, role in (("inputs", ("error in (no error)", "error in"), "reference"),
+                                ("outputs", ("error out",), "reference out")):
+            items = []
+            for item in (el.get(attr) or "").split(","):
+                if not item:
+                    continue
+                term, _, net = item.rpartition(":")
+                name = unescape(term)
+                if name not in err and name not in fields_ and name != role:
+                    term = role
+                items.append("%s:%s" % (term, net))
+            if items:
+                el.set(attr, ",".join(items))
+
+    @staticmethod
     def _vi_server_class(el):
-        m = re.fullmatch(r"\{(LV\.[A-Za-z0-9]+)\}", (el.get("type") or "").strip())
+        m = re.fullmatch(r"\{(LV\.[A-Za-z0-9]+|GenClassTag\.[^.{}]+\.[^{}]+)\}", (el.get("type") or "").strip())
         if not m:
             raise Unsupported("%s %s: class %r is not composable yet" % (el.get("_name"), el.get("uid"), el.get("type")))
         return m.group(1)
@@ -2830,6 +2972,9 @@ class Composer:
         class as VoidBlock{refnum} (omidTypeDesc) - measured on an AIXML-generated probe."""
         self.check_attrs(el, ("fields", "type", "link"))
         cls = self._vi_server_class(el)
+        tag = cls.startswith("GenClassTag.")
+        if tag:
+            self._tag_reference_names(el)
         table = self._vi_server_table()
         crow = table["classes"].get(cls)
         if crow is None:
@@ -2899,7 +3044,31 @@ class Composer:
         ins0 = dict(pairs(el.get("inputs")))
         wired_ref = self.net_type.get(ins0.get("reference")) if ins0.get("reference") else None
         strict = wired_ref is not None and wired_ref.get("Type") == "Refnum" and fields(wired_ref)
-        if strict:
+        if tag:
+            # a TAG refnum's node is typed with the refnum WIRED into it, which carries more than
+            # the class - a Network Stream endpoint holds its data type in NI_VAR_DATATYPE - and
+            # NI's node there reads objFlags 131584 (Simple Network Streams - Host.vi, issue #96)
+            if wired_ref is not None and wired_ref.get("RefType") == "UsrDefndTag":
+                ref_tree = lvheap.strip_label(wired_ref)
+            elif cls.endswith(".NIDAQ"):
+                # DAQmx's class names the NODE, not the refnum (a Task's Timing properties): with
+                # nothing wired there is no task refnum to type the node with
+                raise Unsupported("Property Node %s: a %s node needs its task wired into `reference`"
+                                  % (el.get("uid"), cls))
+            node.find("objFlags").text = "131584"
+            strict = True
+        # the CLASS the node and its items name (oMId, omidTypeDesc): the wired refnum itself where
+        # the class is named by it, but for DAQmx a refnum of the NODE's class - Ident "DAQmx Task",
+        # FirstClient 0, no Tag, a Void variant - on a node of objFlags 4608, read off NI's
+        # Strain (Rosette) - SW-Timed Input.vi; the wired Task refnum there was "Invalid property"
+        class_tree = ref_tree
+        if tag and cls.endswith(".NIDAQ"):
+            class_tree = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "UsrDefndTag",
+                                                 "Ident": cls.split(".")[1], "FirstClient": "0",
+                                                 "TypeName": "NIDAQ", "Format": "inline"})
+            class_tree.append(_void_variant())
+            node.find("objFlags").text = "4608"
+        elif strict:
             # behind a STRICTLY TYPED control reference (VI Server Reference element=...) the
             # node is typed with that refnum, its oMId names it, and its objFlags are 640, not
             # 0x2000280 (measured on an AIXML-generated probe, probes/pvsr.xml)
@@ -2959,11 +3128,23 @@ class Composer:
                 info = copy.deepcopy(template)
                 if len(levels) > 1:
                     lvheap.renumber(info, self.alloc)
-                decl = refnum_type(lvl.get("declaredBy") or cls, plain_class=True)
+                # a tag refnum's item names the WIRED refnum as its declaring class, and its data
+                # type may differ from the terminal's (I32 terminal, U32 dataTypeDesc on a Network
+                # Stream's Available Elements for Reading), as may its objFlags (4096)
+                decl = copy.deepcopy(class_tree) if tag else refnum_type(lvl.get("declaredBy") or cls, plain_class=True)
                 vb = ET.Element("TypeDesc", {"Type": "VoidBlock", "Format": "inline"})
                 vb.append(decl)
                 info.find("omidTypeDesc").text = "TypeID(%d)" % self.heap_tid(vb)
-                info.find("dataTypeDesc").text = "TypeID(%d)" % self.heap_tid(ET.fromstring(lvl["type"]))
+                info.find("dataTypeDesc").text = "TypeID(%d)" % self.heap_tid(
+                    ET.fromstring(lvl.get("dataType") or lvl["type"]))
+                if lvl.get("infoFlags") is not None:
+                    of = info.find("objFlags")
+                    if of is None:
+                        of = ET.Element("objFlags")
+                        info.insert(0, of)
+                    of.text = str(lvl["infoFlags"])
+                elif tag and info.find("objFlags") is not None:
+                    info.remove(info.find("objFlags"))
                 # an ALIAS row (alias_props.py) maps NI's export name onto the one LabVIEW stores:
                 # "Block Diagram Window:Open" is "BDWin.Open" in the heap
                 info.find("PropItemName").text = '"%s"' % (lvl.get("heapName") or lvl.get("_name") or name)
@@ -3007,12 +3188,15 @@ class Composer:
                         t.remove(tf)
         if outs.get("reference out"):
             self.net_type[outs["reference out"]] = ref_tree
+            st = self.__dict__.get("stream_types", {}).get(ins.get("reference")) if tag else None
+            if st is not None:
+                self.stream_types[outs["reference out"]] = st      # the endpoint passes through
         if outs.get("error out"):
             self.net_type[outs["error out"]] = type_tree("cluster{bool.status,int32.code,string.source}")
         b = lvheap.parse_bounds(node.find("bounds").text)
         node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + 18 + 16 * len(items) + 1, b[1] + width))
         node.find("nodeName").text = '"%s"' % crow["nodeName"]
-        node.find("oMId").text = self._om_id_of(ref_tree) if strict else self._om_id(cls)
+        node.find("oMId").text = self._om_id_of(class_tree) if strict else self._om_id(cls)
         if linked:
             node.find("ddo").set("uid", linked[2].find("ddo").get("uid"))
             lab = node.find("label")

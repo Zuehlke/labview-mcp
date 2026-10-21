@@ -1212,7 +1212,7 @@ route**: measured over the `scripts` documents, the composer builds 9 with the p
 blocked 28 - 39 of 82 after the repairs, 70 after the typedef and control-reference work, and
 **78 of 82 - all executable, 12 of 12 output-identical to NI's, every helper a tool runs and the
 user-event skeleton - after the remaining blockers**, recorded in FINDINGS §7a, with the composer's
-own suite at 147 of 148 cases (`VI Activation` fires only with the desktop's focus) - control references as event sources, frames handling several events,
+own suite at 147 of 148 cases (`VI Activation` fires only when the panel window becomes the desktop's ACTIVE window - `t136` passes since 2026-10-21, its case posting `activate` through `lv-com.ps1`, which brings the panel to the front) - control references as event sources, frames handling several events,
 static mouse events, the events only a graph has and filter events with their Event Filter Node
 included (a filter frame WITHOUT that node is broken, so the composer adds one; several filter events
 share a frame only where LabVIEW's own load accepts it - the same event, or identical data and
@@ -3020,6 +3020,7 @@ literally it argued away 600 usable palette VIs.
 | How do I generate a VI in one call? | `docs/bulk-operations.md` | `lvai_generate_vi` |
 | How do I run a whole pylabview edit in one call? | `docs/bulk-operations.md` | `pylv_apply` |
 | A pylabview-edited VI returns a WRONG result with no error, or crashes 64-bit LabVIEW | `docs/pylabview-stale-compiled-code.md` | `pylv_apply` strips the compiled code since 2026-09-29. Check a file by its OWN resource map (`RsrcMap.Lists`), NOT a byte grep for `VICD`: a VI that embeds a malleable VI carries the instance's VICD inside its VINS block - an AF message's `Do.vi` does, and a grep called two source-only `Do.vi` compiled on 2026-10-17 |
+| A VI with NETWORK STREAMS fails on the pylabview backend, or will not generate on gRPC | `docs/network-streams.md` | fixed in `patches.json` (`variant-consolidation-*`); NI's converter refuses Write/Read Single Element, the composer builds them, and property nodes on tag refnums (endpoint, DAQmx, nisyscfg) since the same day; `buffer size` is a required input |
 | When is pylabview the route, not AIXML? | `experiments/pylabview/ROUTING.md` (source tree only) | `pylv_route` |
 | How much of a codebase is outside AIXML? | `docs/aixml-gap-census.md` | — |
 | Where does a session's time actually go, and what should we build next? | `docs/workflow-economics.md` | — |
