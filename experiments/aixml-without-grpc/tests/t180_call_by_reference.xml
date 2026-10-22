@@ -1,0 +1,7 @@
+<VI _name="T180 Call By Reference.vi" description="Call By Reference on a strictly typed static reference to Clear Errors.vi, the pane read off the wired reference: an error into the callee comes back cleared.">
+  <Node _name="Static VI Reference" outputs="value:4500.value" strict="true" target="Clear Errors.vi" uid="4500" uid_parent="root"/>
+  <Constant _name="error 5" outputs="value:4520.value" type="cluster{bool.status,int32.code,string.source}" uid="4520" uid_parent="root" value="[true,5,probe]"/>
+  <Node _name="Call By Reference" inputs="reference:4500.value,error in (no error):,error in (no error):4520.value" outputs="reference out:,error out:4510.err,error out:4510.err2" uid="4510" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4510.err" type="cluster{bool.status,int32.code,string.source}" uid="4600" uid_parent="root" value="[false,0,]"/>
+  <Indicator _name="cleared" inputs="value:4510.err2" type="cluster{bool.status,int32.code,string.source}" uid="4610" uid_parent="root" value="[false,0,]"/>
+</VI>

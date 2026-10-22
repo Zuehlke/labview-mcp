@@ -1,0 +1,5 @@
+<VI _name="T181 Array Size 2D.vi" description="Array Size of a 2D array returns one size per dimension.">
+  <Constant _name="m" outputs="value:4200.value" type="array.2{double}" uid="4200" uid_parent="root" value="[[1,2,3],[4,5,6]]"/>
+  <Node _name="Array Size" inputs="array:4200.value" outputs="size(s):4300.size(s)" uid="4300" uid_parent="root"/>
+  <Indicator _name="sizes" inputs="value:4300.size(s)" type="array{int32}" uid="4310" uid_parent="root" value="[]"/>
+</VI>

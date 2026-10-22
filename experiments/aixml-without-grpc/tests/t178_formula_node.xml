@@ -1,0 +1,9 @@
+<VI _name="T178 Formula Node.vi" description="A Formula Node with two inputs, a declared int32 output, an undeclared double output and a variable both read and written.">
+  <Control _name="x" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="y" outputs="value:4210.value" type="double" uid="4210" uid_parent="root" value="0"/>
+  <Control _name="a" outputs="value:4220.value" type="int32" uid="4220" uid_parent="root" value="0"/>
+  <Node _name="Formula Node" inputs="x:4200.value,y:4210.value,a:4220.value" outputs="z:4300.z,n:4300.n,a:4300.a" text="int32 n;\0Az = x*y + 1;\0An = x + y;\0Aa = a * 2;" uid="4300" uid_parent="root"/>
+  <Indicator _name="z" inputs="value:4300.z" type="double" uid="4310" uid_parent="root" value="0"/>
+  <Indicator _name="n" inputs="value:4300.n" type="int32" uid="4320" uid_parent="root" value="0"/>
+  <Indicator _name="a out" inputs="value:4300.a" type="int32" uid="4330" uid_parent="root" value="0"/>
+</VI>

@@ -1,0 +1,138 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/callByRefNode" source="Gaussian surface data.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="VI Refnum"><TypeDesc Type="Function" FuncFlags="0x300" Pattern="0x58" HasThrall="0" Format="inline"><TypeDesc Type="Cluster" Format="inline" Label="error out" ref.Flags="0x0900"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="f'(X,a)" ref.Flags="0x0900"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="f'(X,P)" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="f(X,a)" ref.Flags="0x0900"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="f'(X,P)" /></TypeDesc><TypeDesc Type="TypeDef" Flag1="0xBE524C2F" Format="inline" ref.Flags="0x0800"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="output control"><TypeDesc Type="Boolean" Format="inline" Label="model function" /><TypeDesc Type="Boolean" Format="inline" Label="gradient" /></TypeDesc><Label Text="NI_Gmath.lvlib" />
+        <Label Text="LM_output select.ctl" />
+        </TypeDesc><TypeDesc Type="LVVariant" Format="inline" Label="data" ref.Flags="0x0800" /><TypeDesc Type="Array" Format="inline" Label="X" ref.Flags="0x0800"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="a" ref.Flags="0x0800"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Numeric" /></TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="VI Refnum"><TypeDesc Type="Function" FuncFlags="0x300" Pattern="0x58" HasThrall="0" Format="inline"><TypeDesc Type="Cluster" Format="inline" Label="error out" ref.Flags="0x0900"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="f'(X,a)" ref.Flags="0x0900"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="f'(X,P)" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="f(X,a)" ref.Flags="0x0900"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="f'(X,P)" /></TypeDesc><TypeDesc Type="TypeDef" Flag1="0xBE524C2F" Format="inline" ref.Flags="0x0800"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="output control"><TypeDesc Type="Boolean" Format="inline" Label="model function" /><TypeDesc Type="Boolean" Format="inline" Label="gradient" /></TypeDesc><Label Text="NI_Gmath.lvlib" />
+        <Label Text="LM_output select.ctl" />
+        </TypeDesc><TypeDesc Type="LVVariant" Format="inline" Label="data" ref.Flags="0x0800" /><TypeDesc Type="Array" Format="inline" Label="X" ref.Flags="0x0800"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="a" ref.Flags="0x0800"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Numeric" /></TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="f'(X,a)"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="f'(X,P)" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="f(X,a)"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="f'(X,P)" /></TypeDesc><TypeDesc Type="TypeDef" Flag1="0xBE524C2F" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="output control"><TypeDesc Type="Boolean" Format="inline" Label="model function" /><TypeDesc Type="Boolean" Format="inline" Label="gradient" /></TypeDesc><Label Text="NI_Gmath.lvlib" />
+        <Label Text="LM_output select.ctl" />
+        </TypeDesc><TypeDesc Type="LVVariant" Format="inline" Label="data" /><TypeDesc Type="Array" Format="inline" Label="X"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="x" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="a"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Numeric" /></TypeDesc></types><heap><SL__arrayElement class="callByRefNode" uid="58">
+        <objFlags>640</objFlags>
+        <termList elements="11">
+          <SL__arrayElement class="term" uid="126">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="127">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(119)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="129">
+            <dco class="hGrowCItem" uid="130">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(120)</typeDesc>
+              <termBounds>(0, 30, 9, 43)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="132">
+            <objFlags>1</objFlags>
+            <dco class="hGrowCItem" uid="133">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(121)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="135">
+            <dco class="hGrowCItem" uid="136">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(122)</typeDesc>
+              <termBounds>(9, 30, 18, 43)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="138">
+            <objFlags>1</objFlags>
+            <dco class="iUseDCO" uid="139">
+              <objFlags>577</objFlags>
+              <typeDesc>TypeID(123)</typeDesc>
+              <termBounds>(44, 21, 55, 37)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="141">
+            <objFlags>1</objFlags>
+            <dco class="iUseDCO" uid="142">
+              <objFlags>577</objFlags>
+              <typeDesc>TypeID(124)</typeDesc>
+              <termBounds>(34, 21, 44, 37)</termBounds>
+              <paramIdx>1</paramIdx>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="144">
+            <objFlags>1</objFlags>
+            <dco class="iUseDCO" uid="145">
+              <objFlags>577</objFlags>
+              <typeDesc>TypeID(125)</typeDesc>
+              <termBounds>(23, 21, 34, 37)</termBounds>
+              <paramIdx>2</paramIdx>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="147">
+            <objFlags>1</objFlags>
+            <dco class="iUseDCO" uid="148">
+              <objFlags>576</objFlags>
+              <typeDesc>TypeID(126)</typeDesc>
+              <termBounds>(47, 5, 55, 21)</termBounds>
+              <paramIdx>3</paramIdx>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="150">
+            <objFlags>294913</objFlags>
+            <dco class="iUseDCO" uid="151">
+              <objFlags>576</objFlags>
+              <typeDesc>TypeID(127)</typeDesc>
+              <dsw>2048</dsw>
+              <termBounds>(39, 5, 47, 21)</termBounds>
+              <paramIdx>4</paramIdx>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="153">
+            <objFlags>32769</objFlags>
+            <dco class="iUseDCO" uid="154">
+              <objFlags>576</objFlags>
+              <typeDesc>TypeID(128)</typeDesc>
+              <termBounds>(31, 5, 39, 21)</termBounds>
+              <paramIdx>5</paramIdx>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="156">
+            <objFlags>32768</objFlags>
+            <dco class="iUseDCO" uid="157">
+              <objFlags>576</objFlags>
+              <typeDesc>TypeID(129)</typeDesc>
+              <termBounds>(23, 5, 31, 21)</termBounds>
+              <paramIdx>6</paramIdx>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(405, 128, 466, 171)</bounds>
+        <shortCount>10</shortCount>
+        <clumpNum>262149</clumpNum>
+        <connectorTM>TypeID(130)</connectorTM>
+        <paramTableOffset>4828</paramTableOffset>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="127" />
+          <SL__arrayElement uid="130" />
+          <SL__arrayElement uid="133" />
+          <SL__arrayElement uid="136" />
+          </permDCOList>
+        <oMId>0008</oMId>
+        <CBRExecAlias />
+        <CBRExecResolved />
+        <CBRRefPathAlias />
+        <CBRRefPath>505448300000000400000000</CBRRefPath>
+        <CBRCfgMode>00</CBRCfgMode>
+        </SL__arrayElement>
+      </heap></part>

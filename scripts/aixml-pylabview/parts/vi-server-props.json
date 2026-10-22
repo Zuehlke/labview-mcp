@@ -232,6 +232,10 @@
    "nodeName": "ExternalNode",
    "oMId": "0025"
   },
+  "LV.FacadeVI": {
+   "nodeName": "FcdVI",
+   "oMId": "000F"
+  },
   "LV.FixedConstant": {
    "nodeName": "FixCnst",
    "oMId": "0092"
@@ -384,6 +388,10 @@
    "nodeName": "LoopTun",
    "oMId": "0013"
   },
+  "LV.MixedCheckbox": {
+   "nodeName": "MixedCheckbox (strict)",
+   "oMId": "001B"
+  },
   "LV.MultiFrameStructure": {
    "nodeName": "MFStruct",
    "oMId": "0006"
@@ -532,6 +540,10 @@
    "nodeName": "SceneGraphDisp (strict)",
    "oMId": "0005"
   },
+  "LV.SceneLight": {
+   "nodeName": "SceneLight",
+   "oMId": "0008"
+  },
   "LV.SceneMesh": {
    "nodeName": "SceneMesh",
    "oMId": "0009"
@@ -543,6 +555,18 @@
   "LV.SceneSphere": {
    "nodeName": "SceneSphere",
    "oMId": "0011"
+  },
+  "LV.SceneText": {
+   "nodeName": "SceneText",
+   "oMId": "0003"
+  },
+  "LV.SceneTexture": {
+   "nodeName": "SceneTexture",
+   "oMId": "000E"
+  },
+  "LV.SceneWindow": {
+   "nodeName": "SceneWindow",
+   "oMId": "003F"
   },
   "LV.ScriptNode": {
    "nodeName": "ScptNode",
@@ -11152,6 +11176,22 @@
    "Transformation.Translate": {
     "code": 763851799,
     "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Axis Object\\Reset Label Strings.vi"
+   }
+  },
+  "LV.SceneText": {
+   "SetFontName": {
+    "code": 12610560,
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\make_string_object.vi"
+   }
+  },
+  "LV.SceneWindow": {
+   "Redraw": {
+    "code": 206955526,
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi"
+   },
+   "Setup Camera": {
+    "code": 206955520,
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi"
    }
   },
   "LV.ScriptNode": {
@@ -25341,6 +25381,14 @@
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
+   "Height": {
+    "access": "w",
+    "code": 104093711,
+    "declaredBy": "LV.ComboBox",
+    "label": "Height",
+    "source": "<labview>\\user.lib\\_MGI\\User Interface\\Path Selector XControl\\Class Hierarchy\\Resize Combobox.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Indicator": {
     "access": "r",
     "code": 104013831,
@@ -25532,6 +25580,24 @@
     "label": "",
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Size\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Size:Height": {
+    "access": "w",
+    "code": 104093711,
+    "declaredBy": "LV.ComboBox",
+    "heapName": "Height",
+    "label": "Height",
+    "source": "<labview>\\user.lib\\_MGI\\User Interface\\Path Selector XControl\\Class Hierarchy\\Resize Combobox.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Size:Width": {
+    "access": "rw",
+    "code": 104093710,
+    "declaredBy": "LV.ComboBox",
+    "heapName": "Width",
+    "label": "Width",
+    "source": "<labview>\\resource\\Framework\\Providers\\ProjectFindDlg\\ProjectFindDlg.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Skip When Tabbing": {
     "access": "r",
@@ -28298,6 +28364,15 @@
     "label": "WizData",
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Wizard ID\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Wizard Version\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Wizard Data Version\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Wizard Data String\" /></TypeDesc>"
+   },
+   "XControl:Container Bounds:Height": {
+    "access": "rw",
+    "code": 104013881,
+    "declaredBy": "LV.Control",
+    "heapName": "Height",
+    "label": "Height",
+    "source": "<labview>\\vi.lib\\Math Plots\\2D Math Plots\\XY Plot Matrix\\XY Plot Matrix\\Public\\Adjust Decoration.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    }
   },
   "LV.ControlReferenceConstant": {
@@ -31597,6 +31672,15 @@
     "source": "<labview>\\vi.lib\\Math Plots\\2D Math Plots\\XY Plot Matrix\\XY Plot Matrix\\Public\\Adjust Decoration.vi",
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Size\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
+   "Size:Height": {
+    "access": "rw",
+    "code": 103992322,
+    "declaredBy": "LV.Decoration",
+    "heapName": "Height",
+    "label": "Height",
+    "source": "<labview>\\vi.lib\\Math Plots\\2D Math Plots\\2D Compass\\2D Compass\\Protected\\Draw Image\\Adjust Phase Scale.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Top": {
     "access": "rw",
     "code": 103983106,
@@ -31862,6 +31946,15 @@
     "label": "SubVIs[]",
     "source": "<labview>\\resource\\Framework\\Providers\\MessageMakerProvider\\_Message Maker\\_support\\Wire FP Controls to UnBundler.vi",
     "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x4011\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Subdiagram Label": {
+    "access": "r",
+    "code": 104290315,
+    "declaredBy": "LV.Diagram",
+    "heapName": "SubDiag Label",
+    "label": "SubDiag Label",
+    "source": "<labview>\\vi.lib\\TargetSupport\\NI_TargetHelper\\FPGATarget\\Copy FPGATarget.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0005\" HasItem=\"0\" Format=\"inline\" />"
    },
    "Total Bounds Rect": {
     "access": "r",
@@ -35007,6 +35100,25 @@
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    }
   },
+  "LV.FacadeVI": {
+   "Front Panel": {
+    "access": "r",
+    "code": 573,
+    "declaredBy": "LV.FacadeVI",
+    "heapName": "Panel",
+    "label": "Panel",
+    "source": "<labview>\\project\\webdoc.llb\\_WebPublishingTool - Viewing Mode - Facade.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x001F\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Panel": {
+    "access": "r",
+    "code": 573,
+    "declaredBy": "LV.FacadeVI",
+    "label": "Panel",
+    "source": "<labview>\\project\\webdoc.llb\\_WebPublishingTool - Viewing Mode - Facade.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x001F\" HasItem=\"0\" Format=\"inline\" />"
+   }
+  },
   "LV.FixedConstant": {
    "Auto-Update From Typedef": {
     "access": "r",
@@ -35422,6 +35534,15 @@
     "access": "w",
     "code": 897104906,
     "declaredBy": "LV.FlatSequence",
+    "label": "SubDiagLbl Vis",
+    "source": "<labview>\\resource\\PropertyPages\\Pages\\SubDiagramLabelStubs\\pp_SubDiagLblVisFlatSeqWriteStub.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Subdiagram Label Visible": {
+    "access": "w",
+    "code": 897104906,
+    "declaredBy": "LV.FlatSequence",
+    "heapName": "SubDiagLbl Vis",
     "label": "SubDiagLbl Vis",
     "source": "<labview>\\resource\\PropertyPages\\Pages\\SubDiagramLabelStubs\\pp_SubDiagLblVisFlatSeqWriteStub.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
@@ -44856,6 +44977,15 @@
     "label": "Val(Sgnl)",
     "source": "<labview>\\resource\\dialog\\NewProjectWizard\\SearchPage.vi",
     "type": "<TypeDesc Type=\"Refnum\" RefType=\"UDClassInst\" Field0=\"0x0000\" MultiItem=\"1\" Format=\"inline\"><Item Text=\"MetaDataObj.lvclass\" />\n        </TypeDesc>"
+   },
+   "Value (Signaling)": {
+    "access": "w",
+    "code": 104013860,
+    "declaredBy": "LV.LabVIEWClassControl",
+    "heapName": "Val(Sgnl)",
+    "label": "Val(Sgnl)",
+    "source": "<labview>\\resource\\dialog\\NewProjectWizard\\SearchPage.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"UDClassInst\" Field0=\"0x0000\" MultiItem=\"1\" Format=\"inline\"><Item Text=\"MetaDataObj.lvclass\" />\n        </TypeDesc>"
    }
   },
   "LV.LeftShiftRegister": {
@@ -45346,6 +45476,51 @@
     "source": "<labview>\\resource\\Framework\\Providers\\ws_project_provider\\properties\\ws_prefPage_HTTP_Methods.vi",
     "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
+   "Active Row:Active Row Number": {
+    "access": "w",
+    "code": 104035369,
+    "declaredBy": "LV.ListBox",
+    "heapName": "Active Row",
+    "label": "Active Row",
+    "source": "<labview>\\resource\\Framework\\Providers\\ws_project_provider\\properties\\ws_prefPage_HTTP_Methods.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Active Row:Active Row Position:Left": {
+    "access": "r",
+    "code": 104035372,
+    "declaredBy": "LV.ListBox",
+    "heapName": "ActiveRowPosLeft",
+    "label": "ActiveRowPosLeft",
+    "source": "<labview>\\resource\\importtools\\Common\\Include Paths Control\\Method\\Handle Mouse Down.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Active Row:Active Row Position:Top": {
+    "access": "r",
+    "code": 104035373,
+    "declaredBy": "LV.ListBox",
+    "heapName": "ActiveRowPosTop",
+    "label": "ActiveRowPosTop",
+    "source": "<labview>\\resource\\importtools\\Common\\Include Paths Control\\Method\\Get Active Row.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Active Row:Cell Background Color": {
+    "access": "w",
+    "code": 104035374,
+    "declaredBy": "LV.ListBox",
+    "heapName": "CellBG",
+    "label": "CellBG",
+    "source": "<labview>\\resource\\Framework\\Providers\\ws_project_provider\\properties\\ws_prefPage_HTTP_Methods.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Active Row:Cell Height": {
+    "access": "r",
+    "code": 104035370,
+    "declaredBy": "LV.ListBox",
+    "heapName": "Cell Height",
+    "label": "Cell Height",
+    "source": "<labview>\\resource\\importtools\\Common\\Include Paths Control\\Method\\Get Active Row.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "ActiveRowPosLeft": {
     "access": "r",
     "code": 104035372,
@@ -45560,6 +45735,15 @@
     "declaredBy": "LV.ListBox",
     "label": "Double-Click",
     "source": "All_Properties.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Edit Row": {
+    "access": "rw",
+    "code": 104035381,
+    "declaredBy": "LV.ListBox",
+    "heapName": "EditRow",
+    "label": "EditRow",
+    "source": "<labview>\\resource\\Framework\\Providers\\ws_project_provider\\properties\\ws_prefPage_HTTP_Methods.vi",
     "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
    "EditRow": {
@@ -46698,6 +46882,65 @@
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds Rect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    }
   },
+  "LV.MixedCheckbox": {
+   "Caption": {
+    "access": "r",
+    "code": 104013828,
+    "declaredBy": "LV.MixedCheckbox",
+    "label": "Caption",
+    "source": "<labview>\\resource\\PropertyPages\\Pages\\PropPage_DataType.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0005\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Disabled": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.MixedCheckbox",
+    "label": "DisabledEnum",
+    "source": "<labview>\\resource\\PropertyPages\\Pages\\PropPage_DataType.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "Position:Top": {
+    "access": "w",
+    "code": 103983106,
+    "declaredBy": "LV.MixedCheckbox",
+    "heapName": "Top",
+    "label": "Top",
+    "source": "<labview>\\vi.lib\\fxp\\FXPxcontrol\\fxpPositionControls.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Text": {
+    "access": "r",
+    "code": 867147781,
+    "declaredBy": "LV.MixedCheckbox",
+    "label": "Text",
+    "source": "<labview>\\resource\\PropertyPages\\Pages\\PropPage_DataType.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0005\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Top": {
+    "access": "w",
+    "code": 103983106,
+    "declaredBy": "LV.MixedCheckbox",
+    "label": "Top",
+    "source": "<labview>\\vi.lib\\fxp\\FXPxcontrol\\fxpPositionControls.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Value": {
+    "access": "rw",
+    "code": 104013842,
+    "declaredBy": "LV.MixedCheckbox",
+    "label": "Value",
+    "source": "<labview>\\vi.lib\\fxp\\FXPxcontrol\\fxpFacade.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>False</EnumLabel>\n        <EnumLabel>True</EnumLabel>\n        <EnumLabel>Mixed</EnumLabel>\n        </TypeDesc>"
+   },
+   "Visible": {
+    "access": "rw",
+    "code": 104013824,
+    "declaredBy": "LV.MixedCheckbox",
+    "label": "Visible",
+    "source": "<labview>\\resource\\PropertyPages\\Pages\\PropPage_DataType.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
   "LV.MultiFrameStructure": {
    "AutoSize To Fit Contents?": {
     "access": "r",
@@ -47020,6 +47263,24 @@
     "label": "",
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"CellSize\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Active Cell:Cell Size:Height": {
+    "access": "rw",
+    "code": 416911379,
+    "declaredBy": "LV.MulticolumnListbox",
+    "heapName": "Height",
+    "label": "Height",
+    "source": "<labview>\\vi.lib\\functionblocks\\FB Property\\FB Property Main.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Active Cell:Position": {
+    "access": "r",
+    "code": 416911394,
+    "declaredBy": "LV.MulticolumnListbox",
+    "heapName": "ActiveCellPos",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Platform\\express\\ex_EditUserDefinedProperties\\ex_handleMouseMoveOnTable.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ActiveCellPos\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /></TypeDesc><Label Text=\"LVPositionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "ActiveCell": {
     "access": "rw",
@@ -47364,6 +47625,15 @@
     "label": "DisabledItems",
     "source": "<labview>\\resource\\Framework\\Providers\\Project\\DebugConfigurationDialog.vi",
     "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Edit Position": {
+    "access": "rw",
+    "code": 416911420,
+    "declaredBy": "LV.MulticolumnListbox",
+    "heapName": "EditPos",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Platform\\express\\ex_EditUserDefinedProperties\\ex_hanldeValueCellMouseDown.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"EditPos\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Row\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Column\" /></TypeDesc><Label Text=\"LVRowAndColumnTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "EditPos": {
     "access": "rw",
@@ -52819,6 +53089,24 @@
     "label": "",
     "source": "<labview>\\project\\webdoc.llb\\_WebPublishingTool - Viewing Mode - Size Strings.vi",
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Bounds:Area Height": {
+    "access": "r",
+    "code": 103983109,
+    "declaredBy": "LV.Array",
+    "heapName": "Height",
+    "label": "Height",
+    "source": "<labview>\\vi.lib\\Math Plots\\2D Math Plots\\2D Plot\\2D Plot\\Protected\\Palette\\Get Legend Display.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Bounds:Area Width": {
+    "access": "r",
+    "code": 103983108,
+    "declaredBy": "LV.Array",
+    "heapName": "Width",
+    "label": "Width",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Color Legend\\Get Legend Display.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Origin": {
     "access": "w",
@@ -59256,6 +59544,24 @@
     "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\properties_dialog\\set_up_graph_control_properties.vi",
     "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>None</EnumLabel>\n        <EnumLabel>Perspective</EnumLabel>\n        <EnumLabel>Orthographic</EnumLabel>\n        </TypeDesc>"
    },
+   "Automatic Projection Mode": {
+    "access": "rw",
+    "code": 1358066693,
+    "declaredBy": "LV.SceneGraphDisplay",
+    "heapName": "AutoProjection",
+    "label": "AutoProjection",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\properties_dialog\\set_up_graph_control_properties.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>None</EnumLabel>\n        <EnumLabel>Perspective</EnumLabel>\n        <EnumLabel>Orthographic</EnumLabel>\n        </TypeDesc>"
+   },
+   "Background Color": {
+    "access": "w",
+    "code": 1358066689,
+    "declaredBy": "LV.SceneGraphDisplay",
+    "heapName": "Clear Color",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\properties_dialog\\set_up_graph_control_properties.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Background Color\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+   },
    "Camera Controller.Auto Invalidate": {
     "access": "w",
     "code": 1358066700,
@@ -59272,6 +59578,24 @@
     "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\properties_dialog\\set_up_graph_control_properties.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
+   "Camera Controller:Auto Redraw": {
+    "access": "w",
+    "code": 1358066700,
+    "declaredBy": "LV.SceneGraphDisplay",
+    "heapName": "Camera Controller.Auto Invalidate",
+    "label": "Camera Controller.Auto Redraw",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Camera Controller:Type": {
+    "access": "w",
+    "code": 1358066692,
+    "declaredBy": "LV.SceneGraphDisplay",
+    "heapName": "CameraController",
+    "label": "CameraController",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\properties_dialog\\set_up_graph_control_properties.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>None</EnumLabel>\n        <EnumLabel>Spherical</EnumLabel>\n        <EnumLabel>Flying</EnumLabel>\n        <EnumLabel>Oriented</EnumLabel>\n        </TypeDesc>"
+   },
    "CameraController": {
     "access": "w",
     "code": 1358066692,
@@ -59287,6 +59611,24 @@
     "label": "",
     "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\properties_dialog\\set_up_graph_control_properties.vi",
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Background Color\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Content Bounds": {
+    "access": "r",
+    "code": 1358066694,
+    "declaredBy": "LV.SceneGraphDisplay",
+    "heapName": "ContentBounds",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ContentBounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Content Position": {
+    "access": "r",
+    "code": 1358066697,
+    "declaredBy": "LV.SceneGraphDisplay",
+    "heapName": "ContentPosition",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"ContentPosition\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Horizontal\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Vertical\" /></TypeDesc><Label Text=\"LVPoint32TypeDef.ctl\" />\n        </TypeDesc>"
    },
    "ContentBounds": {
     "access": "r",
@@ -59319,6 +59661,72 @@
     "label": "Projection Matrix",
     "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
     "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
+  "LV.SceneLight": {
+   "Ambient Color": {
+    "access": "w",
+    "code": 661587969,
+    "declaredBy": "LV.SceneLight",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\add_light.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Ambient Color\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Attenuation": {
+    "access": "w",
+    "code": 661587976,
+    "declaredBy": "LV.SceneLight",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\add_light.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Attenuation\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Constant\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Linear\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Quadratic\" /></TypeDesc><Label Text=\"LVAttenuationTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Cutoff": {
+    "access": "w",
+    "code": 661587974,
+    "declaredBy": "LV.SceneLight",
+    "label": "Cutoff",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\add_light.vi",
+    "type": "<TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Diffuse Color": {
+    "access": "w",
+    "code": 661587970,
+    "declaredBy": "LV.SceneLight",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\add_light.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Diffuse Color\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Direction": {
+    "access": "w",
+    "code": 661587972,
+    "declaredBy": "LV.SceneLight",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\add_light.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Direction\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Z\" /></TypeDesc><Label Text=\"LV3DPointTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Exponent": {
+    "access": "w",
+    "code": 661587975,
+    "declaredBy": "LV.SceneLight",
+    "label": "Exponent",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\add_light.vi",
+    "type": "<TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Position": {
+    "access": "w",
+    "code": 661587981,
+    "declaredBy": "LV.SceneLight",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\add_light.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Z\" /></TypeDesc><Label Text=\"LV3DPointTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Specular Color": {
+    "access": "w",
+    "code": 661587971,
+    "declaredBy": "LV.SceneLight",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\add_light.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Specular Color\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
    }
   },
   "LV.SceneMesh": {
@@ -59396,6 +59804,24 @@
     "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Axis Object\\Create Grid Object.vi",
     "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Inherit Value</EnumLabel>\n        <EnumLabel>Off</EnumLabel>\n        <EnumLabel>On</EnumLabel>\n        </TypeDesc>"
    },
+   "Blending:Bin": {
+    "access": "w",
+    "code": 763852804,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Blending.Bin",
+    "label": "Blending.Bin",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Cursor Object\\Create Cursor Plane.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Normal Bin</EnumLabel>\n        <EnumLabel>Opaque Bin</EnumLabel>\n        <EnumLabel>Transparent Bin</EnumLabel>\n        </TypeDesc>"
+   },
+   "Blending:Mode": {
+    "access": "w",
+    "code": 763852803,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Blending.Mode",
+    "label": "Blending.Mode",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Axis Object\\Create Grid Object.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Inherit Value</EnumLabel>\n        <EnumLabel>Off</EnumLabel>\n        <EnumLabel>On</EnumLabel>\n        </TypeDesc>"
+   },
    "Draw Style.Face Culling Mode": {
     "access": "w",
     "code": 763852812,
@@ -59436,6 +59862,33 @@
     "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Cursor Object\\Create Cursor Plane.vi",
     "type": "<TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" />"
    },
+   "Draw Style:Line Width": {
+    "access": "w",
+    "code": 763852814,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Draw Style.Line Width",
+    "label": "Draw Style.Line Width",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Axis Object\\Create Grid Object.vi",
+    "type": "<TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Draw Style:Mode": {
+    "access": "w",
+    "code": 763852810,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Draw Style.Mode",
+    "label": "Draw Style.Mode",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Plot Object\\Create Line Object.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Inherit Value</EnumLabel>\n        <EnumLabel>Points</EnumLabel>\n        <EnumLabel>Wireframe</EnumLabel>\n        <EnumLabel>Polygons</EnumLabel>\n        </TypeDesc>"
+   },
+   "Draw Style:Point Size": {
+    "access": "w",
+    "code": 763852815,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Draw Style.Point Size",
+    "label": "Draw Style.Point Size",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Cursor Object\\Create Cursor Plane.vi",
+    "type": "<TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Drawable": {
     "access": "r",
     "code": 763852843,
@@ -59464,6 +59917,33 @@
     "access": "w",
     "code": 763852846,
     "declaredBy": "LV.SceneObject",
+    "label": "Line Stipple.Pattern",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Plot Object\\Create Line Object.vi",
+    "type": "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Line Stipple:Factor": {
+    "access": "w",
+    "code": 763852845,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Line Stipple.Factor",
+    "label": "Line Stipple.Factor",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Plot Object\\Create Line Object.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Line Stipple:Mode": {
+    "access": "w",
+    "code": 763852844,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Line Stipple.Mode",
+    "label": "Line Stipple.Mode",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Plot Object\\Create Line Object.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Inherit Value</EnumLabel>\n        <EnumLabel>Off</EnumLabel>\n        <EnumLabel>On</EnumLabel>\n        </TypeDesc>"
+   },
+   "Line Stipple:Pattern": {
+    "access": "w",
+    "code": 763852846,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Line Stipple.Pattern",
     "label": "Line Stipple.Pattern",
     "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Plot Object\\Create Line Object.vi",
     "type": "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" />"
@@ -59603,6 +60083,42 @@
     "label": "Specials.Texturing",
     "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Cursor Object\\Create Cursor Plane.vi",
     "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Inherit Value</EnumLabel>\n        <EnumLabel>Off</EnumLabel>\n        <EnumLabel>On</EnumLabel>\n        </TypeDesc>"
+   },
+   "Specials:Anti-aliasing": {
+    "access": "w",
+    "code": 763852827,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Specials#46;Antialiasing",
+    "label": "Specials#46;Antialiasing",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Axis Object\\Create Text Object.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Inherit Value</EnumLabel>\n        <EnumLabel>Off</EnumLabel>\n        <EnumLabel>On</EnumLabel>\n        </TypeDesc>"
+   },
+   "Specials:Depth Test": {
+    "access": "w",
+    "code": 763852834,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Specials.Depth Test",
+    "label": "Specials.Depth Test",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Axis Object\\Create Grid Object.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Inherit Value</EnumLabel>\n        <EnumLabel>Off</EnumLabel>\n        <EnumLabel>On</EnumLabel>\n        </TypeDesc>"
+   },
+   "Specials:Lighting": {
+    "access": "w",
+    "code": 763852835,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Specials.Lighting",
+    "label": "Specials.Lighting",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Axis Object\\Create Grid Object.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Inherit Value</EnumLabel>\n        <EnumLabel>Off</EnumLabel>\n        <EnumLabel>On</EnumLabel>\n        </TypeDesc>"
+   },
+   "Specials:Texturing": {
+    "access": "w",
+    "code": 763852836,
+    "declaredBy": "LV.SceneObject",
+    "heapName": "Specials.Texturing",
+    "label": "Specials.Texturing",
+    "source": "<labview>\\vi.lib\\Math Plots\\3D Math Plots\\3D Plot\\3D Plot\\Protected\\Cursor Object\\Create Cursor Plane.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Inherit Value</EnumLabel>\n        <EnumLabel>Off</EnumLabel>\n        <EnumLabel>On</EnumLabel>\n        </TypeDesc>"
    }
   },
   "LV.SceneSphere": {
@@ -59629,6 +60145,163 @@
     "label": "Radius",
     "source": "<labview>\\vi.lib\\picture\\3D Picture Control\\Geometries\\Create Sphere.vi",
     "type": "<TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "LV.SceneText": {
+   "Axis Alignment": {
+    "access": "w",
+    "code": 12611595,
+    "declaredBy": "LV.SceneText",
+    "heapName": "AxisAlignment",
+    "label": "AxisAlignment",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\make_cursor_text.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>X-Y</EnumLabel>\n        <EnumLabel>Y-Z</EnumLabel>\n        <EnumLabel>X-Z</EnumLabel>\n        <EnumLabel>Reversed X-Y</EnumLabel>\n        <EnumLabel>Reversed Y-Z</EnumLabel>\n        <EnumLabel>Reversed X-Z</EnumLabel>\n        <EnumLabel>Screen</EnumLabel>\n        </TypeDesc>"
+   },
+   "AxisAlignment": {
+    "access": "w",
+    "code": 12611595,
+    "declaredBy": "LV.SceneText",
+    "label": "AxisAlignment",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\make_cursor_text.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>X-Y</EnumLabel>\n        <EnumLabel>Y-Z</EnumLabel>\n        <EnumLabel>X-Z</EnumLabel>\n        <EnumLabel>Reversed X-Y</EnumLabel>\n        <EnumLabel>Reversed Y-Z</EnumLabel>\n        <EnumLabel>Reversed X-Z</EnumLabel>\n        <EnumLabel>Screen</EnumLabel>\n        </TypeDesc>"
+   },
+   "Character Size": {
+    "access": "rw",
+    "code": 12611590,
+    "declaredBy": "LV.SceneText",
+    "heapName": "Height",
+    "label": "Height",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\calc_text_width.vi",
+    "type": "<TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Height": {
+    "access": "rw",
+    "code": 12611590,
+    "declaredBy": "LV.SceneText",
+    "label": "Height",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\calc_text_width.vi",
+    "type": "<TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "HorizontalAlignment": {
+    "access": "w",
+    "code": 12611594,
+    "declaredBy": "LV.SceneText",
+    "label": "HorizontalAlignment",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\make_string_object.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Left</EnumLabel>\n        <EnumLabel>Right</EnumLabel>\n        <EnumLabel>Center</EnumLabel>\n        </TypeDesc>"
+   }
+  },
+  "LV.SceneTexture": {
+   "Apply Mode": {
+    "access": "w",
+    "code": 36452356,
+    "declaredBy": "LV.SceneTexture",
+    "label": "Apply Mode",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\draw_point_sprite.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>As a Decal</EnumLabel>\n        <EnumLabel>With Modulation</EnumLabel>\n        <EnumLabel>With Blending</EnumLabel>\n        <EnumLabel>As a replacement</EnumLabel>\n        </TypeDesc>"
+   }
+  },
+  "LV.SceneWindow": {
+   "AutoProjection": {
+    "access": "rw",
+    "code": 206956557,
+    "declaredBy": "LV.SceneWindow",
+    "label": "AutoProjection",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>None</EnumLabel>\n        <EnumLabel>Perspective</EnumLabel>\n        <EnumLabel>Orthographic</EnumLabel>\n        </TypeDesc>"
+   },
+   "Automatic Projection Mode": {
+    "access": "rw",
+    "code": 206956557,
+    "declaredBy": "LV.SceneWindow",
+    "heapName": "AutoProjection",
+    "label": "AutoProjection",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>None</EnumLabel>\n        <EnumLabel>Perspective</EnumLabel>\n        <EnumLabel>Orthographic</EnumLabel>\n        </TypeDesc>"
+   },
+   "Background Color": {
+    "access": "w",
+    "code": 206956546,
+    "declaredBy": "LV.SceneWindow",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Background Color\"><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Red\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Green\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Blue\" /><TypeDesc Type=\"NumFloat32\" Prop1=\"0\" Format=\"inline\" Label=\"Alpha\" /></TypeDesc><Label Text=\"LVRGBAColorTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Camera Controller": {
+    "access": "w",
+    "code": 206956551,
+    "declaredBy": "LV.SceneWindow",
+    "label": "Camera Controller",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\properties_dialog\\set_up_graph_hardware_window_properties.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>None</EnumLabel>\n        <EnumLabel>Spherical</EnumLabel>\n        <EnumLabel>Flying</EnumLabel>\n        <EnumLabel>Oriented</EnumLabel>\n        </TypeDesc>"
+   },
+   "Camera Controller.Auto Redraw": {
+    "access": "w",
+    "code": 206956558,
+    "declaredBy": "LV.SceneWindow",
+    "label": "Camera Controller.Auto Redraw",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Camera Controller:Auto Redraw": {
+    "access": "w",
+    "code": 206956558,
+    "declaredBy": "LV.SceneWindow",
+    "heapName": "Camera Controller.Auto Redraw",
+    "label": "Camera Controller.Auto Redraw",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Camera Controller:Type": {
+    "access": "w",
+    "code": 206956551,
+    "declaredBy": "LV.SceneWindow",
+    "heapName": "Camera Controller",
+    "label": "Camera Controller",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\properties_dialog\\set_up_graph_hardware_window_properties.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>None</EnumLabel>\n        <EnumLabel>Spherical</EnumLabel>\n        <EnumLabel>Flying</EnumLabel>\n        <EnumLabel>Oriented</EnumLabel>\n        </TypeDesc>"
+   },
+   "Scene": {
+    "access": "w",
+    "code": 206956544,
+    "declaredBy": "LV.SceneWindow",
+    "label": "Scene",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0068\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "State": {
+    "access": "rw",
+    "code": 206956556,
+    "declaredBy": "LV.SceneWindow",
+    "label": "State",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Open</EnumLabel>\n        <EnumLabel>Minimized</EnumLabel>\n        <EnumLabel>Maximized</EnumLabel>\n        <EnumLabel>Hidden</EnumLabel>\n        </TypeDesc>"
+   },
+   "WinBounds": {
+    "access": "w",
+    "code": 206956554,
+    "declaredBy": "LV.SceneWindow",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"WinBounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Window Bounds": {
+    "access": "w",
+    "code": 206956554,
+    "declaredBy": "LV.SceneWindow",
+    "heapName": "WinBounds",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"WinBounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Window State": {
+    "access": "rw",
+    "code": 206956556,
+    "declaredBy": "LV.SceneWindow",
+    "heapName": "State",
+    "label": "State",
+    "source": "<labview>\\vi.lib\\Native 3D Graph\\xcontrol\\Facade.vi",
+    "type": "<TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Open</EnumLabel>\n        <EnumLabel>Minimized</EnumLabel>\n        <EnumLabel>Maximized</EnumLabel>\n        <EnumLabel>Hidden</EnumLabel>\n        </TypeDesc>"
    }
   },
   "LV.ScriptNode": {
@@ -60060,6 +60733,24 @@
     "source": "<labview>\\resource\\PropertyPages\\Pages\\PropPage_DataType.vi",
     "type": "<TypeDesc Type=\"LVVariant\" Format=\"inline\" />"
    },
+   "Disabled": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.Array",
+    "heapName": "DisabledEnum",
+    "label": "DisabledEnum",
+    "source": "<labview>\\examples\\Signal Processing\\Signal Operation\\Edge Detection with 2D Convolution.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
+   "Doc Max": {
+    "access": "r",
+    "code": 1727315969,
+    "declaredBy": "LV.Scrollbar",
+    "heapName": "DocMax",
+    "label": "DocMax",
+    "source": "<labview>\\resource\\PropertyPages\\Pages\\PropPage_DataType.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "DocMax": {
     "access": "r",
     "code": 1727315969,
@@ -60107,6 +60798,15 @@
     "label": "Value",
     "source": "<labview>\\resource\\PropertyPages\\Pages\\PropPage_DataType.vi",
     "type": "<TypeDesc Type=\"LVVariant\" Format=\"inline\" />"
+   },
+   "Value (Signaling)": {
+    "access": "w",
+    "code": 104013860,
+    "declaredBy": "LV.Boolean",
+    "heapName": "Val(Sgnl)",
+    "label": "Val(Sgnl)",
+    "source": "<labview>\\vi.lib\\AppBuilder\\IB_Classes\\Installer\\Page_Advanced_Read.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    }
   },
   "LV.Sequence": {
@@ -62904,6 +63604,15 @@
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0003\" HasItem=\"0\" Format=\"inline\" />"
    },
+   "Owning Pane": {
+    "access": "r",
+    "code": 104013886,
+    "declaredBy": "LV.String",
+    "heapName": "OwningPane",
+    "label": "OwningPane",
+    "source": "<labview>\\resource\\Channels\\Lossy Stream\\Channel Probe.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x004B\" HasItem=\"0\" Format=\"inline\" />"
+   },
    "Owning VI": {
     "access": "r",
     "code": 103970818,
@@ -63740,6 +64449,15 @@
     "source": "<labview>\\resource\\PropertyPages\\Pages\\SubDiagramLabelStubs\\pp_SubDiagLblVisWriteStub.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
+   "Subdiagram Label Visible": {
+    "access": "w",
+    "code": 104204298,
+    "declaredBy": "LV.Structure",
+    "heapName": "SubDiagLbl Vis",
+    "label": "SubDiagLbl Vis",
+    "source": "<labview>\\resource\\PropertyPages\\Pages\\SubDiagramLabelStubs\\pp_SubDiagLblVisWriteStub.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
    "Terminals[]": {
     "access": "r",
     "code": 104173568,
@@ -63853,6 +64571,15 @@
     "label": "",
     "source": "<labview>\\vi.lib\\Math Plots\\2D Math Plots\\XY Plot Matrix\\XY Plot Matrix\\Public\\Adjust Decoration.vi",
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Container Bounds\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Container Bounds:Width": {
+    "access": "w",
+    "code": 1918386180,
+    "declaredBy": "LV.SubPanel",
+    "heapName": "Width",
+    "label": "Width",
+    "source": "<labview>\\resource\\dialog\\NewProjectWizard\\NewProjectDialog.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Control Reference Nodes[]": {
     "access": "r",
@@ -63973,6 +64700,15 @@
     "label": "Indicator",
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Inserted VI": {
+    "access": "r",
+    "code": 1918386191,
+    "declaredBy": "LV.SubPanel",
+    "heapName": "InsertedVI",
+    "label": "InsertedVI",
+    "source": "<labview>\\vi.lib\\MGI\\Panel Manager\\Panel\\Panel\\Subpanel\\Show core.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0002\" HasItem=\"0\" Format=\"inline\" />"
    },
    "InsertedVI": {
     "access": "r",
@@ -67682,6 +68418,15 @@
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
+   "Active Item:Row Number": {
+    "access": "rw",
+    "code": 1969896514,
+    "declaredBy": "LV.TreeControl",
+    "heapName": "Active Item Row Number",
+    "label": "Active Item Row Number",
+    "source": "<labview>\\vi.lib\\express\\express signal manip\\DigitalDataGroupingXNode\\Handle Tree value change.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Active Item:Symbol Index": {
     "access": "rw",
     "code": 1969896466,
@@ -70864,6 +71609,15 @@
     "declaredBy": "LV.VI",
     "label": "Help.Tag",
     "source": "All_Properties.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Help:Document Web URL": {
+    "access": "rw",
+    "code": 698,
+    "declaredBy": "LV.VI",
+    "heapName": "Help.URL",
+    "label": "Help.URL",
+    "source": "<labview>\\vi.lib\\DotNET\\AssemblyVisualizationTool\\AssemblyVisualizationWindow.vi",
     "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
    },
    "Hide Instance VI Caption On Drop": {
@@ -75062,6 +75816,15 @@
    }
   },
   "LV.XYGraph": {
+   "Disabled": {
+    "access": "w",
+    "code": 104013885,
+    "declaredBy": "LV.XYGraph",
+    "heapName": "DisabledEnum",
+    "label": "DisabledEnum",
+    "source": "<labview>\\project\\_Profile Buffer Allocation.vi",
+    "type": "<TypeDesc Type=\"UnitUInt8\" Prop1=\"0\" Format=\"inline\"><EnumLabel>Enabled</EnumLabel>\n        <EnumLabel>Disabled</EnumLabel>\n        <EnumLabel>Disabled and Grayed Out</EnumLabel>\n        </TypeDesc>"
+   },
    "DisabledEnum": {
     "access": "w",
     "code": 104013885,
@@ -75083,6 +75846,33 @@
     "code": 104084509,
     "declaredBy": "LV.XYGraph",
     "label": "LegPlotMin",
+    "source": "<labview>\\project\\_Profile Buffer Allocation.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Legend:Plot Minimum": {
+    "access": "w",
+    "code": 104084509,
+    "declaredBy": "LV.XYGraph",
+    "heapName": "LegPlotMin",
+    "label": "LegPlotMin",
+    "source": "<labview>\\project\\_Profile Buffer Allocation.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Plot Area Bounds": {
+    "access": "r",
+    "code": 104078361,
+    "declaredBy": "LV.XYGraph",
+    "heapName": "Plot Bounds",
+    "label": "",
+    "source": "<labview>\\vi.lib\\Math Plots\\2D Math Plots\\2D Feather\\2D Feather XCtrl\\Facade.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Plot Bounds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Plot Area:Size:Width": {
+    "access": "rw",
+    "code": 104078337,
+    "declaredBy": "LV.XYGraph",
+    "heapName": "Width",
+    "label": "Width",
     "source": "<labview>\\project\\_Profile Buffer Allocation.vi",
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    },

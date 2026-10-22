@@ -53,3 +53,7 @@ primResID	name	seen	primIndex
 23808	Flush Stream	4	
 23810	Create Network Stream Writer Endpoint	2	
 23811	Create Network Stream Reader Endpoint	2	
+1141	To Word Integer	2	
+1207	Inverse Cosine	1	
+1212	Power Of 10	1	
+1512	Format Value	1	

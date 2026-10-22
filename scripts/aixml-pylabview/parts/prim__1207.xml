@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1207" source="&lt;labview&gt;\vi.lib\Native 3D Graph\find_angles_3d.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="154">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="166">
+            <dco class="parm" uid="164">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(19)</typeDesc>
+              <termBounds>(0, 16, 32, 32)</termBounds>
+              <primIndex>79</primIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="171">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="169">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(20)</typeDesc>
+              <termBounds>(0, 0, 32, 16)</termBounds>
+              <primIndex>79</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(80, 420, 112, 452)</bounds>
+        <shortCount>18</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1207</primResID>
+        <primIndex>79</primIndex>
+        </SL__arrayElement>
+      </heap></part>

@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/decimate" source="make_plot_contour.vi"><types><TypeDesc Type="Array" Format="inline" Label="Indices"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="SubArray" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="SubArray" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="SubArray" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="decimate" uid="45">
+                <objFlags>65536</objFlags>
+                <termList elements="4">
+                  <SL__arrayElement class="term" uid="57">
+                    <objFlags>32832</objFlags>
+                    <dco class="decimateDCO" uid="59">
+                      <typeDesc>TypeID(195)</typeDesc>
+                      <termBounds>(0, 0, 25, 16)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="62">
+                    <objFlags>65</objFlags>
+                    <dco class="decimateDCO" uid="101">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(196)</typeDesc>
+                      <termBounds>(0, 16, 8, 32)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="103">
+                    <objFlags>65</objFlags>
+                    <dco class="decimateDCO" uid="110">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(197)</typeDesc>
+                      <termBounds>(8, 16, 16, 32)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="251">
+                    <objFlags>65</objFlags>
+                    <dco class="decimateDCO" uid="154">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(198)</typeDesc>
+                      <termBounds>(16, 16, 24, 32)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(475, 66, 500, 98)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>262147</clumpNum>
+                <dcoList elements="3">
+                  <SL__arrayElement uid="101" />
+                  <SL__arrayElement uid="110" />
+                  <SL__arrayElement uid="154" />
+                  </dcoList>
+                <dcoAgg uid="59" />
+                </SL__arrayElement>
+              </heap></part>

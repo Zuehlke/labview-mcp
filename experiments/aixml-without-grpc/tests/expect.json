@@ -1487,7 +1487,14 @@
   "xcontrol": {
    "from": "examples\\Controls and Indicators\\XControls\\Dual Mode Thermometer",
    "facade": "Simple Dual Mode Thermometer Facade.vi",
-  "recompose": ["C to F.vi", "F to C.vi", "Simple Dual Mode Thermometer Init.vi", "Convert C to F.vi", "[Property] Fahrenheit Mode Read.vi", "[Property] Fahrenheit Mode Write.vi"],
+   "recompose": [
+    "C to F.vi",
+    "F to C.vi",
+    "Simple Dual Mode Thermometer Init.vi",
+    "Convert C to F.vi",
+    "[Property] Fahrenheit Mode Read.vi",
+    "[Property] Fahrenheit Mode Write.vi"
+   ],
    "host": "Run Dual Mode Thermometer XControl.vi",
    "hostCases": [
     {
@@ -1986,6 +1993,61 @@
     "inputs": "row=1;col=0",
     "outputs": {
      "grid out": "[[1,2],[4,4]]"
+    }
+   }
+  ]
+ },
+ "t178_formula_node": {
+  "cases": [
+   {
+    "inputs": "x=3;y=4;a=5",
+    "outputs": {
+     "z": 13,
+     "n": 7,
+     "a out": 10
+    }
+   }
+  ]
+ },
+ "t179_replace_subset_groups": {
+  "cases": [
+   {
+    "inputs": "a=[1,2,3,4];x=9",
+    "outputs": {
+     "b": "[9,9,9,4]"
+    }
+   }
+  ]
+ },
+ "t180_call_by_reference": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]",
+     "cleared": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t181_array_size_2d": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "sizes": "[2,3]"
+    }
+   }
+  ]
+ },
+ "t182_index_array_groups": {
+  "cases": [
+   {
+    "inputs": "a=[7,8,9]",
+    "outputs": {
+     "e0": 7,
+     "e1": 8,
+     "e2": 9
     }
    }
   ]

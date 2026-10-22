@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1212" source="&lt;labview&gt;\vi.lib\Native 3D Graph\get_nice_minmax.vi"><types><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="197">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="213">
+                    <dco class="parm" uid="214">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(30)</typeDesc>
+                      <termBounds>(0, 16, 32, 32)</termBounds>
+                      <primIndex>50</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="216">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="217">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(31)</typeDesc>
+                      <termBounds>(0, 0, 32, 16)</termBounds>
+                      <primIndex>50</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(51, 165, 83, 197)</bounds>
+                <shortCount>10</shortCount>
+                <clumpNum>262147</clumpNum>
+                <primResID>1212</primResID>
+                <primIndex>50</primIndex>
+                </SL__arrayElement>
+              </heap></part>

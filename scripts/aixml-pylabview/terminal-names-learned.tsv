@@ -508,3 +508,15 @@ primResID	node	parmIndex	terminal
 9111	Enqueue Element	2	timeout in ms (-1)
 9112	?	11	error out
 9112	?	3	error in (no error)
+1140	?	1	number
+1207	?	1	x
+1207	?	out	arccos(x)
+1212	?	1	x
+1512	?	1	value (0)
+1512	?	out	output string
+1735	Add Private Key To TLS Configuration	8	error in (no error)
+2408	New Data Value Reference	4	error in
+2409	?	4	error in
+8204	Set Variant Attribute	4	error in
+8204	Set Variant Attribute	out	error out
+8206	Delete Variant Attribute	out	error out

@@ -532,6 +532,22 @@ class Harvester:
                 # an Expression Node: input and output bDDCO, the formula in a textNodeLabel
                 self.save("node", "node/exprNode", source, e, resolve_types(b, e))
                 continue
+            if cls == "decimate" and not self.only_props:
+                # Decimate 1D Array: its array input and one decimateDCO output per element
+                self.save("node", "node/decimate", source, e, resolve_types(b, e))
+                continue
+            if cls == "callByRefNode" and not self.only_props:
+                # Call By Reference: four own terminals (hGrowCItem) and one iUseDCO per pane slot
+                self.save("node", "node/callByRefNode", source, e, resolve_types(b, e))
+                continue
+            if cls == "scriptNode" and not self.only_props:
+                # a script node (MATLAB script): a Formula Node's shape plus an error in and out
+                self.save("node", "node/scriptNode", source, e, resolve_types(b, e))
+                continue
+            if cls == "fBox" and not self.only_props:
+                # a Formula Node: one fBoxDCO per variable, the code in its formula textHair
+                self.save("node", "node/fBox", source, e, resolve_types(b, e))
+                continue
             if cls == "statVIRef":
                 self.save("node", "node/statVIRef", source, e, resolve_types(b, e))
                 continue

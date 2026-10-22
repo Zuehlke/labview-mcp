@@ -1,0 +1,7 @@
+<VI _name="T182 Index Array Groups.vi" description="Index Array grown to three index groups on a 1D array.">
+  <Control _name="a" outputs="value:4200.value" type="array{int32}" uid="4200" uid_parent="root" value="[]"/>
+  <Node _name="Index Array" inputs="array:4200.value,index:,index:,index:" outputs="element:4300.e0,element:4300.e1,element:4300.e2" uid="4300" uid_parent="root"/>
+  <Indicator _name="e0" inputs="value:4300.e0" type="int32" uid="4310" uid_parent="root" value="0"/>
+  <Indicator _name="e1" inputs="value:4300.e1" type="int32" uid="4320" uid_parent="root" value="0"/>
+  <Indicator _name="e2" inputs="value:4300.e2" type="int32" uid="4330" uid_parent="root" value="0"/>
+</VI>

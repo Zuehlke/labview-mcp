@@ -1,0 +1,189 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/fBox" source="prep.vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="Y" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="fBox" uid="12420">
+                        <termList elements="7">
+                          <SL__arrayElement class="term" uid="12423">
+                            <objFlags>32832</objFlags>
+                            <dco class="fBoxDCO" uid="12424">
+                              <objFlags>2097152</objFlags>
+                              <typeDesc>TypeID(271)</typeDesc>
+                              <termBounds>(23, 0, 42, 9)</termBounds>
+                              <vblName class="textHair">
+                                <flags>512</flags>
+                                <mode>17411</mode>
+                                <text>"r"</text>
+                                <view>(1, 1, -1, -1)</view>
+                                <bgColor>00FFFFFF</bgColor>
+                                <fr elements="1">
+                                  <SL__arrayElement class="fontRun">
+                                    <fontcolor>000000FF</fontcolor>
+                                    </SL__arrayElement>
+                                  </fr>
+                                </vblName>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="12426">
+                            <objFlags>32832</objFlags>
+                            <dco class="fBoxDCO" uid="12427">
+                              <objFlags>2097152</objFlags>
+                              <typeDesc>TypeID(272)</typeDesc>
+                              <termBounds>(67, 0, 86, 18)</termBounds>
+                              <vblName class="textHair">
+                                <flags>1536</flags>
+                                <mode>17411</mode>
+                                <text>"nc"</text>
+                                <view>(1, 1, -1, -1)</view>
+                                <bgColor>00FFFFFF</bgColor>
+                                <fr elements="1">
+                                  <SL__arrayElement class="fontRun">
+                                    <fontcolor>000000FF</fontcolor>
+                                    </SL__arrayElement>
+                                  </fr>
+                                </vblName>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="12429">
+                            <objFlags>65</objFlags>
+                            <dco class="fBoxDCO" uid="12430">
+                              <objFlags>2097157</objFlags>
+                              <typeDesc>TypeID(273)</typeDesc>
+                              <termBounds>(10, 136, 29, 151)</termBounds>
+                              <vblName class="textHair">
+                                <flags>1536</flags>
+                                <mode>17427</mode>
+                                <text>"t0"</text>
+                                <view>(1, 1, -1, -1)</view>
+                                <bgColor>00FFFFFF</bgColor>
+                                <fr elements="1">
+                                  <SL__arrayElement class="fontRun">
+                                    <fontcolor>000000FF</fontcolor>
+                                    </SL__arrayElement>
+                                  </fr>
+                                </vblName>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="12432">
+                            <objFlags>65</objFlags>
+                            <dco class="fBoxDCO" uid="12433">
+                              <objFlags>2097157</objFlags>
+                              <typeDesc>TypeID(274)</typeDesc>
+                              <termBounds>(33, 136, 52, 151)</termBounds>
+                              <vblName class="textHair">
+                                <mode>17427</mode>
+                                <text>"t1"</text>
+                                <view>(1, 1, -1, -1)</view>
+                                <bgColor>00FFFFFF</bgColor>
+                                <fr elements="1">
+                                  <SL__arrayElement class="fontRun">
+                                    <fontcolor>000000FF</fontcolor>
+                                    </SL__arrayElement>
+                                  </fr>
+                                </vblName>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="12435">
+                            <objFlags>65</objFlags>
+                            <dco class="fBoxDCO" uid="12436">
+                              <objFlags>2097157</objFlags>
+                              <typeDesc>TypeID(275)</typeDesc>
+                              <termBounds>(58, 136, 77, 151)</termBounds>
+                              <vblName class="textHair">
+                                <mode>17427</mode>
+                                <text>"t2"</text>
+                                <view>(1, 1, -1, -1)</view>
+                                <bgColor>00FFFFFF</bgColor>
+                                <fr elements="1">
+                                  <SL__arrayElement class="fontRun">
+                                    <fontcolor>000000FF</fontcolor>
+                                    </SL__arrayElement>
+                                  </fr>
+                                </vblName>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="12438">
+                            <objFlags>65</objFlags>
+                            <dco class="fBoxDCO" uid="12439">
+                              <objFlags>2097157</objFlags>
+                              <typeDesc>TypeID(276)</typeDesc>
+                              <termBounds>(80, 136, 99, 151)</termBounds>
+                              <vblName class="textHair">
+                                <mode>17427</mode>
+                                <text>"t5"</text>
+                                <view>(1, 1, -1, -1)</view>
+                                <bgColor>00FFFFFF</bgColor>
+                                <fr elements="1">
+                                  <SL__arrayElement class="fontRun">
+                                    <fontcolor>000000FF</fontcolor>
+                                    </SL__arrayElement>
+                                  </fr>
+                                </vblName>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="12441">
+                            <objFlags>32832</objFlags>
+                            <dco class="fBoxDCO" uid="12442">
+                              <objFlags>2097152</objFlags>
+                              <typeDesc>TypeID(277)</typeDesc>
+                              <termBounds>(45, 0, 64, 11)</termBounds>
+                              <vblName class="textHair">
+                                <mode>17411</mode>
+                                <text>"c"</text>
+                                <view>(1, 1, -1, -1)</view>
+                                <bgColor>00FFFFFF</bgColor>
+                                <fr elements="1">
+                                  <SL__arrayElement class="fontRun">
+                                    <fontcolor>000000FF</fontcolor>
+                                    </SL__arrayElement>
+                                  </fr>
+                                </vblName>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <label class="label" uid="12421">
+                          <objFlags>1507658</objFlags>
+                          <partID>16</partID>
+                          <howGrow>4096</howGrow>
+                          <bounds>(-17, 0, 0, 79)</bounds>
+                          <image class="Image">
+                            <ImageResID>-619</ImageResID>
+                            </image>
+                          <fgColor>01000000</fgColor>
+                          <bgColor>01000000</bgColor>
+                          <textRec class="textHair">
+                            <mode>82948</mode>
+                            <text>"Formula Node"</text>
+                            <bgColor>01000000</bgColor>
+                            </textRec>
+                          </label>
+                        <bounds>(261, 34, 377, 185)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>3276803</clumpNum>
+                        <lineNumbers class="textHair">
+                          <flags>32</flags>
+                          <mode>65554</mode>
+                          <text>"&amp;#x00;"</text>
+                          <view>(7, 18, -7, -131)</view>
+                          <bgColor>00FFFFFF</bgColor>
+                          <fr elements="1">
+                            <SL__arrayElement class="fontRun">
+                              <fontcolor>007F7F7F</fontcolor>
+                              </SL__arrayElement>
+                            </fr>
+                          </lineNumbers>
+                        <formula class="textHair">
+                          <flags>1536</flags>
+                          <mode>82946</mode>
+                          <text>"uInt32 i = r * nc + c; 
+uInt32 t0,t1,t2,t3,t4,t5;
+t0 = i+nc+1; 
+t1 = i+1; 
+t2 = i; 
+t5 = i+nc; "</text>
+                          <view>(7, 18, -7, -15)</view>
+                          <bgColor>00FFFFFF</bgColor>
+                          </formula>
+                        <contRect>(269, 42, 369, 177)</contRect>
+                        <errOfst>5F</errOfst>
+                        <fgColor>007F7F7F</fgColor>
+                        <bgColor>00FFFFFF</bgColor>
+                        </SL__arrayElement>
+                      </heap></part>

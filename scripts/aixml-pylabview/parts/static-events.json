@@ -1665,5 +1665,34 @@
    "<TypeDesc Type=\"Boolean\" Format=\"inline\" Bit0=\"1\" Bit7=\"1\" Label=\"Discard?\" />"
   ],
   "by": "add_scanned_events"
+ },
+ "Panel Resize": {
+  "classes": {
+   "null": 1
+  },
+  "eFlagsSeen": {
+   "2": 1
+  },
+  "fields": [
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"OldBnds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" /></TypeDesc>",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"NewBnds\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" /></TypeDesc>",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt32\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"Act\"><EnumLabel>Minimized</EnumLabel><EnumLabel>Maximized</EnumLabel><EnumLabel>Resized</EnumLabel></TypeDesc><Label Text=\"sizeaction.ctl\" /></TypeDesc>",
+   "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt32\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"PrevState\"><EnumLabel>Standard</EnumLabel><EnumLabel>Minimized</EnumLabel><EnumLabel>Maximized</EnumLabel></TypeDesc><Label Text=\"panelstate.ctl\" /></TypeDesc>"
+  ],
+  "from": "static",
+  "refLabel": "VIRef",
+  "regFlagsSeen": {
+   "1": 1
+  },
+  "sourceKind": "vi",
+  "spec": {
+   "eFlags": "2",
+   "eSource": "0",
+   "regFlags": "1",
+   "source": "5",
+   "type": "1073741843"
+  },
+  "vi": "<labview>\u000bi.lib\\Math Plots\u0002D Math Plots\u0002D Error Bar\u0002D Error Bar XCtrl\\Facade.vi",
+  "measuredOn": "NI's 2D Error Bar facade: frame 11, named Panel Resize by NI's exporter (2026-10-23)"
  }
 }
