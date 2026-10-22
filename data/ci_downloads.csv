@@ -103,3 +103,5 @@ run_id,workflow,created_at,event,conclusion,run_attempt,tag
 39381987200,verify-release.yml,2026-10-20T06:42:53Z,schedule,success,1,v2.1.6
 39397752490,release.yml,2026-10-20T09:02:21Z,push,success,1,v2.1.8
 39557211126,verify-release.yml,2026-10-21T06:43:34Z,schedule,success,1,v2.1.8
+39656677390,release.yml,2026-10-21T18:52:51Z,push,success,1,v2.2.0
+39735780655,verify-release.yml,2026-10-22T06:43:51Z,schedule,success,1,v2.2.0
