@@ -2742,6 +2742,22 @@ on the type it wraps (`Read Plot Array.vi`'s `Plot Property Array`, read as `?` 
 `t175` runs both: an element incremented in place, a field doubled and one negated. **Re-run on
 the 188 VIs refused this way: 184 compose, 184 of 184 load executable.**
 
+**An XControl instance on a HOST's panel is written as a plain indicator of its data type -
+by NI's export as well** (`Compass Plot.vi`: `array{ref{UDClassInst}.Data}`), so the 15 Math Plot
+host examples composed as an array of class refnums that "refers to a missing LabVIEW class":
+`_fp_class_links` looked for udClassDDOs as `SL__arrayElement`s and an array's element object is
+not one. With every udClassDDO under the control found, they get FPPI/DDPI and **38 of the 45
+broken VIs load executable**, the 15 hosts among them. That is the user's interim route of
+2026-10-22: executable, but the panel shows an ARRAY where NI's shows the XControl. The real
+instance is a pass of its own - an `xControl` ddo carrying `xCtlState` (the State control's type
+and data, flattened), `stateTD` and `libVersion`, plus `VIXC` in LIvi and `XCXI` in LIfp naming
+the xControl objects, `GILinkProp1` the `.xctl`'s major version and `GILinkProp5` a 1904-epoch
+timestamp that differs per `.xctl` - none of which AIXML carries.
+
+The other 7 are class MEMBERS with dynamic-dispatch terminals (MGI's Path Selector classes,
+`Native 3D Graph\classes\prep.vi`): "Only VIs owned by a LabVIEW class may use dynamic terminals" -
+the composer writes `LIBN` for an `.xctl` member, not for an `.lvclass` one.
+
 Open, named by the sweep:
 
 - 286 of the 3 095 still refused (the 169 Bundle By Name since solved, above): 26 Unbundle By Name on

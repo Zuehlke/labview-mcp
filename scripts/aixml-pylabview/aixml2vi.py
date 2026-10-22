@@ -4959,9 +4959,10 @@ class Composer:
         out = {}
         for fpdco, names in getattr(self, "class_fp", []):
             ddo = fpdco.find("ddo")
-            objs = [e for e in fpdco.iter("SL__arrayElement") if e.get("class") == "udClassDDO"]
-            if ddo is not None and ddo.get("class") == "udClassDDO":
-                objs = [ddo] + [o for o in objs if o is not ddo]
+            # every udClassDDO under the control, whatever its tag - an ARRAY's element object is
+            # not an SL__arrayElement, so an array of classes got no FPPI and "refers to a
+            # missing LabVIEW class" (NI's Math Plot examples, 2026-10-22)
+            objs = [e for e in fpdco.iter() if e.get("class") == "udClassDDO"]
             for obj, qual in zip(objs, names):
                 parts = qual.split(":")
                 if self.resolver is None:
