@@ -1252,7 +1252,7 @@ class Reader:
                 el = self.flatseq(node, parent_uid)
             elif cls == "decomposeRecomposeStructure":
                 el = self.inplace(node, parent_uid)
-            elif cls == "decomposeMatchNode":
+            elif cls in ("decomposeMatchNode", "decomposeArrayNode", "decomposeClusterNode"):
                 continue        # read with its In Place Element Structure
             elif cls == "commentNode":
                 el = self.disable(node, parent_uid)
@@ -1414,7 +1414,9 @@ class Reader:
             tree = self.tid_tree(term)
             if tree is None or tree.get("Type") == "Void":
                 continue
-            name = tree.get("Label")
+            # a typedef'd terminal is labelled on the type it wraps (Read Plot Array.vi's `Plot
+            # Property Array` - the XControl sweep, 2026-10-22)
+            name = self._field_name(tree)
             if not name:
                 # the link's pane type carries no label for this terminal: the CALLEE's own
                 # panel names it, by slot (the call's terms stand in pane order, Void for an
@@ -1810,6 +1812,75 @@ class Reader:
                 d_el.append(t)
         return el
 
+    def _inplace_array_pair(self, el, node, l, r, outer):
+        """An Array Index / Replace Elements pair, as NI's export writes it (Channel
+        Probe_Background Updater.vi): the left node `inputs="array:..,index:.."
+        outputs="element:.."`, the right one naming it in _id, `inputs="element:.."
+        outputs="array:..,index:.."`. In the heap two decomposeArrayNodes joined by an
+        arrayPoserInterface; each has [array, element, index] terms - the element one the
+        dcoAgg, inside the structure; array and index reach OUTSIDE through the structure's
+        terms, which name their DCO (left: array 0x800000, index 0xE00000; right 0x800001,
+        0xE00001)."""
+        left = ET.SubElement(el, "Node", {"_name": "Array Index / Replace Elements", "uid": l.get("uid"),
+                                          "uid_parent": node.get("uid")})
+        right = ET.Element("Node", {"_id": l.get("uid"), "_name": "Array Index / Replace Elements",
+                                    "uid": r.get("uid"), "uid_parent": node.get("uid")})
+        for half, sink_outer in ((l, True), (r, False)):
+            owner = left if half is l else right
+            agg = half.findtext("dcoAgg") or (half.find("dcoAgg").get("uid") if half.find("dcoAgg") is not None else None)
+            for t in half.find("termList"):
+                d = t.find("dco")
+                if d is None:
+                    continue
+                if d.get("uid") == agg:
+                    self.term_owner[t.get("uid")] = (owner, "element", not sink_outer)
+                    continue
+                f = int(d.findtext("objFlags") or 0)
+                role = "index" if f & 0x400000 and f & 0x200000 else "array"
+                o = outer.get(d.get("uid"))
+                if o is not None:
+                    self.term_owner[o.get("uid")] = (owner, role, sink_outer)
+        return right
+
+    def _inplace_cluster_pair(self, el, node, l, r, outer):
+        """An Unbundle / Bundle Elements pair, as NI's export writes it (Channel
+        Probe_Background Updater.vi): the left node `fields="elt" inputs="input cluster:.."
+        outputs="elt:.."`, the right naming it in _id, `inputs="elt:.." outputs="output
+        cluster:.."`. In the heap two decomposeClusterNodes joined by a clusterPoserInterface:
+        the dcoAgg is the cluster, reaching outside through the structure's term (0x800000 in,
+        0x800001 out); each field is a decomposeClusterDCO whose <index> counts like a Bundle By
+        Name's <i> (field_paths), absent for 0."""
+        left = ET.SubElement(el, "Node", {"_name": "Unbundle / Bundle Elements", "uid": l.get("uid"),
+                                          "uid_parent": node.get("uid")})
+        right = ET.Element("Node", {"_id": l.get("uid"), "_name": "Unbundle / Bundle Elements",
+                                    "uid": r.get("uid"), "uid_parent": node.get("uid")})
+        fields = []
+        for half, sink_outer in ((l, True), (r, False)):
+            owner = left if half is l else right
+            agg_el = half.find("dcoAgg")
+            agg = agg_el.get("uid") if agg_el is not None else None
+            agg_term = next((t for t in half.find("termList") if t.find("dco") is not None
+                             and t.find("dco").get("uid") == agg), None)
+            ct = self.tid_tree(agg_term.find("dco")) if agg_term is not None else None
+            labels = [p for p, _ in aixml2vi.field_paths(ct)] if ct is not None else []
+            for t in half.find("termList"):
+                d = t.find("dco")
+                if d is None:
+                    continue
+                if d.get("uid") == agg:
+                    o = outer.get(d.get("uid"))
+                    if o is not None:
+                        self.term_owner[o.get("uid")] = (owner, "input cluster" if sink_outer else "output cluster", sink_outer)
+                    continue
+                # the field is <index> on the DCO (NI's Increase Count.vi: 5 and 4), absent for 0
+                i = int(d.findtext("index") or 0)
+                nm = labels[i] if i < len(labels) else "?"
+                if half is l:
+                    fields.append(nm)
+                self.term_owner[t.get("uid")] = (owner, nm, not sink_outer)
+        left.set("fields", ",".join(escape(x) for x in fields))
+        return right
+
     def inplace(self, node, parent_uid):
         """An In Place Element Structure: one Structure; each in/out pair is two Nodes named
         "In Place In / Out Element", the right one naming the left one in _id. A pair is the
@@ -1825,7 +1896,7 @@ class Reader:
             if d is not None:
                 outer[d.get("uid")] = t
         match = {n.get("uid"): n for n in self.node_defs(diag)
-                 if n.get("class") == "decomposeMatchNode"} if diag is not None else {}
+                 if n.get("class") in ("decomposeMatchNode", "decomposeArrayNode", "decomposeClusterNode")} if diag is not None else {}
         rights = []
         posers = node.find("multiSegPipeFlange2Size")
         for poser in (posers if posers is not None else []):
@@ -1834,6 +1905,12 @@ class Reader:
             r = match.get(rd.get("uid")) if rd is not None else None
             if l is None or r is None:
                 self.notes.append("In Place pair %s not read" % poser.get("uid"))
+                continue
+            if poser.get("class") == "arrayPoserInterface":
+                rights.append(self._inplace_array_pair(el, node, l, r, outer))
+                continue
+            if poser.get("class") == "clusterPoserInterface":
+                rights.append(self._inplace_cluster_pair(el, node, l, r, outer))
                 continue
             lt, rt = list(l.find("termList")), list(r.find("termList"))
             left = ET.SubElement(el, "Node", {"_name": "In Place In / Out Element", "uid": l.get("uid"),

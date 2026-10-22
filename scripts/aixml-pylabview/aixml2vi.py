@@ -6537,6 +6537,167 @@ class Composer:
         if new != old:
             self.used_uids.discard(int(old))
 
+    # the In Place pairs with NAMED terminals, each composed from its own part (harvest_parts.py
+    # inplacepair/<poser class>, cut from NI's Channel Probe_Background Updater.vi)
+    INPLACE_MULTI = {"Array Index / Replace Elements": "arrayPoserInterface",
+                     "Unbundle / Bundle Elements": "clusterPoserInterface"}
+
+    def add_inplace_multi(self, el):
+        """One half of an Array Index / Replace Elements or Unbundle / Bundle Elements pair, as
+        NI's export writes them: the left half (no _id) `inputs="array:..,index:.."
+        outputs="element:.."` or `fields="a,b" inputs="input cluster:.." outputs="a:..,b:.."`,
+        the right half naming it in _id with the reverse. In the heap two decompose nodes joined
+        by a poser in the structure's multiSegPipeFlange2Size; the dcoAgg is the element (array)
+        or the cluster (cluster), the array and index terms - or the cluster - reach outside
+        through structure terms naming their DCO. A cluster field's DCO carries <index>,
+        counted as a Bundle By Name's <i> (field_paths, NI's Increase Count.vi); one is cloned
+        per field."""
+        name = unescape(el.get("_name"))
+        cls = self.INPLACE_MULTI[name]
+        st_el = self._by_uid.get(el.get("uid_parent"))
+        ip = next((x for x in getattr(self, "inplaces", []) if x["diag"].owner is st_el), None)
+        if ip is None:
+            raise Unsupported("Node %s: %r sits outside an In Place Element Structure" % (el.get("uid"), name))
+        node, d, parent = ip["node"], ip["diag"], ip["parent"]
+        self.inplace_multi = getattr(self, "inplace_multi", {})
+        diag_of_key = {}
+        if not el.get("_id"):
+            ins = dict(pairs(el.get("inputs")))
+            src = ins.get("array" if cls == "arrayPoserInterface" else "input cluster")
+            tree = self.net_type.get(src)
+            if tree is None:
+                raise Unsupported("Node %s: the type of %r is not known" % (el.get("uid"), src))
+            got = self.instantiate("inplacepair/%s" % cls)
+            if got is None:
+                raise Unsupported("Node %s: no %s part harvested" % (el.get("uid"), name))
+            wrap, _, srcpart = got
+            kids = list(wrap)
+            left, right, poser, outers = kids[0], kids[1], kids[2], kids[3:]
+            self._claim_into(left, el.get("uid"), poser.find("multiSegPipeFlange1Depth"))
+            inner = typedef_inner(tree)
+            int32 = type_tree("int32")
+            if cls == "arrayPoserInterface":
+                if inner.get("Type") != "Array" or len(inner.findall("Dimension")) != 1:
+                    raise Unsupported("Node %s: %s on a %s is not composable yet" % (el.get("uid"), name, inner.get("Type")))
+                elem = unlabel(elem_of(inner))
+                fields = []
+            else:
+                if inner.get("Type") != "Cluster":
+                    raise Unsupported("Node %s: %s on a %s" % (el.get("uid"), name, inner.get("Type")))
+                paths = field_paths(inner)
+                labels = [p for p, _ in paths]
+                fields = [unescape(x) for x in split_top(el.get("fields") or "") if x]
+                for f in fields:
+                    if f not in labels:
+                        raise Unsupported("Node %s: no field %r (has %s)" % (el.get("uid"), f, ", ".join(labels)))
+            outer_by_dco = {o.find("dco").get("uid"): o for o in outers}
+            roles = {}          # (half, role) -> term
+            for half in (left, right):
+                agg = half.find("dcoAgg").get("uid")
+                terms = list(half.find("termList"))
+                for t in terms:
+                    dco = t.find("dco")
+                    f = int(dco.findtext("objFlags") or 0)
+                    if cls == "arrayPoserInterface":
+                        role = "element" if dco.get("uid") == agg else ("index" if f & 0x600000 == 0x600000 else "array")
+                        typ = {"element": elem, "index": int32, "array": tree}[role]
+                    else:
+                        role = "cluster" if dco.get("uid") == agg else "field"
+                        typ = tree if role == "cluster" else None
+                    if typ is not None:
+                        dco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(unlabel(typ) if role != "array" and role != "cluster" else typ)
+                    roles[(half is right, role)] = t
+            if cls == "clusterPoserInterface":
+                # one field DCO per field, each a clone of the part's with its <i> and type
+                for half in (left, right):
+                    tpl = roles[(half is right, "field")]
+                    tl, dl = half.find("termList"), half.find("dcoList")
+                    tl.remove(tpl)
+                    for c in list(dl):
+                        dl.remove(c)
+                    for k, fname in enumerate(fields):
+                        idx = labels.index(fname)
+                        t = copy.deepcopy(tpl)
+                        lvheap.renumber(t, self.alloc)
+                        dco = t.find("dco")
+                        ie = dco.find("index")
+                        if ie is None:
+                            ie = ET.SubElement(dco, "index")
+                        ie.text = str(idx)
+                        if idx == 0:
+                            dco.remove(ie)
+                        dco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(unlabel(paths[idx][1]))
+                        tb = dco.find("termBounds")
+                        if tb is not None and k:
+                            b = lvheap.parse_bounds(tb.text)
+                            tb.text = lvheap.fmt_bounds((b[0] + 16 * k, b[1], b[2] + 16 * k, b[3]))
+                        tl.append(t)
+                        ET.SubElement(dl, "SL__arrayElement", {"uid": dco.get("uid")})
+                        roles[(half is right, "field:" + fname)] = t
+                    dl.set("elements", str(len(dl)))
+                    tl.set("elements", str(len(tl)))
+                    # the cluster's own terminal spans every field row (33 px for two in NI's
+                    # Increase Count.vi)
+                    atb = roles[(half is right, "cluster")].find("dco/termBounds")
+                    if atb is not None:
+                        b = lvheap.parse_bounds(atb.text)
+                        atb.text = lvheap.fmt_bounds((b[0], b[1], b[0] + 16 * len(fields) + 1, b[3]))
+                    if len(fields) > 1 and half.find("bounds") is not None:
+                        b = lvheap.parse_bounds(half.find("bounds").text)
+                        half.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[2] + 16 * (len(fields) - 1), b[3]))
+            k = 1 + 2 * len(ip["pairs"])
+            d.nodes.insert(k, left)
+            d.nodes.insert(k + 1, right)
+            node.find("termList").extend(outers)
+            node.find("multiSegPipeFlange2Size").append(poser)
+            ip["pairs"].append((left, right))
+            self.inplace_multi[el.get("uid")] = {"cls": cls, "left": left, "right": right, "poser": poser,
+                                                 "roles": roles, "outer": outer_by_dco, "tree": tree,
+                                                 "fields": fields}
+            info, is_right = self.inplace_multi[el.get("uid")], False
+            self.report.append("In Place %s <- %s" % (name, srcpart))
+        else:
+            info = self.inplace_multi.get(el.get("_id"))
+            if info is None:
+                raise Unsupported("Node %s: no left %s %s" % (el.get("uid"), name, el.get("_id")))
+            self._claim_into(info["right"], el.get("uid"), info["poser"].find("multiSegPipeFlange2Depth"))
+            is_right = True
+        roles, outer = info["roles"], info["outer"]
+
+        def outer_of(term):
+            return outer[term.find("dco").get("uid")]
+        if info["cls"] == "arrayPoserInterface":
+            keys = {"array": (outer_of(roles[(is_right, "array")]), parent),
+                    "index": (outer_of(roles[(is_right, "index")]), parent),
+                    "element": (roles[(is_right, "element")], d)}
+            elem_t = unlabel(elem_of(typedef_inner(info["tree"])))
+            out_types = {"element": elem_t, "array": info["tree"], "index": type_tree("int32")}
+        else:
+            keys = {("output cluster" if is_right else "input cluster"): (outer_of(roles[(is_right, "cluster")]), parent)}
+            out_types = {"output cluster": info["tree"]}
+            paths = dict(field_paths(typedef_inner(info["tree"])))
+            for f in info["fields"]:
+                keys[f] = (roles[(is_right, "field:" + f)], d)
+                out_types[f] = unlabel(paths[f])
+        for key, (term, diag) in keys.items():
+            self.ends[(el.get("uid"), key)] = (term.get("uid"), diag)
+        for key, net in pairs(el.get("outputs")):
+            if net:
+                if key not in out_types:
+                    raise Unsupported("Node %s: %s has no output %r" % (el.get("uid"), name, key))
+                self.net_type[net] = out_types[key]
+
+    @staticmethod
+    def _pair_box(half):
+        """(height, width) of an In Place pair half: the extent of its terminals' termBounds."""
+        h = w = 0
+        for t in half.find("termList"):
+            tb = t.findtext("dco/termBounds")
+            if tb:
+                b = lvheap.parse_bounds(tb)
+                h, w = max(h, b[2]), max(w, b[3])
+        return max(h, 12), max(w, 16)
+
     def add_inplace_node(self, el):
         """One half of an In Place pair. The LEFT half is the element without _id - it creates
         the pair, typed by its outer input; the RIGHT half names the left one in _id."""
@@ -7033,7 +7194,7 @@ class Composer:
         # stays the source, so the contents start at the structure's left edge.
         def border_of(el):
             # an In Place Element Structure's element pairs sit on its border as tunnels do
-            pair = el.tag == "Node" and unescape(el.get("_name") or "") in self.INPLACE_PAIRS
+            pair = el.tag == "Node" and unescape(el.get("_name") or "") in (self.INPLACE_PAIRS + tuple(self.INPLACE_MULTI))
             if el.tag not in ("Tunnel", "Left", "Right") and not pair:
                 return None
             p = el.get("uid_parent")
@@ -7155,17 +7316,27 @@ class Composer:
             if sb is not None:
                 sb.text = lvheap.fmt_bounds((-t, -l, -t, -l))
             lh = d.sublabel["h"] if d.sublabel else 0
+            y = 23 + lh
             for k, (left, right) in enumerate(ip["pairs"]):
-                y = 23 + lh + 24 * k
-                left.find("bounds").text = lvheap.fmt_bounds((y, 0, y + 12, 16))
-                right.find("bounds").text = lvheap.fmt_bounds((y, r - l - 16, y + 12, r - l))
+                if left.get("class") == "decomposeMatchNode":
+                    h, wl, wr = 12, 16, 16
+                else:
+                    # an ARRAY or CLUSTER pair is as big as its terminals: NI's Increase Count.vi
+                    # has its two-field halves at (35, 0, 68, 113) and (35, 226, 68, 339) in a
+                    # 339 px structure - a 12 x 16 box round them was `Insane {graphics}` on every
+                    # term (t175, 2026-10-22)
+                    (h, wl), (h2, wr) = self._pair_box(left), self._pair_box(right)
+                    h = max(h, h2)
+                left.find("bounds").text = lvheap.fmt_bounds((y, 0, y + h, wl))
+                right.find("bounds").text = lvheap.fmt_bounds((y, r - l - wr, y + h, r - l))
+                y += max(h, 12) + 12
             # tunnels below the pairs: inputs down the left border, outputs down the right
-            slot = {"in": len(ip["pairs"]), "out": len(ip["pairs"])}
+            slot = {"in": 0, "out": 0}
             for tdco, d_ in ip.get("tunnels", []):
-                y = 23 + lh + 24 * slot[d_]
+                y_t = y + 24 * slot[d_]
                 slot[d_] += 1
                 x = 0 if d_ == "in" else r - l - 9
-                tdco.find("termBounds").text = lvheap.fmt_bounds((y, x, y + 9, x + 9))
+                tdco.find("termBounds").text = lvheap.fmt_bounds((y_t, x, y_t + 9, x + 9))
             # firstNodeIdx is NOT an index into the node list: LabVIEW wrote 3 for an In Place
             # structure with no pairs and two tunnels, 42 and 69 in NI's examples; written as
             # 1 + 2 x pairs it was 1 there and the VI went "good to bad after compiling". The
@@ -7408,10 +7579,19 @@ class Composer:
             sizes[case.get("uid")] = (max(h + 40, 30 + lh + 24 * (n + 1) + 30, 120), max(w + 40, 200, lw + 12))
         for ip in reversed(getattr(self, "inplaces", [])):
             lh, lw = self._sublabel_box(ip["diag"])
-            w, h = self._place(ip["diag"], lv, sizes, 30 + lh, 30)
+            # the border pairs' real boxes: an array or cluster half is wider and taller than an
+            # in/out element's 12 x 16, so the contents start right of the widest left half and
+            # the structure is tall enough for every pair (t175, 2026-10-22)
+            boxes = [(12, 16, 16) if lft.get("class") == "decomposeMatchNode" else
+                     (max(self._pair_box(lft)[0], self._pair_box(rgt)[0]), self._pair_box(lft)[1], self._pair_box(rgt)[1])
+                     for lft, rgt in ip["pairs"]]
+            left0 = max([30] + [wl + 14 for _, wl, _ in boxes])
+            w, h = self._place(ip["diag"], lv, sizes, 30 + lh, left0)
             n_t = {d_: sum(1 for _, x in ip.get("tunnels", []) if x == d_) for d_ in ("in", "out")}
-            n = max(1, len(ip["pairs"]) + max(n_t.values()))
-            sizes[ip["node"].get("uid")] = (max(h + 40, 23 + lh + 24 * n + 20, 90), max(w + 40, 100, lw + 8))
+            pairs_h = sum(bh + 12 for bh, _, _ in boxes)
+            right_w = max([16] + [wr for _, _, wr in boxes])
+            sizes[ip["node"].get("uid")] = (max(h + 40, 23 + lh + pairs_h + 24 * max(1, max(n_t.values())) + 20, 90),
+                                           max(w + 40 + right_w - 16, 100, lw + 8))
         for seq, frames, parent in reversed(getattr(self, "seqs", [])):
             dims = []
             for fr, fd, _ in frames:
@@ -7787,6 +7967,8 @@ class Composer:
                     self.add_global(e)
                 elif e.tag == "Node" and nm in self.INPLACE_PAIRS:
                     self.add_inplace_node(e)
+                elif e.tag == "Node" and nm in self.INPLACE_MULTI:
+                    self.add_inplace_multi(e)
                 elif e.tag == "Node" and nm.startswith("In Place "):
                     raise Unsupported("Node %s: %r is not composable yet" % (e.get("uid"), nm))
                 elif e.tag == "Node" and nm == "Invoke Node":

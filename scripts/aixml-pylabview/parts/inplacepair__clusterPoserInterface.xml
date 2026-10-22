@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="inplacepair" key="inplacepair/clusterPoserInterface" source="&lt;labview&gt;\resource/Channels/Messenger/Channel Probe_Background Updater.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="elt"><TypeDesc Type="TypeDef" Flag1="0xDA0ADE0E" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="elt"><TypeDesc Type="Refnum" RefType="UDClassInst" Field0="0x0000" MultiItem="1" Format="inline" Label="MessageAckBase.lvclass"><Item Text="Channel Message.lvclass" />
+        </TypeDesc></TypeDesc><Label Text="Messenger.lvlib" />
+        <Label Text="Element.ctl" />
+        </TypeDesc></TypeDesc><TypeDesc Type="TypeDef" Flag1="0xDA0ADE0E" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="elt"><TypeDesc Type="Refnum" RefType="UDClassInst" Field0="0x0000" MultiItem="1" Format="inline" Label="MessageAckBase.lvclass"><Item Text="Channel Message.lvclass" />
+        </TypeDesc></TypeDesc><Label Text="Messenger.lvlib" />
+        <Label Text="Element.ctl" />
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="elt"><TypeDesc Type="TypeDef" Flag1="0xDA0ADE0E" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="elt"><TypeDesc Type="Refnum" RefType="UDClassInst" Field0="0x0000" MultiItem="1" Format="inline" Label="MessageAckBase.lvclass"><Item Text="Channel Message.lvclass" />
+        </TypeDesc></TypeDesc><Label Text="Messenger.lvlib" />
+        <Label Text="Element.ctl" />
+        </TypeDesc></TypeDesc><TypeDesc Type="TypeDef" Flag1="0xDA0ADE0E" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="elt"><TypeDesc Type="Refnum" RefType="UDClassInst" Field0="0x0000" MultiItem="1" Format="inline" Label="MessageAckBase.lvclass"><Item Text="Channel Message.lvclass" />
+        </TypeDesc></TypeDesc><Label Text="Messenger.lvlib" />
+        <Label Text="Element.ctl" />
+        </TypeDesc></types><heap><pair><SL__arrayElement class="decomposeClusterNode" uid="2022">
+                                                                <objFlags>327680</objFlags>
+                                                                <termList elements="2">
+                                                                  <SL__arrayElement class="term" uid="2030">
+                                                                    <objFlags>64</objFlags>
+                                                                    <dco class="decomposeClusterDCO" uid="2028">
+                                                                      <objFlags>8388608</objFlags>
+                                                                      <termList elements="2">
+                                                                        <SL__arrayElement uid="2030" />
+                                                                        <SL__arrayElement uid="2043" />
+                                                                        </termList>
+                                                                      <typeDesc>TypeID(127)</typeDesc>
+                                                                      <termBounds>(0, 0, 17, 16)</termBounds>
+                                                                      </dco>
+                                                                    </SL__arrayElement>
+                                                                  <SL__arrayElement class="term" uid="2027">
+                                                                    <objFlags>64</objFlags>
+                                                                    <dco class="decomposeClusterDCO" uid="2025">
+                                                                      <objFlags>1</objFlags>
+                                                                      <typeDesc>TypeID(128)</typeDesc>
+                                                                      <termBounds>(0, 16, 16, 37)</termBounds>
+                                                                      </dco>
+                                                                    </SL__arrayElement>
+                                                                  </termList>
+                                                                <bounds>(48, 0, 65, 37)</bounds>
+                                                                <shortCount>2</shortCount>
+                                                                <dcoList elements="1">
+                                                                  <SL__arrayElement uid="2025" />
+                                                                  </dcoList>
+                                                                <dcoAgg uid="2028" />
+                                                                <poser uid="2015" />
+                                                                </SL__arrayElement>
+                                                              <SL__arrayElement class="decomposeClusterNode" uid="2031">
+                                                                <objFlags>262144</objFlags>
+                                                                <termList elements="2">
+                                                                  <SL__arrayElement class="term" uid="2039">
+                                                                    <objFlags>64</objFlags>
+                                                                    <dco class="decomposeClusterDCO" uid="2037">
+                                                                      <objFlags>8388609</objFlags>
+                                                                      <termList elements="2">
+                                                                        <SL__arrayElement uid="2039" />
+                                                                        <SL__arrayElement uid="2045" />
+                                                                        </termList>
+                                                                      <typeDesc>TypeID(129)</typeDesc>
+                                                                      <termBounds>(0, 21, 17, 37)</termBounds>
+                                                                      </dco>
+                                                                    </SL__arrayElement>
+                                                                  <SL__arrayElement class="term" uid="2036">
+                                                                    <objFlags>32832</objFlags>
+                                                                    <dco class="decomposeClusterDCO" uid="2034">
+                                                                      <typeDesc>TypeID(130)</typeDesc>
+                                                                      <termBounds>(0, 0, 16, 21)</termBounds>
+                                                                      </dco>
+                                                                    </SL__arrayElement>
+                                                                  </termList>
+                                                                <bounds>(48, 441, 65, 478)</bounds>
+                                                                <shortCount>6</shortCount>
+                                                                <dcoList elements="1">
+                                                                  <SL__arrayElement uid="2034" />
+                                                                  </dcoList>
+                                                                <dcoAgg uid="2037" />
+                                                                <poser uid="2015" />
+                                                                </SL__arrayElement>
+                                                              <SL__arrayElement class="clusterPoserInterface" uid="2015">
+                                                            <multiSegPipeFlange1Depth uid="2022" />
+                                                            <multiSegPipeFlange2Depth uid="2031" />
+                                                            </SL__arrayElement>
+                                                          <SL__arrayElement class="term" uid="2043">
+                                                            <objFlags>32768</objFlags>
+                                                            <dco uid="2028" />
+                                                            </SL__arrayElement>
+                                                          <SL__arrayElement class="term" uid="2045">
+                                                            <dco uid="2037" />
+                                                            </SL__arrayElement>
+                                                          </pair></heap></part>

@@ -2722,9 +2722,29 @@ and gives Bundle/Unbundle By Name on the class wire only their field names. With
 exactly these - **LabVIEW resolves the class nodes and the upcast to the parent class ON LOAD**, no
 `TCPI`, no open-and-save in the IDE: executable, no insanity, no DWarn on a fresh LabVIEW.
 
+**The 169 "Bundle By Name: a cluster input must be wired" were the READER's, not the composer's.**
+The Bundle sat in an In Place Element Structure on an `Array Index / Replace Elements` pair, which
+the reader did not read (`In Place pair not read`, 187 of them in the first sweep, and 368
+`decomposeArrayNode`s left out) - so the Bundle came out with no input and no output. Both In Place
+pairs with NAMED terminals are read and composed now, as NI's export writes them:
+`Array Index / Replace Elements` (`inputs="array:..,index:.." outputs="element:.."`, the right half
+`_id`-linked with the reverse) and `Unbundle / Bundle Elements` (`fields="a,b"`, `input cluster` /
+`output cluster`). In the heap two `decomposeArrayNode`s or `decomposeClusterNode`s joined by an
+`arrayPoserInterface` / `clusterPoserInterface`; the dcoAgg is the element (array) or the cluster;
+the array and index terms, or the cluster, reach outside through structure terms naming their DCO
+(array 0x800000/0x800001, index 0xE00000/0xE00001). A cluster field is `<index>` on its DCO - not
+`<i>`, which made two fields "element unbundled multiple times" - counted as a Bundle By Name's
+(`Increase Count.vi`: 5 and 4). Parts `inplacepair/<poser class>`, cut from NI's
+`Channel Probe_Background Updater.vi`. And the halves are as big as their terminals - NI's two-field
+cluster halves are (35, 0, 68, 113) and (35, 226, 68, 339) in a 339 px structure; the 12 x 16 box
+the in/out pair uses was `Insane {graphics}` on every term. A call's typedef'd terminal is labelled
+on the type it wraps (`Read Plot Array.vi`'s `Plot Property Array`, read as `?` until now).
+`t175` runs both: an element incremented in place, a field doubled and one negated. **Re-run on
+the 188 VIs refused this way: 184 compose, 184 of 184 load executable.**
+
 Open, named by the sweep:
 
-- 286 of the 3 095 still refused: 169 Bundle By Name with no cluster wired, 26 Unbundle By Name on
+- 286 of the 3 095 still refused (the 169 Bundle By Name since solved, above): 26 Unbundle By Name on
   an enum, 15 Unbundle with no `element` output, 11 references to a refnum control, 10 + 7 others.
 - 45 of the 2 809 broken: 15 host examples whose XControl instance holds a class (`Data` "refers
   to a missing LabVIEW class" - an XControl object is not a udClassDDO, so no FPPI is written for

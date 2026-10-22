@@ -613,6 +613,24 @@ class Harvester:
                 # decomposeMatchNodes INSIDE it, joined by a matchPoserInterface; the
                 # structure's own termList holds only the outer terminals
                 self.save("struct", "struct/inplace", source, e, resolve_types(b, e))
+                # and each ARRAY or CLUSTER pair on its own - Array Index / Replace Elements,
+                # Unbundle / Bundle Elements: its two decompose nodes, the poser joining them and
+                # the structure's outer terms that name their DCOs (the XControl sweep, 2026-10-22)
+                diag = e.find("diagramList/SL__arrayElement")
+                nodes = {n.get("uid"): n for n in (diag.find("nodeList") if diag is not None else [])}
+                for poser in (e.find("multiSegPipeFlange2Size") if e.find("multiSegPipeFlange2Size") is not None else []):
+                    if poser.get("class") not in ("arrayPoserInterface", "clusterPoserInterface"):
+                        continue
+                    halves = [nodes.get(poser.find(t).get("uid")) for t in
+                              ("multiSegPipeFlange1Depth", "multiSegPipeFlange2Depth") if poser.find(t) is not None]
+                    if len(halves) != 2 or None in halves:
+                        continue
+                    dcos = {d.get("uid") for h in halves for d in h.iter("dco")}
+                    wrap = ET.Element("pair")
+                    for x in halves + [poser] + [t for t in e.find("termList")
+                                                 if t.find("dco") is not None and t.find("dco").get("uid") in dcos]:
+                        wrap.append(copy.deepcopy(x))
+                    self.save("inplacepair", "inplacepair/%s" % poser.get("class"), source, wrap, resolve_types(b, wrap))
             elif cls == "flatSequence":
                 # a Flat Sequence: sequenceFrame structures side by side, each with seqTun
                 # tunnels whose DCO termList is [inner, outer] - as a loop's

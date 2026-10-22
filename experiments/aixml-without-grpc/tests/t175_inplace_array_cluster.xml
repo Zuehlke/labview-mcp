@@ -1,0 +1,20 @@
+<VI _name="T175 In Place Array Cluster.vi" description="The In Place pairs with named terminals, as NI's export writes them: Array Index / Replace Elements increments one element of an array in place, Unbundle / Bundle Elements doubles one field and negates another of a cluster in place (2026-10-22, the Math Plots' property VIs).">
+  <Control _name="values" outputs="value:4200.value" type="array{double}" uid="4200" uid_parent="root" value="[1,2,3]"/>
+  <Control _name="at" outputs="value:4205.value" type="int32" uid="4205" uid_parent="root" value="0"/>
+  <Control _name="point" outputs="value:4210.value" type="cluster{double.a,int32.b,string.s}" uid="4210" uid_parent="root" value="[0,0,]"/>
+  <Structure _name="In Place Element Structure" uid="4300" uid_parent="root">
+    <Node _name="Array Index / Replace Elements" inputs="array:4200.value,index:4205.value" outputs="element:4310.element" uid="4310" uid_parent="4300"/>
+    <Node _name="Increment" inputs="x:4310.element" outputs="x+1:4320.x+1" uid="4320" uid_parent="4300"/>
+    <Node _id="4310" _name="Array Index / Replace Elements" inputs="element:4320.x+1" outputs="array:4330.array" uid="4330" uid_parent="4300"/>
+    <Node _name="Unbundle / Bundle Elements" fields="a,b" inputs="input cluster:4210.value" outputs="a:4340.a,b:4340.b" uid="4340" uid_parent="4300"/>
+    <Constant type="double" uid="4345" uid_parent="4300" value="2" outputs="value:4345.value"/>
+    <Node _name="Multiply" inputs="x:4340.a,y:4345.value" outputs="x*y:4350.x*y" uid="4350" uid_parent="4300"/>
+    <Node _name="Negate" inputs="x:4340.b" outputs="-x:4355.-x" uid="4355" uid_parent="4300"/>
+    <Node _id="4340" _name="Unbundle / Bundle Elements" inputs="a:4350.x*y,b:4355.-x" outputs="output cluster:4360.output cluster" uid="4360" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="values out" inputs="value:4330.array" type="array{double}" uid="4400" uid_parent="root" value="[]"/>
+  <Node _name="Unbundle By Name" fields="a,b,s" inputs="input cluster:4360.output cluster" outputs="a:4410.a,b:4410.b,s:4410.s" uid="4410" uid_parent="root"/>
+  <Indicator _name="a out" inputs="value:4410.a" type="double" uid="4420" uid_parent="root" value="0"/>
+  <Indicator _name="b out" inputs="value:4410.b" type="int32" uid="4425" uid_parent="root" value="0"/>
+  <Indicator _name="s out" inputs="value:4410.s" type="string" uid="4430" uid_parent="root" value=""/>
+</VI>
