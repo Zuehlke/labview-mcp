@@ -919,7 +919,8 @@ def out_key(el, tname):
     NODE too: `write+Value,read+Value` is two terminals both named Value, and keyed by name the
     write's constant and the read's indicator met on one - the same three insane wires and DAbort,
     found by the suite's t168 on 2026-10-20."""
-    if el.tag == "Call" or (el.tag == "Node" and el.get("_name") in ("Invoke Node", "Register For Events", "Property Node")):
+    if el.tag == "Call" or (el.tag == "Node" and el.get("_name") in ("Invoke Node", "Register For Events", "Property Node",
+                                                                 "Call Parent Class Method")):
         if tname in {t for t, _ in pairs(el.get("inputs"))}:
             return tname + "\x00out"
     return tname
@@ -4616,6 +4617,91 @@ class Composer:
                 lib = prop.text.strip()
         return dict(res, qual=[lib] + qual) if lib else res
 
+    def add_call_parent(self, el):
+        """CALL PARENT CLASS METHOD, as NI's export writes it: a Node with no target, inside a class
+        member. In the heap a call of the SAME method of the PARENT class, node class
+        callParentDynIUse instead of dynIUse, its DyOM link to the parent's method with
+        APILinkCallParentNodes 2 - NI's Native 3D Graph Line.lvclass:prep.vi calling Base
+        Datatype.lvclass:prep.vi. The parent is the class file's `Parent` item (the class
+        itself, not an interface: a member with an interface parent calls no parent). Terminals
+        named after this VI's own labels, where they differ from the parent's, are matched by
+        pane position (2026-10-22)."""
+        owner = getattr(self, "class_member_of", None)
+        if not owner:
+            raise Unsupported("Node %s: a Call Parent Class Method outside a class member" % el.get("uid"))
+        if self.resolver is None:
+            self.resolver = resolve.Resolver()
+        owners = self.resolver._owner_files(owner[-1], self.search_dirs)
+        if not owners:
+            raise Unsupported("Node %s: class %s not found" % (el.get("uid"), ":".join(owner)))
+        cls_file = resolve.materialize(owners[0]) or owners[0]
+        parent = None
+        for item in ET.parse(cls_file).getroot().iter("Item"):
+            if item.get("Type") != "Parent" or not item.get("URL"):
+                continue
+            url = item.get("URL")
+            if url.startswith("/<"):
+                anchor, _, rest = url[1:].partition("/")
+                cand = next((os.path.normpath(os.path.join(d, *rest.split("/"))) for a, d in self.resolver.roots
+                             if a == anchor), None)
+            else:
+                cand = os.path.normpath(os.path.join(owners[0], *url.split("/")))
+            if cand and resolve.exists(cand):
+                try:
+                    is_iface = any(p.get("Name") == "NI.LVClass.IsInterface" and (p.text or "").strip().lower() == "true"
+                                   for p in ET.parse(resolve.materialize(cand) or cand).getroot().iter("Property"))
+                except (OSError, ET.ParseError):
+                    is_iface = False
+                if not is_iface:
+                    parent = cand
+                    break
+        if parent is None:
+            raise Unsupported("Node %s: %s names no parent class" % (el.get("uid"), ":".join(owner)))
+        target = "%s:%s" % (os.path.basename(parent), self.vi_name.split(":")[-1])
+        res = self.resolver.resolve(target, self.search_dirs, getattr(self, "caller_file", None))
+        if "error" in res:
+            raise Unsupported("Node %s: the parent method %s - %s" % (el.get("uid"), target, res["error"]))
+        callee = lvheap.Bundle(_extract_callee(res["path"]))
+        parent_at = {}
+        for fpdco in callee.fp.iter("SL__arrayElement"):
+            if fpdco.get("class") == "fPDCO" and fpdco.find("ddo") is not None:
+                con = int(fpdco.findtext("conNum") or 0)
+                if con >= 0:
+                    parent_at[con] = vi_label(fpdco.find("ddo"))
+        own_at = {unescape(e.get("_name") or ""): int(e.get("conIdx")) for e in self._elements
+                  if e.tag in ("Control", "Indicator") and e.get("conIdx") is not None}
+        known = set(parent_at.values())
+        renamed = {}
+
+        def translate(spec):
+            out = []
+            for tname, net in pairs(spec):
+                new = tname
+                if tname not in known and tname in own_at and own_at[tname] in parent_at:
+                    new = parent_at[own_at[tname]]
+                    renamed[new] = tname
+                out.append("%s:%s" % ("".join("\\%02X" % ord(c) if c in ",:\\" else c for c in new), net or ""))
+            return ",".join(out)
+        call = ET.Element("Call", {"uid": el.get("uid"), "uid_parent": el.get("uid_parent"), "target": target,
+                                   "inputs": translate(el.get("inputs")), "outputs": translate(el.get("outputs"))})
+        self._call_parent = True
+        try:
+            self.add_call(call)
+        finally:
+            self._call_parent = False
+        for new, old in renamed.items():
+            for key in (new, new + "\x00out"):
+                if (el.get("uid"), key) in self.ends:
+                    self.ends[(el.get("uid"), key.replace(new, old, 1))] = self.ends[(el.get("uid"), key)]
+        # the CLASS output follows the dynamic input: it carries the calling class, not the
+        # parent - Line.lvclass:prep.vi unbundles Line's own fields off it (X Vector ...), and
+        # typed by Base Datatype the Unbundle found no field at all
+        own = class_ref_type(":".join(owner))
+        for _, net in pairs(el.get("outputs")):
+            t = self.net_type.get(net) if net else None
+            if t is not None and typedef_inner(t).get("RefType") == "UDClassInst":
+                self.net_type[net] = own
+
     def add_call(self, el):
         """A subVI call, composed from the CALLEE'S OWN FILE - no LabVIEW, no gRPC.
 
@@ -4772,10 +4858,12 @@ class Composer:
         for tname, (t, _) in by_dir["out"].items():
             self.ends[(el.get("uid"), out_key(el, tname))] = (t.get("uid"), diag)
         if dynamic:
-            node.set("class", "dynIUse")
+            parent_call = getattr(self, "_call_parent", False)
+            node.set("class", "callParentDynIUse" if parent_call else "dynIUse")
             dyn = ET.SubElement(node, "dynLink", {"class": "dynLink", "uid": str(self.alloc()),
                                                   "ScopeInfo": "0"})
-            link = self.dyn_links.setdefault(path, dict(res, offsets=[]))
+            link = self.dyn_links.setdefault(path + ("|callparent" if parent_call else ""),
+                                             dict(res, offsets=[], call_parent=parent_call))
             link["offsets"].append(int(dyn.get("uid")))
         else:
             link = self.links.setdefault(path, dict(res, pane=pane, offsets=[]))
@@ -5089,12 +5177,14 @@ class Composer:
         if not classes:
             return
 
-        def record(holder, tag, owner, second, content, tail, cache=None, at=None):
+        def record(holder, tag, owner, second, content, tail, cache=None, at=None, call_parent=0):
             c = classes[owner]
+            # APILinkCallParentNodes 2 on the DyOM of a CALL PARENT CLASS METHOD node - NI's
+            # Native 3D Graph Line.lvclass:prep.vi, its call of Base Datatype.lvclass:prep.vi
             rec = ET.Element(tag, {"LinkSaveFlag": "0",
                                    "APILinkLibVersion": str(self._class_version(owner)),
                                    "APILinkIsInternal": "0", "APILinkBool2": "1",
-                                   "APILinkCallParentNodes": "0", "APILinkTailByte": str(tail)})
+                                   "APILinkCallParentNodes": str(call_parent), "APILinkTailByte": str(tail)})
             qual = ET.SubElement(rec, "LinkSaveQualName")
             for part in c["qual"]:
                 ET.SubElement(qual, "String").text = part
@@ -5123,7 +5213,8 @@ class Composer:
             for n, link in enumerate(self.dyn_links.values(), 1):
                 name = link["qual"][-1].encode("mac_roman")
                 nested = self._lit(bytes([1, len(name)])) + link["qual"][-1]
-                record(bdhp, "DyOM", link["owner"], nested, n, zero, cache=link["offsets"])
+                record(bdhp, "DyOM", link["owner"], nested, n, zero, cache=link["offsets"],
+                       call_parent=2 if link.get("call_parent") else 0)
             for owner, c in self.class_consts.items():
                 record(bdhp, "FPPI", owner, self._lit(b"\x07\x00"), 0, zero, cache=c["uids"])
             return
@@ -5135,7 +5226,8 @@ class Composer:
             rec = record(lvin, "VIPI", link["owner"], nested, 0, zero)
             index = list(lvin).index(rec)
             rec.find("APILinkContent").text = self._lit(index.to_bytes(2, "big"))
-            record(bdhp, "DyOM", link["owner"], nested, index, heap_tail, cache=link["offsets"])
+            record(bdhp, "DyOM", link["owner"], nested, index, heap_tail, cache=link["offsets"],
+                   call_parent=2 if link.get("call_parent") else 0)
         for owner, c in self.class_consts.items():
             for tag in ("FPPI", "DDPI"):
                 record(bdhp, tag, owner, self._lit(b"\x07\x00"), 0, heap_tail, cache=c["uids"])
@@ -8228,6 +8320,8 @@ class Composer:
                     self.add_inplace_multi(e)
                 elif e.tag == "Node" and nm.startswith("In Place "):
                     raise Unsupported("Node %s: %r is not composable yet" % (e.get("uid"), nm))
+                elif e.tag == "Node" and nm == "Call Parent Class Method":
+                    self.add_call_parent(e)
                 elif e.tag == "Node" and nm == "Invoke Node":
                     self.add_invoke_node(e)
                 elif e.tag == "Node" and nm not in self.prim_by_name and self._templates(nm):

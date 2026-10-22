@@ -2823,8 +2823,19 @@ members composed out of place, executable in their folder):
   does (MGI's `Restore.vi`: `P.Style,P.Size,P.Font`, where it wrote the leaf names).
 - **An error case with no range list** (MGI's `Store.vi`) decides on the status, frame 0 No Error
   and frame 1 Error, as NI's export of it says; its `dIdx` reads 11 for two frames.
-- Not Unbundle's at all, and open: the 3 `prep.vi` of the Native 3D Graph read from a **Call
-  Parent Class Method**, which neither reader nor composer knows; `Gaussian surface data.vi` from
+- **Call Parent Class Method is read and composed now** (2026-10-22). NI's export writes it as a
+  Node with no target, its terminals named by the call's own pane labels (`Base Datatype in`,
+  `Plot processed data In`). In the heap it is a call of the SAME method of the PARENT class, node
+  class `callParentDynIUse` instead of `dynIUse`, a `dynLink` child, and a DyOM link naming the
+  parent's method (`Base Datatype.lvclass`, `\x01\x07prep.vi`) with `APILinkCallParentNodes="2"`.
+  The composer finds the parent in the class file's `Parent` item (a class, not an interface),
+  composes the dynamic call of `Parent.lvclass:<this method>`, matches terminal names that differ
+  from the parent's by pane position, and types the CLASS output with the calling class - it
+  follows the dynamic input, and typed by the parent the Unbundle behind it found no field.
+  `Line\prep.vi` recomposed in a copy of its folder loads executable. No suite test yet: it needs
+  a parent/child class fixture. `Parametric` and `Surface\prep.vi` stop earlier, at a Formula Node
+  (`fBox`), which the reader does not read.
+- Not Unbundle's at all, and open: `Gaussian surface data.vi` from
   a **Call By Reference** (29 left out in the first sweep); `MATLAB - Lorenz Diff Eq.vi` from a
   MATLAB script node. And `Restore.vi` stops at a COMPACT `Variant To Data` (primitive 8003 with
   slots 1-4 where the usual form has 3, 8, 9, 11), whose slot 3 is `type` where the other form's

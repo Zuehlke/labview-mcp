@@ -1276,6 +1276,14 @@ class Reader:
                 el = self.disable(node, parent_uid)
             elif cls in ("iUse", "polyIUse", "dynIUse"):
                 el = self.call(node, parent_uid)
+            elif cls == "callParentDynIUse":
+                # CALL PARENT CLASS METHOD, as NI's export writes it - a Node, no target, the
+                # terminals named by this call's own pane labels (`Panel Actor in`, `Actor out`);
+                # the composer finds the parent's method itself (the XControl sweep, 2026-10-22)
+                el = self.call(node, parent_uid)
+                el.tag = "Node"
+                el.attrib = dict([("_name", "Call Parent Class Method")] +
+                                 [(k, v) for k, v in el.attrib.items() if k not in ("target", "instance", "adapt")])
             elif cls in TEMPLATE_CLASSES:
                 el = self.template_node(node, parent_uid)
             elif cls in NODE_READERS:
