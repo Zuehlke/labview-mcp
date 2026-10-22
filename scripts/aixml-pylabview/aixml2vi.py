@@ -23,6 +23,7 @@ import csv
 import html
 import json
 import os
+import pathlib
 import random
 import re
 import shutil
@@ -1218,6 +1219,61 @@ class Diagram:
 
     def lists(self):
         return (self.z, self.nodes, self.srn_terms, self.signals)
+
+
+_CLASS_DATA = {}
+
+
+def class_private_data(tree, search_dirs, resolver=None):
+    """A CLASS wire's private data cluster, for a Bundle/Unbundle By Name on it inside a class
+    member; any other type as it is. The class is the refnum's qualified name, its file found as
+    a Call's would be, and the cluster read off NI.LVClass.FlattenedPrivateDataCTL through
+    scripts/pylv-class-privatedata.py's decoder. MGI's Path Selector Store.vi and Restore.vi were
+    refused "input is Refnum, not a cluster", and read with leaf names where NI's export writes
+    the paths (P.Style) - the reader and the composer share this (2026-10-22)."""
+    if tree is None or tree.get("Type") != "Refnum" or tree.get("RefType") != "UDClassInst":
+        return tree
+    qual = [i.get("Text") for i in tree.findall("Item")]
+    if not qual:
+        raise Unsupported("a Bundle/Unbundle By Name on a class wire whose class is not named "
+                          "(the reader writes it after </VI>)")
+    resolver = resolver or resolve.Resolver()
+    owners = resolver._owner_files(qual[-1], search_dirs)
+    if not owners:
+        raise Unsupported("class %s: no such .lvclass near the VI or in the installation" % ":".join(qual))
+    key = os.path.normcase(owners[0])
+    if key not in _CLASS_DATA:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "pylv_class_privatedata", os.path.join(os.path.dirname(HERE), "pylv-class-privatedata.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        work = tempfile.mkdtemp(prefix="classdata_")
+        try:
+            ctl = os.path.join(work, "pdc.ctl")
+            import contextlib
+            import io
+            with contextlib.redirect_stdout(io.StringIO()):
+                mod.decode(pathlib.Path(resolve.materialize(owners[0]) or owners[0]), pathlib.Path(ctl))
+            b = lvheap.Bundle(lvheap.extract(ctl, work))
+            # the cluster LabVIEW labels "Cluster of class private data" - NOT always TopLevel 1:
+            # a class whose fields are typedefs lists those first (MGI Path Selector: 1 a
+            # Persistent Data Cluster, 2 Control Style, 3 the private data)
+            found = None
+            for k in range(1, len(b.toplevel) + 1):
+                try:
+                    t = typedef_inner(b.tree(b.flat_of_consolidated(k)))
+                except (IndexError, KeyError, ValueError, TypeError):
+                    break
+                if t is not None and t.get("Label") == "Cluster of class private data":
+                    found = t
+                    break
+            _CLASS_DATA[key] = found if found is not None else typedef_inner(b.tree(b.flat_of_consolidated(1)))
+        except (SystemExit, Exception) as ex:   # noqa: BLE001 - named in the refusal
+            raise Unsupported("class %s: its private data could not be read (%s)" % (":".join(qual), ex))
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+    return _CLASS_DATA[key]
 
 
 class Composer:
@@ -2612,6 +2668,25 @@ class Composer:
                             and not canon[j].startswith(b"error terminal")):
                         new_types[j] = we
                         canon[j] = b"queue element %d" % j
+        # A SUB-ARRAY output (Reverse 1D Array, Array Subset: Type SubArray in VCTP) is not in
+        # its input's donor group, so it kept the donor's element - Reverse 1D Array cut from
+        # GetID.xml reversed u8s, and an array of clusters came out u8[] (ex_readDaqmxClass.vi,
+        # 2026-10-22). It takes the wired array's element, keeping its own dimensions.
+        for j in range(len(terms)):
+            d = donor[j]
+            if j in wired_in or d.get("Type") != "SubArray" or not fields(d):
+                continue
+            de = ET.tostring(plain(lvheap.strip_label(fields(d)[0])))
+            for i, net in wired_in.items():
+                di, w = donor[i], typedef_inner(self.net_type[net])
+                if (di.get("Type") == "Array" and fields(di) and w.get("Type") == "Array" and fields(w)
+                        and ET.tostring(plain(lvheap.strip_label(fields(di)[0]))) == de):
+                    r = copy.deepcopy(d)
+                    r.remove(fields(r)[0])
+                    r.append(copy.deepcopy(unlabel(fields(w)[0])))
+                    new_types[j] = r
+                    canon[j] = b"subarray of wired %d" % j
+                    break
         # ...and the other way round: a wired input that is the donor refnum's ELEMENT (Obtain
         # Queue's `element data type`) makes that refnum one of the wired type - t176's cluster
         # queue left Obtain Queue's `queue out` typed by its donor's {Message, Message Data}
@@ -2635,10 +2710,27 @@ class Composer:
         # objFlags bit 0x40000 - the coercion dot - with dsw 1024; the adapted type sits on
         # the other members. Typing the coerced terminal with the adapted type was BROKEN.
         joined = list(new_types)
+        scalar_into_compound = set()
         for i in range(len(terms)):
             group = [j for j in range(len(terms)) if canon[j] == canon[i]]
             wired = [new_types[j] for j in group if j in wired_in]
             kinds = {w.get("Type") for w in wired}
+            compound = [w for w in wired if w.get("Type") == "Cluster"]
+            if (compound and kinds == {"Cluster"} and all(f.get("Type") in NUM_RANK for c in compound for f in fields(c))
+                    and len({ET.tostring(unlabel(c)) for c in compound}) == 1):
+                # clusters of numbers on every input (Multiply(cluster, cluster)): the result is
+                # that cluster, element-wise
+                joined[i] = unlabel(compound[0])
+                continue
+            if (len(compound) == 1 and kinds - {"Cluster"} and kinds - {"Cluster"} <= set(NUM_RANK)
+                    and all(f.get("Type") in NUM_RANK for f in fields(compound[0]))):
+                # a CLUSTER OF NUMBERS with a scalar: arithmetic works element-wise and the
+                # result is the cluster - Divide(cluster{X,Y,Z}, Norm) in NI's find_angles_3d.vi
+                # came out a single, and the Unbundle behind it was refused; the scalar gets no
+                # coercion dot (2026-10-22)
+                joined[i] = unlabel(compound[0])
+                scalar_into_compound.update(j for j in group if j in wired_in and new_types[j].get("Type") != "Cluster")
+                continue
             if len(kinds) > 1 and not kinds <= set(NUM_RANK):
                 # Not one polymorphic group but terminals that merely SHARED a donor type: Build
                 # Path cut from Create New Palette.vi has a path on all three, and with a STRING
@@ -2649,7 +2741,33 @@ class Composer:
                 continue
             if wired:
                 joined[i] = numeric_join(wired)
+        if name in self.ELEMENTWISE:
+            # an ARITHMETIC primitive with a cluster of numbers on an input returns that cluster,
+            # whatever the part's donor grouped together: Divide's donor had x and x/y in
+            # different groups, so Divide(cluster, single) answered a single (find_angles_3d.vi)
+            cl = [new_types[i] for i in wired_in if new_types[i].get("Type") == "Cluster"
+                  and fields(new_types[i]) and all(f.get("Type") in NUM_RANK for f in fields(new_types[i]))]
+            if cl:
+                for j in range(len(terms)):
+                    if j not in wired_in and donor[j].get("Type") in NUM_RANK and not canon[j].startswith(b"error terminal"):
+                        joined[j] = unlabel(cl[0])
+                scalar_into_compound.update(i for i in wired_in if new_types[i].get("Type") in NUM_RANK)
+        if name in self.CONVERT_TO:
+            # a numeric CONVERSION of a cluster of numbers converts each field: To Double
+            # Precision Float on the Caption Font Size cluster of make_axes_caption.vi is that
+            # cluster with double fields, not a double
+            cl = [new_types[i] for i in wired_in if new_types[i].get("Type") == "Cluster"
+                  and fields(new_types[i]) and all(f.get("Type") in NUM_RANK for f in fields(new_types[i]))]
+            if cl:
+                conv = copy.deepcopy(unlabel(cl[0]))
+                for f in fields(conv):
+                    f.set("Type", self.CONVERT_TO[name])
+                for j in range(len(terms)):
+                    if j not in wired_in and donor[j].get("Type") in NUM_RANK:
+                        joined[j] = conv
         for i, t in enumerate(terms):
+            if i in scalar_into_compound:
+                continue
             if i in wired_in and ET.tostring(joined[i]) != ET.tostring(new_types[i]):
                 f = t.find("objFlags")
                 if f is None:
@@ -2835,6 +2953,14 @@ class Composer:
     # it an array, measured 2026-10-10 on lvai_run_and_read.xml), and the input's LABEL is data
     # it writes out. Flatten To XML is the measured one; the other two flatten the same way.
     WHOLE_VALUE = {"Flatten To XML", "Flatten To String", "To Variant"}
+    # arithmetic that works element-wise on a cluster of numbers
+    ELEMENTWISE = {"Add", "Subtract", "Multiply", "Divide", "Increment", "Decrement", "Negate",
+                   "Absolute Value", "Square Root", "Square", "Reciprocal", "Round To Nearest"}
+    CONVERT_TO = {"To Double Precision Float": "NumFloat64", "To Single Precision Float": "NumFloat32",
+                  "To Extended Precision Float": "NumFloatExt", "To Quad Integer": "NumInt64",
+                  "To Long Integer": "NumInt32", "To Word Integer": "NumInt16", "To Byte Integer": "NumInt8",
+                  "To Unsigned Quad Integer": "NumUInt64", "To Unsigned Long Integer": "NumUInt32",
+                  "To Unsigned Word Integer": "NumUInt16", "To Unsigned Byte Integer": "NumUInt8"}
 
     def _label_primitive_source(self, net, label):
         """Give the PRIMITIVE output driving `net` its own label on its type (see WHOLE_VALUE)."""
@@ -3634,6 +3760,12 @@ class Composer:
             r = 12 + self.NMUX_ROW * k
             self._set_term(t, (r, 0, r + self.NMUX_ROW, w - 16))
 
+    def _class_data(self, tree):
+        """class_private_data, with this composer's resolver and search folders."""
+        if self.resolver is None:
+            self.resolver = resolve.Resolver()
+        return class_private_data(tree, self.search_dirs, self.resolver)
+
     def add_agg_node(self, el):
         """Bundle (mux), Unbundle (demux), Bundle/Unbundle By Name (nMux), Index Array (aIndx)
         and Build Array (aBuild), measured on an AIXML-generated VI:
@@ -3675,7 +3807,7 @@ class Composer:
             agg, tpl = terms[0], terms[1]
             cin = [n for t, n in ins if t in ("input cluster", "cluster")]
             ctype = wired_type(cin[0] if cin else None, "the cluster")
-            inner = typedef_inner(ctype)
+            inner = self._class_data(typedef_inner(ctype)) if name == "Unbundle By Name" else typedef_inner(ctype)
             if inner.get("Type") != "Cluster":
                 raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), inner.get("Type")))
             # a TYPEDEF'd cluster (a subVI's pane hands one out) keeps the typedef on the
@@ -3739,9 +3871,10 @@ class Composer:
                 raise Unsupported("%s %s: a cluster input must be wired" % (name, el.get("uid")))
             else:
                 ctype = wired_type(cin[0], "the cluster")
-            if typedef_inner(ctype).get("Type") != "Cluster":
+            cdata = self._class_data(typedef_inner(ctype)) if name == "Bundle By Name" else typedef_inner(ctype)
+            if cdata.get("Type") != "Cluster":
                 raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), typedef_inner(ctype).get("Type")))
-            fs = fields(typedef_inner(ctype))
+            fs = fields(cdata)
             labels = [f.get("Label") or typedef_inner(f).get("Label") or "element" for f in fs]
             agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(ctype)
             for c in terms[2:]:
@@ -3751,7 +3884,7 @@ class Composer:
             field_ins = [(t, n) for t, n in ins if t not in ("input cluster", "cluster")]
             if name == "Bundle By Name":
                 named = []
-                paths = field_paths(typedef_inner(ctype))
+                paths = field_paths(cdata)
                 plabels = [p for p, _ in paths]
                 for fname, net in field_ins:
                     if fname not in plabels:

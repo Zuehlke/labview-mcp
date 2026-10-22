@@ -2807,6 +2807,29 @@ Left: Unbundle By Name on a class wire (private data, 3), on an unknown source t
 number (4); the rest are single cases. Suite: 143 PASS, 5 LOADS, none failing; round trip 148 of
 148.
 
+**And those, the same day: 56 of the 74 compose, 52 load executable** (the 4 more MGI class
+members composed out of place, executable in their folder):
+
+- **Unbundle "on a number"** was arithmetic typing: `Multiply(cluster, cluster)` and `Divide(cluster,
+  single)` answered a number, where LabVIEW works element-wise and answers the cluster
+  (`find_angles_3d.vi`); the donor of Divide had x and x/y in different type groups. And
+  `To Double Precision Float` of a cluster of numbers is that cluster with double fields
+  (`make_axes_caption.vi`). A `SubArray` output (Reverse 1D Array) kept its donor's u8 element
+  (`ex_readDaqmxClass.vi`) and takes the wired array's now.
+- **Unbundle on a CLASS WIRE** reads the class's private data: `class_private_data` decodes
+  `NI.LVClass.FlattenedPrivateDataCTL` (scripts/pylv-class-privatedata.py) and takes the cluster
+  LabVIEW labels "Cluster of class private data" - NOT always TopLevel 1, a class whose fields are
+  typedefs lists those first. The reader names the fields by their PATHS from it, as NI's export
+  does (MGI's `Restore.vi`: `P.Style,P.Size,P.Font`, where it wrote the leaf names).
+- **An error case with no range list** (MGI's `Store.vi`) decides on the status, frame 0 No Error
+  and frame 1 Error, as NI's export of it says; its `dIdx` reads 11 for two frames.
+- Not Unbundle's at all, and open: the 3 `prep.vi` of the Native 3D Graph read from a **Call
+  Parent Class Method**, which neither reader nor composer knows; `Gaussian surface data.vi` from
+  a **Call By Reference** (29 left out in the first sweep); `MATLAB - Lorenz Diff Eq.vi` from a
+  MATLAB script node. And `Restore.vi` stops at a COMPACT `Variant To Data` (primitive 8003 with
+  slots 1-4 where the usual form has 3, 8, 9, 11), whose slot 3 is `type` where the other form's
+  is `error out` - the name table is keyed by primitive and slot and cannot hold both.
+
 Open, named by the sweep:
 
 - 286 of the 3 095 still refused (the 169 Bundle By Name since solved, above): 26 Unbundle By Name on

@@ -1749,6 +1749,13 @@ class Reader:
             items.setdefault(di, []).append(txt)
         for di, ci in code_items.items():
             items.setdefault(di, []).extend(["Error " + ci[0]] + ci[1:])
+        if st == "Cluster" and not ranges and len(frames) == 2:
+            # an ERROR case may carry no range list either (MGI's Store.vi). It decides on the
+            # STATUS, so it reads like a boolean case without one (OpenG's Message and Response
+            # Example.vi, below): frame 0 is No Error, frame 1 Error. Read as no selector at all,
+            # the composer refused "an integer case on a Cluster wire" (2026-10-22). dIdx is no
+            # help - Store.vi's reads 11 for two frames.
+            items[0], items[1] = ["No Error"], ["Error"]
         if st == "Boolean" and not ranges and len(frames) == 2:
             # a boolean case may carry NO range list at all: frame 0 is False, frame 1 True in
             # NI's export (OpenG's Message and Response Example.vi)
@@ -2092,6 +2099,15 @@ class Reader:
         # <i> counts every element depth-first, a nested cluster's fields included, and NI's
         # export names a nested one by its dotted path (`Description.Name`)
         labels = WAVEFORM_FIELDS if wave else [p for p, _ in (aixml2vi.field_paths(ct) if ct is not None else [])]
+        if not wave and ct is not None and aixml2vi.typedef_inner(ct).get("RefType") == "UDClassInst":
+            # a CLASS wire inside a member: the fields are the class's private data, named by
+            # their paths as NI's export writes them (MGI's Restore.vi: P.Style, P.Size, P.Font)
+            try:
+                pdata = aixml2vi.class_private_data(aixml2vi.typedef_inner(ct),
+                                                    [os.path.dirname(self.vi_path)] if self.vi_path else [])
+                labels = [p for p, _ in aixml2vi.field_paths(pdata)]
+            except aixml2vi.Unsupported:
+                pass
         fields = []
         for t in terms:
             d = t.find("dco")
