@@ -1,0 +1,180 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.XYGraph/Export Image" source="&lt;labview&gt;\vi.lib\Math Plots\2D Math Plots\2D Compass\2D Compass XCtrl\Method\Export Image.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0053" HasItem="0" Format="inline" Label="Plot Area Ref"><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="Vertex Cluster"><TypeDesc Type="Array" Format="inline" Label="Vertex X Array"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="X" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Vertex Y Array"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="X" /></TypeDesc></TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0053" HasItem="0" Format="inline" Label="Plot Area Ref"><TypeDesc Type="Array" Format="inline"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="Cluster" Format="inline" Label="Vertex Cluster"><TypeDesc Type="Array" Format="inline" Label="Vertex X Array"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="X" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Vertex Y Array"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="X" /></TypeDesc></TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="ExportImage" /><TypeDesc Type="Void" Format="inline" Label="ExportImage" /><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="FileType"><EnumLabel>BMP</EnumLabel>
+        <EnumLabel>EPS</EnumLabel>
+        <EnumLabel>EMF</EnumLabel>
+        <EnumLabel>PICT</EnumLabel>
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="FileType" /><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="Target"><EnumLabel>File</EnumLabel>
+        <EnumLabel>Clipboard</EnumLabel>
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="Target" /><TypeDesc Type="Path" Prop1="0xFFFFFFFF" Format="inline" Label="Path" /><TypeDesc Type="Void" Format="inline" Label="Path" /><TypeDesc Type="Boolean" Format="inline" Label="HideGrid" /><TypeDesc Type="Void" Format="inline" Label="HideGrid" /><TypeDesc Type="Boolean" Format="inline" Label="Overwrite" /><TypeDesc Type="Void" Format="inline" Label="Overwrite" /></types><heap><SL__arrayElement class="invokeNode" uid="144">
+        <objFlags>66176</objFlags>
+        <termList elements="16">
+          <SL__arrayElement class="term" uid="265">
+            <objFlags>32769</objFlags>
+            <dco class="hGrowCItem" uid="1427">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(144)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1431">
+            <dco class="hGrowCItem" uid="1432">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(145)</typeDesc>
+              <termBounds>(0, 107, 9, 120)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1434">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="1435">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(146)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1437">
+            <dco class="hGrowCItem" uid="1438">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(147)</typeDesc>
+              <termBounds>(9, 107, 18, 120)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1440">
+            <objFlags>1</objFlags>
+            <dco class="invokeItem" uid="1441">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(148)</typeDesc>
+              <termBounds>(18, 0, 34, 60)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1444">
+            <objFlags>1</objFlags>
+            <dco class="invokeItem" uid="1445">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(149)</typeDesc>
+              <termBounds>(18, 60, 34, 120)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1358">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="1356">
+              <typeDesc>TypeID(150)</typeDesc>
+              <termBounds>(34, 0, 50, 60)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1467">
+            <dco class="invokeItem" uid="1465">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(151)</typeDesc>
+              <termBounds>(34, 60, 50, 120)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1471">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="1469">
+              <typeDesc>TypeID(152)</typeDesc>
+              <termBounds>(50, 0, 66, 60)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1475">
+            <dco class="invokeItem" uid="1473">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(153)</typeDesc>
+              <termBounds>(50, 60, 66, 120)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1479">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="1477">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(154)</typeDesc>
+              <termBounds>(66, 0, 82, 60)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1483">
+            <dco class="invokeItem" uid="1481">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(155)</typeDesc>
+              <termBounds>(66, 60, 82, 120)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1487">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="1485">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(156)</typeDesc>
+              <termBounds>(82, 0, 98, 60)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1491">
+            <dco class="invokeItem" uid="1489">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(157)</typeDesc>
+              <termBounds>(82, 60, 98, 120)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1495">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="1493">
+              <objFlags>262144</objFlags>
+              <typeDesc>TypeID(158)</typeDesc>
+              <termBounds>(98, 0, 114, 60)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="1499">
+            <dco class="invokeItem" uid="1497">
+              <objFlags>393217</objFlags>
+              <typeDesc>TypeID(159)</typeDesc>
+              <termBounds>(98, 60, 114, 120)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(215, 623, 330, 743)</bounds>
+        <shortCount>8</shortCount>
+        <clumpNum>131075</clumpNum>
+        <dcoList elements="12">
+          <SL__arrayElement uid="1441" />
+          <SL__arrayElement uid="1445" />
+          <SL__arrayElement uid="1356" />
+          <SL__arrayElement uid="1465" />
+          <SL__arrayElement uid="1469" />
+          <SL__arrayElement uid="1473" />
+          <SL__arrayElement uid="1477" />
+          <SL__arrayElement uid="1481" />
+          <SL__arrayElement uid="1485" />
+          <SL__arrayElement uid="1489" />
+          <SL__arrayElement uid="1493" />
+          <SL__arrayElement uid="1497" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="1427" />
+          <SL__arrayElement uid="1432" />
+          <SL__arrayElement uid="1435" />
+          <SL__arrayElement uid="1438" />
+          </permDCOList>
+        <nodeName>"XYGraph (strict)"</nodeName>
+        <oMId>0008</oMId>
+        <methName>"Export Image"</methName>
+        <methCode>104083457</methCode>
+        <invokeFlags>08</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

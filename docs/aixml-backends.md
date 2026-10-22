@@ -627,6 +627,14 @@ it carries no control STYLE, so the XControl looks like digital numerics and LED
 thermometer. A loaded XControl stays in LabVIEW's memory and is served for any path with the same
 qualified name. `experiments/aixml-without-grpc/FINDINGS.md` §7a, "XControl facades".
 
+**The other members of an XControl compose too, since 2026-10-22**, and so do class members: the
+role (Facade, Method, Standard) is read from the `.xctl`, a Method VI gets its `VIMS` signature,
+and the reader writes after `</VI>` - where NI's service ignores it - the connector pane PATTERN
+(`<?lvmcp pane="4815"?>`, part of a subVI's link binding) and the class of every
+`ref{UDClassInst}` (`<?lvmcp classes uid=... names=...?>`), which AIXML does not name. Over all 23
+XControls of LabVIEW 2026: 3 625 VIs read, 2 764 of the 2 809 class-typed members composed load
+executable. FINDINGS §7a, "Every XControl of the installation".
+
 **A MENU REFERENCE composes as a wire** - out of `Current VI's Menubar` into `Insert Menu Items` and
 `Get Menu Item Info`, and out of a `Shortcut Menu Activation?` frame's `MenuRef`; a right-click on
 the control then showed the inserted items in LabVIEW's own menu. The reader writes a string case's

@@ -13,6 +13,7 @@ Constant (name, type, value), Node for every primitive the name tables know, and
 between them. What it does not read yet is written as an XML comment naming the heap class,
 so nothing is dropped in silence.
 """
+import html
 import json
 import math
 import os
@@ -68,6 +69,24 @@ def _sub(tree):
         inner = next((c for c in inner if c.tag == "TypeDesc"), None)
         lab = inner.get("Label") if inner is not None else None
     return t + ("." + lab.replace(",", "\\2C") if lab else "")
+
+
+def class_names(tree):
+    """The qualified class of every ref{UDClassInst} aixml_type writes for `tree`, in the order
+    it writes them ("3D Plot.lvlib:3D Bar.lvclass"). AIXML names no class - NI's export neither -
+    so the reader hands them to the composer after </VI> (the XControl sweep, 2026-10-22)."""
+    if tree is None:
+        return []
+    t = tree.get("Type")
+    kids = [c for c in tree if c.tag == "TypeDesc"]
+    if t == "Refnum" and tree.get("RefType") == "UDClassInst":
+        return [":".join(i.get("Text") or "" for i in tree.findall("Item"))]
+    if t == "TypeDef":
+        return class_names(kids[0]) if kids else []
+    if t in ("Array", "Cluster") or (t == "Refnum" and tree.get("RefType") in
+                                     ("LVObjCtl", "DataLog", "Notifier", "Queue", "UserEvent", "EventReg", "Occurrence")):
+        return [n for k in kids for n in class_names(k)]
+    return []
 
 
 def aixml_type(tree):
@@ -1021,6 +1040,13 @@ class Reader:
         return out
 
     # ---- the whole VI ------------------------------------------------------------------------
+    def _note_classes(self, el, tree):
+        """Remember which classes `el`'s ref{UDClassInst}s are, for main() to write after </VI>."""
+        names = class_names(tree)
+        if names:
+            self.class_refs = getattr(self, "class_refs", [])
+            self.class_refs.append((el, names))
+
     def read(self):
         b = self.b
         # LabVIEW loads a file under its FILE name, and so names it NI's export: a class's private
@@ -1034,6 +1060,10 @@ class Reader:
         # "Special Monitor.lvclass:Monitor Data Changed.vi" - the owning library from LIBN
         libs = [l.text.strip() for l in b.main.findall("LIBN/Section/Library") if (l.text or "").strip()]
         self.out.set("_name", ":".join(libs + [name]))
+        try:
+            self.pane_id = int(b.fp.findtext("root/conPane/conId"))
+        except (TypeError, ValueError):
+            self.pane_id = None
         self.out.set("description", escape_description(self.description_text()))
         pane = self.pane_flags()
         self.fp_by_uid = {}
@@ -1050,6 +1080,7 @@ class Reader:
                 self.notes.append("front-panel %s %r: type %s not mapped" % (ddo.get("class"), label_text(ddo), lvheap.type_key(tree)))
             else:
                 el.set("type", t)
+                self._note_classes(el, tree)
             # style, as NI's exports write it: latched (a boolean's mechanical action, ddo
             # objFlags 0x20000 - NI's Stop buttons carry 0x60000), Ring (a stdRing on a plain
             # number, items from its multiLabel buf) and Table (a tableControl)
@@ -1304,6 +1335,8 @@ class Reader:
         if name:
             el.set("_name", name_attr(name))
         el.set("type", t or "?" + lvheap.type_key(tree))
+        if t:
+            self._note_classes(el, tree)
         el.set("uid", ddo.get("uid"))
         el.set("uid_parent", parent_uid)
         if dco.find("ConstValue") is None:
@@ -1958,7 +1991,9 @@ class Reader:
         terms = list(node.find("termList"))
         agg = terms[0]
         ct = self.tid_tree(agg)
-        labels = WAVEFORM_FIELDS if wave else [c.get("Label") or "" for c in (aixml2vi.fields(aixml2vi.typedef_inner(ct)) if ct is not None else [])]
+        # <i> counts every element depth-first, a nested cluster's fields included, and NI's
+        # export names a nested one by its dotted path (`Description.Name`)
+        labels = WAVEFORM_FIELDS if wave else [p for p, _ in (aixml2vi.field_paths(ct) if ct is not None else [])]
         fields = []
         for t in terms:
             d = t.find("dco")
@@ -1978,7 +2013,7 @@ class Reader:
                 # a CLASS's private data: the wire is a class refnum with no fields to read, but each
                 # element terminal carries the field's own labelled type (`Levels to Spawn`)
                 tt = self.tid_tree(t)
-                nm = (tt.get("Label") if tt is not None else None) or "?"
+                nm = (self._field_name(tt) if tt is not None else None) or "?"
             fields.append(nm)
             self.term_owner[t.get("uid")] = (el, nm, not self._is_out(t))
         el.set("fields", ",".join(escape(x) for x in fields))
@@ -2243,7 +2278,9 @@ class Reader:
                 if tree is None or tree.get("Type") == "Void":
                     continue
                 out = bool(int(d.findtext("objFlags") or 0) & 1)
-                self.term_owner[t.get("uid")] = (el, tree.get("Label") or "?", not out)
+                # a typedef'd parameter is labelled on the type it wraps (Rotate's Axis on a
+                # SceneObject, the 3D Picture Control's VIs - the XControl sweep, 2026-10-22)
+                self.term_owner[t.get("uid")] = (el, self._field_name(tree) or "?", not out)
         return el
 
     @staticmethod
@@ -2470,13 +2507,27 @@ def main(argv):
         tmp = tempfile.mkdtemp(prefix="vi2aixml_")
         main_xml = lvheap.extract(real, tmp)
     try:
-        root = Reader(main_xml, vi_path=None if src.lower().endswith(".xml") else os.path.abspath(src)).read()
+        reader = Reader(main_xml, vi_path=None if src.lower().endswith(".xml") else os.path.abspath(src))
+        root = reader.read()
     finally:
         if tmp:
             shutil.rmtree(tmp, ignore_errors=True)
     escape_illegal_xml_chars(root)
     ET.indent(root, "  ")
     text = ET.tostring(root, encoding="unicode")
+    pane = getattr(reader, "pane_id", None)
+    if pane is not None:
+        # the connector pane PATTERN, which AIXML has no attribute for: it is part of a subVI's
+        # link binding, so a VI recomposed on the station default broke every caller of NI's
+        # original (`Bad linkage to subVI`, NI's Dual Mode Thermometer facade over C to F.vi,
+        # 4815 recomposed as 4833 - the XControl sweep, 2026-10-22). AFTER </VI>, the one place
+        # NI's service ignores (docs/aixml-frontpanel-extension.md); the composer reads it.
+        text += '\n<?lvmcp pane="%d"?>' % pane
+    for el, names in getattr(reader, "class_refs", []):
+        # the CLASS of each ref{UDClassInst} in that element's type, in the order the type writes
+        # them - AIXML names none, and without it no class-typed terminal could be composed
+        if el.get("uid"):
+            text += '\n<?lvmcp classes uid="%s" names="%s"?>' % (el.get("uid"), html.escape("|".join(names), quote=True))
     if len(argv) > 1:
         open(argv[1], "w", encoding="utf-8").write(text + "\n")
     else:

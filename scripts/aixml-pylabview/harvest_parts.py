@@ -257,6 +257,13 @@ def ref_class(tree):
             if line.startswith("#") or row[0] == "class" or len(row) < 2:
                 continue
             _REF_CLASS_BY_FLAGS.setdefault(row[1].upper(), row[0])
+        # and the classes learn_node_classes.py read off NI's exports (LV.Pane, LV.SceneMesh,
+        # LV.SceneGraphDisplay ...): their nodes were skipped, so the composer had no row for
+        # them (the XControl sweep, 2026-10-22)
+        learned = os.path.join(lvheap.own_parts(), "class-ids-learned.json")
+        if os.path.exists(learned):
+            for flags, cls in json.load(open(learned, encoding="utf-8")).get("classes", {}).items():
+                _REF_CLASS_BY_FLAGS.setdefault(("0x%04X" % int(flags, 16)).upper(), cls)
     return _REF_CLASS_BY_FLAGS.get((tree.get("CtlFlags") or "").upper())
 
 

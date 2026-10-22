@@ -43,7 +43,11 @@ import xml.etree.ElementTree as ET
 
 ANCHORS = (("<vilib>", "vi.lib"), ("<userlib>", "user.lib"), ("<instrlib>", "instr.lib"),
            ("<resource>", "resource"))
-OWNER_EXT = (".lvlib", ".lvclass")
+# an XControl is a library too: its members call each other by `X.xctl:Member.vi`, as NI's
+# exporter and the reader write them (the XControl sweep, 2026-10-22)
+OWNER_EXT = (".lvlib", ".lvclass", ".xctl")
+# the item types an .xctl lists its VIs under, beside a library's plain "VI"
+XCTL_VI_TYPES = ("VI", "Method VI", "Property VI", "Ability VI")
 
 
 def labview_root():
@@ -249,8 +253,18 @@ class Resolver:
             return ("0", [s[0]] + s[1])
         return ("1", relative_ref(caller_file, path))
 
+    def member_item(self, owner, name, kind=None):
+        """The <Item> an owner lists under `name`, at any folder depth, or None."""
+        real = materialize(owner)
+        if real is None:
+            return None
+        for item in ET.parse(real).getroot().iter("Item"):
+            if item.get("Name") == name and item.get("URL") and (not kind or item.get("Type") in kind):
+                return item
+        return None
+
     def member(self, owner, name, kind=("VI",)):
-        """The file an owner (.lvlib or .lvclass) lists under `name`, at any folder depth."""
+        """The file an owner (.lvlib, .lvclass or .xctl) lists under `name`, at any folder depth."""
         real = materialize(owner)
         if real is None:
             return None
@@ -301,7 +315,8 @@ class Resolver:
             if not candidates:
                 return {"error": "no %s in the installation or near the caller" % owners[-1]}
             for owner in candidates:
-                path = self.member(owner, vi_name)
+                path = self.member(owner, vi_name,
+                                   XCTL_VI_TYPES if owner.lower().endswith(".xctl") else ("VI",))
                 if path and exists(path):
                     kind = "class member" if owners[-1].lower().endswith(".lvclass") else "library member"
                     return {"path": path, "qual": owners + [vi_name], "kind": kind,

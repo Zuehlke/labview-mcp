@@ -236,6 +236,17 @@ def run_test(name, expect, out_dir, stamp):
         dst = os.path.join(out_dir, "%s_%s" % (name, stamp))
         shutil.copytree(os.path.join(root, xc["from"]), dst)
         vi = os.path.join(dst, xc["facade"])
+        # the XControl's OTHER members, read off NI's originals by the reader and recomposed in
+        # place, callees first - NI's own callers of them (the facade) must still link
+        # (2026-10-22: the pane pattern and the Method VI's VIMS were what broke them)
+        for m in xc.get("recompose", []):
+            mx = os.path.join(out_dir, "%s_%s_%s.xml" % (name, stamp, os.path.splitext(m)[0]))
+            r = subprocess.run([PY, os.path.join(COMPOSER, "vi2aixml.py"), os.path.join(root, xc["from"], m), mx],
+                               capture_output=True, text=True, stdin=subprocess.DEVNULL)
+            mcode, mlog = (r.returncode, r.stdout + r.stderr) if r.returncode else compose(mx, os.path.join(dst, m))
+            if mcode != 0:
+                results.append((name, "MEMBER FAILED", "%s: %s" % (m, mlog.strip().splitlines()[-1] if mlog.strip() else "")))
+                return results
     log_before = len(dwarn_lines())
     code, log = compose(src, vi, expect[name].get("search", ()))
     if code != 0:

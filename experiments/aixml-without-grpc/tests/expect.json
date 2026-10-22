@@ -1487,6 +1487,7 @@
   "xcontrol": {
    "from": "examples\\Controls and Indicators\\XControls\\Dual Mode Thermometer",
    "facade": "Simple Dual Mode Thermometer Facade.vi",
+  "recompose": ["C to F.vi", "F to C.vi", "Simple Dual Mode Thermometer Init.vi", "Convert C to F.vi", "[Property] Fahrenheit Mode Read.vi", "[Property] Fahrenheit Mode Write.vi"],
    "host": "Run Dual Mode Thermometer XControl.vi",
    "hostCases": [
     {
@@ -1925,6 +1926,31 @@
      "available": "0",
      "data out": "42.5",
      "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t173_nested_by_name": {
+  "cases": [
+   {
+    "inputs": "new a=9",
+    "outputs": {
+     "b": "2.5",
+     "k": "7",
+     "s": "ab",
+     "a after": "9",
+     "k after": "7"
+    }
+   }
+  ]
+ },
+ "t174_conditional_default_last": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "conditional": 9,
+     "default second": 5
     }
    }
   ]

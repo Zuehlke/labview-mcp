@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fixed" key="fixed/06" source="&lt;labview&gt;\vi.lib/Native 3D Graph/make_axes_grids.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="term" uid="5310">
+                            <objFlags>131137</objFlags>
+                            <dco class="bDConstDCO" uid="5311">
+                              <typeDesc>TypeID(463)</typeDesc>
+                              <dsw>4096</dsw>
+                              <ddo class="bDFixed" uid="5313">
+                                <objFlags>32</objFlags>
+                                <bounds>(189, 391, 205, 413)</bounds>
+                                <partsList elements="2">
+                                  <SL__arrayElement class="cosm" uid="5315">
+                                    <objFlags>2355</objFlags>
+                                    <partID>9</partID>
+                                    <howGrow>240</howGrow>
+                                    <bounds>(-8, -5, 24, 27)</bounds>
+                                    <image class="Image">
+                                      <ImageResID>-8006</ImageResID>
+                                      </image>
+                                    <fgColor>00FF7F00</fgColor>
+                                    <bgColor>00FFFFFF</bgColor>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="annex" uid="5316">
+                                    <partID>66</partID>
+                                    <refListLength>0</refListLength>
+                                    <hGrowNodeListLength>0</hGrowNodeListLength>
+                                    <rsrcID>23506</rsrcID>
+                                    </SL__arrayElement>
+                                  </partsList>
+                                <typeDesc>TypeID(464)</typeDesc>
+                                <MouseWheelSupport>0</MouseWheelSupport>
+                                <cnst>06</cnst>
+                                </ddo>
+                              <ConstValue>3FF921FB54442D18</ConstValue>
+                              </dco>
+                            </SL__arrayElement>
+                          </heap></part>

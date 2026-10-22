@@ -73,6 +73,9 @@ SCALARS = {
 DDO_OF_KEY = {v[0]: v[1] for v in SCALARS.values()}
 DDO_OF_KEY.update({"Refnum.LVObjCtl": "stdRefNum", "Refnum.VisaRef": "stdRefNum", "Refnum.UsrDefndTag": "stdRefNum",
                    "Refnum.Queue": "stdRefNum",
+                   # a CLASS control or a class in a cluster (the 3D Math Plots' Display State):
+                   # parts cut from NI's own udClassDDO objects (the XControl sweep, 2026-10-22)
+                   "Refnum.UDClassInst": "udClassDDO",
                    "Picture": "stdPict", "MeasureData.Dynamicdata": "stdMeasureData"})
 # LabVIEW's type codes; a signal's lastSignalKind is 0x100 | code for a scalar - measured
 # 266 on double wires, 259 on int32, 289 on boolean in NI's own VIs.
@@ -160,13 +163,16 @@ def split_field(s):
         m2 = re.match(r"\.(\d+)(?=\{)", s[i:])
         if m2:
             i += m2.end()
-    if i < len(s) and s[i] == "{":
-        depth = 0
-        for j in range(i, len(s)):
-            depth += {"{": 1, "}": -1}.get(s[j], 0)
-            if depth == 0:
-                i = j + 1
-                break
+    # one {...} group, or two after `ref` - a strictly typed refnum, ref{LV.SceneGraphDisplay}
+    # {ref{LV.SceneNode}}, as a queue's element (NI's 3D Picture Control VIs)
+    for _ in range(2 if m.group(0) == "ref" else 1):
+        if i < len(s) and s[i] == "{":
+            depth = 0
+            for j in range(i, len(s)):
+                depth += {"{": 1, "}": -1}.get(s[j], 0)
+                if depth == 0:
+                    i = j + 1
+                    break
     rest = s[i:]
     if rest and not rest.startswith("."):
         raise Unsupported("unreadable type %r" % s)
@@ -180,10 +186,33 @@ ENUM_BASE = {"uint8": "UnitUInt8", "uint16": "UnitUInt16", "uint32": "UnitUInt32
 REFNUM_CONTAINERS = {"Queue": "Queue", "UserEvent": "UserEvent", "Notifier": "NotifierRef"}
 
 
-def type_tree(aixml_type, label=None, constant=False):
+# the classes of the element whose type is being read, in the order its ref{UDClassInst}s appear -
+# from the reader's <?lvmcp classes?> after </VI>; type_tree's top-level call restarts the count
+_CLASS_CTX = {"names": [], "i": 0}
+
+
+def class_ref_type(qual):
+    """A class refnum as VCTP writes it - NI's Light Color Read.vi: Refnum UDClassInst,
+    Field0 0x0000, MultiItem 1, one Item per step of the qualified name."""
+    el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "UDClassInst", "Field0": "0x0000",
+                                 "MultiItem": "1", "Format": "inline"})
+    for q in qual.split(":"):
+        ET.SubElement(el, "Item", {"Text": q})
+    return el
+
+
+def type_tree(aixml_type, label=None, constant=False, _top=True):
     """AIXML's type grammar -> an inlined TypeDesc tree as VCTP writes it:
     scalars, cluster{T.name,...}, array{T} / array.N{T}, enums uintN{a,b,c}."""
+    if _top:
+        _CLASS_CTX["i"] = 0
     aixml_type = aixml_type.strip()
+    if aixml_type.replace(" ", "") == "ref{UDClassInst}" and _CLASS_CTX["i"] < len(_CLASS_CTX["names"]):
+        el = class_ref_type(_CLASS_CTX["names"][_CLASS_CTX["i"]])
+        _CLASS_CTX["i"] += 1
+        if label:
+            el.set("Label", label)
+        return el
     mq = re.fullmatch(r"ref\{(Queue|UserEvent|Notifier)\}\{(.*)\}", aixml_type, re.S)
     if mq:
         # a QUEUE refnum, as NI's exporter writes one - ref{Queue}{<element type>.<label>} - and
@@ -194,7 +223,7 @@ def type_tree(aixml_type, label=None, constant=False):
         # two LayoutCheck subVIs that take them went to NI's service (2026-10-16)
         t, lab = split_field(mq.group(2))
         el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": REFNUM_CONTAINERS[mq.group(1)], "Format": "inline"})
-        el.append(type_tree(t, lab))
+        el.append(type_tree(t, lab, _top=False))
         if label:
             el.set("Label", label)
         return el
@@ -207,7 +236,7 @@ def type_tree(aixml_type, label=None, constant=False):
         # Reference node (2026-10-20)
         el = refnum_type(ms.group(1))
         t, _ = split_field(ms.group(2))
-        el.append(lvheap.strip_label(type_tree(t)))
+        el.append(lvheap.strip_label(type_tree(t, _top=False)))
         if label:
             el.set("Label", label)
         return el
@@ -216,13 +245,13 @@ def type_tree(aixml_type, label=None, constant=False):
         el = ET.Element("TypeDesc", {"Type": "Cluster", "Format": "inline"})
         for item in split_top(m.group(3)):
             t, lab = split_field(item)
-            el.append(type_tree(t, lab))
+            el.append(type_tree(t, lab, _top=False))
     elif m and m.group(1) == "array":
         el = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
         for _ in range(int(m.group(2) or 1)):
             ET.SubElement(el, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
         t, lab = split_field(m.group(3))
-        el.append(type_tree(t, lab))
+        el.append(type_tree(t, lab, _top=False))
     elif m and m.group(1) in ENUM_BASE and m.group(2) is None:
         # an enum is the unit-typed integer with one EnumLabel per item (measured: UnitUInt16
         # with Off/On/Auto for uint16{Off,On,Auto})
@@ -386,7 +415,15 @@ def refnum_type(inner, plain_class=False):
         return el
     row = _REF_CLASSES.get(inner)
     if row is None:
-        raise Unsupported("type 'ref{%s}' is not composable yet" % inner)
+        # a class the probe had no control for, whose id learn_node_classes.py read off NI's own
+        # exports (LV.Pane 0x004B, LV.SceneMesh 0x0076, LV.SceneGraphDisplay 0x0064): the plain
+        # class refnum, as for every class above (the XControl sweep, 2026-10-22)
+        p = os.path.join(OWN_PARTS, "class-ids-learned.json")
+        learned = json.load(open(p, encoding="utf-8")).get("classes", {}) if os.path.exists(p) else {}
+        flags = next((f for f, c in learned.items() if c == inner), None)
+        if flags is None:
+            raise Unsupported("type 'ref{%s}' is not composable yet" % inner)
+        row = ("0x%04X" % int(flags, 16), "")
     return ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "LVObjCtl", "CtlFlags": row[0],
                                    "HasItem": "0", "Format": "inline"})
 
@@ -447,6 +484,24 @@ def is_enum(tree):
 
 def fields(tree):
     return [c for c in tree if c.tag == "TypeDesc"]
+
+
+def field_paths(cluster):
+    """Every element a Bundle/Unbundle By Name can select, in the order its terminals' <i>
+    counts them: depth-first, a nested cluster before its own fields (Unflatten From JSON.vi,
+    `Description.Name`, `Description.Time`, `Data`, `Error` are i = 1, 2, 3, 4 - 0 is
+    `Description` itself). Each entry is (dotted path as NI's export writes it, type)."""
+    out = []
+
+    def walk(tree, prefix):
+        for f in fields(typedef_inner(tree)):
+            # a typedef'd field carries its label on the type it wraps
+            path = prefix + [f.get("Label") or typedef_inner(f).get("Label") or ""]
+            out.append((".".join(path), f))
+            if typedef_inner(f).get("Type") == "Cluster":
+                walk(f, path)
+    walk(cluster, [])
+    return out
 
 
 def _split_outside(text, sep):
@@ -1852,6 +1907,11 @@ class Composer:
         elif style not in (None, "", "latched"):
             self.report.append("style %r of %r not composed - shown as a plain %s" % (style, name, tree.get("Type")))
         fpdco, src, h, _ = self.build_ddo(tree, is_ind, "fpdco", None, force_class=force)
+        if _CLASS_CTX["names"]:
+            # a control holding CLASSES gets their links in write_class_links: FPPI naming its
+            # udClassDDO objects, DDPI naming the control (NI's Light Color Read.vi)
+            self.class_fp = getattr(self, "class_fp", [])
+            self.class_fp.append((fpdco, list(_CLASS_CTX["names"])))
         if force and (force.startswith("stdGraph") or force == "stdRing"):
             # composed AS a graph or a RING: its control references are of that class, not the
             # data type's (a ring of uint16 is Ring 0x0022, not Digital 0x0012 - LabVIEW's save)
@@ -2349,7 +2409,12 @@ class Composer:
     # palette FIXED constants: AIXML's name -> the bDFixed ddo's `cnst` code (absent for 0),
     # read off an AIXML-generated VI holding all ten that NI's exports use
     FIXED = {"0STR": "03", "0PTH": "17", "2PI": "05", "PI": "04", "EOL": "19", "CRTN": "00",
-             "TAB": "02", "+INF": "0F", "MEPS": "1C", "NREF": "1A"}
+             "TAB": "02", "+INF": "0F", "MEPS": "1C", "NREF": "1A",
+             # OUR spellings, for codes no NI export in the cache names - NI's own export of the
+             # 3D Picture Control's VIs, which hold Pi/2, is EMPTY past the pane (2026-10-22):
+             # 06 is Pi/2 (3FF921FB54442D18, part cut from make_axes_grids.vi), 01 Line Feed
+             # (0A, part from Read Line Ending.vi). Not accepted by NI's converter.
+             "PI/2": "06", "LF": "01"}
 
     def add_fixed(self, el):
         """<FixedConst _name="PI"/>: a diagram constant whose ddo is a `bDFixed` carrying the
@@ -3581,19 +3646,23 @@ class Composer:
             ends["input cluster" if name == "Unbundle By Name" else "cluster"] = (agg, None)
             labels = [f.get("Label") or "element" for f in fs]
             if name == "Unbundle By Name":
+                # a field is selected by its dotted path, and <i> counts depth-first over the
+                # nested clusters (field_paths)
+                paths = field_paths(inner)
+                plabels = [p for p, _ in paths]
                 want = [unescape(x) for x in split_top(el.get("fields") or "") if x] or [t for t, _ in outs]
                 for w in want:
-                    if w not in labels:
-                        raise Unsupported("%s %s: no field %r (has %s)" % (name, el.get("uid"), w, ", ".join(labels)))
-                picked = [(w, labels.index(w)) for w in want]
+                    if w not in plabels:
+                        raise Unsupported("%s %s: no field %r (has %s)" % (name, el.get("uid"), w, ", ".join(plabels)))
+                picked = [(w, plabels.index(w), paths[plabels.index(w)][1]) for w in want]
             else:
                 # every field, keyed like endpoints() keys repeated names: element, element#1...
-                picked = [(rep_key(labels[i], labels[:i].count(labels[i])), i) for i in range(len(fs))]
-            for key, idx in picked:
-                t = self._term_from(tpl, fs[idx], index=idx if name == "Unbundle By Name" else None)
+                picked = [(rep_key(labels[i], labels[:i].count(labels[i])), i, fs[i]) for i in range(len(fs))]
+            for key, idx, ftype in picked:
+                t = self._term_from(tpl, ftype, index=idx if name == "Unbundle By Name" else None)
                 tl.append(t)
                 ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
-                ends[key] = (t, fs[idx])
+                ends[key] = (t, ftype)
             for key, net in keyed(outs):
                 if key not in ends:
                     raise Unsupported("%s %s: no output %r" % (name, el.get("uid"), key))
@@ -3602,10 +3671,10 @@ class Composer:
             for key, (t, _) in ends.items():
                 self.ends[(el.get("uid"), key)] = (t.get("uid"), diag)
             if name == "Unbundle By Name":
-                self._nmux_geometry(node, agg, [ends[k][0] for k, _ in picked],
-                                    [k for k, _ in picked], bundle=False)
+                self._nmux_geometry(node, agg, [ends[k][0] for k, _, _ in picked],
+                                    [k for k, _, _ in picked], bundle=False)
             else:
-                outs_ = [ends[k][0] for k, _ in picked]
+                outs_ = [ends[k][0] for k, _, _ in picked]
                 self._agg_rows(node, agg, outs_, lambda h: (0, 0, h, 16))
                 for k, t in enumerate(outs_):
                     self._set_term(t, (self.AGG_ROW * k, 16, self.AGG_ROW * k + self.AGG_ROW, 32))
@@ -3641,11 +3710,13 @@ class Composer:
             field_ins = [(t, n) for t, n in ins if t not in ("input cluster", "cluster")]
             if name == "Bundle By Name":
                 named = []
+                paths = field_paths(typedef_inner(ctype))
+                plabels = [p for p, _ in paths]
                 for fname, net in field_ins:
-                    if fname not in labels:
-                        raise Unsupported("%s %s: no field %r (has %s)" % (name, el.get("uid"), fname, ", ".join(labels)))
-                    idx = labels.index(fname)
-                    t = self._term_from(tpl, fs[idx], flags=32832, index=idx)
+                    if fname not in plabels:
+                        raise Unsupported("%s %s: no field %r (has %s)" % (name, el.get("uid"), fname, ", ".join(plabels)))
+                    idx = plabels.index(fname)
+                    t = self._term_from(tpl, paths[idx][1], flags=32832, index=idx)
                     tl.append(t)
                     ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
                     self.ends[(el.get("uid"), fname)] = (t.get("uid"), diag)
@@ -3682,7 +3753,11 @@ class Composer:
             src_t, out_t, idx_t = terms[0], terms[1], terms[2]
             arr = [n for t, n in ins if t == "array"]
             atype = wired_type(arr[0] if arr else None, "the array")
-            n = len(atype.findall("Dimension")) if atype.get("Type") == "Array" else 0
+            # a TYPEDEF'd array (a subVI's pane hands one out) keeps the typedef on the terminal,
+            # as Unbundle By Name does; its shape and element are the wrapped array's (NI's
+            # grow_prop_array.vi, the XControl sweep 2026-10-22)
+            wrapped = typedef_inner(atype)
+            n = len(wrapped.findall("Dimension")) if wrapped.get("Type") == "Array" else 0
             if n not in (1, 2):
                 raise Unsupported("Index Array %s: a %s input is not composable yet"
                                   % (el.get("uid"), "%dD array" % n if n else atype.get("Type")))
@@ -3707,9 +3782,9 @@ class Composer:
                     ot = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
                     for _ in range(keep):
                         ET.SubElement(ot, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
-                    ot.append(copy.deepcopy(unlabel(elem_of(atype))))
+                    ot.append(copy.deepcopy(unlabel(elem_of(wrapped))))
                 else:
-                    ot = unlabel(elem_of(atype))
+                    ot = unlabel(elem_of(wrapped))
                 o = out_t if g == 0 else self._term_from(out_t, ot, dco_flags=0x40001)
                 o.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(ot)
                 tl.append(o)
@@ -3741,7 +3816,8 @@ class Composer:
                 # CONCATENATING: every `array` input is an array of the output's own type, its
                 # DCO flagged 0x10000, the first one 0x810000 (measured on an AIXML-generated
                 # Build Array of two string arrays); an `element` input stays unflagged
-                arrays = [wt for (tn, _), wt in zip(ins, types) if tn == "array"]
+                # a typedef'd array is concatenated as the array it wraps (grow_prop_array.vi)
+                arrays = [typedef_inner(wt) for (tn, _), wt in zip(ins, types) if tn == "array"]
                 if any(a.get("Type") != "Array" or len(a.findall("Dimension")) != 1 for a in arrays):
                     raise Unsupported("Build Array %s: only 1D arrays are concatenated yet" % el.get("uid"))
                 et = numeric_join([unlabel(elem_of(a)) for a in arrays] +
@@ -4813,6 +4889,9 @@ class Composer:
             classes.setdefault(link["owner"], {"qual": link["qual"][:-1], "lib_ref": link["lib_ref"]})
         for owner, c in self.class_consts.items():
             classes.setdefault(owner, {"qual": c["qual"], "lib_ref": c["lib_ref"]})
+        fp_classes = self._fp_class_links()
+        for owner, c in fp_classes.items():
+            classes.setdefault(owner, {"qual": c["qual"], "lib_ref": c["lib_ref"]})
         if not classes:
             return
 
@@ -4866,6 +4945,37 @@ class Composer:
         for owner, c in self.class_consts.items():
             for tag in ("FPPI", "DDPI"):
                 record(bdhp, tag, owner, self._lit(b"\x07\x00"), 0, heap_tail, cache=c["uids"])
+        fphp = self.main.find("LIfp/Section/FPHP")
+        for owner, c in fp_classes.items():
+            # a class on the FRONT PANEL, as NI's Light Color Read.vi links one in LIfp: FPPI
+            # naming the udClassDDO objects (inside a cluster too), DDPI naming the controls
+            # that hold them - without both the control "refers to a missing LabVIEW class"
+            record(fphp, "FPPI", owner, self._lit(b"\x07\x00"), 0, zero, cache=c["fp"])
+            record(fphp, "DDPI", owner, self._lit(b"\x07\x00"), 0, heap_tail, cache=c["dd"])
+
+    def _fp_class_links(self):
+        """owner .lvclass -> {qual, lib_ref, fp: [udClassDDO uids], dd: [control ddo uids]} for
+        every class a front-panel control holds, its udClassDDOs taken in type order."""
+        out = {}
+        for fpdco, names in getattr(self, "class_fp", []):
+            ddo = fpdco.find("ddo")
+            objs = [e for e in fpdco.iter("SL__arrayElement") if e.get("class") == "udClassDDO"]
+            if ddo is not None and ddo.get("class") == "udClassDDO":
+                objs = [ddo] + [o for o in objs if o is not ddo]
+            for obj, qual in zip(objs, names):
+                parts = qual.split(":")
+                if self.resolver is None:
+                    self.resolver = resolve.Resolver()
+                owners = self.resolver._owner_files(parts[-1], self.search_dirs)
+                if not owners:
+                    raise Unsupported("class %s of a front-panel control: no such .lvclass in the "
+                                      "installation or near the VI" % qual)
+                c = out.setdefault(owners[0], {"qual": parts, "lib_ref": self.resolver.ref(
+                    owners[0], getattr(self, "caller_file", None)), "fp": [], "dd": []})
+                c["fp"].append(int(obj.get("uid")))
+                if ddo is not None and int(ddo.get("uid")) not in c["dd"]:
+                    c["dd"].append(int(ddo.get("uid")))
+        return out
 
     def add_case(self, el):
         frames_el = [f for f in el if isinstance(f.tag, str) and f.tag == "CaseFrame"]
@@ -6144,6 +6254,25 @@ class Composer:
 
     DISABLES = {"Diagram Disable Structure": "diagram", "Conditional Disable Structure": "conditional"}
 
+    # the symbols of the target a composed VI is loaded on: My Computer under Windows. Project
+    # symbols are unknown here and compare unequal, as an undefined symbol does in LabVIEW.
+    # TARGET_BITNESS follows LABVIEWMCP_TARGET_BITNESS, else 32 (the LabVIEW 2026 that hosts
+    # NI's service on this station is the 32-bit one).
+    TARGET_SYMBOLS = {"RUN_TIME_ENGINE": "False", "TARGET_TYPE": "Windows",
+                      "TARGET_BITNESS": os.environ.get("LABVIEWMCP_TARGET_BITNESS", "32")}
+
+    def _cond_true(self, sel):
+        """Whether a Conditional Disable frame's condition holds on that target: `A==B`,
+        `A!=B`, joined by || and &&."""
+        def atom(a):
+            m = re.fullmatch(r"\s*([A-Za-z_][A-Za-z0-9_]*)\s*(==|!=)\s*(\S+?)\s*", a)
+            if not m:
+                return False
+            have = self.TARGET_SYMBOLS.get(m.group(1))
+            eq = have is not None and have.lower() == m.group(3).lower()
+            return eq if m.group(2) == "==" else not eq
+        return any(all(atom(a) for a in part.split("&&")) for part in sel.split("||"))
+
     def _cond_expr(self, sel, el):
         """' RUN_TIME_ENGINE==True ' -> an ExpressionInfo as LabVIEW writes it: the strings in
         Tag0000, a prefix tree in activeDiag - an operator TreeElt (Tag0000 FF, two children,
@@ -6227,8 +6356,37 @@ class Composer:
         for tag in ("activeDiag", "defaultDiag"):
             if node.find(tag) is not None:
                 node.find(tag).text = "%02X" % enabled
+        if kind == "conditional":
+            sels = [unescape(f.get("selector") or "").strip() for f in frames_el]
+            # defaultDiag names the Default frame; without it LabVIEW takes frame 0, and a
+            # Default frame elsewhere is then "an empty condition" (NI's ex_InitTabControl.vi:
+            # TARGET_TYPE==Windows first, Default second, defaultDiag 01)
+            dflt = next((i for i, s in enumerate(sels) if s in ("Default", "")), 0)
+            # activeDiag is the frame that RUNS: LabVIEW does not evaluate the conditions on
+            # load, it takes this index (absent: 0). Measured: Default first and
+            # RUN_TIME_ENGINE==False second ran the Default frame until it was set; NI's Scale
+            # TDMS Data.vi carries activeDiag 01 for its TARGET_TYPE!=RT frame. So the composer
+            # evaluates them for the desktop target it writes for.
+            active = next((i for i, s in enumerate(sels) if i != dflt and self._cond_true(s)), dflt)
+            for tag, val in (("defaultDiag", dflt), ("activeDiag", active)):
+                e = node.find(tag)
+                if val == 0:
+                    if e is not None:
+                        node.remove(e)
+                    continue
+                if e is None:
+                    e = ET.Element(tag)
+                    node.insert(list(node).index(info), e)
+                e.text = "%02X" % val
+            # the selector label and dIdx show the frame that runs, as NI's own VIs do
+            txt = node.find("selString/textRec/text")
+            if txt is not None and sels:
+                txt.text = '" %s "' % sels[active]
+            shown = active
+        else:
+            shown = 0
         if node.find("dIdx") is not None:
-            node.find("dIdx").text = "0"
+            node.find("dIdx").text = str(shown)
         for e in node.iter("typeDesc"):
             e.attrib.pop("_t", None)
         parent.nodes.append(node)
@@ -7423,15 +7581,79 @@ class Composer:
                 out.append(el)
         return out
 
+    # the terminals LabVIEW hands every XControl method; the others are the method's own
+    XCTL_METHOD_TERMS = ("Display State In", "Display State Out", "Container State",
+                         "error in", "error in (no error)", "error out")
+
+    def _write_vims(self, m, out_dir, base):
+        """An XControl METHOD's signature, the VIMS block only a Method VI carries - without it
+        LabVIEW refuses the file, "Resource not found" (the XControl sweep, 2026-10-22). Read off
+        the six methods of the installation: u16 the return value's conIdx (FFFF none), u16 0,
+        u16 the number of parameters, then per parameter u16 its conIdx and u16 FFFF. NI's
+        Convert C to F.vi: 0001 0000 0001 000A FFFF - `Degrees Fahrenheit` at 1 returned,
+        `Degrees Celsius` at 10 the parameter; Export Image.vi's five parameters ascend by conIdx
+        (one method, Sort.vi, lists 7 before 5 - an order the pane does not carry)."""
+        own = [(con, is_ind) for con, tree, is_ind, _ in self.pane_terms
+               if (tree.get("Label") or "") not in self.XCTL_METHOD_TERMS]
+        outs = sorted(c for c, ind in own if ind)
+        ret = outs[0] if len(outs) == 1 else 0xFFFF
+        params = sorted(c for c, ind in own if not ind or (ind and len(outs) > 1))
+        data = struct.pack(">HHH", ret, 0, len(params)) + b"".join(struct.pack(">HH", c, 0xFFFF) for c in params)
+        fname = base + "_VIMS.bin"
+        with open(os.path.join(out_dir, fname), "wb") as f:
+            f.write(data)
+        vims = ET.Element("VIMS")
+        ET.SubElement(vims, "Section", {"Index": "0", "Format": "bin", "File": fname})
+        rtsg = m.find("RTSG")
+        m.insert(list(m).index(rtsg) + 1 if rtsg is not None else 1, vims)
+
+    def _xctl_role(self, xctl, member):
+        """Facade, Method or Standard: the instrument type LabVIEW gives `member` of `xctl`, from
+        the item the .xctl lists it under - an Ability VI named Facade, a Method VI, anything else."""
+        if self.resolver is None:
+            self.resolver = resolve.Resolver()
+        for owner in self.resolver._owner_files(xctl, self.search_dirs):
+            try:
+                item = self.resolver.member_item(owner, member)
+            except (OSError, ET.ParseError):
+                item = None
+            if item is None:
+                continue
+            if item.get("Type") == "Method VI":
+                return "Method"
+            names = [p.text for p in item.findall("Property") if p.get("Name") == "NI.XItem.Name"]
+            return "Facade" if item.get("Type") == "Ability VI" and "Facade" in names else "Standard"
+        return "Facade" if "facade" in member.lower() else "Standard"
+
     def compose(self, aixml_path):
         vi = ET.parse(aixml_path).getroot()
         self.vi_name = unescape(vi.get("_name") or "Composed.vi")
+        # the reader's connector pane PATTERN, after </VI> where NI's service ignores it: a
+        # recomposed subVI keeps the pattern its callers were linked against (vi2aixml.py)
+        with open(aixml_path, encoding="utf-8", errors="replace") as f:
+            tail = f.read().rsplit("</VI>", 1)
+        mp = re.search(r'<\?lvmcp\s+pane="(\d+)"\s*\?>', tail[1]) if len(tail) == 2 else None
+        # and the class of each ref{UDClassInst}, per element, in its type's order
+        self.class_names = {}
+        for mc in re.finditer(r'<\?lvmcp\s+classes\s+uid="([^"]*)"\s+names="([^"]*)"\s*\?>', tail[1] if len(tail) == 2 else ""):
+            self.class_names[mc.group(1)] = html.unescape(mc.group(2)).split("|")
+        if mp and int(mp.group(1)) in self.pane_codes and self.fp.find("root/conPane/conId") is not None:
+            self.con_id = int(mp.group(1))
+            self.fp.find("root/conPane/conId").text = str(self.con_id)
         # an XControl's FACADE is named as NI's exporter writes a library member,
         # "NISAST Include Paths.xctl:Facade.vi"; it is written as a member of that library (LIBN)
         # with the instrument type Facade, as LabVIEW saves NI's facades, and only there are the
         # XControl events (Data Change, Display State Change, ...) valid (2026-10-11)
         quals = self.vi_name.split(":")
-        self.facade_lib = quals[-2] if len(quals) > 1 and quals[-2].lower().endswith(".xctl") else None
+        # ...but NOT every member of an XControl is its facade: NI's own carry instrument type
+        # Facade only for the Ability VI the .xctl names Facade, Method for a Method VI, Standard
+        # for the rest (Init, the property VIs, subVIs) - all with LIBN. Writing every member as a
+        # facade gave Init.vi and the property VIs a facade's window and events (the XControl
+        # sweep, 2026-10-22). The role is read from the .xctl; without one, a name holding
+        # "Facade" is the facade, as before.
+        self.xctl_lib = quals[-2] if len(quals) > 1 and quals[-2].lower().endswith(".xctl") else None
+        self.xctl_role = self._xctl_role(self.xctl_lib, quals[-1]) if self.xctl_lib else None
+        self.facade_lib = self.xctl_lib if self.xctl_role == "Facade" else None
         self.pane_terms = []
         self.con_taken = {}
         self.term_label = {}
@@ -7482,10 +7704,13 @@ class Composer:
                     case_halves.setdefault((p.get("uid_parent"), e.get("_id")), {})[p.get("uid")] = e
         row = {"Control": 0, "Indicator": 0}
         for el in [e for e in elements if e.tag in ("Control", "Indicator")]:
+            _CLASS_CTX["names"] = self.class_names.get(el.get("uid"), [])
             self.add_fp(el, row[el.tag])
             row[el.tag] += 1
         for el in [e for e in elements if e.tag in ("Constant", "FixedConst")]:
+            _CLASS_CTX["names"] = self.class_names.get(el.get("uid"), [])
             self.add_const(el) if el.tag == "Constant" else self.add_fixed(el)
+        _CLASS_CTX["names"] = []
         # nodes and tunnels in dependency order, so every input type is known when it is placed
         def is_case(uid):
             """A case structure, or a disable structure - tunnels with one inner half per frame."""
@@ -7842,8 +8067,9 @@ class Composer:
         m.find("LVSR/Section").set("Name", self.vi_name)
         m.find("RTSG/Section/Guid").text = "%032x" % random.getrandbits(128)
         m.find("LVSR/Section/Instrument").set("Signature", "%032x" % random.getrandbits(128))
-        if getattr(self, "facade_lib", None):
-            # the file name bare, the library in LIBN - NI's Simple Dual Mode Thermometer Facade.vi
+        if getattr(self, "xctl_lib", None):
+            # the file name bare, the library in LIBN - NI's Simple Dual Mode Thermometer Facade.vi,
+            # and its Init.vi, Convert C to F.vi and property VIs alike
             quals = self.vi_name.split(":")
             m.find("LVSR/Section").set("Name", quals[-1])
             libn = ET.Element("LIBN")
@@ -7851,8 +8077,11 @@ class Composer:
             for q in quals[:-1]:
                 ET.SubElement(sec, "Library").text = q
             m.insert(0, libn)
+            m.find("LVSR/Section/Instrument").set("Type", self.xctl_role)
+            if self.xctl_role == "Method":
+                self._write_vims(m, out_dir, base)
+        if getattr(self, "facade_lib", None):
             lvsr = m.find("LVSR/Section")
-            lvsr.find("Instrument").set("Type", "Facade")
             # and the WINDOW of a facade, which the XControl shows: no title bar, menu bar or
             # scroll bars, transparent - the flags on which LabVIEW's own template for a new facade
             # (resource\Framework\Providers\xi\xctl.llb\Facade.vit) and NI's Simple Dual Mode

@@ -2648,6 +2648,100 @@ The full suite on the grammar change, before the `out_key` fix: 131 PASS, 5 LOAD
 driven by window messages, which failed identically with the composer change stashed (same
 LabVIEW, restarted), so they are not this change's.
 
+### Every XControl of the installation, read and recomposed (2026-10-22)
+
+The user's question: are there more XControls than the Dual Mode Thermometer that we cannot read
+and write - pylabview only. The installation has **23** (`.xctl` under examples, `project\`,
+`resource\`, `user.lib` MGI, `vi.lib` FXP, 15 Math Plots, the Native 3D Graph, Configure User Def
+Prop). A sweep read every member (3 534 - an `.xctl` lists most by a SYMBOLIC URL,
+`/<vilib>/...`, which the first sweep skipped and counted 49) and 91 VIs around them with the
+reader, composed the reader's AIXML out of place, and loaded every composed VI over COM.
+
+| stage | composed | executable |
+|---|---|---|
+| first sweep, code as on `main` | 71 of 3 519 (49 members found, the rest counted as hosts) | 52 of 60 |
+| after the fixes below, before classes | 457 of 3 625 | 353 of 358 |
+| the 3 095 refused on `ref{UDClassInst}`, after the class fix | **2 809** | **2 764 of 2 809** |
+
+Reading never failed. NI's own export is no better here: for the 3D Picture Control's VIs
+(`make_axes_grids.vi`) it writes the pane and NOTHING of the diagram.
+
+What was wrong, each measured, each with its fix:
+
+- **Bundle/Unbundle By Name on a NESTED cluster.** The terminal's `<i>` counts every element
+  depth first, a nested cluster before its own fields (`Unflatten From JSON.vi`: `Description.Name`,
+  `Description.Time`, `Data`, `Error` are 1, 2, 3, 4 - 0 is `Description`), and NI's export names
+  a nested field by its dotted path. The reader indexed the top level only, so it picked the wrong
+  field - which is what the "wrong wire type" breaks of MCLB with Sort and the WebPublishingTool
+  were (a `u32[]` into a `bool`, a whole cluster into a `bool`) - and the composer knew no paths.
+  `aixml2vi.field_paths`; a typedef'd field is labelled on the type it wraps. Against NI's cached
+  exports: **217 of 221 VIs agree, against 175 before**, the 4 left differed before too. `t173`.
+- **A Conditional Disable Structure runs `activeDiag`, LabVIEW does NOT evaluate the conditions
+  on load.** `defaultDiag` names the Default frame, `activeDiag` the frame that runs, both absent
+  meaning 0 (NI's `ex_InitTabControl.vi`: Default second, `defaultDiag 01`; `Scale TDMS Data.vi`:
+  `TARGET_TYPE!=RT` second, `activeDiag 01`). The composer wrote neither, so a Default frame not
+  first was "an empty condition" and a true condition not first never ran (Default first and
+  `RUN_TIME_ENGINE==False` second ran Default). It evaluates the conditions now for My Computer
+  (`RUN_TIME_ENGINE` False, `TARGET_TYPE` Windows, `TARGET_BITNESS` 32 or
+  `LABVIEWMCP_TARGET_BITNESS`; a project symbol compares unequal). `t174`.
+- **Not every XControl member is its facade.** Every `X.xctl:` name was composed as a Facade -
+  window, events and all. NI's: Facade for the Ability VI the `.xctl` names Facade, **Method** for
+  a Method VI, Standard for the rest; all carry `LIBN`. The role is read from the `.xctl` now, and
+  `.xctl` counts as a library owner in `resolve.py`, so `X.xctl:Member.vi` calls resolve.
+- **A Method VI needs `VIMS`**, a block only methods carry - without it LabVIEW answers "Resource
+  not found". Read off all six methods of the installation: u16 the return value's conIdx (FFFF
+  none), u16 0, u16 the parameter count, then per parameter u16 conIdx and u16 FFFF (NI's
+  `Convert C to F.vi`: `0001 0000 0001 000A FFFF`). Parameters are written ascending; NI's
+  `Sort.vi` lists 7 before 5, an order the pane does not carry.
+- **The connector pane PATTERN is part of a subVI's link binding**, and AIXML has no attribute for
+  it: recomposed on the station default (4833), `C to F.vi` (4815) broke NI's facade, `Bad linkage
+  to subVI` six times. The reader writes `<?lvmcp pane="4815"?>` AFTER `</VI>` - the one place NI's
+  service ignores (`docs/aixml-frontpanel-extension.md`) - and the composer takes it.
+- **Types and nodes**: a queue of strictly typed scene refnums (`ref{X}{Y}` as an element), classes
+  the reader knew from NI's exports but the composer did not (`class-ids-learned.json` is now read
+  by `refnum_type` and by `harvest_parts.py`, whose property sweep had skipped those classes - five
+  classes, 76 properties and 8 methods more after `--props` over the XControl VIs), five classes
+  NI's exports name only as a CONTROL's type (`learn_ref_classes.py`: `0x003B` LV.LVObjectRefNum,
+  `0x0054` LV.SceneWindow, `0x004F` LV.FacadeVI, `0x4065` LV.XNode, `0x40A3`
+  LV.ExternalEditorWizard), Pi/2 as a fixed constant (code `06`, our spelling `PI/2` - no NI export
+  names one), `Index Array` and concatenating `Build Array` on a typedef'd array, and an Invoke
+  Node parameter labelled on its typedef.
+
+**The whole Dual Mode Thermometer recomposes except its two `.ctl`s**: facade, Init, the method,
+both property VIs and both subVIs from the reader, in place, callees first; the host with its panel
+open answers 212 for 100 C. `t140` does exactly that now (`recompose` in expect.json).
+
+**A CLASS-TYPED TERMINAL - the user's idea, and it holds.** AIXML writes `ref{UDClassInst}` with no
+class, NI's export as well, so 3 094 members (the Math Plots) were refused. The reader now writes
+the qualified class of each such terminal after `</VI>`, per element in its type's order
+(`<?lvmcp classes uid="187" names="3D Bar.lvclass"?>`); the composer makes a real class refnum
+(`Refnum UDClassInst`, `MultiItem 1`, one `Item` per qualifier, the front-panel `udClassDDO` parts)
+and gives Bundle/Unbundle By Name on the class wire only their field names. Without links the VI
+"refers to a missing LabVIEW class" and everything behind it fails; with `VIPI`, and in `LIfp` an
+`FPPI` naming the udClassDDOs and a `DDPI` naming the controls - NI's `Light Color Read.vi` has
+exactly these - **LabVIEW resolves the class nodes and the upcast to the parent class ON LOAD**, no
+`TCPI`, no open-and-save in the IDE: executable, no insanity, no DWarn on a fresh LabVIEW.
+
+Open, named by the sweep:
+
+- 286 of the 3 095 still refused: 169 Bundle By Name with no cluster wired, 26 Unbundle By Name on
+  an enum, 15 Unbundle with no `element` output, 11 references to a refnum control, 10 + 7 others.
+- 45 of the 2 809 broken: 15 host examples whose XControl instance holds a class (`Data` "refers
+  to a missing LabVIEW class" - an XControl object is not a udClassDDO, so no FPPI is written for
+  it), MGI's `Class Read/Write.vi` ("dynamic outputs without a dynamic input" - the pane's dispatch
+  flags), and singles.
+- "How could we have read more bytes than the size of the thrall map?" (`TDFunction.cpp` 926),
+  logged dozens of times in a long COM session over these VIs. A class method's pane keeps
+  `HasThrall="13"` and NI's carries `<ThrallSources> 11</ThrallSources>` on its class output, which
+  `lvheap.Bundle._inline` drops. Carrying it through (A/B on 20 VIs, fresh LabVIEW) made NO thrall
+  warning in either arm and 20 "Wiring insanity found and fixed" in the carried one only, so it was
+  reverted; the warning is observed, not reproduced, and its cause is open.
+- The reader classes a `gRef` whose type is the VI's own pane as a Local Variable named `?`
+  (`make_plot_contour.vi`).
+
+Suite after all of it: 139 PASS, 5 LOADS, `t136` failing exactly as on `main` (it needs the panel
+activated); round trip 144 of 145, `t133`/`t138` passing alone after failing once in the long run.
+
 ## 7b. Completing the parts from more sources (2026-10-13)
 
 The user's question: are all parts of the AIXML cache extracted yet, and what do the Project

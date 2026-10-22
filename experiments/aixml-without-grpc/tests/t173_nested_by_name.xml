@@ -1,0 +1,12 @@
+<VI _name="T173 Nested By Name.vi" description="Bundle and Unbundle By Name select a field of a NESTED cluster by its dotted path, as NI's export writes it (inner.b). The terminal's index counts depth-first, so k after the nested cluster is 4, not 2 (2026-10-22, the XControl sweep).">
+  <Control _name="data" type="cluster{cluster{int32.a,double.b}.inner,string.s,int32.k}" uid="4200" uid_parent="root" value="[[1,2.5],ab,7]" outputs="value:4200.value" conIdx="4" connection="recommended"/>
+  <Control _name="new a" type="int32" uid="4205" uid_parent="root" value="0" outputs="value:4205.value" conIdx="5" connection="recommended"/>
+  <Node _name="Unbundle By Name" fields="inner.b,k,s" inputs="input cluster:4200.value" outputs="inner.b:4210.inner.b,k:4210.k,s:4210.s" uid="4210" uid_parent="root"/>
+  <Node _name="Bundle By Name" fields="inner.a" inputs="input cluster:4200.value,inner.a:4205.value" outputs="output cluster:4220.output cluster" uid="4220" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="inner.a,k" inputs="input cluster:4220.output cluster" outputs="inner.a:4230.inner.a,k:4230.k" uid="4230" uid_parent="root"/>
+  <Indicator _name="b" type="double" uid="4240" uid_parent="root" value="0" inputs="value:4210.inner.b" conIdx="6" connection="recommended"/>
+  <Indicator _name="k" type="int32" uid="4245" uid_parent="root" value="0" inputs="value:4210.k" conIdx="7" connection="recommended"/>
+  <Indicator _name="s" type="string" uid="4250" uid_parent="root" value="" inputs="value:4210.s" conIdx="2" connection="recommended"/>
+  <Indicator _name="a after" type="int32" uid="4255" uid_parent="root" value="0" inputs="value:4230.inner.a" conIdx="3" connection="recommended"/>
+  <Indicator _name="k after" type="int32" uid="4260" uid_parent="root" value="0" inputs="value:4230.k" conIdx="1" connection="recommended"/>
+</VI>
