@@ -1,0 +1,12 @@
+<VI _name="T176 Cluster Queue Preview.vi" description="A queue of CLUSTERS: Preview Queue Element's element takes the wired queue's element type, not its part donor's (an enum queue) - the Math Plots' Export Image.vi refused its Unbundle By Name on UnitUInt16 until 2026-10-22.">
+  <Control _name="point" outputs="value:4205.value" type="cluster{double.a,string.s}" uid="4205" uid_parent="root" value="[0,]"/>
+  <Constant _name="queue type" outputs="value:4200.value" type="cluster{double.a,string.s}" uid="4200" uid_parent="root" value="[0,]"/>
+  <Node _name="Obtain Queue" inputs="element data type:4200.value" outputs="queue out:4210.queue out,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Enqueue Element" inputs="queue:4210.queue out,element:4205.value,error in (no error):4210.error out" outputs="queue out:4230.queue out,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Node _name="Preview Queue Element" inputs="queue:4230.queue out,error in (no error):4230.error out" outputs="queue out:4240.queue out,element:4240.element,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Node _name="Release Queue" inputs="queue:4240.queue out,error in (no error):4240.error out" outputs="error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="a,s" inputs="input cluster:4240.element" outputs="a:4260.a,s:4260.s" uid="4260" uid_parent="root"/>
+  <Indicator _name="a out" inputs="value:4260.a" type="double" uid="4300" uid_parent="root" value="0"/>
+  <Indicator _name="s out" inputs="value:4260.s" type="string" uid="4310" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4350" uid_parent="root" value="[false,0,]"/>
+</VI>

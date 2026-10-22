@@ -1967,5 +1967,27 @@
     }
    }
   ]
+ },
+ "t176_cluster_queue_preview": {
+  "cases": [
+   {
+    "inputs": "point={2.5,peek}",
+    "outputs": {
+     "a out": 2.5,
+     "s out": "peek",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t177_inplace_array_2d": {
+  "cases": [
+   {
+    "inputs": "row=1;col=0",
+    "outputs": {
+     "grid out": "[[1,2],[4,4]]"
+    }
+   }
+  ]
  }
 }

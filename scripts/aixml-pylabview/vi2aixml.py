@@ -1854,7 +1854,10 @@ class Reader:
                     self.term_owner[t.get("uid")] = (owner, "element", not sink_outer)
                     continue
                 f = int(d.findtext("objFlags") or 0)
-                role = "index" if f & 0x400000 and f & 0x200000 else "array"
+                # the array 0x800000; an index adds its dimension bits - both on a 1D array's
+                # (0xE00000), 0x200000 the row and 0x400000 the column of a 2D one (NI's Queue
+                # Stack Maze Solver.vi), which NI's export names `index (row)` / `index (col)`
+                role = {0x600000: "index", 0x200000: "index (row)", 0x400000: "index (col)"}.get(f & 0x600000, "array")
                 o = outer.get(d.get("uid"))
                 if o is not None:
                     self.term_owner[o.get("uid")] = (owner, role, sink_outer)
@@ -2119,7 +2122,8 @@ class Reader:
         terms = list(node.find("termList"))
         agg, cref = terms[0], terms[1]
         ct = self.tid_tree(agg)
-        labels = [c.get("Label") or "element" for c in (aixml2vi.fields(aixml2vi.typedef_inner(ct)) if ct is not None else [])]
+        # a typedef'd field is labelled on the type it wraps (Control Ref Queue in the Math Plots)
+        labels = [self._field_name(c) or "element" for c in (aixml2vi.fields(aixml2vi.typedef_inner(ct)) if ct is not None else [])]
         self.term_owner[agg.get("uid")] = (el, "output cluster", False)
         self.term_owner[cref.get("uid")] = (el, "cluster", True)
         for k, t in enumerate(terms[2:]):
@@ -2131,7 +2135,8 @@ class Reader:
         terms = list(node.find("termList"))
         agg = terms[0]
         ct = self.tid_tree(agg)
-        labels = [c.get("Label") or "element" for c in (aixml2vi.fields(aixml2vi.typedef_inner(ct)) if ct is not None else [])]
+        # a typedef'd field is labelled on the type it wraps (Control Ref Queue in the Math Plots)
+        labels = [self._field_name(c) or "element" for c in (aixml2vi.fields(aixml2vi.typedef_inner(ct)) if ct is not None else [])]
         self.term_owner[agg.get("uid")] = (el, "cluster", True)
         for k, t in enumerate(terms[1:]):
             self.term_owner[t.get("uid")] = (el, labels[k] if k < len(labels) else "element", False)

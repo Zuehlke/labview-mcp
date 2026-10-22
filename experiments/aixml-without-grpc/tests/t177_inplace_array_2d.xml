@@ -1,0 +1,11 @@
+<VI _name="T177 In Place Array 2D.vi" description="Array Index / Replace Elements on a 2D array: index (row) and index (col) in, one element incremented in place - NI writes the pair so in Queue Stack Maze Solver.vi, the XY Plot Matrix property VIs need it (2026-10-22).">
+  <Constant _name="grid" outputs="value:4200.value" type="array.2{double}" uid="4200" uid_parent="root" value="[[1,2],[3,4]]"/>
+  <Control _name="row" outputs="value:4205.value" type="int32" uid="4205" uid_parent="root" value="0"/>
+  <Control _name="col" outputs="value:4206.value" type="int32" uid="4206" uid_parent="root" value="0"/>
+  <Structure _name="In Place Element Structure" uid="4300" uid_parent="root">
+    <Node _name="Array Index / Replace Elements" inputs="array:4200.value,index (row):4205.value,index (col):4206.value" outputs="element:4310.element" uid="4310" uid_parent="4300"/>
+    <Node _name="Increment" inputs="x:4310.element" outputs="x+1:4320.x+1" uid="4320" uid_parent="4300"/>
+    <Node _id="4310" _name="Array Index / Replace Elements" inputs="element:4320.x+1" outputs="array:4330.array" uid="4330" uid_parent="4300"/>
+  </Structure>
+  <Indicator _name="grid out" inputs="value:4330.array" type="array.2{double}" uid="4400" uid_parent="root" value="[]"/>
+</VI>

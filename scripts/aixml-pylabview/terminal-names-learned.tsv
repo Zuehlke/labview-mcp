@@ -500,3 +500,11 @@ primResID	node	parmIndex	terminal
 23811	Create Network Stream Reader Endpoint	out	error out
 23798	Write Single Element to Stream	4	timed out?
 23808	Flush Stream	1	timed out?
+1141	?	1	number
+1141	?	out	16bit integer
+1181	?	2	number
+1908	?	out	second subarray
+9109	Release Queue	9	remaining elements
+9111	Enqueue Element	2	timeout in ms (-1)
+9112	?	11	error out
+9112	?	3	error in (no error)

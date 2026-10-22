@@ -2779,6 +2779,34 @@ The other 7 are class MEMBERS with dynamic-dispatch terminals (MGI's Path Select
 
 Suite after it: 141 PASS, 5 LOADS, none failing; round trip 146 of 146.
 
+**The Unbundle refusals ("input is UnitUInt16, not a cluster", "no output 'element'", "Array
+Index / Replace Elements on a NumInt") were four other defects, none of them Unbundle's.** Re-run
+on the 74 VIs that showed them: 0 composed before, **51 after, 49 of 51 load executable** (the 2
+are MGI class members composed out of place, executable in their folder):
+
+- **A queue's element took its PART DONOR's type.** A primitive's output adapts only to inputs that
+  shared its donor type, and the donor of `Preview Queue Element` queued an enum - so a cluster
+  queue's `element` came out UnitUInt16 (26 VIs). The queue tests had matched their donors by
+  chance. Now a terminal whose donor type is the donor refnum's ELEMENT takes the wired refnum's
+  element, and a wired input that is that element (Obtain Queue's `element data type`) makes the
+  refnum one of the wired type; error terminals excepted, because the notifier's donor shares its
+  element type with `error in`/`error out` (`t154` broke without that). `t176`.
+- **`Preview Queue Element` had no names for `error in` and `error out`** (`?parm3`, `?parm11`).
+  Learned with `learn_names_full.py --cache` from eleven NI exports of these VIs, made for it
+  (the whole cache is past the tool's time limit): 9112 3 and 11, plus six slots of four other
+  primitives. NI's export names them as Dequeue Element's.
+- **Unbundle and Bundle (not By Name) read a typedef'd field as `element`** - its label sits on
+  the type it wraps (`Control Ref Queue`) - in the reader and the composer alike (16 VIs).
+- **A 2D `Array Index / Replace Elements`**: `index (row)` 0xA00000 and `index (col)` 0xC00000 on
+  BOTH halves, each with its own outer terminal (NI's `Queue Stack Maze Solver.vi`); a right half
+  with the row alone was a FATAL insanity, "Out of bounds TypedObjList access (index: 1, nObj: 1)".
+  `t177`. Pairs with several elements (`element`, `element2`) stay refused. And `lv-com.ps1`'s 2D
+  array INPUT reads back empty - no test had used one - so `t177` takes its grid from a constant.
+
+Left: Unbundle By Name on a class wire (private data, 3), on an unknown source type (5), and on a
+number (4); the rest are single cases. Suite: 143 PASS, 5 LOADS, none failing; round trip 148 of
+148.
+
 Open, named by the sweep:
 
 - 286 of the 3 095 still refused (the 169 Bundle By Name since solved, above): 26 Unbundle By Name on

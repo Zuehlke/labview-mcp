@@ -2596,6 +2596,38 @@ class Composer:
                 i = idx_of[id(by_name[tname])]
                 new_types[i] = self.net_type[net]
                 wired_in[i] = net
+        # A QUEUE's (notifier's, user event's) element follows the WIRED refnum's element type:
+        # every terminal whose donor type is the donor refnum's element takes the wired one's.
+        # The donor of Preview Queue Element (9112) queued an enum, so a cluster queue's
+        # `element` came out UnitUInt16 and the Unbundle behind it was refused (26 of the Math
+        # Plots' XControl VIs, 2026-10-22); the queue tests had matched their donor by chance.
+        for i, net in list(wired_in.items()):
+            d, w = donor[i], typedef_inner(self.net_type[net])
+            if (d.get("Type") == "Refnum" and d.get("RefType") in REFNUM_CONTAINERS.values()
+                    and w.get("Type") == "Refnum" and w.get("RefType") == d.get("RefType")
+                    and fields(d) and fields(w)):
+                de, we = ET.tostring(plain(lvheap.strip_label(fields(d)[0]))), unlabel(fields(w)[0])
+                for j in range(len(terms)):
+                    if (j != i and j not in wired_in and ET.tostring(donor[j]) == de
+                            and not canon[j].startswith(b"error terminal")):
+                        new_types[j] = we
+                        canon[j] = b"queue element %d" % j
+        # ...and the other way round: a wired input that is the donor refnum's ELEMENT (Obtain
+        # Queue's `element data type`) makes that refnum one of the wired type - t176's cluster
+        # queue left Obtain Queue's `queue out` typed by its donor's {Message, Message Data}
+        for i, net in list(wired_in.items()):
+            di = ET.tostring(donor[i])
+            for j in range(len(terms)):
+                d = donor[j]
+                if (j == i or j in wired_in or canon[i].startswith(b"error terminal") or d.get("Type") != "Refnum"
+                        or d.get("RefType") not in REFNUM_CONTAINERS.values() or not fields(d)):
+                    continue
+                if ET.tostring(plain(lvheap.strip_label(fields(d)[0]))) == di:
+                    r = copy.deepcopy(d)
+                    r.remove(fields(r)[0])
+                    r.insert(0, copy.deepcopy(unlabel(self.net_type[net])))
+                    new_types[j] = r
+                    canon[j] = b"queue of wired %d" % j
         # A polymorphic primitive ADAPTS: every terminal sharing a donor type (Add's x, y and
         # x+y) takes the coerced type of what is wired into that group - int32 + double makes
         # all three double. MEASURED on NI's Continuous Decimating.vi (Multiply, int32 into y):
@@ -3653,7 +3685,7 @@ class Composer:
             for c in terms[1:]:
                 tl.remove(c)
             ends["input cluster" if name == "Unbundle By Name" else "cluster"] = (agg, None)
-            labels = [f.get("Label") or "element" for f in fs]
+            labels = [f.get("Label") or typedef_inner(f).get("Label") or "element" for f in fs]
             if name == "Unbundle By Name":
                 # a field is selected by its dotted path, and <i> counts depth-first over the
                 # nested clusters (field_paths)
@@ -3710,7 +3742,7 @@ class Composer:
             if typedef_inner(ctype).get("Type") != "Cluster":
                 raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), typedef_inner(ctype).get("Type")))
             fs = fields(typedef_inner(ctype))
-            labels = [f.get("Label") or "element" for f in fs]
+            labels = [f.get("Label") or typedef_inner(f).get("Label") or "element" for f in fs]
             agg.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(ctype)
             for c in terms[2:]:
                 tl.remove(c)
@@ -6607,7 +6639,8 @@ class Composer:
             inner = typedef_inner(tree)
             int32 = type_tree("int32")
             if cls == "arrayPoserInterface":
-                if inner.get("Type") != "Array" or len(inner.findall("Dimension")) != 1:
+                dims = len(inner.findall("Dimension")) if inner.get("Type") == "Array" else 0
+                if dims not in (1, 2) or (dims == 2 and "index (row)" not in ins):
                     raise Unsupported("Node %s: %s on a %s is not composable yet" % (el.get("uid"), name, inner.get("Type")))
                 elem = unlabel(elem_of(inner))
                 fields = []
@@ -6637,6 +6670,40 @@ class Composer:
                     if typ is not None:
                         dco.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(unlabel(typ) if role != "array" and role != "cluster" else typ)
                     roles[(half is right, role)] = t
+            if cls == "arrayPoserInterface" and dims == 2:
+                # a 2D array: the left half indexes by `index (row)` (0xA00000) and `index (col)`
+                # (0xC00000), the right half gives back the row index only (0xA00001) - NI's
+                # Queue Stack Maze Solver.vi. The part's 1D index becomes the row, a clone of it
+                # (with its own outer terminal) the column.
+                # both halves carry both: the right one gives back row (0xA00001) and column
+                # (0xC00001), each with its own outer terminal - NI's 3947; a right half with the
+                # row alone was a FATAL insanity, "Out of bounds TypedObjList access (index: 1,
+                # nObj: 1)" (t177, 2026-10-22)
+                for is_r, half in ((False, left), (True, right)):
+                    row = roles.pop((is_r, "index"))
+                    row.find("dco/objFlags").text = str(0xA00000 | is_r)
+                    col = copy.deepcopy(row)
+                    lvheap.renumber(col, self.alloc)
+                    col.find("dco/objFlags").text = str(0xC00000 | is_r)
+                    tb = col.find("dco/termBounds")
+                    if tb is not None:
+                        b = lvheap.parse_bounds(tb.text)
+                        tb.text = lvheap.fmt_bounds((b[0] + 8, b[1], b[2] + 8, b[3]))
+                    o_col = copy.deepcopy(outer_by_dco[row.find("dco").get("uid")])
+                    lvheap.renumber(o_col, self.alloc)
+                    o_col.find("dco").set("uid", col.find("dco").get("uid"))
+                    refs = col.find("dco/termList")
+                    if refs is not None and len(refs) == 2:
+                        refs[0].set("uid", col.get("uid"))
+                        refs[1].set("uid", o_col.get("uid"))
+                    half.find("termList").append(col)
+                    half.find("termList").set("elements", str(len(half.find("termList"))))
+                    dl = half.find("dcoList")
+                    ET.SubElement(dl, "SL__arrayElement", {"uid": col.find("dco").get("uid")})
+                    dl.set("elements", str(len(dl)))
+                    outers.append(o_col)
+                    outer_by_dco[col.find("dco").get("uid")] = o_col
+                    roles[(is_r, "index (row)")], roles[(is_r, "index (col)")] = row, col
             if cls == "clusterPoserInterface":
                 # one field DCO per field, each a clone of the part's with its <i> and type
                 for half in (left, right):
@@ -6698,10 +6765,13 @@ class Composer:
             return outer[term.find("dco").get("uid")]
         if info["cls"] == "arrayPoserInterface":
             keys = {"array": (outer_of(roles[(is_right, "array")]), parent),
-                    "index": (outer_of(roles[(is_right, "index")]), parent),
                     "element": (roles[(is_right, "element")], d)}
+            for idx in ("index", "index (row)", "index (col)"):
+                if (is_right, idx) in roles:
+                    keys[idx] = (outer_of(roles[(is_right, idx)]), parent)
             elem_t = unlabel(elem_of(typedef_inner(info["tree"])))
-            out_types = {"element": elem_t, "array": info["tree"], "index": type_tree("int32")}
+            out_types = {"element": elem_t, "array": info["tree"], "index": type_tree("int32"),
+                         "index (row)": type_tree("int32")}
         else:
             keys = {("output cluster" if is_right else "input cluster"): (outer_of(roles[(is_right, "cluster")]), parent)}
             out_types = {"output cluster": info["tree"]}
