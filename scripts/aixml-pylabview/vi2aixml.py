@@ -1064,6 +1064,19 @@ class Reader:
             self.pane_id = int(b.fp.findtext("root/conPane/conId"))
         except (TypeError, ValueError):
             self.pane_id = None
+        # and the pane's slot FLAGS, which `connection` only partly carries: dynamic dispatch
+        # (0x8000, NI's class members write 0x9000) and an output's in-place partner (0x0400
+        # plus the partner slot - error out 0x0D04 beside error in at 4)
+        self.pane_slot_flags = {}
+        try:
+            func = b.flat[b.flat_of_consolidated(int(b.main.find("CONP/Section/TypeDesc").get("TypeID")))]
+            if func.get("Type") == "Function":
+                for i, c in enumerate([c for c in func if c.tag == "TypeDesc"]):
+                    f = int(c.get("Flags") or "0", 16)
+                    if c.get("TypeID") is not None and f:
+                        self.pane_slot_flags[i] = f
+        except (TypeError, ValueError, AttributeError, IndexError):
+            pass
         self.out.set("description", escape_description(self.description_text()))
         pane = self.pane_flags()
         self.fp_by_uid = {}
@@ -1075,6 +1088,11 @@ class Reader:
             tree = self.tid_tree(fpdco)
             t = aixml_type(tree)
             el = ET.Element("Indicator" if ind else "Control", {"_name": name_attr(label_text(ddo))})
+            if int(fpdco.findtext("objFlags") or 0) & 0x1000 and t and "UDClassInst" in t:
+                # a DYNAMIC DISPATCH terminal (fPDCO objFlags 0x1000) - AIXML writes a dynamic
+                # OUTPUT `recommended`, so the composer learns it from the trailer
+                self.dynamic_fp = getattr(self, "dynamic_fp", [])
+                self.dynamic_fp.append(el)
             if t is None:
                 el.set("type", "?" + (lvheap.type_key(tree) or ""))
                 self.notes.append("front-panel %s %r: type %s not mapped" % (ddo.get("class"), label_text(ddo), lvheap.type_key(tree)))
@@ -2600,6 +2618,12 @@ def main(argv):
         # 4815 recomposed as 4833 - the XControl sweep, 2026-10-22). AFTER </VI>, the one place
         # NI's service ignores (docs/aixml-frontpanel-extension.md); the composer reads it.
         text += '\n<?lvmcp pane="%d"?>' % pane
+    dyn = [e.get("uid") for e in getattr(reader, "dynamic_fp", []) if e.get("uid")]
+    if dyn:
+        text += '\n<?lvmcp dynamic uids="%s"?>' % ",".join(dyn)
+    flags = getattr(reader, "pane_slot_flags", None)
+    if flags:
+        text += '\n<?lvmcp paneflags="%s"?>' % ",".join("%d:%04X" % kv for kv in sorted(flags.items()))
     for el, names in getattr(reader, "class_refs", []):
         # the CLASS of each ref{UDClassInst} in that element's type, in the order the type writes
         # them - AIXML names none, and without it no class-typed terminal could be composed

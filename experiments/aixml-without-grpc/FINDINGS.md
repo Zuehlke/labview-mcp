@@ -2755,8 +2755,29 @@ the xControl objects, `GILinkProp1` the `.xctl`'s major version and `GILinkProp5
 timestamp that differs per `.xctl` - none of which AIXML carries.
 
 The other 7 are class MEMBERS with dynamic-dispatch terminals (MGI's Path Selector classes,
-`Native 3D Graph\classes\prep.vi`): "Only VIs owned by a LabVIEW class may use dynamic terminals" -
-the composer writes `LIBN` for an `.xctl` member, not for an `.lvclass` one.
+`Native 3D Graph\classes\prep.vi`): "Only VIs owned by a LabVIEW class may use dynamic terminals".
+**All 7 load executable now, recomposed in place in a copy of their folder**, after four things:
+
+- `LIBN` for a `.lvclass` member (`X.lvclass:M.vi`, a class in a library `L.lvlib:X.lvclass:M.vi`),
+  the LVSR name bare, as for an XControl member.
+- **`VILB`**, the FIRST record of LIvi, naming the library FILE: `LinkSaveFlag 2`, an empty qualified
+  name, the path relative to the VI (NI's `Get Directory.vi`: `["", "MGI Path Selector.lvclass"]`).
+  `LIBN` alone left the error standing. NOT written for an XControl member: with it LabVIEW holds
+  the member to the XControl's abilities and wants `Display State` and `Data` typed by the `.xctl`'s
+  State and Data typedefs, which AIXML does not carry - `t140`'s facade went "Ability State is
+  missing" and "incorrect datatype"; without it the member stays loose and runs (A/B).
+- The pane's slot FLAGS, which `connection` carries only partly: a dynamic-dispatch input is
+  `0x9000` (it was written 0), and an output names its in-place partner, `0x0400` plus the partner's
+  slot (`error out 0x0D04` beside `error in` at 4). The reader writes them after `</VI>`,
+  `<?lvmcp paneflags="0:0D04,3:0D07,..."?>`, and the composer takes them; `dynamic` alone is 0x9000.
+- `0x1000` on a class-typed fPDCO marks a dynamic-dispatch terminal, an OUTPUT included - which NI's
+  export writes `recommended`, so AIXML cannot say it. A part cut from a dispatching accessor (the
+  udClassDDO indicator part, LMock's `Read.vi`) brought it along, and MGI's `Class Read.vi` got
+  "Cannot have dynamic outputs without a dynamic input" on its plain `Value` (NI 0x10201, composed
+  0x11201). The reader lists the terminals that carry it, `<?lvmcp dynamic uids="..."?>`, and the
+  composer sets the bit there and clears it elsewhere, on class-typed controls only.
+
+Suite after it: 141 PASS, 5 LOADS, none failing; round trip 146 of 146.
 
 Open, named by the sweep:
 

@@ -1978,6 +1978,15 @@ class Composer:
                 f = ET.Element("objFlags")
                 fpdco.insert(0, f)
             f.text = str(int(f.text or 0) | 0x10000 | {"recommended": 0x200, "required": 0x80}.get(need, 0))
+        fo = fpdco.find("objFlags")
+        if fo is not None and "UDClassInst" in (el.get("type") or ""):
+            # 0x1000 marks a DYNAMIC DISPATCH terminal - an input or the class output that
+            # follows it - and a part cut from a dispatching accessor brings it along: MGI's
+            # Class Read.vi got "Cannot have dynamic outputs without a dynamic input" on its plain
+            # Value output (NI 0x10201, composed 0x11201). Set where the reader read it (after
+            # </VI>, as AIXML writes a dynamic OUTPUT `recommended`) or the input is `dynamic`.
+            dyn = el.get("uid") in self.dynamic_terms or el.get("connection") == "dynamic"
+            fo.text = str((int(fo.text or 0) & ~0x1000) | (0x1000 if dyn else 0))
         col = 1 if is_ind else 0
         if con is not None and getattr(self, "facade_lib", None):
             # an XControl IS its facade's front panel, shown from the origin on: the terminals
@@ -4786,6 +4795,26 @@ class Composer:
                         ET.SubElement(rec, "VILSPathRef", {"Ident": "PTH0", "TpVal": "0", "ZeroFill": "True"})
                     ET.SubElement(rec, "IUseStr")
         self.write_class_links(lvin, bdhp, path_ref)
+        # NOT for an XControl member: with VILB LabVIEW holds it to the XControl's abilities and
+        # wants Display State / Data typed by the .xctl's own State and Data typedefs, which AIXML
+        # does not carry - t140's facade went "Ability State is missing" and "incorrect datatype";
+        # without it the member stays loose and runs (A/B, 2026-10-22)
+        owner_lib = (getattr(self, "class_member_of", None) or [None])[-1]
+        if owner_lib:
+            # a library member's FIRST link names its library FILE: VILB, LinkSaveFlag 2, no
+            # qualified name, the path relative to the VI (NI's Get Directory.vi:
+            # ["", "MGI Path Selector.lvclass"]). LIBN alone left a class member "Only VIs owned
+            # by a LabVIEW class may use dynamic terminals" (the XControl sweep, 2026-10-22)
+            if self.resolver is None:
+                self.resolver = resolve.Resolver()
+            owners = self.resolver._owner_files(owner_lib, self.search_dirs)
+            if owners:
+                rec = ET.Element("VILB", {"LinkSaveFlag": "2"})
+                ET.SubElement(rec, "LinkSaveQualName")
+                path_ref(rec, "LinkSavePathRef", *self.resolver.ref(owners[0], getattr(self, "caller_file", None)))
+                lvin.insert(0, rec)
+            else:
+                self.report.append("NOTE: %s not found - written without its VILB link" % owner_lib)
         vi_ref_cons = None
         for path, link in getattr(self, "static_links", {}).items():
             if vi_ref_cons is None:
@@ -7727,9 +7756,16 @@ class Composer:
                                         "Pattern": "0x%X" % code, "HasThrall": "0", "Format": "inline"})
             children = [(void, 0)] * slots
             for con, tree, is_ind, need in self.pane_terms:
-                flags = {"required": 0x1000, "recommended": 0x0800}.get(need, 0)
+                # a DYNAMIC DISPATCH terminal is 0x9000 on NI's class members (dispatch 0x8000 and
+                # required); written 0 it was "Only VIs owned by a LabVIEW class may use dynamic
+                # terminals" / "dynamic outputs without a dynamic input" (MGI's Path Selector)
+                flags = {"required": 0x1000, "recommended": 0x0800, "dynamic": 0x9000}.get(need, 0)
                 if is_ind:
                     flags |= 0x0100
+                if con in self.pane_flags_given:
+                    # the reader's own reading of the slot, after </VI>: dispatch and an
+                    # output's in-place partner (0x0400 | partner slot), which AIXML lacks
+                    flags = self.pane_flags_given[con]
                 children[con] = (self.types.register(tree), flags)
             for fid, flags in children:
                 ET.SubElement(f, "TypeDesc", {"TypeID": str(fid), "Flags": "0x%04X" % flags})
@@ -7815,6 +7851,17 @@ class Composer:
             tail = f.read().rsplit("</VI>", 1)
         mp = re.search(r'<\?lvmcp\s+pane="(\d+)"\s*\?>', tail[1]) if len(tail) == 2 else None
         # and the class of each ref{UDClassInst}, per element, in its type's order
+        self.pane_flags_given = {}
+        # the terminals the reader read as dynamic dispatch (fPDCO objFlags 0x1000)
+        self.dynamic_terms = set()
+        md = re.search(r'<\?lvmcp\s+dynamic\s+uids="([^"]*)"\s*\?>', tail[1]) if len(tail) == 2 else None
+        if md:
+            self.dynamic_terms = {u for u in md.group(1).split(",") if u}
+        mf = re.search(r'<\?lvmcp\s+paneflags="([^"]*)"\s*\?>', tail[1]) if len(tail) == 2 else None
+        for item in (mf.group(1).split(",") if mf else []):
+            k, _, v = item.partition(":")
+            if k.strip().isdigit() and v:
+                self.pane_flags_given[int(k)] = int(v, 16)
         self.class_names = {}
         for mc in re.finditer(r'<\?lvmcp\s+classes\s+uid="([^"]*)"\s+names="([^"]*)"\s*\?>', tail[1] if len(tail) == 2 else ""):
             self.class_names[mc.group(1)] = html.unescape(mc.group(2)).split("|")
@@ -7835,6 +7882,12 @@ class Composer:
         self.xctl_lib = quals[-2] if len(quals) > 1 and quals[-2].lower().endswith(".xctl") else None
         self.xctl_role = self._xctl_role(self.xctl_lib, quals[-1]) if self.xctl_lib else None
         self.facade_lib = self.xctl_lib if self.xctl_role == "Facade" else None
+        # a CLASS member is named as NI's exporter writes one, "MGI Path Selector.lvclass:Get
+        # Directory.vi" (a class in a library "Lib.lvlib:X.lvclass:M.vi"); it is written as a
+        # member of that class - the file name bare, the class in LIBN, as NI's own - or LabVIEW
+        # refuses its dynamic-dispatch terminals ("Only VIs owned by a LabVIEW class may use
+        # dynamic terminals", the XControl sweep 2026-10-22)
+        self.class_member_of = quals[:-1] if len(quals) > 1 and quals[-2].lower().endswith(".lvclass") else None
         self.pane_terms = []
         self.con_taken = {}
         self.term_label = {}
@@ -8250,6 +8303,13 @@ class Composer:
         m.find("LVSR/Section").set("Name", self.vi_name)
         m.find("RTSG/Section/Guid").text = "%032x" % random.getrandbits(128)
         m.find("LVSR/Section/Instrument").set("Signature", "%032x" % random.getrandbits(128))
+        if getattr(self, "class_member_of", None):
+            m.find("LVSR/Section").set("Name", self.vi_name.split(":")[-1])
+            libn = ET.Element("LIBN")
+            sec = ET.SubElement(libn, "Section", {"Index": "0", "Format": "inline"})
+            for q in self.class_member_of:
+                ET.SubElement(sec, "Library").text = q
+            m.insert(0, libn)
         if getattr(self, "xctl_lib", None):
             # the file name bare, the library in LIBN - NI's Simple Dual Mode Thermometer Facade.vi,
             # and its Init.vi, Convert C to F.vi and property VIs alike
