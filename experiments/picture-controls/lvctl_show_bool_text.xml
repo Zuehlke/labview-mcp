@@ -1,0 +1,20 @@
+<VI _name="lvctl_show_bool_text.vi" description="Opens a .ctl holding one boolean, makes LabVIEW show the boolean text (which creates the text part itself) with the given text, and saves the .ctl in place. Probe helper for experiments/picture-controls.">
+  <FreeLabel comment="LabVIEW creates the text part itself" uid="4200" uid_parent="root"/>
+  <Control _name="ctl path" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="text" type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.value"/>
+  <Constant _name="show" outputs="value:4203.value" type="bool" uid="4203" uid_parent="root" value="TRUE"/>
+  <Constant _name="boolean class" outputs="value:4204.value" type="ref{LV.Boolean}" uid="4204" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4210.path" uid="4210" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4210.path" outputs="vi reference:4220.vi,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:4220.vi,error in (no error):4220.err" outputs="Front Panel:4221.panel,reference out:,error out:4221.err" type="{LV.VI}" uid="4221" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:4221.panel,error in (no error):4221.err" outputs="Controls[]:4222.ctrls,reference out:,error out:4222.err" type="{LV.Panel}" uid="4222" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4222.ctrls,index:" outputs="element:4223.el" uid="4223" uid_parent="root"/>
+  <Node _name="To More Specific Class" inputs="reference:4223.el,error in:4222.err,target class:4204.value" outputs="specific class reference:4224.bool,error out:4224.err" uid="4224" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Boolean Text.Visible,write+Boolean Text.Text" inputs="reference:4224.bool,error in (no error):4224.err,Boolean Text.Visible:4203.value,Boolean Text.Text:4202.value" outputs="reference out:,error out:4225.err" type="{LV.Boolean}" uid="4225" uid_parent="root"/>
+  <Node _name="Invoke Node" inputs="reference:4220.vi,error in (no error):4225.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4226.err" target="Save.Instrument" type="{LV.VI}" uid="4226" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4220.vi,error in (no error):4226.err" outputs="error out:4227.err" uid="4227" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:4227.err" outputs="status:4228.status,code:4228.code,source:4228.source" uid="4228" uid_parent="root"/>
+  <Indicator _name="status" type="bool" uid="4240" uid_parent="root" value="false" inputs="value:4228.status"/>
+  <Indicator _name="code" type="int32" uid="4241" uid_parent="root" value="0" inputs="value:4228.code"/>
+  <Indicator _name="source" type="string" uid="4242" uid_parent="root" value="" inputs="value:4228.source"/>
+</VI>
