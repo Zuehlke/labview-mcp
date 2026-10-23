@@ -2051,5 +2051,15 @@
     }
    }
   ]
+ },
+ "t183_replace_subset_one_index": {
+  "cases": [
+   {
+    "inputs": "a=[1,2,3,4,5];i=1",
+    "outputs": {
+     "out": "[1,7,8,9,5]"
+    }
+   }
+  ]
  }
 }

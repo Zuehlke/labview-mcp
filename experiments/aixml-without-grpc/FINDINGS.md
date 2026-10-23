@@ -2833,13 +2833,99 @@ members composed out of place, executable in their folder):
   from the parent's by pane position, and types the CLASS output with the calling class - it
   follows the dynamic input, and typed by the parent the Unbundle behind it found no field.
   `Line\prep.vi` recomposed in a copy of its folder loads executable. No suite test yet: it needs
-  a parent/child class fixture. `Parametric` and `Surface\prep.vi` stop earlier, at a Formula Node
-  (`fBox`), which the reader does not read.
-- Not Unbundle's at all, and open: `Gaussian surface data.vi` from
-  a **Call By Reference** (29 left out in the first sweep); `MATLAB - Lorenz Diff Eq.vi` from a
-  MATLAB script node. And `Restore.vi` stops at a COMPACT `Variant To Data` (primitive 8003 with
-  slots 1-4 where the usual form has 3, 8, 9, 11), whose slot 3 is `type` where the other form's
-  is `error out` - the name table is keyed by primitive and slot and cannot hold both.
+  a parent/child class fixture.
+
+**The rest of the sweep's refusals, 2026-10-22/23** - 108 of 3 625 refused, re-run with each VI's
+own folder as `--search` (the sweep composed into C:\temp, so "neither near the caller" was partly
+its own artefact) and taken down to 45, every remaining one named below:
+
+- **FORMULA NODE** (`fBox`): the reader writes NI's `<Node _name="Formula Node">` - terminals named
+  by their variables, a variable both read and written in inputs AND outputs - plus the CODE as
+  `text=`, which NI's export leaves out (it is Expression Node's attribute, so the document stays
+  in NI's schema). The composer builds the node from a part cut off `Surface\prep.vi`: one fBoxDCO
+  per variable on the border, inputs typed by the wire, outputs as the code DECLARES them
+  (`uInt32 t0,t1;`), a read-and-written variable as its input, else double; `errOfst` the code's
+  length; `contRect` 8 px inside the bounds and moved WITH the node by the layout (it is
+  absolute). `t178`: `z = x*y + 1`, `int32 n`, `a = a*2` run 13, 7, 10. Both `prep.vi` load
+  executable in place.
+- **CALL BY REFERENCE** (`callByRefNode`): four own terminals (reference and error in/out) plus one
+  iUseDCO per used slot of the callee's pane, drawn 32 x 32 at (23, 5), `paramIdx` the slot. The
+  pane is NI's own literal `type="function{58,900,...{cluster{..}.error out,...}}"` - pattern and
+  slot flags in hex, then the slot types - which the reader writes from `connectorTM` and the
+  composer parses; without it the strictly typed VI refnum wired into `reference` carries it. A
+  strict VI refnum control is `ref{LV.VI}{function{..}}` (NI writes `ref{LV.VI}{function{78,d08,..}}`
+  in a cluster type, the same grammar). The callee's pane may be TURNED (Gaussian surface data.vi's
+  4811 rotated 180 degrees); the composer turns it so outputs sit right. `t180` calls Clear Errors
+  through a strict static reference; an error into the callee's `error in` comes back cleared, and
+  the same error into the node's OWN error in passes through - the control arm.
+- **AN XCONTROL-TYPED REFNUM** (`ItmIdent="LVXC"`, Item `3DPC_SurfacePlot.xctl`) is `ref{LV.Control}`
+  in AIXML, and a plain control refnum wired into a subVI's XControl-typed terminal is "Wire: Class
+  conflict". The reader writes the items after `</VI>` (`<?lvmcp xctlrefs uid= items=?>`), the
+  composer types the refnum and writes `VIXC` in LIvi plus `HXCI` in LIfp naming the stdRefNum
+  objects. `GILinkProp5` (a per-.xctl stamp no file of it carries) written 0 loaded executable too
+  - measured on an instance that had loaded the stamped copy first, so not yet a clean A/B.
+- **A PANE as event source and reference**: NI names it by its label (`"Pane": Mouse Up`). The 3D
+  Math Plots' facades handle the panel pane's `Shortcut Menu Activation?`, `Pane Size` was refused
+  for "a source no selector can name". The reader names panes and nested objects, the composer
+  binds them (`PaneRef`, a plain LV.Pane refnum). A NESTED object is named by its PATH from its
+  control, `"Customized Plot Legend.Color Pair Array": Mouse Down` (NI's export of the 2D Error Bar
+  facade); its `CtlRef` is the field's strictly typed reference.
+- **EVENT TYPE NUMBERS DEPEND ON THE SOURCE**: 0x40000013 on the VI (source 5) is `Panel Resize`
+  (VIRef FacadeVI 0x004F inside a facade, then OldBnds, NewBnds, Act, PrevState) - added to
+  static-events.json from NI's export of that facade.
+- **Typing rules that were wrong for every VI**: Multiply of an ARRAY and a scalar answered a
+  scalar; `To Long Integer` of a double answered an int32 ARRAY (its donor converted an array);
+  Array Size of a 2D array answered one int32; Release Queue's `remaining elements` kept its
+  donor's element; Build Array concatenated 1D only. All follow the wired types now (N-D
+  concatenation, rows stacked into one more dimension). `t179`/`t181`/`t182` cover Replace Array
+  Subset with three element groups, 2D Array Size and a three-group Index Array, whose later
+  outputs must NOT carry group 0's `termHotPoint` (`Insane ArrayIndexerDCO {graphics}`).
+- **Reader fixes**: Replace Array Subset named by DCO flags (it read three groups as a 5D array);
+  the COMPACT `Variant To Data` (prim 8003, slots 0..4: error in, error out, Variant, type, data);
+  a typedef'd array's dimensions; an empty or NUL label is "" on both sides; a callee inside an
+  .llb CONTAINER read for its pane labels; a Local named by `paramIdx` in the panel's ddoList
+  (oldest first - the zPlane order named the wrong control); Decimate 1D Array; `ref{Menu}`;
+  `ref{EventReg}{<user events>}`; a refnum control's reference `ref{LV.LVObjectRefNum}{...}`; a
+  Picture control's reference; an uninitialized shift register's type (`srtype` after `</VI>`);
+  the net on an Event Structure's dynamic terminal (`dynreg`); each call's link PATH (`calllink`),
+  so a bare name resolves to the file the original linked (MGI's own Compare Two Paths.vi, not
+  NI's); a dynamic-dispatch call through a child class to an INHERITED method; `<helpdir>`.
+- **Learned from NI's exports** (47 VIs exported through NI's service, then the learners):
+  class ids 0x006F SceneTexture, 0x0070 SceneGeometry, 0x007F MixedCheckbox, 0x0080
+  SceneDrawable, 0x0081 SceneText; primitives 1141 To Word Integer, 1207 Inverse Cosine, 1212
+  Power Of 10, 1512 Format Value; 27 property rows and 58 aliases. **Run learn_node_classes.py
+  BEFORE learn_ref_classes.py**: each rewrites class-ids-learned.json and the node learner dropped
+  five ids the ref learner had written.
+
+**Re-swept whole afterwards, each VI with its own folder as `--search`: 3 580 of 3 625 compose (3 517
+before), 3 535 of 3 580 load executable, NO regression** - every VI executable before still is. The
+one LabVIEW CRASH was a newly composed `colorarraytopixmap.vi`: a Replace Array Subset writing R, G
+and B from ONE index, its later groups with no index terminal at all. Every group now carries all of
+group 1's terminals, unwired where the document names none, typed like the others (`t183`). Of the 45
+broken, 16 were broken before (class and XControl members loaded outside their library) and 29 are
+newly composed: in a copy of their folder `Parametric`/`Surface\prep.vi` and `colorarraytopixmap.vi`
+load executable; the 3D Graph XControl's Init and properties-dialog members ("Wired refnums are of
+different types") and the 2D Math Plot facades ("LabVIEW Object 'Data': refers to a missing LabVIEW
+class", "Class conflict") do not - the members an XControl holds to its own State and Data typedefs,
+the same family as the instance below.
+
+Open after it, all named:
+
+- **The GUI pass you deferred** (15): a Sub Panel object (`stdSubPanel`, 12 of the Math Plot
+  facades reference it), a listbox composed as a numeric (3), and the XControl INSTANCE on a host
+  panel - implicit Property/Invoke nodes on an XControl's own properties and methods (`Fahrenheit
+  Mode?`, `Convert C to F.vi`) need the real xControl object there.
+- **LabVIEW 9.0 files** (6): MGI's Path Selector keeps its event registrations and string case
+  labels out of the heap (no EventNodeEvents, `selString` only the visible frame) - refused by name.
+- **MATLAB** (2): the script node needs an `NSCR` link (Node To Script, naming matscript.dll) that
+  pylabview neither reads nor writes - composed without it, "Script support DLL not found" on a
+  station where NI's file compiles; the reader writes it, the composer refuses it by name. The
+  MATLAB Node (`Class0193`) is not a class pylabview knows.
+- **Password-protected NI VIs** (about 8 under resource\PropertyPages, importtools, lvStorage): NI's
+  own export of them is 200 bytes, so nothing can be learned for them from NI.
+- Singles: a case structure on a double, an Index Array on a SubArray, a conditional OUTPUT indexing
+  tunnel, a pylabview `SL__multiLabel` AttributeError, TreeControl/MCListbox properties no NI VI here
+  uses, `LV.SceneGraphDisplay.Redraw`.
 
 Open, named by the sweep:
 

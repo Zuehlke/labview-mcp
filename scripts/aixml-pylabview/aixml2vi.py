@@ -4016,6 +4016,13 @@ class Composer:
                 tl.append(t)
                 ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
                 ends[key] = (t, ftype)
+            if name == "Unbundle" and any(k not in ends for k, _ in keyed(outs)) and \
+                    all(k.split("#")[0] == "element" for k, _ in keyed(outs)):
+                # NI writes `element` for every field of a cluster whose fields carry no label in
+                # the VI, where the wire's type here may name them (a subVI's labelled pane type -
+                # MGI's Resize Combobox.vi): the k-th `element` is then the k-th field
+                order = [k for k in ends if k not in ("cluster", "input cluster")]
+                ends.update({rep_key("element", i): ends[k] for i, k in enumerate(order)})
             for key, net in keyed(outs):
                 if key not in ends:
                     raise Unsupported("%s %s: no output %r" % (name, el.get("uid"), key))
@@ -4525,14 +4532,21 @@ class Composer:
         dl = node.find("dcoList")
         order = ["new element/subarray", "index", "index (row)", "index (col)"]
         for k, chunk in enumerate(chunks[1:], 1):
-            for base in sorted(chunk, key=order.index):
+            for base in chunk:
                 if base not in chunks[0]:
                     raise Unsupported("Replace Array Subset: group %d has %r, group 1 has not" % (k + 1, base))
-                key, t_name = chunk[base]
+            # EVERY group carries every terminal of group 1, unwired where the document names
+            # none: colorarraytopixmap.vi writes R, G, B from one index (the later groups follow
+            # it), and groups with no index terminal at all KILLED LabVIEW on load (2026-10-23)
+            for base in sorted(chunks[0], key=order.index):
+                key, t_name = chunk.get(base, (None, chunks[0][base][1].replace("disabled ", "")))
                 proto = by_key[chunks[0][base][0]]
                 t = copy.deepcopy(proto)
                 lvheap.renumber(t, self.alloc)
-                t.set("aixml", key)
+                if key is not None:
+                    t.set("aixml", key)
+                else:
+                    t.attrib.pop("aixml", None)
                 d = t.find("dco")
                 f = int(d.findtext("objFlags") or 0)
                 tf = int(t.findtext("objFlags") or 0)
@@ -4541,13 +4555,19 @@ class Composer:
                         f, tf = f | 0x10000, tf & ~0x8000
                     else:
                         f, tf = f & ~0x10000, tf | 0x8000
+                if key is None:
+                    tf &= ~0x8000          # nothing wired into it
+                if d.find("objFlags") is not None:
                     d.find("objFlags").text = str(f)
+                if t.find("objFlags") is not None:
                     t.find("objFlags").text = str(tf)
                 b = lvheap.parse_bounds(d.find("termBounds").text)
                 d.find("termBounds").text = lvheap.fmt_bounds((b[0] + k * step, b[1], b[2] + k * step, b[3]))
                 tl.append(t)
                 ET.SubElement(dl, "SL__arrayElement", {"uid": d.get("uid")})
-                by_key[key] = t
+                # an unwired one under a key no document can name, so the typing below gives it
+                # the donor's index type like any other terminal
+                by_key[key if key is not None else "~group %d %s" % (k, base)] = t
         dl.set("elements", str(len(dl)))
         node.find("nChunks").text = "%02X" % len(chunks)
         bottom = 17 + step * len(chunks)
@@ -7120,7 +7140,7 @@ class Composer:
                 c_el = next((e for e in self._by_uid.values() if e.tag in ("Control", "Indicator")
                              and unescape(e.get("_name") or "") == c), None) if self._dyn_source(it) is None else None
                 t = type_tree(c_el.get("type")).get("Type", "") if c_el is not None else ""
-                if c_el is not None and not (t in ("Boolean", "String", "Path") or t.startswith("Unit")
+                if c_el is not None and not (t in ("Boolean", "String", "Path", "Refnum") or t.startswith("Unit")
                                              or (t.startswith("Num") and not is_enum(type_tree(c_el.get("type"))))):
                     raise Unsupported("Event Data Node %s: CtlRef of a %s control is not measured yet" % (el.get("uid"), t))
         cl = ET.Element("TypeDesc", dict(donor.attrib))
@@ -8018,9 +8038,15 @@ class Composer:
         # Shift Registers.vi). Mapped onto ONE left terminal it put that terminal into three
         # signals - "Insane List {dupe}" and a fatal DAbort that killed LabVIEW.
         stack = max(len(init), len(pairs(left.get("outputs") if left is not None else "")), 1)
-        if not init or init[0] is None or init[0] not in self.net_type:
+        given = getattr(self, "sr_given", {}).get(el.get("uid"))
+        if (not init or init[0] is None) and given:
+            # an UNINITIALIZED register, typed by the reader after </VI> (`srtype`) - it keeps
+            # its value between calls, as the 2D Math Plots' facades keep their state
+            tree = type_tree(given)
+        elif not init or init[0] is None or init[0] not in self.net_type:
             raise Unsupported("ShiftReg %s: only an initialized register is composable" % el.get("uid"))
-        tree = self.net_type[init[0]]
+        else:
+            tree = self.net_type[init[0]]
         loop, inner, parent = next(x for x in self.loops if x[1].owner is loop_el)
         kind = loop.get("class")
         got = self.instantiate("srpair/%s" % kind)
@@ -8042,6 +8068,9 @@ class Composer:
                 tb.text = lvheap.fmt_bounds((60 + 20 * n, l, 60 + 20 * n + (b - a), r))
         self.ends[(left.get("uid"), "in")] = (l_out.get("uid"), parent)
         self.ends[(left.get("uid"), "out")] = (l_in.get("uid"), inner)
+        if (not init or init[0] is None) and l_out.find("objFlags") is not None:
+            # nothing wired into an uninitialized register: its outer terminal is no sink
+            l_out.find("objFlags").text = str(int(l_out.findtext("objFlags") or 0) & ~0x8000)
         r_dco = r_out.find("dco")
         lsr_list = r_dco.find("lsrDCOList")
         for k in range(1, stack):
@@ -8909,6 +8938,9 @@ class Composer:
         self.script_types = {}
         self.dyn_given = {}
         self.call_links = {}
+        self.sr_given = {}
+        for mc in re.finditer(r'<[?]lvmcp\s+srtype\s+uid="([^"]*)"\s+type="([^"]*)"\s*[?]>', tail[1] if len(tail) == 2 else ""):
+            self.sr_given[mc.group(1)] = html.unescape(mc.group(2))
         for mc in re.finditer(r'<[?]lvmcp\s+calllink\s+uid="([^"]*)"\s+tp="([^"]*)"\s+path="([^"]*)"\s*[?]>', tail[1] if len(tail) == 2 else ""):
             self.call_links[mc.group(1)] = (mc.group(2), html.unescape(mc.group(3)).split("|"))
         for mc in re.finditer(r'<[?]lvmcp\s+dynreg\s+uid="([^"]*)"\s+net="([^"]*)"\s*[?]>', tail[1] if len(tail) == 2 else ""):

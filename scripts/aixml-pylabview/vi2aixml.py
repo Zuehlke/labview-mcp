@@ -1592,6 +1592,13 @@ class Reader:
         by_dco = {t.find("dco").get("uid"): t for t in node.find("termList") if t.find("dco") is not None}
         for term, d in sr:
             reg = ET.Element("ShiftReg", {"uid": d.get("uid"), "uid_parent": node.get("uid")})
+            # the register's TYPE, after </VI> (`srtype`): an UNINITIALIZED one takes it from the
+            # wire inside the loop, which the composer cannot type before the loop's own diagram
+            # (the 2D Math Plots' facades keep their state that way)
+            st = aixml_type(self.tid_tree(term))
+            if st:
+                self.sr_types = getattr(self, "sr_types", [])
+                self.sr_types.append((reg, st))
             lefts = [x.get("uid") for x in d.findall("lsrDCOList/SL__arrayElement")]
             # ONE Left for all elements of a stacked register (NI: inputs value,value,value -
             # the initializers - and outputs value,value,value - element 0 first, as the rSR's
@@ -2921,6 +2928,10 @@ def main(argv):
         if lp and lp[1]:
             text += '\n<?lvmcp calllink uid="%s" tp="%d" path="%s"?>' % (
                 el.get("uid"), lp[0], html.escape("|".join(lp[1]), quote=True))
+    for el, st in getattr(reader, "sr_types", []):
+        # a shift register's type, used by the composer only where nothing initializes it
+        if el.get("uid") and not any(n for _, n in aixml2vi.pairs(next(iter(el.findall("Left")), el).get("inputs"))):
+            text += '\n<?lvmcp srtype uid="%s" type="%s"?>' % (el.get("uid"), html.escape(st, quote=True))
     for uid, net in sorted(getattr(reader, "dyn_nets", {}).items()):
         # the net wired into an Event Structure's dynamic event terminal, which NI's export leaves
         # out: with no tunnel carrying the registration the composer has nothing else to go on
