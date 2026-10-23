@@ -3044,6 +3044,18 @@ Still open:
 - **XNodes**, above. **webdoc.llb**'s members were not retested: a member of an `.llb` CONTAINER
   cannot be recomposed in place by this procedure.
 
+**A NEW XCONTROL, BUILT WHOLE ON THIS BACKEND - the practice project, `C:\temp\XControlPractice`.**
+`Level Alarm.xctl` (written by hand after NI's, a Threshold property and a Percent Of Threshold
+method), its Facade, Init, the two property VIs and the method composed from AIXML authored for it,
+the Data and State typedefs from `lvai_create_typedef` (backend pylabview), and a host `Run Level
+Alarm.vi` holding an instance. Every member loads executable; the host ran over ActiveX with Level 40:
+Threshold 80 -> Percent 50, Threshold 50 -> Percent 80, error out clean - the property write reaches
+the instance's display state and the method reads it. Every file source-only. **One gap, found
+there**: a `.ctl` made by `lvai_create_typedef` names no owning library (no `LIBN` block, where NI's
+Data.ctl names its .xctl), and the host was "Missing VI for Ability Data / State" until a LIBN block
+naming `Level Alarm.xctl` was added through pylabview. The tool has no way to make a typedef a
+library member yet.
+
 Suite after it: 146 PASS of the existing cases and `t184`-`t189` PASS alone (they were added while
 the long run was going), 6 LOADS. `t133`, `t136` and `t138` FAIL: the three live keyboard and
 activation cases, which post to the panel and follow the desktop's active window - `t133` fails the
