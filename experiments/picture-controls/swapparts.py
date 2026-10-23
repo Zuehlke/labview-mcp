@@ -51,6 +51,24 @@ for pid in sorted(set(bp) & set(tp), key=lambda p: -bp[p][0]):  # back to front 
     used.update(int(i) for i in re.findall(r'<ImageResID>(\d+)</ImageResID>', tel) if int(i) > 0)
     report["swapped"].append(pid)
 
+if "--decal-into-88" in sys.argv[6:] and 87 in tp and 88 in bp:
+    # the base has no decal part (87); its one-image part 88 draws the same picture in every
+    # state, so the decal's image and bounds go there instead of a part we would invent
+    dec = tp[87][3]
+    dimg = int(re.search(r'<ImageResID>(-?\d+)</ImageResID>', dec).group(1))
+    db = re.search(r'<bounds>\((-?\d+), (-?\d+), (-?\d+), (-?\d+)\)</bounds>', dec)
+    t0, l0, b0, r0 = (int(db.group(i)) for i in range(1, 5))
+    now = parts(t)
+    s, e, cls, el = now[88]
+    el2 = re.sub(r'(<partID>88</partID>.*?<bounds>)\([^)]*\)', r'\g<1>' + db.group(0)[8:-9], el, count=1, flags=re.S)
+    el2 = re.sub(r'<Bounds>\([^)]*\)</Bounds>', '<Bounds>(0, 0, %d, %d)</Bounds>' % (b0 - t0, r0 - l0), el2, count=1)
+    el2 = re.sub(r'<ImageResID>-?\d+</ImageResID>', '<ImageResID>%d</ImageResID>' % dimg, el2, count=1)
+    t = t[:s] + el2 + t[e:]
+    used.discard(int(re.search(r'<ImageResID>(-?\d+)', tp[88][3]).group(1)))
+    if dimg > 0:
+        used.add(dimg)
+    report["decalInto88"] = dimg
+
 if "--order" in sys.argv[6:]:
     # z-order: the parts list is drawn in list order, so take the target's order for the
     # parts both have; a part only the base has keeps its slot
@@ -91,5 +109,14 @@ for i in sorted(used):
 if sections:
     m = m.replace("  <FPHb>", "  <MNGI>\n    <!-- MNG Image -->\n" + "\n".join(sections) + "\n    </MNGI>\n  <FPHb>", 1)
     open(main, "w", encoding="utf-8", newline="\n").write(m)
+if "--fonts" in sys.argv[6:]:
+    # a fontRun's fontid indexes the file's own font table (FTAB), so the swapped parts'
+    # fonts only mean what the target meant together with the target's table
+    tm = open(os.path.join(tgt_dir, tname + ".xml"), encoding="utf-8").read()
+    ftab = re.search(r'  <FTAB>.*?</FTAB>\n', tm, re.S).group(0)
+    m = open(main, encoding="utf-8").read()
+    m = re.sub(r'  <FTAB>.*?</FTAB>\n', lambda _: ftab, m, count=1, flags=re.S)
+    open(main, "w", encoding="utf-8", newline="\n").write(m)
+    report["fonts"] = len(re.findall(r"<Font ", ftab))
 report["images"] = sorted(used)
 print(report)

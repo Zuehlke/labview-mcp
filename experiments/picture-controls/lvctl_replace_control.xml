@@ -1,0 +1,46 @@
+<VI _name="lvctl_replace_control.vi" description="Replaces the front-panel control labelled 'Boolean' of a host VI with the .ctl at ctl path ({LV.Control} Replace) and saves the host. Probe helper for experiments/picture-controls.">
+  <FreeLabel comment="Puts the control under test on the host panel" uid="4200" uid_parent="root"/>
+  <Control _name="host path" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="ctl path" type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.value"/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4210.path" uid="4210" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4202.value" outputs="path:4211.path" uid="4211" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4210.path" outputs="vi reference:4220.vi,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" inputs="reference:4220.vi,error in (no error):4220.err" outputs="Front Panel:4221.panel,reference out:,error out:4221.err" type="{LV.VI}" uid="4221" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" inputs="reference:4221.panel,error in (no error):4221.err" outputs="Controls[]:4222.ctrls,reference out:,error out:4222.err" type="{LV.Panel}" uid="4222" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4230" uid_parent="root">
+    <Tunnel _id="In1" mode="index" inputs="value:4222.ctrls" outputs="value:4231.el" uid="4231" uid_parent="4230"/>
+    <Tunnel _id="In2" inputs="value:4211.path" outputs="value:4232.path" uid="4232" uid_parent="4230"/>
+    <ShiftReg uid="4233" uid_parent="4230">
+      <Left inputs="value:4222.err" outputs="value:4234.err" uid="4234" uid_parent="4233"/>
+      <Right inputs="value:4240.err" outputs="value:4235.err" uid="4235" uid_parent="4233"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="read+Label.Text" inputs="reference:4231.el,error in (no error):4234.err" outputs="Label.Text:4236.text,reference out:,error out:4236.err" type="{LV.Control}" uid="4236" uid_parent="4230"/>
+    <Constant _name="target label" outputs="value:4237.value" type="string" uid="4237" uid_parent="4230" value="Boolean"/>
+    <Node _name="Equal?" inputs="x:4236.text,y:4237.value" outputs="x = y?:4238.eq" uid="4238" uid_parent="4230"/>
+    <Structure _name="Case Structure" selectin="4238.eq" uid="4239" uid_parent="4230">
+      <Tunnel _id="In1" inputs="value:4231.el" uid="4241" uid_parent="4239"/>
+      <Tunnel _id="In2" inputs="value:4232.path" uid="4242" uid_parent="4239"/>
+      <Tunnel _id="In3" inputs="value:4236.err" uid="4243" uid_parent="4239"/>
+      <Tunnel _id="Out1" outputs="value:4240.err" uid="4240" uid_parent="4239"/>
+      <CaseFrame selector="True" selectout="" uid="4250" uid_parent="4239">
+        <Tunnel _id="In1" outputs="value:4251.el" uid="4251" uid_parent="4250"/>
+        <Tunnel _id="In2" outputs="value:4252.path" uid="4252" uid_parent="4250"/>
+        <Tunnel _id="In3" outputs="value:4253.err" uid="4253" uid_parent="4250"/>
+        <Node _name="Invoke Node" target="Replace" type="{LV.Control}" inputs="reference:4251.el,error in (no error):4253.err,Path:4252.path" outputs="reference out:,error out:4254.err" uid="4254" uid_parent="4250"/>
+        <Tunnel _id="Out1" inputs="value:4254.err" uid="4255" uid_parent="4250"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="4260" uid_parent="4239">
+        <Tunnel _id="In1" outputs="value:" uid="4261" uid_parent="4260"/>
+        <Tunnel _id="In2" outputs="value:" uid="4262" uid_parent="4260"/>
+        <Tunnel _id="In3" outputs="value:4263.err" uid="4263" uid_parent="4260"/>
+        <Tunnel _id="Out1" inputs="value:4263.err" uid="4264" uid_parent="4260"/>
+      </CaseFrame>
+    </Structure>
+  </Structure>
+  <Node _name="Invoke Node" inputs="reference:4220.vi,error in (no error):4235.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4270.err" target="Save.Instrument" type="{LV.VI}" uid="4270" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4220.vi,error in (no error):4270.err" outputs="error out:4271.err" uid="4271" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status,code,source" inputs="input cluster:4271.err" outputs="status:4272.status,code:4272.code,source:4272.source" uid="4272" uid_parent="root"/>
+  <Indicator _name="status" type="bool" uid="4280" uid_parent="root" value="false" inputs="value:4272.status"/>
+  <Indicator _name="code" type="int32" uid="4281" uid_parent="root" value="0" inputs="value:4272.code"/>
+  <Indicator _name="source" type="string" uid="4282" uid_parent="root" value="" inputs="value:4272.source"/>
+</VI>

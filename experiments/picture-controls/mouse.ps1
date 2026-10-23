@@ -1,9 +1,13 @@
 param([string]$Path, [string]$Control = 'Boolean', [string]$OutDir, [string]$Steps = 'shot')
 # Opens the panel of a .ctl/.vi and walks Steps, ';'-separated:
-#   shot:<tag>          screenshot of the panel window -> <OutDir>\<name>-<tag>.png
+#   shot:<tag>@x,y,w,h  screenshot of that window-relative crop -> <OutDir>\<name>-<tag>.png
+#                       (crop to the control: a whole-window grab can catch other windows)
+#   bounds:x,y,w,h      move and size the panel window
 #   move:<x>,<y>        cursor to window-relative x,y
 #   down / up           left button
 #   value               print the control's value
+#   run                 start the VI asynchronously;  read:<label>  print a control's value
+#   wait:<ms>           pause
 #   close               close the panel (no save)
 Add-Type -AssemblyName Microsoft.VisualBasic, System.Drawing
 Add-Type @'
@@ -53,6 +57,9 @@ foreach ($s in $Steps.Split(';')) {
     'up'   { [W]::mouse_event(4, 0, 0, 0, 0); Start-Sleep -Milliseconds 400; 'up' }
     'value' { 'value=' + [Microsoft.VisualBasic.Interaction]::CallByName($vi, 'GetControlValue', $M, [object[]]@([string]$Control)) }
     'bounds' { $b = [int[]]$a.Split(','); [W]::MoveWindow($h, $b[0], $b[1], $b[2], $b[3], $true) | Out-Null; Start-Sleep -Milliseconds 500; [W]::GetWindowRect($h, [ref]$r) | Out-Null; "window $($r.L),$($r.T) $($r.R - $r.L)x$($r.B - $r.T)" }
+    'run'  { [Microsoft.VisualBasic.Interaction]::CallByName($vi, 'Run', $M, [object[]]@($true)) | Out-Null; Start-Sleep -Milliseconds 300; 'running' }
+    'read' { "$a=" + [Microsoft.VisualBasic.Interaction]::CallByName($vi, 'GetControlValue', $M, [object[]]@([string]$a)) }
+    'wait' { Start-Sleep -Milliseconds ([int]$a); "waited $a" }
     'close' { [Microsoft.VisualBasic.Interaction]::CallByName($vi, 'FPWinOpen', [Microsoft.VisualBasic.CallType]::Let, [object[]]@($false)) | Out-Null; 'closed' }
   }
 }

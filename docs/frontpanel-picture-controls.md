@@ -149,14 +149,81 @@ visible label then failed (`parameter not found`). Give the label to `lvai_creat
 The decal family (part 87) was not tried; its icon is the decal, so without 87 that button
 draws as a bare frame.
 
+## 4b. Fonts, decals, a running VI and the clusters
+
+Measured the same day, the four points section 4a left open.
+
+**Fonts - the font TABLE goes with the parts.** A `fontRun`'s `fontid` indexes the file's own
+`FTAB` resource (name, size, style per entry); the original's index 1/2 is Segoe UI 15, the
+base's table holds Segoe UI 13 only. `swapparts.py --fonts` copies the target's `FTAB` - a
+resource, not a part. Result: the panel print of our black menu button is **byte-identical**
+to the original's (same PNG hash), and LabVIEW's save keeps the table and both `fontid`s.
+
+**Decals - without part 87.** In the decal buttons part 88 holds a leftover image shrunk to
+1 x 1 px and the visible icon is the decal (87). Part 88 exists in the base, holds ONE image
+in every state and is drawn in front, so `--decal-into-88` puts the decal's image and bounds
+there. The icon-and-decal button then prints **byte-identical** to its original, with no part
+added. LabVIEW's save renumbers the image resource (4 -> 2) and keeps the image itself.
+
+**A running VI** (`host_bool_counter.xml`: a loop reads the boolean every 50 ms for 12 s and
+counts the reads that saw TRUE; `lvctl_replace_control.xml` puts the `.ctl` on its panel with
+`{LV.Control} Replace`). A test button with six SOLID colours (`solidpng.py`) shows which
+image LabVIEW draws in which state, read off the centre pixel of a cropped screenshot
+(`centrecolour.ps1`):
+
+| table index | drawn when |
+|---|---|
+| 0 | False |
+| 1 | True |
+| 2 | pressed while True (True -> False pending) - only with a "when released" action |
+| 3 | pressed while False (False -> True pending) - only with a "when released" action |
+| 4 | False, mouse over it |
+| 5 | True, mouse over it |
+
+| `ddo` `objFlags` | measured | LabVIEW name |
+|---|---|---|
+| `0x0` (base, `4` with the low bit) | True on press, stays True, the loop keeps counting | Switch When Pressed |
+| `0x40000` | press draws image 3, True on release, stays True | Switch When Released |
+| `0x60000` | True on release, the loop counts it ONCE and it falls back to False | Latch When Released |
+| `0x20000` | AIXML `style="latched"` writes it; not clicked | presumably Latch When Pressed |
+
+So the action is two bits, 0x20000 latch and 0x40000 when-released. The first click after
+the run started only activated the window and was not counted - a property of the test
+harness, not of the control.
+
+**The clusters - three of four are not what the survey called them.** `lvai_describe_ctl`
+reported two of them as a single `uint16`; their type table says otherwise (a defect of that
+tool, below). What they are and how far a rebuild got:
+
+| original | type | rebuilt with | result |
+|---|---|---|---|
+| plot channel styles | cluster{line-style ring (typedef), line-width ring (typedef), `uint32` colour box} | `lvai_create_typedef` cluster + `elementTypedefsJson`: our two picture-ring typedefs, and `vi.lib\silver_ctls\Numeric\Color Box NI_Silver.ctl` for the colour | the same element classes as the original (`stdClust`, 2 `stdRing`, `stdColorNum`), both rings bound; LAYOUT differs |
+| status item | cluster{string, boolean} | the same, `vi.lib\silver_ctls\Boolean\LED NI_Silver.ctl` for the boolean | string + Silver LED; LED colours and LAYOUT differ |
+| colours | cluster of 9 clusters of 2 colour boxes, borderless | not tried | `elementTypedefsJson` reaches top-level elements only |
+| cursor settings | like plot channel styles, 6 elements | not tried | same route |
+
+**Replacing with a NON-typedef `.ctl` is how a palette STYLE gets in.** NI's colour box and LED
+files are plain controls, so the bind step reports `isTypedefAfter: 0` and `ok: false` - and
+the element has nevertheless become that control, which is all the original has. The tool's
+verdict is right for what it checks and wrong for this use; a style replace needs its own
+answer field.
+
+**What is left is LAYOUT, and it is VI Server work, not heap work.** Positions
+(`Position:Left/Top`), `Label.Visible` and a boolean's `Colors [4]` are properties of the
+elements. `Autosizing` is not in the catalogue for `{LV.Cluster}`; not tried.
+
+**`lvai_describe_ctl` misreads a control that USES typedefs.** For the plot channel styles
+cluster it answered one `uint16` labelled `LineStyle`: it took the FIRST `TypeDef` in the
+type table (the nested line-style ring) instead of the control's own top-level type, a
+cluster of three. Not fixed here.
+
 ## 5. What this does not show yet
 
-- **A run.** Every click was in edit mode, where the editor toggles the value itself. A
-  latch action resets only when a running diagram reads the value.
-- **Hover**, on a control whose hover images differ.
+- **Hover on a styled base.** Measured on the single-picture-part button only; the Silver
+  push button's six frame states were not driven live.
 - **Our base's leftovers.** The ring keeps the base's increment/decrement arrow parts (2, 3),
   drawn as a small mark at its left edge; the original hides them.
-- **The decal buttons (part 87) and the clusters**, colour boxes (`stdColorNum`) included.
+- **Cluster layout**, the nested colours cluster, and the LED's colours.
 - **LabVIEW's log.** It was last written before the first probe loaded, so it shows neither
   warnings nor their absence for these files.
 - **Where images come from.** The probe re-used the originals' PNGs to compare like with
@@ -165,8 +232,11 @@ draws as a bare frame.
 ## 6. Next steps, if this becomes a tool
 
 1. `lvai_create_typedef` learns `style`/`items`/`values` for its carrier, so a ring base
-   needs no hand-run helper.
-2. One tool, `PNGs + base type -> .ctl`, for the button and the ring, verified by a panel
-   print AND a run that toggles the value (`Value (Signaling)` or a carrier VI reading back
-   the drawn image with `Get Image`).
-3. Then the clusters, by composing typedefs with `elementTypedefsJson`.
+   needs no hand-run helper - and an element replace with a non-typedef palette control
+   answered as a style change, not a failed bind.
+2. One tool, `PNGs + base type -> .ctl`, for the button and the ring: images into existing
+   parts, the order, the font table, the decal into 88, the mechanical action as a NAME
+   mapped onto the two bits, and LabVIEW making the text part. Verified by a panel print
+   compared with a reference and by the running host above.
+3. Cluster layout through VI Server properties.
+4. Fix `lvai_describe_ctl` for controls that contain typedefs.
