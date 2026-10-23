@@ -1,0 +1,7 @@
+<VI _name="T185 Listbox Items.vi" description="A single-column listbox with its own item strings, which AIXML has no place for (the fpclass trailer carries them), read back through an implicit Item Names node.">
+  <Control _name="List" outputs="value:" type="int32" uid="4200" uid_parent="root" value="0"/>
+  <Node _name="Property Node" fields="read+Item Names" link="List" type="{LV.ListBox}" outputs="Item Names:4300.Item Names" uid="4300" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:4300.Item Names" outputs="size(s):4310.size(s)" uid="4310" uid_parent="root"/>
+  <Indicator _name="count" inputs="value:4310.size(s)" type="int32" uid="4400" uid_parent="root" value="0"/>
+</VI>
+<?lvmcp fpclass uid="4200" class="listbox" rsrc="21792" strings="[[3, 1], [&quot;X-Axis&quot;, &quot;Y-Axis&quot;, &quot;Z-Axis&quot;], []]"?>

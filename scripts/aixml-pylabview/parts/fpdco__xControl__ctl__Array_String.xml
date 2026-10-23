@@ -1,0 +1,94 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/xControl/ctl/Array.String" source="&lt;labview&gt;\resource\importtools\sharedlib\Import Shared Library\UI\Configure Include Paths\Page Main.vi"><types><TypeDesc Type="Array" Format="inline" Label="NISAST Include Paths"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="String" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="NISAST Include Paths"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="String" /></TypeDesc></types><heap><SL__arrayElement class="fPDCO" uid="647">
+                    <objFlags>64</objFlags>
+                    <typeDesc>TypeID(9)</typeDesc>
+                    <ddo class="xControl" uid="629">
+                      <bounds>(126, 303, 396, 944)</bounds>
+                      <partsList elements="6">
+                        <SL__arrayElement class="label" uid="641">
+                          <objFlags>1507662</objFlags>
+                          <partID>16</partID>
+                          <masterPart>9</masterPart>
+                          <howGrow>4096</howGrow>
+                          <bounds>(-22, -3, -5, 113)</bounds>
+                          <image class="Image">
+                            <ImageResID>-9</ImageResID>
+                            </image>
+                          <fgColor>01000000</fgColor>
+                          <bgColor>01000000</bgColor>
+                          <textRec class="textHair">
+                            <mode>17412</mode>
+                            <text>"NISAST Include Paths"</text>
+                            <bgColor>01000000</bgColor>
+                            </textRec>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="cosm" uid="642">
+                          <objFlags>2355</objFlags>
+                          <partID>28</partID>
+                          <masterPart>9</masterPart>
+                          <howGrow>240</howGrow>
+                          <bounds>(0, 0, 270, 641)</bounds>
+                          <image class="Image">
+                            <ImageResID>-239</ImageResID>
+                            </image>
+                          <fgColor>00B0B0B0</fgColor>
+                          <bgColor>00B0B0B0</bgColor>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="cosm" uid="643">
+                          <objFlags>3390</objFlags>
+                          <partID>39</partID>
+                          <masterPart>9</masterPart>
+                          <howGrow>194</howGrow>
+                          <bounds>(0, 641, 270, 641)</bounds>
+                          <image class="Image">
+                            <ImageResID>-9</ImageResID>
+                            </image>
+                          <bgColor>00B3B3B3</bgColor>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="cosm" uid="644">
+                          <objFlags>3390</objFlags>
+                          <partID>38</partID>
+                          <masterPart>9</masterPart>
+                          <howGrow>56</howGrow>
+                          <bounds>(270, 0, 270, 641)</bounds>
+                          <image class="Image">
+                            <ImageResID>-9</ImageResID>
+                            </image>
+                          <bgColor>00B3B3B3</bgColor>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="cosm" uid="645">
+                          <objFlags>2331</objFlags>
+                          <partID>9</partID>
+                          <howGrow>240</howGrow>
+                          <bounds>(-3, -3, 273, 644)</bounds>
+                          <image class="Image">
+                            <ImageResID>-412</ImageResID>
+                            </image>
+                          <fgColor>00B0B0B0</fgColor>
+                          <bgColor>01000000</bgColor>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="annex" uid="646">
+                          <partID>66</partID>
+                          <refListLength>1</refListLength>
+                          <hGrowNodeListLength>1</hGrowNodeListLength>
+                          <rsrcID>21810</rsrcID>
+                          </SL__arrayElement>
+                        </partsList>
+                      <description class="cLStrObj" uid="626">
+                        <strings elements="1">
+                          <SL__arrayElement>"Adds a line for a new path to the &lt;strong&gt;Include Paths&lt;/strong&gt; list."</SL__arrayElement>
+                          </strings>
+                        </description>
+                      <typeDesc>TypeID(10)</typeDesc>
+                      <MouseWheelSupport>0</MouseWheelSupport>
+                      <subPanelFlags>010002</subPanelFlags>
+                      <xCtlState>260080000000000400114003000A4564697420496E6465780000114003000A4C69737420496E6465780000144030FFFFFFFF0A4C6162656C205465787400004200F10000000000000002194E495341535420496E636C7564652050617468732E7863746C0953746174652E63746C0016405000030000000100020553746174650001000300000002FFFFFFFF0000000D496E636C75646520506174687300000000</xCtlState>
+                      <libVersion>0001000000000000</libVersion>
+                      <stateTD>0B</stateTD>
+                      </ddo>
+                    <conNum>-1</conNum>
+                    <termListLength>2</termListLength>
+                    </SL__arrayElement>
+                  </heap></part>

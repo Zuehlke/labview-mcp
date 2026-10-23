@@ -1,0 +1,6 @@
+<VI _name="T188 Nested Typedef Property.vi" description="Numeric Text.Size, a nested property typed by LVBoundsTypeDef, written and read on a numeric: labelled on the typedef's wrapper the heap would not load (Memory is full).">
+  <Control _name="n" outputs="value:" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Node _name="Property Node" fields="read+Numeric Text.Size" link="n" type="{LV.Digital}" outputs="Numeric Text.Size:4300.Numeric Text.Size,error out:4300.error out" uid="4300" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Numeric Text.Size" link="n" type="{LV.Digital}" inputs="error in (no error):4300.error out,Numeric Text.Size:4300.Numeric Text.Size" outputs="error out:4310.error out" uid="4310" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4310.error out" type="cluster{bool.status,int32.code,string.source}" uid="4400" uid_parent="root" value="[false,0,]"/>
+</VI>

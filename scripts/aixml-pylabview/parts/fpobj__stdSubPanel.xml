@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpobj" key="fpobj/stdSubPanel" source="&lt;labview&gt;\examples\Controls and Indicators\Containers\Multiple VIs in a Subpanel.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="Subpanel" /></types><heap><SL__arrayElement class="grouper" uid="13">
+          <objFlags>788544</objFlags>
+          <bounds>(76, 223, 400, 864)</bounds>
+          <partsList elements="1">
+            <SL__arrayElement class="stdSubPanel" uid="15">
+              <bounds>(0, 0, 324, 641)</bounds>
+              <partsList elements="6">
+                <SL__arrayElement class="label" uid="17">
+                  <objFlags>1507654</objFlags>
+                  <partID>16</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>4096</howGrow>
+                  <bounds>(0, 0, 17, 52)</bounds>
+                  <image class="Image">
+                    <ImageResID>-9</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <flags>512</flags>
+                    <mode>17412</mode>
+                    <text>"Subpanel"</text>
+                    <bgColor>01000000</bgColor>
+                    </textRec>
+                  </SL__arrayElement>
+                <SL__arrayElement class="cosm" uid="16">
+                  <objFlags>2355</objFlags>
+                  <partID>28</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>240</howGrow>
+                  <bounds>(22, 3, 321, 638)</bounds>
+                  <image class="Image">
+                    <ImageResID>-239</ImageResID>
+                    </image>
+                  <fgColor>00B3B3B3</fgColor>
+                  <bgColor>00B3B3B3</bgColor>
+                  </SL__arrayElement>
+                <SL__arrayElement class="cosm" uid="19">
+                  <objFlags>3386</objFlags>
+                  <partID>39</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>194</howGrow>
+                  <bounds>(22, 638, 321, 638)</bounds>
+                  <image class="Image">
+                    <ImageResID>-9</ImageResID>
+                    </image>
+                  <bgColor>00B3B3B3</bgColor>
+                  </SL__arrayElement>
+                <SL__arrayElement class="cosm" uid="18">
+                  <objFlags>3386</objFlags>
+                  <partID>38</partID>
+                  <masterPart>9</masterPart>
+                  <howGrow>56</howGrow>
+                  <bounds>(321, 3, 321, 638)</bounds>
+                  <image class="Image">
+                    <ImageResID>-9</ImageResID>
+                    </image>
+                  <bgColor>00B3B3B3</bgColor>
+                  </SL__arrayElement>
+                <SL__arrayElement class="cosm" uid="22">
+                  <objFlags>2327</objFlags>
+                  <partID>9</partID>
+                  <howGrow>240</howGrow>
+                  <bounds>(19, 0, 324, 641)</bounds>
+                  <image class="Image">
+                    <ImageResID>-412</ImageResID>
+                    </image>
+                  <fgColor>00B3B3B3</fgColor>
+                  <bgColor>01000000</bgColor>
+                  </SL__arrayElement>
+                <SL__arrayElement class="annex" uid="490">
+                  <partID>66</partID>
+                  <refListLength>0</refListLength>
+                  <hGrowNodeListLength>3</hGrowNodeListLength>
+                  <rsrcID>21810</rsrcID>
+                  </SL__arrayElement>
+                </partsList>
+              <typeDesc>TypeID(5)</typeDesc>
+              <MouseWheelSupport>0</MouseWheelSupport>
+              </SL__arrayElement>
+            </partsList>
+          </SL__arrayElement>
+        </heap></part>

@@ -2061,5 +2061,76 @@
     }
    }
   ]
+ },
+ "t184_compare_aggregates": {
+  "cases": [
+   {
+    "inputs": "a=[1,2,3];b=[1,2,3]",
+    "outputs": {
+     "same": true,
+     "different": false
+    }
+   },
+   {
+    "inputs": "a=[1,2,3];b=[1,2,4]",
+    "outputs": {
+     "same": false,
+     "different": true
+    }
+   }
+  ]
+ },
+ "t185_listbox_items": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "count": 3
+    }
+   }
+  ]
+ },
+ "t186_multicolumn_listbox": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "sizes": "[3,2]"
+    }
+   }
+  ]
+ },
+ "t187_subpanel": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[false,0,]"
+    }
+   }
+  ]
+ },
+ "t188_nested_typedef_property": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[false,0,]"
+    }
+   }
+  ]
+ },
+ "t189_xcontrol_host": {
+  "search": [
+   "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\XControls\\Dual Mode Thermometer"
+  ],
+  "cases": [
+   {
+    "inputs": "Degrees Celsius=100",
+    "outputs": {
+     "Degrees Fahrenheit": 212
+    }
+   }
+  ]
  }
 }

@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/xctl/prop" source="&lt;labview&gt;\examples\Controls and Indicators\XControls\Dual Mode Thermometer\Run Dual Mode Thermometer XControl.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0006" HasItem="1" ItmIdent="LVXC" Format="inline" Label="reference"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><Item Text="Simple Dual Mode Thermometer XControl.xctl" />
+        <Item Text="Simple Dual Mode Thermometer XControl" />
+        </TypeDesc><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0006" HasItem="1" ItmIdent="LVXC" Format="inline" Label="reference out"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><Item Text="Simple Dual Mode Thermometer XControl.xctl" />
+        <Item Text="Simple Dual Mode Thermometer XControl" />
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Boolean" Format="inline" Label="Fahrenheit Mode?" /></types><heap><SL__arrayElement class="propNode" uid="102">
+                <objFlags>167772800</objFlags>
+                <termList elements="5">
+                  <SL__arrayElement class="term" uid="218">
+                    <objFlags>8388608</objFlags>
+                    <dco class="hGrowCItem" uid="219">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(23)</typeDesc>
+                      <termBounds>(-9, 0, 0, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="226">
+                    <objFlags>8388608</objFlags>
+                    <dco class="hGrowCItem" uid="228">
+                      <objFlags>262145</objFlags>
+                      <typeDesc>TypeID(24)</typeDesc>
+                      <termBounds>(-9, 89, 0, 102)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="230">
+                    <dco class="hGrowCItem" uid="231">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(25)</typeDesc>
+                      <termBounds>(0, 0, 9, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="233">
+                    <dco class="hGrowCItem" uid="234">
+                      <objFlags>524289</objFlags>
+                      <typeDesc>TypeID(26)</typeDesc>
+                      <termBounds>(0, 89, 9, 102)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="236">
+                    <dco class="propItem" uid="237">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(27)</typeDesc>
+                      <termBounds>(9, 0, 25, 102)</termBounds>
+                      <privDataList elements="0" />
+                      <propList elements="1">
+                        <SL__arrayElement class="propItemInfo" uid="55">
+                          <omidTypeDesc>TypeID(28)</omidTypeDesc>
+                          <dataTypeDesc>TypeID(29)</dataTypeDesc>
+                          <PropItemName>"Fahrenheit Mode?"</PropItemName>
+                          <PropItemCode>-1</PropItemCode>
+                          </SL__arrayElement>
+                        </propList>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <label class="label" uid="109">
+                  <objFlags>1507650</objFlags>
+                  <partID>16</partID>
+                  <howGrow>4096</howGrow>
+                  <bounds>(-17, 0, 0, 227)</bounds>
+                  <image class="Image">
+                    <ImageResID>-619</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <mode>82948</mode>
+                    <text>"Dual Mode Thermometer Indicator (DMTI)"</text>
+                    <bgColor>01000000</bgColor>
+                    </textRec>
+                  </label>
+                <bounds>(212, 194, 238, 296)</bounds>
+                <shortCount>6</shortCount>
+                <clumpNum>393221</clumpNum>
+                <dcoList elements="1">
+                  <SL__arrayElement uid="237" />
+                  </dcoList>
+                <permDCOList elements="4">
+                  <SL__arrayElement uid="219" />
+                  <SL__arrayElement uid="228" />
+                  <SL__arrayElement uid="231" />
+                  <SL__arrayElement uid="234" />
+                  </permDCOList>
+                <nodeName>"Simple Dual Mode Thermometer XC"</nodeName>
+                <oMId>0003</oMId>
+                <ddo uid="107" />
+                </SL__arrayElement>
+              </heap></part>

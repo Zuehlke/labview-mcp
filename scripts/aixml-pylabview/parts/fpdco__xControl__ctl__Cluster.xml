@@ -1,0 +1,97 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/xControl/ctl/Cluster" source="&lt;labview&gt;\project\WebPublishingTool.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="Viewing Mode"><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline" Label="Selected"><EnumLabel>Snapshot</EnumLabel>
+        <EnumLabel>Monitor</EnumLabel>
+        </TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Update Interval" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Viewing Mode"><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline" Label="Selected"><EnumLabel>Snapshot</EnumLabel>
+        <EnumLabel>Monitor</EnumLabel>
+        </TypeDesc><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="Update Interval" /></TypeDesc></types><heap><SL__arrayElement class="fPDCO" uid="7777">
+                    <typeDesc>TypeID(59)</typeDesc>
+                    <ddo class="xControl" uid="7765">
+                      <objFlags>8</objFlags>
+                      <bounds>(71, 48, 321, 427)</bounds>
+                      <partsList elements="6">
+                        <SL__arrayElement class="label" uid="7771">
+                          <objFlags>1507662</objFlags>
+                          <partID>16</partID>
+                          <masterPart>9</masterPart>
+                          <howGrow>4096</howGrow>
+                          <bounds>(-22, -3, -5, 76)</bounds>
+                          <image class="Image">
+                            <ImageResID>-9</ImageResID>
+                            </image>
+                          <fgColor>01000000</fgColor>
+                          <bgColor>01000000</bgColor>
+                          <textRec class="textHair">
+                            <mode>17412</mode>
+                            <text>"Viewing Mode"</text>
+                            <bgColor>01000000</bgColor>
+                            </textRec>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="cosm" uid="7772">
+                          <objFlags>2355</objFlags>
+                          <partID>28</partID>
+                          <masterPart>9</masterPart>
+                          <howGrow>240</howGrow>
+                          <bounds>(0, 0, 250, 379)</bounds>
+                          <image class="Image">
+                            <ImageResID>-239</ImageResID>
+                            </image>
+                          <fgColor>00B0B0B0</fgColor>
+                          <bgColor>00B0B0B0</bgColor>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="cosm" uid="7773">
+                          <objFlags>3390</objFlags>
+                          <partID>39</partID>
+                          <masterPart>9</masterPart>
+                          <howGrow>194</howGrow>
+                          <bounds>(0, 379, 250, 379)</bounds>
+                          <image class="Image">
+                            <ImageResID>-9</ImageResID>
+                            </image>
+                          <bgColor>00B3B3B3</bgColor>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="cosm" uid="7774">
+                          <objFlags>3390</objFlags>
+                          <partID>38</partID>
+                          <masterPart>9</masterPart>
+                          <howGrow>56</howGrow>
+                          <bounds>(250, 0, 250, 379)</bounds>
+                          <image class="Image">
+                            <ImageResID>-9</ImageResID>
+                            </image>
+                          <bgColor>00B3B3B3</bgColor>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="cosm" uid="7775">
+                          <objFlags>2331</objFlags>
+                          <partID>9</partID>
+                          <howGrow>240</howGrow>
+                          <bounds>(-3, -3, 253, 382)</bounds>
+                          <image class="Image">
+                            <ImageResID>-412</ImageResID>
+                            </image>
+                          <fgColor>00B0B0B0</fgColor>
+                          <bgColor>01000000</bgColor>
+                          </SL__arrayElement>
+                        <SL__arrayElement class="annex" uid="7776">
+                          <partID>66</partID>
+                          <refListLength>1</refListLength>
+                          <hGrowNodeListLength>5</hGrowNodeListLength>
+                          <rsrcID>21810</rsrcID>
+                          </SL__arrayElement>
+                        </partsList>
+                      <description class="cLStrObj" uid="6246">
+                        <strings elements="1">
+                          <SL__arrayElement>"Contains the following options:"</SL__arrayElement>
+                          </strings>
+                        </description>
+                      <typeDesc>TypeID(60)</typeDesc>
+                      <MouseWheelSupport>0</MouseWheelSupport>
+                      <subPanelFlags>010002</subPanelFlags>
+                      <xCtlState>260080000000000F001240210D52656D6F74652050616E656C3F0016402110537472696E6773204368616E6765643F00000E4021095254205461726765740020407000080000000600001256696577696E67204D6F6465204C6162656C0000164070000800000006000008536E617073686F740000224070000800000006000015536E617073686F7420427574746F6E204C6162656C001C407000080000000600000E536E617073686F74204C6162656C00001440700008000000060000074D6F6E69746F72002240700008000000060000144D6F6E69746F7220427574746F6E204C6162656C00001A407000080000000600000D4D6F6E69746F72204C6162656C002440700008000000060000175365636F6E6473206265747765656E2075706461746573001A407000080000000600000D52656672657368204C6162656C001E40700008000000060000105254206E6F7420737570706F7274656400008600F10000000000000002265F5765625075626C697368696E67546F6F6C202D2056696577696E67204D6F64652E7863746C325F5765625075626C697368696E67546F6F6C202D2056696577696E67204D6F6465202D205265666572656E6365732E63746C00244050000A0003000400050006000700080009000A000B000C045265667300007500F10000000000000002265F5765625075626C697368696E67546F6F6C202D2056696577696E67204D6F64652E7863746C2D5F5765625075626C697368696E67546F6F6C202D2056696577696E67204D6F6465202D2073746174652E63746C001840500004000000010002000D0553746174650001000E0100000F10007D0E8000920EB000350F0000800E70001F0EC000660EF0008A0E9000370EE0001E0F20007400000000</xCtlState>
+                      <libVersion>0001000000000000</libVersion>
+                      <stateTD>3D</stateTD>
+                      </ddo>
+                    <conNum>-1</conNum>
+                    <termListLength>1</termListLength>
+                    <DefaultData>"&amp;#x00;&amp;#x01;&amp;#x00;&amp;#x00;&amp;#x00;&amp;#x01;"</DefaultData>
+                    </SL__arrayElement>
+                  </heap></part>

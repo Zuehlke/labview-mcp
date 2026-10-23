@@ -1,0 +1,9 @@
+<VI _name="T189 XControl Host.vi" description="An XControl INSTANCE on the panel - NI's Simple Dual Mode Thermometer - with its own method and property on it: Convert C to F.vi and Fahrenheit Mode?.">
+  <Control _name="Degrees Celsius" outputs="value:4205.value" type="double" uid="4205" uid_parent="root" value="0"/>
+  <Indicator _name="DMTI" inputs="value:" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Node _name="Invoke Node" inputs="Degrees Celsius:4205.value" link="DMTI" outputs="Convert C to F.vi:4300.Convert C to F.vi" target="Convert C to F.vi" type="{LV.Control}" uid="4300" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Fahrenheit Mode?" link="DMTI" outputs="Fahrenheit Mode?:4310.Fahrenheit Mode?" type="{LV.Control}" uid="4310" uid_parent="root"/>
+  <Indicator _name="Degrees Fahrenheit" inputs="value:4300.Convert C to F.vi" type="double" uid="4400" uid_parent="root" value="0"/>
+  <Indicator _name="Fahrenheit?" inputs="value:4310.Fahrenheit Mode?" type="bool" uid="4410" uid_parent="root" value="false"/>
+</VI>
+<?lvmcp xcontrol uid="4200" xctl="Simple Dual Mode Thermometer XControl.xctl"?>

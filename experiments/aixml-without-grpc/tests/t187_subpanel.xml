@@ -1,0 +1,7 @@
+<VI _name="T187 Sub Panel.vi" description="A sub panel, which AIXML has no element for (the subpanel trailer names it), and implicit Insert VI and Remove VI nodes on it, as NI's Multiple VIs in a Subpanel.vi writes them.">
+  <Node _name="Static VI Reference" outputs="vi reference:4200.vi reference" target="Simple Error Handler.vi" uid="4200" uid_parent="root"/>
+  <Node _name="Invoke Node" inputs="VI Ref:4200.vi reference" link="Subpanel" outputs="error out:4300.error out" target="Insert VI" type="{LV.SubPanel}" uid="4300" uid_parent="root"/>
+  <Node _name="Invoke Node" inputs="error in (no error):4300.error out" link="Subpanel" outputs="error out:4310.error out" target="Remove VI" type="{LV.SubPanel}" uid="4310" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4310.error out" type="cluster{bool.status,int32.code,string.source}" uid="4400" uid_parent="root" value="[false,0,]"/>
+</VI>
+<?lvmcp subpanel name="Subpanel" bounds="16, 16, 216, 316"?>

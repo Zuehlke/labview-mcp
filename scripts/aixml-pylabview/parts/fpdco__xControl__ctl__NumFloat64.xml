@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/xControl/ctl/NumFloat64" source="&lt;labview&gt;\examples\Controls and Indicators\XControls\Dual Mode Thermometer\Run Dual Mode Thermometer XControl.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Dual Mode Thermometer Control (DMTC)" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" Label="Dual Mode Thermometer Control (DMTC)" /></types><heap><SL__arrayElement class="fPDCO" uid="94">
+          <typeDesc>TypeID(10)</typeDesc>
+          <ddo class="xControl" uid="73">
+            <bounds>(239, 11, 464, 345)</bounds>
+            <partsList elements="6">
+              <SL__arrayElement class="label" uid="86">
+                <objFlags>1114438</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 0, 20, 334)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <flags>1536</flags>
+                  <mode>17412</mode>
+                  <text>"Dual Mode Thermometer Control (DMTC)"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="87">
+                <objFlags>2355</objFlags>
+                <partID>28</partID>
+                <masterPart>9</masterPart>
+                <howGrow>240</howGrow>
+                <bounds>(21, 0, 225, 129)</bounds>
+                <image class="Image">
+                  <ImageResID>-239</ImageResID>
+                  </image>
+                <fgColor>00B0B0B0</fgColor>
+                <bgColor>00B0B0B0</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="88">
+                <objFlags>3390</objFlags>
+                <partID>39</partID>
+                <masterPart>9</masterPart>
+                <howGrow>194</howGrow>
+                <bounds>(21, 129, 225, 129)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="89">
+                <objFlags>3390</objFlags>
+                <partID>38</partID>
+                <masterPart>9</masterPart>
+                <howGrow>56</howGrow>
+                <bounds>(225, 0, 225, 129)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="90">
+                <objFlags>2331</objFlags>
+                <partID>9</partID>
+                <howGrow>240</howGrow>
+                <bounds>(18, -3, 228, 132)</bounds>
+                <image class="Image">
+                  <ImageResID>-412</ImageResID>
+                  </image>
+                <fgColor>00B0B0B0</fgColor>
+                <bgColor>01000000</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="91">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>21810</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(11)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            <subPanelFlags>010002</subPanelFlags>
+            <xCtlState>2600800000000002001040210A46616872656E6865697400006C00F100000000000000022A53696D706C65204475616C204D6F646520546865726D6F6D657465722058436F6E74726F6C2E7863746C2653696D706C65204475616C204D6F646520546865726D6F6D657465722053746174652E63746C0012405000010000055374617465000100010100000000</xCtlState>
+            <libVersion>0001000000000000</libVersion>
+            <stateTD>0C</stateTD>
+            </ddo>
+          <conNum>-1</conNum>
+          <termListLength>1</termListLength>
+          <DefaultData>"@&lt;&amp;#x19;cp!ŸÎ"</DefaultData>
+          </SL__arrayElement>
+        </heap></part>

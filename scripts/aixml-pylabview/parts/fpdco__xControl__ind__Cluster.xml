@@ -1,0 +1,194 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/xControl/ind/Cluster" source="&lt;labview&gt;\vi.lib\Platform\express\ex_EditUserDefinedProperties\ex_userDefPropDialog.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="Data Out"><TypeDesc Type="Array" Format="inline" Label="user-def properties in"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="TypeDef" Flag1="0xC0589253" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="user-defined property 2"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Name" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Object type" /><TypeDesc Type="TypeDef" Flag1="0xBB12B291" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="usiDataType"><EnumLabel>eNoTypeUsi</EnumLabel>
+          <EnumLabel>eInt8Usi</EnumLabel>
+          <EnumLabel>eInt16Usi</EnumLabel>
+          <EnumLabel>eInt32Usi</EnumLabel>
+          <EnumLabel>eInt64Usi</EnumLabel>
+          <EnumLabel>eUInt8Usi</EnumLabel>
+          <EnumLabel>eUInt16Usi</EnumLabel>
+          <EnumLabel>eUInt32Usi</EnumLabel>
+          <EnumLabel>eUInt64Usi</EnumLabel>
+          <EnumLabel>eFloat32Usi</EnumLabel>
+          <EnumLabel>eFloat64Usi</EnumLabel>
+          <EnumLabel>- 0</EnumLabel>
+          <EnumLabel>- 1</EnumLabel>
+          <EnumLabel>- 2</EnumLabel>
+          <EnumLabel>- 3</EnumLabel>
+          <EnumLabel>- 4</EnumLabel>
+          <EnumLabel>- 5</EnumLabel>
+          <EnumLabel>- 6</EnumLabel>
+          <EnumLabel>- 7</EnumLabel>
+          <EnumLabel>- 8</EnumLabel>
+          <EnumLabel>- 9</EnumLabel>
+          <EnumLabel>eString8Usi</EnumLabel>
+          <EnumLabel>eString16Usi</EnumLabel>
+          <EnumLabel>eStringUsi</EnumLabel>
+          <EnumLabel>eEnumUsi</EnumLabel>
+          <EnumLabel>- 10</EnumLabel>
+          <EnumLabel>- 11</EnumLabel>
+          <EnumLabel>- 12</EnumLabel>
+          <EnumLabel>- 13</EnumLabel>
+          <EnumLabel>- 14</EnumLabel>
+          <EnumLabel>eTimeUsi</EnumLabel>
+          <EnumLabel>- 15</EnumLabel>
+          <EnumLabel>- 16</EnumLabel>
+          <EnumLabel>- 17</EnumLabel>
+          <EnumLabel>- 18</EnumLabel>
+          <EnumLabel>- 19</EnumLabel>
+          <EnumLabel>- 20</EnumLabel>
+          <EnumLabel>- 21</EnumLabel>
+          <EnumLabel>- 22</EnumLabel>
+          <EnumLabel>- 23</EnumLabel>
+          <EnumLabel>eInstanceUsi</EnumLabel>
+          <EnumLabel>eStoreUsi</EnumLabel>
+          </TypeDesc><Label Text="usiDataType.ctl" />
+        </TypeDesc><TypeDesc Type="TypeDef" Flag1="0xBFFDC67C" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="propertySourceType"><EnumLabel>Manual</EnumLabel>
+          <EnumLabel>System</EnumLabel>
+          <EnumLabel>DAQmx Channel</EnumLabel>
+          <EnumLabel>Terminal</EnumLabel>
+          <EnumLabel>Ignore</EnumLabel>
+          </TypeDesc><Label Text="ex_propertySource.ctl" />
+        </TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="propertySource" /><TypeDesc Type="LVVariant" Format="inline" Label="Value" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="ID" /><TypeDesc Type="Boolean" Format="inline" Label="use def name" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Source" /><TypeDesc Type="Boolean" Format="inline" Label="Built-in Prop" /><TypeDesc Type="Array" Format="inline" Label="Attribute Type Enum"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Name" /></TypeDesc></TypeDesc><Label Text="ex_userDefProperty.ctl" />
+        </TypeDesc></TypeDesc><TypeDesc Type="Array" Format="inline" Label="selected nodes in"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Data Out"><TypeDesc Type="Array" Format="inline" Label="user-def properties in"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="TypeDef" Flag1="0xC0589253" Format="inline"><TypeDesc Type="Cluster" Nested="True" Format="inline" Label="user-defined property 2"><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Name" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Object type" /><TypeDesc Type="TypeDef" Flag1="0xBB12B291" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="usiDataType"><EnumLabel>eNoTypeUsi</EnumLabel>
+          <EnumLabel>eInt8Usi</EnumLabel>
+          <EnumLabel>eInt16Usi</EnumLabel>
+          <EnumLabel>eInt32Usi</EnumLabel>
+          <EnumLabel>eInt64Usi</EnumLabel>
+          <EnumLabel>eUInt8Usi</EnumLabel>
+          <EnumLabel>eUInt16Usi</EnumLabel>
+          <EnumLabel>eUInt32Usi</EnumLabel>
+          <EnumLabel>eUInt64Usi</EnumLabel>
+          <EnumLabel>eFloat32Usi</EnumLabel>
+          <EnumLabel>eFloat64Usi</EnumLabel>
+          <EnumLabel>- 0</EnumLabel>
+          <EnumLabel>- 1</EnumLabel>
+          <EnumLabel>- 2</EnumLabel>
+          <EnumLabel>- 3</EnumLabel>
+          <EnumLabel>- 4</EnumLabel>
+          <EnumLabel>- 5</EnumLabel>
+          <EnumLabel>- 6</EnumLabel>
+          <EnumLabel>- 7</EnumLabel>
+          <EnumLabel>- 8</EnumLabel>
+          <EnumLabel>- 9</EnumLabel>
+          <EnumLabel>eString8Usi</EnumLabel>
+          <EnumLabel>eString16Usi</EnumLabel>
+          <EnumLabel>eStringUsi</EnumLabel>
+          <EnumLabel>eEnumUsi</EnumLabel>
+          <EnumLabel>- 10</EnumLabel>
+          <EnumLabel>- 11</EnumLabel>
+          <EnumLabel>- 12</EnumLabel>
+          <EnumLabel>- 13</EnumLabel>
+          <EnumLabel>- 14</EnumLabel>
+          <EnumLabel>eTimeUsi</EnumLabel>
+          <EnumLabel>- 15</EnumLabel>
+          <EnumLabel>- 16</EnumLabel>
+          <EnumLabel>- 17</EnumLabel>
+          <EnumLabel>- 18</EnumLabel>
+          <EnumLabel>- 19</EnumLabel>
+          <EnumLabel>- 20</EnumLabel>
+          <EnumLabel>- 21</EnumLabel>
+          <EnumLabel>- 22</EnumLabel>
+          <EnumLabel>- 23</EnumLabel>
+          <EnumLabel>eInstanceUsi</EnumLabel>
+          <EnumLabel>eStoreUsi</EnumLabel>
+          </TypeDesc><Label Text="usiDataType.ctl" />
+        </TypeDesc><TypeDesc Type="TypeDef" Flag1="0xBFFDC67C" Format="inline"><TypeDesc Type="UnitUInt16" Nested="True" Prop1="0" Format="inline" Label="propertySourceType"><EnumLabel>Manual</EnumLabel>
+          <EnumLabel>System</EnumLabel>
+          <EnumLabel>DAQmx Channel</EnumLabel>
+          <EnumLabel>Terminal</EnumLabel>
+          <EnumLabel>Ignore</EnumLabel>
+          </TypeDesc><Label Text="ex_propertySource.ctl" />
+        </TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="propertySource" /><TypeDesc Type="LVVariant" Format="inline" Label="Value" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="ID" /><TypeDesc Type="Boolean" Format="inline" Label="use def name" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Source" /><TypeDesc Type="Boolean" Format="inline" Label="Built-in Prop" /><TypeDesc Type="Array" Format="inline" Label="Attribute Type Enum"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Name" /></TypeDesc></TypeDesc><Label Text="ex_userDefProperty.ctl" />
+        </TypeDesc></TypeDesc><TypeDesc Type="Array" Format="inline" Label="selected nodes in"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></TypeDesc></TypeDesc></types><heap><SL__arrayElement class="fPDCO" uid="259">
+          <objFlags>66049</objFlags>
+          <typeDesc>TypeID(7)</typeDesc>
+          <ddo class="xControl" uid="239">
+            <objFlags>33</objFlags>
+            <bounds>(12, 782, 405, 1404)</bounds>
+            <partsList elements="6">
+              <SL__arrayElement class="label" uid="251">
+                <objFlags>1507662</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(-22, -3, -5, 47)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <mode>17412</mode>
+                  <text>"Data Out"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="252">
+                <objFlags>2355</objFlags>
+                <partID>28</partID>
+                <masterPart>9</masterPart>
+                <howGrow>240</howGrow>
+                <bounds>(0, 0, 393, 622)</bounds>
+                <image class="Image">
+                  <ImageResID>-239</ImageResID>
+                  </image>
+                <fgColor>00B0B0B0</fgColor>
+                <bgColor>00B0B0B0</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="253">
+                <objFlags>3390</objFlags>
+                <partID>39</partID>
+                <masterPart>9</masterPart>
+                <howGrow>194</howGrow>
+                <bounds>(0, 622, 393, 622)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="254">
+                <objFlags>3390</objFlags>
+                <partID>38</partID>
+                <masterPart>9</masterPart>
+                <howGrow>56</howGrow>
+                <bounds>(393, 0, 393, 622)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="255">
+                <objFlags>2335</objFlags>
+                <partID>9</partID>
+                <howGrow>240</howGrow>
+                <bounds>(-3, -3, 396, 625)</bounds>
+                <image class="Image">
+                  <ImageResID>-412</ImageResID>
+                  </image>
+                <fgColor>00B0B0B0</fgColor>
+                <bgColor>01000000</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="256">
+                <partID>66</partID>
+                <refListLength>0</refListLength>
+                <hGrowNodeListLength>0</hGrowNodeListLength>
+                <rsrcID>21810</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <typeDesc>TypeID(8)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            <subPanelFlags>010000</subPanelFlags>
+            <xCtlState>26008000000000030049401600040764656661756C740D73746F726167652077726974650C73746F726167652072656164116D6561737572656D656E7420777269746500000B43616C6C6572205479706500144030FFFFFFFF0B4F626A6563742054797065004500F100000000000000021C436F6E6669677572652055736572204465662050726F702E7863746C0B537461746520312E63746C001440500002000000010553746174650001000200000000000000000000</xCtlState>
+            <libVersion>0001000000000000</libVersion>
+            <stateTD>09</stateTD>
+            </ddo>
+          <conNum>1</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

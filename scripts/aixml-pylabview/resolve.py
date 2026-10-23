@@ -384,15 +384,20 @@ class Resolver:
                             "lib_ref": self.ref(owner, caller_file), "owner": owner}
             # an INHERITED method: a dynamic-dispatch call through a child class names the child
             # (`XY Plot Matrix.lvclass:Write Active Plot.vi`) where only its parent, 2D Plot.lvclass,
-            # lists the member - XY Plot Matrix's Active Plot Write.vi (the XControl sweep, 2026-10-23)
+            # lists the member - XY Plot Matrix's Active Plot Write.vi (the XControl sweep, 2026-10-23).
+            # The LINK still names the CHILD and its .lvclass, as LabVIEW writes it: NI's 2D Feather
+            # facade links `2D Feather.lvclass:Set Range.vi` at 2D Feather.lvclass though only 2D
+            # Plot has the VI - named after the parent, its calls were "Wire: Class conflict".
+            # `path` is the parent's VI, which the composer reads the pane from.
             if owners[-1].lower().endswith(".lvclass"):
                 for owner in candidates:
                     for parent in self.class_parents(owner):
                         path = self.member(parent, vi_name)
                         if path and exists(path):
-                            return {"path": path, "qual": [os.path.basename(parent), vi_name], "kind": "class member",
+                            return {"path": path, "qual": owners + [vi_name], "kind": "class member",
                                     "path_ref": self.ref(path, caller_file),
-                                    "lib_ref": self.ref(parent, caller_file), "owner": parent, "inherited": True}
+                                    "lib_ref": self.ref(owner, caller_file), "owner": owner, "inherited": True,
+                                    "defined_in": parent}
             return {"error": "%s lists no member %r" % (owners[-1], vi_name)}
         for d in caller_dirs:
             p = os.path.join(d, target)

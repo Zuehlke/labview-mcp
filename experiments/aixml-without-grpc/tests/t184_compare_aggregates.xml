@@ -1,0 +1,8 @@
+<VI _name="T184 Compare Aggregates.vi" description="Equal? and Not Equal? in Compare Aggregates mode: one boolean for two whole arrays, the objFlags bit 0x80000 NI's 3D Graph axes_auto_range.vi carries.">
+  <Control _name="a" outputs="value:4200.value" type="array{int32}" uid="4200" uid_parent="root" value="[]"/>
+  <Control _name="b" outputs="value:4205.value" type="array{int32}" uid="4205" uid_parent="root" value="[]"/>
+  <Node _name="Equal?" aggregate="true" inputs="x:4200.value,y:4205.value" outputs="x = y?:4300.x = y?" uid="4300" uid_parent="root"/>
+  <Node _name="Not Equal?" aggregate="true" inputs="x:4200.value,y:4205.value" outputs="x != y?:4310.x != y?" uid="4310" uid_parent="root"/>
+  <Indicator _name="same" inputs="value:4300.x = y?" type="bool" uid="4400" uid_parent="root" value="false"/>
+  <Indicator _name="different" inputs="value:4310.x != y?" type="bool" uid="4410" uid_parent="root" value="false"/>
+</VI>
