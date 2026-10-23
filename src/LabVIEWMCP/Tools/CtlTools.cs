@@ -175,7 +175,7 @@ internal sealed class CtlTools
         // would send a caller to Replace, which answers Error 1073 on one.
         var kind = isPrivateData ? 3 : isStrict ? 2 : isTypedef ? 1 : 0;
 
-        var wrapped = WrappedType(rsrc);
+        var wrapped = WrappedType(rsrc, Path.GetFileName(ctlPath));
 
         string? whyNot = null;
         if (!isControl)
@@ -259,25 +259,42 @@ internal sealed class CtlTools
     private sealed record Wrapped(string? Label, string? Kind, string? Detail, JsonArray Fields);
 
     /// <summary>
-    /// The type the control carries: <c>VCTP/TopLevel</c> index 1, resolved to its flat descriptor.
+    /// The type the control carries, resolved to its flat descriptor: the typedef descriptor that
+    /// names THIS FILE, else <c>VCTP/TopLevel</c> index 1.
     ///
-    /// INDEX 1, NOT 0. The top-level list is 1-based and its first entry is the control's own type;
-    /// a cluster control's fields are that descriptor's children, which is what makes the field
-    /// list readable without decoding the front panel heap.
+    /// INDEX 1 IS NOT ALWAYS THE CONTROL. A control whose elements are instances of OTHER typedefs
+    /// may list those first: measured 2026-10-23 on a cluster of two ring typedefs and a colour box
+    /// saved by LabVIEW 2025, TopLevel 1 pointed at the first ring's typedef and the control's own
+    /// TypeDef (labelled with its own file name) sat at TopLevel 3. This answered one `uint16` for a
+    /// three-element cluster. A file `lvai_create_typedef` wrote lists itself first, which is why
+    /// every fixture agreed with the old rule. A typedef descriptor carries its owner chain as
+    /// `<Label Text=…>` children, the file name last, so the own one is found by name.
+    ///
+    /// The fallback keeps index 1, 1-based, because a plain control has no such descriptor, and a
+    /// flag-patched `.ctl` LabVIEW never saved has none either - its index 1 is the generated VI's
+    /// connector pane, which is the `Function` that `needsLabviewSave` is read from.
     /// </summary>
-    private static Wrapped WrappedType(XElement rsrc)
+    private static Wrapped WrappedType(XElement rsrc, string? fileName = null)
     {
         var vctp = rsrc.Element("VCTP")?.Element("Section");
         if (vctp is null) return new Wrapped(null, null, null, []);
 
         var flat = vctp.Elements("TypeDesc").ToList();
-        var topLevel = vctp.Element("TopLevel")?.Elements("TypeDesc")
-            .FirstOrDefault(e => (string?)e.Attribute("Index") == "1");
-        if (topLevel is null || !int.TryParse((string?)topLevel.Attribute("FlatTypeID"), out var id)
-            || id < 0 || id >= flat.Count)
-            return new Wrapped(null, null, null, []);
+        var topLevel = vctp.Element("TopLevel")?.Elements("TypeDesc").ToList() ?? [];
+        int? FlatId(XElement entry) =>
+            int.TryParse((string?)entry.Attribute("FlatTypeID"), out var i) && i >= 0 && i < flat.Count
+                ? i : null;
 
-        var descriptor = flat[id];
+        // In TopLevel order, so the answer does not depend on where LabVIEW put the flat entry.
+        var own = fileName is null ? null : topLevel
+            .Select(FlatId).OfType<int>()
+            .Select(i => flat[i])
+            .FirstOrDefault(d => (string?)d.Attribute("Type") == "TypeDef" &&
+                                 string.Equals((string?)d.Elements("Label").LastOrDefault()?.Attribute("Text"),
+                                               fileName, StringComparison.OrdinalIgnoreCase));
+        var first = topLevel.FirstOrDefault(e => (string?)e.Attribute("Index") == "1");
+        var descriptor = own ?? (first is not null && FlatId(first) is { } id ? flat[id] : null);
+        if (descriptor is null) return new Wrapped(null, null, null, []);
         var fields = new JsonArray();
         foreach (var child in descriptor.Elements("TypeDesc"))
         {
@@ -318,7 +335,13 @@ internal sealed class CtlTools
         var inner = resolved;
         if ((string?)resolved.Attribute("Type") == "TypeDef")
         {
-            field["typedef"] = (string?)resolved.Element("Label")?.Attribute("Text");
+            // The label chain is OWNER FIRST, FILE LAST - `Lib.lvlib`, `Ring.ctl` - so the first
+            // label named the library for every typedef that belongs to one, measured 2026-10-23.
+            var chain = resolved.Elements("Label").Select(l => (string?)l.Attribute("Text"))
+                .OfType<string>().ToList();
+            field["typedef"] = chain.LastOrDefault();
+            if (chain.Count > 1)
+                field["typedefQualified"] = string.Join(":", chain);
             if (resolved.Element("TypeDesc") is { } nested)
             {
                 inner = nested;

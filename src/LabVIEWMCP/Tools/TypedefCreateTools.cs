@@ -433,8 +433,11 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
         var needsSave = described["needsLabviewSave"]?.GetValue<bool>() == true;
         // THE FILE'S FIRST TOP-LEVEL TYPE MUST BE THIS TYPEDEF ITSELF. Binding elements in two
         // separate runs put a copy of the first element's typedef there instead - isTypedef, the
-        // element names and a later use all still looked right, and lvai_describe_ctl then
-        // described the INNER enum as the control. This is the check that saw it.
+        // element names and a later use all still looked right, and lvai_describe_ctl - until it
+        // learned on 2026-10-23 to find the control's own typedef by its file name - described
+        // the INNER enum as the control. This is the check that saw it, and it stays: a stray
+        // descriptor at the head is a defect in a file this tool wrote, even though LabVIEW's own
+        // saves can legitimately list nested typedefs first.
         var headOk = string.Equals(head, Path.GetFileName(req.CtlPath), StringComparison.OrdinalIgnoreCase);
         return (isTypedef && strictOk && !needsSave && headOk && missing.Count == 0, step);
     }

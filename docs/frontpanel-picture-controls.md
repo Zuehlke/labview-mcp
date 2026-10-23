@@ -212,10 +212,17 @@ answer field.
 (`Position:Left/Top`), `Label.Visible` and a boolean's `Colors [4]` are properties of the
 elements. `Autosizing` is not in the catalogue for `{LV.Cluster}`; not tried.
 
-**`lvai_describe_ctl` misreads a control that USES typedefs.** For the plot channel styles
-cluster it answered one `uint16` labelled `LineStyle`: it took the FIRST `TypeDef` in the
-type table (the nested line-style ring) instead of the control's own top-level type, a
-cluster of three. Not fixed here.
+**`lvai_describe_ctl` misread a control that USES typedefs - fixed the same day.** For the plot
+channel styles cluster it answered one `uint16` labelled `LineStyle`: it took `VCTP/TopLevel`
+index 1 as the control, and a file LabVIEW 2025 saved lists the NESTED typedefs first (index 1
+the line-style ring, the control's own `TypeDef` at index 3). A file `lvai_create_typedef`
+writes lists itself first, so no fixture disagreed. The tool now takes the `TypeDef` whose last
+label is the file's own name, and falls back to index 1 (a plain control, or a flag-patched
+`.ctl` whose index 1 is the generated VI's pane). A second defect sat beside it: a member
+typedef's `typedef` named the first label of its chain - the LIBRARY for any typedef in one -
+where the file is the last; it is the file now, with `typedefQualified` (`Lib.lvlib:Ring.ctl`)
+beside it. Checked against all three customer clusters and our own probe;
+`CtlNestedTypedefTests` holds both orders.
 
 ## 5. What this does not show yet
 
@@ -239,4 +246,4 @@ cluster of three. Not fixed here.
    mapped onto the two bits, and LabVIEW making the text part. Verified by a panel print
    compared with a reference and by the running host above.
 3. Cluster layout through VI Server properties.
-4. Fix `lvai_describe_ctl` for controls that contain typedefs.
+4. (done 2026-10-23: `lvai_describe_ctl` for controls that contain typedefs.)
