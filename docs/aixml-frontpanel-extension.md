@@ -95,6 +95,9 @@ A trailing XML COMMENT (G2) works too and is listed only to be rejected: comment
 exactly where this format has bitten twice already, and an editor or formatter that moves
 one to the top of the file produces an empty VI with no error anywhere.
 
+The design that builds on this - option 1, with the strip as the single route to NI - is
+written up in `docs/aixml-frontpanel-proposal.md` (2026-10-24, not implemented).
+
 ## 5. Not measured
 
 - Whether `ApplyAIXMLToVI` behaves differently - it is not called (CLAUDE.md).
