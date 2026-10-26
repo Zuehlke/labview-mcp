@@ -191,7 +191,7 @@ public sealed class LabViewContextTests : IDisposable
     }
 
     [Fact]
-    public void The_same_addon_folder_in_two_locations_comes_from_the_later_one_first()
+    public void The_same_addon_folder_in_two_locations_is_replaced_by_the_later_one()
     {
         var custom = Folder("A");
         var venv = Folder("B");
@@ -205,8 +205,8 @@ public sealed class LabViewContextTests : IDisposable
         var reversed = LabViewContext.Build(Exe(), Ini($"LVAddons.CustomLocation={Folder("empty")}", $"LVAddons.AdditionalLocations={venv};{custom}"), null, "test");
 
         // measured (lvaddons-probe4): `A;B` took B's copy, `B;A` A's, a CustomLocation lost to an additional one
-        Assert.StartsWith(venv, both.SelectedAddons()[0].Folder);
-        Assert.StartsWith(custom, reversed.SelectedAddons()[0].Folder);
+        Assert.StartsWith(venv, Assert.Single(both.SelectedAddons()).Folder);   // the earlier one is replaced (probe5)
+        Assert.StartsWith(custom, Assert.Single(reversed.SelectedAddons()).Folder);
     }
 
     [Fact]

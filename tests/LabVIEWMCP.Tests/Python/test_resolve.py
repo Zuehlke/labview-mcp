@@ -115,6 +115,8 @@ class Selection(unittest.TestCase):
         first_dup = lambda locs: next(v for n, v in resolve.ordered_addons(locs, (26, 3), 32) if n == "dup")
         self.assertTrue(first_dup([a, b]).startswith(b))
         self.assertTrue(first_dup([b, a]).startswith(a))
+        # and the earlier one is GONE, not searched behind it (lvaddons-probe5)
+        self.assertEqual([n for n, _ in resolve.ordered_addons([a, b], (26, 3), 32)].count("dup"), 1)
         names = [n for n, _ in resolve.ordered_addons([a], (26, 3), 32)]
         self.assertLess(names.index("aaa"), names.index("mmm"))
 

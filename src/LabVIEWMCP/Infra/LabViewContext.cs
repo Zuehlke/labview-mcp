@@ -117,14 +117,17 @@ internal sealed record LabViewContext(
     /// took the alphabetically first add-on FOLDER (not AddonName), whichever location held it and
     /// whatever order the INI listed them in, the CustomLocation included; and the SAME folder name
     /// in two locations came from the location listed LAST (a CustomLocation before every
-    /// additional one). resolve.py's ordered_addons is the same rule.
+    /// additional one) and REPLACED the earlier one - with the file only in the earlier one the
+    /// call stayed broken (lvaddons-probe5). resolve.py's ordered_addons is the same rule.
     /// </summary>
     public IReadOnlyList<AddonFolder> SelectedAddons() =>
         AddonsEnabled
             ? AddonLocations
                 .SelectMany((l, i) => AddonTree.Select(l, Major, Minor, Bits).Select(a => (a, i)))
-                .OrderBy(x => x.a.Addon, StringComparer.OrdinalIgnoreCase).ThenByDescending(x => x.i)
-                .Select(x => x.a).ToList()
+                .GroupBy(x => x.a.Addon, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.MaxBy(x => x.i).a)
+                .OrderBy(a => a.Addon, StringComparer.OrdinalIgnoreCase)
+                .ToList()
             : [];
 
     /// <summary>For a tool answer: what was chosen and from where.</summary>
