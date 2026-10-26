@@ -114,14 +114,16 @@ internal sealed record LabViewContext(
     /// <summary>
     /// The add-on folders this LabVIEW loads (<see cref="AddonTree.Select"/>), from EVERY location,
     /// ordered by add-on name - measured 2026-10-26: for one &lt;vilib&gt; file in two add-ons LabVIEW
-    /// took the alphabetically first add-on, whichever location held it and whatever order the INI
-    /// listed them in, the CustomLocation included. resolve.py's ordered_addons is the same rule.
+    /// took the alphabetically first add-on FOLDER (not AddonName), whichever location held it and
+    /// whatever order the INI listed them in, the CustomLocation included; and the SAME folder name
+    /// in two locations came from the location listed LAST (a CustomLocation before every
+    /// additional one). resolve.py's ordered_addons is the same rule.
     /// </summary>
     public IReadOnlyList<AddonFolder> SelectedAddons() =>
         AddonsEnabled
             ? AddonLocations
                 .SelectMany((l, i) => AddonTree.Select(l, Major, Minor, Bits).Select(a => (a, i)))
-                .OrderBy(x => x.a.Addon, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.i)
+                .OrderBy(x => x.a.Addon, StringComparer.OrdinalIgnoreCase).ThenByDescending(x => x.i)
                 .Select(x => x.a).ToList()
             : [];
 

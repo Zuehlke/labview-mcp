@@ -190,11 +190,14 @@ def select_addons(addons_root, version=None, bits=None):
 
 
 def ordered_addons(locations, version=None, bits=None):
-    """select_addons over every location, as ONE list ordered by add-on folder name (case
-    ignored) - the order LabVIEW picks a file present in two add-ons in. The same name in two
-    locations keeps location order between them (not measured)."""
+    """select_addons over every location, as ONE list ordered by add-on FOLDER name (case
+    ignored) - the order LabVIEW picks a file present in two add-ons in. Measured 2026-10-26
+    (experiments\\lvaddons): folder aaa with AddonName zzz beat folder mmm with AddonName bbb; and
+    the SAME folder name in two locations is taken from the location the INI names LAST - `A;B`
+    gave B's, `B;A` A's, a CustomLocation lost to an additional one. Whether the earlier one is
+    then searched at all is not measured; it stays in the list, after."""
     chosen = [(i, a, v) for i, loc in enumerate(locations) for a, v in select_addons(loc, version, bits)]
-    return [(a, v) for _i, a, v in sorted(chosen, key=lambda t: (t[1].lower(), t[0]))]
+    return [(a, v) for _i, a, v in sorted(chosen, key=lambda t: (t[1].lower(), -t[0]))]
 
 
 def addon_trees(version_dir, bits=None):

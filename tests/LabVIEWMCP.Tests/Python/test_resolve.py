@@ -104,6 +104,20 @@ class Selection(unittest.TestCase):
         self.assertEqual(names[0], "aprobe")
         self.assertEqual(names, [a for a, _ in resolve.ordered_addons([other, self.addons], (26, 3), 32)])
 
+    def test_same_folder_in_two_locations_the_later_first_and_folder_beats_AddonName(self):
+        # measured (lvaddons-probe4): `A;B` took B's dup, `B;A` A's; folder aaa (AddonName zzz)
+        # beat folder mmm (AddonName bbb)
+        a, b = os.path.join(self.tmp, "A"), os.path.join(self.tmp, "B")
+        addon(a, "dup", "1", {})
+        addon(b, "dup", "1", {})
+        addon(a, "aaa", "1", {"AddonName": "zzz"})
+        addon(a, "mmm", "1", {"AddonName": "bbb"})
+        first_dup = lambda locs: next(v for n, v in resolve.ordered_addons(locs, (26, 3), 32) if n == "dup")
+        self.assertTrue(first_dup([a, b]).startswith(b))
+        self.assertTrue(first_dup([b, a]).startswith(a))
+        names = [n for n, _ in resolve.ordered_addons([a], (26, 3), 32)]
+        self.assertLess(names.index("aaa"), names.index("mmm"))
+
     def test_targets_follow_bitness(self):
         vdir = addon(self.addons, "tgt", "1", {}, files=(r"Targets\win32\resource\a.vi", r"Targets\win64\resource\a.vi"))
         names = lambda bits: [os.path.relpath(t, vdir) for t in resolve.addon_trees(vdir, bits)]
@@ -141,6 +155,12 @@ class Lookup(unittest.TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_the_installation_comes_before_every_addon(self):
+        # measured (lvaddons-probe4): an add-on copy of vi.lib\Utility\error.llb\Trim Whitespace
+        # (string).vi lost to the installation's
+        kinds = [d.startswith(self.lv) for _a, d in self.r.roots]
+        self.assertEqual(kinds, sorted(kinds, reverse=True))
 
     def test_symbolic_link_searches_every_vilib(self):
         self.assertEqual(self.r.linked_file("0", ["<vilib>", "Utility", "Core.vi"], []),

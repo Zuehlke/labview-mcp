@@ -422,6 +422,10 @@ probe add-ons, each copy returning its own number:
 | I / J | no `lvaddoninfo.json` / text that is not JSON | broken | **the add-on is ignored** |
 | - | `lvaddoninfo.json` with a UTF-8 BOM, or without `AddonName` | broken (all runs of two earlier rounds) | **ignored** too |
 | K | `AddonName` different from the folder name | 700 | loaded |
+| M1 | an add-on copy of `vi.lib\Utility\error.llb\Trim Whitespace (string).vi` answering `ADDON` | `x` | **the installation's own file wins** over an add-on's |
+| M2 | add-on folder `dup` in A and in B, INI `A;B` / `B;A` | B's / A's | **the same folder name: the location listed LAST wins** |
+| M2 | `CustomLocation=A`, additional B | B's | an additional location beats the custom one for it |
+| M3 | folder `aaa` (AddonName `zzz`) against folder `mmm` (AddonName `bbb`) | `aaa`'s | ordered by **folder name**, not AddonName |
 
 An earlier round started LabVIEW with `CustomLocation` (no add-on of the default root in its log any
 more) and with `Enabled=False` (no add-on at all). So `resolve.ordered_addons` and
@@ -431,11 +435,14 @@ more) and with `Enabled=False` (no add-on at all). So `resolve.ordered_addons` a
 PowerShell 5's `Set-Content -Encoding utf8` writes the BOM that makes LabVIEW ignore an add-on; and
 a caller placed INSIDE the tree holding the probes was linked by LabVIEW's own name search to the
 alphabetically first copy (300 in every run, the control included) - keep a caller far from the
-files it must not find. NOT measured: which wins between the installation's own `vi.lib` and an
-add-on, the same add-on name in two locations, and whether the order follows the folder name or
-`AddonName` (equal in every case above). Scripts: `experiments\lvaddons\lvaddons-probe2.ps1` and
-`-probe3.ps1` (they stop and restart LabVIEW and empty its auto-save store); the `.mxx` provider
-probe tried first detects real providers only.
+files it must not find. So the resolver searches the installation first, then the add-ons by
+folder name, and for one folder name in two locations the later-listed location first. NOT
+measured: whether that earlier same-named add-on is searched at all once the later one lacks a
+file (it stays in the list, after), and how versions compare across two such locations. Scripts:
+`experiments\lvaddons\lvaddons-probe2.ps1`, `-probe3.ps1` and `-probe4.ps1` (they stop and restart
+LabVIEW and empty its auto-save store; PowerShell 5 drops an EMPTY argument to a native exe, so
+pass an empty folder rather than `''`); the `.mxx` provider probe tried first detects real
+providers only.
 
 **Several LabVIEWs at once** (lvpm runs its own beside the "primary" one): the one whose command line
 is nearest the VI being composed or read - lvpm passes the project and keeps its INI in the

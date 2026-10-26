@@ -191,6 +191,25 @@ public sealed class LabViewContextTests : IDisposable
     }
 
     [Fact]
+    public void The_same_addon_folder_in_two_locations_comes_from_the_later_one_first()
+    {
+        var custom = Folder("A");
+        var venv = Folder("B");
+        foreach (var location in new[] { custom, venv })
+        {
+            var dir = Path.Combine(location, "dup", "1");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "lvaddoninfo.json"), """{"AddonName":"dup"}""");
+        }
+        var both = LabViewContext.Build(Exe(), Ini($"LVAddons.CustomLocation={custom}", $"LVAddons.AdditionalLocations={venv}"), null, "test");
+        var reversed = LabViewContext.Build(Exe(), Ini($"LVAddons.CustomLocation={Folder("empty")}", $"LVAddons.AdditionalLocations={venv};{custom}"), null, "test");
+
+        // measured (lvaddons-probe4): `A;B` took B's copy, `B;A` A's, a CustomLocation lost to an additional one
+        Assert.StartsWith(venv, both.SelectedAddons()[0].Folder);
+        Assert.StartsWith(custom, reversed.SelectedAddons()[0].Folder);
+    }
+
+    [Fact]
     public void Ini_values_are_unquoted_and_the_section_is_respected()
     {
         var ini = Ini("LVAddons.CustomLocation=\"C:\\a b\"", "lvaddons.additionallocations=C:\\x");
