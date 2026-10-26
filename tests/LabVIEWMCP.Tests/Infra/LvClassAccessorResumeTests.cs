@@ -104,6 +104,85 @@ public sealed class LvClassAccessorResumeTests
         Assert.Empty(LvClass.IncompleteAccessorFields(mixed, 2));
     }
 
+    // ------------------------------------------------------------------ a method named like an accessor
+
+    /// <summary>The TemperatureSensor shape of 2026-10-26: three fields, and an interface override
+    /// `Read Value.vi` built BEFORE any accessor - there is no field `Value`.</summary>
+    private static readonly string[] SensorFields = ["Raw Value", "Gain", "Offset"];
+
+    private static List<LvClass.Member> SensorBeforeAccessors() =>
+    [
+        new("TemperatureSensor.ctl", "TemperatureSensor.ctl", "control", "public", null),
+        Vi("Read Value.vi"),
+    ];
+
+    /// <summary>
+    /// THE REGRESSION. Without the field names `Read Value.vi` reads as half of a pair for a field
+    /// "Value", and `lvai_create_accessors` refused every resume with `halfBuiltAccessors` - the
+    /// first assertion pins that the names-only rule still behaves so, the second that the fix
+    /// lets the call start.
+    /// </summary>
+    [Fact]
+    public void AMethodNamedReadSomethingIsNotHalfAnAccessorPairWhenTheFieldsAreKnown()
+    {
+        Assert.Equal(["Value"], LvClass.IncompleteAccessorFields(SensorBeforeAccessors(), 2));
+
+        Assert.Empty(LvClass.IncompleteAccessorFields(SensorBeforeAccessors(), 2, SensorFields));
+        Assert.Equal(0, LvClass.FieldsWithAccessors(SensorBeforeAccessors(), 2, SensorFields));
+    }
+
+    /// <summary>
+    /// A READ-ONLY run had the same fault as an OFFSET: `Read Value.vi` counted as a complete
+    /// field, so a resume would start at field 1 and Raw Value would never get its accessor.
+    /// </summary>
+    [Fact]
+    public void AMethodDoesNotShiftTheResumeOffsetOfAReadOnlyRun()
+    {
+        Assert.Equal(1, LvClass.FieldsWithAccessors(SensorBeforeAccessors(), 0));
+        Assert.Equal(0, LvClass.FieldsWithAccessors(SensorBeforeAccessors(), 0, SensorFields));
+    }
+
+    /// <summary>
+    /// THE CONTROL ARM: the field names must not make the check inert. A real orphan - `Read Gain`
+    /// without `Write Gain` - beside the method is still named, and the complete pair still counts.
+    /// </summary>
+    [Fact]
+    public void ARealOrphanBesideTheMethodIsStillRefused()
+    {
+        var members = SensorBeforeAccessors();
+        members.AddRange([Vi("Read Raw Value.vi"), Vi("Write Raw Value.vi"), Vi("Read Gain.vi")]);
+
+        Assert.Equal(["Gain"], LvClass.IncompleteAccessorFields(members, 2, SensorFields));
+        Assert.Equal(1, LvClass.FieldsWithAccessors(members, 2, SensorFields));
+    }
+
+    /// <summary>
+    /// THE ORIGINAL FAILURE, on the REAL artefact rather than a list written to match the fix: the
+    /// class file of the 2026-10-26 verification build, whose `Read Value.vi` override made
+    /// `lvai_create_accessors` refuse. Its field labels are read exactly as the tool reads them -
+    /// unwrapping the private data control through the bundled pylabview - so this also proves
+    /// that route yields the names. Skips without the bundle.
+    /// </summary>
+    [Fact]
+    public async Task TheRealClassThatWasRefusedResumesWithItsFieldNames()
+    {
+        var lvclass = Path.Combine(LabVIEWMcp.Tests.Support.RepoTree.Root, "tests", "LabVIEWMCP.Tests",
+                                   "Fixtures", "accessor-resume", "TemperatureSensor.lvclass");
+        var members = LvClass.Read(lvclass).Members;
+
+        // names alone: the refusal as it was seen
+        Assert.Equal(["Value"], LvClass.IncompleteAccessorFields(members, 2));
+
+        if (PyLabview.Locate() is null) return;
+        var fields = await LabVIEWMcp.Tools.ClassBindTools.PrivateDataFields.ReadAsync(lvclass, 60, CancellationToken.None);
+        Assert.Null(fields.Unavailable);
+        Assert.Equal(SensorFields, fields.Labels);
+
+        var names = fields.Labels.ToHashSet(StringComparer.Ordinal);
+        Assert.Empty(LvClass.IncompleteAccessorFields(members, 2, names));
+        Assert.Equal(3, LvClass.FieldsWithAccessors(members, 2, names));
+    }
+
     // ------------------------------------------------------------------ the mangled-name net
 
     /// <summary>

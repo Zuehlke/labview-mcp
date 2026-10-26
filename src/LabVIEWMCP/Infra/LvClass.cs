@@ -478,11 +478,13 @@ internal static class LvClass
     /// class that implements one.
     ///
     /// The wizard names an accessor `Read &lt;field&gt;.vi` / `Write &lt;field&gt;.vi` and builds them in field
-    /// order, so this is exact under that contract. It cannot tell a hand-written `Read something.vi`
-    /// for a non-field `something` from a real accessor - far narrower than the defect it replaces.
+    /// order, so this is exact under that contract. Given <paramref name="fieldNames"/> - the private
+    /// data's labels - a `Read something.vi` whose `something` is no field is a METHOD and is not
+    /// counted; without them it cannot be told from a real accessor.
     /// </summary>
-    public static int FieldsWithAccessors(IEnumerable<Member> members, int accessIndex) =>
-        AccessorFields(members, accessIndex).Complete.Count;
+    public static int FieldsWithAccessors(IEnumerable<Member> members, int accessIndex,
+                                          IReadOnlyCollection<string>? fieldNames = null) =>
+        AccessorFields(members, accessIndex, fieldNames).Complete.Count;
 
     /// <summary>
     /// The names of fields whose accessor set is only PARTLY there - a `Read X.vi` with no
@@ -499,18 +501,25 @@ internal static class LvClass
     /// class is left consistent … never a mismatch". That holds when the timeout lands BETWEEN
     /// fields and not when it lands inside one, which is a coin toss rather than a guarantee.
     /// A caller resuming must therefore be told, not silently rounded.
+    ///
+    /// AND A METHOD IS NOT HALF AN ACCESSOR. Without <paramref name="fieldNames"/> an interface
+    /// override `Read Value.vi` on a class with no field `Value` read as a field whose `Write` was
+    /// missing, and every resume was refused with `halfBuiltAccessors` - measured 2026-10-26 on a
+    /// TemperatureSensor class whose `Read Value.vi` override was built before its accessors.
     /// </summary>
     public static IReadOnlyList<string> IncompleteAccessorFields(
-        IEnumerable<Member> members, int accessIndex) =>
-        AccessorFields(members, accessIndex).Incomplete;
+        IEnumerable<Member> members, int accessIndex,
+        IReadOnlyCollection<string>? fieldNames = null) =>
+        AccessorFields(members, accessIndex, fieldNames).Incomplete;
 
     /// <summary>
     /// Accessor members grouped by the field they belong to. `Read Top Speed.vi` and
     /// `Write Top Speed.vi` are one field; anything not shaped like an accessor is ignored, which is
-    /// what keeps the private data control and ordinary methods out of the count.
+    /// what keeps the private data control and ordinary methods out of the count - and, given
+    /// <paramref name="fieldNames"/>, so is a `Read X.vi` / `Write X.vi` whose X is no field.
     /// </summary>
     private static (List<string> Complete, List<string> Incomplete) AccessorFields(
-        IEnumerable<Member> members, int accessIndex)
+        IEnumerable<Member> members, int accessIndex, IReadOnlyCollection<string>? fieldNames = null)
     {
         string[] wanted = accessIndex switch
         {
@@ -531,6 +540,7 @@ internal static class LvClass
             {
                 if (!member.Name.StartsWith(prefix, StringComparison.Ordinal)) continue;
                 var field = member.Name[prefix.Length..^3];
+                if (fieldNames is not null && !fieldNames.Contains(field)) break;   // a method
                 if (!byField.TryGetValue(field, out var have))
                     byField[field] = have = new HashSet<string>(StringComparer.Ordinal);
                 have.Add(prefix);

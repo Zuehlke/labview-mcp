@@ -1271,6 +1271,19 @@ or not the answer arrived, and `nextFromField == fieldCount` is how a caller kno
 finished. On a timeout the recovery is the same call with `fromField` = `memberCount / 2` from
 `lvai_describe_class`, never a retry of the slice that timed out.
 
+**A METHOD NAMED `Read <X>.vi` IS NOT HALF AN ACCESSOR PAIR - fixed 2026-10-26.** The resume
+(`fromField -1`) grouped members by name alone, so an interface override `Read Value.vi` built
+before the accessors of a class with no field `Value` read as a field whose `Write` was missing, and
+every resume was refused: `errorKind: halfBuiltAccessors`, `halfBuiltFields: ["Value"]` - measured on
+the verification build's `TemperatureSensor.lvclass` (fields Raw Value, Gain, Offset), worked around
+there with an explicit `fromField`. A Read-only run had the same fault as an OFFSET: the method
+counted as a finished field, so the resume would have skipped the first real one. The tool now reads
+the private data's field labels off the file first (`PrivateDataFields`, pylabview, no LabVIEW) and
+counts `Read/Write <X>.vi` only where `<X>` is a field; a real orphan beside the method is still
+refused. `accessorsCountedBy` in the answer says which rule ran - names alone when the labels could
+not be read. The real class file is the test fixture
+(`tests/LabVIEWMCP.Tests/Fixtures/accessor-resume`), not a list written to match the fix.
+
 **The client's ceiling is EXACTLY 60 s, and it is not raisable from `.claude/settings.json`.**
 This was written as "a client that gives up near 60 s" for weeks, from inference. Measured 2026-08-27
 off the client's own MCP log at

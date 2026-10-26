@@ -2173,6 +2173,21 @@ internal sealed class ClassTools(LvaiConnection connection)
             // COUNTED FROM THE MEMBERS THAT ARE ACCESSORS, not from the member count - see
             // FieldsWithAccessorsOnDisk. Dividing the total by perField skipped a field on any class
             // that also carries a method, which is every class implementing an interface.
+            // THE FIELD NAMES, so a METHOD named `Read <X>.vi` is not taken for half an accessor
+            // pair. Measured 2026-10-26: an interface override `Read Value.vi` built before the
+            // accessors made every resume answer halfBuiltAccessors for a field "Value" the class
+            // does not have. Read off the file with pylabview, no LabVIEW; when that fails the
+            // count falls back to names alone and the answer says so.
+            var privateData = await ClassBindTools.PrivateDataFields.ReadAsync(lvclassPath, timeoutSeconds, ct);
+            IReadOnlyCollection<string>? fieldNames = privateData.Unavailable is null && privateData.Labels.Count > 0
+                ? privateData.Labels.ToHashSet(StringComparer.Ordinal)
+                : null;
+            var accessorsCountedBy = fieldNames is null
+                ? "member names alone - the private data's field labels could not be read" +
+                  (privateData.Unavailable is { } why ? $" ({why})" : "") +
+                  ", so a method named Read/Write <X>.vi counts as an accessor"
+                : $"member names matched against the {fieldNames.Count} private data field label(s)";
+
             var resumedFrom = -1;
             if (fromField < 0)
             {
@@ -2181,7 +2196,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // exists and the other does not. Re-running that field makes NI's wizard NAME-MANGLE
                 // around the collision (`Read Bio 2.vi`) instead of refusing, and the run then
                 // reports success over a corrupted class. Measured 2026-09-02.
-                var halfBuilt = HalfBuiltOnDisk(lvclassPath, accessIndex);
+                var halfBuilt = HalfBuiltOnDisk(lvclassPath, accessIndex, fieldNames);
                 if (halfBuilt.Count > 0)
                     return Json.Error("halfBuiltAccessors",
                         "Cannot resume: " + string.Join(", ", halfBuilt.Select(f => $"'{f}'")) +
@@ -2196,9 +2211,10 @@ internal sealed class ClassTools(LvaiConnection connection)
                             ["halfBuiltFields"] =
                                 new JsonArray([.. halfBuilt.Select(f => (JsonNode)f!)]),
                             ["classPath"] = Path.GetFullPath(lvclassPath),
+                            ["accessorsCountedBy"] = accessorsCountedBy,
                         });
 
-                fromField = Math.Max(0, FieldsWithAccessorsOnDisk(lvclassPath, accessIndex));
+                fromField = Math.Max(0, FieldsWithAccessorsOnDisk(lvclassPath, accessIndex, fieldNames));
                 resumedFrom = fromField;
             }
 
@@ -2301,7 +2317,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                     ["fromField"] = fromField,
                     ["fieldCount"] = fieldCount,
                     ["membersBefore"] = membersBefore,
-                    ["fieldsWithAccessors"] = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex),
+                    ["fieldsWithAccessors"] = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex, fieldNames),
                     ["membersAfter"] = MembersOnDisk(lvclassPath),
                     // BOTH, because one of them was read as the other. `elapsedMs` is the stopwatch
                     // that gates the budget, so it is CUMULATIVE across slices - and a run comparing
@@ -2319,7 +2335,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // fieldCount that was asked for.
                 var total = Parsed(verdict) is JsonObject v
                     ? v["fieldCount"]?.GetValue<int>() ?? 0 : 0;
-                var next = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex);
+                var next = FieldsWithAccessorsOnDisk(lvclassPath, accessIndex, fieldNames);
 
                 if (total <= 0 || next >= total || next <= fromField) break;   // done, or not advancing
 
@@ -2355,6 +2371,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                 final["slices"] = slices;
                 final["moreToDo"] = moreToDo;
                 final["resumedFrom"] = resumedFrom < 0 ? null : resumedFrom;
+                final["accessorsCountedBy"] = accessorsCountedBy;
                 final["projectOpened"] = projectOpened;
                 // The whole call, not just the slicing loop - the project open and the helper load
                 // sit outside `wall` and were invisible, so no reported figure accounted for the
@@ -3122,9 +3139,10 @@ internal sealed class ClassTools(LvaiConnection connection)
     }
 
     /// <summary>Fields with only part of their accessor set, off the class file.</summary>
-    private static IReadOnlyList<string> HalfBuiltOnDisk(string lvclassPath, int accessIndex)
+    private static IReadOnlyList<string> HalfBuiltOnDisk(string lvclassPath, int accessIndex,
+                                                         IReadOnlyCollection<string>? fieldNames = null)
     {
-        try { return LvClass.IncompleteAccessorFields(LvClass.Read(lvclassPath).Members, accessIndex); }
+        try { return LvClass.IncompleteAccessorFields(LvClass.Read(lvclassPath).Members, accessIndex, fieldNames); }
         catch (Exception failure) when (failure is IOException or InvalidDataException) { return []; }
     }
 
@@ -3159,9 +3177,10 @@ internal sealed class ClassTools(LvaiConnection connection)
     /// How many fields already have accessors, read off the class file. The counting rule and the
     /// defect it replaces are in <see cref="LvClass.FieldsWithAccessors"/>.
     /// </summary>
-    private static int FieldsWithAccessorsOnDisk(string lvclassPath, int accessIndex)
+    private static int FieldsWithAccessorsOnDisk(string lvclassPath, int accessIndex,
+                                                 IReadOnlyCollection<string>? fieldNames = null)
     {
-        try { return LvClass.FieldsWithAccessors(LvClass.Read(lvclassPath).Members, accessIndex); }
+        try { return LvClass.FieldsWithAccessors(LvClass.Read(lvclassPath).Members, accessIndex, fieldNames); }
         catch (Exception failure) when (failure is IOException or InvalidDataException) { return -1; }
     }
 
