@@ -374,6 +374,24 @@ call on `grpc` only when NI's service is up. `signalsJson` works over ActiveX si
 | interpreter | the pylabview bundle — `LABVIEWMCP_PYLABVIEW`, next to the exe, `tools\pylabview\runtime` in a checkout |
 | composer | `LABVIEWMCP_AIXML_COMPOSER`, else `scripts\aixml-pylabview` of a checkout above the exe (read live, so a Python edit needs no rebuild), else `scripts\aixml-pylabview` beside the exe |
 | parts | `LABVIEWMCP_AIXML_PARTS`, else `<composer>\parts` (what ships), else `aixml-parts` in the cache directory |
+| a `Call` target's installation | `LABVIEW_ROOT`, else the newest `LabVIEW 20*` with a `LabVIEW.exe`; then `%ProgramFiles%\NI\LVAddons` - per add-on ONE version folder (below) |
+
+**ONE VERSION PER ADD-ON, as LabVIEW loads them - since 2026-10-26 (issue #99).** The resolver
+searched every `<addon>\<version>` folder until then, so `lvai\1`, `lvai\26.1` and `lvai\26.3` were
+all roots of `<resource>`, and `nidaqmx64` sat beside a 32-bit LabVIEW. Measured the same day on
+LabVIEW 26.3.1 (32-bit): its log names 213 files under `lvai\26.3` and none under `lvai\1`,
+`lvai\26.1` or any `Targets\win64`. So `select_addons` keeps, per add-on, the highest version folder
+whose `lvaddoninfo.json` admits the LabVIEW - `MinimumSupportedLVVersion` against the version in
+`LabVIEW.exe`'s version resource, `SupportedBitness` against its PE header - and adds its
+`Targets\win32` or `Targets\win64`, where `lvai` keeps `resource\AI`. A missing field or file
+admits. Only `lvai` was observed choosing; the rest follows NI's documented rule. And a symbolic link
+(`<vilib>\…`) or a parent class's `/<vilib>/…` URL now tries EVERY root of its anchor - the first
+one lacking the file used to end the search, which is how an add-on's class read as missing.
+
+**NOT YET: the `LVAddons.*` keys of the INI LabVIEW was started with** (`-pref`, issue #99 Phase 2).
+`LVAddons.Enabled`, `LVAddons.CustomLocation` and `LVAddons.AdditionalLocations` (named in
+`LabVIEW.exe`) are optional - a stock `LabVIEW.ini` carries none of them - so their absence must
+read as LabVIEW's defaults, not as "no add-ons".
 
 **EVERYTHING THE BACKEND NEEDS SHIPS - since 2026-10-12, the user's decision.** The composer, the
 reader and their parts moved from `experiments\aixml-without-grpc` to `scripts\aixml-pylabview`, so

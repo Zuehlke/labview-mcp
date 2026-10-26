@@ -15,6 +15,11 @@ A path inside the installation is written relative to a SYMBOLIC ANCHOR. An LVAd
 (C:\\Program Files\\NI\\LVAddons\\<addon>\\<version>\\resource\\...) maps onto the same anchor
 as the installation's own folder: NI's Is discuss enabled.vi links
 <resource>\\plugins\\lv_are_nigel_features_enabled.vi, which lives under LVAddons\\lvai.
+Only ONE version folder per add-on counts - the highest whose lvaddoninfo.json admits this
+LabVIEW's version and bitness - and its Targets\\win32 or Targets\\win64 overlays too
+(select_addons). An anchor has several roots, so a lookup tries each before it gives up.
+Not read yet: the LVAddons.* keys of the INI LabVIEW was started with (issue #99) - the default
+root is the only one searched.
 Anything else - the examples tree, project\\, the user's own code - is linked RELATIVE to the
 caller file, one empty component per level up (["", "", "X.vi"] from a subfolder).
 
@@ -37,7 +42,9 @@ virtual path.
 """
 import glob
 import hashlib
+import json
 import os
+import re
 import time
 import xml.etree.ElementTree as ET
 
@@ -61,6 +68,125 @@ def labview_root():
             if os.path.exists(os.path.join(d, "LabVIEW.exe")):
                 return d
     return None
+
+
+def default_addons_root():
+    """%ProgramFiles%\\NI\\LVAddons - the 64-bit Program Files even for a 32-bit LabVIEW, as
+    AddonTree.DefaultRoot on the server side. None when absent."""
+    for var in ("ProgramW6432", "ProgramFiles", "ProgramFiles(x86)"):
+        base = os.environ.get(var)
+        if base and os.path.isdir(os.path.join(base, "NI", "LVAddons")):
+            return os.path.join(base, "NI", "LVAddons")
+    fallback = r"C:\Program Files\NI\LVAddons"
+    return fallback if os.path.isdir(fallback) else None
+
+
+_LV_IDENTITY = {}
+
+
+def labview_identity(lv_root):
+    """((major, minor), bits) of the LabVIEW in `lv_root`, read off LabVIEW.exe: the version from
+    its VS_FIXEDFILEINFO (26.3.1f1 -> (26, 3)), the bitness from the PE machine field. A part that
+    cannot be read is None, and the folder name stands in for the version as (yy, 99) - so an
+    unreadable minor admits every add-on of that year rather than dropping one."""
+    if not lv_root:
+        return None, None
+    key = os.path.normcase(os.path.abspath(lv_root))
+    if key in _LV_IDENTITY:
+        return _LV_IDENTITY[key]
+    version, bits = None, None
+    try:
+        with open(os.path.join(lv_root, "LabVIEW.exe"), "rb") as fh:
+            data = fh.read()
+        if data[:2] == b"MZ":
+            pe = int.from_bytes(data[0x3C:0x40], "little")
+            if data[pe:pe + 4] == b"PE\0\0":
+                bits = {0x014C: 32, 0x8664: 64}.get(int.from_bytes(data[pe + 4:pe + 6], "little"))
+        # VS_FIXEDFILEINFO follows the "VS_VERSION_INFO" key of the version resource; the bare
+        # signature also occurs earlier in LabVIEW.exe by chance (3071.13068 on 26.3.1)
+        anchor = data.rfind("VS_VERSION_INFO".encode("utf-16-le"))
+        sig = data.find(b"\xbd\x04\xef\xfe", anchor) if anchor >= 0 else -1
+        if 0 <= sig - anchor < 64:
+            ms = int.from_bytes(data[sig + 8:sig + 12], "little")   # dwFileVersionMS
+            version = (ms >> 16, ms & 0xFFFF)
+    except OSError:
+        pass
+    if version is None:
+        m = re.search(r"LabVIEW (20)?(\d\d)\b", os.path.basename(os.path.normpath(lv_root)))
+        if m:
+            version = (int(m.group(2)), 99)
+    if bits is None and "(x86)" in lv_root:
+        bits = 32
+    _LV_IDENTITY[key] = (version, bits)
+    return version, bits
+
+
+def _version_key(text):
+    """'26.3' -> (26, 3), '1' -> (1,), 'v26.1' -> (26, 1); None when it is no version."""
+    m = re.match(r"v?(\d+(?:\.\d+)*)$", (text or "").strip())
+    return tuple(int(p) for p in m.group(1).split(".")) if m else None
+
+
+def addon_info(version_dir):
+    """The add-on's lvaddoninfo.json as a dict; {} when missing or unreadable."""
+    try:
+        with open(os.path.join(version_dir, "lvaddoninfo.json"), encoding="utf-8-sig") as fh:
+            info = json.load(fh)
+        return info if isinstance(info, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def addon_compatible(info, version, bits):
+    """May LabVIEW `version` (major, minor) of `bits` load this add-on version? An absent field
+    does not exclude it: omitting a driver is the more expensive mistake (AddonTree)."""
+    want = str(info.get("SupportedBitness") or "").strip()
+    if want and bits and want != str(bits):
+        return False
+    minimum = _version_key(str(info.get("MinimumSupportedLVVersion") or ""))
+    if minimum and version and minimum[:2] > tuple(version)[:2]:
+        return False
+    return True
+
+
+def select_addons(addons_root, version=None, bits=None):
+    """[(addon, version dir)]: per add-on folder, the HIGHEST version folder this LabVIEW may load.
+    Measured 2026-10-26 on LabVIEW 26.3.1 (32-bit): with lvai\\1, lvai\\26.1 and lvai\\26.3
+    installed, its log names files from lvai\\26.3 only (213 paths) and none from the other two,
+    and nothing from a Targets\\win64. Until then every version of every add-on was searched,
+    nidaqmx64 beside a 32-bit LabVIEW included."""
+    out = []
+    if not addons_root or not os.path.isdir(addons_root):
+        return out
+    for addon in sorted(os.listdir(addons_root)):
+        adir = os.path.join(addons_root, addon)
+        if not os.path.isdir(adir):
+            continue
+        best = None
+        for ver in os.listdir(adir):
+            vdir = os.path.join(adir, ver)
+            key = _version_key(ver)
+            if key is None or not os.path.isdir(vdir):
+                continue
+            if not addon_compatible(addon_info(vdir), version, bits):
+                continue
+            if best is None or key > best[0]:
+                best = (key, vdir)
+        if best:
+            out.append((addon, best[1]))
+    return out
+
+
+def addon_trees(version_dir, bits=None):
+    """The folders of one add-on version that overlay the installation: the version folder itself
+    and Targets\\win32 or Targets\\win64 by bitness (lvai keeps its resource\\AI there) - both
+    when the bitness is unknown."""
+    trees = [version_dir]
+    targets = os.path.join(version_dir, "Targets")
+    for t in ({32: ("win32",), 64: ("win64",)}.get(bits) or ("win32", "win64")):
+        if os.path.isdir(os.path.join(targets, t)):
+            trees.append(os.path.join(targets, t))
+    return trees
 
 
 def llb_cache_root():
@@ -159,19 +285,21 @@ INSTALL_INDEX_SECONDS = 600
 
 
 class Resolver:
-    def __init__(self, lv_root=None):
+    def __init__(self, lv_root=None, addons_root=None):
         self.lv_root = lv_root or labview_root()
+        self.lv_version, self.lv_bits = labview_identity(self.lv_root)
         self.roots = []      # (anchor, directory), installation first
         if self.lv_root:
             for anchor, sub in ANCHORS:
                 d = os.path.join(self.lv_root, sub)
                 if os.path.isdir(d):
                     self.roots.append((anchor, d))
-        addons = r"C:\Program Files\NI\LVAddons"
-        for d in sorted(glob.glob(os.path.join(addons, "*", "*"))):
-            for anchor, sub in ANCHORS:
-                if os.path.isdir(os.path.join(d, sub)):
-                    self.roots.append((anchor, os.path.join(d, sub)))
+        self.addons = select_addons(addons_root or default_addons_root(), self.lv_version, self.lv_bits)
+        for _addon, vdir in self.addons:
+            for tree in addon_trees(vdir, self.lv_bits):
+                for anchor, sub in ANCHORS:
+                    if os.path.isdir(os.path.join(tree, sub)):
+                        self.roots.append((anchor, os.path.join(tree, sub)))
         self._files = None
         self._owners = None
         self._llbs = None    # .llb CONTAINER files, installation first
@@ -264,9 +392,11 @@ class Resolver:
                     continue
                 url = item.get("URL")
                 if url.startswith("/<"):
+                    # every root of that anchor, not the first: an add-on's class sits in the
+                    # add-on's vi.lib, which comes after the installation's
                     anchor, _, rest = url[1:].partition("/")
-                    cand = next((os.path.normpath(os.path.join(d, *rest.split("/"))) for a, d in self.roots
-                                 if a == anchor), None)
+                    cand = next((p for p in (os.path.normpath(os.path.join(d, *rest.split("/")))
+                                             for a, d in self.roots if a == anchor) if exists(p)), None)
                 else:
                     cand = os.path.normpath(os.path.join(cur, *url.split("/")))
                 if not cand or not exists(cand):
@@ -292,10 +422,13 @@ class Resolver:
         if not comps:
             return None
         if str(tp) == "0":
+            # every root of that anchor: <vilib> is the installation's vi.lib AND each add-on's,
+            # and the first one lacking the file used to end the search (issue #99)
             for anchor, d in self.roots:
                 if comps[0] == anchor:
                     p = os.path.join(d, *comps[1:])
-                    return p if exists(p) else None
+                    if exists(p):
+                        return p
             return None
         for cf in caller_files:
             if not cf:
