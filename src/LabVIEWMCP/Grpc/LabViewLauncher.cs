@@ -65,12 +65,18 @@ internal static class LabViewLauncher
     /// the Explorer hand-off is the configuration measured to work in the wild; the plain shell
     /// start is the historical behaviour, kept last so nothing that used to work stops working.
     /// </summary>
+    /// <param name="prefFile">
+    /// The INI to start LabVIEW with (`-pref`), or null for LabVIEW.ini beside the exe - issue #99:
+    /// an lvpm-started LabVIEW finds its project's add-ons only through it, so a restart without it
+    /// loses them. Every strategy passes it; none may start LabVIEW without it.
+    /// </param>
     public static async Task<LaunchOutcome> StartAndConfirmAsync(
-        LabViewInstall install, CancellationToken ct = default)
+        LabViewInstall install, CancellationToken ct = default, string? prefFile = null)
     {
         var attempts = new List<LaunchAttempt>();
+        var arguments = prefFile is null ? "" : $"-pref \"{prefFile}\"";
 
-        (string Name, Func<LabViewInstall, (bool Started, string? Detail)> Launch)[] strategies =
+        (string Name, Func<LabViewInstall, string, (bool Started, string? Detail)> Launch)[] strategies =
         [
             ("breakaway", StartBreakaway),
             ("explorer", StartViaExplorer),
@@ -82,7 +88,7 @@ internal static class LabViewLauncher
             ct.ThrowIfCancellationRequested();
 
             var before = CurrentPids();
-            var (started, detail) = launch(install);
+            var (started, detail) = launch(install, arguments);
 
             if (!started)
             {
@@ -158,14 +164,14 @@ internal static class LabViewLauncher
     /// Fails with Win32 5 (access denied) when the job does not carry JOB_OBJECT_LIMIT_BREAKAWAY_OK
     /// - which is exactly why there are further strategies rather than an exception here.
     /// </summary>
-    private static (bool Started, string? Detail) StartBreakaway(LabViewInstall install)
+    private static (bool Started, string? Detail) StartBreakaway(LabViewInstall install, string arguments)
     {
         if (!OperatingSystem.IsWindows())
             return (false, "not Windows");
 
         var startupInfo = new StartupInfo { cb = Marshal.SizeOf<StartupInfo>() };
         // CreateProcessW may write into lpCommandLine, so it must be a writable buffer.
-        var commandLine = new StringBuilder($"\"{install.ExePath}\"");
+        var commandLine = new StringBuilder($"\"{install.ExePath}\"" + (arguments.Length > 0 ? " " + arguments : ""));
 
         try
         {
@@ -206,11 +212,21 @@ internal static class LabViewLauncher
     /// IDE ends up parented to explorer.exe, outside our tree entirely - the configuration measured
     /// to survive a whole session on this machine.
     /// </summary>
-    private static (bool Started, string? Detail) StartViaExplorer(LabViewInstall install)
+    private static (bool Started, string? Detail) StartViaExplorer(LabViewInstall install, string arguments)
     {
         try
         {
-            var launcher = Process.Start(new ProcessStartInfo("explorer.exe", $"\"{install.ExePath}\"")
+            // Explorer opens ONE file and passes it no arguments. With a -pref to pass it opens a
+            // one-line .cmd instead, whose `start` launches LabVIEW with it - started that way, NOT
+            // MEASURED to survive the session as the plain hand-off was; the survival check decides.
+            var target = install.ExePath;
+            if (arguments.Length > 0)
+            {
+                target = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", $"start-labview-{Guid.NewGuid():N}.cmd");
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.WriteAllText(target, $"@start \"\" \"{install.ExePath}\" {arguments}\r\n", Encoding.Default);
+            }
+            var launcher = Process.Start(new ProcessStartInfo("explorer.exe", $"\"{target}\"")
             {
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -218,7 +234,7 @@ internal static class LabViewLauncher
 
             return launcher is null
                 ? (false, "explorer.exe did not start")
-                : (true, "handed to explorer.exe");
+                : (true, arguments.Length > 0 ? $"handed to explorer.exe through {target}" : "handed to explorer.exe");
         }
         catch (Exception e)
         {
@@ -228,11 +244,11 @@ internal static class LabViewLauncher
 
     // ---------- strategy 3: what this server always did ----------
 
-    private static (bool Started, string? Detail) StartViaShell(LabViewInstall install)
+    private static (bool Started, string? Detail) StartViaShell(LabViewInstall install, string arguments)
     {
         // Null is NOT failure here: ShellExecuteEx returns no process when it hands the request to
         // an existing instance. The survival check is what decides, so we report the start as made.
-        var process = LabViewLocator.Start(install);
+        var process = LabViewLocator.Start(install, arguments);
         return (true, process is null
             ? "ShellExecuteEx returned no process handle (hand-off or reuse)"
             : $"pid {process.Id}");

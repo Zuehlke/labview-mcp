@@ -383,15 +383,80 @@ LabVIEW 26.3.1 (32-bit): its log names 213 files under `lvai\26.3` and none unde
 `lvai\26.1` or any `Targets\win64`. So `select_addons` keeps, per add-on, the highest version folder
 whose `lvaddoninfo.json` admits the LabVIEW - `MinimumSupportedLVVersion` against the version in
 `LabVIEW.exe`'s version resource, `SupportedBitness` against its PE header - and adds its
-`Targets\win32` or `Targets\win64`, where `lvai` keeps `resource\AI`. A missing field or file
-admits. Only `lvai` was observed choosing; the rest follows NI's documented rule. And a symbolic link
+`Targets\win32` or `Targets\win64`, where `lvai` keeps `resource\AI`. An add-on with no usable
+`lvaddoninfo.json` is not loaded at all (below); a missing version or bitness FIELD admits. And a symbolic link
 (`<vilib>\…`) or a parent class's `/<vilib>/…` URL now tries EVERY root of its anchor - the first
 one lacking the file used to end the search, which is how an add-on's class read as missing.
 
-**NOT YET: the `LVAddons.*` keys of the INI LabVIEW was started with** (`-pref`, issue #99 Phase 2).
-`LVAddons.Enabled`, `LVAddons.CustomLocation` and `LVAddons.AdditionalLocations` (named in
-`LabVIEW.exe`) are optional - a stock `LabVIEW.ini` carries none of them - so their absence must
-read as LabVIEW's defaults, not as "no add-ons".
+**WHICH LabVIEW, WITH WHICH INI - `LabViewContext`, since 2026-10-26 (issue #99 Phase 2).** lvpm
+starts LabVIEW with `-pref <repo>\.lv-venv\.lvpm\labview.ini`, whose
+`LVAddons.AdditionalLocations` names the project's own add-on folder; NI's converter runs inside
+that LabVIEW and sees the packages, while the composer answered `no Test.lvclass`. The server now
+reads the running LabVIEW's executable and command line (`ProcessCommandLine`, no WMI), takes its
+`-pref` INI - else `LabVIEW.ini` beside the exe - and passes `--labview-root` and
+`--addon-locations` to `aixml2vi.py` and `vi2aixml.py` on every call, so the resident worker follows
+a switch. The palette and example indexes read the same add-on folders (`AddonTree.PlanIndex`).
+
+| key in `[LabVIEW]` | missing (a stock INI has none) | present |
+|---|---|---|
+| `LVAddons.Enabled` | enabled | `False`: no add-ons at all - an empty `--addon-locations` |
+| `LVAddons.CustomLocation` | `%ProgramFiles%\NI\LVAddons` | REPLACES that root; relative to the INI |
+| `LVAddons.AdditionalLocations` | none | `;`-separated, quotes stripped; ignored before LabVIEW 2024 |
+
+**The keys are OPTIONAL and a missing one is LabVIEW's default, never "no add-ons"** - the user's
+reminder of 2026-10-26.
+
+**MEASURED 2026-10-26 on LabVIEW 26.3.1 (32-bit).** Each run started LabVIEW with its own `-pref`
+INI (a copy of the installation's `LabVIEW.ini` plus the keys), then loaded and ran over ActiveX a
+caller whose only subVI is `<vilib>\LvmcpProbe\LvmcpAddonProbe.vi` - a file that exists ONLY inside
+probe add-ons, each copy returning its own number:
+
+| run | INI | caller returned | so |
+|---|---|---|---|
+| F | no keys (control) | broken, `ExecState 0` | the link needs an add-on |
+| A | `AdditionalLocations=venv` - versions 1 (≥24.0), 1.5 (≥26.0), 2 (≥30.0), 3 (64-bit) | **15** | highest version this LabVIEW admits, bitness checked |
+| B / C | `venv2;venv` and `venv;venv2` | 200 both | INI order is irrelevant |
+| D | `CustomLocation=custom` | 300 | the custom root is searched |
+| G | `CustomLocation` add-on `zcust` + additional `other` | 200 (`other`) | the base location has NO precedence |
+| H | `other;aprobe` | 400 (`aprobe`) | **the alphabetically first ADD-ON wins**, across locations |
+| I / J | no `lvaddoninfo.json` / text that is not JSON | broken | **the add-on is ignored** |
+| - | `lvaddoninfo.json` with a UTF-8 BOM, or without `AddonName` | broken (all runs of two earlier rounds) | **ignored** too |
+| K | `AddonName` different from the folder name | 700 | loaded |
+
+An earlier round started LabVIEW with `CustomLocation` (no add-on of the default root in its log any
+more) and with `Enabled=False` (no add-on at all). So `resolve.ordered_addons` and
+`LabViewContext.SelectedAddons` order the chosen add-ons of all locations by name, and
+`addon_info` / `AddonTree.Admits` refuse a missing, unparsable, BOM-prefixed or nameless
+`lvaddoninfo.json`. **Two traps the probe itself fell into, worth knowing for any repeat:**
+PowerShell 5's `Set-Content -Encoding utf8` writes the BOM that makes LabVIEW ignore an add-on; and
+a caller placed INSIDE the tree holding the probes was linked by LabVIEW's own name search to the
+alphabetically first copy (300 in every run, the control included) - keep a caller far from the
+files it must not find. NOT measured: which wins between the installation's own `vi.lib` and an
+add-on, the same add-on name in two locations, and whether the order follows the folder name or
+`AddonName` (equal in every case above). Scripts: `experiments\lvaddons\lvaddons-probe2.ps1` and
+`-probe3.ps1` (they stop and restart LabVIEW and empty its auto-save store); the `.mxx` provider
+probe tried first detects real providers only.
+
+**Several LabVIEWs at once** (lvpm runs its own beside the "primary" one): the one whose command line
+is nearest the VI being composed or read - lvpm passes the project and keeps its INI in the
+repository - else the one serving the connected gRPC port, else the newest, said in the answer.
+`"labviewExe"` and `"labviewPref"` in `settings.json` pin it.
+
+**A START KEEPS THE `-pref` NOW.** `lvai_ensure_labview` and `--ensure-labview` started the NEWEST
+installed LabVIEW with no arguments, whatever had run before - an lvpm LabVIEW 2024 came back as
+2026 without its packages. They start the settings file's LabVIEW, else the one LAST SEEN RUNNING
+(`%USERPROFILE%\.labviewmcp\last-labview.json`) with the `-pref` it ran with, else the newest
+installed; `lvai_list_labview_installations` shows the choice and why. Every launch strategy passes
+`-pref`; Explorer cannot pass arguments, so it opens a one-line `.cmd` that does - that variant's
+survival is not measured.
+
+**Caches.** The resolver's installation index is keyed on its roots AND the write times of the
+locations and chosen version folders, so an `lvpm install` is seen on the next compose instead of
+after its ten-minute lifetime. The palette and example indexes carry the selection in their key
+(`sel1`, so each is rebuilt once after the update); with locations beyond the default root they live
+in memory only, under the locations' fingerprint, and are never written to disk. The export cache
+is unchanged: it only ever held VIs under an installation or the DEFAULT add-on root, and a venv is
+neither.
 
 **EVERYTHING THE BACKEND NEEDS SHIPS - since 2026-10-12, the user's decision.** The composer, the
 reader and their parts moved from `experiments\aixml-without-grpc` to `scripts\aixml-pylabview`, so

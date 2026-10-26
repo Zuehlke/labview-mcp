@@ -127,14 +127,8 @@ internal static class ExampleIndex
     public static Result Build(string? labviewRoot = null, bool refresh = false,
                                string? addonsRoot = null)
     {
-        var install = labviewRoot is null ? LabViewLocator.Select(LabViewLocator.Discover()) : null;
-        var root = labviewRoot ?? (install is null ? null : Path.GetDirectoryName(install.ExePath))
-            ?? throw new InvalidOperationException(
-                "No LabVIEW installation found, so its examples cannot be read. Pass installRoot " +
-                "explicitly, or check that LabVIEW is installed under a Program Files root.");
-
-        var addons = addonsRoot ?? (labviewRoot is null ? AddonTree.DefaultRoot() : null);
-        var key = root + "|" + (addons ?? "");
+        var plan = AddonTree.PlanIndex(labviewRoot, addonsRoot, "examples", "examples");
+        var key = plan.Key;
 
         lock (Gate)
         {
@@ -144,16 +138,16 @@ internal static class ExampleIndex
                 // 55-second scan came back on every server restart; see ExampleIndexStore.
                 if (_cache.TryGetValue(key, out var cached)) return cached;
 
-                if (ExampleIndexStore.TryLoad(key) is { } stored)
+                if (plan.Persist && ExampleIndexStore.TryLoad(key) is { } stored)
                 {
                     _cache = Remember(key, stored);
                     return stored;
                 }
             }
 
-            var result = Scan(root, addons, install?.Release);
+            var result = Scan(plan.Root, plan.Folders, plan.Skipped);
             _cache = Remember(key, result);
-            ExampleIndexStore.Save(key, result);
+            if (plan.Persist) ExampleIndexStore.Save(key, result);
             return result;
         }
     }
@@ -179,16 +173,14 @@ internal static class ExampleIndex
     /// <summary>The cache key for a pair of roots, as <see cref="Build"/> computes it.</summary>
     public static string KeyFor(string? labviewRoot, string? addonsRoot)
     {
-        var install = labviewRoot is null ? LabViewLocator.Select(LabViewLocator.Discover()) : null;
-        var root = labviewRoot ?? (install is null ? null : Path.GetDirectoryName(install.ExePath));
-        var addons = addonsRoot ?? (labviewRoot is null ? AddonTree.DefaultRoot() : null);
-        return (root ?? "") + "|" + (addons ?? "");
+        try { return AddonTree.PlanIndex(labviewRoot, addonsRoot, "examples", "examples").Key; }
+        catch (InvalidOperationException) { return "|"; }
     }
 
     /// <summary>One example read off disk: its key in <c>found</c>, and the entry itself.</summary>
     private sealed record ScannedExample(string Relative, ExampleVi Vi);
 
-    private static Result Scan(string root, string? addonsRoot, int? release)
+    private static Result Scan(string root, List<AddonFolder> addonFolders, List<string> skipped)
     {
         var examples = Path.Combine(root, "examples");
         if (!Directory.Exists(examples))
@@ -196,7 +188,6 @@ internal static class ExampleIndex
                 $"'{examples}' does not exist, so this installation ships no examples.");
 
         var sources = new List<ExampleSource> { new("", examples) };
-        var (addonFolders, skipped) = AddonTree.Enumerate(addonsRoot, "examples", release);
         sources.AddRange(addonFolders.Select(f => new ExampleSource(f.Addon, f.Folder)));
 
         // Keyed by the path RELATIVE TO ITS OWN ROOT, deliberately without the source label:

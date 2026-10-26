@@ -10178,6 +10178,9 @@ def retarget_version(bdir, base, major):
 
 
 def main(argv):
+    # --labview-root / --addon-locations: the LabVIEW the server works for (issue #99). Set per
+    # call, as this runs once per request in the resident worker
+    argv = resolve.parse_args(argv)
     parts = OWN_PARTS
     keep = None
     search = []

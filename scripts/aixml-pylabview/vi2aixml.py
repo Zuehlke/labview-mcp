@@ -2994,6 +2994,12 @@ class Reader:
 
 
 def main(argv):
+    # --labview-root / --addon-locations (issue #99); the resolver of an earlier read in the same
+    # worker may have been built for another LabVIEW
+    global _RESOLVER
+    import resolve
+    argv = resolve.parse_args(argv)
+    _RESOLVER = None
     src = argv[0]
     tmp = None
     if src.lower().endswith(".xml"):

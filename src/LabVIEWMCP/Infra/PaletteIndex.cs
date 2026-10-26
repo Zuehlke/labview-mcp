@@ -107,14 +107,8 @@ internal static class PaletteIndex
     public static Result Build(string? labviewRoot = null, bool refresh = false,
                                string? addonsRoot = null)
     {
-        var install = labviewRoot is null ? LabViewLocator.Select(LabViewLocator.Discover()) : null;
-        var root = labviewRoot ?? (install is null ? null : Path.GetDirectoryName(install.ExePath))
-            ?? throw new InvalidOperationException(
-                "No LabVIEW installation found, so its palettes cannot be read. Pass installRoot " +
-                "explicitly, or check that LabVIEW is installed under a Program Files root.");
-
-        var addons = addonsRoot ?? (labviewRoot is null ? DefaultAddonsRoot() : null);
-        var key = root + "|" + (addons ?? "");
+        var plan = AddonTree.PlanIndex(labviewRoot, addonsRoot, "menus", "palettes");
+        var key = plan.Key;
 
         lock (Gate)
         {
@@ -124,16 +118,16 @@ internal static class PaletteIndex
                 // the second one is actually worth, which is less than the example index's.
                 if (_cache.TryGetValue(key, out var cached)) return cached;
 
-                if (PaletteIndexStore.TryLoad(key) is { } stored)
+                if (plan.Persist && PaletteIndexStore.TryLoad(key) is { } stored)
                 {
                     _cache = Remember(key, stored);
                     return stored;
                 }
             }
 
-            var result = Scan(root, addons, install?.Release);
+            var result = Scan(plan.Root, plan.Folders, plan.Skipped);
             _cache = Remember(key, result);
-            PaletteIndexStore.Save(key, result);
+            if (plan.Persist) PaletteIndexStore.Save(key, result);
             return result;
         }
     }
@@ -159,27 +153,10 @@ internal static class PaletteIndex
     {
         try
         {
-            var install = labviewRoot is null ? LabViewLocator.Select(LabViewLocator.Discover()) : null;
-            var root = labviewRoot ?? (install is null ? null : Path.GetDirectoryName(install.ExePath));
-            if (root is null) return null;
-
-            var addons = addonsRoot ?? (labviewRoot is null ? DefaultAddonsRoot() : null);
-            return PaletteIndexStore.BuiltUtc(root + "|" + (addons ?? ""));
+            var plan = AddonTree.PlanIndex(labviewRoot, addonsRoot, "menus", "palettes");
+            return plan.Persist ? PaletteIndexStore.BuiltUtc(plan.Key) : null;
         }
         catch { return null; }
-    }
-
-    private static string? DefaultAddonsRoot() => AddonTree.DefaultRoot();
-
-    /// <summary>
-    /// The palette trees to read: every add-on that supports this release. An add-on's palette
-    /// lives at &lt;root&gt;\&lt;addon&gt;\&lt;api version&gt;\menus. See <see cref="AddonTree"/>.
-    /// </summary>
-    private static (List<PaletteSource> Sources, List<string> Skipped) AddonSources(
-        string? addonsRoot, int? release)
-    {
-        var (folders, skipped) = AddonTree.Enumerate(addonsRoot, "menus", release);
-        return (folders.Select(f => new PaletteSource(f.Addon, f.Folder)).ToList(), skipped);
     }
 
     /// <summary>
@@ -245,7 +222,12 @@ internal static class PaletteIndex
             .Where(pair => Directory.Exists(pair.Path))
             .Select(pair => new PaletteSource(pair.Name, pair.Path))];
 
-    private static Result Scan(string root, string? addonsRoot, int? release)
+    /// <summary>
+    /// The palette trees to read: the installation's `menus`, then each add-on's - the version
+    /// folder the LabVIEW loads and its Targets subtree (<see cref="AddonTree.PlanIndex"/>) - then
+    /// the loose trees.
+    /// </summary>
+    private static Result Scan(string root, List<AddonFolder> addonFolders, List<string> skipped)
     {
         var menus = Path.Combine(root, "menus");
         if (!Directory.Exists(menus))
@@ -253,8 +235,7 @@ internal static class PaletteIndex
                 $"'{menus}' does not exist, so this installation exposes no palette files.");
 
         var sources = new List<PaletteSource> { new("", menus) };
-        var (addonSources, skipped) = AddonSources(addonsRoot, release);
-        sources.AddRange(addonSources);
+        sources.AddRange(addonFolders.Select(f => new PaletteSource(f.Addon, f.Folder)));
 
         // LAST, so `menus` and the add-ons keep naming the palette path for any VI they also
         // carry - "first palette wins", and a menus-relative path is the more useful label.
@@ -299,7 +280,7 @@ internal static class PaletteIndex
             .ToList();
 
         return new Result(root, menus, scanned, vis,
-                          addonSources.Select(s => s.Label).ToList(), skipped);
+                          addonFolders.Select(f => f.Addon).Distinct().ToList(), skipped);
     }
 
     /// <summary>

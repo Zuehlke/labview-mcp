@@ -135,11 +135,11 @@ internal static class LabViewLocator
     }
 
     /// <summary>Start the given installation. Returns the process, or null if the start failed.</summary>
-    public static Process? Start(LabViewInstall install)
+    public static Process? Start(LabViewInstall install, string arguments = "")
     {
         try
         {
-            return Process.Start(new ProcessStartInfo(install.ExePath) { UseShellExecute = true });
+            return Process.Start(new ProcessStartInfo(install.ExePath, arguments) { UseShellExecute = true });
         }
         catch
         {

@@ -154,12 +154,19 @@ internal static class AixmlComposer
                                                   IReadOnlyList<string> searchFolders,
                                                   int timeoutSeconds, CancellationToken ct)
     {
-        var inUse = AixmlBackend.LabViewInUse();
+        // the LabVIEW this VI is FOR: the one whose installation and add-ons resolve its calls, and
+        // the release it is stamped as - the running one, by its -pref INI (issue #99)
+        var context = LabViewContext.Resolve(viPath);
+        var inUse = context.Release ?? AixmlBackend.LabViewInUse();
         var parts = PartsRelease(setup.PartsDirectory);
         var targetRelease = TargetRelease(inUse, parts);
-        return (await ComposeCoreAsync(setup, aixmlPath, viPath, searchFolders, targetRelease,
-                                       timeoutSeconds, ct))
-            with { Warning = WarningForOlderLabView(inUse, parts) };
+        var result = await ComposeCoreAsync(setup, aixmlPath, viPath, searchFolders, targetRelease,
+                                            context, timeoutSeconds, ct);
+        return result with
+        {
+            Warning = WarningForOlderLabView(inUse, parts),
+            Report = [.. ContextReport(context), .. result.Report],
+        };
     }
 
     /// <summary>
@@ -175,13 +182,14 @@ internal static class AixmlComposer
 
     private static async Task<Result> ComposeCoreAsync(Setup setup, string aixmlPath, string viPath,
                                                        IReadOnlyList<string> searchFolders,
-                                                       int? targetRelease,
+                                                       int? targetRelease, LabViewContext context,
                                                        int timeoutSeconds, CancellationToken ct)
     {
         var target = Path.GetFullPath(viPath);
         if (Path.GetDirectoryName(target) is { Length: > 0 } folder) Directory.CreateDirectory(folder);
 
         var args = new List<string> { "--parts", setup.PartsDirectory };
+        args.AddRange(ContextArgs(context));
         if (targetRelease is { } release) { args.Add("--lv-version"); args.Add((release - 2000).ToString(System.Globalization.CultureInfo.InvariantCulture)); }
         foreach (var search in searchFolders) { args.Add("--search"); args.Add(search); }
         // LabVIEW's project\ folder LAST: vendor toolkits install their scriptable VIs there -
@@ -196,7 +204,7 @@ internal static class AixmlComposer
             args.Add("--search");
             args.Add(extra);
         }
-        if (ProjectFolder.Value is { } project) { args.Add("--search"); args.Add(project); }
+        if (ProjectFolderOf(context.Root) is { } project) { args.Add("--search"); args.Add(project); }
         args.Add(Path.GetFullPath(aixmlPath));
         args.Add(target);
 
@@ -265,14 +273,39 @@ internal static class AixmlComposer
         if (Path.GetDirectoryName(target) is { Length: > 0 } folder) Directory.CreateDirectory(folder);
         if (File.Exists(target)) File.Delete(target);   // so a stale file cannot read as success
 
+        var context = LabViewContext.Resolve(viPath);
         var run = await PyLabview.RunAsync(setup.Bundle,
             Path.Combine(setup.ComposerDirectory, "vi2aixml.py"),
-            [Path.GetFullPath(viPath), target], timeoutSeconds, ct);
+            [.. ContextArgs(context), Path.GetFullPath(viPath), target], timeoutSeconds, ct);
 
         return run.ExitCode == 0 && File.Exists(target)
-            ? new Result(true, false, "No Error", [], run.ElapsedMs, 0)
-            : new Result(false, false, Tail(run.StdErr, run.StdOut), [], run.ElapsedMs, run.ExitCode);
+            ? new Result(true, false, "No Error", ContextReport(context), run.ElapsedMs, 0)
+            : new Result(false, false, Tail(run.StdErr, run.StdOut), ContextReport(context), run.ElapsedMs, run.ExitCode);
     }
+
+    /// <summary>
+    /// The LabVIEW the composer and reader resolve against (issue #99): its installation and the
+    /// LVAddons locations its INI names, the default root when it names none. An EMPTY
+    /// --addon-locations is "no add-ons" (LVAddons.Enabled=False).
+    /// </summary>
+    internal static IEnumerable<string> ContextArgs(LabViewContext context)
+    {
+        if (context.Root is { } root) { yield return "--labview-root"; yield return root; }
+        yield return "--addon-locations";
+        yield return context.AddonsEnabled ? string.Join(';', context.AddonLocations) : "";
+    }
+
+    /// <summary>
+    /// A report line naming the context - only when it is not the plain default (one LabVIEW, the
+    /// default root) or something about it needs saying, so an ordinary answer does not grow.
+    /// </summary>
+    internal static string[] ContextReport(LabViewContext context) =>
+        context.OnlyDefaultLocations && context.Notes.Count == 0
+            ? []
+            : [$"labview context: {context.ExePath ?? "none"} ({context.Source}" +
+               (context.PrefFile is null ? "" : $", -pref {context.PrefFile}") + "), add-ons from " +
+               (context.AddonsEnabled ? string.Join("; ", context.AddonLocations) : "nowhere (LVAddons.Enabled=False)") +
+               (context.Notes.Count == 0 ? "" : " - " + string.Join(" ", context.Notes))];
 
     /// <summary>One front-panel object: its label, its AIXML type, and whether it is an indicator.</summary>
     internal sealed record PanelItem(string Name, string Type, bool Indicator);
@@ -332,17 +365,17 @@ internal static class AixmlComposer
     /// </summary>
     public static readonly AsyncLocal<string[]?> ExtraSearch = new();
 
-    private static readonly Lazy<string?> ProjectFolder = new(() =>
+    /// <summary>The project\ folder of that LabVIEW's installation, or null - the context's, not
+    /// the newest installed one's, which a LabVIEW 2024 beside a 2026 would not be.</summary>
+    private static string? ProjectFolderOf(string? labviewRoot)
     {
         try
         {
-            var install = LabVIEWMcp.Grpc.LabViewLocator.Select(LabVIEWMcp.Grpc.LabViewLocator.Discover());
-            var folder = install is null ? null
-                : Path.Combine(Path.GetDirectoryName(install.ExePath) ?? "", "project");
+            var folder = labviewRoot is null ? null : Path.Combine(labviewRoot, "project");
             return folder is not null && Directory.Exists(folder) ? folder : null;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
-    });
+    }
 
     private static IEnumerable<string> Lines(string text) =>
         text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

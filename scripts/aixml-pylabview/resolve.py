@@ -18,8 +18,9 @@ as the installation's own folder: NI's Is discuss enabled.vi links
 Only ONE version folder per add-on counts - the highest whose lvaddoninfo.json admits this
 LabVIEW's version and bitness - and its Targets\\win32 or Targets\\win64 overlays too
 (select_addons). An anchor has several roots, so a lookup tries each before it gives up.
-Not read yet: the LVAddons.* keys of the INI LabVIEW was started with (issue #99) - the default
-root is the only one searched.
+WHICH locations is the server's to say (LabViewContext: the running LabVIEW, its -pref INI and
+the LVAddons.* keys in it, issue #99): --labview-root and --addon-locations, through parse_args.
+Left out, the newest installation and the default root.
 Anything else - the examples tree, project\\, the user's own code - is linked RELATIVE to the
 caller file, one empty component per level up (["", "", "X.vi"] from a subfolder).
 
@@ -128,18 +129,29 @@ def _version_key(text):
 
 
 def addon_info(version_dir):
-    """The add-on's lvaddoninfo.json as a dict; {} when missing or unreadable."""
+    """The add-on's lvaddoninfo.json as a dict, or None when LabVIEW would not load the add-on.
+    Measured 2026-10-26 on LabVIEW 26.3.1, a call into each probe add-on run through -pref: the
+    add-on is IGNORED without the file, with text that is not JSON, with a UTF-8 BOM before it
+    (PowerShell 5's -Encoding utf8 writes one; NI's files carry none) and without an AddonName.
+    An AddonName other than the folder name is loaded."""
     try:
-        with open(os.path.join(version_dir, "lvaddoninfo.json"), encoding="utf-8-sig") as fh:
-            info = json.load(fh)
-        return info if isinstance(info, dict) else {}
+        with open(os.path.join(version_dir, "lvaddoninfo.json"), "rb") as fh:
+            data = fh.read()
+        if data.startswith(b"\xef\xbb\xbf"):
+            return None
+        info = json.loads(data.decode("utf-8"))
     except (OSError, ValueError):
-        return {}
+        return None
+    if not isinstance(info, dict) or not str(info.get("AddonName") or "").strip():
+        return None
+    return info
 
 
 def addon_compatible(info, version, bits):
-    """May LabVIEW `version` (major, minor) of `bits` load this add-on version? An absent field
-    does not exclude it: omitting a driver is the more expensive mistake (AddonTree)."""
+    """May LabVIEW `version` (major, minor) of `bits` load this add-on version? None - no usable
+    lvaddoninfo.json - never; an absent version or bitness field does not exclude it."""
+    if info is None:
+        return False
     want = str(info.get("SupportedBitness") or "").strip()
     if want and bits and want != str(bits):
         return False
@@ -175,6 +187,14 @@ def select_addons(addons_root, version=None, bits=None):
         if best:
             out.append((addon, best[1]))
     return out
+
+
+def ordered_addons(locations, version=None, bits=None):
+    """select_addons over every location, as ONE list ordered by add-on folder name (case
+    ignored) - the order LabVIEW picks a file present in two add-ons in. The same name in two
+    locations keeps location order between them (not measured)."""
+    chosen = [(i, a, v) for i, loc in enumerate(locations) for a, v in select_addons(loc, version, bits)]
+    return [(a, v) for _i, a, v in sorted(chosen, key=lambda t: (t[1].lower(), t[0]))]
 
 
 def addon_trees(version_dir, bits=None):
@@ -280,13 +300,55 @@ def relative_ref(from_file, to_path):
     return ["" if c == ".." else c for c in rel.split(os.sep)]
 
 
-_INSTALL_INDEX = {}            # roots -> (built at, files, owners, llbs)
+_INSTALL_INDEX = {}            # (roots, stamp) -> (built at, files, owners, llbs)
 INSTALL_INDEX_SECONDS = 600
+
+# The LabVIEW the server works for (issue #99) - set by configure() from the server's
+# --labview-root / --addon-locations, per request, so the resident worker follows a switch.
+# None: not configured, and the old discovery applies.
+_CONFIGURED = {"lv_root": None, "locations": None}
+
+
+def configure(lv_root=None, locations=None):
+    """The installation and the LVAddons locations to resolve against. `locations` is a list, the
+    base location first and the additional ones after it; [] means LabVIEW loads no add-ons;
+    None falls back to the default root."""
+    _CONFIGURED["lv_root"] = lv_root or None
+    _CONFIGURED["locations"] = list(locations) if locations is not None else None
+
+
+def parse_args(argv):
+    """Remove --labview-root R and --addon-locations L1;L2 from argv and configure() with them.
+    An EMPTY --addon-locations is "no add-ons"; leaving the flag out keeps the default root."""
+    root, locations, rest, i = None, None, [], 0
+    while i < len(argv):
+        if argv[i] == "--labview-root" and i + 1 < len(argv):
+            root, i = argv[i + 1], i + 2
+        elif argv[i] == "--addon-locations" and i + 1 < len(argv):
+            locations, i = [p for p in argv[i + 1].split(";") if p.strip()], i + 2
+        else:
+            rest.append(argv[i])
+            i += 1
+    configure(root, locations)
+    return rest
+
+
+def _stamp(locations, chosen):
+    """The write times an add-on install moves: each location and each chosen version folder.
+    A location outside %ProgramFiles% is a project's (an lvpm venv) and changes between two
+    composes; the default root changes when something is installed."""
+    out = []
+    for p in list(locations) + [v for _a, v in chosen] + [os.path.join(v, "lvaddoninfo.json") for _a, v in chosen]:
+        try:
+            out.append(os.stat(p).st_mtime_ns)
+        except OSError:
+            out.append(0)
+    return tuple(out)
 
 
 class Resolver:
     def __init__(self, lv_root=None, addons_root=None):
-        self.lv_root = lv_root or labview_root()
+        self.lv_root = lv_root or _CONFIGURED["lv_root"] or labview_root()
         self.lv_version, self.lv_bits = labview_identity(self.lv_root)
         self.roots = []      # (anchor, directory), installation first
         if self.lv_root:
@@ -294,7 +356,17 @@ class Resolver:
                 d = os.path.join(self.lv_root, sub)
                 if os.path.isdir(d):
                     self.roots.append((anchor, d))
-        self.addons = select_addons(addons_root or default_addons_root(), self.lv_version, self.lv_bits)
+        if addons_root is not None:
+            self.locations = [addons_root]
+        elif _CONFIGURED["locations"] is not None:
+            self.locations = _CONFIGURED["locations"]
+        else:
+            self.locations = [d for d in (default_addons_root(),) if d]
+        # the add-ons of EVERY location ordered by add-on name - measured 2026-10-26: for one
+        # <vilib> file in two add-ons LabVIEW took the alphabetically first add-on, whichever
+        # location held it and whatever order the INI listed them in, the CustomLocation included
+        self.addons = ordered_addons(self.locations, self.lv_version, self.lv_bits)
+        self.stamp = _stamp(self.locations, self.addons)
         for _addon, vdir in self.addons:
             for tree in addon_trees(vdir, self.lv_bits):
                 for anchor, sub in ANCHORS:
@@ -313,7 +385,9 @@ class Resolver:
         # 4 000 directories and 0.6 s, which every compose paid for a library-qualified Call.
         # In the server's resident worker (worker.py) that is once per ten minutes instead - an
         # installation changes when a toolkit is installed, not between two composes
-        key = tuple(self.roots)
+        # the stamp in the key: an `lvpm install` into a venv is seen on the next compose, where the
+        # ten-minute lifetime alone served the index from before it
+        key = (tuple(self.roots), self.stamp)
         got = _INSTALL_INDEX.get(key)
         if got is None or time.monotonic() - got[0] > INSTALL_INDEX_SECONDS:
             files, owners, llbs = {}, {}, []

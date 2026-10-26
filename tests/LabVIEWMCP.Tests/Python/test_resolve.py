@@ -35,11 +35,16 @@ def write(path, text=""):
         fh.write(text)
 
 
-def addon(root, name, version, info=None, files=()):
+def addon(root, name, version, info=None, files=(), raw=None):
+    """An add-on version folder. `info` gets its AddonName from the folder unless it names one -
+    LabVIEW ignores an add-on without it (measured); `raw` writes the file's bytes as given."""
     vdir = os.path.join(root, name, version)
     os.makedirs(vdir, exist_ok=True)
-    if info is not None:
-        write(os.path.join(vdir, "lvaddoninfo.json"), json.dumps(info))
+    if raw is not None:
+        with open(os.path.join(vdir, "lvaddoninfo.json"), "wb") as fh:
+            fh.write(raw)
+    elif info is not None:
+        write(os.path.join(vdir, "lvaddoninfo.json"), json.dumps(dict({"AddonName": name}, **info)))
     for rel in files:
         write(os.path.join(vdir, rel))
     return vdir
@@ -74,9 +79,30 @@ class Selection(unittest.TestCase):
         self.assertNotIn("daq64", got)
         self.assertIn("daq64", self.chosen((26, 3), 64))
 
-    def test_unknown_identity_or_missing_info_admits(self):
+    def test_unknown_identity_admits_every_version_field(self):
         self.assertEqual(self.chosen(None, None)["lvai"], "26.3")
-        self.assertIn("noinfo", self.chosen((26, 3), 32))
+
+    def test_an_addon_LabVIEW_ignores_is_not_chosen(self):
+        # measured 2026-10-26: no file, not JSON, a UTF-8 BOM, no AddonName - each ignored
+        addon(self.addons, "bom", "1", raw=b"\xef\xbb\xbf" + json.dumps({"AddonName": "bom"}).encode())
+        addon(self.addons, "badjson", "1", raw=b"not json")
+        addon(self.addons, "noname", "1", raw=json.dumps({"ApiVersion": "v1"}).encode())
+        addon(self.addons, "renamed", "1", {"AddonName": "something else"})
+        got = self.chosen((26, 3), 32)
+        for name in ("noinfo", "bom", "badjson", "noname"):
+            self.assertNotIn(name, got)
+        self.assertIn("renamed", got)
+
+    def test_addons_of_all_locations_ordered_by_name(self):
+        # measured: for one file in two add-ons the alphabetically first add-on wins, whichever
+        # location holds it and whatever order the INI lists the locations in
+        other = os.path.join(self.tmp, "other")
+        addon(other, "aprobe", "1", {})
+        addon(other, "zprobe", "1", {})
+        names = [a for a, _ in resolve.ordered_addons([self.addons, other], (26, 3), 32)]
+        self.assertEqual(names, sorted(names, key=str.lower))
+        self.assertEqual(names[0], "aprobe")
+        self.assertEqual(names, [a for a, _ in resolve.ordered_addons([other, self.addons], (26, 3), 32)])
 
     def test_targets_follow_bitness(self):
         vdir = addon(self.addons, "tgt", "1", {}, files=(r"Targets\win32\resource\a.vi", r"Targets\win64\resource\a.vi"))
@@ -134,10 +160,43 @@ class Lookup(unittest.TestCase):
         self.assertEqual(got["path_ref"], ("0", ["<vilib>", "Pkg", "Test", "Test.vi"]))
 
 
+class Configured(unittest.TestCase):
+    """--labview-root / --addon-locations, as the server passes them (LabViewContext)."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="resolve-")
+        self.lv = os.path.join(self.tmp, "LabVIEW 2024")
+        os.makedirs(os.path.join(self.lv, "vi.lib"))
+        self.base = os.path.join(self.tmp, "base")
+        self.venv = os.path.join(self.tmp, "venv")
+        addon(self.base, "drv", "1", {"MinimumSupportedLVVersion": "22.0"}, files=(r"vi.lib\Drv\drv.vi",))
+        addon(self.venv, "pkg", "1", {"MinimumSupportedLVVersion": "24.0"}, files=(r"vi.lib\Pkg\pkg.vi",))
+
+    def tearDown(self):
+        resolve.configure()
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_flags_are_consumed_and_configure_the_resolver(self):
+        rest = resolve.parse_args(["--parts", "P", "--labview-root", self.lv,
+                                   "--addon-locations", self.base + ";" + self.venv, "in.xml", "out.vi"])
+        self.assertEqual(rest, ["--parts", "P", "in.xml", "out.vi"])
+        r = resolve.Resolver()
+        self.assertEqual(r.lv_root, self.lv)
+        self.assertEqual([a for a, _ in r.addons], ["drv", "pkg"])
+        self.assertEqual(r.linked_file("0", ["<vilib>", "Pkg", "pkg.vi"], []),
+                         os.path.join(self.venv, "pkg", "1", "vi.lib", "Pkg", "pkg.vi"))
+
+    def test_empty_locations_mean_no_addons_and_no_flag_means_the_default(self):
+        resolve.parse_args(["--labview-root", self.lv, "--addon-locations", ""])
+        self.assertEqual(resolve.Resolver().addons, [])
+        resolve.parse_args(["x"])
+        self.assertIsNone(resolve._CONFIGURED["locations"])
+
+
 if __name__ == "__main__":
     # the classes by name, not unittest.main(): the server's resident worker (worker.py) runs a
     # script through exec, so sys.modules["__main__"] is the WORKER and main() found no tests
     loader = unittest.TestLoader()
-    suite = unittest.TestSuite(loader.loadTestsFromTestCase(c) for c in (Selection, Lookup))
+    suite = unittest.TestSuite(loader.loadTestsFromTestCase(c) for c in (Selection, Lookup, Configured))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     sys.exit(0 if result.wasSuccessful() and result.testsRun else 1)

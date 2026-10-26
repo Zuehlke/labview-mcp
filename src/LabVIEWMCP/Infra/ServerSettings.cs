@@ -70,6 +70,15 @@ internal static class ServerSettings
           // Every tool answer says which backend ran (`backend`) and why (`backendSource`).
           // docs\aixml-backends.md has what each backend covers.
           "aixmlBackend": "auto"
+
+          // labviewExe, labviewPref - OPTIONAL. Which LabVIEW the server works for, and the -pref
+          // INI it is started with. Left out, the server takes the running LabVIEW (with whatever
+          // -pref it was started with), else the one it last saw running, else the newest
+          // installed. Set them when several LabVIEWs run side by side, or to start one with a
+          // project's own INI (an lvpm venv, say). The INI's LVAddons.* keys decide where add-ons
+          // are found; a key the INI leaves out means LabVIEW's default.
+          //   "labviewExe": "C:\\Program Files\\National Instruments\\LabVIEW 2024\\LabVIEW.exe",
+          //   "labviewPref": "C:\\git\\MyProject\\.lv-venv\\.lvpm\\labview.ini"
         }
         """;
 
@@ -138,6 +147,30 @@ internal static class ServerSettings
         var entry = Parse(path, text);
         lock (Gate) _cache = (path, text, entry);
         return entry;
+    }
+
+    /// <summary>
+    /// A string entry of the settings file, or null when the file, the key or a string value is
+    /// missing or the file does not parse - for the optional entries (<c>labviewExe</c>,
+    /// <c>labviewPref</c>), whose absence is the ordinary case and never an error.
+    /// </summary>
+    public static string? ReadString(string key, string? path = null)
+    {
+        path ??= FilePath;
+        try
+        {
+            if (!File.Exists(path)) return null;
+            using var doc = JsonDocument.Parse(File.ReadAllText(path), Options);
+            return doc.RootElement.ValueKind == JsonValueKind.Object &&
+                   doc.RootElement.TryGetProperty(key, out var value) &&
+                   value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return null;
+        }
     }
 
     private static BackendEntry Parse(string path, string text)

@@ -106,8 +106,9 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                 // LabVIEW: a process already running owns its own recovery data.
                 if (!keepAutoSave) autoSave = AutoSaveRecovery.Clear();
 
-                var installs = LabViewLocator.Discover();
-                var pick = LabViewLocator.Select(installs);
+                // the LabVIEW to start: the settings file's, else the one last seen running WITH
+                // its -pref, else the newest installed (LabViewContext.ToStart, issue #99)
+                var (pick, pref, startContext) = LabViewContext.ToStart();
                 if (pick is null)
                     return Json.Error("no-labview",
                         "No LabVIEW installation found under the program-files roots.", new
@@ -121,7 +122,7 @@ internal sealed class LifecycleTools(LvaiConnection connection)
 
                 // Not "did the call return without error" but "is a LabVIEW still alive" - see
                 // LabViewLauncher for why those differ by about 500 ms.
-                launch = await LabViewLauncher.StartAndConfirmAsync(pick, token);
+                launch = await LabViewLauncher.StartAndConfirmAsync(pick, token, pref);
                 if (!launch.Ok)
                     return Json.Error("launch-did-not-survive",
                         $"Every launch strategy was tried for {pick.Describe()} and no LabVIEW " +
@@ -136,7 +137,8 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                         });
 
                 startedNow = true;
-                launched = pick.Describe();
+                launched = pick.Describe() + (pref is null ? "" : $" -pref {pref}") +
+                           $" (chosen: {startContext.Source})";
                 RecordOwnership(launch.Pid);
             }
 
@@ -265,7 +267,7 @@ internal sealed class LifecycleTools(LvaiConnection connection)
     public static string ListInstallations()
     {
         var installs = LabViewLocator.Discover();
-        var pick = LabViewLocator.Select(installs);
+        var (pick, pickPref, pickContext) = LabViewContext.ToStart();
         var running = LabViewLocator.RunningInstances();
 
         var list = new JsonArray();
@@ -276,7 +278,7 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                 ["release"] = i.Release,
                 ["bitness"] = i.Is32Bit ? "32-bit" : "64-bit",
                 ["exe"] = i.ExePath,
-                ["wouldBeStarted"] = pick is not null && pick.ExePath == i.ExePath,
+                ["wouldBeStarted"] = pick is not null && LabViewContext.SamePath(pick.ExePath, i.ExePath),
             });
 
         // The roots are reported alongside the result: an empty or unexpected list is the
@@ -300,7 +302,13 @@ internal sealed class LifecycleTools(LvaiConnection connection)
             ["rootsProbed"] = rootsProbed,
             ["alreadyRunning"] = runningPaths,
             ["selection"] = pick?.Describe(),
-            ["rule"] = "newest release first, 32-bit preferred within a release, NXG excluded",
+            ["selectionPref"] = pickPref,
+            ["selectionSource"] = pickContext.Source,
+            ["rule"] = "the running LabVIEW, else \"labviewExe\"/\"labviewPref\" in the settings file, " +
+                       "else the LabVIEW last seen running with the -pref it ran with, else the newest " +
+                       "installed release (32-bit preferred, NXG excluded)",
+            ["labviewContext"] = System.Text.Json.Nodes.JsonNode.Parse(
+                System.Text.Json.JsonSerializer.Serialize(pickContext.Describe())),
             ["installations"] = list,
         }.ToJsonString(Indented);
     }

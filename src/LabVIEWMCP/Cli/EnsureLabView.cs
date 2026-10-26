@@ -51,18 +51,20 @@ internal static class EnsureLabView
             foreach (var i in installs.OrderByDescending(i => i.Release).ThenByDescending(i => i.Is32Bit))
                 Console.WriteLine($"     {i.Describe(),-28} {i.ExePath}");
 
-            var pick = LabViewLocator.Select(installs);
+            // the settings file's LabVIEW, else the one last seen running WITH its -pref, else the
+            // newest installed - the same choice as lvai_ensure_labview (issue #99)
+            var (pick, pref, context) = LabViewContext.ToStart();
             if (pick is null)
             {
                 Console.Error.WriteLine("  No LabVIEW installation found (NXG does not count).");
                 return 1;
             }
 
-            Console.WriteLine($"  starting {pick.Describe()} ...");
+            Console.WriteLine($"  starting {pick.Describe()}{(pref is null ? "" : $" -pref {pref}")} (chosen: {context.Source}) ...");
 
             // Same launcher as the MCP tool: strategies tried in order, each judged by whether a
             // LabVIEW process is still alive afterwards rather than by the launch call's return.
-            var launch = await LabViewLauncher.StartAndConfirmAsync(pick);
+            var launch = await LabViewLauncher.StartAndConfirmAsync(pick, default, pref);
             foreach (var attempt in launch.Attempts)
                 Console.WriteLine(
                     $"     {attempt.Method,-10} started={attempt.Started,-5} " +
