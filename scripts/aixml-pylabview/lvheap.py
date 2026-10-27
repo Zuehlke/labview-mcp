@@ -276,6 +276,18 @@ def type_key(tree):
     return t
 
 
+def tag_refnum_class(tree):
+    """The CLASS of a user-defined tag refnum (`NIDAQ`, `nisyscfg`, `Variable`) as a PART KEY
+    carries it, or None. A `Refnum.UsrDefndTag` is class-specific inside - its tag ddo names the
+    class's DLL and its STR section the typeClass - so one class's part cannot serve another, and
+    the parts are filed by class beside the generic key (2026-10-27). A key's last segment maps
+    `_` back to `.`, so a class holding `.` or a separator would not round-trip through the file
+    name and keeps the generic key. ONE implementation: harvest_parts.py files the part with it
+    and aixml2vi.py asks for it, and two copies of this rule would drift."""
+    name = tree.get("TypeName") or ""
+    return name if name and not any(c in name for c in "./\\") else None
+
+
 def strip_label(tree):
     t = copy.deepcopy(tree)
     t.attrib.pop("Label", None)

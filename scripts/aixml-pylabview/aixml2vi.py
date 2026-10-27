@@ -1869,6 +1869,12 @@ class Composer:
                 next(iter(cands), None)
         if key is None and ddo_class == "listbox":
             key = self._listbox_part(want, tkey)
+        if key is None and tkey == "Refnum.UsrDefndTag" and lvheap.tag_refnum_class(tree):
+            # a user-defined tag refnum is class-specific inside (the guard below says why), so a
+            # part harvested for THIS class is preferred; the generic key stays the fallback, and
+            # a class with no part of its own still reaches that guard's named refusal
+            key, _ = self.pick("%s/%s/" % (prefix, ddo_class), want, other,
+                               "%s.%s" % (tkey, lvheap.tag_refnum_class(tree)))
         if key is None:
             key, _ = self.pick("%s/%s/" % (prefix, ddo_class), want, other, tkey)
         if key is None and is_enum(tree):

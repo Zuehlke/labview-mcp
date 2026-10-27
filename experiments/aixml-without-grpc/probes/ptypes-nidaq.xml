@@ -1,0 +1,6 @@
+<VI _name="PTypes NIDAQ.vi" description="Donor probe for the DAQmx task refnum parts: a user-defined TAG refnum of class NIDAQ as a front-panel control, as an indicator and as a diagram constant. NI's converter builds this one (the composer cannot - it is where the parts come from); harvest_parts.py then files the three parts under Refnum.UsrDefndTag.NIDAQ. The sibling ptypes.xml did the same for nisyscfg.">
+  <Control _name="task in" outputs="value:4200.value" type="ref{GenClassTag.Task.NIDAQ}" uid="4200" uid_parent="root" value=""/>
+  <Indicator _name="task out" inputs="value:4200.value" type="ref{GenClassTag.Task.NIDAQ}" uid="4205" uid_parent="root" value=""/>
+  <Constant _name="no task" outputs="value:4210.value" type="ref{GenClassTag.Task.NIDAQ}" uid="4210" uid_parent="root" value=""/>
+  <Indicator _name="task constant out" inputs="value:4210.value" type="ref{GenClassTag.Task.NIDAQ}" uid="4215" uid_parent="root" value=""/>
+</VI>

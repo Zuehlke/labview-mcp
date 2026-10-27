@@ -515,6 +515,14 @@ class Harvester:
                     # (CtlFlags): Ring and Enum both hold a stdRing, of different types
                     self.save("fpdco", "fpdco/stdRefNum/%s/%s.%s" % (ind, tk, types[0].get("CtlFlags")),
                               source, fpdco, types)
+                if tk == "Refnum.UsrDefndTag" and lvheap.tag_refnum_class(types[0]):
+                    # a user-defined TAG refnum is class-specific inside too (its tag ddo names
+                    # the class's DLL, its STR section the typeClass), so one class's part cannot
+                    # serve another: a DAQmx task against the nisyscfg part was `no part for a
+                    # NIDAQ refnum (the harvested one is nisyscfg)` (measured 2026-10-27). Filed
+                    # by its class BESIDE the generic key, exactly as Refnum.LVObjCtl is.
+                    self.save("fpdco", "fpdco/%s/%s/%s.%s" % (graph_class(ddo), ind, tk, lvheap.tag_refnum_class(types[0])),
+                              source, fpdco, types)
                 self.array_elements(b, fpdco, "fpdco", source)
         if b.bd is None:
             return
@@ -569,6 +577,11 @@ class Harvester:
                     types = resolve_types(b, e)
                     tk = lvheap.type_key(types[0])
                     self.save("const", "const/%s/%s" % (ddo.get("class"), tk), source, e, types)
+                    if tk == "Refnum.UsrDefndTag" and lvheap.tag_refnum_class(types[0]):
+                        # class-specific as on the pane, above - the generic const donor is a
+                        # `Variable` refnum, which refused a NIDAQ one
+                        self.save("const", "const/%s/%s.%s" % (ddo.get("class"), tk, lvheap.tag_refnum_class(types[0])),
+                                  source, e, types)
                     self.array_elements(b, e, "const", source)
             elif cls == "signal":
                 n = str(len(e.find("termList")))

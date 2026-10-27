@@ -2132,5 +2132,18 @@
     }
    }
   ]
+ },
+ "t190_tag_refnum_classes": {
+  "cases": [
+   {
+    "inputs": "physical channels=Dev1/ai0",
+    "outputs": {
+     "task is null": "True",
+     "task constant is null": "True",
+     "session is null": "True",
+     "channels out": "Dev1/ai0"
+    }
+   }
+  ]
  }
 }
