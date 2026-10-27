@@ -1760,8 +1760,10 @@ So the gap is closed on the route a client actually uses, and the control arm's 
 ### The demo's MAIN VI was eBad too - a WAVEFORM CHART with no clean part (fixed 2026-10-27)
 
 Found while accepting the refnum fix, and it is a separate defect: with both DAQmx subVIs
-executable, the main VI composed to 18 304 bytes with `wires routed: 44, **left generic: 4**` and
-came back `execState 0`. **Not a link fault** - `linkerErrors` named no missing subVI, only the
+executable, the main VI composed to 18 304 bytes and came back `execState 0`. **`left generic: 4`
+in that report is NOT the tell** - the fixed VI still reads it and is executable, so it says
+nothing about the fault; this paragraph bolded it as evidence for one afternoon.
+**Not a link fault** either - `linkerErrors` named no missing subVI, only the
 generic *"The VI is not executable"* - and not the refnum. The symptom that localised it:
 `lvai_open_file` answered **`Error 1013, Cannot load front panel`** where `lvai_exec_state` opened
 the same VI happily, because a VI reference does not load the panel.
@@ -1789,7 +1791,9 @@ and still loses the chart.
 
 **Measured after, one variable changed:** the chart probe `execState 0 -> 1`, and the main VI
 `execState 0 -> 1` with its panel opening `errorCode 0`, so the whole producer/consumer demo -
-main VI and both subVIs - now composes and loads with no NI service. Suite case `t110_graphs`
+main VI and both subVIs - now composes and loads with no NI service. Re-run through
+`lvai_convert_aixml_to_vi` once the gate had rebuilt `bin\`: all three `ok: true`,
+`sourceOnly: true`, `Acquired Data <- pgraph.vi`. Suite case `t110_graphs`
 carries the two new indicators; with the example-cut part put back it answers
 `BROKEN (ExecState 0)`, so the case is not vacuous.
 
