@@ -7,6 +7,8 @@
   <Indicator _name="wg x0dx" inputs="value:" style="graph21703" type="cluster{double.x0,double.dx,array{double}.Y}" uid="4240" uid_parent="root" value="[0,0,[]]"/>
   <Indicator _name="chart" inputs="value:" style="graph21717" type="double" uid="4250" uid_parent="root" value="0"/>
   <Indicator _name="chart 2d" inputs="value:" style="graph21717" type="array.2{double}" uid="4260" uid_parent="root" value="[]"/>
+  <Indicator _name="chart wfm" inputs="value:" style="graph21717" type="doublewaveform" uid="4262" uid_parent="root" value=""/>
+  <Indicator _name="chart wfms" inputs="value:" style="graph21717" type="array{doublewaveform}" uid="4264" uid_parent="root" value="[]"/>
   <Indicator _name="xy" inputs="value:" style="graph21716" type="cluster{array{double}.X,array{double}.Y}" uid="4270" uid_parent="root" value="[[],[]]"/>
   <Indicator _name="xy multi" inputs="value:" style="graph21716" type="array{cluster{array{double}.X,array{double}.Y}}" uid="4280" uid_parent="root" value="[]"/>
   <Indicator _name="intensity" inputs="value:" style="graph21720" type="array.2{double}" uid="4290" uid_parent="root" value="[]"/>

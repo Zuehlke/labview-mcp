@@ -1757,23 +1757,46 @@ records for `dotnet msbuild -t:Compile`, reached here by editing after the gate 
 
 So the gap is closed on the route a client actually uses, and the control arm's donor did not move.
 
-### The demo's MAIN VI still does not compose, for a DIFFERENT reason
+### The demo's MAIN VI was eBad too - a WAVEFORM CHART with no clean part (fixed 2026-10-27)
 
-Worth stating because the two subVIs above invite the conclusion that the whole producer/consumer
-demo now builds on this backend, and it does not. The main VI composes to 18 304 bytes with
-`wires routed: 44, **left generic: 4**` and comes back `execState 0`. It is **not** a link fault -
-`linkerErrors` names no missing subVI, only the generic *"The VI is not executable"* - and it is
-**not** the refnum, since both VIs carrying the task refnum are executable. `lvai_open_file` on it
-answers **`Error 1013, Cannot load front panel`**, where `lvai_exec_state` opens it happily, because
-a VI reference does not load the panel.
+Found while accepting the refnum fix, and it is a separate defect: with both DAQmx subVIs
+executable, the main VI composed to 18 304 bytes with `wires routed: 44, **left generic: 4**` and
+came back `execState 0`. **Not a link fault** - `linkerErrors` named no missing subVI, only the
+generic *"The VI is not executable"* - and not the refnum. The symptom that localised it:
+`lvai_open_file` answered **`Error 1013, Cannot load front panel`** where `lvai_exec_state` opened
+the same VI happily, because a VI reference does not load the panel.
 
-**A composed panel loads in general** - the control arm: a two-terminal `array{doublewaveform}` probe
-composed, loaded and opened with `errorCode 0` - so this is specific to that panel's content, and
-the suspects are the objects whose donors are NI examples rather than our own probes (the
-`Acquired Data` waveform CHART, from `Continuous Decimating.vi`, and the `waveform block prototype`
-constant, from an MGI `Actor Core.vi`). **Not traced further, and deliberately not guessed at**: the
-probe written for it used `array{doublewaveform}`, which picks a different donor from a chart, so it
-reproduced nothing. The demo itself was delivered from the `grpc` backend and is unaffected.
+**Bisected from the panel's own declarations**, one probe per object that carries a `style=`:
+
+| probe | donor | result |
+|---|---|---|
+| `array{doublewaveform}` indicator, `style="graph21717"` (the chart) | `<labview>\examples\…\Continuous Decimating.vi` | **`execState 0`, panel `Error 1013`** |
+| the SAME type with **no** `style=` | `P3 ni accumulate-across-a-loop.vi` | `execState 1`, panel opens |
+| `bool` control, `style="latched"` (the Stop button) | `bool_control_donor.vi` | `execState 1` |
+
+So the type is innocent and the **donor** is the fault - the third instance of the shape
+`denylist.json` was created for: *a part cut from a whole NI example carries state a plain AIXML
+control does not have.* A chart keeps a history buffer, which is the obvious candidate and was not
+isolated further, because the remedy does not depend on knowing which byte it is.
+
+**The remedy is a clean part, not a denylist entry.** Every other `stdGraph21717` part reads
+`source="pgraph.xml" clean="1"` - cut from our own probe - and the waveform-array slot was the one
+the probe never declared, so the harvester had only the example to fall back on. Two lines in
+`experiments/aixml-without-grpc/probes/pgraph.xml` (`chart wfm`, `chart wfms`), NI's gRPC build of
+it, and `harvest_parts.py --clean` over that donor replace it and add the scalar-waveform chart
+beside it. Denying the part instead would have turned a broken VI into a refusal, which is louder
+and still loses the chart.
+
+**Measured after, one variable changed:** the chart probe `execState 0 -> 1`, and the main VI
+`execState 0 -> 1` with its panel opening `errorCode 0`, so the whole producer/consumer demo -
+main VI and both subVIs - now composes and loads with no NI service. Suite case `t110_graphs`
+carries the two new indicators; with the example-cut part put back it answers
+`BROKEN (ExecState 0)`, so the case is not vacuous.
+
+**Three suite cases fail in this environment and are NOT this change**: `t133_vi_filter_live`,
+`t136_application_events` and `t138_key_notify_live` declare no graph style and no waveform, so
+neither part is reachable from them, and they fail identically with the change reverted - they are
+the live cases that follow the desktop's ACTIVE window.
 
 ### What it buys, measured
 
