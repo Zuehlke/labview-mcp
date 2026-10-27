@@ -1861,6 +1861,33 @@ a NaN constant as `value="nan"`. The composer takes `nan` and the VI runs NaN. `
 answers `nonFiniteConstantRefusedByNi` and the lint `non-finite-constant-refused-by-ni`, both
 warnings and scoped to the measured case, a double Constant.
 
+### What the third cold build still found (2026-10-27)
+
+- **A WAVEFORM does not cross LabVIEW's ActiveX server.** `GetControlValue` answers an opaque COM
+  object for one waveform and for an array of them - no type information at all (`GetTypeInfo` is
+  `E_NOTIMPL`) - and `lvai_run_vi_and_read_values` on `pylabview` printed it as
+  `System.__ComObject` with `problem: null`. A panel carrying a waveform indicator now gets the
+  composed `scripts/lvai_read_values.xml` (Open VI Reference by path, `Ctrl Val.Get All`, Flatten
+  To XML): it runs while the target's reference is still held, so it reads the values of THIS run,
+  and the waveform arrives as LabVIEW's own XML (`DBLWaveform` with `t0`, `dt`, `Y`, attributes).
+  Measured by hand over COM before it was wired in. A value it still cannot read is named in
+  `problem`, never left blank.
+- **`lvai_generate_vi` on gRPC answered `execState: null`.** The validated route converted without
+  `checkExecutable`, on the grounds that ValidateAIXML had looked; only the loaded-subVI route and
+  the composer read the state. It is read on the validated route too now, and a broken result is
+  `ok: false` at `execState`.
+- **`lvai_vi_terminals` printed `inputs=""`** for a VI with no inputs (High Resolution Relative
+  Seconds.vi), which NI's converter refuses and the lint flags (`terminal-list-empty`). An empty
+  list is left off now, there and in `lvai_placeholder_subvi`'s `Call`.
+- **"Wiring insanity found and fixed" on load - investigated, not changed.** Every wire left
+  generic in those builds is a FAN-OUT one of whose ends is a primitive terminal with NO learned
+  hotpoint at all: `String Subset` (1503, slots 1-3), `String To Byte Array` (1608/1) and `Read from
+  Text File` (8070/0). A fan-out is routed only where every end is exact (`route_heap`), so these
+  are left to LabVIEW, which repairs them on load - non-fatal, the VIs run. The remedy is data, not
+  code: LabVIEW-saved fan-outs through those terminals fed to `learn_hotpoints_fanout.py
+  --write` (the suite's LabVIEW-routed saves via `suite_corpus.py` are the source that carries the
+  composer's own terminal kinds).
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the

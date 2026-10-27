@@ -175,6 +175,31 @@ public class BulkGenerateViTests
         Assert.Contains("path` SEED CONSTANT", Res.Str(result, "note"));
     }
 
+    /// <summary>
+    /// The VALIDATED gRPC route read no execution state and answered `execState: null` until
+    /// 2026-10-27 (the CSV reader cold build). A passed validation is not a running VI.
+    /// </summary>
+    [Fact]
+    public async Task The_validated_grpc_route_reads_the_execution_state_too()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "a generated VI";
+        var asked = new List<string>();
+        var viPath = server.TempPath("Out.vi");
+
+        var ok = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp }
+            .GenerateViAsync(CallerAixml(server), viPath, measurePane: false);
+        Assert.True(Res.Bool(ok, "ok"));
+        Assert.Equal([viPath], asked);
+        var step = Res.Obj(ok)["steps"]!.AsArray().Single(s => s!["step"]!.GetValue<string>() == "execState");
+        Assert.Equal(1, step!["execState"]!.GetValue<int>());
+
+        var broken = await new BulkTools(server.Connection) { ReadExecState = Reads(0), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp }
+            .GenerateViAsync(CallerAixml(server), viPath, measurePane: false);
+        Assert.False(Res.Bool(broken, "ok"));
+        Assert.Equal("execState", Res.Str(broken, "failedAtStep"));
+    }
+
     [Fact]
     public async Task A_batch_runs_its_pane_pattern_entries_last_and_answers_in_the_given_order()
     {
@@ -324,7 +349,7 @@ public class BulkGenerateViTests
                                            ["Local.vi"], "LVMCP Convert x.vi"));
 
     [Fact]
-    public async Task The_ordinary_route_converts_under_the_real_name_and_reads_no_exec_state()
+    public async Task The_ordinary_route_converts_under_the_real_name_and_reads_the_exec_state()
     {
         await using var server = await LvaiTestServer.StartAsync();
         server.Service.ViFileContent = "a generated VI";
@@ -335,7 +360,8 @@ public class BulkGenerateViTests
 
         Assert.True(Res.Bool(result, "ok"));
         Assert.Contains("_name=\"Caller.vi\"", Assert.Single(server.Service.ConvertedAixml));
-        Assert.Empty(asked);
+        // read since 2026-10-27: a passed validation is not a running VI
+        Assert.Single(asked);
         Assert.False(Res.Has(result, "loadedSubVIs"));
     }
 
@@ -362,7 +388,8 @@ public class BulkGenerateViTests
         server.Service.ViFileContent = "a generated VI";
 
         // the diagram-size step is covered in DiagramSizeTests; this one is about the two RPCs
-        var result = await new BulkTools(server.Connection).GenerateViAsync(
+        // the execState read is stubbed: the real one generates its helper through these same RPCs
+        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1) }.GenerateViAsync(
             server.TempPath("in.xml"), server.TempPath("Out.vi"), measurePane: false,
             measureDiagram: false);
 
@@ -375,9 +402,10 @@ public class BulkGenerateViTests
         // Each sub-answer survives intact - a failure has to read the same as it would from
         // calling the tool by hand, which is only true if nothing is summarised away.
         var steps = Res.Arr(result, "steps");
-        Assert.Equal(2, steps.Count);
+        Assert.Equal(3, steps.Count);
         Assert.Equal("validate", steps[0]!["step"]!.GetValue<string>());
         Assert.Equal("convert", steps[1]!["step"]!.GetValue<string>());
+        Assert.Equal("execState", steps[2]!["step"]!.GetValue<string>());
         Assert.NotNull(steps[1]!["answer"]!["viBytes"]);
     }
 

@@ -355,9 +355,22 @@ internal static class LabViewCom
     /// <summary>One control read back - its literal and the raw .NET value - or the reason it could not be.</summary>
     internal sealed record Reading(string Name, string? Value, string? Problem, object? Raw = null);
 
+    /// <param name="ReadBackXml">
+    /// The target's values as LabVIEW's own Flatten To XML wrote them, read by the composed
+    /// `lvai_read_values` helper - only when a value came back as an opaque COM object and a
+    /// helper was given. Null otherwise.
+    /// </param>
     internal sealed record RunResult(int ExecState, bool Ran, bool Finished, bool Aborted,
                                      long RunMs, IReadOnlyList<string> SetProblems,
-                                     IReadOnlyList<Reading> Values);
+                                     IReadOnlyList<Reading> Values, string? ReadBackXml = null);
+
+    /// <summary>
+    /// A value LabVIEW's ActiveX server could not marshal. A WAVEFORM - one, or an array of them -
+    /// comes back from GetControlValue as a COM object with no type information (GetTypeInfo is
+    /// E_NOTIMPL, measured 2026-10-27), which printed as `System.__ComObject` with no problem named.
+    /// </summary>
+    internal static bool IsOpaque(object? raw) =>
+        raw is not null && (Marshal.IsComObject(raw) || raw is Array a && a.Cast<object?>().Any(IsOpaque));
 
     /// <summary>
     /// Set <paramref name="inputs"/>, run the VI, read <paramref name="names"/> back. A broken VI
@@ -365,9 +378,16 @@ internal static class LabViewCom
     /// ask for answers a different question. With <paramref name="runForMs"/> the values are a
     /// SNAPSHOT taken that long after the start, and the VI is then aborted.
     /// </summary>
+    /// <remarks>
+    /// With <paramref name="readBackHelper"/> - the composed `lvai_read_values` helper - a value
+    /// LabVIEW cannot marshal (<see cref="IsOpaque"/>) is read a second way while the target's
+    /// reference is still HELD: the helper opens the same VI in memory by path and flattens every
+    /// value to XML in LabVIEW, so the waveform arrives as LabVIEW writes it.
+    /// </remarks>
     public static Task<RunResult> RunAsync(string viPath, IReadOnlyList<Input> inputs,
                                            IReadOnlyList<string> names, int runForMs,
-                                           int timeoutSeconds, CancellationToken ct) =>
+                                           int timeoutSeconds, CancellationToken ct,
+                                           string? readBackHelper = null) =>
         WithLabViewAsync(app => WithVi(app, viPath, vi =>
         {
             var state = Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture);
@@ -408,7 +428,16 @@ internal static class LabViewCom
                 try { Call(vi, "Abort"); aborted = true; }
                 catch (Exception e) when (e is TargetInvocationException or COMException) { }
             }
-            return new RunResult(state, true, finished, aborted, runMs, [], values ?? ReadAll(vi, names));
+            values ??= ReadAll(vi, names);
+            string? readBack = null;
+            if (readBackHelper is not null && values.Any(v => IsOpaque(v.Raw)))
+                readBack = WithVi(app, readBackHelper, helper =>
+                {
+                    Call(helper, "SetControlValue", "VI Path", Path.GetFullPath(viPath));
+                    Call(helper, "Run", false);
+                    return Call(helper, "GetControlValue", "values xml") as string;
+                });
+            return new RunResult(state, true, finished, aborted, runMs, [], values, readBack);
         }), timeoutSeconds, ct);
 
     internal sealed record HelperRun(int TargetExecState, bool Finished, long RunMs,

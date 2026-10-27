@@ -262,16 +262,25 @@ internal static class ViTerminals
     {
         if (instance is { } inst)
             return $"<Call adapt=\"true\" instance=\"{inst.Name}\" target=\"{result.ViName}\"" +
-                   Environment.NewLine +
-                   $"      inputs=\"{inst.Inputs}\"" + Environment.NewLine +
-                   $"      outputs=\"{inst.Outputs}\" uid=\"NN\" uid_parent=\"root\"/>";
+                   TerminalList("inputs", inst.Inputs) +
+                   TerminalList("outputs", inst.Outputs) + " uid=\"NN\" uid_parent=\"root\"/>";
 
         var inputs = string.Join(",", result.PaneInputs.Select(t => t.Name + ":"));
         var outputs = string.Join(",", result.PaneOutputs.Select(t => t.Name + ":"));
-        return $"<Call target=\"{TargetSpelling(result.ViName)}\"" + Environment.NewLine +
-               $"      inputs=\"{inputs}\"" + Environment.NewLine +
-               $"      outputs=\"{outputs}\" uid=\"NN\" uid_parent=\"root\"/>";
+        return $"<Call target=\"{TargetSpelling(result.ViName)}\"" +
+               TerminalList("inputs", inputs) +
+               TerminalList("outputs", outputs) + " uid=\"NN\" uid_parent=\"root\"/>";
     }
+
+    /// <summary>
+    /// `inputs=`/`outputs=` on its own line - or NOTHING when the list is empty. An empty
+    /// `inputs=""` is refused by NI's converter (`Object terminal not found for input: :`,
+    /// measured 2026-09-09) and the lint answers `terminal-list-empty`, while the attribute left
+    /// off is accepted; the skeleton of a VI with no inputs (High Resolution Relative Seconds.vi)
+    /// printed `inputs=""` until 2026-10-27.
+    /// </summary>
+    internal static string TerminalList(string attribute, string list) =>
+        string.IsNullOrWhiteSpace(list) ? "" : Environment.NewLine + $"      {attribute}=\"{list}\"";
 
     /// <summary>
     /// A library-qualified name as a `Call` target is spelled in AIXML: the qualifier's colon as

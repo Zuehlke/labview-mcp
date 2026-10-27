@@ -1,0 +1,12 @@
+<VI _name="lvai_read_values.vi" description="Read back EVERY control and indicator value of a VI that is already in memory\2C WITHOUT running it\2C rendered as LabVIEW's own flattened XML.\0A\0AExists because LabVIEW's ActiveX server cannot marshal a waveform\3A GetControlValue answers an opaque COM object with no type information (GetTypeInfo is E_NOTIMPL\2C measured 2026-10-27)\2C for one waveform and for an array of them. The run route over ActiveX runs the target itself\2C holds its reference\2C and then runs this helper\2C whose Open VI Reference by path reaches the same VI in memory with the values of that run.">
+  <Control _name="VI Path" conIdx="1" connection="required" description="Absolute path of the VI to read\2C as a string. It must be in memory\2C held by the caller\2C or its defaults are read." outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:4200.value" outputs="path:4201.path" uid="4201" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4201.path" outputs="vi reference:4202.vi reference,error out:4202.error out" uid="4202" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get All" type="{LV.VI}" inputs="reference:4202.vi reference,error in (no error):4202.error out" outputs="reference out:4203.reference out,error out:4203.error out,Controls:4203.Controls" uid="4203" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4203.Controls" outputs="xml string:4204.xml string" uid="4204" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4203.reference out,error in (no error):4203.error out" outputs="error out:4205.error out" uid="4205" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:4205.error out" outputs="xml string:4206.xml string" uid="4206" uid_parent="root"/>
+  <FreeLabel comment="Read every value, run nothing." uid="4207" uid_parent="root"/>
+  <Indicator _name="values xml" conIdx="0" connection="recommended" description="Every control and indicator of the target\2C name and value\2C as flattened XML." inputs="value:4204.xml string" type="string" uid="4208" uid_parent="root" value=""/>
+  <Indicator _name="error xml" conIdx="4" connection="recommended" description="This helper's own error cluster\2C flattened to XML." inputs="value:4206.xml string" type="string" uid="4209" uid_parent="root" value=""/>
+</VI>

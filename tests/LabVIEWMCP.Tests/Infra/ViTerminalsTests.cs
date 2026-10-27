@@ -127,6 +127,23 @@ public sealed class ViTerminalsTests
     }
 
     /// <summary>
+    /// A VI with NO inputs gets no `inputs=` at all: `inputs=""` is refused by NI's converter and
+    /// flagged by the lint, and the skeleton printed it for High Resolution Relative Seconds.vi
+    /// until 2026-10-27.
+    /// </summary>
+    [Fact]
+    public void AnEmptyTerminalListIsLeftOff()
+    {
+        var outputsOnly = PlainVi
+            .Replace("""<Control _name="file name" conIdx="0" connection="required" type="string" uid="10" uid_parent="root" value=""/>""", "")
+            .Replace("""<Control _name="error in (no error)" conIdx="3" connection="optional" type="cluster{bool.status,int32.code,string.source}" uid="11" uid_parent="root" value="[false,0,]"/>""", "");
+        var call = ViTerminals.CallSkeleton(ViTerminals.Parse(outputsOnly)!);
+
+        Assert.DoesNotContain("inputs=", call);
+        Assert.Contains(@"outputs=""waveform:,loaded?:""", call);
+    }
+
+    /// <summary>
     /// A class member's skeleton spells the qualifier as `\3A`, as every generator does - it
     /// printed the raw colon, a spelling never measured to resolve.
     /// </summary>

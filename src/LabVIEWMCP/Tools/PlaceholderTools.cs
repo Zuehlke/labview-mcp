@@ -726,8 +726,11 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     {
         var inputs = string.Join(",", subject.PaneInputs.Select(t => t.Name + ":"));
         var outputs = string.Join(",", subject.PaneOutputs.Select(t => t.Name + ":"));
-        return $"<Call target=\"{Escape(stubName)}\" inputs=\"{inputs}\" outputs=\"{outputs}\" " +
-               "uid=\"NN\" uid_parent=\"root\"/>";
+        // an empty list is left off, never written as inputs="" - see ViTerminals.TerminalList
+        return $"<Call target=\"{Escape(stubName)}\"" +
+               (inputs.Length > 0 ? $" inputs=\"{inputs}\"" : "") +
+               (outputs.Length > 0 ? $" outputs=\"{outputs}\"" : "") +
+               " uid=\"NN\" uid_parent=\"root\"/>";
     }
 
     /// <summary>The subject's PANE terminals as data, in the order a Call lists them.</summary>

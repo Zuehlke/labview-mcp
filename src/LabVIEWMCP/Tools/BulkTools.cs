@@ -499,6 +499,32 @@ internal sealed class BulkTools(LvaiConnection connection)
                         (brokenSize?["note"]?.GetValue<string>() ?? ""), route, brokenSize);
                 }
             }
+            else if (!composed)
+            {
+                // AND ON THE VALIDATED gRPC ROUTE. It answered `execState: null` for every VI until
+                // 2026-10-27 - the convert runs without checkExecutable there, on the grounds that
+                // ValidateAIXML had already looked - while the composed route always read it. A
+                // passed validation is not a running VI, so the state is read here as well.
+                var reading = await (ReadExecState?.Invoke(viPath, timeoutSeconds, ct)
+                    ?? new ExecStateTools(connection).ReadAsync(
+                        viPath, helperAixmlPath: null, helperViPath: null,
+                        regenerateHelper: false, timeoutSeconds, ct: ct));
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "execState",
+                    ["measured"] = reading is { CouldNotOpen: false },
+                    ["execState"] = reading?.State,
+                    ["meaning"] = reading is null ? null : ExecStateTools.Meaning(reading.State),
+                    ["linkerErrors"] = reading?.LinkerErrors,
+                    ["errors"] = ExecStateTools.ErrorsNode(reading),
+                });
+                if (reading is { CouldNotOpen: false, Broken: true })
+                    return Outcome(false, "execState", steps, total, viPath, null,
+                        "THE VI WAS WRITTEN and passed NI's validation, and LabVIEW cannot run it. " +
+                        "Read errors and linkerErrors in the execState step - they are the Error " +
+                        "List's own lines. IF A CLASS INPUT IS FED BY A `path` SEED CONSTANT, THIS IS " +
+                        "EXPECTED: turn the seed into the class with lvai_swap_subvis constantsJson.");
+            }
 
             // The pattern repair goes BEFORE the measurement, so what gets reported is the pane
             // the caller will actually get. Doing it the other way round measures a pane that is

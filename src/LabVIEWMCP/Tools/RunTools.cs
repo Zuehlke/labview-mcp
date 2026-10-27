@@ -627,8 +627,14 @@ internal sealed class RunTools(LvaiConnection connection)
         // the indicators and none of the controls, measured 2026-10-10 on the same VIs. The answer
         // has to look the same whichever backend ran, or a parser written for one breaks on the other.
         var names = panel.Where(i => i.Indicator).Select(i => i.Name).Distinct().ToList();
+        // A WAVEFORM does not cross LabVIEW's ActiveX server (an opaque COM object, measured
+        // 2026-10-27), so a panel carrying one gets the composed read-back helper, which flattens
+        // the values in LabVIEW. Composed once and cached; a refusal leaves the old answer, flagged.
+        string? readBack = null, readBackProblem = null;
+        if (panel.Any(i => i.Indicator && i.Type.Contains("waveform", StringComparison.OrdinalIgnoreCase)))
+            (readBack, readBackProblem) = await ComposedHelpers.EnsureAsync(ReadValuesHelperFileName, timeoutSeconds, ct);
         LabViewCom.RunResult run;
-        try { run = await LabViewCom.RunAsync(full, inputs, names, runForMs, timeoutSeconds, ct); }
+        try { run = await LabViewCom.RunAsync(full, inputs, names, runForMs, timeoutSeconds, ct, readBack); }
         catch (LabViewCom.ComException e)
         {
             return Json.Error(e.Kind, e.Message, new { viPath = full, via = "ActiveX" });
@@ -648,10 +654,29 @@ internal sealed class RunTools(LvaiConnection connection)
         // value as LabVIEW's flattened XML - generated from the value and its AIXML type, then read
         // back exactly as LvValuesXml reads NI's. `literal` is the AIXML spelling beside it.
         var types = panel.GroupBy(i => i.Name).ToDictionary(g => g.Key, g => g.First().Type);
+        var flattened = LvValuesXml.Parse(run.ReadBackXml).GroupBy(v => v.Name)
+                                   .ToDictionary(g => g.Key, g => g.First());
         var values = new JsonObject();
         foreach (var reading in run.Values)
         {
             var aixmlType = types.GetValueOrDefault(reading.Name) ?? "";
+            if (LabViewCom.IsOpaque(reading.Raw))
+            {
+                // read through the helper in LabVIEW's own XML, or say plainly why it is missing
+                var hit = flattened.TryGetValue(reading.Name, out var v);
+                values[reading.Name] = new JsonObject
+                {
+                    ["type"] = hit ? v.Type : aixmlType,
+                    ["value"] = hit ? v.Scalar : null,
+                    ["xml"] = hit ? v.Xml : null,
+                    ["literal"] = null,
+                    ["problem"] = hit ? null
+                        : "LabVIEW's ActiveX server cannot marshal this value (a waveform arrives as an " +
+                          "opaque COM object), and the read-back helper " +
+                          (readBackProblem is null ? "did not return it." : "is unavailable: " + readBackProblem),
+                };
+                continue;
+            }
             var xml = reading.Problem is null
                 ? ComValues.ToLabviewXml(reading.Name, aixmlType, reading.Raw) : null;
             values[reading.Name] = new JsonObject
@@ -994,6 +1019,7 @@ internal sealed class RunTools(LvaiConnection connection)
 
     /// <summary>Name of the timed runner's AIXML source inside the scripts folder.</summary>
     internal const string TimedHelperAixmlFileName = "lvai_run_for_ms.xml";
+    internal const string ReadValuesHelperFileName = "lvai_read_values.xml";
 
     /// <summary>The control the timed runner takes its budget on; its presence is the test.</summary>
     internal const string RunForMsControlName = "run for ms";
