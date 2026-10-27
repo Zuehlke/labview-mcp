@@ -1,0 +1,15 @@
+<VI _name="T191 Spreadsheet 2D Concat.vi" description="Spreadsheet String To Array with its array type unwired returns a 2D double array; Build Array appends it to an empty 2D array and Index Array takes row 1.">
+  <Constant _name="spreadsheet string" type="string" uid="4200" uid_parent="root" value="1\2C2&#10;3\2C4" outputs="value:4200.value"/>
+  <Constant _name="delimiter" type="string" uid="4201" uid_parent="root" value="\2C" outputs="value:4201.value"/>
+  <Constant _name="format string" type="string" uid="4202" uid_parent="root" value="%f" outputs="value:4202.value"/>
+  <Constant _name="element" type="double" uid="4203" uid_parent="root" value="0" outputs="value:4203.value"/>
+  <Constant _name="dimension size" type="int32" uid="4204" uid_parent="root" value="0" outputs="value:4204.value"/>
+  <Constant _name="index (row)" type="int32" uid="4205" uid_parent="root" value="1" outputs="value:4205.value"/>
+  <Node _name="Spreadsheet String To Array" uid="4210" uid_parent="root" inputs="delimiter (Tab):4201.value,spreadsheet string:4200.value,format string:4202.value" outputs="array:4210.array"/>
+  <Node _name="Initialize Array" uid="4211" uid_parent="root" inputs="element:4203.value,dimension size:4204.value,dimension size:4204.value" outputs="initialized array:4211.initialized array"/>
+  <Node _name="Build Array" uid="4212" uid_parent="root" concat="true" inputs="array:4211.initialized array,array:4210.array" outputs="appended array:4212.appended array"/>
+  <Node _name="Array Size" uid="4213" uid_parent="root" inputs="array:4212.appended array" outputs="size(s):4213.size(s)"/>
+  <Node _name="Index Array" uid="4214" uid_parent="root" dimensions="2" inputs="array:4212.appended array,index (row):4205.value,disabled index (col):" outputs="subarray:4214.subarray"/>
+  <Indicator _name="sizes" type="array{int32}" uid="4220" uid_parent="root" value="[]" inputs="value:4213.size(s)"/>
+  <Indicator _name="row" type="array{double}" uid="4221" uid_parent="root" value="[]" inputs="value:4214.subarray"/>
+</VI>

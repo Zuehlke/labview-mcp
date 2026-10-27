@@ -1828,6 +1828,39 @@ the live cases that follow the desktop's ACTIVE window.
 - **NI's converter does not create the output directory.** A `viPath` under a folder that is not
   there is `Error 7` at `Save:Instrument`, naming the file rather than the folder.
 
+## Four gaps a cold build of a CSV reader found (fixed 2026-10-27)
+
+A cold agent build of a chunked, parallel CSV reader (8 channels x 1 000 000 rows) had to send
+two VIs to NI's converter and hand-patch a third. All four are closed on `pylabview`; suite cases
+`t191`-`t193`, run in LabVIEW.
+
+- **`Spreadsheet String To Array` came out 1D.** Its part was cut from `GPIB with VISA
+  functions.vi`, which wires a 1D double array into `array type (2D Dbl)`, so with that input
+  unwired the composer typed `array` 1D - and a `Build Array` appending the parsed rows to a 2D
+  shift register was refused as "arrays of different dimensions". LabVIEW's default with the
+  input unwired is 2D double, and the composer now writes that. The refusal also names each
+  input's rank now (`accL.value=2D, rowo.value=1D`), which is what found the cause.
+- **`Get Waveform Attribute` knew only its every-attribute instance.** Slot 1 is `values` with
+  `name` unwired and `value` with it wired; slots 4/5/6/out are `error in`, `default value (empty
+  Variant)`, `name`, `error out` - read off the heap of the VI NI's converter built from the same
+  AIXML. `TERM_ALIASES` in `aixml2vi.py` carries the second name of slot 1.
+- **The reader dropped `concat="true"` and named a subarray `element`.** A concatenating input
+  carries DCO flag 0x10000; the reader now writes `concat="true"` from it, and an Index Array
+  output typed `SubArray` (a disabled index) is `subarray`, as NI writes both.
+- **Iteration parallelism.** NI's AIXML has no spelling for it and its export drops it, so it is
+  an instruction after `</VI>` - `<?lvmcp parallel uid="<For Loop uid>" workers="16"?>` - which
+  NI's service ignores (on grpc the loop stays sequential) and the composer turns into NI's own
+  shape: a `parForWorkers` DCO beside N, its inner terminal on the loop's sRN,
+  `<ParForWorkers uid=…/>` and `ParForNumStaticWorkers`. The reader writes the instruction back.
+  Measured as an A/B on the reader's piece parser, everything else equal: 2.48 s without, 0.97 s
+  with 16 instances, identical data.
+
+**A NaN or infinity constant is refused by NI's validator** - `nan`, `NAN` and `Inf` on a double
+`<Constant>` all answer `Unrecognized or unsupported attribute set`, although NI's OWN export writes
+a NaN constant as `value="nan"`. The composer takes `nan` and the VI runs NaN. `lvai_check_aixml`
+answers `nonFiniteConstantRefusedByNi` and the lint `non-finite-constant-refused-by-ni`, both
+warnings and scoped to the measured case, a double Constant.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the

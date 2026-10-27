@@ -635,3 +635,7 @@ primResID	node	parmIndex	terminal	seen	competing
 23811	Create Network Stream Reader Endpoint	6	element allocation mode	0	
 23811	Create Network Stream Reader Endpoint	8	error in (no error)	1	
 23808	Flush Stream	10	wait condition	0	
+8208	Get Waveform Attribute	4	error in	1	
+8208	Get Waveform Attribute	5	default value (empty Variant)	1	
+8208	Get Waveform Attribute	6	name	1	
+8208	Get Waveform Attribute	out	error out	1	

@@ -2145,5 +2145,36 @@
     }
    }
   ]
+ },
+ "t191_spreadsheet_2d_concat": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "sizes": "[2,2]",
+     "row": "[3,4]"
+    }
+   }
+  ]
+ },
+ "t192_parallel_for": {
+  "cases": [
+   {
+    "inputs": "N=5",
+    "outputs": {
+     "squares": "[0,1,4,9,16]"
+    }
+   }
+  ]
+ },
+ "t193_waveform_attribute_by_name": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "attribute": "ch7"
+    }
+   }
+  ]
  }
 }

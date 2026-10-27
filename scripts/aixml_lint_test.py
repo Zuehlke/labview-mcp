@@ -596,6 +596,16 @@ def test_measured_against_labview(directory: str) -> None:
          '<Constant _name="t" type="timestamp" value="3800000000" uid="4200" '
          'uid_parent="root" outputs="value:4200.value"/>',
          "warning", "timestamp-value-discarded"),
+        # MEASURED 2026-10-27: NI's ValidateAIXML refuses nan, NAN and Inf on a double
+        # Constant although its own export writes value="nan"; the composer takes it.
+        ("a NaN double constant - REFUSED by NI's validator, composed by pylabview",
+         '<Constant _name="x" type="double" value="nan" uid="4200" uid_parent="root" '
+         'outputs="value:4200.value"/>',
+         "warning", "non-finite-constant-refused-by-ni"),
+        ("a finite double constant must stay silent",
+         '<Constant _name="x" type="double" value="1.5" uid="4200" uid_parent="root" '
+         'outputs="value:4200.value"/>',
+         "clean", None),
         ("an EMPTY timestamp is the correct spelling and must stay silent",
          '<Constant _name="t" type="timestamp" value="" uid="4200" uid_parent="root" '
          'outputs="value:4200.value"/>',

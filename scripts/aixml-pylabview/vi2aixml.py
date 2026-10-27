@@ -1562,6 +1562,12 @@ class Reader:
         if cls == "forLoop":
             el.set("maxin", "")
             el.set("maxout", "")
+            # iteration parallelism: a <ParForWorkers> names the P terminal's DCO, and
+            # ParForNumStaticWorkers (hex) is the number of generated instances
+            if node.find("ParForWorkers") is not None:
+                if not hasattr(self, "parallel_loops"):
+                    self.parallel_loops = []
+                self.parallel_loops.append((node.get("uid"), int(node.findtext("ParForNumStaticWorkers") or "0", 16)))
         inner = node.find("diagramList/SL__arrayElement")
         set_sublabel(el, inner)
         srn = next((n for n in self.node_defs(inner) if n.get("class") == "sRN"), None) if inner is not None else None
@@ -2442,7 +2448,9 @@ class Reader:
         for t in terms[1:]:
             if self._is_out(t):
                 tree = self.tid_tree(t)
-                nm = "subarray" if tree is not None and tree.get("Type") == "Array" else "element"
+                # a disabled index makes the output a SUBARRAY - LabVIEW may type it SubArray in
+                # VCTP rather than Array (Read CSV.vi's row out of a 2D array, 2026-10-27)
+                nm = "subarray" if tree is not None and tree.get("Type") in ("Array", "SubArray") else "element"
                 self.term_owner[t.get("uid")] = (el, nm, False)
                 k = 0
             else:
@@ -2474,6 +2482,11 @@ class Reader:
                 # ex_updatePropFromTree.vi's user-def properties, stacked into a 2D array, 2026-10-23
                 same = same or (tt is not None and ot is not None and self._rank(tt) == self._rank(ot) > 0)
                 self.term_owner[t.get("uid")] = (el, "array" if same else "element", True)
+                # a CONCATENATING input carries DCO flag 0x10000 (the composer's measurement); NI
+                # writes that mode as concat="true", and the reader dropped it (Read CSV.vi,
+                # 2026-10-27)
+                if int(t.findtext("dco/objFlags") or 0) & 0x10000:
+                    el.set("concat", "true")
         return el
 
     @staticmethod
@@ -3038,6 +3051,9 @@ def main(argv):
     dyn = [e.get("uid") for e in getattr(reader, "dynamic_fp", []) if e.get("uid")]
     if dyn:
         text += '\n<?lvmcp dynamic uids="%s"?>' % ",".join(dyn)
+    for uid, workers in getattr(reader, "parallel_loops", []):
+        # a For Loop's iteration parallelism - NI's export drops it (2026-10-27)
+        text += '\n<?lvmcp parallel uid="%s" workers="%d"?>' % (uid, workers)
     flags = getattr(reader, "pane_slot_flags", None)
     if flags:
         text += '\n<?lvmcp paneflags="%s"?>' % ",".join("%d:%04X" % kv for kv in sorted(flags.items()))

@@ -1215,6 +1215,13 @@ def _tsv(path):
                 if r and r[0] != "primResID"]
 
 
+# A terminal whose NI name depends on the instance: Get Waveform Attribute's slot 1 is `values`
+# with `name` unwired (every attribute) and `value` with it wired - NI's converter wrote `value`
+# for the Read CSV cold build's Summarize Waveforms.vi, slots 4/5/6/out read off that VI's heap
+# (2026-10-27).
+TERM_ALIASES = {("8208", "1"): ("value",)}
+
+
 def load_names():
     """primitive-names.tsv / terminal-names.tsv (experiments/pylabview), plus local supplements:
     names primitive-names.tsv lacks (Greater?, Greater Or Equal? ... primitive-names-extra.tsv),
@@ -2813,6 +2820,8 @@ class Composer:
             # document written while `create if not found? (T)` was still `?parm2` composes as
             # before (the ATM build's queue helpers, 2026-10-11)
             by_name.setdefault("?parm%s" % pidx, t)
+            for alias in TERM_ALIASES.get((rid, pidx), ()):
+                by_name.setdefault(alias, t)
         ins, outs = pairs(el.get("inputs")), pairs(el.get("outputs"))
         for tname, net in ins + outs:
             if tname not in by_name and net is None:
@@ -2907,6 +2916,23 @@ class Composer:
                         if j not in wired_in and donor[j].get("Type") == "NumInt32":
                             new_types[j] = type_tree("array{int32}")
                             canon[j] = b"array size %d" % j
+        # SPREADSHEET STRING TO ARRAY with `array type (2D Dbl)` UNWIRED returns LabVIEW's default,
+        # a 2D double array - the terminal's own name says so. The donor (GPIB with VISA
+        # functions.vi) wired a 1D double array, so its `array` came out 1D and a Build Array
+        # appending the rows to a 2D shift register was refused as "different dimensions"
+        # (the Read CSV cold build, 2026-10-27).
+        if name == "Spreadsheet String To Array":
+            at = by_name.get("array type (2D Dbl)")
+            if at is not None and idx_of[id(at)] not in wired_in:
+                g = canon[idx_of[id(at)]]
+                arr2d = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
+                for _ in range(2):
+                    ET.SubElement(arr2d, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+                arr2d.append(type_tree("double"))
+                for j in range(len(terms)):
+                    if canon[j] == g and j not in wired_in:
+                        new_types[j] = copy.deepcopy(arr2d)
+                        canon[j] = b"spreadsheet default %d" % idx_of[id(at)]
         # ...and the other way round: a wired input that is the donor refnum's ELEMENT (Obtain
         # Queue's `element data type`) makes that refnum one of the wired type - t176's cluster
         # queue left Obtain Queue's `queue out` typed by its donor's {Message, Message Data}
@@ -4312,7 +4338,11 @@ class Composer:
                 arrays = [typedef_inner(wt) for (tn, _), wt in zip(ins, types) if tn == "array"]
                 dims = {len(a.findall("Dimension")) for a in arrays if a.get("Type") == "Array"}
                 if any(a.get("Type") != "Array" for a in arrays) or len(dims) != 1:
-                    raise Unsupported("Build Array %s: arrays of different dimensions are not concatenated" % el.get("uid"))
+                    shapes = ", ".join("%s=%s" % (n, "%dD" % len(a.findall("Dimension")) if a.get("Type") == "Array"
+                                                  else a.get("Type")) for (tn, n), a in
+                                       zip([i for i in ins if i[0] == "array"], arrays))
+                    raise Unsupported("Build Array %s: arrays of different dimensions are not concatenated (%s)"
+                                      % (el.get("uid"), shapes))
                 ndim = dims.pop()
                 # an N-D concatenation: `array` inputs of N dimensions, `element` inputs of N-1 -
                 # a row appended to a 2D array (prop_value_pair_main.vi of the 3D Graph's dialog)
@@ -4963,6 +4993,9 @@ class Composer:
             tree = plain(lvheap.strip_label(donor_types[int(e.get("_t"))]))
             e.text = "TypeID(%d)" % self.heap_tid(tree)
             del e.attrib["_t"]
+        workers = getattr(self, "parallel_loops", {}).get(el.get("uid"))
+        if workers is not None:
+            self._parallel_for(el, loop, inner, lmax_inner, workers)
         parent.nodes.append(loop)
         parent.z.insert(0, ET.Element("SL__arrayElement", {"uid": loop.get("uid")}))
         parent.placed.append((loop, el))
@@ -4980,6 +5013,52 @@ class Composer:
         if count:
             self.net_type[count] = ET.Element("TypeDesc", {"Type": "NumInt32", "Prop1": "0", "Format": "inline"})
         self.report.append("Structure %r <- %s" % (el.get("_name"), src))
+
+    def _parallel_for(self, el, loop, inner, lmax_inner, workers):
+        """`<?lvmcp parallel uid=".." workers="N"?>` after </VI> - OUR extension, NI's AIXML has no
+        spelling for it and its export drops it - enables loop iteration parallelism with N generated instances
+        and the P terminal left unwired (LabVIEW then uses the CPU count, capped at N). The shape
+        is NI's own, read off its Parallel For Loop examples (2026-10-27): a `parForWorkers` DCO
+        on the loop's border whose termList is [inner, outer], the inner terminal on the loop
+        diagram's sRN (objFlags 0x20000), `<ParForWorkers uid=DCO/>` after the
+        ConditionDCOList, ParForNumStaticWorkers in hex, and an int32 type."""
+        if el.get("_name") != "For Loop":
+            raise Unsupported("Structure %s: parallel is a For Loop setting" % el.get("uid"))
+        try:
+            workers = int(workers)
+        except ValueError:
+            raise Unsupported("For Loop %s: workers=%r is not a number of instances"
+                              % (el.get("uid"), workers))
+        if not 1 <= workers <= 255:
+            raise Unsupported("For Loop %s: workers=%d is outside 1..255" % (el.get("uid"), workers))
+        t_out, d_p, t_in = self.alloc(), self.alloc(), self.alloc()
+        tid = "TypeID(%d)" % self.heap_tid(type_tree("int32"))
+        term = ET.Element("SL__arrayElement", {"class": "term", "uid": str(t_out)})
+        ET.SubElement(term, "objFlags").text = "64"
+        dco = ET.SubElement(term, "dco", {"class": "parForWorkers", "uid": str(d_p)})
+        tl = ET.SubElement(dco, "termList", {"elements": "2"})
+        ET.SubElement(tl, "SL__arrayElement", {"uid": str(t_in)})
+        ET.SubElement(tl, "SL__arrayElement", {"uid": str(t_out)})
+        ET.SubElement(dco, "typeDesc").text = tid
+        ET.SubElement(dco, "dcoFiller").text = "512"
+        ET.SubElement(dco, "termBounds").text = "(34, 0, 50, 16)"
+        ET.SubElement(dco, "termBMPs").text = "2"
+        loop.find("termList").append(term)
+        loop.find("termList").set("elements", str(len(loop.find("termList"))))
+        it = ET.Element("SL__arrayElement", {"class": "term", "uid": str(t_in)})
+        ET.SubElement(it, "objFlags").text = "131072"
+        ET.SubElement(it, "dco", {"uid": str(d_p)})
+        srn = inner.srn_terms
+        after = next((i for i, t in enumerate(srn) if t.get("uid") == lmax_inner), len(srn) - 1)
+        srn.insert(after + 1, it)
+        srn.set("elements", str(len(srn)))
+        trailer = list(loop)
+        cond = loop.find("ConditionDCOList")
+        if cond is None or loop.find("ParForNumStaticWorkers") is None:
+            raise Unsupported("For Loop shell has no ParFor trailer")
+        loop.insert(trailer.index(cond) + 1, ET.Element("ParForWorkers", {"uid": str(d_p)}))
+        loop.find("ParForNumStaticWorkers").text = "%02X" % workers
+        self.report.append("For Loop %s: iteration parallelism, %d instances" % (el.get("uid"), workers))
 
     def _library_qualified(self, res, callee):
         """A callee found by its bare name that is a LIBRARY MEMBER - its own LIBN says so - is
@@ -9102,10 +9181,19 @@ class Composer:
                     ny = ins[0] + lh - 1         # the label starts at the contRect
                     if tb is not None:
                         tb.text = lvheap.fmt_bounds((ny, 0, ny + 16, 16))
-            slot = {0: 1 if loop.find("loopLimitDCO") is not None else 0, 1: 0}
+            # a parallel loop's P terminal sits right below N, as LabVIEW draws it; the input
+            # tunnels then start one slot lower
+            n_tb = next((c.find("dco/termBounds") for c in loop.find("termList")
+                         if c.find("dco") is not None and c.find("dco").get("class") == "lMax"), None)
+            par = [c for c in loop.find("termList")
+                   if c.find("dco") is not None and c.find("dco").get("class") == "parForWorkers"]
+            for c in par:
+                nb = lvheap.parse_bounds(n_tb.text)[2] if n_tb is not None else 34 - 1
+                c.find("dco/termBounds").text = lvheap.fmt_bounds((nb + 1, 0, nb + 17, 16))
+            slot = {0: (1 if loop.find("loopLimitDCO") is not None else 0) + len(par), 1: 0}
             for c in loop.find("termList"):
                 tb = c.find("dco/termBounds")
-                if tb is None or c.find("dco").get("class") in ("lMax", "lpTunConditionDCO"):
+                if tb is None or c.find("dco").get("class") in ("lMax", "lpTunConditionDCO", "parForWorkers"):
                     continue
                 out = int(c.find("dco").findtext("objFlags") or 0) & 1
                 tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
@@ -9538,6 +9626,11 @@ class Composer:
                                               (x.partition(":") for x in split_top(html.unescape(mc.group(2)).replace("|", ",")))]
         for mc in re.finditer(r'<\?lvmcp\s+xctlrefs\s+uid="([^"]*)"\s+items="([^"]*)"\s*\?>', tail[1] if len(tail) == 2 else ""):
             self.xctl_items[mc.group(1)] = html.unescape(mc.group(2)).split("|")
+        # a For Loop's iteration parallelism, which NI's AIXML cannot say (its export drops it):
+        # after </VI>, so NI's service ignores it rather than refusing the document
+        self.parallel_loops = {}
+        for mc in re.finditer(r'<\?lvmcp\s+parallel\s+uid="([^"]*)"\s+workers="([^"]*)"\s*\?>', tail[1] if len(tail) == 2 else ""):
+            self.parallel_loops[mc.group(1)] = mc.group(2)
         if mp and int(mp.group(1)) in self.pane_codes and self.fp.find("root/conPane/conId") is not None:
             self.con_id = int(mp.group(1))
             self.fp.find("root/conPane/conId").text = str(self.con_id)

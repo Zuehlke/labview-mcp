@@ -1593,6 +1593,36 @@ def check_timestamp_values(elements: list[_El]) -> list[Finding]:
     return findings
 
 
+def check_non_finite_constants(elements: list[_El]) -> list[Finding]:
+    """A double Constant whose value is NaN or infinity. NI's ValidateAIXML refuses it,
+    "Unrecognized or unsupported attribute set in Constant" - measured 2026-10-27 for `nan`,
+    `NAN` and `Inf` - although NI's OWN export writes a NaN constant as value="nan", so an
+    exported VI does not round-trip. The pylabview composer takes `nan` and the VI runs NaN,
+    so a warning. Kept equal to AixmlCheck.CheckNonFiniteConstants, scoped to what was measured.
+    """
+    findings: list[Finding] = []
+    for e in elements:
+        if e.tag != "Constant" or (e.el.get("type") or "").strip() != "double":
+            continue
+        value = e.el.get("value")
+        if value is None or value.strip().lower() not in ("nan", "inf"):
+            continue
+        findings.append(
+            Finding(
+                "warning",
+                "non-finite-constant-refused-by-ni",
+                e.uid,
+                e.label(),
+                e.path,
+                f'this double constant carries value="{value}". NI\'s ValidateAIXML refuses NaN '
+                "and infinity in every measured spelling (nan, NAN, Inf) although its own export "
+                'writes value="nan". The pylabview backend composes it and the VI runs NaN; on '
+                "grpc, compose this VI on pylabview or produce the value on the diagram (0/0).",
+            )
+        )
+    return findings
+
+
 BLOCKING_NODES = {
     "Dequeue Element", "Preview Queue Element", "Wait on Notification",
     "Wait on Notification from Multiple", "Wait for Occurrence",
@@ -1733,6 +1763,7 @@ def lint_file(path: str) -> list[Finding]:
     findings += check_terminal_flags(elements)
     findings += check_indicator_values(elements)
     findings += check_timestamp_values(elements)
+    findings += check_non_finite_constants(elements)
     findings += check_comment_length(elements)
     findings += check_control_read_before_wait(elements)
     findings += check_web_browser_reference(elements)

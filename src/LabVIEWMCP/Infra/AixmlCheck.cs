@@ -110,6 +110,7 @@ internal static class AixmlCheck
         CheckIndicatorValues(root, findings);
         CheckNetAttributes(root, findings);
         CheckTimestampValues(root, findings);
+        CheckNonFiniteConstants(root, findings);
         CheckCommentLength(root, findings);
         CheckControlReadBeforeWait(root, findings);
         CheckWebBrowserReference(root, findings);
@@ -787,6 +788,36 @@ internal static class AixmlCheck
                 (string?)element.Attribute("uid")));
         }
     }
+
+    /// <summary>
+    /// A <c>double</c> Constant whose value is NaN or infinity. NI's ValidateAIXML refuses it -
+    /// `Unrecognized or unsupported attribute set in Constant`, measured 2026-10-27 for `nan`,
+    /// `NAN` and `Inf` - although NI's OWN export writes a NaN constant as <c>value="nan"</c>, so
+    /// an exported VI does not round-trip. The pylabview composer takes `nan` and the VI runs NaN.
+    /// A WARNING, not an error: the document is right for one backend and refused by the other.
+    /// Scoped to what was measured - a double Constant - like <c>timestampValueDiscarded</c>.
+    /// </summary>
+    private static void CheckNonFiniteConstants(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            if (element.Name.LocalName != "Constant") continue;
+            if (((string?)element.Attribute("type"))?.Trim() != "double") continue;
+            if ((string?)element.Attribute("value") is not { } value) continue;
+            if (!IsNonFiniteLiteral(value)) continue;
+
+            findings.Add(new Finding(Severity.Warning, "nonFiniteConstantRefusedByNi",
+                $"\"{element.Attribute("_name")?.Value ?? "Constant"}\" is a double constant with "
+                + $"value=\"{value}\". NI's ValidateAIXML refuses NaN and infinity in every measured "
+                + "spelling (nan, NAN, Inf) although its own export writes value=\"nan\". The "
+                + "pylabview backend composes it and the VI runs NaN; on grpc, compose this VI on "
+                + "pylabview or produce the value on the diagram (0/0 gives NaN).",
+                (string?)element.Attribute("uid")));
+        }
+    }
+
+    internal static bool IsNonFiniteLiteral(string value) =>
+        value.Trim().ToLowerInvariant() is "nan" or "inf";
 
     /// <summary>
     /// A <c>{LV.WebBrowser}</c> Property or Invoke Node BOUND to a front-panel control - through

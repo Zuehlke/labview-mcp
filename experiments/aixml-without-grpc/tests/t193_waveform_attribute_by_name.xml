@@ -1,0 +1,12 @@
+<VI _name="T193 Waveform Attribute By Name.vi" description="Set Waveform Attribute writes channel=ch7, Get Waveform Attribute reads it back by name - the name-wired instance whose output is value.">
+  <Constant _name="Y" type="array{double}" uid="4200" uid_parent="root" value="[1,2,3]" outputs="value:4200.value"/>
+  <Constant _name="name" type="string" uid="4201" uid_parent="root" value="channel" outputs="value:4201.value"/>
+  <Constant _name="value" type="string" uid="4202" uid_parent="root" value="ch7" outputs="value:4202.value"/>
+  <Constant _name="default value" type="string" uid="4203" uid_parent="root" value="" outputs="value:4203.value"/>
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" uid="4204" uid_parent="root" value="[false,0,]" conIdx="8" connection="recommended" outputs="value:4204.value"/>
+  <Node _name="Build Waveform" uid="4210" uid_parent="root" fields="Y" inputs="Y:4200.value" outputs="output waveform:4210.output waveform"/>
+  <Node _name="Set Waveform Attribute" uid="4211" uid_parent="root" inputs="error in:4204.value,value:4202.value,name:4201.value,waveform:4210.output waveform" outputs="error out:4211.error out,waveform out:4211.waveform out"/>
+  <Node _name="Get Waveform Attribute" uid="4212" uid_parent="root" inputs="waveform:4211.waveform out,name:4201.value,default value (empty Variant):4203.value,error in:4211.error out" outputs="value:4212.value,error out:4212.error out"/>
+  <Indicator _name="attribute" type="string" uid="4220" uid_parent="root" value="" inputs="value:4212.value"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="4221" uid_parent="root" value="[false,0,]" conIdx="11" connection="recommended" inputs="value:4212.error out"/>
+</VI>

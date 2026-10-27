@@ -230,6 +230,39 @@ public sealed class AixmlCheckTests
     /// exported back. string, path, double, int32 and bool all kept their literal; `timestamp`
     /// alone came back `value=""`. errorCode 0 at every step, both cheap checkers clean.
     /// </summary>
+    private const string NaNConstant = """
+        <VI _name="Probe.vi">
+          <Constant _name="x" type="double" value="nan" uid="4200" uid_parent="root" outputs="value:4200.value"/>
+        </VI>
+        """;
+
+    /// <summary>
+    /// NI's ValidateAIXML refuses nan, NAN and Inf on a double Constant (measured 2026-10-27)
+    /// while its own export writes value="nan"; the composer takes it, so a warning.
+    /// </summary>
+    [Theory]
+    [InlineData("nan")]
+    [InlineData("NAN")]
+    [InlineData("Inf")]
+    public void ANonFiniteDoubleConstantIsAWarning(string value)
+    {
+        var findings = AixmlCheck.Check(NaNConstant.Replace("\"nan\"", $"\"{value}\""))
+            .Where(f => f.Code == "nonFiniteConstantRefusedByNi").ToList();
+
+        Assert.Single(findings);
+        Assert.Equal(AixmlCheck.Severity.Warning, findings[0].Severity);
+    }
+
+    /// <summary>The control: a finite double, and a STRING reading "nan", are data.</summary>
+    [Fact]
+    public void AFiniteDoubleAndANanStringAreClean()
+    {
+        Assert.DoesNotContain(AixmlCheck.Check(NaNConstant.Replace("\"nan\"", "\"1.5\"")),
+            f => f.Code == "nonFiniteConstantRefusedByNi");
+        Assert.DoesNotContain(AixmlCheck.Check(NaNConstant.Replace("double", "string")),
+            f => f.Code == "nonFiniteConstantRefusedByNi");
+    }
+
     private const string TimestampWithAValue = """
         <VI _name="Probe.vi">
           <Constant _name="t" type="timestamp" value="3800000000" uid="4200" uid_parent="root" outputs="value:4200.value"/>
