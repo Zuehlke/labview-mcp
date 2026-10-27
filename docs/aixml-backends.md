@@ -1740,6 +1740,41 @@ giving exactly three parts - `const/stdRefNum/Refnum.UsrDefndTag.NIDAQ`,
 `experiments/aixml-without-grpc/probes/ptypes-nidaq.xml` so the donor can be rebuilt; it needs a
 LabVIEW with NI's service once, exactly as `ptypes.xml` did.
 
+### Accepted through the MCP tool path after a client restart
+
+The measurements above were taken by driving `aixml2vi.py` DIRECTLY, because the running server
+still served the pre-fix scripts out of its `bin\` copy - the stale-build trap this repository
+records for `dotnet msbuild -t:Compile`, reached here by editing after the gate had built. Re-run
+2026-10-27 through `lvai_convert_aixml_to_vi` with `backend: "pylabview"` on a restarted client:
+
+| probe | answer |
+|---|---|
+| `ref{GenClassTag.Task.NIDAQ}` on the pane | `ok: true`, `execState 1`, `sourceOnly: true`, donor `ptypes-nidaq.vi` |
+| the same type as a CONSTANT | `ok: true`, `execState 1`, donor `ptypes-nidaq.vi` |
+| the nisyscfg control arm | `ok: true`, `execState 1`, donor still `ptypes.xml` |
+| `Start AI Acquisition.vi` (3 DAQmx calls, `task out`) | `ok: true`, 9 308 B, `execState 1` |
+| `Close Acquisition.vi` (`task in`, Stop, Clear, Release Queue) | `ok: true`, 7 941 B, `execState 1` |
+
+So the gap is closed on the route a client actually uses, and the control arm's donor did not move.
+
+### The demo's MAIN VI still does not compose, for a DIFFERENT reason
+
+Worth stating because the two subVIs above invite the conclusion that the whole producer/consumer
+demo now builds on this backend, and it does not. The main VI composes to 18 304 bytes with
+`wires routed: 44, **left generic: 4**` and comes back `execState 0`. It is **not** a link fault -
+`linkerErrors` names no missing subVI, only the generic *"The VI is not executable"* - and it is
+**not** the refnum, since both VIs carrying the task refnum are executable. `lvai_open_file` on it
+answers **`Error 1013, Cannot load front panel`**, where `lvai_exec_state` opens it happily, because
+a VI reference does not load the panel.
+
+**A composed panel loads in general** - the control arm: a two-terminal `array{doublewaveform}` probe
+composed, loaded and opened with `errorCode 0` - so this is specific to that panel's content, and
+the suspects are the objects whose donors are NI examples rather than our own probes (the
+`Acquired Data` waveform CHART, from `Continuous Decimating.vi`, and the `waveform block prototype`
+constant, from an MGI `Actor Core.vi`). **Not traced further, and deliberately not guessed at**: the
+probe written for it used `array{doublewaveform}`, which picks a different donor from a chart, so it
+reproduced nothing. The demo itself was delivered from the `grpc` backend and is unaffected.
+
 ### What it buys, measured
 
 - All six probes compose, and **`a-nidaq-fp`, `e-nidaq-const` and the nisyscfg arm load
