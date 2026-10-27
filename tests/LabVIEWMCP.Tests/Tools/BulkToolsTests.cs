@@ -144,7 +144,9 @@ public class BulkGenerateViTests
         Assert.True(File.Exists(viPath));
 
         // the refusal could not burn the real name
-        var sent = Assert.Single(server.Service.ConvertedAixml);
+        // the icon step's own helper may be converted too on a fresh helper cache - see
+        // The_ordinary_route_converts_under_the_real_name_and_reads_the_exec_state
+        var sent = Assert.Single(server.Service.ConvertedAixml, a => !a.Contains("_name=\"lvdoc_set_icon.vi\""));
         Assert.Contains("_name=\"LVMCP Convert ", sent);
         Assert.DoesNotContain("_name=\"Caller.vi\"", sent);
 
@@ -359,7 +361,12 @@ public class BulkGenerateViTests
             .GenerateViAsync(CallerAixml(server), server.TempPath("Out.vi"), measurePane: false);
 
         Assert.True(Res.Bool(result, "ok"));
-        Assert.Contains("_name=\"Caller.vi\"", Assert.Single(server.Service.ConvertedAixml));
+        // The CALLER was converted once, under its real name. Not "one convert in all": the icon
+        // step converts its own helper the first time a test run needs it, so on a fresh runner
+        // (an empty helper cache) a second convert appears depending on which test came first -
+        // release run #65 for v2.2.9 failed on exactly that, green on every station with a cache.
+        Assert.Single(server.Service.ConvertedAixml, a => a.Contains("_name=\"Caller.vi\""));
+        Assert.DoesNotContain(server.Service.ConvertedAixml, a => a.Contains("_name=\"LVMCP Convert "));
         // read since 2026-10-27: a passed validation is not a running VI
         Assert.Single(asked);
         Assert.False(Res.Has(result, "loadedSubVIs"));
