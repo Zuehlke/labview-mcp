@@ -2332,7 +2332,46 @@ internal static class DiagramLayout
         var band = new Dictionary<DObject, int>();
         for (var i = 0; i < ranked.Count; i++)
             foreach (var n in ranked[i]) band[n] = i;
-        return band;
+        return Interleaved(g, set, band, ranked) ? null : band;
+    }
+
+    /// <summary>
+    /// True when the error wire LEAVES a band and COMES BACK to it - the chains are then not
+    /// independent cases but steps of one sequence, and bands make the error wire climb to each
+    /// band and drop back to the rail at every step. `Read CSV (baseline).vi` (2026-10-27) times
+    /// its whole run: Relative Seconds, then the file chain, then Relative Seconds again, on one
+    /// error wire. Its timers and their subtraction are one data component and the file chain
+    /// another, so it was banded, the timers in a band along the top and the rail left holding
+    /// only `error in`, Clear Errors and `error out`. The crossing count that chose it counts no
+    /// error wire, so the zigzag cost nothing there. A generated test's cases each take ONE
+    /// stretch of the error wire and pass this: Define Test's fan-out into every Assert enters
+    /// each band from the rail, never from another band. Only bands of two nodes or more count;
+    /// a node alone - Merge Errors, Define Test, a panel terminal - is the rail.
+    /// </summary>
+    private static bool Interleaved(Graph g, HashSet<DObject> nodes, Dictionary<DObject, int> band,
+                                    List<List<DObject>> ranked)
+    {
+        int Of(DObject n) => band.TryGetValue(n, out var b) && ranked[b].Count >= 2 ? b : -1;
+        foreach (var start in nodes.Where(n => Of(n) >= 0))
+        {
+            var home = Of(start);
+            // forward along the error wire; once it has passed through another band, reaching home
+            // again means home is not one stretch of it
+            var seen = new HashSet<(DObject, bool)>();
+            var stack = new Stack<(DObject N, bool Away)>([(start, false)]);
+            while (stack.Count > 0)
+            {
+                var (x, away) = stack.Pop();
+                foreach (var e in g.Out(x).Where(e => e.Error && e.From != e.To && nodes.Contains(e.To)))
+                {
+                    var b = Of(e.To);
+                    if (away && b == home) return true;
+                    var next = (e.To, away || (b >= 0 && b != home));
+                    if (seen.Add(next)) stack.Push(next);
+                }
+            }
+        }
+        return false;
     }
 
     /// <summary>

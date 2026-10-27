@@ -102,6 +102,44 @@ public class LayoutBandTests(ITestOutputHelper output)
         Assert.Empty(DiagramLayout.BackwardWires(model, plan));
     }
 
+    /// <summary>
+    /// ONE sequence is not several chains, whatever its data graph says. `Read CSV (baseline).vi`
+    /// (C:\Temp\NeilProblem, 2026-10-27) times its whole run: Relative Seconds -> Open -> the read
+    /// loop -> Close -> Clear Errors -> the per-channel loop -> Relative Seconds, all on one error
+    /// wire. Its data graph falls into three components - the two timers and their subtraction,
+    /// the file chain, Clear Errors and its constant - so bands applied, and they won on data
+    /// crossings, which count no error wire. The render: the timers in a band along the top, the
+    /// file chain in the middle, and the rail holding only `error in`, Clear Errors and
+    /// `error out`, the error wire climbing to each band and dropping back between them. The
+    /// error wire leaves the timers' band and COMES BACK to it, so the bands are steps of one
+    /// sequence, not independent cases.
+    /// </summary>
+    [Fact]
+    public void A_single_sequence_on_one_error_wire_keeps_its_rail()
+    {
+        var model = Load("read-csv-baseline-ours.txt");
+        var plan = DiagramLayout.Plan(model);
+        var columns = DiagramLayout.Plan(Load("read-csv-baseline-ours.txt"), bands: false);
+        Assert.Equal(columns.Moves.Select(m => (m.ApplyPath, m.Index, m.X, m.Y)),
+                     plan.Moves.Select(m => (m.ApplyPath, m.Index, m.X, m.Y)));
+
+        // the middle of each chain node's error terminal, as planned: the two timers, Open, Close,
+        // Clear Errors, and the panel's error in and error out (the loops' tunnels are levelled
+        // in a pass of their own)
+        var heights = new List<(string What, double Y)>();
+        foreach (var index in new[] { 13, 12, 7, 5, 2, 17, 14 })
+        {
+            var o = model.Top.Objects.Single(x => x.Index == index);
+            var p = plan.Predicted[o.Key];
+            var t = o.Terms.FirstOrDefault(t => t.Name.StartsWith("error ", StringComparison.Ordinal));
+            var y = t is null ? p.T + o.Box.H / 2.0 : p.T + (t.Box.T - o.Box.T) + t.Box.H / 2.0;
+            heights.Add(($"{index} {o.Class} {o.OwnName}", y));
+        }
+        foreach (var (what, y) in heights) output.WriteLine($"{what,-40} error terminal at {y}");
+        var spread = heights.Max(h => h.Y) - heights.Min(h => h.Y);
+        Assert.True(spread <= 2, $"the error terminals span {spread} px; one rail is one line");
+    }
+
     /// <summary>Every other fixture keeps exactly the plan it had: bands are tried only on the top
     /// level, and kept only where they cross fewer wires.</summary>
     [Theory]

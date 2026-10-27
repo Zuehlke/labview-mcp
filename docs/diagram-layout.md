@@ -1121,3 +1121,49 @@ Error List, the file source-only after the layout's save. The render shows `wait
 reaching the selector directly. What stays is what has no free plain step: the refnums passed
 through three message frames jump over a node on their line, and the Stop Module frame's Message
 Queue goes under the Bundle By Name.
+
+### 6n. One sequence on one error wire is not several chains, 2026-10-27
+
+**Symptom.** The user's screenshot of `Read CSV (baseline).vi` (`C:\Temp\NeilProblem`) after our
+layout: the error wire left `error in`, climbed to a timer at the top-left of the diagram, came down
+through the file chain, dropped to `Clear Errors` near the bottom, climbed into the per-channel loop,
+climbed again to a second timer at the top-right and dropped to `error out`. Read off the dump, the
+error terminals along the chain sat at **454, 119, 191, 366, 234, 458, 275, 139, 454** - only the
+three pure-error objects (`error in`, `Clear Errors`, `error out`) were on the rail.
+
+**Cause: the bands rule (section 6) applied to a VI it was not written for.** The VI times its whole
+run: `Relative Seconds` -> Open -> the read loop -> Close -> `Clear Errors` -> the per-channel loop ->
+`Relative Seconds`, all on one error wire. Without its error edges the data graph falls into three
+components of two or more nodes - the two timers with their subtraction, the file chain, and
+`Clear Errors` with its constant - so bands were tried, and they WON: the timers' long wire runs
+uncrossed along the top in bands, and the score counts no error wire, so the zigzag cost nothing.
+`Bands()`'s own comment states the premise it never checked: *several independent chains that share
+nothing but the error wire*. Here the error wire leaves the timers' band, runs through the file
+chain, and COMES BACK - the bands are steps of one sequence, not independent cases.
+
+**Rule.** Bands apply only where the error wire visits each band in ONE stretch
+(`DiagramLayout.Interleaved`). Walking forward along error edges, reaching a node's own band again
+after passing through another band means interleaved, and the columns layout is kept. Only bands of
+two nodes or more count; a node alone - Merge Errors, Define Test, a panel terminal - is the rail. A
+generated test still passes: Define Test's fan-out enters every case's band from the rail, never
+from another band.
+
+**Measured.**
+
+- The fixture `read-csv-baseline-ours.txt` is the dump of the VI as our layout had left it, and
+  today's engine reproduces the screenshot from it exactly: the banded plan put every object where
+  the user saw it. With the rule the plan equals the columns plan, and the seven chain nodes'
+  error terminals (both timers, Open, Close, `Clear Errors`, `error in`, `error out`) plan at
+  322-322.5 px - one line. Test `A_single_sequence_on_one_error_wire_keeps_its_rail`.
+- Every other layout test passes, 97 of 97 - every band test among them, so the generated Caraya
+  tests are still banded.
+- Live on a copy, through the branch build driven by `scripts/mcp_drive.py`: 38 of 38 objects where
+  planned, `execState 1`, **1558 x 376 -> 1736 x 283 px**. The render shows the error wire as one
+  straight line from `error in` to `error out`, the read loop's and the per-channel loop's error
+  tunnels on it.
+
+**Still open.** The first timer's output feeds the subtraction at the far right, so its wire spans
+the whole diagram. With both timers on the rail, LabVIEW's `Clean Up Wire` takes it along the
+bottom, under the rail, and up again at the subtraction - crossing the rail at both ends. In bands it
+ran along the top uncrossed, which is why bands won on the count. That is a long wire's routing,
+not a placement the plan can improve without lifting a chain node off the rail.
