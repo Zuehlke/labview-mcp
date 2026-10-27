@@ -1879,6 +1879,10 @@ warnings and scoped to the measured case, a double Constant.
 - **`lvai_vi_terminals` printed `inputs=""`** for a VI with no inputs (High Resolution Relative
   Seconds.vi), which NI's converter refuses and the lint flags (`terminal-list-empty`). An empty
   list is left off now, there and in `lvai_placeholder_subvi`'s `Call`.
+- **A string array passed as a literal was split at the commas INSIDE its strings** (found by the
+  fourth cold build): `["1,2\r\n3,4","5,6"]` reached Parse CSV Pieces.vi as four pieces, with no
+  `problem` named. An item in double quotes is taken verbatim now - a quote counts only where it
+  starts an item and where the item ends - and AIXML's `\2C` still works beside it.
 - **"Wiring insanity found and fixed" on load - investigated, not changed.** Every wire left
   generic in those builds is a FAN-OUT one of whose ends is a primitive terminal with NO learned
   hotpoint at all: `String Subset` (1503, slots 1-3), `String To Byte Array` (1608/1) and `Read from

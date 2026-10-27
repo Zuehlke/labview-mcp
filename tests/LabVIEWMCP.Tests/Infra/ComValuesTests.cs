@@ -72,6 +72,37 @@ public sealed class ComValuesTests
         Assert.Contains("2 elements", Refusal("[1]", "cluster{double.x,double.y}"));
     }
 
+    /// <summary>
+    /// A QUOTED string keeps its commas: `["1,2\r\n3,4","5,6"]` was split into four items and
+    /// Parse CSV Pieces.vi ran on the wrong pieces with no problem named (the fourth CSV reader
+    /// cold build, 2026-10-27). AIXML's `\2C` still works beside it.
+    /// </summary>
+    [Fact]
+    public void A_quoted_string_element_keeps_its_commas()
+    {
+        Assert.Equal(new[] { "1,2\r\n3,4", "5,6" }, Convert("[\"1,2\r\n3,4\",\"5,6\"]", "array{string}"));
+        // spaces around a quoted item are not part of it; an unquoted item keeps its own, as ever
+        Assert.Equal(new[] { "a]b", " c" }, Convert("[ \"a]b\" , c]", "array{string}"));
+        Assert.Equal(new[] { "1,2", "x" }, Convert(@"[1\2C2,x]", "array{string}"));
+    }
+
+    /// <summary>
+    /// The control: a quote that does not START and END an item is an ordinary character, so a
+    /// string with an inch mark in it is not swallowed.
+    /// </summary>
+    [Fact]
+    public void A_quote_inside_an_item_is_an_ordinary_character()
+    {
+        Assert.Equal(new[] { "5\" pipe", "6\" pipe" }, Convert("[5\" pipe,6\" pipe]", "array{string}"));
+        Assert.Equal(new[] { "\"open", "b" }, Convert("[\"open,b]", "array{string}"));
+    }
+
+    /// <summary>A quoted element of a 2D literal is skipped whole at the outer level too.</summary>
+    [Fact]
+    public void A_quoted_element_of_a_nested_list_keeps_its_commas() =>
+        Assert.Equal(new[] { "[\"a,b\",c]", "[d,e]" },
+                     ComValues.Literal("[[\"a,b\",c],[d,e]]"));
+
     [Fact]
     public void What_is_not_covered_is_refused_by_name()
     {

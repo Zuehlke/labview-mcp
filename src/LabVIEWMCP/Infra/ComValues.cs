@@ -569,13 +569,87 @@ internal static class ComValues
         return parts;
     }
 
-    /// <summary>`[a,b,[c,d]]` -> its top-level items; `[]` -> none; anything else -> null.</summary>
+    /// <summary>
+    /// `[a,b,[c,d]]` -> its top-level items; `[]` -> none; anything else -> null.
+    ///
+    /// AN ITEM IN DOUBLE QUOTES IS TAKEN VERBATIM - `["1,2\r\n3,4","5,6"]` is two strings. AIXML
+    /// writes a comma inside a value as `\2C`, which still works, but a caller passing strings
+    /// naturally quotes them, and the quotes were not structure: the commas inside split the item,
+    /// and Parse CSV Pieces.vi was run on the wrong pieces with no problem named (the fourth CSV
+    /// reader cold build, 2026-10-27). A quote counts only where an item STARTS and where the
+    /// item ENDS - followed by a comma, a closing bracket or the end - so `5" pipe` stays a string
+    /// with a quote in it.
+    /// </summary>
     internal static List<string>? Literal(string text)
     {
         var t = text.Trim();
         if (t.Length < 2 || t[0] != '[' || t[^1] != ']') return null;
         var inner = t[1..^1];
-        return inner.Length == 0 ? [] : SplitTop(inner).Select(Unescape).ToList();
+        return inner.Length == 0 ? [] : SplitItems(inner).Select(i => i.Quoted ? i.Text : Unescape(i.Text)).ToList();
+    }
+
+    /// <summary>
+    /// Top-level items of a literal's inside, quote-aware (see <see cref="Literal"/>): a quoted
+    /// item comes back without its quotes and flagged, and a quoted element of a NESTED list is
+    /// skipped whole, so a comma or bracket inside it is not structure at this level either.
+    /// </summary>
+    internal static List<(string Text, bool Quoted)> SplitItems(string text)
+    {
+        var items = new List<(string, bool)>();
+        var i = 0;
+        while (true)
+        {
+            var k = i;
+            while (k < text.Length && text[k] == ' ') k++;
+            if (k < text.Length && text[k] == '"' && QuoteEnd(text, k, nested: false) is { } close)
+            {
+                items.Add((text[(k + 1)..close], true));
+                var after = close + 1;
+                while (after < text.Length && text[after] == ' ') after++;
+                if (after >= text.Length) return items;
+                i = after + 1;          // past the comma QuoteEnd found
+                continue;
+            }
+
+            var depth = 0;
+            var j = i;
+            var atElement = false;      // just after '[', '{' or a nested ',' - where a quote may open
+            for (; j < text.Length; j++)
+            {
+                var c = text[j];
+                if (atElement && c == ' ') continue;
+                if (atElement && c == '"' && depth > 0 && QuoteEnd(text, j, nested: true) is { } end)
+                {
+                    j = end;
+                    atElement = false;
+                    continue;
+                }
+                atElement = false;
+                if (c is '[' or '{') { depth++; atElement = true; }
+                else if (c is ']' or '}') depth--;
+                else if (c == ',' && depth == 0) break;
+                else if (c == ',') atElement = true;
+            }
+            items.Add((text[i..j], false));
+            if (j >= text.Length) return items;
+            i = j + 1;
+        }
+    }
+
+    /// <summary>
+    /// The index of the quote closing the one at <paramref name="open"/>: the first later quote
+    /// followed, past spaces, by a comma or the end - or, inside a nested list, a closing bracket.
+    /// Null when there is none, and the quote is then an ordinary character.
+    /// </summary>
+    private static int? QuoteEnd(string text, int open, bool nested)
+    {
+        for (var q = text.IndexOf('"', open + 1); q >= 0; q = text.IndexOf('"', q + 1))
+        {
+            var a = q + 1;
+            while (a < text.Length && text[a] == ' ') a++;
+            if (a >= text.Length || text[a] == ',' || (nested && text[a] is ']' or '}')) return q;
+        }
+        return null;
     }
 
     private static string Unescape(string text) =>
