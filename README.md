@@ -1,4 +1,4 @@
-# LabVIEW MCP
+# LabVIEW MCP (for all LV versions)
 
 **An AI assistant that can read, write and run the LabVIEW code on your machine.**
 
@@ -54,7 +54,7 @@ A `.vi` is a binary file. You cannot grep it. A diff of two versions tells you o
 differ. No amount of clever prompting will get a language model to emit one. So the last few years
 of assistants writing everybody else's code politely skipped LabVIEW.
 
-LabVIEW MCP borrows the IDE's own hands. It drives a running LabVIEW 2026 and exposes it over
+LabVIEW MCP borrows the IDE's own hands. It drives a running LabVIEW, any version from 2020 (older  not tested) on, and exposes it over
 [MCP](https://modelcontextprotocol.io), so a VI becomes something an assistant can read as text and
 produce as text. Once it is connected:
 
@@ -212,13 +212,21 @@ load. Worth ten minutes before the first write.
 
 ## Quickstart
 
-**You need:** Windows x64, **[Claude Code](https://claude.com/claude-code) ≥ 2.1.224**, and
-**LabVIEW 2026 Q3**. LabVIEW has to be running before you use the tools, though not to install
-them.
+**You need:** Windows x64, an MCP-capable AI client, and **LabVIEW 2020 or newer** (tested back
+to LabVIEW 2020). On LabVIEW 2026 Q3 the server can also use NI's own gRPC service; on older versions it works
+through the bundled pylabview engine and LabVIEW's ActiveX server instead, and picks that by itself.
 
-### Installation
+### Installation, with any LLM
 
-Open a terminal in your LabVIEW project folder:
+Type the following into your LLM prompt:
+
+> Install the LabVIEW MCP from https://github.com/Zuehlke/labview-mcp.
+> Always use the latest release and configure the MCP to update automatically.
+
+### Installation, with Claude Code
+
+With **[Claude Code](https://claude.com/claude-code) ≥ 2.1.224**, open a terminal in your LabVIEW
+project folder:
 
 ```powershell
 claude plugin marketplace add Zuehlke/labview-mcp
