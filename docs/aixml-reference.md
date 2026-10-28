@@ -1326,6 +1326,31 @@ wired to it — `array` for an array, `element` for a scalar — which is why th
 `inputs="array:…,element:…"`. `Read from Text File` and `Write to Text File` need no refnum at all
 when handed a path: they open and close the file themselves.
 
+**`In Range and Coerce` takes `includeLow="true"` and `includeHigh="true"`, and WITHOUT them BOTH
+limits are EXCLUDED** - `In Range?` is FALSE for `x` exactly on either limit. The attributes are
+the node's two right-click options, `Include Lower Limit` and `Include Upper Limit`; NI's exporter
+writes each one only when it is set, so a node that shows neither is the both-excluded mode, not
+an unspecified one. Measured 2026-10-28 on both backends (issue #106), limits 0 and 10:
+
+| attributes | `x` = 0 (lower limit) | `x` = 10 (upper limit) |
+|---|---|---|
+| neither | FALSE | FALSE |
+| `includeLow="true"` | TRUE | FALSE |
+| `includeHigh="true"` | FALSE | TRUE |
+| `includeLow="true" includeHigh="true"` | TRUE | TRUE |
+
+Validated, converted and run over `grpc` and `pylabview` alike, and NI's export of the composed VI
+reads the same attributes back. The trap is a boundary check that validates, runs and is wrong only
+AT the limit - a 20 mA reading reported out of a 4-20 mA range. **Write both attributes for a closed
+range**, which is also what NI's own examples mostly do (21 of 27 In Range nodes carry both).
+`coerced(x)` was read only in the both-included mode, where `x` on a limit came back unchanged.
+
+```xml
+<Node _name="In Range and Coerce" includeLow="true" includeHigh="true"
+      inputs="upper limit:4202.value,x:4200.value,lower limit:4201.value"
+      outputs="coerced(x):4330.coerced(x),In Range?:4330.In Range?" uid="4330" uid_parent="root"/>
+```
+
 **`Array To Spreadsheet String` appends a platform line ending after the *last* element.**
 Measured on a five-element string array with `delimiter (Tab)` wired to `\0A`: the result ended
 `…\nbanana\r\n`, so the delimiter separates the elements and a `\r\n` is added on top. If you want

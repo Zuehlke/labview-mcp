@@ -432,6 +432,20 @@ public class KnowledgeToolsTests(Xunit.Abstractions.ITestOutputHelper output)
             "`selector` passages still come before the `Select` node itself");
     }
 
+    /// <summary>
+    /// Issue #106: the lookup for In Range and Coerce returned only its terminal row, so nothing
+    /// said that a node without includeLow/includeHigh excludes BOTH limits.
+    /// </summary>
+    [Fact]
+    public void InRangeAndCoerceLookupNamesItsIncludeModes()
+    {
+        var result = KnowledgeTools.AixmlReference(node: "In Range and Coerce");
+
+        Assert.Contains("includeLow=\"true\"", result);
+        Assert.Contains("includeHigh=\"true\"", result);
+        Assert.Contains("both-excluded mode", result);
+    }
+
     [Fact]
     public void NodeTakesPrecedenceOverSection()
     {
