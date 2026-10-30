@@ -160,6 +160,38 @@ step from under 200 to a few hundred output tokens. Speed comes from fewer round
 hand-written AIXML (4.4), not from a smaller context. A smaller context does push back the
 point where a long session runs into the context limit and gets summarised.
 
+## 4b. What to do first for SPEED
+
+Wall clock over all transcripts (`scripts/token-economy/speed.py`): **271 h of model latency
+against 138 h inside tools.** "repeat" is the share of calls made straight after a call to the same
+tool - a batch candidate. The transcripts mix LabVIEW work with development of this server, which
+is most of the `grep`/`python`/`cat` rows.
+
+| tool | calls | repeat | latency h | in tool h |
+|---|---|---|---|---|
+| `ToolSearch` | 989 | 1 % | **12.8** | 0.0 |
+| `lvai_status` | 1 024 | 0 % | 3.5 | 0.6 |
+| `lvai_ensure_labview` | 375 | 20 % | 0.7 | **3.0** |
+| `lvai_exec_state` | 1 910 | **54 %** | 1.6 | 1.8 |
+| `lvai_set_vi_icon` | 1 450 | **70 %** | 1.0 | 2.3 |
+| `lvai_run_vi_and_read_values` | 3 020 | 41 % | 4.2 | 3.9 |
+| `lvai_aixml_reference` | 1 456 | 47 % | 4.2 | 0.0 |
+| `Write` (AIXML, scripts) | 4 142 | 17 % | **30.0** | 1.2 |
+
+In order:
+
+1. **Batch what is called back to back.** `lvai_exec_state` and `lvai_set_vi_icon` take one VI
+   each; a path list (as `lvai_convert_vis_to_aixml` does) or the icon step folded into
+   `lvai_generate_vi` removes about 2 000 turns. `lvai_aixml_reference` already takes a list and is
+   still called back to back 47 % of the time - the agents need telling.
+2. **Loading deferred tools costs a turn each time**: 989 `ToolSearch` calls, 12.8 h. Agents and
+   sessions should load every tool they will need in ONE `select:` call.
+3. **A status turn at the start**: `lvai_status` 1 024 times, `lvai_ensure_labview` 29 s a call.
+   Keep LabVIEW warm, and let the working tools say when LabVIEW is not there instead of asking
+   first.
+4. **Output**: `Write` alone is 30 h of latency - AIXML and helper scripts written out. More
+   generators from short specs (4.4).
+
 ## 5. Not measured
 
 - Token counts: everything above is characters; a tokenizer run would sharpen 4.2 and the
