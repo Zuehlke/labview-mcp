@@ -625,7 +625,7 @@ from the helper's own property node, before the run — **and `errorCode` on the
 
 **ENUM, RING, ARRAY AND CLUSTER CONTROLS ARE SETTABLE SINCE 2026-09-25 — this clause said "ARRAY AND
 CLUSTER CONTROLS ARE STILL UNREACHABLE" and agents built harness VIs around it.** An enum takes an
-item name or an index; a compound takes LabVIEW's own XML — the `xml` this tool returns — because
+item name or an index; a compound takes LabVIEW's own XML — the `xml` this tool returns with `includeXml: true` (since 2026-10-30 it answers native JSON values by default) — because
 `Unflatten From XML` with a Variant as its `type` yields a variant carrying its own type. Two traps,
 both measured: a name-else-number fallback turns a TYPO into item 0 (so unmatched text now goes in as
 a string and `Ctrl Val.Set` refuses it, `Error 91`), and `Unflatten From XML` decodes NO character

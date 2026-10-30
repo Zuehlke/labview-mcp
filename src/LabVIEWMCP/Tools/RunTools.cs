@@ -56,8 +56,7 @@ internal sealed class RunTools(LvaiConnection connection)
         a string - boolean, numeric, cluster, array, waveform. That tool returns those empty
         with errorCode 91 after the VI has run; this one returns their real values, because the
         helper reads them through VI Server and flattens them to XML before they cross back.
-        Values are returned per control name with a type and, for scalars, a plain text value;
-        compound values keep their flattened XML.
+        Values are returned per control name with a type and a native JSON value.
         INPUTS ARE STILL WRITTEN AS TEXT, BUT THEY ARE NO LONGER LIMITED TO STRING CONTROLS.
         The helper reads the target's panel, asks each named control what it is, and converts
         before setting - so a path, a double, an integer and a boolean can all be set by passing
@@ -66,8 +65,11 @@ internal sealed class RunTools(LvaiConnection connection)
         AN ENUM OR A TEXT RING takes an item NAME ("withdraw", exact and case-sensitive) or an
         index ("2"). Text that is neither is refused by Ctrl Val.Set BEFORE the run - it used to
         be the case that nothing but a string could be set at all.
-        AN ARRAY OR A CLUSTER takes LabVIEW's own XML for the value - exactly what this tool
-        returns under a compound control's `xml`, so a value read back can be pasted in as the
+        VALUES COME BACK AS NATIVE JSON under `value` since 2026-10-30 - a cluster as an object, an
+        array as a list, an enum as its item name - and the flattened XML is left out unless
+        includeXml is true; a timestamp, waveform, variant or refnum keeps its `xml`.
+        AN ARRAY OR A CLUSTER takes LabVIEW's own XML for the value - what this tool returns
+        under `xml` with includeXml: true, so a value read back can be pasted in as the
         next call's input. A bare <Array> or <Cluster> is wrapped in <LvVariant> for you, and
         the indentation between its tags is folded away; the helper then turns it into a Variant
         that carries its own type, so you never name the type. Since 2026-09-25. Do not write a
@@ -88,7 +90,7 @@ internal sealed class RunTools(LvaiConnection connection)
         it (`...\JKI_EasyXML.llb\Escape-Unescape String for XML__JKI EasyXML.vi`), on both
         backends since 2026-10-15; until then the existence check refused it.
         """)]
-    public async Task<string> RunViAndReadValuesAsync(
+    public async Task<string> RunViAndReadValuesToolAsync(
         [Description(@"Absolute path to the .vi to run")] string viPath,
         [Description("""
             Control values as a JSON object, e.g. {"file name":"C:\\data\\in.csv","count":"42"}.
@@ -174,6 +176,48 @@ internal sealed class RunTools(LvaiConnection connection)
             typed inputs were set first - Value (Signaling) needs VI Server, which ActiveX lacks.
             LabVIEW must already be running - this never starts it.
             """)]
+        string? backend = null,
+        [Description("""
+            Also return each value's flattened LabVIEW XML under `xml`. Off by default: every value
+            whose type is decoded comes back as native JSON under `value` instead - a cluster as an
+            object, an array as a list, a boolean as true/false, an enum as its item name - which
+            is a fraction of the XML. Turn it on to paste a read value back in as an array or
+            cluster INPUT, which takes LabVIEW's XML. A value that is not decoded (a timestamp,
+            waveform, variant, refnum or complex number) keeps its `xml` either way.
+            """)]
+        bool includeXml = false,
+        CancellationToken ct = default)
+    {
+        // THE CLIENT GETS NATIVE VALUES, THE SERVER'S OWN CALLERS KEEP THE XML. About thirty tools
+        // drive their helper VIs through RunViAndReadValuesAsync and read `error out` and their
+        // counts out of `xml`, so the slimming happens here, at the MCP boundary, and nowhere else.
+        var answer = await RunViAndReadValuesAsync(viPath, inputsJson, includeRawXml, helperViPath,
+            helperAixmlPath, regenerateHelper, timeoutSeconds, runForMs, signalsJson, signalGapMs,
+            closePanelAfterRun, backend, ct);
+        if (JsonNode.Parse(answer) is not JsonObject node) return answer;
+        var dropped = LvNativeValue.Apply(node, includeXml);
+        if (dropped > 0)
+            node["xmlOmitted"] = "Values are native JSON under `value`; their flattened XML is left out. " +
+                                 "Pass includeXml: true to get it, e.g. to paste a value back in as an input.";
+        return Json.Document(node);
+    }
+
+    /// <summary>
+    /// The run itself, with every value's flattened XML kept - the contract the server's own tools
+    /// rely on. lvai_run_vi_and_read_values is <see cref="RunViAndReadValuesToolAsync"/>.
+    /// </summary>
+    internal async Task<string> RunViAndReadValuesAsync(
+        string viPath,
+        string? inputsJson = null,
+        bool includeRawXml = false,
+        string? helperViPath = null,
+        string? helperAixmlPath = null,
+        bool regenerateHelper = false,
+        int timeoutSeconds = 300,
+        int runForMs = 0,
+        string? signalsJson = null,
+        int signalGapMs = 500,
+        bool closePanelAfterRun = true,
         string? backend = null,
         CancellationToken ct = default)
     {
@@ -716,11 +760,11 @@ internal sealed class RunTools(LvaiConnection connection)
                 ? "A SNAPSHOT taken runForMs after the start, then the VI was " +
                   (run.Finished ? "already finished." : "aborted - no cleanup on its diagram ran.")
                 : run.Finished
-                    ? "Ran to the end over ActiveX. Each value carries LabVIEW's flattened XML " +
-                      "under `xml`, the shape the gRPC helper answers, and the AIXML spelling " +
-                      "under `literal` - a cluster or array is written [a,b,...] there. `xml` " +
-                      "is null where the read failed (`problem` says why) or the value's shape " +
-                      "did not match its type; `literal` is still there."
+                    ? "Ran to the end over ActiveX. Each value is native JSON under `value` and " +
+                      "the AIXML spelling under `literal` - a cluster or array is written " +
+                      "[a,b,...] there. LabVIEW's flattened XML, the shape the gRPC helper " +
+                      "answers, is under `xml` with includeXml: true, and is null where the read " +
+                      "failed (`problem` says why) or the value's shape did not match its type."
                     : $"DID NOT FINISH within the budget and was aborted; the values are what the " +
                       "abort left. Raise timeoutSeconds, or use runForMs for a VI that never ends.",
         }.ToJsonString(Json.Answer);

@@ -285,3 +285,23 @@ the same LabVIEW (pid 38712, up 83 min by then):
 - **Seen in passing, not changed**: on grpc `lvai_exec_state` names no `backend`/`backendSource`
   in its answer, where the pylabview route does - older than this branch.
 
+### 6b. Native values in `lvai_run_vi_and_read_values`, accepted on both backends
+
+Built 2026-10-31 (4.3): every value is decoded from LabVIEW's flattened XML into native JSON under
+`value` - cluster as object, array as list, boolean, number, enum item name - and the XML is left
+out unless `includeXml: true`. What is not decoded exactly (timestamp, waveform, variant, refnum,
+complex) keeps its `xml` and says so in `xmlKeptBecause`; a big integer or NaN stays text. The
+server's own ~30 callers of the run keep the XML: the slimming happens only at the MCP boundary
+(`RunViAndReadValuesToolAsync`).
+
+| run | native chars | with `includeXml` | saving |
+|---|---|---|---|
+| `Get ATM Menu.vi`, pylabview | 1 672 | 2 821 | 41 % |
+| `Find Account.vi`, pylabview | 1 580 | 2 147 | 26 % |
+| `Get ATM Menu.vi`, grpc | 1 979 | 3 128 | 37 % |
+| `Find Account.vi`, grpc | 1 845 | 2 412 | 24 % |
+
+Every native value equal with and without `includeXml`, and equal across the two backends (11 of
+11); no value had to keep its XML; LabVIEW the same pid, `dwarnCount` 4 after the run. The saving
+grows with the size of the compound values - these two VIs return small clusters and empty
+arrays, so a waveform-free VI with real arrays saves more.
