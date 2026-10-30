@@ -133,6 +133,33 @@ tools combined. Much of it is `docs/` and `.cs` read in full. Two habits help wi
 `grep -n` with a narrow pattern before a read, and delegating wide reads to a subagent, whose
 context ends with its report (subagent contexts average 206 k against 484 k in main sessions).
 
+## 4a. How much, and does it get faster?
+
+Estimated share of all context tokens saved (main and subagent requests together):
+
+| measure | saving | basis |
+|---|---|---|
+| CLAUDE.md 296 kB -> about 35 kB | **about 16 %** (main 13 %, subagent about 31 %) | about 65 k tokens fewer in each of 65 900 requests |
+| relaxed JSON escaping | about 3 % | 7.2 M of 137 M tool-result chars, scaled to the dynamic part of the context |
+| native values in `lvai_run_vi_and_read_values` | about 2 % more | about 5.5 M chars beyond the escaping |
+| together | **about 20 %** | |
+
+**It does NOT get noticeably faster.** Median turn latency against context size, from the same
+transcripts (`scripts/token-economy/latency.py`):
+
+| context | output < 200 tokens | output 200-1000 tokens |
+|---|---|---|
+| 100-200 k | 2.8 s | 5.0 s |
+| 300-400 k | 2.9 s | 4.9 s |
+| 500-700 k | 3.2 s | 5.2 s |
+| 700-1100 k | 3.1 s | 5.4 s |
+
+A cached context costs about 0.3 s per 500 k tokens, so 65 k fewer is well under a tenth of a
+second per turn. **Latency follows OUTPUT tokens and the NUMBER of turns** - about 2 s for the
+step from under 200 to a few hundred output tokens. Speed comes from fewer round trips and less
+hand-written AIXML (4.4), not from a smaller context. A smaller context does push back the
+point where a long session runs into the context limit and gets summarised.
+
 ## 5. Not measured
 
 - Token counts: everything above is characters; a tokenizer run would sharpen 4.2 and the
