@@ -1363,6 +1363,14 @@ raw stdio: `answerWithinSeconds: 5` answered `stillRunning` at 5.0 s, a second m
 and the repeat collected `ok: true` (`Freezer`, 19.6 s of work, both VIs executable). A server
 restart loses a running job's answer, not its module - `moduleExists` then carries a hint saying so.
 
+**`lvai_dqmh_new_event` runs the same way since 2026-10-30.** The first event on a freshly started
+LabVIEW, on grpc, outlived the 60 s: `Request timed out`, the event written and executable, its
+`completionNeeded` lost, and the same call again refused as `eventNameInUse`. It is keyed on every
+argument, answers `stillRunning` past `answerWithinSeconds` (45), and the same call collects the
+answer. A finished job is dropped instead of handed out when LabVIEW restarted after it began, or
+when it finished more than ten minutes ago - a killed LabVIEW's "no port" failure was once handed
+to the same call on the next instance.
+
 **A MODULE FROM A TEMPLATE FAILED WITH 56003 - beside the module the template was made from.**
 `Script New Module.vi` opens the template's library by path (`{LV.Application}` `Library.Open`),
 and with a library of the same NAME already in memory that open answers 56003. Measured as an A/B:
@@ -1463,3 +1471,185 @@ module without Do Something and one event of each of the four types, validator `
 end to end (`docs/aixml-backends.md`, "Not covered, and not measured"). The `Save changes before
 closing?` watch is the same Win32 watch on both routes; whether it ANSWERED a dialog over ActiveX
 was not recorded in that run.
+
+## 10. DQMH 7.x - a second scripting layout, both supported (measured 2026-10-30)
+
+Everything above was measured on DQMH 5.x. **DQMH 7.x changed the scripting VIs**, and with 7.x
+installed every tool here answered `dqmhMissing` ("Script New Event.vi was not found") although
+DQMH worked - reported as issue #109, with a draft patch by the reporter that pointed the way.
+Measured here on DQMH 7.1.2.1547 (the Event Scripter version Delacor stamps into what it writes)
+in LabVIEW 2026 32-bit.
+
+**Both generations are kept, and nothing about the classic route changed.** The classic wrappers
+are byte-identical; DQMH 7.x runs their `lvdqmh_<name>_dqmh7.xml` twins. `DqmhLayout` reads the
+generation off each installation's FILES - 7.x when `Parse Project for DQMH Modules.vi` sits under
+`vi.lib\Delacor\Delacor QMH\Libraries\_Scripting Support\`, classic when it sits under
+`project\Delacor\DQMH\_DQMH New Event\` - never off a version string. Every answer names it under
+`dqmhGeneration` and the wrapper that ran under `wrapper`. The suffix keeps the `lvdqmh_` prefix,
+so the helper filters and the project sweep treat a twin like any other helper.
+
+### 10a. What moved, what changed
+
+| Delacor VI | 7.x |
+|---|---|
+| Parse Project for DQMH Modules, Close Scripting References, Get All Events in Module, Open Main and Tester References, Find Tester on Disk, Find RT Tester on Disk | moved to `dqmh_lib_DQMH Scripting Support.lvlib` (vi.lib), input `error in` instead of `error in (no error)` |
+| the unit-test wrapper's own Get All Events in Module | renamed `DQMH New Unit Test.lvlib:Get All Events in Module (Unit Test).vi` |
+| Script New Event | ONE `Event Info` cluster in place of single inputs (10b) |
+| Script New Module | three more REQUIRED inputs: `Module Description`, `Virtual Folder for Module Tester`, `Virtual Folder for Module Library` |
+| Rename Event | `Module Info in`/`out`, and a REQUIRED `Desc` - the event's description |
+| Convert Event | `Module Info in`/`out`, REQUIRED `New Event Type` (Request and Wait for Reply, Round Trip) and `Broadcast Event Name` |
+| Check for Dependent Broadcast | takes `Selected Event`, answers ARRAYS `Broadcast Names` / `Broadcast Indices` |
+| Remove Event, Rename Module, Create RT Tester | input `error in` |
+| Remove Do Something, Script Unit Test, Default Module Icon, Get Module Type Info | unchanged |
+| the `Event Info` array's `Type` enum | seven items (`Request (Private)`, `Request (Local Instance)` among them) instead of four |
+
+The terminal names were read off the 7.x panes, and every `Call` of every twin was checked against
+them by script before anything was generated. `Module Info` itself is unchanged.
+
+The new `DQMH_Scripting API.lvlib` (`Get DQMH Modules`, `Validate Single DQMH Module Library`, ...)
+is READ-ONLY - it finds and validates modules and creates nothing - so the creating scripters under
+`project\` are still the route.
+
+### 10b. Delacor's own dialogs, read for the defaults
+
+- **Event Info.** `Create New DQMH Event.vi` bundles Event Name, Round Trip Name (Broadcast), Event
+  Description, Event Type, Arguments VI, Reply Payload VI, Reply Timeout Value, timeout (ms), Add
+  Tester Button, Custom Enqueue VI, Request Scoping, Existing Argument Path and **Request Consuming
+  Loop**. The twin bundles ours into a constant holding the dialog's defaults: Module Timeout,
+  Public Request, and `Event Handling Loop`. That last value is not cosmetic: `Check EHL Scripting
+  Type.vi` compares it with `Scripting Identifiers--global.vi : Event Handling Loop` (value read:
+  `Event Handling Loop`), and any other text sends Script Main VI.vi down its helper-loop branch -
+  Error 1055, as the reporter of #109 measured with `Message Handling Loop`.
+- **Rename's `Desc`.** The dialog pre-fills it with the event VI's description (`Get VI.Description`)
+  and lets the user edit it. The twin does the same: empty keeps the description (measured - the
+  renamed VI kept `Sets the heater setpoint.`), `lvai_dqmh_rename_event description=` replaces it.
+- **New module's three inputs** are optional text fields in the dialog, empty by default. **Empty is
+  NOT "target level"**: with all three empty, 7.x listed the library under a `Modules` folder and the
+  tester under `Testers` (measured). `lvai_dqmh_new_module` takes `moduleDescription`,
+  `libraryVirtualFolder` and `testerVirtualFolder`; on a classic station they are refused by name.
+- **Remove.** The dialog removes each dependent broadcast in a loop over `Broadcast Indices`, each
+  with the module's ORIGINAL Module Info and no Main VI, then the event with Main VI. The twin is
+  wired the same way and reports `dependentBroadcastNames`.
+
+### 10c. Acceptance, every function on one module
+
+On the pylabview backend, each twin composed (`execState 1`), then run against a throw-away
+project `C:\Temp\Dqmh7Probe`, `error out` 0 at every step:
+
+| step | result |
+|---|---|
+| new module `Heater`, Singleton, Do Something kept | 19 s; Main.vi and tester executable |
+| Request `Set Setpoint` (Setpoint double, Mode string) | event VI + argument cluster; Main.vi executable; the tester wiring step wired `Mode`, `Setpoint` |
+| Broadcast `Temperature Changed` | event VI + argument cluster |
+| Request and Wait for Reply `Read Status` (reply Status, Text) | event VI, argument and reply cluster |
+| Round Trip `Request Calibration` / `Calibration Done` | request, broadcast, both clusters |
+| rename `Set Setpoint` -> `Set Target` | files and `.lvlib` renamed, description kept |
+| convert `Set Target` -> Round Trip, broadcast `Target Reached` | reply cluster + broadcast VI - a conversion DQMH 5 did not offer |
+| remove `Request Calibration` | dependent `Calibration Done` listed in the dry run; both removed from disk and `.lvlib` |
+| unit test for `Read Status` | `Unit Tests\Heater\Test - Heater - Read Status 1.vi`, setup, teardown, listed in the project |
+| RT tester | `Test Heater API-RT.vi` |
+| remove Do Something | all four example events gone, no Error 1055 (#109 saw one; not reproduced) |
+| rename module -> `Oven` | folder, library and both testers renamed in the project |
+
+What stays for a person is Delacor's design, as on 5.x: a Broadcast's loose `#CodeNeeded` call and
+a reply frame's `Merge Errors` in Main.vi (sections 9c, 9h), and the clean-up after a removal.
+**One thing is NEW in 7.x**: every Broadcast gives the API tester a frame whose `Format Into String`
+carries the `#DQMH_CodeNeeded` format string `Response Received - %s` with nothing wired to `%s`, so
+the TESTER is not executable after a Broadcast until broadcast data is wired there. The tools say so
+in `completionNeeded` rather than rewriting Delacor's placeholder.
+
+**Measured in the DQMH7 demo build of 2026-10-30** (a Singleton and a Cloneable, every event type, a
+helper loop each), two more 7.x placeholders, and a reporting gap they exposed:
+
+- A **private request** leaves a loose call to its VI in Main.vi too, with `#DQMH_CodeNeeded Drop
+  this VI wherever you need to fire the "Private.<name>" event` and its arguments unwired (`Module
+  ID` as well on a Cloneable). A public request leaves none.
+- A **Round Trip**'s request frame carries the reply frame's unwired `Merge Errors`, and on 7.x a
+  `Bundle By Name` beside it; its broadcast half gets the tester `Format Into String` frame.
+- `completionNeeded` named only "Main.vi was already NOT executable" whenever an earlier event had
+  broken it, and so never named the private request's loose call or the Round Trip's frame. Each
+  event now names its own share and adds the "already broken" note beside it
+  (`DqmhHeadless.EventCompletion`); the answer carries `testerExecStateBefore` too.
+
+### 10d. The other issues of the same report (#110 - #112)
+
+- **#110** `lvai_dqmh_place_handler` refused every handler of a frame with no reply: the dry run
+  asked the connect helper for the argument terminals with the REPLY node as the second node, and
+  that helper answers nothing when either node is invalid. Each node is asked about itself now.
+  Generation-independent.
+- **#111** A 7.x reply cluster's error member is `error`, not `<Event>_error`; both take the
+  handler's `error out`. A handler output literally named `error` still wins.
+- **A Cloneable module's reply carries `Module ID`, and Delacor already feeds it** (measured
+  2026-10-30, DQMH7 final build): the frame's Bundle By Name takes it from a Property Node reading
+  the module's own `Accessors:Module ID`. `lvai_dqmh_place_handler` asked the handler for it all
+  the same - the connect helper marks a wired terminal ` <wired>`, and the plan stripped the mark
+  before matching - so every Request and Wait for Reply frame of a Cloneable module was refused
+  (`namesDoNotMatch`), and the only "fix" was a handler with an input and an output both labelled
+  `Module ID`. A field already wired is left alone now and named under `replyFieldsAlreadyFed` -
+  and `Module ID` is always taken as Delacor's, because the first live run of the fix read it
+  WITHOUT the mark although the export shows the wire; why the helper missed that one wire is
+  not established.
+- **#112a** `addTesterButton: false` still makes Delacor add a tester case, unwired - documented in
+  the parameter and named in `completionNeeded`.
+- **#112b** `createdFiles: []` / `ok: false` for events whose files were there: the file comparison
+  had no folder when the active-project check named no project path. It falls back to the module
+  folder from the dry run. Not reproduced here (the project path was known in every run above), so
+  this is a fix by reading, not by a failing measurement.
+
+### 10e. Every menu entry, and what 7.x added (measured 2026-10-30, second pass)
+
+Every entry of Delacor's Tools > DQMH menu now has a tool; three are new and exist for **7.x only**,
+because their scripters were read and run on 7.1.2 and never on 5.x. On a classic station they
+answer `needsDqmh7` rather than guess (`DqmhLayout.ResolveV7Only`).
+
+| menu entry | tool | 7.x |
+|---|---|---|
+| Event > Create New DQMH Event | `lvai_dqmh_new_event` | all four types; `requestScoping` (Public / Private / Local Instance) and `consumingLoop` new, 7.x only |
+| Event > Convert DQMH Event | `lvai_dqmh_convert_event` | also into a Round Trip (`toEventType`) |
+| Event > Duplicate DQMH Event | `lvai_dqmh_duplicate_event` | NEW |
+| Event > Remove / Rename DQMH Event | `lvai_dqmh_remove_event`, `_rename_event` | yes |
+| Module > Create DQMH Module Template | `lvai_dqmh_create_module_template` | nine-slot metadata, below |
+| Module > Add Helper Loop to DQMH Module | `lvai_dqmh_add_helper_loop` | NEW |
+| Module > Add New / Rename DQMH Module | `lvai_dqmh_new_module`, `_rename_module` | yes |
+| Module > Duplicate DQMH Module | `lvai_dqmh_duplicate_module` | NEW |
+| Module > Validate DQMH Module | `lvai_dqmh_validate_module` | yes |
+| Real-Time Tools > Create RT Tester (the only entry) | `lvai_dqmh_create_rt_tester` | yes |
+| Testing Tools > New DQMH Unit Test | `lvai_dqmh_new_unit_test` | yes |
+
+- **Duplicate Event.** `Duplicate Event.vi` takes Source and Destination Module, an INDEX, the new
+  names, `Desc` and `Consuming Event Loop`. The index points into the list as `Correct Round Trip
+  Events in List.vi` leaves it - Delacor's ring strings with their type prefix, a Round Trip's two
+  halves as one entry (`Round Trip: Set Target.vi`). The wrapper lists that corrected list in a dry
+  run and the tool matches the index by name. An empty description copies the source's - cut at
+  Delacor's `_____` footer, because `Get VI.Description` returns it and Script New Event.vi appends
+  it again: copied whole, the footer came out twice (measured). Measured: a Request and Wait for
+  Reply copied with arguments and reply; source and destination may be different modules.
+- **Duplicate Module.** `Scripter - Duplicate Module.vi` writes into `<Save Folder>\<New Name>` -
+  Save Folder is the PARENT, measured (given `...\Kiln` it wrote `...\Kiln\Kiln`). Every file is
+  copied and renamed except the RT tester. **A source whose Main.vi still calls a VI that no longer
+  exists** - the leftover of a removed Round Trip, which Delacor leaves for a person - **makes
+  LabVIEW open "Find the VI Named ..." file dialogs mid-copy**, three of them in the measured run,
+  answered by hand; the copy then completed. The tool's description says to clean such leftovers
+  first.
+- **Add Helper Loop.** `Script New Helper Loop.vi` takes only Module Info and the name. The dry run
+  lists the existing loops through `Get Private Event Consuming Loops.vi` (`Event Handling Loop`
+  before, `Event Handling Loop, Acquisition Loop` after - measured), which is also the list a
+  private request's consuming loop is chosen from.
+- **Request Scoping.** A `Private Request` named `Set Rate`, consumed by `Acquisition Loop`, was
+  scripted into the library's `Private Requests` folder (measured). Public stays the default.
+- **Template.** 7.x's `Create Template Core.vi` fills NINE `%s` slots: the six of 5.x plus
+  `DefaultTesterVirtualFolder`, `DefaultModuleVirtualFolder`, `DefaultRelativeSavePath`. Empty
+  means `Testers`, `Modules`, `Libraries`; a save path that is empty or not relative means
+  `Libraries`; a relative one is written with `/` - read off its diagram. The tool refused 7.x with
+  `metadataTemplateChanged` until then, which is what it is for. Measured: the template appeared in
+  Delacor's catalogue as module type 3; the probe template was removed again afterwards.
+- **Validate.** 7.x names `Main VI broken` and `Tester VI broken` (measured on a broken module),
+  where 5.x answered PASS.
+
+**End to end through the tools themselves** (not only the wrappers), on the server built from this
+change: `lvai_dqmh_new_module` (Pump, 52 files, both VIs executable, 28 s), `lvai_dqmh_new_event`
+(a Request with two arguments - `newModuleFiles: 2` of 2, the #112b count right, tester wired,
+everything executable), `lvai_dqmh_rename_event`, `lvai_dqmh_validate_module` and
+`lvai_dqmh_create_module_template`. **Not yet through the tools**: the three new tools and the new
+parameters, because a client fetches the tool list once at session start - their wrappers were run
+directly, as listed above. `lvai_dqmh_place_handler` against a 7.x frame is not measured.

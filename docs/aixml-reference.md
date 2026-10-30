@@ -1802,6 +1802,16 @@ Measured 2026-08-09 on LabVIEW 2026, four documents differing only in that order
 | `Constant`, `cluster{int32.Module ID,bool.Power State,bool.Self Test Result}` | fields, then `input cluster` | **validates** |
 | `Constant`, same type | `input cluster`, then fields | `Cluster is invalid or empty` |
 
+**The pylabview composer matches these inputs BY NAME, so a document that breaks this rule
+composes and runs there and is broken only on grpc.** Measured 2026-10-30: the DQMH 7.x event
+wrapper listed `input cluster` first and its eleven fields in another order, built and scripted
+events on pylabview, and on grpc came out `eBad` with exactly the messages above - every input
+one field off, a 13-field typedef reported as "a cluster of 0 elements". **`ValidateAIXML`
+accepted it**, and a probe holding the same 13-field constant alone converted clean, so neither
+pointed at the cause; only an export of the broken VI did, its `inputs` shifted against `fields`.
+`DqmhLayoutTests.Every_shipped_bundler_lists_its_inputs_in_field_order` checks every shipped
+script now.
+
 So the cluster `Constant` is fine too — the old text blamed it for the same reason it blamed the
 node. The working document was then generated with `ConvertAIXMLToVI` and re-exported: LabVIEW
 writes back `inputs="code:99.value,input cluster:43.value"`, fields first, byte-identical in shape

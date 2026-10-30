@@ -279,6 +279,15 @@ internal static class DiagramLayout
         var notes = new List<DObject>();
         foreach (var t in labels)
         {
+            // a comment with an ARROW hangs on what the arrow points at, however far off it sat:
+            // as a note it went to a corner and its arrow ran across the diagram (DQMH 7.x loose
+            // #CodeNeeded calls, 2026-10-30)
+            if (CommentArrows.TargetOf(t, layoutNodes, ctx.Model.Arrows) is { } pointed)
+            {
+                if (!anchored.TryGetValue(pointed, out var own)) anchored[pointed] = own = [];
+                own.Add(t);
+                continue;
+            }
             // a frame's own note goes to the top of the frame whatever it sits next to: NI's
             // clean-up puts such blocks beside any node, so nearness says nothing about them
             if (d.Owner is not null && (t.Box.H >= FrameNoteHeight || t.Box.W > NoteWidth))

@@ -61,6 +61,13 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
         [Description("Copy the module into LabVIEW Data (Delacor's default); false refers to it in place")]
         bool copyToLabviewData = true,
         [Description("Replace an existing template of the same name")] bool overwrite = false,
+        [Description("DQMH 7.x only: the project virtual folder a module made from this template puts " +
+                     "its tester in; empty is Delacor's default, 'Testers'")] string testerVirtualFolder = "",
+        [Description("DQMH 7.x only: the project virtual folder for the module library; empty is " +
+                     "Delacor's default, 'Modules'")] string libraryVirtualFolder = "",
+        [Description("DQMH 7.x only: where a module made from this template is saved, relative to " +
+                     "its project; empty or absolute is Delacor's default, 'Libraries'")]
+        string relativeSavePath = "",
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
@@ -112,11 +119,20 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
                 return Json.Error("metadataTemplateUnreadable",
                     "Could not read the `Meta Data XML Template` constant from Create Template Core.vi.",
                     new { exportErrorCode, ErrorMessage = exportMessage });
-            if (Regex.Matches(template, "%s").Count != 6 || template.Replace("%s", "").Contains('%'))
+            // DQMH 5 has six slots; DQMH 7.x nine - the three defaults a module made from the
+            // template starts with (read off its Create Template Core.vi 2026-10-30). Anything else
+            // is refused rather than guessed at.
+            var slots = Regex.Matches(template, "%s").Count;
+            if (slots is not (6 or 9) || template.Replace("%s", "").Contains('%'))
                 return Json.Error("metadataTemplateChanged",
-                    "This DQMH version's metadata template is not the six-%s template measured on " +
-                    "2026-10-06, so it is not filled in by guesswork. Create the template with " +
+                    $"This DQMH version's metadata template has {slots} %s slots, where DQMH 5 has six " +
+                    "and DQMH 7.x nine, so it is not filled in by guesswork. Create the template with " +
                     "Delacor's own dialog.");
+            if (slots == 6 && (testerVirtualFolder ?? "").Length + (libraryVirtualFolder ?? "").Length
+                    + (relativeSavePath ?? "").Length > 0)
+                return Json.Error("badArguments",
+                    "testerVirtualFolder, libraryVirtualFolder and relativeSavePath are DQMH 7.x " +
+                    "template fields - this station's template has none of them.");
 
             // ---- 2. refuse to overwrite unless asked ---------------------------------------------
             var metadataFile = Path.Combine(metadataFolder, title + ".xml");
@@ -138,6 +154,9 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
             }
             var values = MetadataValues(title, description ?? "", relative, library, tester,
                 copyToLabviewData);
+            if (slots == 9)
+                values = [.. values, .. Dqmh7Defaults(testerVirtualFolder, libraryVirtualFolder,
+                    relativeSavePath)];
             Directory.CreateDirectory(metadataFolder);
             File.WriteAllText(metadataFile, Fill(template, values).ReplaceLineEndings("\r\n"),
                 Encoding.Latin1);
@@ -200,6 +219,20 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
             ? [title, description, relative.Length > 0 ? $"{relative}/{title}" : title,
                Path.GetFileName(library), Path.GetFileName(tester), "FALSE"]
             : [title, description, "", library, tester, "TRUE"];
+
+    /// <summary>
+    /// The three slots DQMH 7.x added, filled the way `Create Template Core.vi` fills them (read
+    /// 2026-10-30): an empty tester folder is `Testers`, an empty library folder `Modules`, and a
+    /// save path that is empty or not relative is `Libraries`; a relative one is written with `/`.
+    /// </summary>
+    internal static string[] Dqmh7Defaults(string? testerFolder, string? libraryFolder, string? savePath)
+    {
+        var tester = string.IsNullOrWhiteSpace(testerFolder) ? "Testers" : testerFolder.Trim();
+        var library = string.IsNullOrWhiteSpace(libraryFolder) ? "Modules" : libraryFolder.Trim();
+        var path = (savePath ?? "").Trim().Replace('\\', '/').Trim('/');
+        var relative = path.Length > 0 && !Path.IsPathRooted(savePath!.Trim()) && !path.Contains(':');
+        return [tester, library, relative ? path : "Libraries"];
+    }
 
     /// <summary>
     /// Format Into String with `%s` only: each slot takes the next value, in order, RAW - Delacor

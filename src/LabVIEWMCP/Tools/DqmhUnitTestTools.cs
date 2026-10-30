@@ -88,11 +88,10 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
                     $"{HelperName}.xml was not found in the scripts folder next to the exe - " +
                     "lvai_status reports that folder as scriptsDirectory.");
 
-            if (DqmhHeadless.TargetPaths(Targets) is not { } targets)
-                return Json.Error("dqmhMissing",
-                    "Delacor DQMH is not installed: Script Unit Test.vi was not found under any " +
-                    "LabVIEW installation's project\\Delacor\\DQMH folder.",
+            if (DqmhLayout.Resolve(scripts, HelperName, Targets) is not { } route)
+                return Json.Error("dqmhMissing", DqmhLayout.MissingMessage("Script Unit Test.vi"),
                     new { lookedFor = Targets });
+            var (targets, helperName) = (route.Targets, route.Helper);
 
             var stopwatch = Stopwatch.StartNew();
             var steps = new JsonArray();
@@ -108,7 +107,7 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             // ---- 1. the wrapper, generated against LOADED Delacor VIs --------------------------
             var dqmh = new DqmhTools(connection);
             var headless = new DqmhHeadless(connection);
-            if (await headless.EnsureWrapperAsync(scripts, HelperName, targets, projectPath, steps,
+            if (await headless.EnsureWrapperAsync(scripts, helperName, targets, projectPath, steps,
                     timeoutSeconds, ct) is { } wrapperError)
                 return wrapperError;
 
@@ -138,12 +137,12 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             {
             while (true)
             {
-                run = await dqmh.RunAsync(scripts, HelperName,
+                run = await dqmh.RunAsync(scripts, helperName,
                     new() { ["Module Name"] = module, ["Event Name"] = evt }, timeoutSeconds, ct);
                 runs++;
                 if (run is null)
                     return Json.Error("helperMissing",
-                        $"{HelperName} could not be run - the wrapper or lvai_run_and_read is missing.",
+                        $"{helperName} could not be run - the wrapper or lvai_run_and_read is missing.",
                         new { steps });
                 steps.Add(new JsonObject
                 {
@@ -215,6 +214,7 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             var answer = new JsonObject
             {
                 ["ok"] = created.Count > 0,
+                ["dqmhGeneration"] = route.GenerationName,
                 ["module"] = module,
                 ["event"] = evt,
                 ["createdFiles"] = createdJson,

@@ -134,6 +134,7 @@ class	kind	name	files
 {LV.Application}	method	FeatureToggleEnabled	1
 {LV.Application}	method	Get Broken VI List	1
 {LV.Application}	method	Get VI Tag	1
+{LV.Application}	method	Get VI.Description	1
 {LV.Application}	method	LVClass.Create	2
 {LV.Application}	method	LVClass.Create Interface	1
 {LV.Application}	method	LVClass.Open	19

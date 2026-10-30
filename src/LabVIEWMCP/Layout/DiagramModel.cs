@@ -123,6 +123,8 @@ internal sealed class DiagramModel
     public Dictionary<string, Diagram> Diagrams { get; } = new(StringComparer.Ordinal);
     public Diagram Top => Diagrams["0"];
     public IEnumerable<DObject> AllObjects => Diagrams.Values.SelectMany(d => d.Objects);
+    /// <summary>Where arrowed comments point, read from the heap - the dump cannot say.</summary>
+    public IReadOnlyList<CommentArrow> Arrows { get; set; } = [];
 
     public static DiagramModel Parse(IEnumerable<string> lines)
     {

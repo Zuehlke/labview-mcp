@@ -67,4 +67,24 @@ public class ResumableCallTests
             () => release.Task, "again", CancellationToken.None));
         Assert.True((bool)second["ok"]!);
     }
+
+    /// <summary>
+    /// 2026-10-30: a job that failed when LabVIEW was killed was handed to the same call on the
+    /// restarted LabVIEW. A finished job is the answer only while LabVIEW is the same instance and
+    /// the answer is fresh.
+    /// </summary>
+    [Fact]
+    public void A_finished_job_is_stale_after_a_labview_restart_or_long_after_it_ended()
+    {
+        var started = new DateTimeOffset(2026, 10, 30, 20, 36, 48, TimeSpan.Zero);
+        var ran = TimeSpan.FromSeconds(80);
+        // collected a minute later, same LabVIEW: the answer
+        Assert.False(ResumableCall.IsStale(started, true, ran, started.AddMinutes(1), started.AddMinutes(-30)));
+        // LabVIEW restarted after the job began
+        Assert.True(ResumableCall.IsStale(started, true, ran, started.AddMinutes(6), started.AddMinutes(4)));
+        // nobody collected it for longer than the keep time
+        Assert.True(ResumableCall.IsStale(started, true, ran, started + ran + ResumableCall.KeepFinished + TimeSpan.FromSeconds(1), null));
+        // a running job is never stale - a second call must attach, not start another into LabVIEW
+        Assert.False(ResumableCall.IsStale(started, false, ran, started.AddHours(1), started.AddMinutes(4)));
+    }
 }

@@ -657,10 +657,18 @@ until it is recomposed or patched.
   `Initialize` frame, Delacor stacks independent property and invoke nodes into 497 px. The engine
   gives each data-flow stage a column and needs 761 px. Stop Module's chain through four nested
   cases is the same at every level.
-- **A comment with an ARROW to a node.** Delacor's "If the module isn't running anymore ..." points
-  at the node it explains. The comment moves, the arrow stays attached to the node, and the result
-  is a long diagonal across the diagram. The dump does not read where the arrow points, so the
-  engine cannot keep the two together.
+- **A comment with an ARROW to a node - closed 2026-10-30.** Delacor's "If the module isn't
+  running anymore ..." points at the node it explains. The comment moved, the arrow stayed attached
+  to the node, and the result was a long diagonal across the diagram, because the dump does not
+  read where an arrow points. The HEAP does: a `label` carries `<attachment uid>`, that
+  `attachment` element carries `<attachedObject uid>`, and the object with that uid is the target
+  (heap bounds are `(top, left, bottom, right)`). `CommentArrows` reads them through `pylv_extract`
+  (no LabVIEW, about 0.7 s) and matches each to the dump by its text and the offset to the target -
+  the two coordinate systems agree up to a translation. An arrowed comment then hangs on its
+  target however far off it sat; the answer counts them under `commentArrows`. The case that
+  forced it: DQMH 7.1.2 drops a loose call for every Broadcast and private request with a
+  `#DQMH_CodeNeeded` comment 80 px above it, past the 40 px nearness rule, so the comment became a
+  note at the top right and its arrow crossed every loop of Main.vi.
 - **The label band keeps the label's old height** after the structure grew wider. LabVIEW's
   behaviour for that height on a widened structure is not measured.
 

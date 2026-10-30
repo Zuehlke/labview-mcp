@@ -124,7 +124,10 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
 
             var nodeClasses = DqmhHeadless.Listed(dry, "Node Classes");
             var argTerminals = DqmhHeadless.Listed(dry, "Arg Source Terminals").Select(Unmarked).ToList();
-            var replyTerminals = DqmhHeadless.Listed(dry, "Reply Sink Terminals").Select(Unmarked).ToList();
+            // a reply field Delacor already feeds is not the handler's: on a Cloneable 7.x module
+            // `Module ID` comes from the module's own Accessors:Module ID property, and asking the
+            // handler for it refused every Request and Wait for Reply frame (2026-10-30)
+            var (replyTerminals, replyAlreadyFed) = SplitReplySinks(DqmhHeadless.Listed(dry, "Reply Sink Terminals"));
             var texts = DqmhHeadless.Listed(dry, "Decoration Texts");
             var plan = Plan(eventBare, inputs, outputs, argTerminals, replyTerminals);
             var detail = new JsonObject
@@ -134,6 +137,7 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
                 ["frameNodes"] = DqmhHeadless.Array(nodeClasses),
                 ["arguments"] = DqmhHeadless.Array(argTerminals.Except(PlumbingTerminals)),
                 ["replyFields"] = DqmhHeadless.Array(replyTerminals.Except(PlumbingTerminals)),
+                ["replyFieldsAlreadyFed"] = DqmhHeadless.Array(replyAlreadyFed),
                 ["handlerInputs"] = DqmhHeadless.Array(inputs),
                 ["handlerOutputs"] = DqmhHeadless.Array(outputs),
                 ["plan"] = plan.ToJson(),
@@ -231,7 +235,8 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
     /// Which wires to make. Every handler input except `error in` must be a request argument of
     /// the same name, and every reply field must be a handler output of the same name - a gap on
     /// either side is a PROBLEM, because guessing would wire the wrong value. A reply's error
-    /// field takes the handler's `error out`. An argument the handler does not take is only a
+    /// field - `&lt;Event&gt;_error` in DQMH 5, `error` in 7.x - takes the handler's `error out`.
+    /// An argument the handler does not take is only a
     /// warning: a handler may need less than the message carries.
     /// </summary>
     internal static WiringPlan Plan(string eventName, IReadOnlyCollection<string> handlerInputs,
@@ -253,7 +258,10 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         var replyWires = new List<Wire>();
         foreach (var field in replies)
         {
-            if (field == errorField)
+            // DQMH 7.x names the reply cluster's error member plain `error`, where 5.x wrote
+            // `<Event>_error` - issue #111, which refused every 7.x handler for the missing output.
+            // A handler output of that exact name still wins: it is what the author wired.
+            if ((field == errorField || field == "error") && !handlerOutputs.Contains(field))
             {
                 if (handlerOutputs.Contains("error out")) replyWires.Add(new Wire("error out", field));
                 else problems.Add($"The reply field '{field}' needs the handler's 'error out'.");
@@ -269,6 +277,26 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         return new WiringPlan([.. wired.Where(args.Contains)], handlerInputs.Contains("error in"),
             replyWires, problems, warnings);
     }
+
+    /// <summary>
+    /// The reply bundler's terminals split into those the handler must feed and the fields
+    /// Delacor already wired (the connect helper marks those ` &lt;wired&gt;`), plumbing left out of the second.
+    /// </summary>
+    internal static (List<string> Open, List<string> AlreadyFed) SplitReplySinks(IEnumerable<string> sinks)
+    {
+        var all = sinks.ToList();
+        bool Fed(string s) => Unmarked(s) != s || s == DelacorReplyField;
+        return (all.Where(s => !Fed(s)).ToList(),
+                all.Where(Fed).Select(Unmarked).Except(PlumbingTerminals).ToList());
+    }
+
+    /// <summary>
+    /// A Cloneable module's reply field Delacor always feeds from the module's own
+    /// `Accessors:Module ID` property - a handler cannot know it. Named outright because the live
+    /// run of 2026-10-30 read it WITHOUT the ` &lt;wired&gt;` mark although the export shows the wire,
+    /// so the mark alone did not keep the handler from being asked for it.
+    /// </summary>
+    internal const string DelacorReplyField = "Module ID";
 
     /// <summary>
     /// A sink terminal's name without the connect helper's ` <wired>` mark - the helper marks a

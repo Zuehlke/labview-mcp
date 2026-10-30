@@ -198,12 +198,13 @@
           <Tunnel _id="In15" outputs="value:" uid="4920" uid_parent="4520"/>
           <Tunnel _id="In16" outputs="value:" uid="4921" uid_parent="4520"/>
           <Constant outputs="value:4534.value" type="array{string}" uid="4534" uid_parent="4520" value="[]"/>
-          <Call target="lvbd_connect_by_names.vi" inputs="Source Node:4524.value,Sink Node:4526.value,Source Names:4534.value,Sink Names:4534.value,error in:4522.value" outputs="Connected:,Missing:,Source Terminal Names:4535.argterms,Sink Terminal Names:4535.repterms,error out:4535.error out" uid="4535" uid_parent="4520"/>
-          <Tunnel _id="Out1" inputs="value:4535.error out" uid="4536" uid_parent="4520"/>
+          <Call target="lvbd_connect_by_names.vi" inputs="Source Node:4524.value,Sink Node:4524.value,Source Names:4534.value,Sink Names:4534.value,error in:4522.value" outputs="Connected:,Missing:,Source Terminal Names:4535.argterms,Sink Terminal Names:,error out:4535.error out" uid="4535" uid_parent="4520"/>
+          <Call target="lvbd_connect_by_names.vi" inputs="Source Node:4526.value,Sink Node:4526.value,Source Names:4534.value,Sink Names:4534.value,error in:4535.error out" outputs="Connected:,Missing:,Source Terminal Names:4960.repterms,Sink Terminal Names:,error out:4960.error out" uid="4960" uid_parent="4520"/>
+          <Tunnel _id="Out1" inputs="value:4960.error out" uid="4536" uid_parent="4520"/>
           <Tunnel _id="Out2" inputs="value:4534.value" uid="4537" uid_parent="4520"/>
           <Tunnel _id="Out3" inputs="value:4534.value" uid="4538" uid_parent="4520"/>
           <Tunnel _id="Out4" inputs="value:4535.argterms" uid="4539" uid_parent="4520"/>
-          <Tunnel _id="Out5" inputs="value:4535.repterms" uid="4540" uid_parent="4520"/>
+          <Tunnel _id="Out5" inputs="value:4960.repterms" uid="4540" uid_parent="4520"/>
           <Tunnel _id="Out6" inputs="value:4534.value" uid="4541" uid_parent="4520"/>
         </CaseFrame>
         <CaseFrame selector="False" selectout="" uid="4550" uid_parent="4500">
