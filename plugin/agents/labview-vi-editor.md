@@ -670,6 +670,11 @@ If Phase 4 found no real icon, have the tool draw one instead — **one call, no
 lvai_set_vi_icon  viPath=<abs>  line1="FILE"  line2="SORT"
 ```
 
+**Several VIs at once: `iconsJson`** - a JSON array of `{"viPath", "line1", "line2", "line3"}`, one
+entry per VI, in ONE call. Measured over this repository's transcripts the icon call followed
+itself 70 % of the time; each repeat is a model turn of about 7 s. Set the icons of a build's VIs
+together at the end, and read `failed` for the ones whose read-back did not verify.
+
 `line1` becomes a coloured banner, `line2` and `line3` sit under it, and the tool renders the 32x32
 PNG itself. Optional `bannerColor`, `backgroundColor`, `borderColor` as `RRGGBB`; text colour is
 picked for contrast. **Five characters per line is the ceiling** — abbreviate rather than spill;

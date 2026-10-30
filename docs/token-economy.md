@@ -180,7 +180,9 @@ is most of the `grep`/`python`/`cat` rows.
 
 In order:
 
-1. **Batch what is called back to back.** `lvai_exec_state` and `lvai_set_vi_icon` take one VI
+1. **Batch what is called back to back.** *Built 2026-10-30: `lvai_exec_state` takes `viPaths`,
+   `lvai_set_vi_icon` takes `iconsJson`; one answer, every VI's full answer under `results`.*
+    `lvai_exec_state` and `lvai_set_vi_icon` take one VI
    each; a path list (as `lvai_convert_vis_to_aixml` does) or the icon step folded into
    `lvai_generate_vi` removes about 2 000 turns. `lvai_aixml_reference` already takes a list and is
    still called back to back 47 % of the time - the agents need telling.

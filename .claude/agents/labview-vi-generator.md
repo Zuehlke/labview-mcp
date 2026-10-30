@@ -799,6 +799,11 @@ afterwards by a route that does not keep it.
 lvai_set_vi_icon  viPath=<abs>  line1="DAQ"  line2="3AI"  line3="TDMS"
 ```
 
+**Several VIs at once: `iconsJson`** - a JSON array of `{"viPath", "line1", "line2", "line3"}`, one
+entry per VI, in ONE call. Measured over this repository's transcripts the icon call followed
+itself 70 % of the time; each repeat is a model turn of about 7 s. Set the icons of a build's VIs
+together at the end, and read `failed` for the ones whose read-back did not verify.
+
 `line1` becomes a coloured banner across the top, `line2` and `line3` sit under it, and the tool
 renders the 32x32 PNG, applies it and reads it back. Optional `bannerColor`, `backgroundColor`,
 `borderColor` take `RRGGBB`; the banner defaults to NI blue and the text colour is chosen for

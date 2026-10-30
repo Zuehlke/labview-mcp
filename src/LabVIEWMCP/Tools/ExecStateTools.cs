@@ -90,9 +90,15 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         the broken VI does not name it. Members whose dispatch cannot be read are listed under
         `dispatchUnknown`, never as missing; a VI in no class, or a class with no interface, gets
         null with `missingInterfaceOverridesReason`. An executable VI skips the check.
+        SEVERAL VIs IN ONE CALL: pass viPaths, one path per line (with or without viPath). The
+        answer is then one object - `brokenVis`, `executableVis`, `couldNotOpenVis`, `failed`, and
+        every VI's whole single answer under `results`. Measured over this repository's transcripts
+        the tool was called straight after itself 54 % of the time; a batch costs one model turn
+        where N did, and the VIs are read one after another, so nothing is faster inside LabVIEW.
         """)]
     public async Task<string> ExecStateAsync(
-        [Description("Absolute path to the .vi to interrogate")] string viPath,
+        [Description("Absolute path to the .vi to interrogate. Optional when viPaths is given.")]
+        string? viPath = null,
         [Description("The helper's AIXML source. Defaults to lvai_exec_state.xml in scriptsDirectory.")]
         string? helperAixmlPath = null,
         [Description("Where to keep the generated helper VI. Defaults to a per-user temp directory.")]
@@ -109,7 +115,76 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             starts it.
             """)]
         string? backend = null,
+        [Description("Absolute .vi paths, ONE PER LINE, for several VIs in one answer. May be combined with viPath.")]
+        string? viPaths = null,
         CancellationToken ct = default)
+    {
+        var paths = BatchAnswer.Paths(viPath, viPaths);
+        if (paths.Count == 0)
+            return BatchAnswer.NothingAsked("lvai_exec_state", "viPath", "viPaths");
+        if (paths.Count == 1 && viPaths is null)
+            return await ExecStateOneAsync(paths[0], helperAixmlPath, helperViPath, regenerateHelper,
+                                           timeoutSeconds, backend, ct);
+
+        var items = new List<(string, string)>(paths.Count);
+        foreach (var p in paths)
+        {
+            string answer;
+            try
+            {
+                answer = SingleOverride is { } single
+                    ? await single(p)
+                    : await ExecStateOneAsync(p, helperAixmlPath, helperViPath, regenerateHelper,
+                                              timeoutSeconds, backend, ct);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                answer = BatchAnswer.Threw(p, e);
+            }
+            items.Add((p, answer));
+        }
+        return Json.Document(Summarise(BatchAnswer.Aggregate(items,
+            n => n["ok"]?.GetValue<bool>() == true && n["couldNotOpen"]?.GetValue<bool>() != true)));
+    }
+
+    /// <summary>
+    /// The per-VI answer a batch loop calls in place of the live one - set by a test only, which
+    /// then needs neither LabVIEW nor the helper.
+    /// </summary>
+    internal Func<string, Task<string>>? SingleOverride { get; init; }
+
+    /// <summary>
+    /// The three verdict lists a reader wants first. `failed` (from the aggregate) is where the
+    /// TOOL could not answer - a missing file, a reference that never opened - and is kept apart
+    /// from `brokenVis`, which is a verdict about the VI, for the same reason the single answer
+    /// reports -1 rather than 0.
+    /// </summary>
+    internal static JsonObject Summarise(JsonObject batch)
+    {
+        var broken = new JsonArray();
+        var executable = new JsonArray();
+        var couldNotOpen = new JsonArray();
+        foreach (var r in batch["results"]!.AsArray())
+        {
+            var vi = r!["viPath"]?.GetValue<string>();
+            if (r["ok"]?.GetValue<bool>() != true) continue;
+            if (r["couldNotOpen"]?.GetValue<bool>() == true) couldNotOpen.Add(vi);
+            else if (r["broken"]?.GetValue<bool>() == true) broken.Add(vi);
+            else executable.Add(vi);
+        }
+        batch["brokenVis"] = broken;
+        batch["executableVis"] = executable;
+        batch["couldNotOpenVis"] = couldNotOpen;
+        batch["allExecutable"] = batch["ok"]!.GetValue<bool>() && broken.Count == 0;
+        batch["note"] = "One answer for several VIs, read one after another. `allExecutable` is the " +
+                        "verdict; `brokenVis` names the VIs LabVIEW cannot run, `failed` the ones this " +
+                        "tool could not read at all. Each VI's full single answer is under `results`.";
+        return batch;
+    }
+
+    private async Task<string> ExecStateOneAsync(string viPath, string? helperAixmlPath, string? helperViPath,
+                                                 bool regenerateHelper, int timeoutSeconds, string? backend,
+                                                 CancellationToken ct)
     {
         var full = Path.GetFullPath(viPath);
         if (!File.Exists(full))

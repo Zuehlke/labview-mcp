@@ -454,6 +454,11 @@ diagram. One call each, and let the tool draw the PNG rather than building one y
 lvai_set_vi_icon  viPath=<abs>  line1="CARAY"  line2="SETP"  line3="RANGE"
 ```
 
+**Several VIs at once: `iconsJson`** - a JSON array of `{"viPath", "line1", "line2", "line3"}`, one
+entry per VI, in ONE call. Measured over this repository's transcripts the icon call followed
+itself 70 % of the time; each repeat is a model turn of about 7 s. Set the icons of a build's VIs
+together at the end, and read `failed` for the ones whose read-back did not verify.
+
 `errorCode 91` with empty outputs is the normal read-back artefact and **not** a failure — judge by
 `verified`. It also re-saves each VI, which is a free check that LabVIEW can load it. Do it last:
 regenerating a VI over an existing path destroys its icon. Then delete anything you generated and
