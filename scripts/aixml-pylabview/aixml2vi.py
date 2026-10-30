@@ -69,6 +69,9 @@ SCALARS = {
     # a timestamp and a waveform are MeasureData with a Flavor (measured on an AIXML-generated VI)
     "timestamp": ("MeasureData.TimeStamp", "absTime"),
     "doublewaveform": ("MeasureData.Float64Waveform", "stdMeasureData"),
+    # the IQ data of an niRFSA read, as NI's export of niRFSA Fetch IQ (Complex WDT 1Rec 1Chan).vi
+    # names its `data` indicator (2026-10-30)
+    "complexdoublewaveform": ("MeasureData.Complex128Waveform", "stdMeasureData"),
 }
 # type key (lvheap.type_key) -> the front-panel class of its object
 DDO_OF_KEY = {v[0]: v[1] for v in SCALARS.values()}
@@ -685,7 +688,10 @@ def unverified_wire_type(tree):
                 return bad
         return None
     if t == "MeasureData":
-        return None if tree.get("Flavor") in ("Float64Waveform", "TimeStamp", "Dynamicdata") else "MeasureData." + (tree.get("Flavor") or "")
+        # Complex128Waveform: t196, Build Waveform -> Get Waveform Components carried a complex Y
+        # and dt through, no insanity (2026-10-30) - the wire of every niRFSA IQ read
+        return None if tree.get("Flavor") in ("Float64Waveform", "TimeStamp", "Dynamicdata", "Complex128Waveform") \
+            else "MeasureData." + (tree.get("Flavor") or "")
     if t == "Refnum":
         # TDMSFile: t109, TDMS Open -> TDMS Close, file written and path back (2026-10-10)
         # UDClassInst: a class object out of a subVI (DQMH's Default Module Icon.vi), through a
@@ -709,7 +715,12 @@ def unverified_wire_type(tree):
         # executable, no insanity (t194, 2026-10-30)
         if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "IVIRef", "UsrDefndTag", "TDMSFile", "UDClassInst",
                                        "UserEvent", "EventReg", "Menu", "Queue", "ByteStream", "NotifierRef"):
-            return "Refnum." + (tree.get("RefType") or "?")
+            # UsrDefined is a family of unrelated classes; only NI-TClk's session reference is
+            # measured - niRFSA Get Session Reference -> Build Array -> niTClk Configure For
+            # Homogeneous Triggers -> niTClk Synchronize answered NI's own build's error, no
+            # insanity (t197, 2026-10-30)
+            if not (tree.get("RefType") == "UsrDefined" and tree.get("Ident") == "sessionReferenceClass"):
+                return "Refnum." + (tree.get("RefType") or "?")
         if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
             # a strictly typed VI reference: its pane is the callee's own (t103)
             return None if os.environ.get("AIXML2VI_STRICT_VI_REF_OK", "1") == "1" else "Refnum.StrictVI"
@@ -900,11 +911,35 @@ ANCHOR_K = "_anchor_k"
 ANCHOR_K_SANE = ((0, 200), (0, 120))
 
 
-def _anchor_k(arr):
-    """The anchor offset of a part's array, from the donor's own pair and bounds; a donor that sat
-    inside a structure or a cluster gives no usable k, and the array's index display decides."""
+def _cluster_frame_of(arr, up):
+    """An array's place in the document of the cluster pane it is a field of - own top-left minus
+    the pane's docBounds plus the pane's top-left, the frame set_array_anchors places it in - or
+    None when it is no cluster's field."""
+    e = up.get(arr)
+    while e is not None:
+        cls = e.get("class") or ""
+        if cls == "stdClust":
+            doc = e.find("paneHierarchy/docBounds")
+            if doc is None:
+                return None
+            t, l = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+            dt, dl = lvheap.parse_bounds(doc.text)[:2]
+            pt, pl = lvheap.parse_bounds(e.findtext("paneHierarchy/bounds") or "(0, 0, 0, 0)")[:2]
+            return (t - dt + pt, l - dl + pl)
+        if e.tag == "ddo" or cls in ("stdMeasureData", "indArr", "bDConstDCO"):
+            return None
+        e = up.get(e)
+    return None
+
+
+def _anchor_k(arr, frame=None):
+    """The anchor offset of a part's array, from the donor's own pair and bounds - or, for a field
+    of a cluster, from its place in the cluster pane's document (`frame`), the frame its pair is
+    set in again: read off the raw bounds, the Y array of a waveform constant's element came out
+    one pixel off and was "Insane Array Constant {graphics}" (2026-10-30). A donor that sat
+    inside a structure gives no usable k, and the array's index display decides."""
     pair = _position_pair(arr)
-    t, l = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+    t, l = frame if frame is not None else lvheap.parse_bounds(arr.findtext("bounds"))[:2]
     h, v = _pair_values(pair[0])
     k = (-h - l, -v - t)
     if all(lo <= x <= hi for x, (lo, hi) in zip(k, ANCHOR_K_SANE)):
@@ -1576,12 +1611,13 @@ class Composer:
         # greyed elements (2026-10-12) - so an indArr keeps the donor's anchor OFFSET and gets
         # its pair back once its place is final (set_array_anchors, ANCHOR_K). Any other owner's
         # negative pair (a waveform's insides) is still stripped, as measured clean.
+        up = {c: q for q in heap.iter() for c in q}
         for p in heap.iter():
             pair = _position_pair(p)
             if not pair:
                 continue
             if p.get("class") == "indArr" and p.find("bounds") is not None:
-                p.set(ANCHOR_K, "%d,%d" % _anchor_k(p))
+                p.set(ANCHOR_K, "%d,%d" % _anchor_k(p, _cluster_frame_of(p, up)))
             for c in pair:
                 p.remove(c)
         if own_uid is not None:
@@ -1937,6 +1973,16 @@ class Composer:
         adapt_numeric(ddo, t)
         if is_enum(tree):
             self._set_enum(ddo, tree)
+        if prefix == "const" and in_array and ddo.get("class") == "stdMeasureData":
+            # a WAVEFORM as an array constant's element draws its t0, dt and Y through a cluster
+            # with a pane of its own, placed like a cluster element's: the donor's coordinates
+            # came along (-4525, where pclean.vi holds it) - "Insane Array Constant {graphics}"
+            # on load of NI's niRFSA Multi Record IQ example and of a one-constant probe, where
+            # NI's own build of the probe carries -(the constant's place + the element's)
+            # (2026-10-30)
+            for c in ddo.iter("SL__arrayElement"):
+                if c.get("class") == "stdClust" and c.find("paneHierarchy/origin") is not None:
+                    c.set(self.CLUSTER_ORIGIN, "1")
         if prefix == "fpdco":
             # an LED indicator flipped to a control was measured working (a plain boolean control
             # has its own part since 2026-10-13, NI's push button); a field of a cluster follows
@@ -4976,7 +5022,12 @@ class Composer:
         if kind is None:
             raise Unsupported("structure %r is not composable yet" % el.get("_name"))
         parent = self.diag_of(el)
-        loop, donor_types, src = self.instantiate("struct/%s" % kind, own_uid=el.get("uid"))
+        shell = "struct/%s" % kind
+        if kind == "forLoop" and any(c.tag == "Condition" for c in el):
+            # a For Loop with a conditional terminal is a shell of its own, carrying lTst beside
+            # its N (NI's build of tests/t198_for_loop_conditional.xml, 2026-10-30)
+            shell = "struct/forLoop/conditional"
+        loop, donor_types, src = self.instantiate(shell, own_uid=el.get("uid"))
         for i, e in enumerate(lvheap.typeid_elements(loop)):
             e.set("_t", str(i))     # so pruning below cannot misalign donor types
         inner = Diagram(loop.find("diagramList/SL__arrayElement[@class='diag']"), owner=el)
@@ -8730,6 +8781,13 @@ class Composer:
             # an UNINITIALIZED register, typed by the reader after </VI> (`srtype`) - it keeps
             # its value between calls, as the 2D Math Plots' facades keep their state
             tree = type_tree(given)
+        elif (not init or init[0] is None) and stack == 1 and right is not None and \
+                any(n in self.net_type for _, n in pairs(right.get("inputs")) if n):
+            # an UNINITIALIZED register with no hint - NI's export writes none - takes the type of
+            # the value it is GIVEN each iteration, as a Feedback Node with no initializer takes
+            # its next value's (the scheduler waits for that net); measured on niRFSA's
+            # Synchronization examples, which keep a property read in one (2026-10-30)
+            tree = unlabel(next(self.net_type[n] for _, n in pairs(right.get("inputs")) if n in self.net_type))
         elif not init or init[0] is None or init[0] not in self.net_type:
             raise Unsupported("ShiftReg %s: only an initialized register is composable" % el.get("uid"))
         else:
@@ -9785,6 +9843,11 @@ class Composer:
                             for _, n in pairs(t.get("inputs")) if n] + ([("reg", given)] if given else [])
             if e.tag == "ShiftReg":   # a register's type comes from its initializer
                 left = next(c for c in e if isinstance(c.tag, str) and c.tag == "Left")
+                init = [(k, n) for k, n in pairs(left.get("inputs")) if n]
+                right = next((c for c in e if isinstance(c.tag, str) and c.tag == "Right"), None)
+                if not init and right is not None and e.get("uid") not in getattr(self, "sr_given", {}):
+                    # ...or, uninitialized and with no hint, from the value given each iteration
+                    return [(k, n) for k, n in pairs(right.get("inputs")) if n]
                 return pairs(left.get("inputs"))
             if e.tag == "Tunnel" and is_case(e.get("uid_parent")) and e.get("_id", "").startswith("Out"):
                 halves = case_halves.get((e.get("uid_parent"), e.get("_id")), {}).values()
@@ -9978,6 +10041,13 @@ class Composer:
                     at_, al_ = lvheap.parse_bounds(e.findtext("bounds"))[:2]
                     t, l = t + at_, l + al_
                     continue
+                if e.get("class") == "stdMeasureData" and e.find("bounds") is not None:
+                    # the cluster inside a WAVEFORM element sits at the waveform's place in the
+                    # array: NI's build of a one-constant probe, element (3, 63) in an array at
+                    # (190, 294), carries docBounds (-193, -357) (2026-10-30)
+                    wt, wl = lvheap.parse_bounds(e.findtext("bounds"))[:2]
+                    t, l = t + wt, l + wl
+                    continue
                 if e.get("class") == "stdClust":
                     pp = e.find("paneHierarchy")
                     pdt, pdl = lvheap.parse_bounds(pp.findtext("docBounds"))[:2]
@@ -10001,6 +10071,13 @@ class Composer:
             _shift_bounds(doc, dy, dx)
             for f in pane.find("zPlaneList"):
                 _shift_bounds(f.find("bounds"), dy, dx)
+                # a field's own savedSize is in the same frame - the waveform cluster's Y array
+                # carried its donor's (-4528, -118) where NI writes docBounds less 3 (2026-10-30)
+                for s in f.iter("savedSize"):
+                    _shift_bounds(s, dy, dx)
+            for s in clus.findall("savedSize"):
+                # ...and so is the cluster's own, which NI writes equal to docBounds
+                _shift_bounds(s, dy, dx)
             dt, dl = dt + dy, dl + dx
             pt, pl, pbt, pr = lvheap.parse_bounds(pane.findtext("bounds"))
             oh = dl - pl - (pr - pl + 6) // 2

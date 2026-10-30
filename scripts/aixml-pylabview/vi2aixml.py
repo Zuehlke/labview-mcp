@@ -137,6 +137,7 @@ def aixml_type(tree):
         return "function{%s{%s}}" % (",".join(["%x" % int(tree.get("Pattern") or "0", 16)] + flags), ",".join(parts))
     if t == "MeasureData":
         return {"TimeStamp": "timestamp", "Float64Waveform": "doublewaveform",
+                "Complex128Waveform": "complexdoublewaveform",
                 "Dynamicdata": "dynamicdata"}.get(tree.get("Flavor"))
     if t == "Picture":
         return "picture"

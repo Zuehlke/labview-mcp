@@ -179,4 +179,5 @@
   <Control _name="enum uint32" outputs="value:5960.value" type="uint32{A,B,C}" uid="5960" uid_parent="root" value="0"/>
   <Indicator _name="enum uint32 out" inputs="value:5960.value" type="uint32{A,B,C}" uid="5970" uid_parent="root" value="0"/>
   <Constant _name="enum uint32 k" outputs="value:" type="uint32{A,B,C}" uid="5980" uid_parent="root" value="0"/>
+  <Constant _name="waveform 1d k" outputs="value:" type="array{doublewaveform}" uid="5990" uid_parent="root" value="[]"/>
 </VI>

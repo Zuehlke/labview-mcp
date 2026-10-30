@@ -2023,6 +2023,46 @@ waveform-chart remedy again: `wg t0dt multi` declared in `probes/pgraph.xml`, bu
 harvested `--clean` over the removed part. Both then load executable and their panels open;
 `t110_graphs` carries the indicator and answers `BROKEN (ExecState 0)` with the old part put back.
 
+### The rest of the census closed: 28 of 35 (2026-10-30)
+
+After the IVI property node, four composer gaps stood between 16 examples and a build; all four
+are closed, each with a suite case built FIRST on NI's converter and run there as the reference:
+
+| gap | examples | fix | suite case |
+|---|---|---|---|
+| complex waveform wire, `MeasureData.Complex128Waveform` | 8 | admitted after a run that CARRIES data: `Re/Im To Complex` -> `Build Waveform` -> `Get Waveform Components` -> `Complex To Re/Im` returns `Y` = 1+2i, 3-4i, -0.5+0.25i and `dt` = 0.001, as NI's build does. AIXML spells the type `complexdoublewaveform` (NI's export of `niRFSA Fetch IQ (Complex WDT 1Rec 1Chan).vi`); composer and reader know it, its indicator part is harvested clean, and `Complex To Re/Im`'s `y` (slot 2 of prim 1044) joined the name table. NI's converter takes a complex `Y` on `Build Waveform` only when the node's output feeds a complex waveform - wired to `Get Waveform Components` alone it refuses `Y` | `t196_complex_waveform_wire` |
+| NI-TClk session wire, `Refnum.UsrDefined` | 3 | admitted for `GenClass.sessionReferenceClass` ONLY - a `UsrDefined` refnum is a family of unrelated classes. `niRFSA Get Session Reference` -> `Build Array` -> `niTClk Configure For Homogeneous Triggers` -> `niTClk Synchronize` on a null session answers `code 1`, as NI's build does; which call raised it is not established | `t197_tclk_session_wire` |
+| a For Loop's conditional `stop` | 3 | a For Loop with a `<Condition>` is a shell of its own (`struct/forLoop/conditional`, `loopTestDCO` beside the N terminal), harvested from NI's build; the condition end was already generic. N = 10, stop at i >= 3: `last i` = 3, where 9 would mean the condition was ignored. NI's converter makes the output tunnel last-value, not indexing | `t198_for_loop_conditional` |
+| an UNINITIALIZED shift register with no type hint | 2 | NI's export writes no type for one (only our reader's `srtype` does). The register now waits for the value it is GIVEN each iteration and takes its type from there, as a Feedback Node with no initializer already did; a Case passing the old value on in one frame resolves, because a case output tunnel is typed once one frame's input is. Stores 10*i while i < 2, keeps it otherwise: 10 | `t199_uninitialized_shift_register` |
+
+**28 of the 35 examples now compose, and all 28 load executable with nothing in LabVIEW's log
+but wire-geometry repairs.** The other seven call NI-RFSG, which this station does not have.
+
+**Two more example-cut parts surfaced on the way**, the same shape as the graph part above:
+`Advanced Tuning Features` was eBad with `Error 1013` (a Waveform Graph of `array{uint32}` cut from
+`TDMS Advanced Synchronous Read.vi`), and `Multi Record IQ` was executable but LabVIEW logged
+`Insane Array Constant {graphics}` for an empty array-of-waveforms constant cut from an MGI example.
+Both slots are declared in `pgraph.xml` / `pclean.xml` and harvested clean.
+
+**The clean constant part was STILL insane, and that was the composer**, isolated on a one-constant
+probe against NI's build of the same document. A waveform element of an array constant draws its
+`t0`, `dt` and `Y` through a cluster with a pane of its own, and two things in it were left where the
+donor had them:
+
+- the cluster pane's `docBounds`, `origin`, `minPaneSize` and the `savedSize` of the cluster and its
+  fields (-4525: the donor's place in `pclean.vi`). NI writes `docBounds` = -(the constant's place +
+  the element's) - (-193, -357) for an element at (3, 63) in a constant at (190, 294) - so the
+  element's cluster is now marked for `_set_cluster_frames`, which also steps through a waveform
+  element's place now and moves `savedSize`;
+- the `Y` array's `nRC`/`oRC` anchor, one pixel off: its offset `k` was read off the donor's raw
+  bounds while the anchor is SET in the cluster pane's document. `_anchor_k` now reads it in that
+  same frame. One-variable A/B on one bundle: anchor (-28, -62) is insane, NI's (-28, -61) clean.
+
+**The log check almost passed both arms.** Midway the log reached its 100-event ceiling and stopped
+being written, and after a restart a VI LabVIEW had loaded before came back from the compiled-object
+cache logging nothing - the control arm included. The A/B above is on freshly rebuilt files under new
+names on a restarted LabVIEW, with the control arm insane and the rest clean.
+
 **A new example built on the reachable side, through `labview-vi-generator` on `pylabview`:**
 `RFSA Measure Peak Power.vi` - Initialize, Configure Acquisition Type, Reference Level, Spectrum
 Frequency Center Span, Resolution Bandwidth, Read Power Spectrum (DBL), Close, then the peak by

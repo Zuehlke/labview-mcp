@@ -1,0 +1,186 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="struct" key="struct/forLoop/conditional" source="t198b.vi" clean="1"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="last" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Boolean" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="last" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Boolean" Format="inline" /></types><heap><SL__arrayElement class="forLoop" uid="4210">
+        <objFlags>2304</objFlags>
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="4257">
+            <objFlags>32832</objFlags>
+            <dco class="lMax" uid="4254">
+              <termList elements="2">
+                <SL__arrayElement uid="4256" />
+                <SL__arrayElement uid="4257" />
+                </termList>
+              <typeDesc>TypeID(3)</typeDesc>
+              <dcoFiller>512</dcoFiller>
+              <termBounds>(0, 0, 16, 16)</termBounds>
+              <termBMPs>2</termBMPs>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4211">
+            <objFlags>2129984</objFlags>
+            <dco class="lpTun" uid="4258">
+              <objFlags>2048</objFlags>
+              <termList elements="2">
+                <SL__arrayElement uid="4260" />
+                <SL__arrayElement uid="4211" />
+                </termList>
+              <typeDesc>TypeID(4)</typeDesc>
+              <dsw>4096</dsw>
+              <dcoFiller>4096</dcoFiller>
+              <termBounds>(52, 0, 61, 9)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4214">
+            <objFlags>2097216</objFlags>
+            <dco class="lpTun" uid="4282">
+              <objFlags>2049</objFlags>
+              <termList elements="2">
+                <SL__arrayElement uid="4284" />
+                <SL__arrayElement uid="4214" />
+                </termList>
+              <typeDesc>TypeID(5)</typeDesc>
+              <termBounds>(24, 166, 33, 175)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(241, 400, 331, 575)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>196611</clumpNum>
+        <contRect>(242, 401, 326, 570)</contRect>
+        <tunnelList elements="2">
+          <SL__arrayElement uid="4258" />
+          <SL__arrayElement uid="4282" />
+          </tunnelList>
+        <diagramList elements="1">
+          <SL__arrayElement class="diag" uid="4243">
+            <objFlags>2048</objFlags>
+            <zPlaneList elements="3">
+              <SL__arrayElement uid="4279" />
+              <SL__arrayElement class="prim" uid="4212">
+                <objFlags>65536</objFlags>
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="4267">
+                    <dco class="parm" uid="4265">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(6)</typeDesc>
+                      <termBounds>(0, 10, 21, 21)</termBounds>
+                      <primIndex>110</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4270">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="4268">
+                      <typeDesc>TypeID(7)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(10, 0, 21, 10)</termBounds>
+                      <primIndex>110</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4273">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="4271">
+                      <typeDesc>TypeID(8)</typeDesc>
+                      <termBounds>(0, 0, 10, 10)</termBounds>
+                      <primIndex>110</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(35, 75, 67, 107)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>262147</clumpNum>
+                <primResID>1103</primResID>
+                <primIndex>110</primIndex>
+                </SL__arrayElement>
+              <SL__arrayElement uid="4253" />
+              </zPlaneList>
+            <nodeList elements="2">
+              <SL__arrayElement class="sRN" uid="4247">
+                <termList elements="5">
+                  <SL__arrayElement class="term" uid="4253">
+                    <objFlags>131392</objFlags>
+                    <dco uid="4251" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4256">
+                    <objFlags>131072</objFlags>
+                    <dco uid="4254" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4260">
+                    <objFlags>2228224</objFlags>
+                    <dco uid="4258" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4279">
+                    <objFlags>164160</objFlags>
+                    <dco uid="4213" />
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="4284">
+                    <objFlags>2260992</objFlags>
+                    <dco uid="4282" />
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(-241, -400, -241, -400)</bounds>
+                <shortCount>1</shortCount>
+                <clumpNum>262147</clumpNum>
+                </SL__arrayElement>
+              <SL__arrayElement uid="4212" />
+              </nodeList>
+            <signalList elements="3">
+              <SL__arrayElement class="signal" uid="4285">
+                <termList elements="3">
+                  <SL__arrayElement uid="4253" />
+                  <SL__arrayElement uid="4284" />
+                  <SL__arrayElement uid="4273" />
+                  </termList>
+                <state>1</state>
+                <compressedWireTable>05000805000314121165</compressedWireTable>
+                <lastSignalKind>259</lastSignalKind>
+                </SL__arrayElement>
+              <SL__arrayElement class="signal" uid="4277">
+                <termList elements="2">
+                  <SL__arrayElement uid="4267" />
+                  <SL__arrayElement uid="4279" />
+                  </termList>
+                <state>1</state>
+                <compressedWireTable>0208</compressedWireTable>
+                <lastSignalKind>289</lastSignalKind>
+                </SL__arrayElement>
+              <SL__arrayElement class="signal" uid="4274">
+                <termList elements="2">
+                  <SL__arrayElement uid="4260" />
+                  <SL__arrayElement uid="4270" />
+                  </termList>
+                <state>33</state>
+                <compressedWireTable>0208</compressedWireTable>
+                <lastSignalKind>16643</lastSignalKind>
+                </SL__arrayElement>
+              </signalList>
+            <bgColor>00FFFFFF</bgColor>
+            <firstNodeIdx>3</firstNodeIdx>
+            </SL__arrayElement>
+          </diagramList>
+        <loopIndexDCO class="lCnt" uid="4251">
+          <termList elements="1">
+            <SL__arrayElement uid="4253" />
+            </termList>
+          <typeDesc>TypeID(9)</typeDesc>
+          <termBounds>(20, 41, 36, 57)</termBounds>
+          <termBMPs>1</termBMPs>
+          </loopIndexDCO>
+        <loopLimitDCO uid="4254" />
+        <loopTestDCO class="lTst" uid="4213">
+          <objFlags>65537</objFlags>
+          <termList elements="1">
+            <SL__arrayElement uid="4279" />
+            </termList>
+          <typeDesc>TypeID(10)</typeDesc>
+          <termBounds>(43, 126, 59, 142)</termBounds>
+          <termBMPs>192</termBMPs>
+          </loopTestDCO>
+        <srDCOList elements="0" />
+        <ConditionDCOList elements="0" />
+        <ParForIndexDistribution>00</ParForIndexDistribution>
+        <ParForNumStaticWorkers>00</ParForNumStaticWorkers>
+        <DebuggingEnabled />
+        <OutputInstanceNumberFromP />
+        </SL__arrayElement>
+      </heap></part>

@@ -2200,5 +2200,57 @@
     }
    }
   ]
+ },
+ "t196_complex_waveform_wire": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Y re": "[1,3,-0.5]",
+     "Y im": "[2,-4,0.25]",
+     "dt out": "0.001"
+    }
+   }
+  ]
+ },
+ "t197_tclk_session_wire": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "code": "1"
+    }
+   }
+  ]
+ },
+ "t198_for_loop_conditional": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "last i": "3"
+    }
+   }
+  ]
+ },
+ "t199_uninitialized_shift_register": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "last stored": "10"
+    }
+   }
+  ]
+ },
+ "t200_waveform_array_constant": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "size": "0"
+    }
+   }
+  ]
  }
 }

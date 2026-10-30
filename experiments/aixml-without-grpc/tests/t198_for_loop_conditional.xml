@@ -1,0 +1,11 @@
+<VI _name="T198 For Loop Conditional.vi" description="A For Loop with a conditional terminal: N is 10, the loop stops after the iteration where i reaches 3, and the last i - 3, where 9 would mean the condition was ignored - is read out, as the niRFSA sweep examples stop a sweep on an error.">
+  <Constant _name="N" outputs="value:4200.value" type="int32" uid="4200" uid_parent="root" value="10"/>
+  <Constant _name="last" outputs="value:4201.value" type="int32" uid="4201" uid_parent="root" value="3"/>
+  <Structure _name="For Loop" count="4210.value" maxin="4200.value" maxout="" uid="4210" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4201.value" outputs="value:4211.value" uid="4211" uid_parent="4210"/>
+    <Node _name="Greater Or Equal?" inputs="x:4210.value,y:4211.value" outputs="x &gt;= y?:4212.x &gt;= y?" uid="4212" uid_parent="4210"/>
+    <Condition inputs="value:4212.x &gt;= y?" uid="4213" uid_parent="4210" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4210.value" outputs="value:4214.value" uid="4214" uid_parent="4210"/>
+  </Structure>
+  <Indicator _name="last i" inputs="value:4214.value" type="int32" uid="4220" uid_parent="root" value="0"/>
+</VI>

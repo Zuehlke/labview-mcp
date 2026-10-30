@@ -1,0 +1,6 @@
+<VI _name="T200 Waveform Array Constant.vi" description="An empty array-of-waveforms constant, as NI's niRFSA Multi Record IQ example initializes its records with: its element draws t0, dt and Y in a cluster pane of its own, whose frame and the Y array's anchor are set from where the constant sits.">
+  <Constant _name="array" outputs="value:4200.value" type="array{doublewaveform}" uid="4200" uid_parent="root" value="[]"/>
+  <Indicator _name="out" inputs="value:4200.value" type="array{doublewaveform}" uid="4210" uid_parent="root" value="[]"/>
+  <Node _name="Array Size" inputs="array:4200.value" outputs="size(s):4220.size(s)" uid="4220" uid_parent="root"/>
+  <Indicator _name="size" inputs="value:4220.size(s)" type="int32" uid="4230" uid_parent="root" value="0"/>
+</VI>

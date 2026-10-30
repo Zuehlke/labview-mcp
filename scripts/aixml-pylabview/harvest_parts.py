@@ -618,7 +618,11 @@ class Harvester:
             elif cls in ("whileLoop", "forLoop"):
                 # a whole loop with its tunnels, shift registers and inner diagram; the
                 # composer keeps the shell and one template of each terminal kind
-                self.save("struct", "struct/%s" % cls, source, e, resolve_types(b, e))
+                # a For Loop with a conditional terminal carries a loopTestDCO (lTst) beside its N
+                # (NI's build of tests/t198_for_loop_conditional.xml) - a shell of its own
+                cond = cls == "forLoop" and e.find("loopTestDCO") is not None
+                self.save("struct", "struct/%s%s" % (cls, "/conditional" if cond else ""), source, e,
+                          resolve_types(b, e))
                 pair = shift_register_pair(e)
                 if pair is not None:
                     self.save("srpair", "srpair/%s" % cls, source, pair, resolve_types(b, pair))
