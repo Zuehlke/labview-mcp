@@ -77,7 +77,7 @@ def main(argv):
                 if all(int(p) > 0xFFFF for p in c.split("/")):
                     # LabVIEW's own property codes (104013829) are global
                     key = c
-                elif cls.startswith(("GenClassTag.", "GenClass.", "LV.", "Visa.")):
+                elif cls.startswith(("GenClassTag.", "GenClass.", "LV.", "Visa.", "IVI.")):
                     # a small code is unique only within its class: a DAQmx Timing property's, or
                     # {LV.Application}'s old `Project.ActiveProject`, 146
                     key = "%s|%s" % (cls, c)

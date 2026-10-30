@@ -431,6 +431,10 @@ class Harvester:
         cname = ref_class(rt[0] if rt else None)
         if cname is None and rt and node.get("class") == "propNode":
             cname = aixml2vi.tag_class(rt[0], node.findtext("nodeName"))
+            if cname is not None and cname.startswith("IVI."):
+                # an IVI session's rows are keyed by every name NI uses for a code and carry no
+                # item flags, as NI's converter writes them - learn_ivi_props.py learns them
+                return
             if cname is not None:
                 self.tag_props(b, node, cname, terms, source)
             return

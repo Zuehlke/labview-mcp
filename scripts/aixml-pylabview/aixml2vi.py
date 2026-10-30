@@ -976,7 +976,11 @@ def tag_class(tree, node_name=None):
     refnum (RefType UsrDefndTag): `GenClassTag.<Ident>.<TypeName>` - `NetworkStream.DataExchange`,
     `nisyscfgSession.nisyscfg` - except DAQmx, whose one `Task` refnum carries five property classes
     and is named by the NODE: `GenClassTag.DAQmx Timing.NIDAQ` (learn_node_classes.py over 21 VIs,
-    98 nodes, 2026-10-21; issue #96). None for any other refnum."""
+    98 nodes, 2026-10-21; issue #96). An IVI instrument session is named by its driver,
+    `IVI.niRFSA`, as NI's export writes `type="{IVI.niRFSA}"` (2026-10-30). None for any other
+    refnum."""
+    if tree is not None and tree.get("RefType") == "IVIRef" and tree.get("Ident"):
+        return "IVI.%s" % tree.get("Ident")
     if tree is None or tree.get("RefType") != "UsrDefndTag" or not tree.get("TypeName"):
         return None
     node_name = (node_name or "").strip('"')
@@ -1210,6 +1214,12 @@ def _const_value(tree, value):
                 cb = lvheap.value_bytes(c)
                 body += struct.pack(">B", len(cb)) + cb
         return (b"PTH0" + struct.pack(">I", len(body)) + body).hex().upper()
+    if t == "Refnum" and tree.get("RefType") == "IVIRef":
+        # an IVI session holds its resource name, flattened like a string: NI's converter wrote
+        # 00000007 53696D52465341 for value="SimRFSA" (probes/pivi-sim.xml, 2026-10-30), and
+        # the null session is the empty one, 00000000
+        b = lvheap.value_bytes(unescape(value or ""))
+        return (struct.pack(">I", len(b)) + b).hex().upper()
     if t == "Refnum":
         # a refnum constant is the null refnum - 4 zero bytes (an AIXML-generated probe wrote
         # 0000000000: those plus the default marker); there is no literal for a live one
@@ -3333,7 +3343,7 @@ class Composer:
 
     @staticmethod
     def _vi_server_class(el):
-        m = re.fullmatch(r"\{(LV\.[A-Za-z0-9]+|GenClassTag\.[^.{}]+\.[^{}]+)\}", (el.get("type") or "").strip())
+        m = re.fullmatch(r"\{(LV\.[A-Za-z0-9]+|GenClassTag\.[^.{}]+\.[^{}]+|IVI\.[^.{}]+)\}", (el.get("type") or "").strip())
         if not m:
             raise Unsupported("%s %s: class %r is not composable yet" % (el.get("_name"), el.get("uid"), el.get("type")))
         return m.group(1)
@@ -3496,7 +3506,8 @@ class Composer:
         class as VoidBlock{refnum} (omidTypeDesc) - measured on an AIXML-generated probe."""
         self.check_attrs(el, ("fields", "type", "link"))
         cls = self._vi_server_class(el)
-        tag = cls.startswith("GenClassTag.")
+        # an IVI session is a class named by its refnum too, and composed the same way
+        tag = cls.startswith(("GenClassTag.", "IVI."))
         if tag:
             self._tag_reference_names(el)
         table = self._vi_server_table()
@@ -3573,7 +3584,7 @@ class Composer:
             # a TAG refnum's node is typed with the refnum WIRED into it, which carries more than
             # the class - a Network Stream endpoint holds its data type in NI_VAR_DATATYPE - and
             # NI's node there reads objFlags 131584 (Simple Network Streams - Host.vi, issue #96)
-            if wired_ref is not None and wired_ref.get("RefType") == "UsrDefndTag":
+            if wired_ref is not None and wired_ref.get("RefType") in ("UsrDefndTag", "IVIRef"):
                 ref_tree = lvheap.strip_label(wired_ref)
             elif cls.endswith(".NIDAQ"):
                 # DAQmx's class names the NODE, not the refnum (a Task's Timing properties): with
@@ -3593,6 +3604,13 @@ class Composer:
                                                  "TypeName": "NIDAQ", "Format": "inline"})
             class_tree.append(_void_variant())
             node.find("objFlags").text = "4608"
+        elif tag and cls.startswith("IVI."):
+            # an IVI session: the node typed and named by the wired session (the plain class
+            # refnum when nothing is wired), objFlags 512, each item named by the AIXML field
+            # verbatim with no item flags - NI's converter's build of probes/pivi-props.xml
+            # (2026-10-30)
+            class_tree = ref_tree
+            node.find("objFlags").text = "512"
         elif strict:
             # behind a STRICTLY TYPED control reference (VI Server Reference element=...) the
             # node is typed with that refnum, its oMId names it, and its objFlags are 640, not

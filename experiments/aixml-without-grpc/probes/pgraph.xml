@@ -5,6 +5,7 @@
   <Indicator _name="wg wfms" inputs="value:" style="graph21703" type="array{doublewaveform}" uid="4220" uid_parent="root" value="[]"/>
   <Indicator _name="wg 2d" inputs="value:" style="graph21703" type="array.2{double}" uid="4230" uid_parent="root" value="[]"/>
   <Indicator _name="wg x0dx" inputs="value:" style="graph21703" type="cluster{double.x0,double.dx,array{double}.Y}" uid="4240" uid_parent="root" value="[0,0,[]]"/>
+  <Indicator _name="wg t0dt multi" inputs="value:" style="graph21703" type="array{cluster{double.t0,double.dt,array{double.Numeric}.Y}}" uid="4245" uid_parent="root" value="[]"/>
   <Indicator _name="chart" inputs="value:" style="graph21717" type="double" uid="4250" uid_parent="root" value="0"/>
   <Indicator _name="chart 2d" inputs="value:" style="graph21717" type="array.2{double}" uid="4260" uid_parent="root" value="[]"/>
   <Indicator _name="chart wfm" inputs="value:" style="graph21717" type="doublewaveform" uid="4262" uid_parent="root" value=""/>

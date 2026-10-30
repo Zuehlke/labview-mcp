@@ -2187,5 +2187,18 @@
     }
    }
   ]
+ },
+ "t195_ivi_property_node": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "code": "-1073807346",
+     "model": "",
+     "model short": "",
+     "number of averages": "0"
+    }
+   }
+  ]
  }
 }

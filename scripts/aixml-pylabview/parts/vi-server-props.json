@@ -28,6 +28,14 @@
    "nodeName": "System Session",
    "oMId": "000D"
   },
+  "IVI.niRFSA": {
+   "nodeName": "niRFSA",
+   "oMId": "0004"
+  },
+  "IVI.niRFSG": {
+   "nodeName": "niRFSG",
+   "oMId": "0003"
+  },
   "LV.AbsTime": {
    "nodeName": "AbsTime (strict)",
    "oMId": "000E"
@@ -15564,6 +15572,668 @@
     "label": "TotalVirtMem",
     "source": "Resource Monitor.vi",
     "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "IVI.niRFSA": {
+   "Acquisition:Advanced:Downconverter Center Frequency": {
+    "access": "w",
+    "code": 1150082,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Downconverter Center Frequency",
+    "source": "RFSA In-band Retuning.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Acquisition:Fetch:Fetch Relative To": {
+    "access": "w",
+    "code": 1150045,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Fetch Relative To",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock, and Continuous Acquisition) (5840).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Acquisition:IQ:IQ Carrier Frequency": {
+    "access": "w",
+    "code": 1150059,
+    "declaredBy": "IVI.niRFSA",
+    "label": "IQ Carrier Frequency",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Acquisition:IQ:IQ Rate (S/s)": {
+    "access": "r",
+    "code": 1150007,
+    "declaredBy": "IVI.niRFSA",
+    "label": "IQ Rate",
+    "source": "RFSA Pulse Trigger Acquisition.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Acquisition:Spectrum:Averaging Mode": {
+    "access": "w",
+    "code": 1150016,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Averaging Mode",
+    "source": "RFSA Measure Noise Floor.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Acquisition:Spectrum:Center Frequency": {
+    "access": "w",
+    "code": 1150002,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Center Frequency",
+    "source": "RFSA Downconverter with External Digitizer.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Acquisition:Spectrum:Number Of Averages": {
+    "access": "w",
+    "code": 1150015,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Number of Averages",
+    "source": "RFSA Measure Noise Floor.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Active Channel": {
+    "access": "w",
+    "code": -2,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Active Channel",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Advanced:Downconverter Gain (dB)": {
+    "access": "r",
+    "code": 1150065,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Downconverter Gain",
+    "source": "RFSA Downconverter with External Digitizer.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Advanced:LO Frequency": {
+    "access": "rw",
+    "code": 1150068,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO Frequency",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock) (5840).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Advanced:NI 5601:Downconverter Center Frequency": {
+    "access": "w",
+    "code": 1150082,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Downconverter Center Frequency",
+    "source": "RFSA In-band Retuning.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Advanced:NI 5601:Frequency Settling": {
+    "access": "w",
+    "code": 1150088,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Frequency Settling",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Advanced:NI 5601:Frequency Settling Units": {
+    "access": "w",
+    "code": 1150087,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Frequency Settling Units",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Averaging Mode": {
+    "access": "w",
+    "code": 1150016,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Averaging Mode",
+    "source": "RFSA Measure Noise Floor.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Clocking:Ref Clock Exported Rate:Ref Clock Exported Rate": {
+    "access": "w",
+    "code": 1150326,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Ref Clock Exported Rate",
+    "source": "RFSA Synchronization (NI 5842 Multi-VST Configuration).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Clocking:Ref Clock Exported Terminal": {
+    "access": "w",
+    "code": 1150072,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Ref Clock Exported Terminal",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock) (5840).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Clocking:Ref Clock Rate": {
+    "access": "w",
+    "code": 1150020,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Ref Clock Rate",
+    "source": "RFSA Synchronization (NI 5842 Multi-VST Configuration).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Clocking:Ref Clock Source": {
+    "access": "w",
+    "code": 1150019,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Ref Clock Source",
+    "source": "RFSA Synchronization (NI 5842 Multi-VST Configuration).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Configuration List:Timer Event Interval": {
+    "access": "w",
+    "code": 1150096,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Timer Event Interval",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Device Specific:Vector Signal Transceiver:IQ In Port:Carrier Frequency": {
+    "access": "w",
+    "code": 1150181,
+    "declaredBy": "IVI.niRFSA",
+    "label": "IQ In Port Carrier Frequency",
+    "source": "RFSA Getting Started IQ (IQ Device).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Device Specific:Vector Signal Transceiver:IQ In Port:Vertical Range": {
+    "access": "w",
+    "code": 1150183,
+    "declaredBy": "IVI.niRFSA",
+    "label": "IQ In Port Vertical Range",
+    "source": "RFSA Getting Started Spectrum (IQ Device).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Device Specific:Vector Signal Transceiver:Signal Path:Input Port": {
+    "access": "w",
+    "code": 1150180,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Input Port",
+    "source": "RFSA Getting Started Spectrum (IQ Device).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Device Specific:Vector Signal Transceiver:Signal Path:LO In Power (dBm)": {
+    "access": "r",
+    "code": 1150186,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO In Power",
+    "source": "RFSA In-band Retuning with External LO.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Downconverter Center Frequency": {
+    "access": "w",
+    "code": 1150082,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Downconverter Center Frequency",
+    "source": "RFSA In-band Retuning.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Downconverter Loop Bandwidth": {
+    "access": "w",
+    "code": 1150067,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Downconverter Loop Bandwidth",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "DownconverterCenterFrequency": {
+    "access": "w",
+    "code": 1150082,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Downconverter Center Frequency",
+    "source": "RFSA In-band Retuning.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Fetch Relative To": {
+    "access": "w",
+    "code": 1150045,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Fetch Relative To",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock, and Continuous Acquisition) (5840).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Frequency Settling": {
+    "access": "w",
+    "code": 1150088,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Frequency Settling",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Frequency Settling Units": {
+    "access": "w",
+    "code": 1150087,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Frequency Settling Units",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "IQ Carrier Frequency": {
+    "access": "w",
+    "code": 1150059,
+    "declaredBy": "IVI.niRFSA",
+    "label": "IQ Carrier Frequency",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "IQ In Port Carrier Frequency": {
+    "access": "w",
+    "code": 1150181,
+    "declaredBy": "IVI.niRFSA",
+    "label": "IQ In Port Carrier Frequency",
+    "source": "RFSA Getting Started IQ (IQ Device).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "IQ In Port Vertical Range": {
+    "access": "w",
+    "code": 1150183,
+    "declaredBy": "IVI.niRFSA",
+    "label": "IQ In Port Vertical Range",
+    "source": "RFSA Getting Started Spectrum (IQ Device).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Inherent IVI Attributes:Instrument Identification:Model": {
+    "access": "r",
+    "code": 1050512,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Model",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Input Port": {
+    "access": "w",
+    "code": 1150180,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Input Port",
+    "source": "RFSA Getting Started Spectrum (IQ Device).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "LO Export Enabled": {
+    "access": "w",
+    "code": 1150134,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO Export Enabled",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock) (5840).vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "LO Frequency": {
+    "access": "rw",
+    "code": 1150068,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO Frequency",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock) (5840).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "LO In Power": {
+    "access": "r",
+    "code": 1150186,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO In Power",
+    "source": "RFSA In-band Retuning with External LO.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "LO Source": {
+    "access": "w",
+    "code": 1150162,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO Source",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock) (5840).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "LO YIG Main Coil Drive": {
+    "access": "w",
+    "code": 1150135,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO YIG Main Coil Drive",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "LOFrequency": {
+    "access": "rw",
+    "code": 1150068,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO Frequency",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock) (5840).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Model": {
+    "access": "r",
+    "code": 1050512,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Model",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Number of Averages": {
+    "access": "w",
+    "code": 1150015,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Number of Averages",
+    "source": "RFSA Measure Noise Floor.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "P2P Enabled": {
+    "access": "w",
+    "code": 1150097,
+    "declaredBy": "IVI.niRFSA",
+    "label": "P2P Enabled",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Peer-to-Peer:Enabled": {
+    "access": "w",
+    "code": 1150097,
+    "declaredBy": "IVI.niRFSA",
+    "label": "P2P Enabled",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Ref Clock Exported Rate": {
+    "access": "w",
+    "code": 1150326,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Ref Clock Exported Rate",
+    "source": "RFSA Synchronization (NI 5842 Multi-VST Configuration).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Ref Clock Exported Terminal": {
+    "access": "w",
+    "code": 1150072,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Ref Clock Exported Terminal",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock) (5840).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Ref Clock Rate": {
+    "access": "w",
+    "code": 1150020,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Ref Clock Rate",
+    "source": "RFSA Synchronization (NI 5842 Multi-VST Configuration).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Ref Clock Source": {
+    "access": "w",
+    "code": 1150019,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Ref Clock Source",
+    "source": "RFSA Synchronization (NI 5842 Multi-VST Configuration).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Selected Port": {
+    "access": "w",
+    "code": 1150297,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Selected Ports",
+    "source": "RFSA Getting Started Spectrum (Selected Ports).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Signal Path:Advanced:Downconverter Loop Bandwidth": {
+    "access": "w",
+    "code": 1150067,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Downconverter Loop Bandwidth",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Signal Path:Advanced:Frequency Settling": {
+    "access": "w",
+    "code": 1150088,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Frequency Settling",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Signal Path:Advanced:Frequency Settling Units": {
+    "access": "w",
+    "code": 1150087,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Frequency Settling Units",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Signal Path:Advanced:LO YIG Main Coil Drive": {
+    "access": "w",
+    "code": 1150135,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO YIG Main Coil Drive",
+    "source": "RFSA List Mode Frequency and Power Sweep (Power Triggered).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Signal Path:Advanced:Selected Ports": {
+    "access": "w",
+    "code": 1150297,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Selected Ports",
+    "source": "RFSA Getting Started Spectrum (Selected Ports).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Signal Path:LO Export Enabled": {
+    "access": "w",
+    "code": 1150134,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO Export Enabled",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock) (5840).vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Signal Path:LO Frequency": {
+    "access": "rw",
+    "code": 1150068,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO Frequency",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock) (5840).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Signal Path:LO Source": {
+    "access": "w",
+    "code": 1150162,
+    "declaredBy": "IVI.niRFSA",
+    "label": "LO Source",
+    "source": "RFSA Synchronization (TClk, Shared LO and Reference Clock) (5840).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Step Time": {
+    "access": "w",
+    "code": 1150096,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Timer Event Interval",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Timer Event Interval": {
+    "access": "w",
+    "code": 1150096,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Timer Event Interval",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Triggers:Ref:Minimum Quiet Time": {
+    "access": "w",
+    "code": 1150058,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Min Quiet Time",
+    "source": "RFSA Getting Started Multi Record IQ.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Vertical:Downconverter Gain (dB)": {
+    "access": "r",
+    "code": 1150065,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Downconverter Gain",
+    "source": "RFSA Downconverter with External Digitizer.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Vertical:Reference Level (dBm)": {
+    "access": "w",
+    "code": 1150004,
+    "declaredBy": "IVI.niRFSA",
+    "label": "Reference Level",
+    "source": "RFSA Downconverter with External Digitizer.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "IVI.niRFSG": {
+   "Active Channel": {
+    "access": "w",
+    "code": -2,
+    "dataType": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Active Channel",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Arb:IQ Rate (S/s)": {
+    "access": "w",
+    "code": 1250452,
+    "dataType": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "IQ Rate (S/s)",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Arb:Pre-filter Gain (dB)": {
+    "access": "w",
+    "code": 1150025,
+    "dataType": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Pre-filter Gain (dB)",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Frequency (Hz)": {
+    "access": "rw",
+    "code": 1250001,
+    "dataType": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Frequency (Hz)",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Frequency Settling": {
+    "access": "w",
+    "code": 1150083,
+    "dataType": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Frequency Settling",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Frequency Settling Units": {
+    "access": "w",
+    "code": 1150082,
+    "dataType": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Frequency Settling Units",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "IQ Rate (S/s)": {
+    "access": "w",
+    "code": 1250452,
+    "dataType": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "IQ Rate (S/s)",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Is Finite P2P Generation": {
+    "access": "w",
+    "code": 1150217,
+    "dataType": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Is Finite P2P Generation",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "ListStepTrig.DigEdge.Source": {
+    "access": "w",
+    "code": 1150099,
+    "dataType": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "ConfigListTrig.DigEdge.Source",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "ListStepTrig.Type": {
+    "access": "w",
+    "code": 1150098,
+    "dataType": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "ConfigListTrig.Type",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Loop Bandwidth": {
+    "access": "w",
+    "code": 1150027,
+    "dataType": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Loop Bandwidth",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Model": {
+    "access": "r",
+    "code": 1050512,
+    "dataType": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Model",
+    "source": "RFSA List Mode Open Loop Synchronization with RFSG (Single Waveform).vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Number Of P2P Samples To Generate": {
+    "access": "w",
+    "code": 1150218,
+    "dataType": "<TypeDesc Type=\"NumInt64\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Number Of P2P Samples To Generate",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "P2P Enabled": {
+    "access": "w",
+    "code": 1150123,
+    "dataType": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "P2P Enabled",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Power Level (dBm)": {
+    "access": "w",
+    "code": 1250002,
+    "dataType": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Power Level (dBm)",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Power Level Type": {
+    "access": "w",
+    "code": 1150043,
+    "dataType": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Power Level Type",
+    "source": "RFSA Peer-to-Peer Streaming with RFSG (5673E).vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "Pre-filter Gain (dB)": {
+    "access": "w",
+    "code": 1150025,
+    "dataType": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Pre-filter Gain (dB)",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
+   },
+   "RF:Frequency (Hz)": {
+    "access": "rw",
+    "code": 1250001,
+    "dataType": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />",
+    "declaredBy": "IVI.niRFSG",
+    "label": "Frequency (Hz)",
+    "source": "RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Void\" Format=\"inline\" />"
    }
   },
   "LV.AbsTime": {

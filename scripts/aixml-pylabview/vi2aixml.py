@@ -2556,7 +2556,7 @@ class Reader:
                     # a VISA session's properties: NI exports the node as type="{Visa.Instr}"
                     # (Simple Serial.vi), the class from the refnum's Ident
                     return "Visa." + (tree.get("Ident") or "Instr")
-                if rt == "UsrDefndTag" and aixml2vi.tag_class(tree, node_name):
+                if rt in ("UsrDefndTag", "IVIRef") and aixml2vi.tag_class(tree, node_name):
                     return aixml2vi.tag_class(tree, node_name)     # DAQmx by node, else by Ident
                 if rt == "UsrDefined" and tree.get("Ident") and tree.get("TypeName"):
                     return "GenClass.%s.%s" % (tree.get("Ident"), tree.get("TypeName"))

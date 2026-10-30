@@ -1,0 +1,11 @@
+<VI _name="PIVI Sim.vi" description="Donor and run probe for an IVI session refnum CONSTANT with a value, and IVI property reads on a SIMULATED niRFSA session: Initialize With Options with Simulate=1, three properties read, Close.">
+  <Constant _name="resource name" outputs="value:4200.value" type="ref{IVI.niRFSA}" uid="4200" uid_parent="root" value="SimRFSA"/>
+  <Constant _name="option string" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value="Simulate=1, DriverSetup=Model:5663"/>
+  <Call target="niRFSA Initialize With Options.vi" inputs="resource name:4200.value,option string:4201.value,error in:,id query:,reset:" outputs="instrument handle out:4210.instrument handle out,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Inherent IVI Attributes\3AInstrument Identification\3AModel,read+Acquisition\3ASpectrum\3ACenter Frequency,read+Clocking\3ARef Clock Source" inputs="reference:4210.instrument handle out,error in (no error):4210.error out" outputs="Inherent IVI Attributes\3AInstrument Identification\3AModel:4220.Model,Acquisition\3ASpectrum\3ACenter Frequency:4220.CF,Clocking\3ARef Clock Source:4220.RCS,reference out:4220.reference out,error out:4220.error out" type="{IVI.niRFSA}" uid="4220" uid_parent="root"/>
+  <Call target="niRFSA Close.vi" inputs="instrument handle:4220.reference out,error in:4220.error out" outputs="error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Indicator _name="model" inputs="value:4220.Model" type="string" uid="4240" uid_parent="root" value=""/>
+  <Indicator _name="center frequency" inputs="value:4220.CF" type="double" uid="4241" uid_parent="root" value="0"/>
+  <Indicator _name="ref clock source" inputs="value:4220.RCS" type="string" uid="4242" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4230.error out" type="cluster{bool.status,int32.code,string.source}" uid="4243" uid_parent="root" value="[false,0,]"/>
+</VI>
