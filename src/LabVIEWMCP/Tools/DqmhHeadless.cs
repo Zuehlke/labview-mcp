@@ -438,7 +438,8 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         DqmhTools dqmh, string scripts, string moduleName, string eventName, int typeIndex,
         string typeName, List<DqmhTools.Argument> arguments, List<DqmhTools.Argument> replyArguments,
         string roundTripBroadcastName, string description, bool addTesterButton,
-        int timeoutSeconds, CancellationToken ct)
+        int timeoutSeconds, CancellationToken ct, int requestScoping = 0,
+        string consumingLoop = DqmhTools.DefaultConsumingLoop)
     {
         if (!File.Exists(Path.Combine(scripts, EventHelper + ".xml")))
             return Json.Error("scriptsMissing",
@@ -446,11 +447,15 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         if (EventRequestProblem(eventName, typeIndex, roundTripBroadcastName, arguments, replyArguments)
             is { } problem)
             return Json.Error("badArguments", problem);
-        if (TargetPaths(EventTargets) is not { } targets)
-            return Json.Error("dqmhMissing",
-                "Delacor DQMH is not installed: Script New Event.vi was not found under any " +
-                "LabVIEW installation's project\\Delacor\\DQMH folder.",
+        if (DqmhLayout.Resolve(scripts, EventHelper, EventTargets) is not { } route)
+            return Json.Error("dqmhMissing", DqmhLayout.MissingMessage("Script New Event.vi"),
                 new { lookedFor = EventTargets });
+        var (targets, eventHelper) = (route.Targets, route.Helper);
+        var scoped = requestScoping != 0 || consumingLoop != DqmhTools.DefaultConsumingLoop;
+        if (scoped && route.Generation == DqmhGeneration.Classic)
+            return Json.Error("badArguments",
+                "requestScoping and consumingLoop are DQMH 7.x inputs - the classic Script New Event.vi " +
+                "on this station creates public requests only.");
 
         var stopwatch = Stopwatch.StartNew();
         var steps = new JsonArray();
@@ -462,7 +467,7 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
                 "with lvai_open_file (projectPath + projectName) first.",
                 new { activeProjectCheck = activeNote });
 
-        if (await EnsureWrapperAsync(scripts, EventHelper, targets, projectPath, steps,
+        if (await EnsureWrapperAsync(scripts, eventHelper, targets, projectPath, steps,
                 timeoutSeconds, ct) is { } wrapperError)
             return wrapperError;
 
@@ -480,10 +485,16 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
             ["Reply Payload VI Path"] = "",
             ["Script?"] = "false",
         };
+        // only a 7.x wrapper has these controls, and they are sent only when they differ from its defaults
+        if (scoped)
+        {
+            inputs["Request Scoping"] = requestScoping.ToString();
+            inputs["Request Consuming Loop"] = consumingLoop;
+        }
         var (dry, dryHelperError) = await dqmh.RunDetailedAsync(
-            scripts, EventHelper, Sendable(inputs), timeoutSeconds, ct);
+            scripts, eventHelper, Sendable(inputs), timeoutSeconds, ct);
         if (dry is null)
-            return Json.Error("helperMissing", $"{EventHelper} could not be run.", new { steps });
+            return Json.Error("helperMissing", $"{eventHelper} could not be run.", new { steps });
         if (dryHelperError is not null)
             return Json.Error("helperFailed",
                 "The run helper stopped before the wrapper ran - an input could not be set.",
@@ -493,9 +504,9 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
             && FindListed(Listed(dry, "Module Names"), module) is { } listed && listed != module)
         {
             inputs["Module Name"] = module = listed;
-            dry = await dqmh.RunAsync(scripts, EventHelper, Sendable(inputs), timeoutSeconds, ct);
+            dry = await dqmh.RunAsync(scripts, eventHelper, Sendable(inputs), timeoutSeconds, ct);
             if (dry is null)
-                return Json.Error("helperMissing", $"{EventHelper} could not be run.", new { steps });
+                return Json.Error("helperMissing", $"{eventHelper} could not be run.", new { steps });
             steps.Add(RunStep("dryRun", module, dry));
         }
 
@@ -585,7 +596,12 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
             return r;
 
         // ---- 4. script ----------------------------------------------------------------------
-        var before = Snapshot.TakeOf(projectPath);
+        // ISSUE #112: `createdFiles: []` and `ok: false` for events whose files were plainly
+        // there. A snapshot needs a folder; when the active-project check names no project path
+        // there was none, and every count read 0. The module folder is the fallback - it is
+        // where Delacor writes an event, and it is known from the dry run.
+        var snapshotRoot = SnapshotRoot(projectPath, folder);
+        var before = snapshotRoot is null ? null : Snapshot.Take(snapshotRoot);
         var mainBefore = File.Exists(mainVi) ? new FileInfo(mainVi).Length : -1;
         var mainExecBefore = File.Exists(mainVi) ? await ExecStateAsync(mainVi, timeoutSeconds, ct) : null;
         inputs["Arguments VI Path"] = argumentsVi;
@@ -598,7 +614,7 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         try
         {
             string? runHelperError;
-            (run, runHelperError) = await dqmh.RunDetailedAsync(scripts, EventHelper,
+            (run, runHelperError) = await dqmh.RunDetailedAsync(scripts, eventHelper,
                 Sendable(inputs), Math.Min(timeoutSeconds, 300), ct);
             if (runHelperError is not null)
                 return Json.Error("helperFailed",
@@ -624,7 +640,7 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
             await watch.DisposeAsync();
         }
         if (run is null)
-            return Json.Error("helperMissing", $"{EventHelper} could not be run.", new { steps });
+            return Json.Error("helperMissing", $"{eventHelper} could not be run.", new { steps });
         steps.Add(RunStep("script", module, run));
 
         if (DqmhTools.Failed(run) is { } error)
@@ -681,7 +697,7 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
 
         List<string> created = [], modified = [];
         if (before is not null)
-            (created, modified) = before.Diff(Snapshot.TakeOf(projectPath)!);
+            (created, modified) = before.Diff(Snapshot.Take(snapshotRoot!));
         var scripted = created.Where(f => f.EndsWith(".vi", StringComparison.OrdinalIgnoreCase)
                                           || f.EndsWith(".ctl", StringComparison.OrdinalIgnoreCase))
             .Where(f => folder.Length == 0 || f.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
@@ -712,7 +728,19 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         else if (mainExec is 0)
             completion.Add("Main.vi is not executable after scripting, and this event type has " +
                            "never been measured to cause that - read its errors before going on.");
-        if (testerExec is 0)
+        if (testerExec is 0 && route.Generation == DqmhGeneration.V7 && typeIndex is 1 or 3)
+            completion.Add($"Test {bareModule} API.vi: DQMH 7.x gives every broadcast a tester frame " +
+                           "whose Format Into String carries a #DQMH_CodeNeeded format string " +
+                           "'Response Received - %s' with nothing wired to its %s, which leaves the " +
+                           "tester NOT executable until broadcast data from the Event Data Node is " +
+                           "wired there or the %s is removed (measured on 7.1.2; DQMH 5 did not do " +
+                           "this).");
+        else if (testerExec is 0 && !addTesterButton && typeIndex != 1)
+            completion.Add($"Test {bareModule} API.vi is not executable: with addTesterButton false " +
+                           "Delacor still adds an event case to the tester, with no button and nothing " +
+                           "wired (issue #112). Assign that case to a control in the tester, or delete " +
+                           "it - or create the event with addTesterButton true.");
+        else if (testerExec is 0)
             completion.Add($"Test {bareModule} API.vi is not executable - `testerWiring` says " +
                            "what was connected.");
 
@@ -720,9 +748,13 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         {
             ["ok"] = scripted.Count == expected,
             ["route"] = "headless",
+            ["dqmhGeneration"] = route.GenerationName,
+            ["wrapper"] = eventHelper,
             ["module"] = module,
             ["event"] = eventName.Trim(),
             ["eventType"] = typeName,
+            ["requestScoping"] = DqmhTools.RequestScopings[requestScoping],
+            ["consumingLoop"] = consumingLoop,
             ["moduleExecutable"] = mainExec is 1 && testerExec is 1 or null,
             ["completionNeeded"] = completion,
             ["createdFiles"] = await DescribeAsync(created, timeoutSeconds, ct),
@@ -754,6 +786,18 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         foreach (var (key, value) in detail)
             answer[key] = value?.DeepClone();
         return Json.Document(answer);
+    }
+
+    /// <summary>
+    /// The folder a before/after file comparison watches: the project's own folder, else the
+    /// module folder the dry run named. Null when neither exists.
+    /// </summary>
+    internal static string? SnapshotRoot(string? projectPath, string? moduleFolder)
+    {
+        var projectDirectory = Path.GetDirectoryName(projectPath ?? "");
+        if (!string.IsNullOrEmpty(projectDirectory) && Directory.Exists(projectDirectory))
+            return projectDirectory;
+        return !string.IsNullOrEmpty(moduleFolder) && Directory.Exists(moduleFolder) ? moduleFolder : null;
     }
 
     /// <summary>Every case name in Main.vi's AIXML export - the input of the frame-name check.</summary>

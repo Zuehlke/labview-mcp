@@ -6,7 +6,7 @@ counts on this page against the registration in the source, so they cannot drift
 
 ## What is served
 
-**114 tools over 23 RPCs.** Seventy-five map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**117 tools over 23 RPCs.** Seventy-eight map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon`, `lvai_render_diagrams`, `lvai_layout_diagram` and `lvai_discuss_file` — which compose three RPCs
 rather than wrapping one — `lvai_check_aixml`, which reads an AIXML file, `lvai_describe_class` and `lvai_describe_ctl`, which read a `.lvclass`
 and a `.ctl` off disk and need no LabVIEW at all, the knowledge tools below, and the five `pylv_*`
@@ -130,8 +130,11 @@ reaches a running LabVIEW over its ActiveX server where a question needs one.
 | `lvai_dqmh_new_unit_test` | — (composes `OpenFile` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **creates Delacor's unit test** for one request event of a DQMH module in the active project, with **no dialog and no keystroke** - unattended-safe. A generated wrapper calls Delacor's own `Parse Project for DQMH Modules.vi` and `Script Unit Test.vi` as loaded subVIs of ONE caller, which keeps `Module Info`'s refnums alive. Names may be bare or as Delacor spells them; the answer lists the files written and each VI's exec state - the test VI reads 0 by Delacor's design until its broadcast frames are configured |
 | `lvai_dqmh_remove_event` | — (composes `OpenFile` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **removes a DQMH event** with no dialog through Delacor's `Remove Event.vi`; a Round Trip takes its broadcast half. Delacor leaves Main.vi and the tester to clean up - `completionNeeded` says what |
 | `lvai_dqmh_rename_event` | — (same) | **renames a DQMH event** with no dialog; the new name is checked the way Delacor's dialog checks it with a modal, and the `.lvlib` Delacor leaves unsaved is saved |
-| `lvai_dqmh_convert_event` | — (same) | **converts a plain Request into Request and Wait for Reply** with no dialog; Delacor keeps the old message frame for a person to delete |
-| `lvai_dqmh_validate_module` | — (composes `RunVIAsTopLevel`) | **runs Delacor's headless DQMH validator** over a project and parses `PASS` / `FAIL` / `ERROR` and each finding. Structure only - it said PASS for a broken Main.vi |
+| `lvai_dqmh_convert_event` | — (same) | **converts a plain Request into Request and Wait for Reply** - or, on DQMH 7.x, into a Round Trip - with no dialog; Delacor keeps the old message frame for a person to delete |
+| `lvai_dqmh_duplicate_event` | — (same) | **DQMH 7.x: copies an event under a new name**, into the same or another module, with no dialog through Delacor's `Duplicate Event.vi`; the source is matched by name in the list Delacor's own ring shows |
+| `lvai_dqmh_duplicate_module` | — (same) | **DQMH 7.x: copies a whole module under a new name** with no dialog through Delacor's `Scripter - Duplicate Module.vi`; the RT tester is not copied |
+| `lvai_dqmh_add_helper_loop` | — (same) | **DQMH 7.x: adds a helper loop to a module's Main.vi** with no dialog; a private request can then name it as its consuming loop |
+| `lvai_dqmh_validate_module` | — (composes `RunVIAsTopLevel`) | **runs Delacor's headless DQMH validator** over a project and parses `PASS` / `FAIL` / `ERROR` and each finding. Structure; DQMH 5 said PASS for a broken Main.vi, 7.x names it |
 | `lvai_dqmh_rename_module` | — (composes `OpenFile` + `ConvertAIXMLToVI` + `RunVIAsTopLevel`) | **renames a DQMH module** with no dialog; refuses a name a project library already has. Delacor saves the whole project |
 | `lvai_dqmh_create_rt_tester` | — (same) | **creates a module's Real-Time API tester** with no dialog; Delacor's two modal cases (RT tester exists, tester missing) are refused from the dry run. The RT tester starts out with `#CodeNeeded` frames |
 | `lvai_dqmh_remove_do_something` | — (same) | **removes a module's Do Something example events** with no dialog; Main.vi and the tester stay executable |

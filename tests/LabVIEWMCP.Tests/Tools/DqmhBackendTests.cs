@@ -18,6 +18,7 @@ public class DqmhBackendTests
     [
         typeof(DqmhTools), typeof(DqmhNewModuleTools), typeof(DqmhEventEditTools),
         typeof(DqmhFrameTools), typeof(DqmhTemplateTools), typeof(DqmhUnitTestTools),
+        typeof(DqmhDuplicateEventTools),
     ];
 
     /// <summary>
@@ -33,7 +34,7 @@ public class DqmhBackendTests
             .Where(x => x.Tool?.Name is { } n && n.StartsWith("lvai_dqmh_", StringComparison.Ordinal))
             .ToList();
 
-        Assert.Equal(12, tools.Count);
+        Assert.Equal(15, tools.Count);
         var without = tools.Where(x => x.Method.GetParameters().All(p => p.Name != "backend"))
             .Select(x => x.Tool!.Name).ToList();
         Assert.Empty(without);

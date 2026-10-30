@@ -31,6 +31,35 @@ internal sealed class DqmhTools(LvaiConnection connection)
     private static readonly string[] EventTypes =
         ["Request", "Broadcast", "Request and Wait for Reply", "Round Trip"];
 
+    /// <summary>DQMH 7.x's `Request Scoping` enum, in its order (Event Info (New)--cluster.ctl).</summary>
+    internal static readonly string[] RequestScopings = ["Public Request", "Private Request", "Local Instance"];
+
+    /// <summary>The loop a public request is consumed by, and the default for the others.</summary>
+    internal const string DefaultConsumingLoop = "Event Handling Loop";
+
+    /// <summary>
+    /// A private or local-instance request exists for the two request types only - a Broadcast has
+    /// no consumer, and Delacor's own dialog offers the scoping for requests - and a consuming loop
+    /// other than the event handling loop means nothing for a public one.
+    /// </summary>
+    internal static string? ScopingProblem(int typeIndex, int scoping, string consumingLoop)
+    {
+        if (scoping != 0 && typeIndex is 1 or 3)
+            return "requestScoping applies to a Request or a Request and Wait for Reply only.";
+        if (scoping == 0 && !string.Equals(consumingLoop, DefaultConsumingLoop, StringComparison.Ordinal))
+            return "consumingLoop names the loop of a PRIVATE or LOCAL INSTANCE request; a public " +
+                   $"request is always consumed by the {DefaultConsumingLoop}.";
+        return null;
+    }
+
+    /// <summary>An event type's index, by name ignoring case; null for no such type.</summary>
+    internal static int? ParseEventType(string name)
+    {
+        var index = Array.FindIndex(EventTypes,
+            t => string.Equals(t, name.Trim(), StringComparison.OrdinalIgnoreCase));
+        return index < 0 ? null : index;
+    }
+
     [McpServerTool(Name = "lvai_dqmh_new_event", Destructive = true, OpenWorld = true,
         Title = "Create a DQMH event")]
     [Description("""
@@ -45,6 +74,12 @@ internal sealed class DqmhTools(LvaiConnection connection)
         labels, an event name already used as a file or as a Main.vi case - are made here and
         refused by name. The answer lists the files written with each VI's exec state and
         confirms Main.vi is still executable. Names may be bare or as Delacor spells them.
+
+        BOTH DQMH GENERATIONS: DQMH 5/6 (scripting under project\Delacor\DQMH) and DQMH 7.x
+        (shared scripting VIs moved to vi.lib, Script New Event.vi taking one Event Info cluster)
+        are read off the installation and driven by their own wrapper; `dqmhGeneration` in the
+        answer says which ran. On 7.x a Broadcast also leaves the API tester NOT executable until
+        its #DQMH_CodeNeeded status string is wired - `completionNeeded` says so.
 
         A project must be OPEN AND ACTIVE.
         """)]
@@ -80,8 +115,19 @@ internal sealed class DqmhTools(LvaiConnection connection)
         [Description("Event description. Delacor writes it into the message-handling frame's " +
                      "label, where it documents the event on the module's block diagram.")]
         string description = "",
-        [Description("Add a button to the module's API tester that fires this event")]
+        [Description("Add a button to the module's API tester that fires this event. FALSE STILL " +
+                     "ADDS AN EVENT CASE to the tester - Delacor's own behaviour - with no button and " +
+                     "nothing wired, which leaves the tester NOT executable until that case is assigned " +
+                     "or deleted (issue #112); keep true unless that is what you want")]
         bool addTesterButton = true,
+        [Description("DQMH 7.x only, Request and Request and Wait for Reply only: 'Public Request' " +
+                     "(default), 'Private Request' or 'Local Instance'. A private or local-instance " +
+                     "request is consumed by the loop named in consumingLoop")]
+        string requestScoping = "Public Request",
+        [Description("DQMH 7.x only: the loop of Main.vi that consumes a PRIVATE or LOCAL INSTANCE " +
+                     "request - 'Event Handling Loop' (default) or a helper loop made with " +
+                     "lvai_dqmh_add_helper_loop")]
+        string consumingLoop = "Event Handling Loop",
         [Description("Local budget in seconds; the scripting itself takes tens of seconds")]
         int timeoutSeconds = 600,
         [Description(BackendDescription)] string? backend = null,
@@ -132,6 +178,15 @@ internal sealed class DqmhTools(LvaiConnection connection)
                         roundTripBroadcastName,
                     });
 
+            var scoping = Array.FindIndex(RequestScopings,
+                s => string.Equals(s, (requestScoping ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
+            if (scoping < 0)
+                return Json.Error("badArguments", $"'{requestScoping}' is not a request scoping.",
+                    new { accepted = RequestScopings });
+            var loop = string.IsNullOrWhiteSpace(consumingLoop) ? DefaultConsumingLoop : consumingLoop.Trim();
+            if (ScopingProblem(typeIndex, scoping, loop) is { } scopingProblem)
+                return Json.Error("badArguments", scopingProblem);
+
             if (StatusTools.ScriptsDirectory() is not { } scripts)
                 return Json.Error("scriptsMissing",
                     "No scripts folder next to the exe - lvai_status reports it as " +
@@ -140,7 +195,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
             return await new DqmhHeadless(connection).NewEventAsync(
                 this, scripts, moduleName, eventName, typeIndex, EventTypes[typeIndex],
                 arguments, replyArguments, roundTripBroadcastName, description,
-                addTesterButton, timeoutSeconds, ct);
+                addTesterButton, timeoutSeconds, ct, scoping, loop);
         }));
 
     /// <summary>The `backend` parameter text every DQMH tool shares.</summary>

@@ -231,7 +231,8 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
     /// Which wires to make. Every handler input except `error in` must be a request argument of
     /// the same name, and every reply field must be a handler output of the same name - a gap on
     /// either side is a PROBLEM, because guessing would wire the wrong value. A reply's error
-    /// field takes the handler's `error out`. An argument the handler does not take is only a
+    /// field - `&lt;Event&gt;_error` in DQMH 5, `error` in 7.x - takes the handler's `error out`.
+    /// An argument the handler does not take is only a
     /// warning: a handler may need less than the message carries.
     /// </summary>
     internal static WiringPlan Plan(string eventName, IReadOnlyCollection<string> handlerInputs,
@@ -253,7 +254,10 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         var replyWires = new List<Wire>();
         foreach (var field in replies)
         {
-            if (field == errorField)
+            // DQMH 7.x names the reply cluster's error member plain `error`, where 5.x wrote
+            // `<Event>_error` - issue #111, which refused every 7.x handler for the missing output.
+            // A handler output of that exact name still wins: it is what the author wired.
+            if ((field == errorField || field == "error") && !handlerOutputs.Contains(field))
             {
                 if (handlerOutputs.Contains("error out")) replyWires.Add(new Wire("error out", field));
                 else problems.Add($"The reply field '{field}' needs the handler's 'error out'.");

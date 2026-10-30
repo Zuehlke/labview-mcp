@@ -39,8 +39,11 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
         MUTATING: creates a DQMH module in the ACTIVE project with NO dialog - Delacor's own
         Script New Module.vi through a generated wrapper, the result of Tools > DQMH > Module > Add
         New DQMH Module. About fifty files are written into `<project folder>\Libraries\<Name>`
-        (Delacor's layout; `saveFolder` overrides it) and the project lists the library under a
-        `<Name> Module` folder with the API tester at target level.
+        (Delacor's layout; `saveFolder` overrides it). DQMH 5/6 list the library under a
+        `<Name> Module` folder with the API tester at target level; DQMH 7.x under `Modules` and
+        the tester under `Testers`, or the folders given in `libraryVirtualFolder` and
+        `testerVirtualFolder`. BOTH DQMH GENERATIONS ARE SUPPORTED: the scripting layout is read
+        off the installation and `dqmhGeneration` says which ran.
         THE MODULE TYPE IS A NAME from the station's catalogue - Singleton, Cloneable, and whatever
         add-ons or templates (lvai_dqmh_create_module_template) contribute; `catalogue` in every
         answer lists them, and a name that is not there is refused. Refused too while anything in
@@ -55,6 +58,11 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
         [Description("Keep Delacor's Do Something example events")] bool includeDoSomething = true,
         [Description("Folder for the module's files, relative to the project folder or absolute; empty means <project folder>\\Libraries\\<Name>")]
         string saveFolder = "",
+        [Description("DQMH 7.x only: the module library's description")] string moduleDescription = "",
+        [Description("DQMH 7.x only: project virtual folder for the API tester; empty is Delacor's " +
+                     "default, 'Testers' (measured)")] string testerVirtualFolder = "",
+        [Description("DQMH 7.x only: project virtual folder for the module library; empty is " +
+                     "Delacor's default, 'Modules' (measured)")] string libraryVirtualFolder = "",
         [Description("Local budget in seconds; Delacor takes 20-45 s to script a module")]
         int timeoutSeconds = 600,
         [Description("Answer within this many seconds; past it the module is still scripted in the " +
@@ -65,11 +73,14 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
         // The backend is resolved BEFORE the detached run starts, so the run inherits it.
         await DqmhTools.WithBackendAsync(backend, "lvai_dqmh_new_module", () =>
         {
+            var options = new ModuleOptions((moduleDescription ?? "").Trim(),
+                (testerVirtualFolder ?? "").Trim(), (libraryVirtualFolder ?? "").Trim());
             var key = string.Join("|", (moduleName ?? "").Trim(), (moduleType ?? "").Trim(),
-                includeDoSomething, (saveFolder ?? "").Trim(),
+                includeDoSomething, (saveFolder ?? "").Trim(), options,
                 DqmhTools.OnPyLabview ? AixmlBackend.PyLabview : AixmlBackend.Grpc);
             return ResumableCall.RunAsync(Helper, key, TimeSpan.FromSeconds(answerWithinSeconds),
-                () => CreateAsync(moduleName, moduleType, includeDoSomething, saveFolder, timeoutSeconds),
+                () => CreateAsync(moduleName, moduleType, includeDoSomething, saveFolder, options,
+                    timeoutSeconds),
                 "Call lvai_dqmh_new_module again with the SAME arguments: it waits for this run and " +
                 "returns its answer. Do not start other LabVIEW work meanwhile, and do not take a " +
                 "moduleExists refusal on a new call as a failure - the module may be the one this run wrote.",
@@ -80,8 +91,14 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
     /// The whole creation, run detached from the request (CancellationToken.None): a client that
     /// gives up at 60 s must not cancel a scripting run half-way.
     /// </summary>
+    /// <summary>The inputs Script New Module.vi gained in DQMH 7.x; all empty is its dialog's default.</summary>
+    internal sealed record ModuleOptions(string Description, string TesterFolder, string LibraryFolder)
+    {
+        internal bool Any => Description.Length + TesterFolder.Length + LibraryFolder.Length > 0;
+    }
+
     private async Task<string> CreateAsync(string? moduleName, string? moduleType,
-        bool includeDoSomething, string? saveFolder, int timeoutSeconds)
+        bool includeDoSomething, string? saveFolder, ModuleOptions options, int timeoutSeconds)
     {
         var ct = CancellationToken.None;
         return await Rpc.GuardAsync(() => DqmhTools.Routed(async () =>
@@ -94,10 +111,14 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
             if (StatusTools.ScriptsDirectory() is not { } scripts
                 || !File.Exists(Path.Combine(scripts, Helper + ".xml")))
                 return Json.Error("scriptsMissing", $"{Helper}.xml was not found in the scripts folder.");
-            if (DqmhHeadless.TargetPaths(Targets) is not { } targets)
-                return Json.Error("dqmhMissing",
-                    "Delacor DQMH is not installed: Script New Module.vi was not found.",
+            if (DqmhLayout.Resolve(scripts, Helper, Targets) is not { } route)
+                return Json.Error("dqmhMissing", DqmhLayout.MissingMessage("Script New Module.vi"),
                     new { lookedFor = Targets });
+            if (options.Any && route.Generation == DqmhGeneration.Classic)
+                return Json.Error("badArguments",
+                    "moduleDescription, testerVirtualFolder and libraryVirtualFolder are DQMH 7.x " +
+                    "inputs of Script New Module.vi - the classic scripter on this station takes none.");
+            var (targets, helper) = (route.Targets, route.Helper);
 
             var stopwatch = Stopwatch.StartNew();
             var steps = new JsonArray();
@@ -126,7 +147,7 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
 
             var headless = new DqmhHeadless(connection);
             var dqmh = new DqmhTools(connection);
-            if (await headless.EnsureWrapperAsync(scripts, Helper, targets, projectPath, steps,
+            if (await headless.EnsureWrapperAsync(scripts, helper, targets, projectPath, steps,
                     timeoutSeconds, ct) is { } wrapperError)
                 return wrapperError;
 
@@ -139,10 +160,17 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
                 ["Include Do Something"] = includeDoSomething ? "true" : "false",
                 ["Script?"] = "false",
             };
-            var (dry, dryHelperError) = await dqmh.RunDetailedAsync(scripts, Helper, inputs,
+            // Only a 7.x wrapper has these controls, and an empty value is never sent.
+            inputs = DqmhHeadless.Sendable(new Dictionary<string, string>(inputs)
+            {
+                ["Module Description"] = options.Description,
+                ["Virtual Folder for Module Tester"] = options.TesterFolder,
+                ["Virtual Folder for Module Library"] = options.LibraryFolder,
+            });
+            var (dry, dryHelperError) = await dqmh.RunDetailedAsync(scripts, helper, inputs,
                 timeoutSeconds, ct);
             if (dry is null)
-                return Json.Error("helperMissing", $"{Helper} could not be run.", new { steps });
+                return Json.Error("helperMissing", $"{helper} could not be run.", new { steps });
             if (dryHelperError is not null)
                 return Json.Error("helperFailed", "The run helper stopped before the wrapper ran.",
                     new { helperError = dryHelperError, steps });
@@ -200,7 +228,7 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
             try
             {
                 string? runHelperError;
-                (run, runHelperError) = await dqmh.RunDetailedAsync(scripts, Helper, inputs,
+                (run, runHelperError) = await dqmh.RunDetailedAsync(scripts, helper, inputs,
                     timeoutSeconds, ct);
                 if (runHelperError is not null)
                     return Json.Error("helperFailed",
@@ -225,7 +253,7 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
                 await watch.DisposeAsync();
             }
             if (run is null)
-                return Json.Error("helperMissing", $"{Helper} could not be run.", new { steps });
+                return Json.Error("helperMissing", $"{helper} could not be run.", new { steps });
             if (DqmhTools.Failed(run) is { } error)
                 return Json.Error("scriptingFailed",
                     error.Contains("56003") && typeIndex >= BuiltInTypes
@@ -268,6 +296,8 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
             var answer = new JsonObject
             {
                 ["ok"] = problems.Count == 0,
+                ["dqmhGeneration"] = route.GenerationName,
+                ["wrapper"] = helper,
                 ["module"] = name + ".lvlib",
                 ["moduleType"] = catalogue[typeIndex],
                 ["moduleTypeIndex"] = typeIndex,

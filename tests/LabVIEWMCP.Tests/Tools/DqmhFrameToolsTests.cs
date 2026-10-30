@@ -26,6 +26,35 @@ public class DqmhFrameToolsTests
         Assert.Equal(5, plan.Replies.Count);
     }
 
+    /// <summary>
+    /// Issue #111: DQMH 7.x names the reply cluster's error member plain `error`. The handler's
+    /// `error out` feeds it, exactly as it fed `&lt;Event&gt;_error` on DQMH 5.
+    /// </summary>
+    [Fact]
+    public void A_dqmh7_reply_error_field_takes_the_handlers_error_out()
+    {
+        var plan = DqmhFrameTools.Plan("Send Command and Wait", ["Command", "error in"],
+            ["Status", "Payload", "error out"],
+            ["input cluster", "Command", "Wait Notifier", "wait for reply"],
+            ["output cluster", "input cluster", "Status", "Payload", "error"]);
+
+        Assert.Empty(plan.Problems);
+        Assert.Contains(plan.Replies, w => w.From == "error out" && w.To == "error");
+        Assert.Equal(3, plan.Replies.Count);
+    }
+
+    /// <summary>The issue's workaround - a handler output literally named `error` - still wires by name.</summary>
+    [Fact]
+    public void A_handler_output_named_error_is_wired_by_name()
+    {
+        var plan = DqmhFrameTools.Plan("X", ["error in"], ["Status", "error", "error out"],
+            ["input cluster", "Wait Notifier", "wait for reply"],
+            ["output cluster", "input cluster", "Status", "error"]);
+
+        Assert.Empty(plan.Problems);
+        Assert.Contains(plan.Replies, w => w.From == "error" && w.To == "error");
+    }
+
     /// <summary>A name the frame does not carry is refused, never wired to something else.</summary>
     [Fact]
     public void A_misnamed_input_or_a_missing_reply_output_is_a_problem()
@@ -100,6 +129,20 @@ public class DqmhFrameToolsTests
     public void The_main_helper_calls_the_connect_helper()
     {
         var aixml = File.ReadAllText(RepoTree.Path("scripts", "lvdqmh_place_frame_handler.xml"));
-        Assert.Equal(5, Regex.Matches(aixml, "target=\"lvbd_connect_by_names.vi\"").Count);
+        Assert.Equal(6, Regex.Matches(aixml, "target=\"lvbd_connect_by_names.vi\"").Count);
+    }
+
+    /// <summary>
+    /// Issue #110: the dry run asked for the argument terminals with the REPLY node as sink, and
+    /// the connect helper answers nothing when either node is invalid - so a frame with no reply
+    /// listed no arguments and every handler was refused. Each node is now asked about itself.
+    /// </summary>
+    [Fact]
+    public void The_dry_run_lists_argument_terminals_without_a_reply_node()
+    {
+        var aixml = File.ReadAllText(RepoTree.Path("scripts", "lvdqmh_place_frame_handler.xml"));
+        Assert.Contains("Source Node:4524.value,Sink Node:4524.value", aixml);
+        Assert.Contains("Source Node:4526.value,Sink Node:4526.value", aixml);
+        Assert.DoesNotContain("Source Node:4524.value,Sink Node:4526.value", aixml);
     }
 }
