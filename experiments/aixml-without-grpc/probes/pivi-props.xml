@@ -1,0 +1,13 @@
+<VI _name="PIVI Props.vi" description="Donor probe for IVI property nodes: niRFSA properties read and written on an IVI session refnum, in the long catalogue spelling NI's export writes and in a short one. NI's converter builds this one; what it writes for each item - code, PropItemName, types, flags - is what the composer must write.">
+  <Control _name="resource name" outputs="value:4200.value" type="ref{IVI.niRFSA}" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <Control _name="reference level" outputs="value:4202.value" type="double" uid="4202" uid_parent="root" value="0"/>
+  <Node _name="Property Node" fields="read+Inherent IVI Attributes\3AInstrument Identification\3AModel,write+Vertical\3AReference Level (dBm),read+Acquisition\3ASpectrum\3ACenter Frequency,read+Clocking\3ARef Clock Source,read+Acquisition\3ASpectrum\3ANumber Of Averages" inputs="reference:4200.value,error in (no error):4201.value,Vertical\3AReference Level (dBm):4202.value" outputs="Inherent IVI Attributes\3AInstrument Identification\3AModel:4210.Model,Acquisition\3ASpectrum\3ACenter Frequency:4210.CF,Clocking\3ARef Clock Source:4210.RCS,Acquisition\3ASpectrum\3ANumber Of Averages:4210.NOA,reference out:4210.reference out,error out:4210.error out" type="{IVI.niRFSA}" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Model" inputs="reference:4210.reference out,error in (no error):4210.error out" outputs="Model:4220.Model,reference out:4220.reference out,error out:4220.error out" type="{IVI.niRFSA}" uid="4220" uid_parent="root"/>
+  <Indicator _name="model" inputs="value:4210.Model" type="string" uid="4230" uid_parent="root" value=""/>
+  <Indicator _name="model short" inputs="value:4220.Model" type="string" uid="4231" uid_parent="root" value=""/>
+  <Indicator _name="center frequency" inputs="value:4210.CF" type="double" uid="4232" uid_parent="root" value="0"/>
+  <Indicator _name="ref clock source" inputs="value:4210.RCS" type="string" uid="4233" uid_parent="root" value=""/>
+  <Indicator _name="number of averages" inputs="value:4210.NOA" type="int32" uid="4234" uid_parent="root" value="0"/>
+  <Indicator _name="error out" inputs="value:4220.error out" type="cluster{bool.status,int32.code,string.source}" uid="4240" uid_parent="root" value="[false,0,]"/>
+</VI>

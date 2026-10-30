@@ -137,6 +137,7 @@ def aixml_type(tree):
         return "function{%s{%s}}" % (",".join(["%x" % int(tree.get("Pattern") or "0", 16)] + flags), ",".join(parts))
     if t == "MeasureData":
         return {"TimeStamp": "timestamp", "Float64Waveform": "doublewaveform",
+                "Complex128Waveform": "complexdoublewaveform",
                 "Dynamicdata": "dynamicdata"}.get(tree.get("Flavor"))
     if t == "Picture":
         return "picture"
@@ -160,6 +161,9 @@ def aixml_type(tree):
             return "ref{UDClassInst}"
         if rt == "VisaRef":
             return "ref{Visa.%s}" % (tree.get("Ident") or "Instr")
+        if rt == "IVIRef" and tree.get("Ident"):
+            # an IVI instrument session, as NI's export writes niRFSA Initialize's handle
+            return "ref{IVI.%s}" % tree.get("Ident")
         if rt == "Menu":
             return "ref{Menu}"
         if rt == "EventReg" and len(kids) > 1:
@@ -2553,7 +2557,7 @@ class Reader:
                     # a VISA session's properties: NI exports the node as type="{Visa.Instr}"
                     # (Simple Serial.vi), the class from the refnum's Ident
                     return "Visa." + (tree.get("Ident") or "Instr")
-                if rt == "UsrDefndTag" and aixml2vi.tag_class(tree, node_name):
+                if rt in ("UsrDefndTag", "IVIRef") and aixml2vi.tag_class(tree, node_name):
                     return aixml2vi.tag_class(tree, node_name)     # DAQmx by node, else by Ident
                 if rt == "UsrDefined" and tree.get("Ident") and tree.get("TypeName"):
                     return "GenClass.%s.%s" % (tree.get("Ident"), tree.get("TypeName"))

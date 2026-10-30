@@ -2,7 +2,8 @@
 # parmIndex 'out' means the terminal carries no parmIndex, which is how the
 # heap marks an output. Numbering is geometric, bottom-to-top; see FINDINGS 3.8.
 primResID	node	parmIndex	terminal	seen	competing
-1044	?	1	x	3	
+1044	?	1	x	3
+1044	?	2	y	1
 1044	?	out	x + iy	4	
 1045	?	1	r	3	
 1045	?	out	r * e^(i*theta)	5	
@@ -515,6 +516,9 @@ primResID	node	parmIndex	terminal	seen	competing
 8201	?	out	Variant	5	
 8202	?	6	data string	1	
 8202	?	7	type string	1	
+8202	?	3	Variant	1	
+8202	?	4	error in	1	
+8202	?	out	error out	1	
 8203	?	1	type string	1	
 8203	?	2	data string	2	
 8203	?	out	Variant	2	

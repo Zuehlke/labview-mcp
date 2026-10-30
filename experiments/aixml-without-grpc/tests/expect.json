@@ -2176,5 +2176,94 @@
     }
    }
   ]
+ },
+ "t194_ivi_session_refnum": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "handle is null": "True",
+     "constant is null": "True"
+    }
+   }
+  ]
+ },
+ "t195_ivi_property_node": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "code": "-1073807346",
+     "model": "",
+     "model short": "",
+     "number of averages": "0"
+    }
+   }
+  ]
+ },
+ "t196_complex_waveform_wire": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "Y re": "[1,3,-0.5]",
+     "Y im": "[2,-4,0.25]",
+     "dt out": "0.001"
+    }
+   }
+  ]
+ },
+ "t197_tclk_session_wire": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "code": "-250032"
+    }
+   }
+  ]
+ },
+ "t198_for_loop_conditional": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "last i": "3"
+    }
+   }
+  ]
+ },
+ "t199_uninitialized_shift_register": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "last stored": "10"
+    }
+   }
+  ]
+ },
+ "t200_waveform_array_constant": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "size": "0"
+    }
+   }
+  ]
+ },
+ "t201_named_session_literals": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "ivi same": "True",
+     "ivi other same": "False",
+     "visa same": "True",
+     "task same": "True"
+    }
+   }
+  ]
  }
 }

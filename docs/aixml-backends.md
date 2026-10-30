@@ -1892,6 +1892,232 @@ warnings and scoped to the measured case, a double Constant.
   --write` (the suite's LabVIEW-routed saves via `suite_corpus.py` are the source that carries the
   composer's own terminal kinds).
 
+## An IVI instrument session (`ref{IVI.niRFSA}`) had no type, no part and no wire (fixed 2026-10-30)
+
+A user report: an NI-RFSA VI - `niRFSA Initialize.vi` with a `resource name` control, its
+`instrument handle out` into `niRFSA Close.vi`, error chain through both - could only be composed
+on `pylabview` with both handle terminals left unwired and a `#todo` note to wire them by hand.
+Reproduced 2026-10-30 with the nirfsa LVAddon, over the MCP tools:
+
+| probe | `pylabview` before | `grpc` |
+|---|---|---|
+| the intended VI, `resource name` control included | `type 'ref{IVI.niRFSA}' is not composable yet` | `errorCode 0`, 6 947 B, `execState 1` |
+| the same with only the handle wire | `net '4220.instrument handle out' carries a Refnum.IVIRef, which no composed wire has carried yet` | - |
+
+**Three gaps, one per layer.** The composer's `refnum_type` knew no `ref{IVI.<driver>}` literal;
+no part existed for an `IVIRef` object; and `IVIRef` was not on the list of refnum kinds a
+composed wire has carried. The reader had the fourth: `lvai_vi_terminals` printed the handle as
+`?Refnum.IVIRef` where NI's export writes `ref{IVI.niRFSA}`, so an author had no spelling to copy.
+
+**The heap form is the VISA one with another RefType**: `Refnum RefType="IVIRef" Ident="niRFSA"
+FirstClient="0"` holding a Void variant, read off NI's build of
+`experiments/aixml-without-grpc/probes/ptypes-ivi.xml`; the wires carry `lastSignalKind` 567
+(0x237), the VISA value. The driver is named in ONE place inside the part - the STR section's
+`typeClass` - and `tagDLLName` is `[NULL]`, so unlike a user-defined tag refnum one part can serve
+every driver: the composer rewrites `typeClass` to the requested `Ident`, the same step it already
+took for tag refnums. **Only niRFSA has been measured**; another driver (niDMM, niScope) is
+expected to compose and is not proven.
+
+The three parts (`const/stdRefNum/Refnum.IVIRef`, `fpdco/stdRefNum/ctl/…`, `…/ind/…`) were
+harvested `--clean` from that probe's gRPC build, provenance `ptypes-ivi.vi`.
+
+**Measured after:**
+
+| what | result |
+|---|---|
+| the intended VI, composed | 6 759 B, `execState 1`, empty linker errors |
+| the same VI RUN with no device | `error out` = `-200220`, `niRFSA Initialize.vi<ERR>Device identifier is invalid.`, through Close - so the handle and the chain carry |
+| the handle-only VI | composes; `execState 0` for the right reason only: Error List `required input 'resource name' is not wired` |
+| `niRFSA Initialize.vi` through the reader | `ref{IVI.niRFSA}` on all three terminals, as NI writes them |
+| suite case `t194_ivi_session_refnum` (control, indicator, constant, VISA control arm) | PASS on a freshly restarted LabVIEW, insanity gate live |
+| the same case with the three parts moved away | `COMPOSE FAILED  no fpdco part for stdRefNum (Refnum)` |
+| `t190`, `t90` beside it | PASS |
+
+The suite case does not call the driver: the run above takes 14 s and depends on the nirfsa
+addon being installed, so it stays a measurement here.
+
+**A second thing seen in the same session, NOT reproduced:** two `lvai_vi_terminals` calls on a
+fresh `niRFSA.llb` issued in parallel, and one answered `the .llb container … holds no member
+'niRFSA Initialize.vi'` for a VI that is there; the same call again read it. Two parallel CLI reads
+against an empty cache passed with the old and the new code alike. `resolve.llb_members` now
+extracts into a private folder and renames it into place whole, and no longer memoises an EMPTY
+listing for the resident worker's lifetime - both harmless, neither proven to be the cause.
+
+### Can the niRFSA shipping examples be composed? A census (2026-10-30)
+
+All 35 VIs under `<LVAddons>\nirfsa\1\examples\instr\niRFSA` were exported through NI's service
+(35 of 35, 35.5 s, now cached), each export composed with
+`experiments/aixml-without-grpc/try_export.py` and the result loaded over ActiveX with `lv-com.ps1`.
+The composer stops at its FIRST refusal, so a bucket below says what blocks a VI first, not
+everything that would.
+
+| first refusal | VIs | what it is |
+|---|---|---|
+| composes | **4** - `Getting Started Spectrum`, `Self Calibration`, `Thermal Correction`, `sub Read Power Spectrum (timed)` | all 4 `ExecState 1`; the log gained only wire-geometry repairs |
+| `Property Node …: class '{IVI.niRFSA}' is not composable yet` | **17** | the composer's VI Server class gate accepts `{LV.*}` and `{GenClassTag.*}` only, and `vi-server-props.json` has no IVI rows. 26 of the 35 exports carry such nodes - 66 on niRFSA, 21 on niRFSG - all PROPERTY nodes, 31 distinct niRFSA properties, named hierarchically by NI's export (`Inherent IVI Attributes:Instrument Identification:Model`). The DAQmx/nisyscfg tag-refnum route (`tag_props` in `harvest_parts.py`, the wired-refnum typing in `add_property_node`) is the analogue to extend; the export-name <-> heap-name mapping is the part that needs learning |
+| `net … carries a MeasureData.Complex128Waveform, which no composed wire has carried yet` | **5** | an UNMEASURED wire type, not a missing part: with `AIXML2VI_TRY_WIRES=MeasureData.Complex128Waveform` all five composed and loaded `ExecState 1` with nothing in the log but 7 wire-geometry repairs. Admitting it needs a run that carries IQ data, which needs a device (or a primitive that builds a complex waveform) - not done |
+| `ShiftReg …: only an initialized register is composable` | **2** | an UNINITIALIZED register in a For Loop; NI's export gives it no type, the reader's own export does (`srtype` after `</VI>`). The type is the Right side's input net, known only once the loop body is composed |
+| `Call …: 'niRFSG Initialize.vi' is neither near the caller nor in the installation` | **6** | NI-RFSG is not installed on this station - an environment gap, not a composer one |
+
+So **4 of 35 composed at first, 9 with the complex waveform admitted**, and the IVI property node
+was the one gap that decided most of the rest. It was closed the same day (next section); the
+census after it:
+
+| first refusal, after the IVI property node | VIs |
+|---|---|
+| composes - **all 12 `ExecState 1`**, their panels open | **12** (was 4): + `Downconverter with External Digitizer`, `Frequency Sweep`, `Getting Started Spectrum (IQ Device)`, `(Selected Ports)`, `In-band Retuning`, both `List Mode … (Power/Timer Triggered)`, `Measure Noise Floor` |
+| complex waveform wire (unmeasured, see above) | 8 |
+| `niRFSG Initialize.vi` - NI-RFSG not installed | 7 |
+| `net '….session reference' carries a Refnum.UsrDefined` - niTClk's session array | 3 |
+| a For Loop's conditional `stop` terminal - `ends at stop … of For Loop, which is not composable yet` | 3 |
+| the uninitialized shift register | 2 |
+
+### IVI property nodes compose since 2026-10-30
+
+**What NI's converter writes** for `type="{IVI.niRFSA}"`, read off its build of
+`experiments/aixml-without-grpc/probes/pivi-props.xml` (five items read and written, the long
+catalogue spelling and a short one): node `objFlags` **512**, `nodeName` = the driver, the reference
+terminals typed with the wired session, each item's declaring class `VoidBlock{IVIRef}`, its
+`PropItemName` the AIXML field name **verbatim** - `Inherent IVI Attributes:Instrument
+Identification:Model` and `Model` both, for the same code 1050512 - the code resolved by the
+driver, no item `objFlags`, and the terminal labelled with the catalogue's short label
+(`Reference Level`, `Number of Averages`) rather than anything derivable from the name. NI's own
+example VIs carry other node flags (4608, 70144, 2101760 …) and item flag 4096 on some items; the
+composer writes what the converter writes.
+
+**Where the rows come from.** `experiments/aixml-without-grpc/learn_ivi_props.py` pairs every
+cached NI export holding an IVI property node with the VI's heap, item by item (top-to-bottom order
+agreed on every node; a node whose item count differs from its export is skipped - zipping those
+was what first suggested `Frequency Settling Units` had two codes), and keys each row by EVERY name
+NI used for the code, heap and export alike, because NI's export writes the long path in one VI and
+the short name in another. A name seen with two codes would be dropped; none was. From the 35
+niRFSA examples: **62 names on `IVI.niRFSA`, 18 on `IVI.niRFSG`**, written into
+`parts/vi-server-props.json` as pure additions. `harvest_parts.py --props` leaves IVI nodes to it.
+**`learn_prop_names.py --write` was NOT run**: it rebuilds `property-export-names.json` from the
+cache as it stands, and today's cache would have dropped 450 entries.
+
+**The composer** names the class through `tag_class` (`IVI.<Ident>`, the one implementation the
+reader and the harvester share), accepts `{IVI.*}` at the class gate and composes it on the
+tag-refnum route with the IVI flags above.
+
+**Measured:** the probe composed on `pylabview` is item for item the heap NI built (only the order of
+the two nodes differs), `ExecState 1`, and run with no session both builds answer the same
+`-1073807346` at the first node. Suite case `t195_ivi_property_node` asserts that code and answers
+`COMPOSE FAILED  no property node on IVI.niRFSA harvested yet` with the IVI rows removed.
+
+**An IVI session constant or control default holds its resource name**, flattened like a string -
+NI's build of `probes/pivi-sim.xml` wrote `00000007 53696D52465341` for `SimRFSA` - so the composer
+writes it now, where it reported `default value … not composed`; NI's exporter reads our build back
+as `value="RFSA"` and `value="SimRFSA"`.
+
+**A SIMULATED niRFSA SESSION KILLED LabVIEW, in NI's OWN build** - `pivi-sim.vi`, built by NI's
+converter, `Initialize With Options` with `Simulate=1, DriverSetup=Model:5663`: the ActiveX run
+answered `The remote procedure call failed`, LabVIEW was gone, and neither its log nor the Windows
+Application log recorded anything. Not retried; simulation is not a test route on this 32-bit
+LabVIEW, so no IVI property value has been read back from a live session.
+
+**The two List Mode examples loaded `ExecState 0`, `Error 1013, Cannot load front panel`** once
+composed - the `I Data` / `Q Data` Waveform Graphs of `array{cluster{t0,dt,Y}}` took the part
+`fpdco/stdGraph21703/ind/Array.Cluster`, cut from `Resampling a Waveform (continuous).vi`. The
+waveform-chart remedy again: `wg t0dt multi` declared in `probes/pgraph.xml`, built on gRPC,
+harvested `--clean` over the removed part. Both then load executable and their panels open;
+`t110_graphs` carries the indicator and answers `BROKEN (ExecState 0)` with the old part put back.
+
+### The rest of the census closed: 28 of 35 (2026-10-30)
+
+After the IVI property node, four composer gaps stood between 16 examples and a build; all four
+are closed, each with a suite case built FIRST on NI's converter and run there as the reference:
+
+| gap | examples | fix | suite case |
+|---|---|---|---|
+| complex waveform wire, `MeasureData.Complex128Waveform` | 8 | admitted after a run that CARRIES data: `Re/Im To Complex` -> `Build Waveform` -> `Get Waveform Components` -> `Complex To Re/Im` returns `Y` = 1+2i, 3-4i, -0.5+0.25i and `dt` = 0.001, as NI's build does. AIXML spells the type `complexdoublewaveform` (NI's export of `niRFSA Fetch IQ (Complex WDT 1Rec 1Chan).vi`); composer and reader know it, its indicator part is harvested clean, and `Complex To Re/Im`'s `y` (slot 2 of prim 1044) joined the name table. NI's converter takes a complex `Y` on `Build Waveform` only when the node's output feeds a complex waveform - wired to `Get Waveform Components` alone it refuses `Y` | `t196_complex_waveform_wire` |
+| NI-TClk session wire, `Refnum.UsrDefined` | 3 | admitted for `GenClass.sessionReferenceClass` ONLY - a `UsrDefined` refnum is a family of unrelated classes. `niRFSA Get Session Reference` -> `Build Array` -> `niTClk Configure For Homogeneous Triggers` -> `niTClk Synchronize` on a null session. The first version chained niRFSA's error into niTClk and answered `code 1` - which came from `niRFSA Get Session Reference` (`Refnum to Session`), so niTClk never ran. Unchained, niTClk runs on the session array and answers `-250032` naming session index 0, as NI's build does | `t197_tclk_session_wire` |
+| a For Loop's conditional `stop` | 3 | a For Loop with a `<Condition>` is a shell of its own (`struct/forLoop/conditional`, `loopTestDCO` beside the N terminal), harvested from NI's build; the condition end was already generic. N = 10, stop at i >= 3: `last i` = 3, where 9 would mean the condition was ignored. NI's converter makes the output tunnel last-value, not indexing | `t198_for_loop_conditional` |
+| an UNINITIALIZED shift register with no type hint | 2 | NI's export writes no type for one (only our reader's `srtype` does). The register now waits for the value it is GIVEN each iteration and takes its type from there, as a Feedback Node with no initializer already did; a Case passing the old value on in one frame resolves, because a case output tunnel is typed once one frame's input is. Stores 10*i while i < 2, keeps it otherwise: 10 | `t199_uninitialized_shift_register` |
+
+**28 of the 35 examples now compose, and all 28 load executable with nothing in LabVIEW's log
+but wire-geometry repairs.** The other seven call NI-RFSG, which this station does not have.
+
+**Two more example-cut parts surfaced on the way**, the same shape as the graph part above:
+`Advanced Tuning Features` was eBad with `Error 1013` (a Waveform Graph of `array{uint32}` cut from
+`TDMS Advanced Synchronous Read.vi`), and `Multi Record IQ` was executable but LabVIEW logged
+`Insane Array Constant {graphics}` for an empty array-of-waveforms constant cut from an MGI example.
+Both slots are declared in `pgraph.xml` / `pclean.xml` and harvested clean.
+
+**The clean constant part was STILL insane, and that was the composer**, isolated on a one-constant
+probe against NI's build of the same document. A waveform element of an array constant draws its
+`t0`, `dt` and `Y` through a cluster with a pane of its own, and two things in it were left where the
+donor had them:
+
+- the cluster pane's `docBounds`, `origin`, `minPaneSize` and the `savedSize` of the cluster and its
+  fields (-4525: the donor's place in `pclean.vi`). NI writes `docBounds` = -(the constant's place +
+  the element's) - (-193, -357) for an element at (3, 63) in a constant at (190, 294) - so the
+  element's cluster is now marked for `_set_cluster_frames`, which also steps through a waveform
+  element's place now and moves `savedSize`;
+- the `Y` array's `nRC`/`oRC` anchor, one pixel off: its offset `k` was read off the donor's raw
+  bounds while the anchor is SET in the cluster pane's document. `_anchor_k` now reads it in that
+  same frame. One-variable A/B on one bundle: anchor (-28, -62) is insane, NI's (-28, -61) clean.
+
+**The log check almost passed both arms.** Midway the log reached its 100-event ceiling and stopped
+being written, and after a restart a VI LabVIEW had loaded before came back from the compiled-object
+cache logging nothing - the control arm included. The A/B above is on freshly rebuilt files under new
+names on a restarted LabVIEW, with the control arm insane and the rest clean. `lv-com.ps1` now
+prints a SATURATED warning when the log is past 100 events; the cache case it cannot see - check
+a fresh file under a new name.
+
+### Named sessions: their literal, other drivers, and setting one in a run (2026-10-30)
+
+- **An IVI session, a VISA session and a DAQmx task store their NAME as a string**, in a constant's
+  `ConstValue` and a control's `DefaultData` alike - NI's build of `probes/pvisa-values.xml` and of a
+  task probe wrote `00000010` + `GPIB0::22::INSTR` and `00000009` + `OtherTask`, exactly as for the
+  IVI session. The composer writes all three now; NI's exporter reads `ASRL1::INSTR`,
+  `GPIB0::22::INSTR`, `MyTask` and `OtherTask` back from our builds. Suite case
+  `t201_named_session_literals` compares each control's default with a constant of the same name
+  through `Equal?`, which is true only if both values were stored, with a constant naming another
+  resource as the control arm.
+- **One IVI part serves another driver**: `ref{IVI.niDMM}` - a driver this station does not have -
+  builds on NI's converter, and our build carries the same `typeClass` set (niDMM x3, VISA `Instr`
+  x2), no niRFSA left over, loads clean on a live log and runs. Measured on niDMM only.
+- **LabVIEW's ActiveX server TAKES NO VALUE FOR A NAMED SESSION, AND SAYS NOTHING.**
+  `SetControlValue` with the name as a string, or as the (name, number) pair `GetControlValue`
+  reads such a control back as, answered no error and left the control at its default - an
+  `Equal?` against a constant of that name stayed False, while the same probe with the name as the
+  control's DEFAULT answered True. `GetControlValue` reads every such control back as `[,0]`,
+  default included, so a read-back cannot show it either. `lv-com.ps1` reported "set" each time.
+  The value can be built INSIDE LabVIEW, though: the session's flattened data is the
+  length-prefixed name, so `Flatten To String` of the name, `Flattened String To Variant` with the
+  control's own type string from `Ctrl Val.Get` / `Variant To Flattened String`, and `Ctrl Val.Set`
+  set it - the Equal? witness answered True for the name, False for another. That is the composed
+  helper `scripts/lvai_set_named_refnum.xml`, which `lvai_run_vi_and_read_values` (pylabview)
+  runs on the HELD target for every IVI, VISA or tag-refnum input (`ComValues.NamedSession`), on
+  the plain and the signalled path. The composer needed one table fix for it: primitive 8202,
+  `Flattened String To Variant`, had its two inputs and not its `Variant` output (slot 3),
+  `error in` (4) or `error out`.
+- **On grpc NOTHING EXTRA IS NEEDED, measured the same day.** NI's typed run helper
+  (`lvai_run_and_read_typed`) sets such a control through VI Server's `Ctrl Val.Set` with the name
+  as a string variant, and VI Server coerces it where ActiveX does not: the same `Equal?` witness,
+  built by NI's converter, answered True for `PXI1Slot2`, False for `Other` and False with no
+  input. Cross-checked both ways - the pylabview-composed witness run on grpc, and the grpc-built
+  one run on pylabview, both True for the name. NI's converter also stores the three literals
+  itself: `t201` built on grpc answered `ivi same` / `visa same` / `task same` True and
+  `ivi other same` False, as the composed one does. And the composed `RFSA Measure Peak Power.vi`
+  reads `execState 1` with no linker error through NI's helper.
+
+**A new example built on the reachable side, through `labview-vi-generator` on `pylabview`:**
+`RFSA Measure Peak Power.vi` - Initialize, Configure Acquisition Type, Reference Level, Spectrum
+Frequency Center Span, Resolution Bandwidth, Read Power Spectrum (DBL), Close, then the peak by
+`Array Max & Min` and `f0 + index * df`. Composed in one call (28 wires routed, none generic),
+pane 4834 with no violation, 995 x 241 px, `ExecState 1`; run with no device it ended in 10 s with
+`error out` = `-200220, niRFSA Initialize.vi<ERR>Device identifier is invalid.`, carried through
+Close. Two smaller gaps it found:
+
+- **A refnum control's DEFAULT was not composed** - `default value of 'resource name' not composed
+  (a refnum constant has no literal value ('RFSA'))`. Closed for an IVI session the same day
+  (previous section); other refnum kinds still have no literal.
+- **`lvai_run_vi_and_read_values` cannot set a `ref{IVI.*}` control over COM** - refused before the
+  run with `inputNotConvertible`, so a test run cannot name a device. Closed the same day by the
+  composed set helper (previous section), for VISA sessions and DAQmx tasks too.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the

@@ -1,0 +1,9 @@
+<VI _name="T197 TClk Session Wire.vi" description="An NI-TClk session reference on a wire: niRFSA Get Session Reference on an IVI session with no instrument behind it, Build Array, then niTClk Configure For Homogeneous Triggers and niTClk Synchronize. niRFSA's own error is NOT chained into niTClk, so niTClk runs on the session array and answers with its own error, as NI's build does.">
+  <Constant _name="no session" outputs="value:4200.value" type="ref{IVI.niRFSA}" uid="4200" uid_parent="root" value=""/>
+  <Call target="niRFSA Get Session Reference.vi" inputs="instrument handle:4200.value,error in:" outputs="instrument handle out:,session reference:4210.session reference,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Build Array" inputs="element:4210.session reference" outputs="appended array:4220.sessions" uid="4220" uid_parent="root"/>
+  <Call target="niTClk Configure For Homogeneous Triggers.vi" inputs="sessions:4220.sessions,error in (no error):" outputs="sessions out:4230.sessions out,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Call target="niTClk Synchronize.vi" inputs="sessions:4230.sessions out,minimum T clock period:,error in (no error):4230.error out" outputs="sessions out:,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4240.error out" outputs="code:4250.code" uid="4250" uid_parent="root"/>
+  <Indicator _name="code" inputs="value:4250.code" type="int32" uid="4255" uid_parent="root" value="0"/>
+</VI>

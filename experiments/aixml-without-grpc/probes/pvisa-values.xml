@@ -1,0 +1,6 @@
+<VI _name="PVISA Values.vi" description="Donor probe for refnum literals: a VISA session control with a default resource name and a VISA session constant holding one, beside the IVI pair. NI's converter builds it; what it stores is what the composer must write.">
+  <Control _name="visa resource" outputs="value:4200.value" type="ref{Visa.Instr}" uid="4200" uid_parent="root" value="ASRL1::INSTR"/>
+  <Indicator _name="visa out" inputs="value:4200.value" type="ref{Visa.Instr}" uid="4205" uid_parent="root" value=""/>
+  <Constant _name="visa constant" outputs="value:4210.value" type="ref{Visa.Instr}" uid="4210" uid_parent="root" value="GPIB0::22::INSTR"/>
+  <Indicator _name="visa constant out" inputs="value:4210.value" type="ref{Visa.Instr}" uid="4215" uid_parent="root" value=""/>
+</VI>

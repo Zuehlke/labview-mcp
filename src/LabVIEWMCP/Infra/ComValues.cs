@@ -14,7 +14,8 @@ namespace LabVIEWMcp.Infra;
 ///     and silently ignored, the control stays 0;
 ///   * a 2D array crosses as ONE rectangular array, and enumerating it flattens the rows.
 /// What is not covered is refused by name rather than guessed: a waveform, a timestamp, a
-/// refnum, a variant, an array of clusters.
+/// refnum, a variant, an array of clusters. A NAMED session (IVI, VISA, a DAQmx task) is not
+/// refused but marked, <see cref="NamedSession"/>, and set by a composed helper instead.
 /// </summary>
 internal static class ComValues
 {
@@ -99,9 +100,27 @@ internal static class ComValues
         if (Braces(type) is { Head: "cluster" } cluster)
             return ClusterFromText(text, cluster.Body, out problem);
 
+        if (IsNamedSession(type)) return new NamedSession(text);
+
         problem = $"a control of type {type} cannot be set over COM by this server";
         return null;
     }
+
+    /// <summary>
+    /// A session that is NAMED - an IVI or VISA session, a user-defined tag refnum such as a DAQmx
+    /// task. LabVIEW's ActiveX server takes no value for such a control: SetControlValue with the
+    /// name as a string, or as a (name, number) pair, answers no error and changes nothing
+    /// (measured 2026-10-30 against an Equal? witness on an niRFSA session). Its flattened data
+    /// is the length-prefixed name, so the composed `lvai_set_named_refnum` helper builds the value
+    /// inside LabVIEW from the control's own type and sets it through VI Server.
+    /// </summary>
+    internal sealed record NamedSession(string Name);
+
+    /// <summary>Whether a control of <paramref name="type"/> holds a <see cref="NamedSession"/>.</summary>
+    internal static bool IsNamedSession(string type) =>
+        type.StartsWith("ref{IVI.", StringComparison.Ordinal)
+        || type.StartsWith("ref{Visa.", StringComparison.Ordinal)
+        || type.StartsWith("ref{GenClassTag.", StringComparison.Ordinal);
 
     private static object? Integer(string text, string type, (long Min, ulong Max) range, out string? problem)
     {

@@ -431,6 +431,10 @@ class Harvester:
         cname = ref_class(rt[0] if rt else None)
         if cname is None and rt and node.get("class") == "propNode":
             cname = aixml2vi.tag_class(rt[0], node.findtext("nodeName"))
+            if cname is not None and cname.startswith("IVI."):
+                # an IVI session's rows are keyed by every name NI uses for a code and carry no
+                # item flags, as NI's converter writes them - learn_ivi_props.py learns them
+                return
             if cname is not None:
                 self.tag_props(b, node, cname, terms, source)
             return
@@ -614,7 +618,11 @@ class Harvester:
             elif cls in ("whileLoop", "forLoop"):
                 # a whole loop with its tunnels, shift registers and inner diagram; the
                 # composer keeps the shell and one template of each terminal kind
-                self.save("struct", "struct/%s" % cls, source, e, resolve_types(b, e))
+                # a For Loop with a conditional terminal carries a loopTestDCO (lTst) beside its N
+                # (NI's build of tests/t198_for_loop_conditional.xml) - a shell of its own
+                cond = cls == "forLoop" and e.find("loopTestDCO") is not None
+                self.save("struct", "struct/%s%s" % (cls, "/conditional" if cond else ""), source, e,
+                          resolve_types(b, e))
                 pair = shift_register_pair(e)
                 if pair is not None:
                     self.save("srpair", "srpair/%s" % cls, source, pair, resolve_types(b, pair))

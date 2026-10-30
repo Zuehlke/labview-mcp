@@ -1,0 +1,34 @@
+<VI _name="T199 Uninitialized Shift Register.vi" description="An UNINITIALIZED shift register with no type hint, as NI's export writes one: a Case stores 10*i while i is below 2 and passes the old value on otherwise, so the register's type is known only from the value it is given - 10 after four iterations. The shape of the niRFSA Synchronization examples.">
+  <Constant _name="N" outputs="value:4200.value" type="int32" uid="4200" uid_parent="root" value="4"/>
+  <Constant _name="two" outputs="value:4201.value" type="int32" uid="4201" uid_parent="root" value="2"/>
+  <Constant _name="ten" outputs="value:4202.value" type="int32" uid="4202" uid_parent="root" value="10"/>
+  <Structure _name="For Loop" count="4210.value" maxin="4200.value" maxout="" uid="4210" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4201.value" outputs="value:4211.value" uid="4211" uid_parent="4210"/>
+    <Tunnel _id="In2" inputs="value:4202.value" outputs="value:4212.value" uid="4212" uid_parent="4210"/>
+    <ShiftReg uid="4213" uid_parent="4210">
+      <Left inputs="value:" outputs="value:4214.value" uid="4214" uid_parent="4213"/>
+      <Right inputs="value:4240.value" outputs="value:4215.value" uid="4215" uid_parent="4213"/>
+    </ShiftReg>
+    <Node _name="Less?" inputs="x:4210.value,y:4211.value" outputs="x &lt; y?:4220.x &lt; y?" uid="4220" uid_parent="4210"/>
+    <Structure _name="Case Structure" selectin="4220.x &lt; y?" uid="4230" uid_parent="4210">
+      <Tunnel _id="In1" inputs="value:4214.value" uid="4231" uid_parent="4230"/>
+      <Tunnel _id="In2" inputs="value:4210.value" uid="4232" uid_parent="4230"/>
+      <Tunnel _id="In3" inputs="value:4212.value" uid="4233" uid_parent="4230"/>
+      <CaseFrame selector="True" selectout="" uid="4234" uid_parent="4230">
+        <Tunnel _id="In1" outputs="value:" uid="4235" uid_parent="4234"/>
+        <Tunnel _id="In2" outputs="value:4236.value" uid="4236" uid_parent="4234"/>
+        <Tunnel _id="In3" outputs="value:4237.value" uid="4237" uid_parent="4234"/>
+        <Node _name="Multiply" inputs="x:4236.value,y:4237.value" outputs="x*y:4238.x*y" uid="4238" uid_parent="4234"/>
+        <Tunnel _id="Out1" inputs="value:4238.x*y" uid="4239" uid_parent="4234"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="4241" uid_parent="4230">
+        <Tunnel _id="In1" outputs="value:4242.value" uid="4242" uid_parent="4241"/>
+        <Tunnel _id="In2" outputs="value:" uid="4243" uid_parent="4241"/>
+        <Tunnel _id="In3" outputs="value:" uid="4244" uid_parent="4241"/>
+        <Tunnel _id="Out1" inputs="value:4242.value" uid="4245" uid_parent="4241"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4240.value" uid="4240" uid_parent="4230"/>
+    </Structure>
+  </Structure>
+  <Indicator _name="last stored" inputs="value:4215.value" type="int32" uid="4250" uid_parent="root" value="0"/>
+</VI>

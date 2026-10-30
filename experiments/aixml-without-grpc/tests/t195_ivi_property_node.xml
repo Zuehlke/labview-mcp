@@ -1,0 +1,11 @@
+<VI _name="T195 IVI Property Node.vi" description="Property nodes on an IVI session (niRFSA): read and write items in the long catalogue spelling and a short one, on a session constant with no instrument behind it. The driver answers the same error NI's own build of the node answers.">
+  <Constant _name="no session" outputs="value:4200.value" type="ref{IVI.niRFSA}" uid="4200" uid_parent="root" value=""/>
+  <Control _name="reference level" outputs="value:4202.value" type="double" uid="4202" uid_parent="root" value="0"/>
+  <Node _name="Property Node" fields="read+Inherent IVI Attributes\3AInstrument Identification\3AModel,write+Vertical\3AReference Level (dBm),read+Acquisition\3ASpectrum\3ANumber Of Averages" inputs="reference:4200.value,error in (no error):,Vertical\3AReference Level (dBm):4202.value" outputs="Inherent IVI Attributes\3AInstrument Identification\3AModel:4210.Model,Acquisition\3ASpectrum\3ANumber Of Averages:4210.NOA,reference out:4210.reference out,error out:4210.error out" type="{IVI.niRFSA}" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Model" inputs="reference:4210.reference out,error in (no error):4210.error out" outputs="Model:4220.Model,reference out:4220.reference out,error out:4220.error out" type="{IVI.niRFSA}" uid="4220" uid_parent="root"/>
+  <Indicator _name="model" inputs="value:4210.Model" type="string" uid="4230" uid_parent="root" value=""/>
+  <Indicator _name="model short" inputs="value:4220.Model" type="string" uid="4231" uid_parent="root" value=""/>
+  <Indicator _name="number of averages" inputs="value:4210.NOA" type="int32" uid="4232" uid_parent="root" value="0"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4220.error out" outputs="code:4240.code" uid="4240" uid_parent="root"/>
+  <Indicator _name="code" inputs="value:4240.code" type="int32" uid="4245" uid_parent="root" value="0"/>
+</VI>
