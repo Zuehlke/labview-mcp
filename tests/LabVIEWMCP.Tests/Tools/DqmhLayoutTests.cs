@@ -103,6 +103,27 @@ public class DqmhLayoutTests
         Assert.Contains("[,,,0,,,0,0,,Event Handling Loop,0,false,]", text);
     }
 
+    /// <summary>
+    /// NI's ConvertAIXMLToVI wires a Bundle By Name's inputs by POSITION: the 7.x event wrapper
+    /// named `input cluster` first and the fields out of order, and on grpc every input landed one
+    /// field off - "a cluster of 0 elements", Error 1003 at Run VI (2026-10-30). The pylabview
+    /// composer matches by name, so only the grpc build showed it. Inputs go in `fields` order with
+    /// `input cluster` last, as NI's own exports write them.
+    /// </summary>
+    [Fact]
+    public void Every_shipped_bundler_lists_its_inputs_in_field_order()
+    {
+        foreach (var file in Directory.EnumerateFiles(Scripts, "*.xml"))
+            foreach (Match node in Regex.Matches(File.ReadAllText(file), "<Node _name=\"Bundle By Name\"[^>]*>"))
+            {
+                var fields = Regex.Match(node.Value, "fields=\"([^\"]*)\"").Groups[1].Value.Split(',');
+                var inputs = Regex.Match(node.Value, "inputs=\"([^\"]*)\"").Groups[1].Value.Split(',')
+                    .Select(i => i[..i.LastIndexOf(':')]).ToArray();
+                Assert.True(inputs.SequenceEqual(fields.Append("input cluster")),
+                    $"{Path.GetFileName(file)}: Bundle By Name inputs [{string.Join(", ", inputs)}] are not in field order");
+            }
+    }
+
     /// <summary>The three inputs Script New Module.vi gained in 7.x are wired (issue #109).</summary>
     [Fact]
     public void The_7x_module_wrapper_wires_the_new_required_inputs()
