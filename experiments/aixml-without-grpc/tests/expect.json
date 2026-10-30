@@ -2176,5 +2176,16 @@
     }
    }
   ]
+ },
+ "t194_ivi_session_refnum": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "handle is null": "True",
+     "constant is null": "True"
+    }
+   }
+  ]
  }
 }

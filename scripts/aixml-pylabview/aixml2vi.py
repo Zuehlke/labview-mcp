@@ -73,6 +73,7 @@ SCALARS = {
 # type key (lvheap.type_key) -> the front-panel class of its object
 DDO_OF_KEY = {v[0]: v[1] for v in SCALARS.values()}
 DDO_OF_KEY.update({"Refnum.LVObjCtl": "stdRefNum", "Refnum.VisaRef": "stdRefNum", "Refnum.UsrDefndTag": "stdRefNum",
+                   "Refnum.IVIRef": "stdRefNum",
                    "Refnum.Queue": "stdRefNum",
                    # a MENU refnum in a cluster (MGI's Event Cluster) and an event registration
                    # or user event refnum on a pane: the same refnum object, retyped
@@ -498,6 +499,14 @@ def refnum_type(inner, plain_class=False):
         v = ET.SubElement(el, "LVVariant", {"Index": "0", "HasVarItem2": "1", "VarType2": "0", "Version": "auto"})
         ET.SubElement(v, "DataType", {"Index": "0", "Type": "Void", "Format": "inline"})
         return el
+    m = re.fullmatch(r"IVI\.([^.{}]+)", inner)
+    if m:
+        # an IVI instrument session (niRFSA, niDMM ...): the VISA shape with RefType IVIRef and the
+        # driver's class in Ident, as NI's converter wrote probes/ptypes-ivi.xml (2026-10-30)
+        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "IVIRef", "Ident": m.group(1),
+                                     "FirstClient": "0", "Format": "inline"})
+        el.append(_void_variant())
+        return el
     row = _REF_CLASSES.get(inner)
     if row is None:
         # a class the probe had no control for, whose id learn_node_classes.py read off NI's own
@@ -696,7 +705,9 @@ def unverified_wire_type(tree):
         # File replaced a longer file's content whole, read back by path (t147, 2026-10-11)
         # NotifierRef: Obtain Notifier (string) -> Send -> Wait on Notification -> Release ran with
         # the notification, `timed out?` and the last notification read back (t154, 2026-10-12)
-        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "UsrDefndTag", "TDMSFile", "UDClassInst",
+        # IVIRef: niRFSA Initialize -> niRFSA Close on the instrument handle, composed, loaded
+        # executable, no insanity (t194, 2026-10-30)
+        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "IVIRef", "UsrDefndTag", "TDMSFile", "UDClassInst",
                                        "UserEvent", "EventReg", "Menu", "Queue", "ByteStream", "NotifierRef"):
             return "Refnum." + (tree.get("RefType") or "?")
         if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
@@ -751,8 +762,9 @@ def signal_kind(tree):
     if t == "String":
         return 0x230
     if t == "Refnum":
-        # measured on an AIXML-generated probe: 0x170 on VI Server refnum wires, 0x237 on VISA
-        return 0x237 if tree.get("RefType") == "VisaRef" else 0x170
+        # measured on an AIXML-generated probe: 0x170 on VI Server refnum wires, 0x237 on VISA -
+        # and on an IVI session, NI's build of the niRFSA Initialize -> Close probe (2026-10-30)
+        return 0x237 if tree.get("RefType") in ("VisaRef", "IVIRef") else 0x170
     if t in ENUM_BASE.values():
         t = "Num" + t[4:]
     code = TYPE_CODE.get(t)
@@ -1895,13 +1907,16 @@ class Composer:
                 if part.get("class") == "label" and part.findtext("partID") == "84" \
                         and part.find("textRec/text") is not None:
                     part.find("textRec/text").text = '"%s"' % self._class_of_refnum(tree)[3:]
-        if tkey == "Refnum.UsrDefndTag":
+        if tkey in ("Refnum.UsrDefndTag", "Refnum.IVIRef"):
             # a user-defined tag refnum is CLASS-specific inside: its tag ddo names the class's
             # DLL (tagDLLName "nisyscfg.*") and its STR section the class (typeClass) - a part
-            # of another class would be a refnum to the wrong library
+            # of another class would be a refnum to the wrong library. An IVI session's part
+            # names its driver ONLY in typeClass (NI's build of probes/ptypes-ivi.xml: no DLL
+            # name anywhere in the ddo), so the one part is retyped for every driver; only
+            # niRFSA has been measured (2026-10-30)
             have = next((x.get("TypeName") for d in donor_types for x in d.iter("TypeDesc")
                          if x.get("RefType") == "UsrDefndTag"), None)
-            if have != tree.get("TypeName"):
+            if tkey == "Refnum.UsrDefndTag" and have != tree.get("TypeName"):
                 raise Unsupported("no part for a %s refnum (the harvested one is %s)" % (tree.get("TypeName"), have))
             for vi_ in holder.iter("variantIndex"):
                 sec = getattr(self, "strs", {}).get(int(vi_.text))

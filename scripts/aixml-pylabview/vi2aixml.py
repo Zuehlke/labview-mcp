@@ -160,6 +160,9 @@ def aixml_type(tree):
             return "ref{UDClassInst}"
         if rt == "VisaRef":
             return "ref{Visa.%s}" % (tree.get("Ident") or "Instr")
+        if rt == "IVIRef" and tree.get("Ident"):
+            # an IVI instrument session, as NI's export writes niRFSA Initialize's handle
+            return "ref{IVI.%s}" % tree.get("Ident")
         if rt == "Menu":
             return "ref{Menu}"
         if rt == "EventReg" and len(kids) > 1:

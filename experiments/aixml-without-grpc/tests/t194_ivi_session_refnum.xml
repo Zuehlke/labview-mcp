@@ -1,0 +1,11 @@
+<VI _name="T194 IVI Session Refnum.vi" description="An IVI instrument session refnum of class niRFSA as a control, an indicator and a constant, each wired, beside a VISA session as the control arm. The IVI part names its driver only in typeClass, which the composer retypes.">
+  <Control _name="resource name" outputs="value:4200.value" type="ref{IVI.niRFSA}" uid="4200" uid_parent="root" value=""/>
+  <Indicator _name="instrument handle out" inputs="value:4200.value" type="ref{IVI.niRFSA}" uid="4205" uid_parent="root" value=""/>
+  <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4200.value" outputs="NaN/Path/Refnum?:4208.NaN/Path/Refnum?" uid="4208" uid_parent="root"/>
+  <Indicator _name="handle is null" inputs="value:4208.NaN/Path/Refnum?" type="bool" uid="4209" uid_parent="root" value="false"/>
+  <Constant _name="no session" outputs="value:4210.value" type="ref{IVI.niRFSA}" uid="4210" uid_parent="root" value=""/>
+  <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4210.value" outputs="NaN/Path/Refnum?:4212.NaN/Path/Refnum?" uid="4212" uid_parent="root"/>
+  <Indicator _name="constant is null" inputs="value:4212.NaN/Path/Refnum?" type="bool" uid="4215" uid_parent="root" value="false"/>
+  <Control _name="visa" outputs="value:4220.value" type="ref{Visa.Instr}" uid="4220" uid_parent="root" value=""/>
+  <Indicator _name="visa out" inputs="value:4220.value" type="ref{Visa.Instr}" uid="4225" uid_parent="root" value=""/>
+</VI>

@@ -249,12 +249,24 @@ def llb_members(container):
     main = os.path.join(out_dir, "llb.xml")
     members = {}
     if not os.path.exists(main):
+        # extracted into a private folder and renamed into place whole, so no reader ever sees a
+        # half-written copy. Two parallel lvai_vi_terminals calls on a fresh niRFSA.llb
+        # (2026-10-30) had one answer `holds no member` for a VI that is there, and the same call
+        # again read it; two CLI reads in parallel did NOT reproduce that, so this window is a
+        # candidate, not the established cause
         import lvheap
-        os.makedirs(out_dir, exist_ok=True)
+        import shutil
+        import tempfile
+        os.makedirs(llb_cache_root(), exist_ok=True)
+        tmp = tempfile.mkdtemp(prefix=os.path.basename(out_dir) + ".", dir=llb_cache_root())
         try:
-            lvheap.run_pylabview(["-x", "--keep-names", "-i", container, "-m", main], timeout=120)
-        except RuntimeError:
-            pass
+            lvheap.run_pylabview(["-x", "--keep-names", "-i", container, "-m", os.path.join(tmp, "llb.xml")],
+                                 timeout=120)
+            os.rename(tmp, out_dir)
+        except (RuntimeError, OSError):
+            pass        # extraction failed, or another process put its whole copy in place first
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
     if os.path.exists(main):
         try:
             root = ET.parse(main).getroot()
@@ -268,7 +280,10 @@ def llb_members(container):
                 name, f = sec.get("Name"), sec.get("File")
                 if name and f and os.path.exists(os.path.join(out_dir, f)):
                     members[name.lower()] = os.path.join(out_dir, f)
-    _LLB_MEMBERS[key] = members
+    if members:
+        # an empty listing is not remembered: the resident worker would otherwise answer `holds
+        # no member` for this .llb for the rest of its life
+        _LLB_MEMBERS[key] = members
     return members
 
 

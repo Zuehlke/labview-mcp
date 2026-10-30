@@ -1892,6 +1892,57 @@ warnings and scoped to the measured case, a double Constant.
   --write` (the suite's LabVIEW-routed saves via `suite_corpus.py` are the source that carries the
   composer's own terminal kinds).
 
+## An IVI instrument session (`ref{IVI.niRFSA}`) had no type, no part and no wire (fixed 2026-10-30)
+
+A user report: an NI-RFSA VI - `niRFSA Initialize.vi` with a `resource name` control, its
+`instrument handle out` into `niRFSA Close.vi`, error chain through both - could only be composed
+on `pylabview` with both handle terminals left unwired and a `#todo` note to wire them by hand.
+Reproduced 2026-10-30 with the nirfsa LVAddon, over the MCP tools:
+
+| probe | `pylabview` before | `grpc` |
+|---|---|---|
+| the intended VI, `resource name` control included | `type 'ref{IVI.niRFSA}' is not composable yet` | `errorCode 0`, 6 947 B, `execState 1` |
+| the same with only the handle wire | `net '4220.instrument handle out' carries a Refnum.IVIRef, which no composed wire has carried yet` | - |
+
+**Three gaps, one per layer.** The composer's `refnum_type` knew no `ref{IVI.<driver>}` literal;
+no part existed for an `IVIRef` object; and `IVIRef` was not on the list of refnum kinds a
+composed wire has carried. The reader had the fourth: `lvai_vi_terminals` printed the handle as
+`?Refnum.IVIRef` where NI's export writes `ref{IVI.niRFSA}`, so an author had no spelling to copy.
+
+**The heap form is the VISA one with another RefType**: `Refnum RefType="IVIRef" Ident="niRFSA"
+FirstClient="0"` holding a Void variant, read off NI's build of
+`experiments/aixml-without-grpc/probes/ptypes-ivi.xml`; the wires carry `lastSignalKind` 567
+(0x237), the VISA value. The driver is named in ONE place inside the part - the STR section's
+`typeClass` - and `tagDLLName` is `[NULL]`, so unlike a user-defined tag refnum one part can serve
+every driver: the composer rewrites `typeClass` to the requested `Ident`, the same step it already
+took for tag refnums. **Only niRFSA has been measured**; another driver (niDMM, niScope) is
+expected to compose and is not proven.
+
+The three parts (`const/stdRefNum/Refnum.IVIRef`, `fpdco/stdRefNum/ctl/…`, `…/ind/…`) were
+harvested `--clean` from that probe's gRPC build, provenance `ptypes-ivi.vi`.
+
+**Measured after:**
+
+| what | result |
+|---|---|
+| the intended VI, composed | 6 759 B, `execState 1`, empty linker errors |
+| the same VI RUN with no device | `error out` = `-200220`, `niRFSA Initialize.vi<ERR>Device identifier is invalid.`, through Close - so the handle and the chain carry |
+| the handle-only VI | composes; `execState 0` for the right reason only: Error List `required input 'resource name' is not wired` |
+| `niRFSA Initialize.vi` through the reader | `ref{IVI.niRFSA}` on all three terminals, as NI writes them |
+| suite case `t194_ivi_session_refnum` (control, indicator, constant, VISA control arm) | PASS on a freshly restarted LabVIEW, insanity gate live |
+| the same case with the three parts moved away | `COMPOSE FAILED  no fpdco part for stdRefNum (Refnum)` |
+| `t190`, `t90` beside it | PASS |
+
+The suite case does not call the driver: the run above takes 14 s and depends on the nirfsa
+addon being installed, so it stays a measurement here.
+
+**A second thing seen in the same session, NOT reproduced:** two `lvai_vi_terminals` calls on a
+fresh `niRFSA.llb` issued in parallel, and one answered `the .llb container … holds no member
+'niRFSA Initialize.vi'` for a VI that is there; the same call again read it. Two parallel CLI reads
+against an empty cache passed with the old and the new code alike. `resolve.llb_members` now
+extracts into a private folder and renames it into place whole, and no longer memoises an EMPTY
+listing for the resident worker's lifetime - both harmless, neither proven to be the cause.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the
