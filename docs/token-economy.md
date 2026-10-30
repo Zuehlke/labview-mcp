@@ -230,3 +230,35 @@ escaping and native run values. The JSON-for-pylabview idea stays last.
   indentation question in particular.
 - Whether a smaller CLAUDE.md changes behaviour: the saving is arithmetic, the risk is a rule an
   agent stops following. An A/B over one cold build would settle it.
+
+## 6. Acceptance, 2026-10-30 - the branch build over raw stdio
+
+Driven with `scripts/mcp_drive.py` against `bin\Debug
+et8.0\LabVIEWMCP.exe` (commit after
+64eaaed4), pylabview backend, LabVIEW 2026 up 74 min: seven calls in one server process over the
+ATM_Pylab subVIs and three copies of `Build ATM Message.vi` for the icons.
+
+| call | s | served chars | same JSON, default escaping (emulated) |
+|---|---|---|---|
+| `lvai_status` | 0.2 | 1 525 | 1 493 |
+| `lvai_exec_state`, one VI | 0.3 | 968 | 1 005 |
+| `lvai_exec_state`, `viPaths` x5 (one missing on purpose) | 0.4 | 5 659 | 5 796 |
+| `lvai_run_vi_and_read_values` | 0.7 | 2 623 | 3 545 (**-26 %**) |
+| `lvai_set_vi_icon`, one VI | 0.2 | 785 | 767 |
+| `lvai_set_vi_icon`, `iconsJson` x2 | 0.3 | 2 371 | 2 328 |
+
+- **Stable**: every call `ok` (the batch `ok: false` only for the file that does not exist, named
+  under `failed` with `viNotFound`, the four real VIs under `executableVis`); both icons
+  `verified` by their read-back; LabVIEW the same pid before and after, `dwarnCount` 4 -> 4.
+- **Escaping works end to end**: not one `<` or `&` in any served answer, where the
+  transcripts' answers carried them in every XML value. The saving lands where XML is - 26 % on
+  the run answer, nothing on answers that are paths and flags (the emulation's -2 % there is
+  its own rounding, not a cost). The 12 % over all answers in 4.2 stays the figure to quote; it
+  was measured on real served text, this emulation only confirms the direction.
+- **Batch**: five VIs in 0.4 s against 0.3 s for one - about 0.08 s per VI inside the batch,
+  because the helper is loaded once. The batch answer is about 17 % LONGER than five single
+  answers (5 659 against 5 x 968) since it carries the summary lists on top; what it saves is
+  four model turns, about 28 s by the transcripts' median, which no single call can show.
+- **Not measured here**: tokens (characters only), the gRPC backend (settings pin pylabview), and
+  a run inside a real client session, which needs the client restarted for the new parameters.
+
