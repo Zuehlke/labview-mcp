@@ -192,6 +192,32 @@ In order:
 4. **Output**: `Write` alone is 30 h of latency - AIXML and helper scripts written out. More
    generators from short specs (4.4).
 
+## 4c. The point missed above: 91 % of all requests run ABOVE 200 k context
+
+Re-read 2026-10-30 after a model switch, with one more number: of 46 802 main-session requests,
+**42 356 (91 %) carried more than 200 k tokens of context, and they hold 97 % of all context
+tokens.** 123 of 163 sessions grew past 200 k, 61 past 500 k; the median session makes 118
+requests, the longest 7 031.
+
+That matters for two reasons that are not in the tables above:
+
+- **Cost**: above 200 k tokens the input - cache reads included - is billed at the long-context
+  rate, roughly double. The 20 % of 4a saves 20 % of that; **keeping the context UNDER 200 k saves
+  half of it outright**, on every request after the threshold.
+- **Quality**: a session at 500 k-1 M tokens carries dozens of stale tool answers, superseded plans
+  and corrected mistakes beside the live ones. Every rule in CLAUDE.md about "the first diagnosis
+  was wrong" was written in such a session.
+
+Latency does NOT change with it (4a), so this is a cost and quality lever, not a speed lever.
+What keeps a session short is already the standing rule - LabVIEW work in a `labview-*` agent,
+whose context ends with its report (subagent requests average 206 k against 484 k) - plus two
+habits: a NEW session for a new task instead of continuing a long one, and tool answers that say
+what happened rather than returning everything they saw (the `verbose: false` default).
+
+**Ranking after this measurement**: (1) short sessions and delegation, no code; (2) batch the
+back-to-back calls and load tools in one step, for speed; (3) a rules-only CLAUDE.md; (4) relaxed
+escaping and native run values. The JSON-for-pylabview idea stays last.
+
 ## 5. Not measured
 
 - Token counts: everything above is characters; a tokenizer run would sharpen 4.2 and the
