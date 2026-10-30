@@ -568,6 +568,8 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         }
 
         var mainVi = Path.Combine(folder, "Main.vi");
+        var bareModule = Path.GetFileNameWithoutExtension(module);
+        var tester = Path.Combine(folder, $"Test {bareModule} API.vi");
         if (File.Exists(mainVi))
         {
             var (frames, exportCode) = await MainViCaseNamesAsync(mainVi, timeoutSeconds, ct);
@@ -604,6 +606,7 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         var before = snapshotRoot is null ? null : Snapshot.Take(snapshotRoot);
         var mainBefore = File.Exists(mainVi) ? new FileInfo(mainVi).Length : -1;
         var mainExecBefore = File.Exists(mainVi) ? await ExecStateAsync(mainVi, timeoutSeconds, ct) : null;
+        var testerExecBefore = File.Exists(tester) ? await ExecStateAsync(tester, timeoutSeconds, ct) : null;
         inputs["Arguments VI Path"] = argumentsVi;
         inputs["Reply Payload VI Path"] = replyVi;
         inputs["Script?"] = "true";
@@ -653,8 +656,6 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
                 "module - read `steps`.", detail);
 
         // ---- 5. complete what Delacor leaves open, save, verify from the files ------------
-        var bareModule = Path.GetFileNameWithoutExtension(module);
-        var tester = Path.Combine(folder, $"Test {bareModule} API.vi");
         JsonObject? testerWiring = null;
         if (addTesterButton && typeIndex != 1 && File.Exists(tester))
         {
@@ -708,41 +709,10 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         var adopted = AdoptedHelpersOf(projectPath);
 
         var completion = new JsonArray();
-        if (mainExec is 0 && mainExecBefore is 0)
-            completion.Add("Main.vi was already NOT executable before this call, so this event " +
-                           "did not cause it. The two measured causes are an earlier Broadcast's loose " +
-                           "#CodeNeeded call and an earlier Request and Wait for Reply frame's unwired " +
-                           "Merge Errors input (docs/dqmh-scripting.md sections 9c, 9h).");
-        else if (mainExec is 0 && typeIndex == 1)
-            completion.Add(
-                $"Main.vi: Delacor dropped a call to {eventName.Trim()}.vi loose on its diagram " +
-                "with a #CodeNeeded comment and its arguments unwired, which leaves Main.vi " +
-                "broken until that call is placed where the module FIRES the broadcast and wired. " +
-                "Only the module's author knows where that is (docs/dqmh-scripting.md section 6.10).");
-        else if (mainExec is 0 && typeIndex is 2 or 3)
-            completion.Add(
-                $"Main.vi: Delacor's \"{eventName.Trim()}\" message frame carries a Merge Errors whose " +
-                "second input is unwired, which leaves Main.vi broken until the frame gets its code. " +
-                "lvai_dqmh_place_handler puts a handler subVI there and wires that input " +
-                "(docs/dqmh-scripting.md section 9h).");
-        else if (mainExec is 0)
-            completion.Add("Main.vi is not executable after scripting, and this event type has " +
-                           "never been measured to cause that - read its errors before going on.");
-        if (testerExec is 0 && route.Generation == DqmhGeneration.V7 && typeIndex is 1 or 3)
-            completion.Add($"Test {bareModule} API.vi: DQMH 7.x gives every broadcast a tester frame " +
-                           "whose Format Into String carries a #DQMH_CodeNeeded format string " +
-                           "'Response Received - %s' with nothing wired to its %s, which leaves the " +
-                           "tester NOT executable until broadcast data from the Event Data Node is " +
-                           "wired there or the %s is removed (measured on 7.1.2; DQMH 5 did not do " +
-                           "this).");
-        else if (testerExec is 0 && !addTesterButton && typeIndex != 1)
-            completion.Add($"Test {bareModule} API.vi is not executable: with addTesterButton false " +
-                           "Delacor still adds an event case to the tester, with no button and nothing " +
-                           "wired (issue #112). Assign that case to a control in the tester, or delete " +
-                           "it - or create the event with addTesterButton true.");
-        else if (testerExec is 0)
-            completion.Add($"Test {bareModule} API.vi is not executable - `testerWiring` says " +
-                           "what was connected.");
+        foreach (var item in EventCompletion(eventName.Trim(), typeIndex, requestScoping,
+                     roundTripBroadcastName.Trim(), bareModule, route.Generation, addTesterButton,
+                     mainExecBefore, mainExec, testerExecBefore, testerExec))
+            completion.Add(item);
 
         var answer = new JsonObject
         {
@@ -764,6 +734,7 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
             ["mainViChanged"] = File.Exists(mainVi) && new FileInfo(mainVi).Length != mainBefore,
             ["mainViExecState"] = mainExec,
             ["mainViExecStateBefore"] = mainExecBefore,
+            ["testerExecStateBefore"] = testerExecBefore,
             ["testerExecState"] = testerExec,
             ["testerWiring"] = testerWiring,
             ["savedMembers"] = Array(saved),
@@ -786,6 +757,78 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         foreach (var (key, value) in detail)
             answer[key] = value?.DeepClone();
         return Json.Document(answer);
+    }
+
+    /// <summary>
+    /// What Delacor leaves for a person after scripting one event. Each event names its OWN
+    /// placeholders even when Main.vi or the tester was already broken: the DQMH7 demo build of
+    /// 2026-10-30 left a private request's loose call and a Round Trip's frame unnamed, because
+    /// the "already broken" note used to replace them.
+    /// </summary>
+    internal static List<string> EventCompletion(string eventName, int typeIndex, int requestScoping,
+        string roundTripBroadcastName, string bareModule, DqmhGeneration generation,
+        bool addTesterButton, int? mainExecBefore, int? mainExec, int? testerExecBefore, int? testerExec)
+    {
+        var items = new List<string>();
+        var v7 = generation == DqmhGeneration.V7;
+        if (mainExec is 0)
+        {
+            var own = items.Count;
+            if (typeIndex == 1)
+                items.Add($"Main.vi: Delacor dropped a call to {eventName}.vi loose on its diagram " +
+                          "with a #CodeNeeded comment and its arguments unwired, which leaves Main.vi " +
+                          "broken until that call is placed where the module FIRES the broadcast and " +
+                          "wired. Only the module's author knows where that is (docs/dqmh-scripting.md " +
+                          "section 6.10).");
+            else if (typeIndex == 0 && requestScoping == 1 && v7)
+                items.Add($"Main.vi: DQMH 7.x dropped a call to {eventName}.vi loose on its diagram " +
+                          $"with a #DQMH_CodeNeeded comment ('Drop this VI wherever you need to fire the " +
+                          $"Private.{eventName} event') and its arguments unwired, which leaves Main.vi " +
+                          "broken until that call is placed where the module SENDS the private request " +
+                          "and wired (measured on 7.1.2).");
+            else if (typeIndex is 2 or 3)
+                items.Add($"Main.vi: Delacor's \"{eventName}\" message frame carries a Merge Errors " +
+                          (v7 ? "and a Bundle By Name " : "") +
+                          "with an unwired input, which leaves Main.vi broken until the frame gets its " +
+                          "code. lvai_dqmh_place_handler puts a handler subVI there and wires that input " +
+                          "(docs/dqmh-scripting.md section 9h).");
+            if (items.Count > own && mainExecBefore is 0)
+                items.Add("Main.vi was already NOT executable before this call as well - the item " +
+                          "above is this event's own share, not the whole cause.");
+            else if (items.Count == own && mainExecBefore is 0)
+                items.Add("Main.vi was already NOT executable before this call, so this event " +
+                          "did not cause it. The measured causes are an earlier Broadcast's or private " +
+                          "request's loose #CodeNeeded call and an earlier reply frame's unwired " +
+                          "Merge Errors input (docs/dqmh-scripting.md sections 9c, 9h).");
+            else if (items.Count == own)
+                items.Add("Main.vi is not executable after scripting, and this event type has " +
+                          "never been measured to cause that - read its errors before going on.");
+        }
+
+        if (testerExec is 0)
+        {
+            var broadcast = typeIndex == 1 ? eventName : typeIndex == 3 ? roundTripBroadcastName : null;
+            if (v7 && broadcast is { Length: > 0 })
+                items.Add($"Test {bareModule} API.vi: DQMH 7.x gives every broadcast a tester frame - " +
+                          $"here the one for {broadcast}" + (typeIndex == 3 ? ", the Round Trip's broadcast half" : "") +
+                          " - whose Format Into String carries a #DQMH_CodeNeeded format string " +
+                          "'Response Received - %s' with nothing wired to its %s, which leaves the " +
+                          "tester NOT executable until broadcast data from the Event Data Node is " +
+                          "wired there or the %s is removed (measured on 7.1.2; DQMH 5 did not do " +
+                          "this). Each broadcast adds one such frame.");
+            else if (!addTesterButton && typeIndex != 1)
+                items.Add($"Test {bareModule} API.vi is not executable: with addTesterButton false " +
+                          "Delacor still adds an event case to the tester, with no button and nothing " +
+                          "wired (issue #112). Assign that case to a control in the tester, or delete " +
+                          "it - or create the event with addTesterButton true.");
+            else if (testerExecBefore is 0)
+                items.Add($"Test {bareModule} API.vi was already NOT executable before this call; " +
+                          "an earlier broadcast's Format Into String is the measured cause.");
+            else
+                items.Add($"Test {bareModule} API.vi is not executable - `testerWiring` says " +
+                          "what was connected.");
+        }
+        return items;
     }
 
     /// <summary>

@@ -161,6 +161,36 @@ public class DqmhLayoutTests
     }
 
     /// <summary>
+    /// The DQMH7 demo build of 2026-10-30: a private request's loose call and a Round Trip's frame
+    /// went unnamed because Main.vi was already broken. Each event names its own share now.
+    /// </summary>
+    [Fact]
+    public void An_event_names_its_own_placeholders_when_main_was_already_broken()
+    {
+        var priv = DqmhHeadless.EventCompletion("Start Acquisition", 0, 1, "", "Heater",
+            DqmhGeneration.V7, true, mainExecBefore: 0, mainExec: 0, testerExecBefore: 0, testerExec: 0);
+        Assert.Contains(priv, i => i.Contains("Start Acquisition.vi loose") && i.Contains("Private.Start Acquisition"));
+        Assert.Contains(priv, i => i.Contains("this event's own share"));
+        Assert.Contains(priv, i => i.Contains("already NOT executable before this call;"));
+
+        var roundTrip = DqmhHeadless.EventCompletion("Get Value", 3, 0, "Value Returned", "Heater",
+            DqmhGeneration.V7, true, 0, 0, 0, 0);
+        Assert.Contains(roundTrip, i => i.Contains("\"Get Value\" message frame") && i.Contains("Bundle By Name"));
+        Assert.Contains(roundTrip, i => i.Contains("one for Value Returned, the Round Trip's broadcast half"));
+    }
+
+    [Fact]
+    public void A_public_request_on_an_executable_module_needs_nothing()
+    {
+        Assert.Empty(DqmhHeadless.EventCompletion("Set Setpoint", 0, 0, "", "Heater",
+            DqmhGeneration.V7, true, 1, 1, 1, 1));
+        // the private-request loose call is a 7.x behaviour; classic gets the unmeasured note
+        var classic = DqmhHeadless.EventCompletion("X", 0, 1, "", "M", DqmhGeneration.Classic, true, 1, 0, 1, 1);
+        Assert.Single(classic);
+        Assert.Contains("never been measured", classic[0]);
+    }
+
+    /// <summary>
     /// Issue #112: with no project path the file comparison had no folder, and every count read
     /// 0. It falls back to the module folder now.
     /// </summary>

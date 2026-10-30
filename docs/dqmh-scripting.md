@@ -1550,6 +1550,19 @@ carries the `#DQMH_CodeNeeded` format string `Response Received - %s` with nothi
 the TESTER is not executable after a Broadcast until broadcast data is wired there. The tools say so
 in `completionNeeded` rather than rewriting Delacor's placeholder.
 
+**Measured in the DQMH7 demo build of 2026-10-30** (a Singleton and a Cloneable, every event type, a
+helper loop each), two more 7.x placeholders, and a reporting gap they exposed:
+
+- A **private request** leaves a loose call to its VI in Main.vi too, with `#DQMH_CodeNeeded Drop
+  this VI wherever you need to fire the "Private.<name>" event` and its arguments unwired (`Module
+  ID` as well on a Cloneable). A public request leaves none.
+- A **Round Trip**'s request frame carries the reply frame's unwired `Merge Errors`, and on 7.x a
+  `Bundle By Name` beside it; its broadcast half gets the tester `Format Into String` frame.
+- `completionNeeded` named only "Main.vi was already NOT executable" whenever an earlier event had
+  broken it, and so never named the private request's loose call or the Round Trip's frame. Each
+  event now names its own share and adds the "already broken" note beside it
+  (`DqmhHeadless.EventCompletion`); the answer carries `testerExecStateBefore` too.
+
 ### 10d. The other issues of the same report (#110 - #112)
 
 - **#110** `lvai_dqmh_place_handler` refused every handler of a frame with no reply: the dry run

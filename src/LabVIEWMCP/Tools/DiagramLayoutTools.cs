@@ -202,6 +202,9 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
             var model = DiagramModel.Parse(dump.Lines!);
             var before = TopOutline(model);
             Lap("dump");
+            var arrows = await ArrowsAsync(vi, timeoutSeconds, ct);
+            model.Arrows = arrows.Arrows;
+            Lap("arrows");
 
             // ---- 2. decide
             var plan = DiagramLayout.Plan(model);
@@ -219,6 +222,7 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
                 ["tunnelsMoved"] = plan.Tunnels.Count,
                 ["structuresKeptAsTheyAre"] = new JsonArray(plan.StructuresKeptAsTheyAre.Select(s => (JsonNode)s).ToArray()),
                 ["heldInMemory"] = hold is not null,
+                ["commentArrows"] = arrows.Note is null ? arrows.Arrows.Count : arrows.Note,
                 ["timingsMs"] = timings,
             };
             if (dryRun)
@@ -317,6 +321,34 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /// <summary>
+    /// Where the diagram's arrowed comments point, read from the SAVED file through pylabview -
+    /// no LabVIEW. A failure costs only the arrows: the layout then anchors by nearness as before,
+    /// and the answer says why.
+    /// </summary>
+    internal async Task<(IReadOnlyList<CommentArrow> Arrows, string? Note)> ArrowsAsync(string vi, int timeoutSeconds,
+                                                                                    CancellationToken ct)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "arrows", Path.GetRandomFileName());
+        try
+        {
+            var extract = JsonNode.Parse(await new PyLabviewTools(connection).ExtractAsync(vi, directory,
+                annotate: false, timeoutSeconds, ct: ct));
+            if (extract?["mainXml"]?.GetValue<string>() is not { } mainXml)
+                return ([], "not read: the pylabview extract failed");
+            var heap = Path.Combine(directory, Path.GetFileNameWithoutExtension(mainXml) + "_BDHb.xml");
+            return File.Exists(heap) ? (CommentArrows.Read(heap), null) : ([], null);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            return ([], "not read: " + e.Message);
+        }
+        finally
+        {
+            try { Directory.Delete(directory, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        }
+    }
 
     internal async Task<(List<string>? Lines, string? Failure)> DumpAsync(string aixml, string vi, int timeoutSeconds,
                                                                          CancellationToken ct)
