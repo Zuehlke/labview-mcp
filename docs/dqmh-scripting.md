@@ -1579,6 +1579,16 @@ helper loop each), two more 7.x placeholders, and a reporting gap they exposed:
   Generation-independent.
 - **#111** A 7.x reply cluster's error member is `error`, not `<Event>_error`; both take the
   handler's `error out`. A handler output literally named `error` still wins.
+- **A Cloneable module's reply carries `Module ID`, and Delacor already feeds it** (measured
+  2026-10-30, DQMH7 final build): the frame's Bundle By Name takes it from a Property Node reading
+  the module's own `Accessors:Module ID`. `lvai_dqmh_place_handler` asked the handler for it all
+  the same - the connect helper marks a wired terminal ` <wired>`, and the plan stripped the mark
+  before matching - so every Request and Wait for Reply frame of a Cloneable module was refused
+  (`namesDoNotMatch`), and the only "fix" was a handler with an input and an output both labelled
+  `Module ID`. A field already wired is left alone now and named under `replyFieldsAlreadyFed` -
+  and `Module ID` is always taken as Delacor's, because the first live run of the fix read it
+  WITHOUT the mark although the export shows the wire; why the helper missed that one wire is
+  not established.
 - **#112a** `addTesterButton: false` still makes Delacor add a tester case, unwired - documented in
   the parameter and named in `completionNeeded`.
 - **#112b** `createdFiles: []` / `ok: false` for events whose files were there: the file comparison

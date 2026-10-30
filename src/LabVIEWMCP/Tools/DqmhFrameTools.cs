@@ -124,7 +124,10 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
 
             var nodeClasses = DqmhHeadless.Listed(dry, "Node Classes");
             var argTerminals = DqmhHeadless.Listed(dry, "Arg Source Terminals").Select(Unmarked).ToList();
-            var replyTerminals = DqmhHeadless.Listed(dry, "Reply Sink Terminals").Select(Unmarked).ToList();
+            // a reply field Delacor already feeds is not the handler's: on a Cloneable 7.x module
+            // `Module ID` comes from the module's own Accessors:Module ID property, and asking the
+            // handler for it refused every Request and Wait for Reply frame (2026-10-30)
+            var (replyTerminals, replyAlreadyFed) = SplitReplySinks(DqmhHeadless.Listed(dry, "Reply Sink Terminals"));
             var texts = DqmhHeadless.Listed(dry, "Decoration Texts");
             var plan = Plan(eventBare, inputs, outputs, argTerminals, replyTerminals);
             var detail = new JsonObject
@@ -134,6 +137,7 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
                 ["frameNodes"] = DqmhHeadless.Array(nodeClasses),
                 ["arguments"] = DqmhHeadless.Array(argTerminals.Except(PlumbingTerminals)),
                 ["replyFields"] = DqmhHeadless.Array(replyTerminals.Except(PlumbingTerminals)),
+                ["replyFieldsAlreadyFed"] = DqmhHeadless.Array(replyAlreadyFed),
                 ["handlerInputs"] = DqmhHeadless.Array(inputs),
                 ["handlerOutputs"] = DqmhHeadless.Array(outputs),
                 ["plan"] = plan.ToJson(),
@@ -273,6 +277,26 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         return new WiringPlan([.. wired.Where(args.Contains)], handlerInputs.Contains("error in"),
             replyWires, problems, warnings);
     }
+
+    /// <summary>
+    /// The reply bundler's terminals split into those the handler must feed and the fields
+    /// Delacor already wired (the connect helper marks those ` &lt;wired&gt;`), plumbing left out of the second.
+    /// </summary>
+    internal static (List<string> Open, List<string> AlreadyFed) SplitReplySinks(IEnumerable<string> sinks)
+    {
+        var all = sinks.ToList();
+        bool Fed(string s) => Unmarked(s) != s || s == DelacorReplyField;
+        return (all.Where(s => !Fed(s)).ToList(),
+                all.Where(Fed).Select(Unmarked).Except(PlumbingTerminals).ToList());
+    }
+
+    /// <summary>
+    /// A Cloneable module's reply field Delacor always feeds from the module's own
+    /// `Accessors:Module ID` property - a handler cannot know it. Named outright because the live
+    /// run of 2026-10-30 read it WITHOUT the ` &lt;wired&gt;` mark although the export shows the wire,
+    /// so the mark alone did not keep the handler from being asked for it.
+    /// </summary>
+    internal const string DelacorReplyField = "Module ID";
 
     /// <summary>
     /// A sink terminal's name without the connect helper's ` <wired>` mark - the helper marks a

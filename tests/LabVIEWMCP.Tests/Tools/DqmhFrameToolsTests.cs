@@ -86,6 +86,27 @@ public class DqmhFrameToolsTests
         Assert.Equal("Found", DqmhFrameTools.Unmarked("Found"));
     }
 
+    /// <summary>
+    /// A Cloneable DQMH 7.x module's reply bundler, as the final acceptance build read it on
+    /// 2026-10-30: Delacor feeds `Module ID` from the module's own Accessors:Module ID property,
+    /// so the handler is asked only for Position and error - it was refused for Module ID before.
+    /// </summary>
+    [Fact]
+    public void A_reply_field_Delacor_already_feeds_is_not_asked_of_the_handler()
+    {
+        var (open, fed) = DqmhFrameTools.SplitReplySinks(
+            ["input cluster <wired>", "Module ID <wired>", "Position", "error", "output cluster <wired>"]);
+        Assert.Equal(["Module ID"], fed);
+        // the live run read it unmarked, though the export shows the wire - it is Delacor's anyway
+        Assert.Equal(["Module ID"], DqmhFrameTools.SplitReplySinks(["Module ID", "Position", "error"]).AlreadyFed);
+        var plan = DqmhFrameTools.Plan("Read Position", ["error in"], ["Position", "error out"],
+            ["Module ID", "Wait Notifier", "wait for reply"], open);
+        Assert.Empty(plan.Problems);
+        Assert.Equal(["Position->Position", "error out->error"], plan.Replies.Select(r => $"{r.From}->{r.To}"));
+        // the request's own Module ID argument is not the handler's business either
+        Assert.Contains(plan.Warnings, w => w.Contains("Module ID"));
+    }
+
     [Fact]
     public void The_frame_name_is_matched_with_LabVIEWs_spaces_around_the_quotes()
     {
