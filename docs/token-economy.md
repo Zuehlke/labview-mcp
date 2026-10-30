@@ -262,3 +262,26 @@ ATM_Pylab subVIs and three copies of `Build ATM Message.vi` for the icons.
 - **Not measured here**: tokens (characters only), the gRPC backend (settings pin pylabview), and
   a run inside a real client session, which needs the client restarted for the new parameters.
 
+### 6a. The same run on the gRPC backend
+
+Same seven calls with `backend: "grpc"` (`lvai_status` takes none), three fresh icon copies,
+the same LabVIEW (pid 38712, up 83 min by then):
+
+| call | grpc s | grpc chars | pylabview s | pylabview chars | grpc saving vs default escaping |
+|---|---|---|---|---|---|
+| `lvai_exec_state`, one VI | 0.2 | 667 | 0.3 | 968 | 6 % |
+| `lvai_exec_state`, `viPaths` x5 | 0.2 | 4 359 | 0.4 | 5 659 | 4 % |
+| `lvai_run_vi_and_read_values` | 0.1 | 2 878 | 0.7 | 2 623 | **29 %** |
+| `lvai_set_vi_icon`, one VI | 0.7 | 1 121 | 0.2 | 785 | - |
+| `lvai_set_vi_icon`, `iconsJson` x2 | 0.2 | 3 093 | 0.3 | 2 371 | - |
+| all seven | | 15 168 | | 15 456 | 7.5 % (pylabview 5.9 %) |
+
+- **Stable on both**: every call `ok`, the missing file the only `failed` entry, both batch icons
+  `verified`, LabVIEW the same pid and `dwarnCount` 4 after both runs.
+- **The answers came over NI's service**: no `"via": "ActiveX"` anywhere, and the grpc notes'
+  own wording. The single icon's 0.7 s is the helper being GENERATED once for this route; the batch
+  after it reused it.
+- **Escaping**: none left on either backend; the run answer saves 29 % on grpc, 26 % on pylabview.
+- **Seen in passing, not changed**: on grpc `lvai_exec_state` names no `backend`/`backendSource`
+  in its answer, where the pylabview route does - older than this branch.
+
