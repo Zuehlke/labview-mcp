@@ -516,6 +516,9 @@ primResID	node	parmIndex	terminal	seen	competing
 8201	?	out	Variant	5	
 8202	?	6	data string	1	
 8202	?	7	type string	1	
+8202	?	3	Variant	1	
+8202	?	4	error in	1	
+8202	?	out	error out	1	
 8203	?	1	type string	1	
 8203	?	2	data string	2	
 8203	?	out	Variant	2	

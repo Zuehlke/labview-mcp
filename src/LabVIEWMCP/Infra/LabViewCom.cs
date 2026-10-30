@@ -387,22 +387,15 @@ internal static class LabViewCom
     public static Task<RunResult> RunAsync(string viPath, IReadOnlyList<Input> inputs,
                                            IReadOnlyList<string> names, int runForMs,
                                            int timeoutSeconds, CancellationToken ct,
-                                           string? readBackHelper = null) =>
+                                           string? readBackHelper = null,
+                                           string? namedSetHelper = null) =>
         WithLabViewAsync(app => WithVi(app, viPath, vi =>
         {
             var state = Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture);
             if (state == 0)
                 return new RunResult(0, false, false, false, 0, [], []);
 
-            var setProblems = new List<string>();
-            foreach (var input in inputs)
-            {
-                try { Call(vi, "SetControlValue", input.Name, input.Value); }
-                catch (Exception e) when (e is TargetInvocationException or COMException)
-                {
-                    setProblems.Add($"{input.Name} = '{input.Text}': {Inner(e)}");
-                }
-            }
+            var setProblems = SetInputs(app, vi, viPath, inputs, namedSetHelper);
             if (setProblems.Count > 0)
                 return new RunResult(state, false, false, false, 0, setProblems, []);
 
@@ -456,21 +449,14 @@ internal static class LabViewCom
                                                          string helperPath,
                                                          IReadOnlyDictionary<string, string> helperInputs,
                                                          IReadOnlyList<string> helperOutputs,
-                                                         int timeoutSeconds, CancellationToken ct) =>
+                                                         int timeoutSeconds, CancellationToken ct,
+                                                         string? namedSetHelper = null) =>
         WithLabViewAsync(app => WithVi(app, targetPath, target =>
         {
             var state = Convert.ToInt32(Get(target, "ExecState"), CultureInfo.InvariantCulture);
             if (state == 0)
                 return new HelperRun(0, false, 0, [], new Dictionary<string, string?>());
-            var problems = new List<string>();
-            foreach (var input in targetInputs)
-            {
-                try { Call(target, "SetControlValue", input.Name, input.Value); }
-                catch (Exception e) when (e is TargetInvocationException or COMException)
-                {
-                    problems.Add($"{input.Name} = '{input.Text}': {Inner(e)}");
-                }
-            }
+            var problems = SetInputs(app, target, targetPath, targetInputs, namedSetHelper);
             if (problems.Count > 0)
                 return new HelperRun(state, false, 0, problems, new Dictionary<string, string?>());
 
@@ -520,6 +506,52 @@ internal static class LabViewCom
             }
         }
         return values;
+    }
+
+    /// <summary>
+    /// Set each input on the HELD target <paramref name="vi"/>; the problems, empty when all took.
+    /// A <see cref="ComValues.NamedSession"/> - an IVI or VISA session, a DAQmx task - goes
+    /// through <paramref name="namedSetHelper"/>, the composed `lvai_set_named_refnum`, which opens
+    /// the same VI in memory by path and sets it through VI Server: SetControlValue takes no value
+    /// for one and says nothing (measured 2026-10-30), so it is never tried.
+    /// </summary>
+    private static List<string> SetInputs(object app, object vi, string viPath, IReadOnlyList<Input> inputs,
+                                          string? namedSetHelper)
+    {
+        var problems = new List<string>();
+        foreach (var input in inputs)
+        {
+            try
+            {
+                if (input.Value is ComValues.NamedSession named)
+                {
+                    if (namedSetHelper is null)
+                    {
+                        problems.Add($"{input.Name} = '{input.Text}': a named session is set by the " +
+                                     "lvai_set_named_refnum helper, and none was given");
+                        continue;
+                    }
+                    var error = WithVi(app, namedSetHelper, helper =>
+                    {
+                        Call(helper, "SetControlValue", "VI Path", Path.GetFullPath(viPath));
+                        Call(helper, "SetControlValue", "control name", input.Name);
+                        Call(helper, "SetControlValue", "name", named.Name);
+                        Call(helper, "Run", false);
+                        return Call(helper, "GetControlValue", "error out") as object[];
+                    });
+                    if (error is { Length: >= 2 } && error[0] is true)
+                        problems.Add($"{input.Name} = '{input.Text}': the set helper answered error " +
+                                     $"{error[1]}{(error.Length > 2 ? " " + error[2] : "")}");
+                    continue;
+                }
+                Call(vi, "SetControlValue", input.Name, input.Value);
+            }
+            catch (Exception e) when (e is TargetInvocationException or COMException or ComException)
+            {
+                problems.Add($"{input.Name} = '{input.Text}': {Inner(e)}");
+            }
+        }
+        return problems;
     }
 
     // ------------------------------------------------------------ late binding

@@ -1,0 +1,13 @@
+<VI _name="lvai_set_named_refnum.vi" description="Sets one control of a VI in memory that holds a NAMED session - an IVI or VISA session, a DAQmx task - to the session of a given name. LabVIEW's ActiveX server takes no value for such a control (SetControlValue answers no error and changes nothing), so this reads the control's own type with Ctrl Val.Get, builds the value from the flattened name and sets it with Ctrl Val.Set. The target must be held open by the caller, so Open VI Reference by path reaches the same VI.">
+  <Control _name="VI Path" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="control name" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value=""/>
+  <Control _name="name" outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value=""/>
+  <Node _name="Open VI Reference" inputs="vi path:4200.value" outputs="vi reference:4210.vi reference,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Get" type="{LV.VI}" inputs="reference:4210.vi reference,error in (no error):4210.error out,Control Name:4201.value" outputs="reference out:4220.reference out,error out:4220.error out,Get Control Value Variant:4220.Get Control Value Variant" uid="4220" uid_parent="root"/>
+  <Node _name="Variant To Flattened String" inputs="Variant:4220.Get Control Value Variant" outputs="data string:,type string:4230.type string" uid="4230" uid_parent="root"/>
+  <Node _name="Flatten To String" inputs="anything:4202.value" outputs="data string:4240.data string" uid="4240" uid_parent="root"/>
+  <Node _name="Flattened String To Variant" inputs="type string:4230.type string,data string:4240.data string" outputs="Variant:4250.Variant" uid="4250" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:4220.reference out,error in (no error):4220.error out,Control Name:4201.value,Value:4250.Variant" outputs="reference out:4260.reference out,error out:4260.error out" uid="4260" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4260.reference out,error in (no error):4260.error out" outputs="error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4270.error out" type="cluster{bool.status,int32.code,string.source}" uid="4280" uid_parent="root" value="[false,0,]"/>
+</VI>

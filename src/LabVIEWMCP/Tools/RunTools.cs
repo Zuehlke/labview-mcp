@@ -451,7 +451,7 @@ internal sealed class RunTools(LvaiConnection connection)
     private static async Task<string> RunSignalledOverComAsync(
         string target, IReadOnlyList<LabViewCom.Input> inputs, int runForMs,
         IReadOnlyList<KeyValuePair<string, string>> signals, int signalGapMs,
-        int timeoutSeconds, CancellationToken ct)
+        int timeoutSeconds, CancellationToken ct, string? namedSetHelper = null)
     {
         if (DefaultHelperAixmlPath(timed: true) is not { } aixml || !File.Exists(aixml))
             return Json.Error("helperMissing",
@@ -480,7 +480,7 @@ internal sealed class RunTools(LvaiConnection connection)
         try
         {
             run = await LabViewCom.RunHelperOnTargetAsync(target, inputs, helper, helperInputs, outputs,
-                                                          timeoutSeconds, ct);
+                                                          timeoutSeconds, ct, namedSetHelper);
         }
         catch (LabViewCom.ComException e)
         {
@@ -619,9 +619,22 @@ internal sealed class RunTools(LvaiConnection connection)
             inputs.Add(new LabViewCom.Input(name, value, text));
         }
 
+        // A NAMED session (IVI, VISA, a DAQmx task) is set by a composed helper through VI
+        // Server - ActiveX takes no value for one and says nothing (ComValues.NamedSession)
+        string? namedSetHelper = null;
+        if (inputs.Any(i => i.Value is ComValues.NamedSession))
+        {
+            var (helperVi, helperProblem) = await ComposedHelpers.EnsureAsync(NamedSetHelperFileName, timeoutSeconds, ct);
+            if (helperVi is null)
+                return Json.Error("helperNotComposed",
+                    $"A named session input needs the {NamedSetHelperFileName} helper, and it could not be " +
+                    $"composed: {helperProblem}. Nothing ran.", new { viPath = full });
+            namedSetHelper = helperVi;
+        }
+
         if (signals.Count > 0)
             return await RunSignalledOverComAsync(full, inputs, runForMs, signals, signalGapMs,
-                                                  timeoutSeconds, ct);
+                                                  timeoutSeconds, ct, namedSetHelper);
 
         // INDICATORS ONLY, as NI's helper reads them: Ctrl Val.Get All with its default answered
         // the indicators and none of the controls, measured 2026-10-10 on the same VIs. The answer
@@ -634,7 +647,7 @@ internal sealed class RunTools(LvaiConnection connection)
         if (panel.Any(i => i.Indicator && i.Type.Contains("waveform", StringComparison.OrdinalIgnoreCase)))
             (readBack, readBackProblem) = await ComposedHelpers.EnsureAsync(ReadValuesHelperFileName, timeoutSeconds, ct);
         LabViewCom.RunResult run;
-        try { run = await LabViewCom.RunAsync(full, inputs, names, runForMs, timeoutSeconds, ct, readBack); }
+        try { run = await LabViewCom.RunAsync(full, inputs, names, runForMs, timeoutSeconds, ct, readBack, namedSetHelper); }
         catch (LabViewCom.ComException e)
         {
             return Json.Error(e.Kind, e.Message, new { viPath = full, via = "ActiveX" });
@@ -1020,6 +1033,9 @@ internal sealed class RunTools(LvaiConnection connection)
     /// <summary>Name of the timed runner's AIXML source inside the scripts folder.</summary>
     internal const string TimedHelperAixmlFileName = "lvai_run_for_ms.xml";
     internal const string ReadValuesHelperFileName = "lvai_read_values.xml";
+
+    /// <summary>The composed helper that sets a named session (IVI, VISA, a DAQmx task) on a held VI.</summary>
+    internal const string NamedSetHelperFileName = "lvai_set_named_refnum.xml";
 
     /// <summary>The control the timed runner takes its budget on; its presence is the test.</summary>
     internal const string RunForMsControlName = "run for ms";

@@ -110,6 +110,23 @@ public sealed class ComValuesTests
         Assert.Contains("cannot be set over COM", Refusal("", "ref{LV.VI}"));
     }
 
+    /// <summary>
+    /// An IVI or VISA session or a DAQmx task is marked for the set helper, not refused - and not
+    /// handed to SetControlValue as a string, which LabVIEW took with no error and ignored. Any
+    /// other refnum is still refused.
+    /// </summary>
+    [Theory]
+    [InlineData("ref{IVI.niRFSA}", "PXI1Slot2")]
+    [InlineData("ref{Visa.Instr}", "GPIB0::22::INSTR")]
+    [InlineData("ref{GenClassTag.Task.NIDAQ}", "MyTask")]
+    public void A_named_session_is_marked_for_the_set_helper(string type, string name)
+    {
+        var named = Assert.IsType<ComValues.NamedSession>(Convert(name, type));
+        Assert.Equal(name, named.Name);
+        Assert.True(ComValues.IsNamedSession(type));
+        Assert.False(ComValues.IsNamedSession("ref{LV.VI}"));
+    }
+
     [Fact]
     public void Values_read_back_are_written_as_AIXML_literals()
     {

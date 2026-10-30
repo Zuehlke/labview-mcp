@@ -2218,7 +2218,7 @@
    {
     "inputs": "",
     "outputs": {
-     "code": "1"
+     "code": "-250032"
     }
    }
   ]
@@ -2249,6 +2249,19 @@
     "inputs": "",
     "outputs": {
      "size": "0"
+    }
+   }
+  ]
+ },
+ "t201_named_session_literals": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "ivi same": "True",
+     "ivi other same": "False",
+     "visa same": "True",
+     "task same": "True"
     }
    }
   ]

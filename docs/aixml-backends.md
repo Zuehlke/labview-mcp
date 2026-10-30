@@ -2031,7 +2031,7 @@ are closed, each with a suite case built FIRST on NI's converter and run there a
 | gap | examples | fix | suite case |
 |---|---|---|---|
 | complex waveform wire, `MeasureData.Complex128Waveform` | 8 | admitted after a run that CARRIES data: `Re/Im To Complex` -> `Build Waveform` -> `Get Waveform Components` -> `Complex To Re/Im` returns `Y` = 1+2i, 3-4i, -0.5+0.25i and `dt` = 0.001, as NI's build does. AIXML spells the type `complexdoublewaveform` (NI's export of `niRFSA Fetch IQ (Complex WDT 1Rec 1Chan).vi`); composer and reader know it, its indicator part is harvested clean, and `Complex To Re/Im`'s `y` (slot 2 of prim 1044) joined the name table. NI's converter takes a complex `Y` on `Build Waveform` only when the node's output feeds a complex waveform - wired to `Get Waveform Components` alone it refuses `Y` | `t196_complex_waveform_wire` |
-| NI-TClk session wire, `Refnum.UsrDefined` | 3 | admitted for `GenClass.sessionReferenceClass` ONLY - a `UsrDefined` refnum is a family of unrelated classes. `niRFSA Get Session Reference` -> `Build Array` -> `niTClk Configure For Homogeneous Triggers` -> `niTClk Synchronize` on a null session answers `code 1`, as NI's build does; which call raised it is not established | `t197_tclk_session_wire` |
+| NI-TClk session wire, `Refnum.UsrDefined` | 3 | admitted for `GenClass.sessionReferenceClass` ONLY - a `UsrDefined` refnum is a family of unrelated classes. `niRFSA Get Session Reference` -> `Build Array` -> `niTClk Configure For Homogeneous Triggers` -> `niTClk Synchronize` on a null session. The first version chained niRFSA's error into niTClk and answered `code 1` - which came from `niRFSA Get Session Reference` (`Refnum to Session`), so niTClk never ran. Unchained, niTClk runs on the session array and answers `-250032` naming session index 0, as NI's build does | `t197_tclk_session_wire` |
 | a For Loop's conditional `stop` | 3 | a For Loop with a `<Condition>` is a shell of its own (`struct/forLoop/conditional`, `loopTestDCO` beside the N terminal), harvested from NI's build; the condition end was already generic. N = 10, stop at i >= 3: `last i` = 3, where 9 would mean the condition was ignored. NI's converter makes the output tunnel last-value, not indexing | `t198_for_loop_conditional` |
 | an UNINITIALIZED shift register with no type hint | 2 | NI's export writes no type for one (only our reader's `srtype` does). The register now waits for the value it is GIVEN each iteration and takes its type from there, as a Feedback Node with no initializer already did; a Case passing the old value on in one frame resolves, because a case output tunnel is typed once one frame's input is. Stores 10*i while i < 2, keeps it otherwise: 10 | `t199_uninitialized_shift_register` |
 
@@ -2061,7 +2061,39 @@ donor had them:
 **The log check almost passed both arms.** Midway the log reached its 100-event ceiling and stopped
 being written, and after a restart a VI LabVIEW had loaded before came back from the compiled-object
 cache logging nothing - the control arm included. The A/B above is on freshly rebuilt files under new
-names on a restarted LabVIEW, with the control arm insane and the rest clean.
+names on a restarted LabVIEW, with the control arm insane and the rest clean. `lv-com.ps1` now
+prints a SATURATED warning when the log is past 100 events; the cache case it cannot see - check
+a fresh file under a new name.
+
+### Named sessions: their literal, other drivers, and setting one in a run (2026-10-30)
+
+- **An IVI session, a VISA session and a DAQmx task store their NAME as a string**, in a constant's
+  `ConstValue` and a control's `DefaultData` alike - NI's build of `probes/pvisa-values.xml` and of a
+  task probe wrote `00000010` + `GPIB0::22::INSTR` and `00000009` + `OtherTask`, exactly as for the
+  IVI session. The composer writes all three now; NI's exporter reads `ASRL1::INSTR`,
+  `GPIB0::22::INSTR`, `MyTask` and `OtherTask` back from our builds. Suite case
+  `t201_named_session_literals` compares each control's default with a constant of the same name
+  through `Equal?`, which is true only if both values were stored, with a constant naming another
+  resource as the control arm.
+- **One IVI part serves another driver**: `ref{IVI.niDMM}` - a driver this station does not have -
+  builds on NI's converter, and our build carries the same `typeClass` set (niDMM x3, VISA `Instr`
+  x2), no niRFSA left over, loads clean on a live log and runs. Measured on niDMM only.
+- **LabVIEW's ActiveX server TAKES NO VALUE FOR A NAMED SESSION, AND SAYS NOTHING.**
+  `SetControlValue` with the name as a string, or as the (name, number) pair `GetControlValue`
+  reads such a control back as, answered no error and left the control at its default - an
+  `Equal?` against a constant of that name stayed False, while the same probe with the name as the
+  control's DEFAULT answered True. `GetControlValue` reads every such control back as `[,0]`,
+  default included, so a read-back cannot show it either. `lv-com.ps1` reported "set" each time.
+  The value can be built INSIDE LabVIEW, though: the session's flattened data is the
+  length-prefixed name, so `Flatten To String` of the name, `Flattened String To Variant` with the
+  control's own type string from `Ctrl Val.Get` / `Variant To Flattened String`, and `Ctrl Val.Set`
+  set it - the Equal? witness answered True for the name, False for another. That is the composed
+  helper `scripts/lvai_set_named_refnum.xml`, which `lvai_run_vi_and_read_values` (pylabview)
+  runs on the HELD target for every IVI, VISA or tag-refnum input (`ComValues.NamedSession`), on
+  the plain and the signalled path. The composer needed one table fix for it: primitive 8202,
+  `Flattened String To Variant`, had its two inputs and not its `Variant` output (slot 3),
+  `error in` (4) or `error out`. The grpc route's helper is unchanged and NOT measured with such an
+  input.
 
 **A new example built on the reachable side, through `labview-vi-generator` on `pylabview`:**
 `RFSA Measure Peak Power.vi` - Initialize, Configure Acquisition Type, Reference Level, Spectrum

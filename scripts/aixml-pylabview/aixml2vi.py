@@ -1249,10 +1249,12 @@ def _const_value(tree, value):
                 cb = lvheap.value_bytes(c)
                 body += struct.pack(">B", len(cb)) + cb
         return (b"PTH0" + struct.pack(">I", len(body)) + body).hex().upper()
-    if t == "Refnum" and tree.get("RefType") == "IVIRef":
-        # an IVI session holds its resource name, flattened like a string: NI's converter wrote
-        # 00000007 53696D52465341 for value="SimRFSA" (probes/pivi-sim.xml, 2026-10-30), and
-        # the null session is the empty one, 00000000
+    if t == "Refnum" and tree.get("RefType") in ("IVIRef", "VisaRef", "UsrDefndTag"):
+        # an IVI or VISA session or a DAQmx task holds its NAME, flattened like a string: NI's
+        # converter wrote 00000007 53696D52465341 for value="SimRFSA" (probes/pivi-sim.xml),
+        # 00000010 + "GPIB0::22::INSTR" for a VISA constant and 00000009 + "OtherTask" for a
+        # DAQmx task one, the same for each control's default (probes/pvisa-values.xml,
+        # 2026-10-30); the null one is the empty name, 00000000
         b = lvheap.value_bytes(unescape(value or ""))
         return (struct.pack(">I", len(b)) + b).hex().upper()
     if t == "Refnum":

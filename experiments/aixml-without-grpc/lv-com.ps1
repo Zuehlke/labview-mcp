@@ -123,6 +123,18 @@ function Format-V($v) {
 $ViPath = @($ViPath | ForEach-Object { $_.Split('|') } | Where-Object { $_ })
 $lv = [Activator]::CreateInstance([Type]::GetTypeFromProgID('LabVIEW.Application'))
 Write-Output ('LabVIEW ' + (Get-P $lv 'Version'))
+# A log check is only as good as the log: LabVIEW stops writing it at 100 DWarn events (each
+# written twice), and a VI it already loaded once comes back from its compiled-object cache logging
+# nothing - both made an insane VI read clean on 2026-10-30, the control arm included. Say so.
+$log = Get-ChildItem (Join-Path $env:TEMP 'LabVIEW_*_cur.txt') -ErrorAction SilentlyContinue |
+       Sort-Object LastWriteTime | Select-Object -Last 1
+if ($log) {
+    $events = @(Select-String -Path $log.FullName -Pattern '^DWarn').Count
+    if ($events -ge 100) {
+        Write-Output ('WARNING: ' + $log.Name + ' is SATURATED (' + $events + ' DWarn events) - LabVIEW no longer ' +
+                      'writes it, so no insanity below can be seen. Restart LabVIEW (lv-restart.ps1).')
+    }
+}
 foreach ($p in $ViPath) {
     Write-Output ('=== ' + $p)
     $vi = $null
