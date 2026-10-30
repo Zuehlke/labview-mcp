@@ -434,7 +434,7 @@ internal sealed class RunTools(LvaiConnection connection)
                           : "")
                     : ""));
 
-            return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            return payload.ToJsonString(Json.Answer);
         }), choice);
     }
 
@@ -534,7 +534,7 @@ internal sealed class RunTools(LvaiConnection connection)
                              "target was then ABORTED - no cleanup on its diagram ran, so `error out` shows " +
                              "its default.") +
                        " Inputs were set over ActiveX with their real types before the helper ran.",
-        }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        }.ToJsonString(Json.Answer);
     }
 
     /// <summary>The `signals` block of an answer, the same on both routes.</summary>
@@ -723,7 +723,7 @@ internal sealed class RunTools(LvaiConnection connection)
                       "did not match its type; `literal` is still there."
                     : $"DID NOT FINISH within the budget and was aborted; the values are what the " +
                       "abort left. Raise timeoutSeconds, or use runForMs for a VI that never ends.",
-        }.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        }.ToJsonString(Json.Answer);
     }
 
     /// <summary>

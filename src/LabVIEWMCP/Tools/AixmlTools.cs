@@ -971,7 +971,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
     // answers keep the RPC shape - errorCode and errorMessage first - so lvai_generate_vi and every
     // caller that reads them stays unchanged; what differs is said in the answer, never implied.
 
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = Json.Answer;
 
     /// <summary>An answer from the gRPC route, with the backend that produced it added.</summary>
     internal static string WithBackend(string answer, AixmlBackend.Choice choice)

@@ -222,7 +222,7 @@ internal sealed class DiscussTools(LvaiConnection connection)
                 payload["invokeErrorXml"] = JsonValue.Create(invokeErrorXml);
             }
 
-            return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            return payload.ToJsonString(Json.Answer);
         });
 
     /// <summary>

@@ -42,7 +42,7 @@ namespace LabVIEWMcp.Tools;
 [McpServerToolType]
 internal sealed class BulkTools(LvaiConnection connection)
 {
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = Json.Answer;
 
     // ---------------------------------------------------------------- generate
 

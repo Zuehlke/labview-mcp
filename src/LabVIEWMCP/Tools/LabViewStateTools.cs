@@ -21,7 +21,7 @@ namespace LabVIEWMcp.Tools;
 [McpServerToolType]
 internal sealed class LabViewStateTools(LvaiConnection connection)
 {
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = Json.Answer;
 
     internal const string MemoryHelperAixmlFileName = "lvai_vis_modified.xml";
 

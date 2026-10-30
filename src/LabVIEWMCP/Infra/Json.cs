@@ -14,9 +14,24 @@ internal static class Json
     private static readonly JsonFormatter Formatter =
         new(JsonFormatter.Settings.Default.WithFormatDefaultValues(true));
 
-    private static readonly JsonSerializerOptions PlainOptions = new()
+    /// <summary>
+    /// How every answer to the client is written: indented, and with RELAXED escaping. The default
+    /// encoder writes `&lt;` as `<`, and the same for `&gt;`, `&amp;`, `'` and `+` - six characters
+    /// each, several tokens, and our answers are full of XML, AIXML and paths. Measured 2026-10-30
+    /// over every LabVIEW tool answer in this repository's transcripts: 59.5 M characters served,
+    /// 52.3 M with this encoder - 12 % less, 30 % on `lvai_run_vi_and_read_values`, whose values
+    /// are LabVIEW's flattened XML. The output is still valid JSON that any parser reads to the same
+    /// strings; what the default protects against is embedding JSON in HTML, which no answer of ours
+    /// is. Non-ASCII goes out as UTF-8 too, which stdio MCP carries. `docs/token-economy.md` §4.2.
+    /// </summary>
+    public static readonly JsonSerializerOptions Answer = new()
     {
         WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    private static readonly JsonSerializerOptions PlainOptions = new(Answer)
+    {
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
     };
 
@@ -138,6 +153,5 @@ internal static class Json
             ["detail"] = detail is null ? null : JsonNode.Parse(JsonSerializer.Serialize(detail)),
         });
 
-    private static string Indent(JsonNode node) =>
-        node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+    private static string Indent(JsonNode node) => node.ToJsonString(Answer);
 }

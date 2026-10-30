@@ -445,7 +445,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
                     JsonValue.Create(Text(outputs, "terminal is source"));
             }
 
-            return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            return payload.ToJsonString(Json.Answer);
         }));
 
     /// <summary>

@@ -559,7 +559,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             ["steps"] = steps,
             ["totalElapsedMs"] = total.ElapsedMilliseconds,
             ["note"] = note,
-        }.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }.ToJsonString(Json.Answer);
     }
 
     private static JsonNode? Parsed(string answer)

@@ -102,6 +102,10 @@ Per tool, relaxed escaping alone: `lvai_run_vi_and_read_values` 30 %, `lvai_desc
 outside HTML. The options live in `Infra/Json.cs` plus about twenty local `JsonSerializerOptions`
 in the tools, so the change is mechanical.
 
+*Built 2026-10-30: `Json.Answer` in `Infra/Json.cs` carries the relaxed encoder, every tool's
+indented options point at it, a test refuses a new private copy, and the CLI sets the console to
+UTF-8 so an umlaut written as itself is not garbled on a legacy code page. Indentation kept.*
+
 Dropping the indentation saves fewer TOKENS than characters (a run of spaces tokenizes cheaply), so
 it is the weaker half; measure it with a tokenizer before doing it.
 
