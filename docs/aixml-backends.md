@@ -2092,8 +2092,16 @@ a fresh file under a new name.
   runs on the HELD target for every IVI, VISA or tag-refnum input (`ComValues.NamedSession`), on
   the plain and the signalled path. The composer needed one table fix for it: primitive 8202,
   `Flattened String To Variant`, had its two inputs and not its `Variant` output (slot 3),
-  `error in` (4) or `error out`. The grpc route's helper is unchanged and NOT measured with such an
-  input.
+  `error in` (4) or `error out`.
+- **On grpc NOTHING EXTRA IS NEEDED, measured the same day.** NI's typed run helper
+  (`lvai_run_and_read_typed`) sets such a control through VI Server's `Ctrl Val.Set` with the name
+  as a string variant, and VI Server coerces it where ActiveX does not: the same `Equal?` witness,
+  built by NI's converter, answered True for `PXI1Slot2`, False for `Other` and False with no
+  input. Cross-checked both ways - the pylabview-composed witness run on grpc, and the grpc-built
+  one run on pylabview, both True for the name. NI's converter also stores the three literals
+  itself: `t201` built on grpc answered `ivi same` / `visa same` / `task same` True and
+  `ivi other same` False, as the composed one does. And the composed `RFSA Measure Peak Power.vi`
+  reads `execState 1` with no linker error through NI's helper.
 
 **A new example built on the reachable side, through `labview-vi-generator` on `pylabview`:**
 `RFSA Measure Peak Power.vi` - Initialize, Configure Acquisition Type, Reference Level, Spectrum
@@ -2107,8 +2115,8 @@ Close. Two smaller gaps it found:
   (a refnum constant has no literal value ('RFSA'))`. Closed for an IVI session the same day
   (previous section); other refnum kinds still have no literal.
 - **`lvai_run_vi_and_read_values` cannot set a `ref{IVI.*}` control over COM** - refused before the
-  run with `inputNotConvertible`, so a test run cannot name a device. Whether a VISA refnum
-  control behaves the same was not checked.
+  run with `inputNotConvertible`, so a test run cannot name a device. Closed the same day by the
+  composed set helper (previous section), for VISA sessions and DAQmx tasks too.
 
 ## Not covered, and not measured
 
