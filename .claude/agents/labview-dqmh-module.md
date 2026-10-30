@@ -138,6 +138,12 @@ call in the tester, saves what the scripting left unsaved, and reports. **There 
 any more** - the `useDialog` option and the `lvdqmh_dlg_*` helpers were removed on 2026-10-06, so
 never drive Delacor's `Create New DQMH Event` dialog, send keystrokes, or build a helper for it.
 
+**`errorKind: stillRunning` is not a failure here either** (since 2026-10-30): the first event on a
+freshly started LabVIEW can outlive the client's 60 s, so the tool answers within
+`answerWithinSeconds` and THE SAME CALL again (same arguments) collects the answer. An
+`eventNameInUse` on a repeat after a `Request timed out` is the event that run wrote - repeat the
+identical call instead of treating it as a failure.
+
 ### The four event types are not one chain with a different index
 
 | type | what it needs beyond `argumentsJson` | files | `.lvlib` |

@@ -1363,6 +1363,14 @@ raw stdio: `answerWithinSeconds: 5` answered `stillRunning` at 5.0 s, a second m
 and the repeat collected `ok: true` (`Freezer`, 19.6 s of work, both VIs executable). A server
 restart loses a running job's answer, not its module - `moduleExists` then carries a hint saying so.
 
+**`lvai_dqmh_new_event` runs the same way since 2026-10-30.** The first event on a freshly started
+LabVIEW, on grpc, outlived the 60 s: `Request timed out`, the event written and executable, its
+`completionNeeded` lost, and the same call again refused as `eventNameInUse`. It is keyed on every
+argument, answers `stillRunning` past `answerWithinSeconds` (45), and the same call collects the
+answer. A finished job is dropped instead of handed out when LabVIEW restarted after it began, or
+when it finished more than ten minutes ago - a killed LabVIEW's "no port" failure was once handed
+to the same call on the next instance.
+
 **A MODULE FROM A TEMPLATE FAILED WITH 56003 - beside the module the template was made from.**
 `Script New Module.vi` opens the template's library by path (`{LV.Application}` `Library.Open`),
 and with a library of the same NAME already in memory that open answers 56003. Measured as an A/B:

@@ -130,6 +130,9 @@ internal sealed class DqmhTools(LvaiConnection connection)
         string consumingLoop = "Event Handling Loop",
         [Description("Local budget in seconds; the scripting itself takes tens of seconds")]
         int timeoutSeconds = 600,
+        [Description("Answer within this many seconds; past it the event is still scripted in the " +
+                     "server and the SAME call again collects the answer (the client gives up at 60 s)")]
+        int answerWithinSeconds = 45,
         [Description(BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(() => WithBackendAsync(backend, "lvai_dqmh_new_event", async () =>
@@ -192,10 +195,24 @@ internal sealed class DqmhTools(LvaiConnection connection)
                     "No scripts folder next to the exe - lvai_status reports it as " +
                     "scriptsDirectory. The DQMH helpers live there.");
 
-            return await new DqmhHeadless(connection).NewEventAsync(
-                this, scripts, moduleName, eventName, typeIndex, EventTypes[typeIndex],
-                arguments, replyArguments, roundTripBroadcastName, description,
-                addTesterButton, timeoutSeconds, ct, scoping, loop);
+            // The first event on a freshly started LabVIEW outlived the client's 60 s on grpc
+            // (2026-10-30): the event was written, its answer - completionNeeded with it - lost, and
+            // the same call again refused it as eventNameInUse. So it runs detached, like
+            // lvai_dqmh_new_module, and the SAME call collects the answer.
+            var key = string.Join("|", moduleName.Trim(), eventName.Trim(), EventTypes[typeIndex],
+                argumentsJson, replyArgumentsJson, (roundTripBroadcastName ?? "").Trim(), description,
+                addTesterButton, RequestScopings[scoping], loop,
+                OnPyLabview ? AixmlBackend.PyLabview : AixmlBackend.Grpc);
+            return await ResumableCall.RunAsync("lvai_dqmh_new_event", key,
+                TimeSpan.FromSeconds(answerWithinSeconds),
+                () => new DqmhHeadless(connection).NewEventAsync(
+                    this, scripts, moduleName, eventName, typeIndex, EventTypes[typeIndex],
+                    arguments, replyArguments, roundTripBroadcastName ?? "", description,
+                    addTesterButton, timeoutSeconds, CancellationToken.None, scoping, loop),
+                "Call lvai_dqmh_new_event again with the SAME arguments: it waits for this run and " +
+                "returns its answer. Do not start other LabVIEW work meanwhile, and do not take an " +
+                "eventNameInUse refusal on a new call as a failure - the event may be the one this run wrote.",
+                ct);
         }));
 
     /// <summary>The `backend` parameter text every DQMH tool shares.</summary>
