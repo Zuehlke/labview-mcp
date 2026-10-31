@@ -418,6 +418,13 @@ The documentation is part of this file, not a later step:
   overwrite a description the user wrote with a summary of your change.
 - New `Control`/`Indicator` elements get a `description`, a `conIdx` if they belong on the
   connector pane, and `connection` = `required` / `recommended` / `optional`.
+- **EVERY EXISTING TERMINAL KEEPS ITS `connection` EXACTLY AS THE EXPORT HAS IT** - the user's
+  rule of 2026-10-31: an extended or revised VI stays as it is, or code that calls it stops
+  running. Do NOT apply the new-VI rule ("`error in` required") to a VI you edit, and do not
+  "tidy" a flag. Run `lvai_check_aixml` with `newVi: false` on edited AIXML - with the default
+  it would repair `error in` to required. `lvai_generate_vi` onto the VI's existing path keeps
+  the flags by itself (the file exists, so it is not a new VI); generating to a NEW path and
+  copying over the old file would not.
 - **A terminal without `conIdx` is not on the connector pane** — that is a front-panel-only
   control, almost never what a subVI wants.
 - Keep the existing connector-pane indices stable unless Phase 1 said they change. Renumbering
@@ -669,6 +676,11 @@ If Phase 4 found no real icon, have the tool draw one instead — **one call, no
 ```
 lvai_set_vi_icon  viPath=<abs>  line1="FILE"  line2="SORT"
 ```
+
+**Several VIs at once: `iconsJson`** - a JSON array of `{"viPath", "line1", "line2", "line3"}`, one
+entry per VI, in ONE call. Measured over this repository's transcripts the icon call followed
+itself 70 % of the time; each repeat is a model turn of about 7 s. Set the icons of a build's VIs
+together at the end, and read `failed` for the ones whose read-back did not verify.
 
 `line1` becomes a coloured banner, `line2` and `line3` sit under it, and the tool renders the 32x32
 PNG itself. Optional `bannerColor`, `backgroundColor`, `borderColor` as `RRGGBB`; text colour is

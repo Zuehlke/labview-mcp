@@ -10131,6 +10131,12 @@ class Composer:
         t, l, b, r = lvheap.parse_bounds(view.text)
         top, left = min(tops) - self.DIAGRAM_VIEW_MARGIN, min(lefts) - self.DIAGRAM_VIEW_MARGIN
         view.text = "(%d, %d, %d, %d)" % (top, left, top + b - t, left + r - l)
+        # and the WINDOW's view, pBounds - a different field: the region the window shows when
+        # the VI opens. NI's examples put it round their code (Build Array: code 281/301, pBounds
+        # (270, 271, ...)); the skeleton's (243, 336, ...) stayed put, so a composed VI opened on
+        # an EMPTY diagram (the user's screenshot, 2026-10-31). lvai_layout_diagram fits it again
+        # after it moves the code (scripts/lvbd_fit_view.py).
+        lvheap.fit_window_view(self.bd)
 
     def count_bound_nodes(self):
         """A front-panel object's annex counts the IMPLICIT property and invoke nodes bound to it

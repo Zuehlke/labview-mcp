@@ -374,6 +374,16 @@ If you are building from scratch, read `lvai_aixml_reference` for the element gr
   front-panel-only control, which is almost never what a subVI wants.
 - `connection` is `required` / `recommended` / `optional`. Mark the terminals that must be
   wired as `required`; without it the caller has no way to know.
+- **A NEW VI HAS ONE REQUIRED INPUT - `error in`, set to `connection="required"`.** The user's
+  rule of 2026-10-31, and it REPLACES the earlier "error in is recommended": a VI nobody has to
+  wire can be dropped on a diagram and forgotten, a required error input forces it into the data
+  flow (or a constant in front of it, where that is the logical implementation). With no
+  `error in` (a supplied panel without one), mark the MOST IMPORTANT input `required` - you choose
+  which; `lvai_check_aixml` / `lvai_generate_vi` refuse a new VI with inputs and none required
+  (`noRequiredInput`) and repair a non-required `error in` (`errorInNotRequired`). Outputs stay
+  `recommended`. **This holds ONLY for a VI generated completely new** - `lvai_generate_vi` decides
+  it by whether the target file already exists - and its CALLERS you build must then wire
+  `error in`, which validation enforces.
 - `error in` and `error out` are MANDATORY — the second-to-last input and the
   second-to-last output, data terminals above them. Give both a `conIdx` from
   `lvai_connector_pane` (bottom-left and bottom-right), and merge every error branch of the diagram
@@ -798,6 +808,11 @@ afterwards by a route that does not keep it.
 ```
 lvai_set_vi_icon  viPath=<abs>  line1="DAQ"  line2="3AI"  line3="TDMS"
 ```
+
+**Several VIs at once: `iconsJson`** - a JSON array of `{"viPath", "line1", "line2", "line3"}`, one
+entry per VI, in ONE call. Measured over this repository's transcripts the icon call followed
+itself 70 % of the time; each repeat is a model turn of about 7 s. Set the icons of a build's VIs
+together at the end, and read `failed` for the ones whose read-back did not verify.
 
 `line1` becomes a coloured banner across the top, `line2` and `line3` sit under it, and the tool
 renders the 32x32 PNG, applies it and reads it back. Optional `bannerColor`, `backgroundColor`,

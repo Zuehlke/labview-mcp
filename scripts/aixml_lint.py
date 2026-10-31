@@ -614,7 +614,31 @@ def check_uids(elements: list[_El]) -> list[Finding]:
     return findings
 
 
-def check_terminal_flags(elements: list[_El]) -> list[Finding]:
+def check_required_input(elements: list[_El]) -> list[Finding]:
+    """A NEW VI with pane inputs, no `error in` and no required input - the twin of the C#
+    `noRequiredInput`. An ERROR because only the author knows which input is the most important,
+    so nothing repairs it; an input with no `connection` counts as required, as LabVIEW reads it."""
+    inputs = [e for e in elements if e.tag == "Control" and e.el.get("conIdx") is not None]
+    if not inputs or any(e.name == "error in" for e in inputs):
+        return []
+    if any(e.el.get("connection") in (None, "required") for e in inputs):
+        return []
+    names = ", ".join('"%s"' % e.name for e in inputs)
+    return [
+        Finding(
+            "error",
+            "no-required-input",
+            None,
+            "VI",
+            "VI",
+            "a VI generated completely new needs one REQUIRED input: `error in`, or without one its "
+            "most important input. None of %s is required - set connection=\"required\" on the "
+            "one that matters (the user's rule of 2026-10-31)." % names,
+        )
+    ]
+
+
+def check_terminal_flags(elements: list[_El], new_vi: bool = False) -> list[Finding]:
     """conIdx without connection - LabVIEW reads the omission as required."""
     findings: list[Finding] = []
     for e in elements:
@@ -641,34 +665,31 @@ def check_terminal_flags(elements: list[_El]) -> list[Finding]:
             )
             continue
 
-        # `error in` IS `recommended`. The house rule names the terminal and the bottom-row slot
-        # and says nothing about the flag, so agents choose - measured 2026-09-16 over one
-        # application build where two of four agents wrote `optional` and two wrote `recommended`,
-        # with every pane passing the connector-pane check and this lint silent, because the
-        # attribute was PRESENT. `required` would force every caller to wire the chain; `optional`
-        # hides the terminal from Context Help's simple view. Narrow on purpose: only the exact
-        # house label, because `error in (no error)` belongs to a callee we do not own.
+        # A NEW VI's `error in` IS `required` - the user's rule of 2026-10-31, which REPLACED the
+        # 2026-09-16 rule this check enforced before ("recommended"): a required error input makes
+        # every caller put the VI into the data flow. Only with --new-vi, the twin of
+        # lvai_check_aixml's newVi: the AIXML of a VI that already exists keeps its flags, and the
+        # shipped helpers are not deliverables. Narrow on purpose: only the exact house label,
+        # because `error in (no error)` belongs to a callee we do not own. `e.name`, NOT
+        # `e.label()` - the latter renders as "Control 'error in'" and matched nothing for one
+        # revision of the old rule.
         if (
-            e.tag == "Control"
-            # `e.name`, NOT `e.label()` - the latter renders as "Control 'error in'", so comparing
-            # it against the bare label silently matches nothing. The rule shipped dead for one
-            # revision that way: its C# twin's tests were green and no file under scripts/ carries
-            # the fault, so nothing exercised it until it was run against a real generated stub.
+            new_vi
+            and e.tag == "Control"
             and e.name == "error in"
             and e.el.get("conIdx") is not None
-            and e.el.get("connection") not in (None, "recommended")
+            and e.el.get("connection") not in (None, "required")
         ):
             findings.append(
                 Finding(
                     "warning",
-                    "conn-error-in-not-recommended",
+                    "conn-error-in-not-required",
                     e.uid,
                     e.label(),
                     e.path,
-                    'error in carries connection="%s"; the house rule is "recommended". '
-                    "Nothing else reports the divergence, and it silently changes the "
-                    "placeholder signature, so two VIs with the same pane stop sharing a "
-                    "socket." % e.el.get("connection"),
+                    'error in carries connection="%s"; a VI generated completely new makes it '
+                    '"required", so no caller can drop the VI on a diagram and forget it. '
+                    "lvai_check_aixml fix: true sets it." % e.el.get("connection"),
                 )
             )
             continue
@@ -1724,7 +1745,7 @@ def check_web_browser_reference(elements: list[_El]) -> list[Finding]:
     return findings
 
 
-def lint_file(path: str) -> list[Finding]:
+def lint_file(path: str, new_vi: bool = False) -> list[Finding]:
     try:
         root = ET.parse(path).getroot()
     except ET.ParseError as exc:
@@ -1760,7 +1781,9 @@ def lint_file(path: str) -> list[Finding]:
     produced, consumed = collect_nets(elements)
     findings += check_nets(produced, consumed)
     findings += check_uids(elements)
-    findings += check_terminal_flags(elements)
+    findings += check_terminal_flags(elements, new_vi)
+    if new_vi:
+        findings += check_required_input(elements)
     findings += check_indicator_values(elements)
     findings += check_timestamp_values(elements)
     findings += check_non_finite_constants(elements)
@@ -1796,11 +1819,19 @@ def main(argv=None) -> int:
         "silence it introduced a type typo that cost a bisection probe to find. Pass "
         "--min-severity info to see it.",
     )
+    ap.add_argument(
+        "--new-vi",
+        action="store_true",
+        dest="new_vi",
+        help="the documents are VIs generated COMPLETELY NEW: `error in` must be required, or "
+        "without one another input (the user's rule of 2026-10-31). Leave it off for the AIXML of "
+        "a VI that already exists - its flags stay as they are - and for the shipped helpers.",
+    )
     args = ap.parse_args(argv)
 
     floor = SEVERITY_ORDER[args.min_severity]
     results = {
-        path: [f for f in lint_file(path) if SEVERITY_ORDER[f.severity] <= floor]
+        path: [f for f in lint_file(path, args.new_vi) if SEVERITY_ORDER[f.severity] <= floor]
         for path in args.files
     }
     errors = sum(1 for fs in results.values() for f in fs if f.severity == "error")

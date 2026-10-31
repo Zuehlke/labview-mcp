@@ -202,7 +202,8 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             //     result was eBad - which this step would have named before anything was written.
             //     Checked, NOT repaired: the frames below are read from THIS file, and a repair
             //     renumbers uids, so generating from a repaired copy would register the wrong ones.
-            if (AixmlTools.PreCheck(aiXmlFilePath) is { } check && check["errors"]?.GetValue<int>() > 0)
+            if (AixmlTools.PreCheck(aiXmlFilePath, BulkTools.PanePolicyFor(viPath, deliverable: true)) is { } check
+                && check["errors"]?.GetValue<int>() > 0)
             {
                 steps.Add(new JsonObject { ["step"] = "check", ["answer"] = check });
                 return Outcome(false, "check", steps, frameList, total, viPath, directory, true,
@@ -559,7 +560,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             ["steps"] = steps,
             ["totalElapsedMs"] = total.ElapsedMilliseconds,
             ["note"] = note,
-        }.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }.ToJsonString(Json.Answer);
     }
 
     private static JsonNode? Parsed(string answer)

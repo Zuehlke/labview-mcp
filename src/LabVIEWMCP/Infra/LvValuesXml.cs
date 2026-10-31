@@ -27,7 +27,8 @@ internal static class LvValuesXml
     /// <c>&lt;Val&gt;</c> child and is null for compound values - a cluster, array or waveform
     /// has no single text form, so those callers need <paramref name="Xml"/>.
     /// </summary>
-    internal readonly record struct Value(string Name, string Type, string? Scalar, string Xml);
+    internal readonly record struct Value(string Name, string Type, string? Scalar, string Xml,
+                                          XElement? Element = null);
 
     public static IReadOnlyList<Value> Parse(string? xml)
     {
@@ -36,7 +37,7 @@ internal static class LvValuesXml
         XElement root;
         try
         {
-            root = XElement.Parse(xml);
+            root = LvNativeValue.ParseExact(xml);
         }
         catch (XmlException)
         {
@@ -70,23 +71,31 @@ internal static class LvValuesXml
                 Name: name,
                 Type: payload.Name.LocalName,
                 Scalar: payload.Element("Val")?.Value,
-                Xml: payload.ToString()));
+                Xml: payload.ToString(),
+                Element: payload));
         }
         return values;
     }
 
     /// <summary>Control label to {type, value, xml}, ready to hand back as a tool result.</summary>
-    public static JsonObject ToJson(IReadOnlyList<Value> values)
+    /// <remarks>
+    /// <paramref name="native"/> is what lvai_run_vi_and_read_values gives the client: `value` as
+    /// native JSON decoded from the exact element, and `xml` only with <paramref name="includeXml"/>.
+    /// The server's own callers take the default and keep the Val text plus the XML.
+    /// </remarks>
+    public static JsonObject ToJson(IReadOnlyList<Value> values, bool native = false, bool includeXml = true)
     {
         var obj = new JsonObject();
         foreach (var value in values)
         {
-            obj[value.Name] = new JsonObject
+            var entry = new JsonObject
             {
                 ["type"] = value.Type,
                 ["value"] = value.Scalar,
                 ["xml"] = value.Xml,
             };
+            if (native) LvNativeValue.Fill(entry, value.Element, includeXml);
+            obj[value.Name] = entry;
         }
         return obj;
     }

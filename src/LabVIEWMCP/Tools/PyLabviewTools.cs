@@ -21,7 +21,7 @@ namespace LabVIEWMcp.Tools;
 [McpServerToolType]
 internal sealed class PyLabviewTools(LvaiConnection connection)
 {
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = Json.Answer;
 
     // NOT a const: the right advice differs between a checkout and a binary-only install, and
     // only the running exe can tell them apart - see PyLabview.NotProvisionedMessage. Naming

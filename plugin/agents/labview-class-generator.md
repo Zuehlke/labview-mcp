@@ -302,7 +302,10 @@ it again.
    **`lvai_af_remove_hook` takes a hook out again**, a series one included: it reconnects the
    wire's source to every sink before the node goes (`bypassed`), where a plain delete would cut
    the class wire and leave the override eBad.
-   Read every override **cold** with `lvai_exec_state` after the project is closed.
+   Read every override **cold** with `lvai_exec_state` after the project is closed - ALL of them
+   in ONE call through `viPaths`, one path per line: the answer lists `brokenVis`, `executableVis`
+   and `couldNotOpenVis`, with every VI's full answer under `results`. Measured, the tool followed
+   itself 54 % of the time; one call for a class's members replaces one per member.
    `docs/af-override-tools.md`.
 
    **When the class is an ACTOR** (parent `Actor.lvclass`), read `docs/labview-actor-framework.md`
@@ -649,6 +652,11 @@ PNG — never build one yourself:
 ```
 lvai_set_vi_icon  viPath=<abs>  line1="NETZ"  line2="WR"  line3="SETP"
 ```
+
+**Several VIs at once: `iconsJson`** - a JSON array of `{"viPath", "line1", "line2", "line3"}`, one
+entry per VI, in ONE call. Measured over this repository's transcripts the icon call followed
+itself 70 % of the time; each repeat is a model turn of about 7 s. Set the icons of a build's VIs
+together at the end, and read `failed` for the ones whose read-back did not verify.
 
 Use `line1` for the class (a short tag, ≤5 characters) and the lines under it for the method, so
 one glance identifies both. Cover **every method VI you generated**, accessors included.

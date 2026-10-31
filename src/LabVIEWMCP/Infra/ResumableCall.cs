@@ -157,5 +157,5 @@ internal static class ResumableCall
     internal static void Reset() => Jobs.Clear();
 
     private static string Indent(JsonNode node) =>
-        node.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        node.ToJsonString(Json.Answer);
 }

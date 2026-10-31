@@ -25,7 +25,7 @@ namespace LabVIEWMcp.Tools;
 [McpServerToolType]
 internal sealed class MalleableTools(LvaiConnection connection)
 {
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = Json.Answer;
 
     [McpServerTool(Name = "lvai_make_malleable", Destructive = true, OpenWorld = true,
                    Title = "Create a malleable VI (.vim) from AIXML in one call")]

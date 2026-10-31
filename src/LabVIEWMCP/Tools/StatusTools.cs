@@ -14,7 +14,7 @@ namespace LabVIEWMcp.Tools;
 [McpServerToolType]
 internal sealed class StatusTools(LvaiConnection connection)
 {
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = Json.Answer;
 
     [McpServerTool(Name = "lvai_status", ReadOnly = true, Title = "LabVIEW gRPC connection status")]
     [Description("""

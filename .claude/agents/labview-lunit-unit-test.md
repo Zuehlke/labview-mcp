@@ -282,6 +282,11 @@ hold for LUnit too.
 
   ```
   lvai_set_vi_icon  viPath=<abs>  line1="LUNIT"  line2="SETP"  line3="RANGE"
+
+**Several VIs at once: `iconsJson`** - a JSON array of `{"viPath", "line1", "line2", "line3"}`, one
+entry per VI, in ONE call. Measured over this repository's transcripts the icon call followed
+itself 70 % of the time; each repeat is a model turn of about 7 s. Set the icons of a build's VIs
+together at the end, and read `failed` for the ones whose read-back did not verify.
   ```
 
   `errorCode 91` with empty outputs is the normal read-back artefact, **not** a failure — judge by

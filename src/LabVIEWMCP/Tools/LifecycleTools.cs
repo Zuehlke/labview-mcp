@@ -24,7 +24,7 @@ namespace LabVIEWMcp.Tools;
 [McpServerToolType]
 internal sealed class LifecycleTools(LvaiConnection connection)
 {
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = Json.Answer;
 
     [McpServerTool(Name = "lvai_ensure_labview", Destructive = true, OpenWorld = true,
                    Title = "Make sure a LabVIEW instance is running")]

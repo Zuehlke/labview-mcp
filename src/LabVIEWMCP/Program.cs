@@ -12,6 +12,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 // The modes and flags are listed in CommandLine.Usage, which --help prints, so this file
 // and the help text cannot drift apart.
 
+// Answers are written with relaxed JSON escaping since 2026-10-30 (Json.Answer), so an umlaut
+// reaches the console as a character rather than `ü` - and a console on a legacy code page
+// would garble it. UTF-8 out, whichever mode runs; stdio MCP carries UTF-8 anyway.
+try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch (IOException) { }
+
 if (CommandLine.HasFlag(args, "--help") ||
     CommandLine.HasFlag(args, "-h") ||
     CommandLine.HasFlag(args, "-?"))

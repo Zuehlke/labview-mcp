@@ -625,7 +625,7 @@ from the helper's own property node, before the run — **and `errorCode` on the
 
 **ENUM, RING, ARRAY AND CLUSTER CONTROLS ARE SETTABLE SINCE 2026-09-25 — this clause said "ARRAY AND
 CLUSTER CONTROLS ARE STILL UNREACHABLE" and agents built harness VIs around it.** An enum takes an
-item name or an index; a compound takes LabVIEW's own XML — the `xml` this tool returns — because
+item name or an index; a compound takes LabVIEW's own XML — the `xml` this tool returns with `includeXml: true` (since 2026-10-30 it answers native JSON values by default) — because
 `Unflatten From XML` with a Variant as its `type` yields a variant carrying its own type. Two traps,
 both measured: a name-else-number fallback turns a TYPO into item 0 (so unmatched text now goes in as
 a string and `Ctrl Val.Set` refuses it, `Error 91`), and `Unflatten From XML` decodes NO character
@@ -690,21 +690,23 @@ code, not a preference about one VI. Three parts, each a separate defect when dr
   NI's style guide and what `lvai_connector_pane` checks; this rule makes it mandatory rather than
   conventional. Ask that tool for the numbers, never the table: on this station's 4833 they are
   `11` and `15`, on 4815 `8` and `0`.
-- **AND BOTH ARE `connection="recommended"` - the rule said nothing about the flag for a day, and
-  agents duly diverged.** Measured 2026-09-16 over one application build: of ten agent-built subVIs,
-  four declared `error in` as `recommended` and six as **`optional`**, and NOTHING reported it -
-  every pane passed `lvai_connector_pane` with 0 violations, and both cheap checkers were silent
-  because the attribute was PRESENT and they only looked for a missing one. `required` would force
-  every caller to wire the chain; `optional` hides the terminal from Context Help's simple view. The
-  visible cost was the placeholder cache: `PlaceholderTools.Signature` carries the flag, so five of
-  eleven sockets were cloned afresh for panes that already had one. **Both checkers enforce it now**
-  - `lvai_check_aixml` answers `errorInNotRecommended` and repairs it, `scripts/aixml_lint.py`
-  answers `conn-error-in-not-recommended` - and that is deliberately where the fix went rather than
-  into this file alone, because **an agent's system prompt is its own definition and CLAUDE.md is
-  not in it.** The same pass closed a real gap beside it: an output written `required` ON PURPOSE
-  was travelling through the C# checker untouched, because it returned early on any `connection` at
-  all and only ever caught the omitted case. The lint had had that one since 2026-09-15; the two
-  had drifted, which is the failure this file already records for `SafeUidBase`.
+- **A VI GENERATED COMPLETELY NEW HAS `error in` AS `connection="required"`; WITHOUT `error in`,
+  ITS MOST IMPORTANT INPUT IS REQUIRED - the user's rule of 2026-10-31, and it REPLACES the rule this
+  bullet stated from 2026-09-16 ("both are `recommended`").** The reason is the user's: a VI nobody
+  has to wire can be dropped on a diagram and forgotten; a required input forces it into the data
+  flow, or a constant in front of it where that is the logical implementation. `error out` and every
+  other output stay `recommended`. Which input is the most important is the AUTHOR's choice, never
+  the tool's. **AN EXTENDED OR REVISED VI KEEPS EVERY FLAG EXACTLY AS IT WAS** - otherwise code that
+  already calls it stops running - and so does everything a tool authors for itself (helpers,
+  carriers) and a class method, whose class input is already the required one. The checkers know
+  the difference: `lvai_check_aixml` takes `newVi` (default true; false for the AIXML of a VI that
+  exists) and answers `errorInNotRequired` (repaired) and `noRequiredInput` (an ERROR, never
+  repaired); `scripts/aixml_lint.py` does the same with `--new-vi`; `lvai_generate_vi` decides it
+  itself - the target file does not exist yet AND the diagram is measured (a deliverable) - and
+  for an existing file touches no flag at all, output repairs included. The old rule's history,
+  which still holds as a lesson: agents diverged on the flag for a day with nothing reporting it,
+  because a rule only in prose is a rule nobody enforces - **an agent's system prompt is its own
+  definition and CLAUDE.md is not in it**, which is why the rule lives in the checkers.
 
 **A TOP-LEVEL VI WITH NO CALLERS IS NOT AN EXCEPTION**, and that is the reasoning the rule exists to
 override. `C:\temp\UserEventsFinal\User Event Producer Consumer.vi` was generated 2026-09-12 with an

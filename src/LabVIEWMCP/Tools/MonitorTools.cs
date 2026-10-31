@@ -46,7 +46,7 @@ internal sealed class MonitorTools(LvaiConnection connection)
         Trigger it by hand in LabVIEW while this call is pending.
         """;
 
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = Json.Answer;
 
     [McpServerTool(Name = "lvai_monitor_project_changes", ReadOnly = true,
                    Title = "Watch project changes")]

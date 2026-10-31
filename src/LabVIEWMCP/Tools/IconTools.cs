@@ -52,10 +52,16 @@ internal sealed class IconTools(LvaiConnection connection)
         whose own layer must survive, pass keepOwnLayer instead of an image: no pixels are set, the
         owner's icon is re-applied (ApplyIconToVIs) and the VI saved, and the answer reports the
         layer data before and after. keepOwnLayer was measured 2026-10-10 - see its parameter.
+        SEVERAL VIs IN ONE CALL: pass iconsJson, a JSON array of {"viPath", "line1", "line2",
+        "line3", "iconImagePath"} - viPath required, the rest optional and falling back to the
+        same-named parameters of this call; colours, helper settings and timeout are shared. The
+        icons are set one after another and the answer carries `failed` plus every VI's whole single
+        answer under `results`. Measured over this repository's transcripts this tool was called
+        straight after itself 70 % of the time, so a batch saves a model turn per VI.
         """)]
     public async Task<string> SetViIconAsync(
-        [Description(@"Absolute path to the .vi whose icon is replaced - it is saved in place")]
-        string viPath,
+        [Description(@"Absolute path to the .vi whose icon is replaced - it is saved in place. Optional when iconsJson is given.")]
+        string? viPath = null,
         [Description("""
             Absolute path to a ready-made icon image; a 32x32 PNG is what was measured. Leave
             this out and pass line1/line2/line3 instead to have the icon drawn here. If both
@@ -121,9 +127,24 @@ internal sealed class IconTools(LvaiConnection connection)
             """)]
         string? ownerPath = null,
         CancellationToken ct = default,
-        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        [Description("""
+            Several VIs in one call: a JSON array of {"viPath": "...", "line1": "...", "line2": "...",
+            "line3": "...", "iconImagePath": "..."}. Only viPath is required per entry; a missing line
+            or image falls back to this call's own parameter. An unknown key is refused by name.
+            """)]
+        string? iconsJson = null) =>
         await Rpc.GuardAsync(async () =>
         {
+            if (iconsJson is { Length: > 0 })
+                return await SetManyAsync(iconsJson, viPath, iconImagePath, line1, line2, line3,
+                    entry => SetViIconAsync(entry.ViPath, entry.IconImagePath, readBackPath, helperViPath,
+                        helperAixmlPath, regenerateHelper, entry.Line1, entry.Line2, entry.Line3,
+                        bannerColor, backgroundColor, borderColor, timeoutSeconds, keepOwnLayer,
+                        ownerPath, ct, backend));
+            if (viPath is not { Length: > 0 })
+                return BatchAnswer.NothingAsked("lvai_set_vi_icon", "viPath", "iconsJson");
+
             if (!AixmlBackend.TryResolve(backend, "lvai_set_vi_icon", out var choice, out var badBackend))
                 return AixmlBackend.Refusal(badBackend);
             if (!File.Exists(viPath))
@@ -272,6 +293,105 @@ internal sealed class IconTools(LvaiConnection connection)
                     "code is kept under runnerErrorCode. Open readBackPath to see the icon now " +
                     "stored in the VI."))), verified);
         });
+
+    /// <summary>One VI of an iconsJson batch, after the fallbacks to the call's own parameters.</summary>
+    internal sealed record IconEntry(string ViPath, string? IconImagePath, string? Line1, string? Line2, string? Line3);
+
+    /// <summary>
+    /// The per-VI call a batch makes in place of the live one - set by a test only, which then
+    /// needs neither LabVIEW nor the helper.
+    /// </summary>
+    internal Func<IconEntry, Task<string>>? SingleOverride { get; init; }
+
+    private static readonly string[] IconEntryKeys = ["viPath", "line1", "line2", "line3", "iconImagePath"];
+
+    /// <summary>
+    /// Reads iconsJson. An unknown key is REFUSED rather than dropped: a key that vanishes in
+    /// silence is how `expectFieldValue` once produced a green suite asserting the opposite of what
+    /// was asked (CLAUDE.md, "the same silence lives one layer in, inside any casesJson").
+    /// </summary>
+    internal static List<IconEntry> ParseIconsJson(string iconsJson, string? viPath, string? iconImagePath,
+                                                   string? line1, string? line2, string? line3,
+                                                   out string? refusal)
+    {
+        refusal = null;
+        JsonNode? node;
+        try { node = JsonNode.Parse(iconsJson); }
+        catch (System.Text.Json.JsonException e)
+        {
+            refusal = Json.Error("badArguments", $"iconsJson is not valid JSON: {e.Message}");
+            return [];
+        }
+        if (node is not JsonArray array || array.Count == 0)
+        {
+            refusal = Json.Error("badArguments",
+                "iconsJson must be a non-empty JSON array of objects, each with a viPath.",
+                new { accepted = IconEntryKeys });
+            return [];
+        }
+        var entries = new List<IconEntry>();
+        for (var i = 0; i < array.Count; i++)
+        {
+            if (array[i] is not JsonObject o)
+            {
+                refusal = Json.Error("badArguments", $"iconsJson[{i}] is not an object.",
+                    new { accepted = IconEntryKeys });
+                return [];
+            }
+            var unknown = o.Select(kv => kv.Key).Where(k => !IconEntryKeys.Contains(k)).ToList();
+            if (unknown.Count > 0)
+            {
+                refusal = Json.Error("badArguments",
+                    $"iconsJson[{i}] has unknown key(s) {string.Join(", ", unknown)}. Colours, helper " +
+                    "settings and timeout are shared and set once on the call itself.",
+                    new { accepted = IconEntryKeys, unknown });
+                return [];
+            }
+            var path = o["viPath"]?.GetValue<string>();
+            if (path is not { Length: > 0 })
+            {
+                refusal = Json.Error("badArguments", $"iconsJson[{i}] has no viPath.",
+                    new { accepted = IconEntryKeys });
+                return [];
+            }
+            static string? Str(JsonObject obj, string key, string? fallback) =>
+                obj[key] is { } v ? v.GetValue<string>() : fallback;
+            entries.Add(new IconEntry(path,
+                Str(o, "iconImagePath", iconImagePath),
+                Str(o, "line1", line1), Str(o, "line2", line2), Str(o, "line3", line3)));
+        }
+        // A viPath given beside the list is one more entry, with the call's own image or lines.
+        if (viPath is { Length: > 0 } &&
+            !entries.Any(e => string.Equals(Path.GetFullPath(e.ViPath), Path.GetFullPath(viPath),
+                                            StringComparison.OrdinalIgnoreCase)))
+            entries.Insert(0, new IconEntry(viPath, iconImagePath, line1, line2, line3));
+        return entries;
+    }
+
+    private async Task<string> SetManyAsync(string iconsJson, string? viPath, string? iconImagePath,
+                                            string? line1, string? line2, string? line3,
+                                            Func<IconEntry, Task<string>> one)
+    {
+        var entries = ParseIconsJson(iconsJson, viPath, iconImagePath, line1, line2, line3, out var refusal);
+        if (refusal is not null) return refusal;
+
+        var items = new List<(string, string)>(entries.Count);
+        foreach (var entry in entries)
+        {
+            string answer;
+            try { answer = await (SingleOverride ?? one)(entry); }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                answer = BatchAnswer.Threw(entry.ViPath, e);
+            }
+            items.Add((entry.ViPath, answer));
+        }
+        var batch = BatchAnswer.Aggregate(items, n => n["ok"]?.GetValue<bool>() == true);
+        batch["note"] = "One answer for several VIs, set one after another. `ok` means every icon was " +
+                        "VERIFIED by its read-back file; `failed` names the VIs whose were not. Each " +
+                        "VI's full single answer, read-back path included, is under `results`.";
+        return Json.Document(batch);
+    }
 
     /// <summary>
     /// The pylabview route: the same helper COMPOSED and run over LabVIEW's ActiveX server, and the

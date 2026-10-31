@@ -29,7 +29,7 @@ namespace LabVIEWMcp.Tools;
 [McpServerToolType]
 internal sealed class LibraryCreateTools(LvaiConnection connection)
 {
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = Json.Answer;
     internal const string HelperAixmlFileName = "lvai_create_library.xml";
 
     [McpServerTool(Name = "lvai_create_library", Destructive = true, OpenWorld = true,

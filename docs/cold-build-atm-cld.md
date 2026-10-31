@@ -596,6 +596,10 @@ were meant to follow is invisible to them. So the fix went where every route pas
 | `scripts/aixml_lint.py` | `conn-error-in-not-recommended`, warning |
 | `CLAUDE.md` | one bullet, for the direct route that spawns no agent |
 
+**Superseded 2026-10-31 by the user's required-input rule** - a NEW VI's `error in` is
+`required`, an existing VI keeps every flag; the check is now `errorInNotRequired` /
+`noRequiredInput`. `docs/required-input-rule.md`.
+
 **A second, larger gap fell out of reading the code for it.** `CheckTerminalWireRules` returned early
 on *any* `connection` attribute, so it only ever caught an OMITTED one — an output written
 `connection="required"` **on purpose** travelled through untouched. `scripts/aixml_lint.py` had

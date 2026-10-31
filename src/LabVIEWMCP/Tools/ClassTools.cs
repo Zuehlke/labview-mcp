@@ -40,7 +40,7 @@ namespace LabVIEWMcp.Tools;
 [McpServerToolType]
 internal sealed class ClassTools(LvaiConnection connection)
 {
-    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Indented = Json.Answer;
 
     private const string CreateClassHelperAixmlFileName = "lvai_create_class.xml";
 
