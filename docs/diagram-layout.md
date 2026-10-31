@@ -1175,3 +1175,33 @@ the whole diagram. With both timers on the rail, LabVIEW's `Clean Up Wire` takes
 bottom, under the rail, and up again at the subtraction - crossing the rail at both ends. In bands it
 ran along the top uncrossed, which is why bands won on the count. That is a long wire's routing,
 not a placement the plan can improve without lifting a chain node off the rail.
+
+### 6o. The window opens on the code, 2026-10-31
+
+The user's screenshot: `Process Reading.vi`, generated and laid out, opened on an EMPTY block
+diagram. Its code sat at x -22..250, y 40..228, and the window's view - the heap's own `pBounds`,
+the region the window shows when the VI opens, in DIAGRAM coordinates - was still the composer
+skeleton's `(243, 336, 763, 1153)`. NI's examples put it round their code: Build Array, code from
+281/301, `pBounds (270, 271, ...)`; Running Average, code from -37/-73, `(-42, -85, ...)`.
+`dBounds` (which `fit_diagram_view` fixed earlier, `docs/aixml-backends.md`) is a different field,
+and `origin` (`(420, 177)` in the skeleton, unchanged by every LabVIEW save) decides nothing here.
+
+The rule, `lvheap.fit_window_view`: the view starts at 0/0, the user's wish, while the code starts
+within the first quarter of the window (margin 20 px); otherwise where the code starts, so no code
+is cut off and none lies out of sight. The size is kept. Two places apply it:
+
+- the composer, at compose time, from the skeleton;
+- `lvai_layout_diagram`, after its save, with `scripts/lvbd_fit_view.py` (extract, one line of
+  the heap, rebuild). The layout MOVES the code and LabVIEW's save keeps the old view. Measured
+  on a generated `Clamp Reading.vi`: the composer's `(0, 0, 520, 817)` survived the layout's save
+  while the layout put its comment at x -22, so the left edge was cut off. The step answers
+  `windowView` (`fitted`, `view`), and a VI that carries compiled code is skipped, like the fan
+  routing.
+
+Accepted over stdio on the pylabview backend:
+
+- A new VI came out at `(0, -42, 520, 775)`.
+- The existing `Process Reading.vi`, laid out again, also came out at `(0, -42, ...)`.
+- Both are `execState 1`.
+
+A VI open in LabVIEW keeps the view it was loaded with until it is closed and opened again.

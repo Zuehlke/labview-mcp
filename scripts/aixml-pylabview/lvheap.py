@@ -374,3 +374,60 @@ def size_of(el):
         return (0, 0)
     t, l, bt, r = parse_bounds(b.text)
     return (bt - t, r - l)
+
+
+# The block diagram window's view, in diagram coordinates: pBounds is the region the window
+# shows when the VI opens. NI's examples put it round their code; a composed VI kept the
+# skeleton's (243, 336, ...) and opened on an empty diagram (the user's screenshot, 2026-10-31).
+VIEW_MARGIN = 20
+
+
+def content_top_left(heap):
+    """The top-left of what the top-level diagram shows: nodes, panel terminals, decorations."""
+    root = heap.find("root")
+    if root is None:
+        return None
+    tops, lefts = [], []
+
+    def add(text):
+        t, l, b, r = parse_bounds(text)
+        if b > t or r > l:
+            tops.append(t)
+            lefts.append(l)
+
+    nodes = root.find("nodeList")
+    for node in (nodes if nodes is not None else []):
+        if node.get("class") == "sRN":
+            terms = node.find("termList")
+            for term in (terms if terms is not None else []):
+                if term.find("bounds") is not None:
+                    add(term.findtext("bounds"))
+        elif node.find("bounds") is not None:
+            add(node.findtext("bounds"))
+    z = root.find("zPlaneList")
+    for deco in (z if z is not None else []):
+        if deco.get("class") and deco.find("bounds") is not None:
+            add(deco.findtext("bounds"))
+    return (min(tops), min(lefts)) if tops else None
+
+
+def view_start(content, size):
+    """0, the user's wish, while the code starts within the first quarter of the window;
+    otherwise where the code starts - so no code is cut off and none lies out of sight."""
+    start = content - VIEW_MARGIN
+    return 0 if 0 <= start <= size // 4 else start
+
+
+def fit_window_view(heap):
+    """Put the window's view (pBounds) over the diagram's code, its size kept. True if changed."""
+    view = heap.find("pBounds")
+    corner = content_top_left(heap)
+    if view is None or corner is None:
+        return False
+    t, l, b, r = parse_bounds(view.text)
+    top, left = view_start(corner[0], b - t), view_start(corner[1], r - l)
+    text = fmt_bounds((top, left, top + b - t, left + r - l))
+    if text == view.text:
+        return False
+    view.text = text
+    return True

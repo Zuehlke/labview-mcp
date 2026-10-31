@@ -335,6 +335,82 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
         }
     }
 
+    internal const string FitViewScript = "lvbd_fit_view.py";
+
+    /// <summary>
+    /// Extract, lvbd_fit_view.py, rebuild: the block diagram window's view (pBounds) over the
+    /// code, 0/0 where the code allows. The layout moves the code and LabVIEW's save keeps the view,
+    /// so a VI could open on an empty diagram with its code off to the side (the user's screenshot,
+    /// 2026-10-31). Skipped for a VI with compiled code, like the fan routing.
+    /// </summary>
+    internal async Task<JsonObject> FitViewAsync(string viPath, int timeoutSeconds, CancellationToken ct)
+    {
+        var answer = new JsonObject();
+        if (BulkTools.ContainsCompiledCode(viPath))
+        {
+            answer["ok"] = true;
+            answer["skipped"] = "The VI carries compiled code; its window view is left as it was.";
+            return answer;
+        }
+        if (PyLabview.Locate() is not { } bundle || StatusTools.ScriptsDirectory() is not { } scripts)
+        {
+            answer["ok"] = false;
+            answer["note"] = "pylabview or the scripts folder is not available.";
+            return answer;
+        }
+        var directory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "fitview", Path.GetRandomFileName());
+        try
+        {
+            var pylv = new PyLabviewTools(connection);
+            var extract = JsonNode.Parse(await pylv.ExtractAsync(viPath, directory, annotate: false,
+                                                                 timeoutSeconds, ct: ct));
+            if (extract?["mainXml"]?.GetValue<string>() is not { } mainXml)
+            {
+                answer["ok"] = false;
+                answer["extract"] = extract?.DeepClone();
+                return answer;
+            }
+            var heap = Path.Combine(directory, Path.GetFileNameWithoutExtension(mainXml) + "_BDHb.xml");
+            if (!File.Exists(heap))
+            {
+                answer["ok"] = true;
+                answer["fitted"] = false;
+                return answer;
+            }
+            var run = await EventStructureTools.RunScriptAsync(bundle, scripts, FitViewScript, [heap], "fitView",
+                                                               timeoutSeconds, ct);
+            if (run["exitCode"]?.GetValue<int>() != 0)
+            {
+                answer["ok"] = false;
+                answer["fitView"] = run;
+                return answer;
+            }
+            var view = ParseFitView(run["stdout"]?.GetValue<string>());
+            answer["fitted"] = view is not null;
+            if (view is null)
+            {
+                answer["ok"] = true;
+                return answer;
+            }
+            answer["view"] = view;
+            var rebuild = JsonNode.Parse(await pylv.RebuildAsync(mainXml, viPath, timeoutSeconds, ct: ct));
+            answer["ok"] = rebuild?["ok"]?.GetValue<bool>() == true && !BulkTools.ContainsCompiledCode(viPath);
+            if (answer["ok"]?.GetValue<bool>() != true) answer["rebuild"] = rebuild?.DeepClone();
+            return answer;
+        }
+        finally
+        {
+            try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
+        }
+    }
+
+    /// <summary>The fit script's line: "view fitted (t, l, b, r)" gives the new view; "view unchanged" null.</summary>
+    internal static string? ParseFitView(string? stdout)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(stdout ?? "", @"view fitted (\([-\d, ]+\))");
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
     /// <summary>The script's first line: "fans N, wires rewritten M".</summary>
     internal static (int Fans, int Rewritten) ParseFanRoute(string? stdout)
     {

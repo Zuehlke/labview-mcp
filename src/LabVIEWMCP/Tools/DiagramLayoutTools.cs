@@ -304,6 +304,12 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
                 Lap("fanRouting");
             }
 
+            // ---- 5c. the window's view over the code the layout moved: LabVIEW's save keeps the
+            // old view, and a VI opened on an empty diagram (the user's screenshot, 2026-10-31)
+            if (hold is not null) { await hold.DisposeAsync(); hold = null; }
+            answer["windowView"] = await new DiagramCleanup(connection).FitViewAsync(vi, timeoutSeconds, ct);
+            Lap("fitView");
+
             if (render)
             {
                 var dir = renderDirectory ?? Path.Combine(work, "render");
