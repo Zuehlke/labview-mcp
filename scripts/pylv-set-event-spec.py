@@ -302,13 +302,21 @@ def main(bundle, base, diagram_idx, control, label=None, dyn=None):
         # reads this text and not the spec, so without it the frame shows
         # " [N]  " however correct the spec is.
         want = xml_text('" [%s] <%s>: User Event "' % (diagram_idx, user_event))
-        m = re.compile(r'(<selString class="selLabel".*?<text>)(.*?)(</text>)', re.S).search(s, es)
-        assert m, "no selString on this event structure"
-        s = s[:m.start(2)] + want + s[m.end(2):]
-        m = re.compile(r'<dIdx>(\d+)</dIdx>').search(s, es)
-        assert m, "no dIdx on this event structure"
-        s = s[:m.start()] + '<dIdx>%s</dIdx>' % diagram_idx + s[m.end():]
-        print("   selString -> %r, dIdx -> %s" % (want, diagram_idx))
+        if not re.compile(r'<dIdx>(\d+)</dIdx>').search(s, es):
+            # No dIdx: LabVIEW omits it while frame 0 is the visible one, and
+            # the cached label then describes frame 0. Leave both alone - the
+            # visible frame's label is still right, and rewriting it to this
+            # frame would make the label disagree with the frame shown.
+            print("   no dIdx (frame 0 is visible) - cached label left alone")
+            want = None
+        if want is not None:
+            m = re.compile(r'(<selString class="selLabel".*?<text>)(.*?)(</text>)', re.S).search(s, es)
+            assert m, "no selString on this event structure"
+            s = s[:m.start(2)] + want + s[m.end(2):]
+            m = re.compile(r'<dIdx>(\d+)</dIdx>').search(s, es)
+            assert m, "no dIdx on this event structure"
+            s = s[:m.start()] + '<dIdx>%s</dIdx>' % diagram_idx + s[m.end():]
+            print("   selString -> %r, dIdx -> %s" % (want, diagram_idx))
     elif label is not None:
         # The stored text CONTAINS raw double quotes - NI's own reads
         #   <text>" [1] "Button 1": Value Change "</text>
@@ -317,13 +325,21 @@ def main(bundle, base, diagram_idx, control, label=None, dyn=None):
         # call then APPENDS instead of replacing, which built up
         #   " [2] "Button 2": Value Change "Button 1": Value Change "stop": ... "
         want = xml_text('" [%s] "%s": Value Change "' % (diagram_idx, label))
-        m = re.compile(r'(<selString class="selLabel".*?<text>)(.*?)(</text>)', re.S).search(s, es)
-        assert m, "no selString on this event structure"
-        s = s[:m.start(2)] + want + s[m.end(2):]
-        m = re.compile(r'<dIdx>(\d+)</dIdx>').search(s, es)
-        assert m, "no dIdx on this event structure"
-        s = s[:m.start()] + '<dIdx>%s</dIdx>' % diagram_idx + s[m.end():]
-        print("   selString -> %r, dIdx -> %s" % (want, diagram_idx))
+        if not re.compile(r'<dIdx>(\d+)</dIdx>').search(s, es):
+            # No dIdx: LabVIEW omits it while frame 0 is the visible one, and
+            # the cached label then describes frame 0. Leave both alone - the
+            # visible frame's label is still right, and rewriting it to this
+            # frame would make the label disagree with the frame shown.
+            print("   no dIdx (frame 0 is visible) - cached label left alone")
+            want = None
+        if want is not None:
+            m = re.compile(r'(<selString class="selLabel".*?<text>)(.*?)(</text>)', re.S).search(s, es)
+            assert m, "no selString on this event structure"
+            s = s[:m.start(2)] + want + s[m.end(2):]
+            m = re.compile(r'<dIdx>(\d+)</dIdx>').search(s, es)
+            assert m, "no dIdx on this event structure"
+            s = s[:m.start()] + '<dIdx>%s</dIdx>' % diagram_idx + s[m.end():]
+            print("   selString -> %r, dIdx -> %s" % (want, diagram_idx))
 
     io.open(p, 'w', encoding='utf-8', newline='').write(s)
     was = ('Timeout' if before.get('type') == '1073741825'
