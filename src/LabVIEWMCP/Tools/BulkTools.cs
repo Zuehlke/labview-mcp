@@ -156,6 +156,18 @@ internal sealed class BulkTools(LvaiConnection connection)
     }
 
     /// <summary>
+    /// Which connector-pane rule a generation follows. A VI whose file ALREADY EXISTS is being
+    /// extended or revised and keeps every flag - code that calls it must keep running. A NEW
+    /// deliverable (one whose diagram is measured - helpers, carriers and class methods on their way
+    /// into a class pass measureDiagram false) gets the user's rule of 2026-10-31: a required input.
+    /// The existence is read BEFORE anything is written, which is the only moment it means "new".
+    /// </summary>
+    internal static AixmlCheck.PanePolicy PanePolicyFor(string viPath, bool deliverable) =>
+        File.Exists(viPath) ? AixmlCheck.PanePolicy.KeepAsIs
+        : deliverable ? AixmlCheck.PanePolicy.NewVi
+        : AixmlCheck.PanePolicy.Authored;
+
+    /// <summary>
     /// Whether a generate answer left a VI that will be KEPT: ok, stopped at execState (the gRPC
     /// loaded-subVI route), or - on pylabview - written by the composer and only not executable yet.
     /// That last one is the routine state of a class test whose seeds are still paths, and leaving it
@@ -216,6 +228,7 @@ internal sealed class BulkTools(LvaiConnection connection)
             var steps = new JsonArray();
             var aixml = new AixmlTools(connection);
             var sourceAixml = aiXmlFilePath;
+            var panePolicy = PanePolicyFor(viPath, measureDiagram);
 
             // A .vim TARGET IS REFUSED BEFORE ANYTHING IS WRITTEN. ConvertAIXMLToVI accepts one
             // and produces a BROKEN malleable VI while this tool reports ok: true with
@@ -253,11 +266,11 @@ internal sealed class BulkTools(LvaiConnection connection)
                 // - the numbers are ours to choose and no wire refers to them. What is left is
                 // exactly the set where the author's intent is unknowable, and guessing there would
                 // turn a reported fault into a hidden one.
-                var (source, repairReport) = AixmlTools.Repaired(aiXmlFilePath);
+                var (source, repairReport) = AixmlTools.Repaired(aiXmlFilePath, panePolicy);
                 if (repairReport is not null) steps.Add(Step("repair", repairReport));
                 aiXmlFilePath = source;
 
-                if (AixmlTools.PreCheck(aiXmlFilePath) is { } check
+                if (AixmlTools.PreCheck(aiXmlFilePath, panePolicy) is { } check
                     && check["errors"]?.GetValue<int>() > 0)
                 {
                     steps.Add(Step("check", check));
@@ -270,6 +283,8 @@ internal sealed class BulkTools(LvaiConnection connection)
                         "fault rather than fix it. Name the structure's real uid. " +
                         "`uidParentContradictsNesting` is its converse: an element written INSIDE " +
                         "a structure whose uid_parent names something else lands inside it anyway. " +
+                        "`noRequiredInput` is the rule for a VI generated completely new: one input " +
+                        "must be required - `error in`, or without one its most important input. " +
                         "lvai_convert_aixml_to_vi still generates it if you want LabVIEW's own " +
                         "behaviour.");
                 }

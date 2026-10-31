@@ -812,54 +812,129 @@ public sealed class AixmlCheckTests
         Assert.Contains("1003", finding.Message);
     }
 
+    /// <summary>
+    /// THE USER'S RULE OF 2026-10-31, which replaced "error in is recommended": a VI generated
+    /// COMPLETELY NEW makes its `error in` REQUIRED, so no caller can drop it on a diagram and
+    /// forget it. Reported as a warning and repaired - the rule decides the flag.
+    /// </summary>
     [Fact]
-    public void ErrorInThatIsNotRecommendedIsAWarning()
+    public void ANewVisErrorInThatIsNotRequiredIsAWarning()
     {
-        var finding = Assert.Single(AixmlCheck.Check(FlagsPresentButWrong),
-                                    f => f.Code == "errorInNotRecommended");
+        var finding = Assert.Single(AixmlCheck.Check(FlagsPresentButWrong, AixmlCheck.PanePolicy.NewVi),
+                                    f => f.Code == AixmlCheck.ErrorInNotRequired);
 
         Assert.Equal(AixmlCheck.Severity.Warning, finding.Severity);
         Assert.Equal("4400", finding.Uid);
-        // The message names the flag it found, because the attribute is present and the reader is
-        // looking at a pane that passed every other check.
         Assert.Contains("optional", finding.Message, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// THE CONTROL ARM. An `error in` that already says `recommended` must produce nothing - a
-    /// check that fired on every error terminal would pass the two tests above and be useless.
+    /// THE CONTROL ARM: an `error in` that already says `required` produces nothing - a check that
+    /// fired on every error terminal would pass the test above and be useless.
     /// </summary>
     [Fact]
-    public void AnErrorInThatAlreadySaysRecommendedIsLeftAlone() =>
-        Assert.DoesNotContain(AixmlCheck.Check(FlagsPresentButWrong), f => f.Uid == "4420");
+    public void ANewVisErrorInThatIsAlreadyRequiredIsLeftAlone() =>
+        Assert.DoesNotContain(AixmlCheck.Check(FlagsPresentButWrong.Replace(
+                "connection=\"optional\"", "connection=\"required\""), AixmlCheck.PanePolicy.NewVi),
+            f => f.Code == AixmlCheck.ErrorInNotRequired);
+
+    /// <summary>
+    /// AN EXISTING VI KEEPS ITS FLAGS - the user's words: an extended or revised VI stays as it is,
+    /// or the code that calls it stops running. Nothing is reported about `error in` and FIX
+    /// touches no connection at all, not even an output's - a required output in an existing VI
+    /// is what its callers were built against.
+    /// </summary>
+    [Fact]
+    public void AnExistingVisFlagsAreNeitherReportedNorRepaired()
+    {
+        var policy = AixmlCheck.PanePolicy.KeepAsIs;
+        Assert.DoesNotContain(AixmlCheck.Check(FlagsPresentButWrong, policy), f => f.Code == AixmlCheck.ErrorInNotRequired);
+
+        var fixedUp = AixmlCheck.Fix(FlagsPresentButWrong, policy);
+        Assert.Empty(fixedUp.Repairs);
+        Assert.Contains("connection=\"optional\"", fixedUp.Xml, StringComparison.Ordinal);
+        Assert.Contains("connection=\"required\"", fixedUp.Xml, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A helper or a class method on its way into a class (Authored): the old `recommended` rule is
+    /// gone, nothing is said about `error in`, and the output repair stays.
+    /// </summary>
+    [Fact]
+    public void AnAuthoredDocumentsErrorInIsNotPoliced() =>
+        Assert.DoesNotContain(AixmlCheck.Check(FlagsPresentButWrong),
+            f => f.Code == AixmlCheck.ErrorInNotRequired || f.Code == AixmlCheck.NoRequiredInput);
 
     /// <summary>
     /// Narrow on purpose: `error in (no error)` is NI's own label on a CALLEE we do not own, and
-    /// CLAUDE.md's rule governs the terminal we name. Policing somebody else's pane would be the
-    /// damaging half of an otherwise harmless sweep.
+    /// the rule governs the terminal we name.
     /// </summary>
     [Fact]
     public void TheNIErrorLabelIsNotPoliced() =>
         Assert.DoesNotContain(AixmlCheck.Check("""
             <VI _name="X.vi" description="d">
-              <Control _name="error in (no error)" conIdx="11" connection="optional" outputs="value:4500.value" type="cluster{bool.status,int32.code,string.source}" uid="4500" uid_parent="root" value="[false,0,]"/>
+              <Control _name="error in (no error)" conIdx="11" connection="required" outputs="value:4500.value" type="cluster{bool.status,int32.code,string.source}" uid="4500" uid_parent="root" value="[false,0,]"/>
             </VI>
-            """), f => f.Code == "errorInNotRecommended");
+            """, AixmlCheck.PanePolicy.NewVi), f => f.Code == AixmlCheck.ErrorInNotRequired);
 
     [Fact]
-    public void BothWrongFlagsAreREPAIRED_toRecommended()
+    public void ANewVisFlagsAreREPAIRED_errorInToRequired_outputToRecommended()
     {
-        var fixedUp = AixmlCheck.Fix(FlagsPresentButWrong);
+        var fixedUp = AixmlCheck.Fix(FlagsPresentButWrong, AixmlCheck.PanePolicy.NewVi);
 
         Assert.Single(fixedUp.Repairs, r => r.Code == "outputTerminalIsRequired");
-        Assert.Single(fixedUp.Repairs, r => r.Code == "errorInNotRecommended");
+        Assert.Single(fixedUp.Repairs, r => r.Code == AixmlCheck.ErrorInNotRequired);
 
         Assert.DoesNotContain("connection=\"optional\"", fixedUp.Xml, StringComparison.Ordinal);
-        Assert.DoesNotContain("connection=\"required\"", fixedUp.Xml, StringComparison.Ordinal);
+        Assert.Matches("_name=\"error in\" conIdx=\"11\" connection=\"required\"", fixedUp.Xml);
+        Assert.Matches("_name=\"error out\" conIdx=\"15\" connection=\"recommended\"", fixedUp.Xml);
 
         // Repaired means gone from what is left, or the caller sees the same fault twice.
         Assert.DoesNotContain(fixedUp.Remaining, f => f.Code == "outputTerminalIsRequired");
-        Assert.DoesNotContain(fixedUp.Remaining, f => f.Code == "errorInNotRecommended");
+        Assert.DoesNotContain(fixedUp.Remaining, f => f.Code == AixmlCheck.ErrorInNotRequired);
+    }
+
+    private const string NoErrorInNothingRequired = """
+        <VI _name="Scale.vi" description="d">
+          <Control _name="Value" conIdx="0" connection="recommended" outputs="value:4600.value" type="double" uid="4600" uid_parent="root" value="0"/>
+          <Control _name="Factor" conIdx="1" connection="optional" outputs="value:" type="double" uid="4601" uid_parent="root" value="1"/>
+          <Indicator _name="Result" conIdx="3" connection="recommended" inputs="value:4600.value" type="double" uid="4602" uid_parent="root" value="0"/>
+        </VI>
+        """;
+
+    /// <summary>
+    /// A new VI without `error in` must have its MOST IMPORTANT input required. Only the author
+    /// knows which, so it is an ERROR that names the inputs and is never repaired.
+    /// </summary>
+    [Fact]
+    public void ANewViWithoutErrorInAndNoRequiredInputIsAnErrorNeverRepaired()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(NoErrorInNothingRequired, AixmlCheck.PanePolicy.NewVi),
+                                    f => f.Code == AixmlCheck.NoRequiredInput);
+        Assert.Equal(AixmlCheck.Severity.Error, finding.Severity);
+        Assert.Contains("\"Value\"", finding.Message, StringComparison.Ordinal);
+
+        var fixedUp = AixmlCheck.Fix(NoErrorInNothingRequired, AixmlCheck.PanePolicy.NewVi);
+        Assert.DoesNotContain(fixedUp.Repairs, r => r.Code == AixmlCheck.NoRequiredInput);
+        Assert.Contains(fixedUp.Remaining, f => f.Code == AixmlCheck.NoRequiredInput);
+    }
+
+    /// <summary>The control arms: one required input is enough, and a VI with no input has nothing to require.</summary>
+    [Fact]
+    public void OneRequiredInputOrNoInputAtAllSatisfiesTheRule()
+    {
+        Assert.DoesNotContain(AixmlCheck.Check(NoErrorInNothingRequired.Replace(
+                "uid=\"4600\"", "uid=\"4600\"").Replace("conIdx=\"0\" connection=\"recommended\"",
+                "conIdx=\"0\" connection=\"required\""), AixmlCheck.PanePolicy.NewVi),
+            f => f.Code == AixmlCheck.NoRequiredInput);
+        Assert.DoesNotContain(AixmlCheck.Check("""
+            <VI _name="Top.vi" description="d">
+              <Indicator _name="Result" conIdx="3" connection="recommended" inputs="value:" type="double" uid="4602" uid_parent="root" value="0"/>
+            </VI>
+            """, AixmlCheck.PanePolicy.NewVi), f => f.Code == AixmlCheck.NoRequiredInput);
+        // the same document as an existing VI or a helper: nothing to say
+        Assert.DoesNotContain(AixmlCheck.Check(NoErrorInNothingRequired, AixmlCheck.PanePolicy.KeepAsIs),
+            f => f.Code == AixmlCheck.NoRequiredInput);
     }
 
     [Fact]

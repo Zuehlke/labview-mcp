@@ -415,6 +415,13 @@ internal sealed class AixmlTools(LvaiConnection connection)
         WHAT IT DOES NOT DO, on purpose: terminal names, types, wiring, cycles and case completeness
         are things only LabVIEW knows, and it checks them well. This is a pre-filter that moves cheap
         failures off the round trip; lvai_validate_aixml is still required.
+        A NEW VI NEEDS A REQUIRED INPUT - the user's rule of 2026-10-31, which replaced the old
+        "error in is recommended": with newVi (the default) `error in` must be connection=
+        "required" (`errorInNotRequired`, repaired by fix), and a VI with inputs but no `error in`
+        must have its most important input required (`noRequiredInput`, an ERROR never repaired -
+        only the author knows which input that is). Pass newVi: false for the AIXML of a VI that
+        ALREADY EXISTS - an extension or revision keeps every connector-pane flag as it was, and
+        then fix touches none of them.
         """)]
     public Task<string> CheckAixmlAsync(
         [Description(@"Absolute path to the .xml file to check")] string aiXmlFilePath,
@@ -430,9 +437,17 @@ internal sealed class AixmlTools(LvaiConnection connection)
         bool fix = false,
         [Description("Where to write the repaired XML. Omit to overwrite aiXmlFilePath in place")]
         string? fixedPath = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        [Description("""
+            TRUE (the default) for a VI generated COMPLETELY NEW: it must have a required input -
+            `error in`, or without one its most important input. FALSE for the AIXML of a VI that
+            already exists, being extended or revised: no connector-pane flag is checked or repaired,
+            so callers of that VI keep working.
+            """)]
+        bool newVi = true)
     {
         _ = ct;
+        var policy = newVi ? AixmlCheck.PanePolicy.NewVi : AixmlCheck.PanePolicy.KeepAsIs;
         if (!File.Exists(aiXmlFilePath))
             return Task.FromResult(Json.Error("badArguments", $"No file at '{aiXmlFilePath}'."));
 
@@ -453,13 +468,13 @@ internal sealed class AixmlTools(LvaiConnection connection)
 
         if (!fix)
         {
-            var plain = AixmlCheck.Summarise(AixmlCheck.Check(text));
+            var plain = AixmlCheck.Summarise(AixmlCheck.Check(text, policy));
             plain["aiXmlFilePath"] = Path.GetFullPath(aiXmlFilePath);
             plain["diagramChain"] = ChainEstimate(text);
             return Task.FromResult(Json.Document(Timed(plain, clock)));
         }
 
-        var repaired = AixmlCheck.Fix(text);
+        var repaired = AixmlCheck.Fix(text, policy);
         var answer = AixmlCheck.Summarise(repaired.Remaining);
         answer["aiXmlFilePath"] = Path.GetFullPath(aiXmlFilePath);
         answer["diagramChain"] = ChainEstimate(text);
@@ -538,7 +553,8 @@ internal sealed class AixmlTools(LvaiConnection connection)
     /// <see cref="SymbolicUids"/> uses, and for the same reason: this sits between an author and
     /// code generation, where a surprise edit is worse than a reported fault.
     /// </summary>
-    internal static (string Path, JsonObject? Report) Repaired(string aixmlPath)
+    internal static (string Path, JsonObject? Report) Repaired(string aixmlPath,
+        AixmlCheck.PanePolicy policy = AixmlCheck.PanePolicy.Authored)
     {
         string text;
         try { text = File.ReadAllText(aixmlPath); }
@@ -548,7 +564,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
             return (aixmlPath, null);
         }
 
-        var fixedUp = AixmlCheck.Fix(text);
+        var fixedUp = AixmlCheck.Fix(text, policy);
         if (fixedUp.Repairs.Count == 0) return (aixmlPath, null);
 
         var directory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "repaired");
@@ -615,14 +631,15 @@ internal sealed class AixmlTools(LvaiConnection connection)
     /// which is deliberately NOT an error here: the RPC below will report a missing or unreadable
     /// file in the vocabulary the caller already knows.
     /// </summary>
-    internal static JsonObject? PreCheck(string aixmlPath)
+    internal static JsonObject? PreCheck(string aixmlPath,
+        AixmlCheck.PanePolicy policy = AixmlCheck.PanePolicy.Authored)
     {
         string text;
         try { text = File.ReadAllText(aixmlPath); }
         catch (Exception failure) when (failure is IOException or UnauthorizedAccessException
                                         or ArgumentException or NotSupportedException) { return null; }
 
-        return AixmlCheck.Summarise(AixmlCheck.Check(text));
+        return AixmlCheck.Summarise(AixmlCheck.Check(text, policy));
     }
 
     /// <summary>

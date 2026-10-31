@@ -418,6 +418,13 @@ The documentation is part of this file, not a later step:
   overwrite a description the user wrote with a summary of your change.
 - New `Control`/`Indicator` elements get a `description`, a `conIdx` if they belong on the
   connector pane, and `connection` = `required` / `recommended` / `optional`.
+- **EVERY EXISTING TERMINAL KEEPS ITS `connection` EXACTLY AS THE EXPORT HAS IT** - the user's
+  rule of 2026-10-31: an extended or revised VI stays as it is, or code that calls it stops
+  running. Do NOT apply the new-VI rule ("`error in` required") to a VI you edit, and do not
+  "tidy" a flag. Run `lvai_check_aixml` with `newVi: false` on edited AIXML - with the default
+  it would repair `error in` to required. `lvai_generate_vi` onto the VI's existing path keeps
+  the flags by itself (the file exists, so it is not a new VI); generating to a NEW path and
+  copying over the old file would not.
 - **A terminal without `conIdx` is not on the connector pane** — that is a front-panel-only
   control, almost never what a subVI wants.
 - Keep the existing connector-pane indices stable unless Phase 1 said they change. Renumbering
