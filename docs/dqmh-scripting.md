@@ -1446,6 +1446,41 @@ the fourth** - the first three each still left another frame's input open. The A
 enabled `User Input` and `Enter`. `lvai_dqmh_new_event` names this cause in `completionNeeded`
 now instead of blaming a Broadcast that a reply-only module does not have.
 
+**A HANDLER OUT OF SIGHT AND AN ERROR OUT INTO NOTHING - the user's finding of 2026-10-31,
+fixed the same day.** In the `DQMH_EscapingTest` example (DQMH 7.1.2) the `Start Logging`
+handler was not visible in its frame: its wires ran off the frame's bottom edge, and its
+`error out` was unwired. Both were the tool's doing, and both passed every check - Main.vi was
+executable, `connected` complete, `ok: true`.
+
+- **Out of sight.** The helper gave `New VI Object` the argument source's `Position` as
+  `position/next to`. `Position` reads in the PANE's coordinates; `New VI Object` and `Move` take
+  a position relative to the OWNER diagram - the same fact `lvbd_layout_apply` already records
+  ("why every object is moved twice"). So the handler landed offset by the frame's own origin,
+  and a DQMH frame does not grow: LabVIEW clips the node, Main.vi still runs. A pylabview read of
+  the saved Main.vi found four subVI nodes outside their structure. The helper now aims the
+  handler right of the argument source, clamps it into the frame's case structure (10 px margin,
+  30 px for the selector), and moves it with `Move` TWICE - the first move reveals the offset, the
+  second applies `target + target - landed`. It then reads the handler's `Position` and `Bounds`
+  back and answers `Placement` = `inside;l,t,r,b;frame l,t,r,b` or `OUTSIDE;...`; the tool's `ok`
+  is false unless it reads `inside`.
+- **Error out into nothing.** A plain Request has no reply and no `Merge Errors`, so the plan only
+  warned *"it stays unwired"* - an error from the handler was lost in silence. A handler with both
+  error terminals now goes IN SERIES into the error source's wire through the new generic
+  `scripts/lvbd_splice_by_names.xml`: the wire leaving `Variant To Data`'s `error out` is deleted,
+  the source is wired to the handler's `error in`, and the handler's `error out` to every sink
+  the old wire fed. The answer's `errorChain` reads `spliced;<sinks>;`, and `ok` requires it.
+  A reply frame keeps its `Merge Errors` route unchanged.
+
+Accepted over raw stdio on a fresh Singleton module (`C:\temp\DQMH_PlaceFix`, one Request
+`Set Value`, one Request and Wait for Reply `Get Value`): `placement` `inside` for both,
+`errorChain` `spliced;1;` for the Request, Main.vi `execState 1`, and the rendered diagram shows
+both handlers inside their frames with the error wire running through the Request's handler.
+
+**Still open: the `#DQMH_CodeNeeded` label of a DQMH 7.1 frame is NOT deleted.** The dry run
+lists no such text among the frame's decorations, so the cause is not only the pattern - it
+was `^#CodeNeeded` and is `^#[A-Z_]*CodeNeeded` now, because `Match Pattern` has no groups and
+`^#(DQMH_)?CodeNeeded` would match neither spelling. Where 7.1 keeps that label is not measured.
+
 ### 9i. Every DQMH tool on the pylabview backend - no NI service, measured 2026-10-13
 
 The user asked for a DQMH demo with NO gRPC, and every `lvai_dqmh_*` tool but the reference takes

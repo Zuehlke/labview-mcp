@@ -66,16 +66,81 @@ public class DqmhFrameToolsTests
         Assert.Contains(plan.Problems, p => p.Contains("Last Name"));
     }
 
-    /// <summary>A Request frame has no reply: the handler's error out has nowhere to go - said, not hidden.</summary>
+    /// <summary>
+    /// A Request frame has no reply and no Merge Errors. Until 2026-10-31 the handler's error out
+    /// was left unwired there with a warning, so an error from the handler was lost (the user's
+    /// finding on the DQMH_EscapingTest Start Logging frame). A handler with both error terminals
+    /// now goes in series into the frame's error wire - no warning, a splice.
+    /// </summary>
     [Fact]
-    public void A_request_frame_wires_arguments_and_warns_about_the_error_out()
+    public void A_request_frame_splices_the_handler_into_the_error_wire()
     {
         var plan = DqmhFrameTools.Plan("Set Temperature", ["Temperature", "error in"], ["error out"],
             ["input cluster", "Temperature"], []);
 
         Assert.Empty(plan.Problems);
         Assert.Empty(plan.Replies);
+        Assert.DoesNotContain(plan.Warnings, w => w.Contains("error out"));
+        Assert.True(DqmhFrameTools.SpliceErrorChain(plan, ["error out"], mergeErrors: false));
+    }
+
+    /// <summary>A reply frame's Merge Errors takes the error out - no splice there.</summary>
+    [Fact]
+    public void A_frame_with_merge_errors_is_not_spliced()
+    {
+        var plan = DqmhFrameTools.Plan("Verify Account", ["Account Number", "error in"],
+            ["Found", "First Name", "Last Name", "Balance", "error out"], VerifyArgs, VerifyReply);
+        Assert.False(DqmhFrameTools.SpliceErrorChain(plan, ["error out"], mergeErrors: true));
+    }
+
+    /// <summary>Only a handler with BOTH error terminals can sit in series; one without is said, not hidden.</summary>
+    [Fact]
+    public void A_handler_without_error_in_keeps_the_warning_and_is_not_spliced()
+    {
+        var plan = DqmhFrameTools.Plan("Set Temperature", ["Temperature"], ["error out"],
+            ["input cluster", "Temperature"], []);
         Assert.Contains(plan.Warnings, w => w.Contains("error out"));
+        Assert.False(DqmhFrameTools.SpliceErrorChain(plan, ["error out"], mergeErrors: false));
+    }
+
+    /// <summary>
+    /// The placement is read back from LabVIEW; only an explicit `inside;` is a visible handler.
+    /// An empty or unreadable answer must not pass - that is the hidden-handler case again.
+    /// </summary>
+    [Theory]
+    [InlineData("inside;420,310,452,342;frame 120,90,1150,600", true)]
+    [InlineData("OUTSIDE;1085,1076,1117,1108;frame 120,90,1150,600", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void Only_a_placement_read_back_as_inside_counts_as_visible(string? placement, bool visible)
+    {
+        Assert.Equal(visible, DqmhFrameTools.PlacedInside(placement));
+    }
+
+    /// <summary>DQMH 7 writes `#DQMH_CodeNeeded`; the pattern matched only `#CodeNeeded` and deleted nothing.</summary>
+    [Theory]
+    [InlineData("#CodeNeeded 1. Configure this Message Case", true)]
+    [InlineData("#DQMH_CodeNeeded 1. Configure this Message Case", true)]
+    [InlineData("Starts a DAQmx task", false)]
+    public void Both_code_needed_spellings_are_recognised(string text, bool expected)
+    {
+        Assert.Equal(expected, DqmhFrameTools.IsCodeNeeded(text));
+        Assert.Equal(expected, Regex.IsMatch(text, DqmhFrameTools.CodeNeededPattern));
+    }
+
+    /// <summary>
+    /// The handler is moved with Move TWICE against the frame diagram: Position is in pane
+    /// coordinates and Move takes the owner's, and a single placement at the source's Position is
+    /// what put the Start Logging handler out of sight. The placement is read back and reported.
+    /// </summary>
+    [Fact]
+    public void The_helper_moves_the_handler_twice_and_reports_the_placement()
+    {
+        var aixml = File.ReadAllText(RepoTree.Path("scripts", "lvdqmh_place_frame_handler.xml"));
+        Assert.Equal(2, Regex.Matches(aixml, "target=\"Move\"[^>]*owner:4551\\.value").Count);
+        Assert.Contains("<Indicator _name=\"Placement\"", aixml);
+        Assert.Contains("<Indicator _name=\"Splice\"", aixml);
+        Assert.Contains("target=\"lvbd_splice_by_names.vi\"", aixml);
     }
 
     /// <summary>Measured on the acceptance run: the connect helper's mark arrived in the plan as part of the name.</summary>
