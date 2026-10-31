@@ -44,7 +44,7 @@ internal static class LvNativeValue
         value = null;
         if (string.IsNullOrWhiteSpace(xml)) return false;
         XElement element;
-        try { element = XElement.Parse(xml); }
+        try { element = ParseExact(xml); }
         catch (XmlException) { return false; }
         return TryDecode(element, out value);
     }
@@ -172,34 +172,40 @@ internal static class LvNativeValue
     }
 
     /// <summary>
-    /// A run answer's `values` as the client gets it: each entry's `value` decoded from its XML,
-    /// and the XML itself dropped wherever the decode was exact - unless <paramref name="includeXml"/>.
-    /// An entry that could not be decoded keeps its XML and says so in `xmlKeptBecause`, so nothing
-    /// is ever lost to the slimming. Returns how many entries lost their XML.
+    /// Parses LabVIEW's flattened XML WITHOUT end-of-line normalization. An XML parser turns every
+    /// CR and CRLF in text into LF, so a string that left LabVIEW as `a\nb\r\nc\rd` came back as
+    /// `a\nb\nc\nd` - measured 2026-10-31 on both backends with LabVIEW's raw output beside it.
+    /// XmlTextReader with Normalization off keeps the text exactly as LabVIEW wrote it.
     /// </summary>
-    public static int Apply(JsonObject answer, bool includeXml)
+    public static XElement ParseExact(string xml)
     {
-        if (answer["values"] is not JsonObject values) return 0;
-        var dropped = 0;
-        foreach (var (_, node) in values.ToList())
+        using var text = new StringReader(xml);
+        using var reader = new XmlTextReader(text)
         {
-            if (node is not JsonObject entry) continue;
-            var xml = entry["xml"]?.GetValue<string>();
-            if (TryDecode(xml, out var native))
-            {
-                entry["value"] = native;
-                if (!includeXml)
-                {
-                    entry.Remove("xml");
-                    dropped++;
-                }
-            }
-            else if (xml is not null && !includeXml)
-            {
-                entry["xmlKeptBecause"] = "this value's type is not decoded to native JSON (a timestamp, " +
-                                          "waveform, variant, refnum or complex number), so its XML is the value.";
-            }
+            Normalization = false,
+            DtdProcessing = DtdProcessing.Prohibit,
+        };
+        return XElement.Load(reader, LoadOptions.None);
+    }
+
+    /// <summary>
+    /// One run-answer entry as the client gets it: `value` decoded from the EXACT element - parsed
+    /// with ParseExact, or the in-memory element the ActiveX route built - and the XML string left
+    /// out unless <paramref name="includeXml"/>. An element that cannot be decoded keeps its XML
+    /// and says so in `xmlKeptBecause`. Never decode from the entry's `xml` STRING: XElement's
+    /// ToString writes every line end in text as CRLF, so that string has already lost them.
+    /// </summary>
+    public static void Fill(JsonObject entry, XElement? element, bool includeXml)
+    {
+        if (element is not null && TryDecode(element, out var native))
+        {
+            entry["value"] = native;
+            if (!includeXml) entry.Remove("xml");
         }
-        return dropped;
+        else if (entry["xml"] is not null && !includeXml)
+        {
+            entry["xmlKeptBecause"] = "this value's type is not decoded to native JSON (a timestamp, " +
+                                      "waveform, variant, refnum or complex number), so its XML is the value.";
+        }
     }
 }

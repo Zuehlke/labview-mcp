@@ -95,44 +95,98 @@ public sealed class LvNativeValueTests
         Assert.False(LvNativeValue.TryDecode(xml, out _));
     }
 
-    // ------------------------------------------------------------ the answer the client gets
+    // ------------------------------------------------------------ line ends, as LabVIEW wrote them
 
-    private static JsonObject RunAnswer() => new()
+    /// <summary>
+    /// The regression the 2026-10-31 round trip found: LabVIEW returned `line1\nline2\r\nline3\rend`
+    /// exactly (its raw values XML, and the ActiveX reading), and a plain XML parse turned every CR
+    /// into LF. The old ActiveX `value` was exact, so the first native version made it WORSE there.
+    /// </summary>
+    [Fact]
+    public void A_string_keeps_LF_CRLF_and_CR_exactly()
     {
-        ["ok"] = true,
-        ["values"] = new JsonObject
-        {
-            ["error out"] = new JsonObject { ["type"] = "Cluster", ["value"] = null, ["xml"] = ErrorOut },
-            ["t0"] = new JsonObject
-            {
-                ["type"] = "Timestamp", ["value"] = null,
-                ["xml"] = "<Timestamp><Name>t0</Name><Cluster><I32><Val>0</Val></I32></Cluster></Timestamp>",
-            },
-        },
-    };
+        const string sent = "line1\nline2\r\nline3\rend";
+        var xml = $"<String>\r\n<Name>text out</Name>\r\n<Val>{sent}</Val>\r\n</String>";
+        Assert.Equal(sent, Decode(xml)!.GetValue<string>());
+    }
 
     [Fact]
-    public void Apply_drops_the_xml_only_where_the_decode_was_exact()
+    public void A_string_inside_a_cluster_keeps_its_line_ends_too()
     {
-        var answer = RunAnswer();
-        Assert.Equal(1, LvNativeValue.Apply(answer, includeXml: false));
+        var xml = "<Cluster>\r\n<Name>error out</Name>\r\n<NumElts>3</NumElts>\r\n" +
+                  "<Boolean>\r\n<Name>status</Name>\r\n<Val>1</Val>\r\n</Boolean>\r\n" +
+                  "<I32>\r\n<Name>code</Name>\r\n<Val>5000</Val>\r\n</I32>\r\n" +
+                  "<String>\r\n<Name>source</Name>\r\n<Val>a\rb\nc</Val>\r\n</String>\r\n</Cluster>";
+        Assert.Equal("a\rb\nc", Decode(xml)!["source"]!.GetValue<string>());
+    }
 
-        var error = answer["values"]!["error out"]!.AsObject();
+    [Fact]
+    public void The_values_document_parser_keeps_line_ends_for_the_server_too()
+    {
+        // LvValuesXml.Parse reads NI's whole values XML; its Scalar used to be normalized as well.
+        var doc = "<Array>\r\n<Name>Get All Control Values Variant</Name>\r\n<Dimsize>1</Dimsize>\r\n" +
+                  "<Cluster>\r\n<Name></Name>\r\n<NumElts>2</NumElts>\r\n" +
+                  "<String>\r\n<Name>Name</Name>\r\n<Val>text out</Val>\r\n</String>\r\n" +
+                  "<LvVariant>\r\n<Name>Variant Data</Name>\r\n" +
+                  "<String>\r\n<Name>text out</Name>\r\n<Val>a\nb\r\nc\rd</Val>\r\n</String>\r\n" +
+                  "</LvVariant>\r\n</Cluster>\r\n</Array>";
+        var value = Assert.Single(LvValuesXml.Parse(doc));
+        Assert.Equal("a\nb\r\nc\rd", value.Scalar);
+        Assert.NotNull(value.Element);
+    }
+
+    // ------------------------------------------------------------ the entry the client gets
+
+    private static JsonObject Entry(string xml) =>
+        new() { ["type"] = "Cluster", ["value"] = null, ["xml"] = xml };
+
+    [Fact]
+    public void Fill_drops_the_xml_only_where_the_decode_was_exact()
+    {
+        var error = Entry(ErrorOut);
+        LvNativeValue.Fill(error, LvNativeValue.ParseExact(ErrorOut), includeXml: false);
         Assert.Null(error["xml"]);
         Assert.Equal(0, error["value"]!["code"]!.GetValue<long>());
 
-        var t0 = answer["values"]!["t0"]!.AsObject();
+        const string ts = "<Timestamp><Name>t0</Name><Cluster><I32><Val>0</Val></I32></Cluster></Timestamp>";
+        var t0 = Entry(ts);
+        LvNativeValue.Fill(t0, LvNativeValue.ParseExact(ts), includeXml: false);
         Assert.NotNull(t0["xml"]);
         Assert.NotNull(t0["xmlKeptBecause"]);
     }
 
     [Fact]
-    public void Apply_with_includeXml_keeps_every_xml_and_still_decodes()
+    public void Fill_with_includeXml_keeps_the_xml_and_still_decodes()
     {
-        var answer = RunAnswer();
-        Assert.Equal(0, LvNativeValue.Apply(answer, includeXml: true));
-        Assert.NotNull(answer["values"]!["error out"]!["xml"]);
-        Assert.Equal(0, answer["values"]!["error out"]!["value"]!["code"]!.GetValue<long>());
-        Assert.Null(answer["values"]!["t0"]!["xmlKeptBecause"]);
+        var error = Entry(ErrorOut);
+        LvNativeValue.Fill(error, LvNativeValue.ParseExact(ErrorOut), includeXml: true);
+        Assert.NotNull(error["xml"]);
+        Assert.Equal(0, error["value"]!["code"]!.GetValue<long>());
+    }
+
+    [Fact]
+    public void Fill_without_an_element_changes_nothing_but_says_why_the_xml_stays()
+    {
+        var entry = Entry(ErrorOut);
+        LvNativeValue.Fill(entry, null, includeXml: false);
+        Assert.Null(entry["value"]);
+        Assert.NotNull(entry["xml"]);
+        Assert.NotNull(entry["xmlKeptBecause"]);
+    }
+
+    [Fact]
+    public void ToJson_keeps_the_servers_shape_by_default()
+    {
+        var values = LvValuesXml.Parse(
+            "<Array><Name>x</Name><Dimsize>1</Dimsize><Cluster><Name></Name><NumElts>2</NumElts>" +
+            "<String><Name>Name</Name><Val>error out</Val></String>" +
+            "<LvVariant><Name>Variant Data</Name>" + ErrorOut + "</LvVariant></Cluster></Array>");
+        var server = LvValuesXml.ToJson(values);
+        Assert.NotNull(server["error out"]!["xml"]);
+        Assert.Null(server["error out"]!["value"]);
+
+        var client = LvValuesXml.ToJson(values, native: true, includeXml: false);
+        Assert.Null(client["error out"]!["xml"]);
+        Assert.False(client["error out"]!["value"]!["status"]!.GetValue<bool>());
     }
 }

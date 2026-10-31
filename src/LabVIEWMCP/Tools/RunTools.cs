@@ -193,10 +193,10 @@ internal sealed class RunTools(LvaiConnection connection)
         // counts out of `xml`, so the slimming happens here, at the MCP boundary, and nowhere else.
         var answer = await RunViAndReadValuesAsync(viPath, inputsJson, includeRawXml, helperViPath,
             helperAixmlPath, regenerateHelper, timeoutSeconds, runForMs, signalsJson, signalGapMs,
-            closePanelAfterRun, backend, ct);
+            closePanelAfterRun, backend, ct, nativeValues: true, includeXml: includeXml);
         if (JsonNode.Parse(answer) is not JsonObject node) return answer;
-        var dropped = LvNativeValue.Apply(node, includeXml);
-        if (dropped > 0)
+        var dropped = (node["values"] as JsonObject)?.Count(kv => kv.Value is JsonObject e && e["xml"] is null) ?? 0;
+        if (!includeXml && dropped > 0)
             node["xmlOmitted"] = "Values are native JSON under `value`; their flattened XML is left out. " +
                                  "Pass includeXml: true to get it, e.g. to paste a value back in as an input.";
         return Json.Document(node);
@@ -219,14 +219,17 @@ internal sealed class RunTools(LvaiConnection connection)
         int signalGapMs = 500,
         bool closePanelAfterRun = true,
         string? backend = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        bool nativeValues = false,
+        bool includeXml = true)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_run_vi_and_read_values", out var choice,
                                      out var badBackend))
             return AixmlBackend.Refusal(badBackend);
         if (choice.Name == AixmlBackend.PyLabview)
             return AixmlTools.WithBackend(await Rpc.GuardAsync(() =>
-                RunOverComAsync(viPath, inputsJson, runForMs, signalsJson, signalGapMs, timeoutSeconds, ct)), choice);
+                RunOverComAsync(viPath, inputsJson, runForMs, signalsJson, signalGapMs, timeoutSeconds, ct,
+                                nativeValues, includeXml)), choice);
         return AixmlTools.WithBackend(await Rpc.GuardAsync(async () =>
         {
             // a member of an .llb CONTAINER file is a VI too: LabVIEW opens it by the path through
@@ -400,7 +403,7 @@ internal sealed class RunTools(LvaiConnection connection)
             // this tool exists to return, and quietly breaking includeRawXml's promise.
             payload.Remove("outputs");
 
-            payload["values"] = LvValuesXml.ToJson(values);
+            payload["values"] = LvValuesXml.ToJson(values, nativeValues, includeXml);
             payload["valueCount"] = JsonValue.Create(values.Count);
             payload["valuesXml"] = keepRaw ? JsonValue.Create(valuesXml) : null;
             payload["helperErrorXml"] = JsonValue.Create(errorXml);
@@ -495,7 +498,8 @@ internal sealed class RunTools(LvaiConnection connection)
     private static async Task<string> RunSignalledOverComAsync(
         string target, IReadOnlyList<LabViewCom.Input> inputs, int runForMs,
         IReadOnlyList<KeyValuePair<string, string>> signals, int signalGapMs,
-        int timeoutSeconds, CancellationToken ct, string? namedSetHelper = null)
+        int timeoutSeconds, CancellationToken ct, string? namedSetHelper = null,
+        bool nativeValues = false, bool includeXml = true)
     {
         if (DefaultHelperAixmlPath(timed: true) is not { } aixml || !File.Exists(aixml))
             return Json.Error("helperMissing",
@@ -553,7 +557,7 @@ internal sealed class RunTools(LvaiConnection connection)
             ["ok"] = run.Finished && helperCode is null or 0,
             ["viPath"] = target,
             ["via"] = "ActiveX, composed helper",
-            ["values"] = LvValuesXml.ToJson(values),
+            ["values"] = LvValuesXml.ToJson(values, nativeValues, includeXml),
             ["valueCount"] = values.Count,
             ["valuesXml"] = values.Count == 0 ? valuesXml : null,
             ["helperErrorXml"] = errorXml,
@@ -619,7 +623,8 @@ internal sealed class RunTools(LvaiConnection connection)
     /// </summary>
     internal static async Task<string> RunOverComAsync(string viPath, string? inputsJson, int runForMs,
                                                       string? signalsJson, int signalGapMs,
-                                                      int timeoutSeconds, CancellationToken ct)
+                                                      int timeoutSeconds, CancellationToken ct,
+                                                      bool nativeValues = false, bool includeXml = true)
     {
         var full = Path.GetFullPath(viPath);
         // a member of an .llb CONTAINER file too: ActiveX opens it by the path through the .llb,
@@ -678,7 +683,7 @@ internal sealed class RunTools(LvaiConnection connection)
 
         if (signals.Count > 0)
             return await RunSignalledOverComAsync(full, inputs, runForMs, signals, signalGapMs,
-                                                  timeoutSeconds, ct, namedSetHelper);
+                                                  timeoutSeconds, ct, namedSetHelper, nativeValues, includeXml);
 
         // INDICATORS ONLY, as NI's helper reads them: Ctrl Val.Get All with its default answered
         // the indicators and none of the controls, measured 2026-10-10 on the same VIs. The answer
@@ -721,7 +726,7 @@ internal sealed class RunTools(LvaiConnection connection)
             {
                 // read through the helper in LabVIEW's own XML, or say plainly why it is missing
                 var hit = flattened.TryGetValue(reading.Name, out var v);
-                values[reading.Name] = new JsonObject
+                var opaque = new JsonObject
                 {
                     ["type"] = hit ? v.Type : aixmlType,
                     ["value"] = hit ? v.Scalar : null,
@@ -732,11 +737,13 @@ internal sealed class RunTools(LvaiConnection connection)
                           "opaque COM object), and the read-back helper " +
                           (readBackProblem is null ? "did not return it." : "is unavailable: " + readBackProblem),
                 };
+                if (nativeValues) LvNativeValue.Fill(opaque, hit ? v.Element : null, includeXml);
+                values[reading.Name] = opaque;
                 continue;
             }
             var xml = reading.Problem is null
                 ? ComValues.ToLabviewXml(reading.Name, aixmlType, reading.Raw) : null;
-            values[reading.Name] = new JsonObject
+            var entry = new JsonObject
             {
                 ["type"] = xml?.Name.LocalName ?? aixmlType,
                 ["value"] = xml is null ? reading.Value : xml.Element("Val")?.Value,
@@ -744,6 +751,9 @@ internal sealed class RunTools(LvaiConnection connection)
                 ["literal"] = reading.Value,
                 ["problem"] = reading.Problem,
             };
+            // the IN-MEMORY element, whose text is LabVIEW's - its ToString above already wrote CRLF
+            if (nativeValues) LvNativeValue.Fill(entry, xml, includeXml);
+            values[reading.Name] = entry;
         }
 
         return new JsonObject

@@ -305,3 +305,38 @@ Every native value equal with and without `includeXml`, and equal across the two
 11); no value had to keep its XML; LabVIEW the same pid, `dwarnCount` 4 after the run. The saving
 grows with the size of the compound values - these two VIs return small clusters and empty
 arrays, so a waveform-free VI with real arrays saves more.
+
+### 6c. Do values still arrive exactly? Checked 2026-10-31, and one regression found and fixed
+
+**History first.** The server never configured JSON escaping on purpose: `JavaScriptEncoder` first
+appears in this branch, and the `<` form was .NET's default all along. The escaping problems
+this repository did have were all one layer further in - AIXML's `C`/`A`/`C`, a line break as
+`&#10;` in a generated value, 0x1E/0x1D for line breaks into the run helper, MacRoman in pylabview,
+a raw angle bracket in a cached frame label. Those concern data going INTO LabVIEW or a file; the
+JSON encoder only shapes the answer text, which every JSON parser decodes to the same string. The
+one recorded incident with the old form went the other way: an agent read `>` in a warning
+as HTML escaping and reported a defect that was not there (#46).
+
+**The check.** An echo VI (string, path, error cluster straight through), driven over stdio on
+both backends, each case with and without `includeXml`: angle brackets, `&`, quotes, `+`, a
+literal `<`, backslashes, umlauts and `€`, LF/CRLF/CR, a tab, XML-looking and JSON-looking
+text, an emoji; the path `C:\Temp\Prüf & Stand+b's (1).txt`; an error cluster with all of that
+in its source. Plus six AIXML exports returned inline, compared with the files they wrote.
+
+**Found: line ends.** LabVIEW returned `line1
+line2
+line3end` exactly - its raw values XML
+on grpc, the ActiveX reading on pylabview - and the first native version re-parsed XML text, which
+normalizes every CR to LF. On pylabview the old `value` had been exact, so that version made it
+WORSE. Fixed: decoding uses `XmlTextReader` with `Normalization = false` (`LvNativeValue.ParseExact`),
+from the raw XML or the in-memory element, never from the `xml` string, whose `ToString` already
+writes every line end as CRLF. `LvValuesXml.Parse` uses it too, so the grpc `value` of a string is
+now exact where it was LF-normalized before this branch.
+
+**Result after the fix**: every value equal to what was sent, on both backends, native and with
+`includeXml`; the six exports identical to their files, escapes and all; LabVIEW the same pid and
+`dwarnCount` 4 throughout. Two differences remain and neither is ours:
+- an emoji comes back as `??` - LabVIEW returns that itself (raw XML and ActiveX reading alike);
+  its strings are not Unicode;
+- the per-value `xml` field still writes line ends as CRLF, as it did before this branch
+  (re-serialization); `value` is the exact one.
