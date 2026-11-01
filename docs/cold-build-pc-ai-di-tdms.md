@@ -262,3 +262,10 @@ folder, searched three levels deep. Fixed twice: the composer never walks into o
 folder of the `.lvproj` above the target VI instead - which also closes item 4 above (a test VI in
 `Tests\` finding `SubVIs\...` through `lvai_generate_vi`) (`ComposerSearchFolderTests`).
 `lvai_generate_test` was not affected: it passes the subject's folder, where a direct hit wins.
+
+After a client restart (server with both fixes) the pump station's 12 test VIs were regenerated
+from their kept AIXML with `lvai_generate_vis`: all executable, none links into `%TEMP%\LabVIEWMCP`
+any more (the stale `Test Detect Pump Changes.vi` included), the array constants drawn like NI's,
+and the three suites green again - Acquisition 12/12, Persistence 14/14, Application 6/6. One
+`lvai_generate_vis` call with all 12 entries ran past the client's request timeout and broke off
+after five; batches of two or three each finished in 20-35 s.
