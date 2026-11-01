@@ -430,11 +430,12 @@ internal sealed class TestTools(LvaiConnection connection)
                 "The test VI was not written. The generate step carries LabVIEW's own message.",
                 route: Direct(route)), null);
 
-        if (answer["failedAtStep"]?.GetValue<string>() == "execState")
+        if (BulkTools.WrittenNotExecutable(answer))
             return (Outcome(false, "generate", steps, total, testViPath, aixmlPath,
                 "THE TEST VI WAS WRITTEN and LabVIEW cannot run it - read the generate step's " +
-                "execState. The direct route skipped validation for the subject call, which is " +
-                "what executability stands in for.", route: Direct(route)), null);
+                "execState, or on pylabview its convert step's `errors`. The direct route skipped " +
+                "validation for the subject call, which is what executability stands in for.",
+                route: Direct(route)), null);
 
         var typedefNote = typedefs is { Count: > 0 }
             ? $" {typedefs.Count} of the subject's terminals are TYPEDEFS, and the case " +
@@ -2620,7 +2621,10 @@ internal sealed class TestTools(LvaiConnection connection)
                 }
                 if (!test.Inputs.TryGetValue(terminal.Name, out var value))
                 {
-                    wired.Add($"{terminal.Name}:");        // unwired: the subject's own default
+                    if (NoErrorConstant(sb, ref uid, terminal) is { } noError)
+                        wired.Add($"{terminal.Name}:{noError}");
+                    else
+                        wired.Add($"{terminal.Name}:");    // unwired: the subject's own default
                     continue;
                 }
                 // NAMED AFTER THE TERMINAL IT FEEDS: that label is how lvai_bind_typedef_constants
@@ -2755,8 +2759,12 @@ internal sealed class TestTools(LvaiConnection connection)
             var setupWired = new List<string>();
             foreach (var terminal in shape.Terminals.Where(t => t.IsInput))
             {
-                if (ConnectorPane.IsErrorIn(terminal.Name))
-                    setupWired.Add($"{terminal.Name}:{chain}");
+                // The FIRST call has nothing before it: a supplied value, else a no-error constant
+                // when the input is required. Both were dropped until 2026-11-01, and a setup VI
+                // with a required `error in` made every test VI calling it eBad.
+                if (ConnectorPane.IsErrorIn(terminal.Name) &&
+                    (chain is not null || !setup.Inputs.ContainsKey(terminal.Name)))
+                    setupWired.Add($"{terminal.Name}:{chain ?? NoErrorConstant(sb, ref uid, terminal)}");
                 else if (setup.Inputs.TryGetValue(terminal.Name, out var value))
                 {
                     var constant = uid++;
@@ -2861,6 +2869,20 @@ internal sealed class TestTools(LvaiConnection connection)
                     ["value"] = expected,
                 });
         return list;
+    }
+
+    /// <summary>
+    /// A no-error constant for a REQUIRED `error in` that nothing else feeds, as its net; null for
+    /// every other terminal, which stays unwired and keeps the callee's default. Every VI we
+    /// generate has `error in` required, so without it each generated test of one was eBad.
+    /// </summary>
+    internal static string? NoErrorConstant(StringBuilder sb, ref int uid, Terminal terminal)
+    {
+        if (!terminal.IsInput || !terminal.Required || !ConnectorPane.IsErrorIn(terminal.Name))
+            return null;
+        var constant = uid++;
+        sb.AppendLine(Constant(constant, terminal.Type, "[false,0,]", terminal.Name));
+        return $"{constant}.value";
     }
 
     internal static string Constant(int uid, string type, string value, string? name = null)
@@ -3278,13 +3300,18 @@ internal sealed class TestTools(LvaiConnection connection)
         }
     }
 
-    internal sealed record Terminal(string Name, string Type, bool IsInput)
+    internal sealed record Terminal(string Name, string Type, bool IsInput, string? Connection = null)
     {
+        /// <summary>An omitted `connection` is how LabVIEW writes REQUIRED.</summary>
+        public bool Required => Connection is null ||
+                                string.Equals(Connection, "required", StringComparison.OrdinalIgnoreCase);
+
         public static List<Terminal> From(JsonArray? terminals) =>
             [.. (terminals ?? []).Select(t => new Terminal(
                 t!["name"]!.GetValue<string>(),
                 t["type"]!.GetValue<string>(),
-                t["direction"]!.GetValue<string>() == "input"))];
+                t["direction"]!.GetValue<string>() == "input",
+                t["connection"]?.GetValue<string>()))];
     }
 
     /// <summary>

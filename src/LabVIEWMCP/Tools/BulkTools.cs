@@ -160,9 +160,17 @@ internal sealed class BulkTools(LvaiConnection connection)
     /// That last one is the routine state of a class test whose seeds are still paths, and leaving it
     /// out drew no icon on lvai_generate_class_test's test VI in the cold build of 2026-10-17.
     /// </summary>
-    internal static bool IconWanted(JsonObject answer)
+    internal static bool IconWanted(JsonObject answer) =>
+        answer["ok"]?.GetValue<bool>() == true || WrittenNotExecutable(answer);
+
+    /// <summary>
+    /// Whether a generate answer WROTE the VI and LabVIEW cannot run it - on either backend. gRPC
+    /// stops at `execState`; the pylabview composer stops at `convert` with `executable: false`.
+    /// lvai_generate_test read only the first and answered `ok: true` for a broken test VI on
+    /// pylabview (PC AI DI TDMS cold build, 2026-11-01).
+    /// </summary>
+    internal static bool WrittenNotExecutable(JsonObject answer)
     {
-        if (answer["ok"]?.GetValue<bool>() == true) return true;
         var failedAt = answer["failedAtStep"]?.GetValue<string>();
         if (failedAt == "execState") return true;
         if (failedAt != "convert") return false;

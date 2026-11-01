@@ -744,6 +744,7 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
                 ["name"] = t.Name,
                 ["type"] = t.Type,
                 ["conIdx"] = t.ConIdx,
+                ["connection"] = t.Connection,
             };
             if (typedefs is null) return entry;
 

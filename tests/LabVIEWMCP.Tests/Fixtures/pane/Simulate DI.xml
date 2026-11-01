@@ -1,0 +1,25 @@
+<VI _name="Simulate DI.vi" description="Simulated digital input\2C deterministic\3A line k is TRUE when bit k of floor(Iteration / Samples Per Step) is set - a binary counter that advances every Samples Per Step samples. Samples Per Step below 1 counts as 1; Line Count &lt;= 0 gives an empty array. error in is passed through unchanged to error out; the VI raises no error of its own.">
+  <Control _name="Iteration" type="int32" uid="4200" uid_parent="root" value="0" conIdx="0" connection="required" outputs="value:4200.value" />
+  <Control _name="Line Count" type="int32" uid="4201" uid_parent="root" value="4" conIdx="5" connection="recommended" outputs="value:4201.value" />
+  <Control _name="Samples Per Step" type="int32" uid="4202" uid_parent="root" value="10" conIdx="7" connection="recommended" outputs="value:4202.value" />
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" uid="4203" uid_parent="root" value="[false,0,]" conIdx="11" connection="required" outputs="value:4203.value" />
+  <Indicator _name="DI States" type="array{bool}" uid="4217" uid_parent="root" value="[]" conIdx="4" connection="recommended" inputs="value:20267.value" />
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="4218" uid_parent="root" value="[false,0,]" conIdx="15" connection="recommended" inputs="value:4203.value" />
+  <Constant _name="minimum step" type="int32" uid="4205" uid_parent="root" value="1" outputs="value:4205.value" />
+  <Structure _name="For Loop" uid="4208" uid_parent="root" count="" maxin="4201.value" maxout="" label="One iteration per line\2C shifting one bit">
+    <Constant _name="base" type="int32" uid="4212" uid_parent="4208" value="2" outputs="value:4212.value" />
+    <Constant _name="zero" type="int32" uid="4213" uid_parent="4208" value="0" outputs="value:4213.value" />
+    <Node _name="Quotient &amp; Remainder" uid="4214" uid_parent="4208" inputs="y:4212.value,x:20248.value" outputs="floor(x/y):4214.floor(x/y),x-y*floor(x/y):4214.x-y*floor(x/y)" />
+    <Node _name="Not Equal?" uid="4215" uid_parent="4208" inputs="y:4213.value,x:4214.x-y*floor(x/y)" outputs="x != y?:4215.x != y?" />
+    <Tunnel _id="Out1" uid="20267" uid_parent="4208" mode="index" outputs="value:20267.value" inputs="value:4215.x != y?" />
+    <ShiftReg uid="20246" uid_parent="4208">
+      <Left uid="20248" uid_parent="20246" inputs="value:4207.floor(x/y)" outputs="value:20248.value" />
+      <Right uid="20249" uid_parent="20246" inputs="value:4214.floor(x/y)" />
+    </ShiftReg>
+  </Structure>
+  <Node _name="Max &amp; Min" uid="4206" uid_parent="root" inputs="y:4205.value,x:4202.value" outputs="max(x\2Cy):4206.max(x\2Cy)" />
+  <Node _name="Quotient &amp; Remainder" uid="4207" uid_parent="root" inputs="y:4206.max(x\2Cy),x:4200.value" outputs="floor(x/y):4207.floor(x/y)" />
+  <FreeLabel comment="Counter = Iteration / step; bits LSB first" uid="20285" uid_parent="root" />
+</VI>
+<?lvmcp pane="4833"?>
+<?lvmcp paneflags="0:1200,4:0900,5:0A00,7:0A00,11:1000,15:0D0B"?>
