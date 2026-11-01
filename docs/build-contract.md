@@ -153,7 +153,30 @@ orchestrating session is not counted, in either run.
 | cache-read tokens | 62.6 M | 30.1 M (−52 %) |
 | cache-creation + output tokens | 1.64 M | 1.08 M (−34 %) |
 
-**What worked:**
+**A third run, 2026-11-01 afternoon (`C:\Temp\ATM_DQMH_Cold_4`).** It ran after:
+- the queue fix and the composer type guard (`docs/aixml-backends.md`);
+- a client restart.
+
+Same agent prompts, same effort levels. One difference favours it: the orchestrator reused its
+own contract from the run before (without the main builder's additions), so the contract was not
+designed again (about 1.5 min).
+
+| | 10-31 | 11-01 (run 3) | 11-01 (run 4) |
+|---|---|---|---|
+| wall clock, start to delivered | ~30 min | 28 min | **19 min** |
+| DQMH module + 4 events | 7.0 min | 3.4 min | 1.9 min |
+| account / UI subVIs | 7.8 min | 4.6 / 3.5 min | 3.7 / 2.4 min |
+| handlers | 2.5 min | 0.4 min | 0.4 min |
+| Caraya | 7.5 min | 5.1 min, 41/0 | 5.5 min, 46/0 |
+| main VI | 19.2 min | 24.8 min (2 crashes) | **16.5 min, no crash, scaffold composed by our composer** |
+| main VI requests / output tokens | - | 97 / 101 k | **59 / 93 k** |
+| agent requests | 227 | 169 | **140** |
+| cache-read tokens | 62.6 M | 30.1 M | **21.0 M (−66 % against 10-31)** |
+| cache-creation + output tokens | 1.64 M | 1.08 M | **1.02 M (−38 %)** |
+
+The main VI is still the critical path. Everything else finishes within 10 min of the start.
+
+**What worked (run 3, still true in run 4):**
 - Every leaf stage was 2-6x faster.
 - No `vi_terminals` round trips for contract VIs.
 - No name clash: the loose file VIs were named apart from the module's.
