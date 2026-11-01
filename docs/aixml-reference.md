@@ -808,7 +808,7 @@ same document from `errorCode 1` to `errorCode 0`, and the generated VI then ran
 Same shape, with `maxin` / `maxout` alongside `count`.
 
 **In short, each rule measured below:** `maxin` = `N`; `count` = `<loop uid>.value`, the loop's
-`i` - or `count=""` when nothing reads `i`. `<Tunnel _id="Out1" inputs="value:<net inside>" mode="index" outputs="value:<net outside>"/>`
+`i` - or `count=""` when nothing reads `i`. `<Tunnel _id="Out1" inputs="value:<net inside>" mode="index" outputs="value:<net outside>" uid="<uid>" uid_parent="<loop uid>"/>`
 builds an array; WITHOUT `mode` the tunnel carries the LAST value (the IDE does the opposite), and
 the type's default when the loop runs zero times. A shift register's `Right` output net is read
 outside the loop directly - no `Out` tunnel; its spelling is under "Shift registers" below.
@@ -878,7 +878,7 @@ or `N` beside it; the export of the saved VI carried no `mode` on that tunnel ei
 
 **It works on an `Out` tunnel too, which this section only ever showed on `In` tunnels** — that is
 how a loop *builds* an array, one element per iteration, without `Build Array` and a shift register.
-`<Tunnel _id="Out1" inputs="value:530.waveform out" mode="index" outputs="value:540.value"/>`
+`<Tunnel _id="Out1" inputs="value:530.waveform out" mode="index" outputs="value:540.value" uid="540" uid_parent="<loop uid>"/>`
 validated, generated and round-tripped, and NI's own example exports carry the same shape. The pair
 of them is the whole accumulate-per-channel idiom: index two `In` tunnels, index the `Out` tunnel
 back out.
@@ -927,7 +927,7 @@ idiom:
 it.** The snippet above is silent on how `146.value` reaches a consumer outside, and the obvious
 completion is wrong. Measured on an accumulate-and-join loop: naming the `Right` output net
 `460.value` and reading it directly from a root-level `Write to Text File` validates; inserting
-`<Tunnel _id="Out1" inputs="value:460.value" outputs="value:470.value"/>` between them fails with
+`<Tunnel _id="Out1" inputs="value:460.value" outputs="value:470.value" uid="470" uid_parent="<loop uid>"/>` between them fails with
 
 ```
 For Loop: Is a member of a cycle

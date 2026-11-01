@@ -229,7 +229,7 @@ internal sealed class TestTools(LvaiConnection connection)
                     $"'{Path.GetFileName(viPath)}', linked by LabVIEW's own Replace. Run it through " +
                     "Caraya's runner with a Report Path ending in .xml and read the JUnit report - the " +
                     "VI's own error cluster carries only the first failed assertion.",
-                    swapAnswer["callTargets"]?.DeepClone(), route, ExpectedConstants(cases));
+                    swapAnswer["callTargets"]?.DeepClone(), route, ExpectedConstants(cases, terminals));
             }
 
             var retarget = new JsonArray(new JsonObject
@@ -260,7 +260,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 $"'{Path.GetFileName(viPath)}'. Run it through Caraya's runner with a Report Path " +
                 "ending in .xml and read the JUnit report - the VI's own error cluster carries " +
                 "only the first failed assertion.", targets?.DeepClone(), route,
-                ExpectedConstants(cases));
+                ExpectedConstants(cases, terminals));
         });
 
     /// <summary>
@@ -383,6 +383,12 @@ internal sealed class TestTools(LvaiConnection connection)
         // 3. load the subject - and every setup VI - THROUGH its project, which is what makes
         //    them resolvable. ON PYLABVIEW NOTHING IS LOADED: the composer resolves them by FILE,
         //    so their folders are searched instead (2026-10-11)
+        // `route: direct` names the CALL (a static subVI call, no placeholder); HOW the subject was
+        // found is said beside it - "direct" read as "opened through its project" on pylabview,
+        // where nothing is opened (the pump-station cold build, 2026-11-01)
+        route["subjectResolvedBy"] = AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview
+            ? "file (pylabview composer; nothing opened)"
+            : "project (opened through it, then released)";
         if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
         {
             AixmlComposer.ExtraSearch.Value =
@@ -472,7 +478,7 @@ internal sealed class TestTools(LvaiConnection connection)
             "error cluster carries only the first failed assertion. For a negative control " +
             "break one of `expectedConstants` with lvai_set_constant." + typedefNote,
             new JsonArray(JsonValue.Create(subject.ViName)), Direct(route),
-            ExpectedConstants(cases)), null);
+            ExpectedConstants(cases, terminals)), null);
     }
 
     private static JsonObject Direct(JsonObject route)
@@ -1677,7 +1683,7 @@ internal sealed class TestTools(LvaiConnection connection)
                 : 0;
 
             var (projectText, projectStyle) = LvTextFile.Read(projectPath);
-            var (tidied, removed, _) = ClassTools.StripHelperItems(projectText, projectPath);
+            var (tidied, removed, strayNames) = ClassTools.StripHelperItems(projectText, projectPath);
             if (removed > 0) await LvTextFile.WriteAsync(projectPath, tidied, projectStyle, ct);
 
             // AND NO FILE LISTED TWICE, whoever wrote the second entry: that project answers
@@ -1730,6 +1736,7 @@ internal sealed class TestTools(LvaiConnection connection)
             step["urls"] = new JsonArray([.. entries.Select(e => (JsonNode?)e.Url)]);
             step["listed"] = new JsonArray([.. entries.Select(e => (JsonNode)e.Name)]);
             step["straysRemoved"] = removed;
+            step["straysRemovedNames"] = new JsonArray([.. strayNames.Select(v => (JsonNode)v)]);
             step["duplicateEntriesRemoved"] = new JsonArray([.. duplicates.Select(v => (JsonNode)v)]);
             step["reopened"] = reopened;
             if (notOnDisk.Count > 0)
@@ -1790,9 +1797,10 @@ internal sealed class TestTools(LvaiConnection connection)
                          "removed - a project listing one file twice answers Error 74 on open: " +
                          string.Join(", ", duplicates.Select(v => $"'{v}'")) + ".");
             if (removed > 0)
-                note.Add($"{removed} stray item(s) LabVIEW had adopted were removed - a socket " +
-                         "out of user.lib\\LV_MCP lands in the project when LabVIEW saves it " +
-                         "with the file open.");
+                // EACH ITEM WITH ITS REASON, as StripHelperItems names it. This said "a socket out of
+                // user.lib\LV_MCP" for every stray until 2026-11-01, when the item was the entry of
+                // a test VI an agent had deleted (the pump-station cold build).
+                note.Add($"{removed} stray item(s) removed: " + string.Join("; ", strayNames) + ".");
             step["note"] = string.Join(" ", note);
             return step;
         }
@@ -2901,7 +2909,8 @@ internal sealed class TestTools(LvaiConnection connection)
         return [.. shared.Select(s => (s.Key, s.Value.Select(i => cases[i].Label).ToList()))];
     }
 
-    internal static JsonArray ExpectedConstants(IReadOnlyList<Case> cases)
+    internal static JsonArray ExpectedConstants(IReadOnlyList<Case> cases,
+                                                IReadOnlyList<Terminal>? terminals = null)
     {
         var list = new JsonArray();
         var n = 0;
@@ -2915,8 +2924,13 @@ internal sealed class TestTools(LvaiConnection connection)
                     ["terminal"] = name,
                     ["value"] = expected,
                 };
-                // applies to the float expectations of the case; the rest compare exactly
-                if (test.Tolerance is { } tolerance) entry["tolerance"] = tolerance;
+                // ONLY where it was applied: a float or float array. Listed on every expectation of
+                // the case until 2026-11-01, it claimed a tolerance on the pump station's U8 array,
+                // which TestAixml compares exactly.
+                if (test.Tolerance is { } tolerance &&
+                    terminals?.FirstOrDefault(t => t.Name == name && !t.IsInput) is { } terminal &&
+                    (IsFloat(terminal.Type) || IsFloatArray(terminal.Type)))
+                    entry["tolerance"] = tolerance;
                 list.Add(entry);
             }
         return list;

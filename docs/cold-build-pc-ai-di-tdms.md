@@ -180,3 +180,54 @@ What it found:
   row short false.
 
 Tests: `TankMonitorFindingsTests`.
+
+## A third variant, cold: the pump station (2026-11-01, `C:\Temp\PC_Pump_Station`)
+
+Sawtooth pressures (AI), alternating pump feedback (DI), a RATE event (`Step Up`/`Step Down` when a
+pressure changes by more than `Max Step`) and pump `Started`/`Stopped`. New requirement: the CSV
+writer quotes a field that contains a comma, a double quote or a line break (RFC 4180) - the
+weakness the tank monitor's writer left. Same agent setup, with every fix of this file in place.
+
+| | tank monitor | pump station |
+|---|---|---|
+| start to last test report | 21 min 16 s | **17 min 38 s** |
+| acquisition/simulation agent | 3.0 min, 28 calls, 144 k | 2.7 min, 23 calls, 137 k |
+| persistence/storage agent | 6.8 min, 54 calls, 187 k | 6.2 min, 52 calls, 177 k |
+| main agent | 6.2 min, 33 calls, 167 k | 8.4 min, 42 calls, 202 k |
+| Caraya agent, three batches | 13.6 min, 63 calls, 311 k | 10.5 min, 52 calls, 263 k |
+| VIs / assertions | 7 / 35 | 9 / 32 |
+
+- The persistence agent split the quoting and the file append into two generic subVIs (`Quote CSV
+  Field.vi`, `Append Text To File.vi`); the orchestrator added them to the contract before the wave
+  gate, which then reported a third wave for `Write Event Log.vi`. Contract `verify` 9/9.
+- The integration test derived the 7 events of a 20-sample run before the run and asserted them
+  exactly; the TDMS pressures (3 x 20) are asserted within 1e-9 with the new 2D `tolerance`.
+- The CSV writer's quoting is tested: `"Opened, late"`, `say "hi"` -> `"say ""hi"""`.
+- Every acquisition test generated `ok` on the first call; the Caraya agent used `tolerance`
+  unprompted for the sawtooth values.
+
+Reported by the agents, and what each was (all FIXED 2026-11-01, `docs` + tests named):
+- **`"tolerance"` listed under `expectedConstants` for every expectation of a case**, a U8 array
+  included. Now only where it was applied, a float or float array
+  (`ANonFloatExpectationOfAToleranceCaseListsNoTolerance`).
+- **A `<Tunnel>` without `uid` refused as "not composable yet".** Measured: NI's converter refuses
+  the same document, `Error -2628` - the schema requires a uid, and a net is named `uid.terminal`
+  anyway. `lvai_check_aixml` now answers `wireEndWithoutUid` (an error, so `lvai_generate_vi` writes
+  nothing), the composer names the missing uid, and the reference's prose examples carry `uid`.
+- **`straysRemoved` explained as a `user.lib\LV_MCP` socket for every stray.** `StripHelperItems`
+  always named each item and why (helper tree, under %TEMP%, file not there); the listing step threw
+  the names away. Now `straysRemovedNames` and the note carry them.
+- **The layout swing, reproduced.** The same suite generated twice: three assertions 1432 x 350, four
+  1033 x 1110 - one chain length (7). For a generated test the engine tries columns and bands and
+  kept bands on crossings, ignoring the size budget. Now, when exactly one of the two fits
+  1920 x 1080, that one is kept (`A_test_that_only_fits_in_columns_is_not_banded_over_the_budget`,
+  fixture: the dump of the four-assertion VI).
+- **12 stages against a 10-stage guide beside `withinBudget: true`, unsaid.** The note now says the
+  stages are over the guide and that the rendered size, which fits, is the verdict.
+- **Cosmetic, fixed:** the size chain names a polymorphic call `Run Tests.vi [Run Test (Array
+  Path).vi]`; `route` carries `subjectResolvedBy` (`file` on pylabview, `project` on grpc); the
+  composer's Call report lines name the part's source again - a loop variable called `src` had
+  overwritten it with a wire type.
+
+Not yet tried live (the gate stopped the server): the new layout choice, `wireEndWithoutUid`, the
+stray names and the composer's report line.

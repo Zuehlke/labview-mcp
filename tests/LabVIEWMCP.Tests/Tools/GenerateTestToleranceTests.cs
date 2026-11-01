@@ -142,7 +142,26 @@ public sealed class GenerateTestToleranceTests
     {
         var list = TestTools.ExpectedConstants(
             [new("ai", Iteration5, new() { ["AI Values"] = "[5,0,-5,0]" }, null, 1e-9),
-             new("exact", Iteration5, new() { ["AI Values"] = "[5]" })]);
+             new("exact", Iteration5, new() { ["AI Values"] = "[5]" })], SimulateAi());
+        Assert.Equal(1e-9, list[0]!["tolerance"]!.GetValue<double>());
+        Assert.Null(list[1]!["tolerance"]);
+    }
+
+    /// <summary>
+    /// Listed only where it was applied: the pump-station build's TDMS test showed `"tolerance"` on
+    /// its U8 `Pump Data` too, which TestAixml compares exactly (2026-11-01).
+    /// </summary>
+    [Fact]
+    public void ANonFloatExpectationOfAToleranceCaseListsNoTolerance()
+    {
+        var terminals = new List<TestTools.Terminal>
+        {
+            new("Pressure Data", "array.2{double}", false, "recommended"),
+            new("Pump Data", "array.2{uint8}", false, "recommended"),
+        };
+        var list = TestTools.ExpectedConstants(
+            [new("tdms", [], new() { ["Pressure Data"] = "[[1.5]]", ["Pump Data"] = "[[1]]" }, null, 1e-9)],
+            terminals);
         Assert.Equal(1e-9, list[0]!["tolerance"]!.GetValue<double>());
         Assert.Null(list[1]!["tolerance"]);
     }

@@ -5499,9 +5499,12 @@ class Composer:
                                       % (target, "input" if direction == "in" else "output", tname,
                                          ", ".join(sorted(set(by_dir["in"]) | set(by_dir["out"])))))
         for tname, net in listed["in"]:
-            src = self.net_type.get(net) if net else None
+            # its OWN name: as `src` it overwrote the part's source, and the report line below
+            # printed a wire type (`<Element 'TypeDesc' at 0x...>`) or `None` as where the Call
+            # came from - reported by the pump-station cold build, 2026-11-01
+            wired = self.net_type.get(net) if net else None
             t, want = by_dir["in"][tname]
-            if src is not None and want.get("Type") == "TypeDef" and src.get("Type") != "TypeDef":
+            if wired is not None and want.get("Type") == "TypeDef" and wired.get("Type") != "TypeDef":
                 # a PLAIN value into a TYPEDEF terminal is a coercion: term objFlags 0x40000 (the
                 # dot) and dsw 1024, as NI's converter wrote a uint64 control into
                 # mxLvGetProjectPath.vi's `Item` (ItemRef.ctl); a typedef into a plain sink - the
@@ -9061,6 +9064,13 @@ class Composer:
                 # an end nothing composed - a For Loop's conditional terminal (a <Condition> in a
                 # For Loop; the part has no stop terminal) crashed seven of NI's VIs as a KeyError
                 el0 = self._by_uid.get(missing[0][0])
+                if missing[0][0] is None:
+                    # an element WITHOUT a uid - NI's schema requires one (-2628, measured
+                    # 2026-11-01 on a <Tunnel>); this said "not composable yet" until then, which
+                    # an agent of the pump-station cold build read as a composer gap
+                    raise Unsupported("net %r ends at a %s that has no uid - every element carrying "
+                                      "inputs or outputs needs uid and uid_parent (NI's converter "
+                                      "refuses it too, Error -2628)" % (net, missing[0][1]))
                 raise Unsupported("net %r ends at %s %s of %s, which is not composable yet"
                                   % (net, missing[0][1], missing[0][0],
                                      (el0.get("_name") or el0.tag) if el0 is not None else "an element"))
