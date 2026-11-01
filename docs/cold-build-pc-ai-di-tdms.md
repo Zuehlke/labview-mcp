@@ -152,11 +152,21 @@ What it found:
   2026-09-09 (`array-nested`); `AixmlCheck` did not. FIXED: `arrayNested` is an ERROR there now, so
   `lvai_generate_vi` stops before writing anything (`AixmlCheckNestedArrayTests`, fixture: the
   reader's export of the broken VI).
-- Open: a comma inside an expected STRING-ARRAY element (`"[Source\2CEvent,...]"`) generated
-  without a warning and the assertion failed although the subject was right; the agent switched to
-  `|`. Not yet measured where the value is mis-split.
-- Open: the composer refuses `Index Array` on a 2D array with ONE index wired ("a SubArray input
-  is not composable yet").
+- **A comma inside a string-array element** - FIXED 2026-11-01. Measured first: `[Source\2CEvent,
+  Tank 0\2CHigh,plain]` composes to three strings, the first two with a comma, on BOTH backends.
+  Two tools got it wrong: `lvai_generate_test` escaped the author's `\2C` into `\5C2C` (the text
+  `\2C`, so a correct subject failed), and `lvai_run_vi_and_read_values` printed the elements raw
+  as `[Source,Event,Tank 0,High,plain]`. Now `\2C` and `\5C` written by the author pass through, a
+  case value may be a JSON array or object (`"Rows":["Source,Event"]`, escaped by the tool), and the
+  run tool writes a string ELEMENT with `\2C`/`\5C` (a scalar string stays raw).
+- **`Index Array` on a sub-array** - FIXED. The refusal was not about the index: the input was
+  `Transpose 2D Array`'s output, typed `SubArray`. NI's converter builds the row of a transposed
+  `[[1,2,3],[4,5,6]]`; the composer now takes a `SubArray` as the array it is a view of, as its
+  indexing tunnel already did. Both backends answer row 1 as `[2,5]`.
 - Open, known: the pylabview run route cannot set an array-of-clusters input over COM.
-- Open: the generator has no tolerance for 2D float arrays, so the integration test asserted the
-  valve data and the channel names but not the levels.
+- **No tolerance for 2D float arrays** - FIXED. `tolerance` takes `array.N{double|single|extended}`;
+  the size check compares `Array Size` with `Equal?` `aggregate="true"`, because a 2D array's sizes
+  are an array. The chain, run on both backends: within 1e-9 true, one value off by 0.1 false, one
+  row short false.
+
+Tests: `TankMonitorFindingsTests`.

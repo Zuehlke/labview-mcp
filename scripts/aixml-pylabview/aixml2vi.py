@@ -4413,6 +4413,13 @@ class Composer:
             # as Unbundle By Name does; its shape and element are the wrapped array's (NI's
             # grow_prop_array.vi, the XControl sweep 2026-10-22)
             wrapped = typedef_inner(atype)
+            if wrapped.get("Type") == "SubArray":
+                # a SUB-ARRAY (Transpose 2D Array, Reverse 1D Array ...) indexes like the array it
+                # is a view of, as an indexing tunnel takes it: a row of a transposed 2D array was
+                # refused here, NI's converter builds it (tank-monitor cold build, 2026-11-01)
+                wrapped = copy.deepcopy(wrapped)
+                wrapped.set("Type", "Array")
+                atype = wrapped
             n = len(wrapped.findall("Dimension")) if wrapped.get("Type") == "Array" else 0
             if n not in (1, 2):
                 raise Unsupported("Index Array %s: a %s input is not composable yet"

@@ -392,10 +392,22 @@ internal static class ComValues
         double d => d.ToString("R", Invariant),
         float f => f.ToString("R", Invariant),
         Array { Rank: 2 } grid => FormatGrid(grid),
-        Array items => "[" + string.Join(",", items.Cast<object?>().Select(Format)) + "]",
+        Array items => "[" + string.Join(",", items.Cast<object?>().Select(FormatItem)) + "]",
         IFormattable number => number.ToString(null, Invariant),
         _ => value.ToString() ?? "",
     };
+
+    /// <summary>
+    /// An ELEMENT of an array literal. A string element escapes its comma as `\2C` and its
+    /// backslash as `\5C`, the way AIXML reads them: `["Source,Event","plain"]` came back as
+    /// `[Source,Event,plain]` - three elements to any reader - until 2026-11-01, when a Caraya agent
+    /// of the tank-monitor cold build was misled by it. `[Source\2CEvent,plain]` composes back to the
+    /// same two strings on both backends (measured). A scalar string stays raw: there the comma is
+    /// not structure.
+    /// </summary>
+    private static string FormatItem(object? value) => value is string s
+        ? s.Replace("\\", "\\5C").Replace(",", "\\2C")
+        : Format(value);
 
     private static string FormatGrid(Array grid)
     {
@@ -407,7 +419,7 @@ internal static class ComValues
             for (var j = 0; j < grid.GetLength(1); j++)
             {
                 if (j > 0) rows.Append(',');
-                rows.Append(Format(grid.GetValue(i, j)));
+                rows.Append(FormatItem(grid.GetValue(i, j)));
             }
             rows.Append(']');
         }

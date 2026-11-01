@@ -223,8 +223,12 @@ catches a mis-generated accessor pair, a wrong dispatch and a broken private dat
 approximate. Prefer values that are exact in IEEE754 — `30`, `10.5`, `12.5`, `2.25`, `230` all are.
 Where the result is not (a sine, a division by 3), give the case `"tolerance": 1e-9` in
 `lvai_generate_test`: its float scalars then go through Caraya's `Assert Almost Equal_Float.vi`, and
-its 1D float arrays are compared element by element with the lengths checked too. Never build such
-a test by hand. A tolerance on a case with no float expectation is refused. `lvai_generate_class_test`
+its float arrays (1D or 2D) are compared element by element with the sizes checked too. Never build
+such a test by hand.
+
+**A string with a comma inside an ARRAY element**: give the value as a JSON array,
+`"Rows":["Source,Event","Tank 0,High"]` - the tool escapes it. In a literal string write the comma
+as `\2C`; `lvai_run_vi_and_read_values` prints such an element the same way in `literal`. A tolerance on a case with no float expectation is refused. `lvai_generate_class_test`
 and `lvai_generate_method_test` do not take one yet.
 
 Ask as a `NEEDS CLARIFICATION` block when a correct value is genuinely unknowable, then **stop**:

@@ -59,13 +59,14 @@ internal sealed class TestTools(LvaiConnection connection)
         Case keys are only `label`, `inputs`, `expect`, `setup`, `tolerance`; any other is REFUSED.
         `inputs`/`expect` use the subject's CONNECTOR-PANE terminal names (lvai_vi_terminals) -
         an off-pane control, an output under `inputs` or an input under `expect` is refused.
-        Values are written verbatim as constants of the terminal's type.
+        Values are written verbatim as constants of the terminal's type; a JSON array or object
+        value becomes the AIXML literal with its strings escaped (a comma in an element is kept).
         `setup` (direct route) calls other VIs first, chained by error wires; each needs error
         in/out. The cases of one test VI RUN IN PARALLEL, so a setup path used by another case is
         REFUSED - give every case its own fixture.
         Assertions are `Assert Equal Value_Variant`, EXACT. A case's `tolerance` (a number >= 0)
-        compares its float scalars with `Assert Almost Equal_Float` and its 1D float arrays
-        element by element, lengths included; a case with no float expectation is refused. Expected
+        compares its float scalars with `Assert Almost Equal_Float` and its float arrays (any rank)
+        element by element, sizes included; a case with no float expectation is refused. Expected
         constants are labelled `expected <n>` (`expectedConstants`) for lvai_set_constant.
         Read the JUnit report (lvai_run_caraya_tests), not `error out` - it carries the first
         failure only. `failedAtStep: retarget` means the test VI was written and still calls the
@@ -2701,7 +2702,8 @@ internal sealed class TestTools(LvaiConnection connection)
                 {
                     // ELEMENT BY ELEMENT, AND THE LENGTHS: Subtract truncates to the shorter
                     // array, so a missing element would pass on the differences alone.
-                    actual = EmitWithinTolerance(sb, ref uid, actual, wantedNet, arrayTolerance);
+                    actual = EmitWithinTolerance(sb, ref uid, actual, wantedNet, arrayTolerance,
+                                                 FloatArrayRank(terminal.Type));
                     var allTrue = uid++;
                     sb.AppendLine(Constant(allTrue, "bool", "true", "within tolerance"));
                     wantedNet = $"{allTrue}.value";
@@ -2930,8 +2932,10 @@ internal sealed class TestTools(LvaiConnection connection)
     /// length. Primitives only, terminal names from docs/aixml-reference.md.
     /// </summary>
     internal static string EmitWithinTolerance(StringBuilder sb, ref int uid, string actual,
-                                               string expected, double tolerance)
+                                               string expected, double tolerance, int rank = 1)
     {
+        // Array Size of a 2D array is an ARRAY of sizes; compared as aggregates it is one verdict
+        var aggregate = rank > 1 ? " aggregate=\"true\"" : "";
         var diff = uid++;
         sb.AppendLine($"  <Node _name=\"Subtract\" inputs=\"x:{actual},y:{expected}\" " +
                       $"outputs=\"x-y:{diff}.x-y\" uid=\"{diff}\" uid_parent=\"root\"/>");
@@ -2953,7 +2957,7 @@ internal sealed class TestTools(LvaiConnection connection)
         sb.AppendLine($"  <Node _name=\"Array Size\" inputs=\"array:{expected}\" " +
                       $"outputs=\"size(s):{expectedSize}.size(s)\" uid=\"{expectedSize}\" uid_parent=\"root\"/>");
         var sameSize = uid++;
-        sb.AppendLine($"  <Node _name=\"Equal?\" inputs=\"x:{actualSize}.size(s),y:{expectedSize}.size(s)\" " +
+        sb.AppendLine($"  <Node _name=\"Equal?\"{aggregate} inputs=\"x:{actualSize}.size(s),y:{expectedSize}.size(s)\" " +
                       $"outputs=\"x = y?:{sameSize}.x = y?\" uid=\"{sameSize}\" uid_parent=\"root\"/>");
         var both = uid++;
         sb.AppendLine($"  <Node _name=\"And\" inputs=\"x:{all}.logical AND,y:{sameSize}.x = y?\" " +
@@ -3393,9 +3397,14 @@ internal sealed class TestTools(LvaiConnection connection)
                     $"casesJson[{index}] \"{key}\" is not an object of terminal name to value.");
 
             foreach (var (name, value) in o)
-                map[name] = value?.ToString()
-                    ?? throw new ArgumentException(
-                        $"casesJson[{index}] \"{key}\" has a null value for '{name}'.");
+                map[name] = value switch
+                {
+                    null => throw new ArgumentException(
+                        $"casesJson[{index}] \"{key}\" has a null value for '{name}'."),
+                    // structure, not text: ["Source,Event","Tank 0,High"] is two strings
+                    JsonArray or JsonObject => AixmlLiteral(value),
+                    _ => value.ToString(),
+                };
             return map;
         }
     }
@@ -3442,10 +3451,21 @@ internal sealed class TestTools(LvaiConnection connection)
     /// <summary>A floating-point scalar: compared with Caraya's Assert Almost Equal_Float.</summary>
     internal static bool IsFloat(string type) => FloatTypes.Contains(type);
 
-    /// <summary>A 1D floating-point array: compared element by element, lengths included.</summary>
-    internal static bool IsFloatArray(string type) =>
-        type.StartsWith("array{", StringComparison.Ordinal) && type.EndsWith('}') &&
-        FloatTypes.Contains(type["array{".Length..^1]);
+    /// <summary>
+    /// A floating-point array of any rank (`array{double}`, `array.2{double}`): compared element by
+    /// element, every dimension's size included. 2D was left out until the tank-monitor cold build
+    /// of 2026-11-01 could not assert the levels its TDMS read-back returned.
+    /// </summary>
+    internal static bool IsFloatArray(string type) => FloatArrayRank(type) > 0;
+
+    private static readonly System.Text.RegularExpressions.Regex FloatArrayType =
+        new(@"^array(?:\.(\d+))?\{(double|single|extended)\}$");
+
+    /// <summary>The rank of a floating-point array type, 0 for anything else.</summary>
+    internal static int FloatArrayRank(string type) =>
+        FloatArrayType.Match(type) is { Success: true } m
+            ? (m.Groups[1].Success ? int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 1)
+            : 0;
 
     /// <summary>
     /// A case whose `tolerance` would compare nothing: none of its expectations is a float or a
@@ -3598,6 +3618,34 @@ internal sealed class TestTools(LvaiConnection connection)
     /// own `\0A` spelling would come out of the backslash rule above as `\5C0A`.
     /// </summary>
     internal static string EscapeValue(string value) =>
-        Escape(value).Replace("\\", "\\5C")
+        AuthoredEscape.Replace(Escape(value), "\\5C")
                      .Replace("\r", "&#13;").Replace("\n", "&#10;").Replace("\t", "&#9;");
+
+    /// <summary>
+    /// A backslash that does NOT already start AIXML's `\2C` (comma) or `\5C` (backslash). Those two
+    /// are the author writing AIXML and pass through: `[Source\2CEvent,plain]` is two strings, the
+    /// first with a comma in it, on both backends (measured 2026-11-01). Escaping them as well
+    /// turned it into the text `Source\2CEvent`, and a Caraya agent's assertion failed against a
+    /// correct subject - the tank-monitor cold build. A JSON array in the case is the other way to
+    /// write such a value (<see cref="Case"/>).
+    /// </summary>
+    private static readonly System.Text.RegularExpressions.Regex AuthoredEscape =
+        new(@"\\(?!2C|5C)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// A case value given as JSON structure, as the AIXML literal of it: an array is `[...]`, an
+    /// object is a cluster `[...]` in its field order, a string element escapes `\` as `\5C` and
+    /// `,` as `\2C`, a boolean is lower case and a number keeps its JSON text.
+    /// </summary>
+    internal static string AixmlLiteral(JsonNode? node) => node switch
+    {
+        null => "",
+        JsonArray items => "[" + string.Join(",", items.Select(AixmlLiteral)) + "]",
+        JsonObject fields => "[" + string.Join(",", fields.Select(f => AixmlLiteral(f.Value))) + "]",
+        JsonValue v when v.GetValueKind() == JsonValueKind.String =>
+            v.GetValue<string>().Replace("\\", "\\5C").Replace(",", "\\2C"),
+        JsonValue v when v.GetValueKind() is JsonValueKind.True or JsonValueKind.False =>
+            v.GetValue<bool>() ? "true" : "false",
+        _ => node.ToJsonString(),
+    };
 }
