@@ -36,55 +36,37 @@ internal sealed class PaneTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_connector_pane", ReadOnly = true, OpenWorld = true,
                    Title = "Measure a VI's connector pane and say which conIdx each terminal needs")]
     [Description("""
-        Which conIdx sits WHERE on a connector pane - measured, not remembered. Call this before
-        writing conIdx into AIXML, and again after generating, because the pane pattern is chosen by
-        the generator and cannot be predicted from the indices you use.
-        With viPath: measures that VI's pane through VI Server, joins it with the VI's AIXML export
-        and answers with the slot map, every terminal's current position, every breach of NI's style
-        guide, and the conIdx each terminal SHOULD have. Read-only - it neither changes nor keeps the
-        VI in memory.
-        With pattern: the measured slot map for one pattern id, no LabVIEW needed.
-        With neither: all 36 patterns (4800-4835), which of them have measured geometry, AND the
-        pattern a newly generated VI gets on this station - LabVIEW hands every new VI the default
-        pane from LabVIEW.ini, key DefaultConPane, so that one IS knowable before you generate.
-        Call it with no argument first to learn which conIdx to write, then with viPath to check what
-        you actually got.
-        WHY IT EXISTS: the numbering is NOT the same across patterns. On 4815 the bottom-left slot -
-        where error in belongs - is conIdx 8; on 4833 it is 11, and conIdx 0 is bottom-RIGHT on 4815
-        but TOP-LEFT on 4833. A generated VI has come out as either. Guessing from one pattern's map
-        put two inputs on the output edge in a VI that validated and ran.
-        A pattern with no measured geometry says so instead of guessing: `Pattern` is read-only in VI
-        Server, so a pattern can only be observed on a VI that already uses it.
-        ON THE pylabview BACKEND, with viPath, nothing reaches LabVIEW or NI's service: the pattern
-        is read from the FILE (scripts/pylv-conpane.py), the terminals from our reader's export
-        (vi2aixml.py), and the slot positions from the measured pattern table - the same answer
-        and the same verdict, with the table's majority orientation standing in for the probe's
-        measurement. A viPath answer names `backend` and `backendSource` on its last line.
+        Pane: which conIdx sits WHERE on a connector pane - measured, never remembered; the numbering
+        differs per pattern (bottom-left is 8 on 4815, 11 on 4833). Three modes:
+        no argument - all 36 patterns (4800-4835), which have measured geometry, AND this station's
+        default pattern for a new VI (DefaultConPane in LabVIEW.ini) with the conIdx to write. Call
+        this before authoring conIdx. A CLASS MEMBER is re-paned onto 4815 - ask `pattern=4815`.
+        pattern - one pattern's slot map, no LabVIEW; a pattern without measured geometry says so.
+        viPath - measures that VI's pane and answers the slot map, each terminal's position, every
+        breach of NI's style guide and the conIdx each terminal SHOULD have. Call it after
+        generating to check what you got. Read-only; the VI is not kept in memory.
         """)]
     public async Task<string> ConnectorPaneAsync(
         [Description("Absolute path to the .vi to measure. Omit to ask about a pattern instead")]
         string? viPath = null,
         [Description("""
-            A pattern id, 4800-4835, to look up without touching LabVIEW. Ignored when viPath is
-            given, because a measurement beats a table.
+            A pattern id, 4800-4835, looked up without LabVIEW; ignored when viPath is given.
             """)]
         int? pattern = null,
         [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user temp directory. Generated
-            once and reused; pass regenerateHelper to force a rebuild.
+            Where to keep the generated helper VI (per-user temp by default); reused until
+            regenerateHelper.
             """)]
         string? helperViPath = null,
         [Description("""
-            The helper's AIXML source. Defaults to lvpane_probe.xml inside the folder lvai_status
-            reports as scriptsDirectory.
+            The helper's AIXML source; defaults to lvpane_probe.xml in scriptsDirectory.
             """)]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         [Description(AixmlBackend.ParameterDescription + """
-             Only viPath reaches either: a pattern or the full list needs no LabVIEW and no
-            backend. On pylabview the helper arguments are not used - there is no helper.
+             Only viPath uses a backend; on pylabview the helper arguments are unused.
             """)]
         string? backend = null,
         CancellationToken ct = default)

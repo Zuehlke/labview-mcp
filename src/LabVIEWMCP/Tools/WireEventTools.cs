@@ -56,107 +56,54 @@ internal sealed class WireEventTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_wire_dynamic_events", Destructive = true, OpenWorld = true,
                    Title = "Wire an event registration refnum onto the dynamic event terminal")]
     [Description("""
-        MUTATING: branches a VI's event registration refnum onto its Event Structure's DYNAMIC
-        EVENT terminal and saves the VI. That connection is the one thing AIXML cannot express, so
-        it is what a regeneration loses - and without it a VI with user-event frames does not run
-        at all (measured: Execution:State 0 before, 1 after).
-        TWO SOURCES, TRIED IN THAT ORDER. Preferred: the structure's own Event Registration Refnum
-        TUNNEL, whose net is branched - author that tunnel in AIXML, because a <Tunnel> on a
-        <Structure> survives every regeneration and is what makes the whole route repeatable.
-        Fallback: the Register For Events node on the block diagram, wired straight across the loop
-        border, which LabVIEW accepts and answers by creating the tunnel itself. `sourceFrom` says
-        which was used; the fallback assumes ONE registration node and reports the count it saw.
-        BOTH ENDS ARE FOUND BY NAME, never by index: the terminal and the tunnel both answer to
-        "Event Registration Refnum". The net's SOURCE is then walked to, because offering the
-        structure's own tunnel as the source is Error 1062, "Specified objects cannot be wired
-        together" - two sinks have no direction between them.
-        VERIFY BY RENDERING, and the tool says this in its own answer: with Auto Route? at its
-        FALSE default the connection is real and LabVIEW draws no wire, and NO property tells the
-        two apart - Position, Bounds and CleanUpWire are all identical. This helper wires
-        Auto Route? TRUE, and lvai_render_diagrams is still the only check that sees the result.
-        Render from a path LabVIEW has never loaded: a VI can be loaded twice, and a render of the
-        just-edited path has been measured showing the PRE-EDIT diagram from the addon instance's
-        own copy.
-        THE SEARCH IS AT ANY DEPTH: NI's Traverse for GObjects.vi walks the whole block diagram
-        for the EventStructure and, for the fallback, the RegisterForEvents node - so an Event
-        Structure in a Case frame inside a While Loop (the Actor Framework helper-loop shape) is
-        found, where the earlier two-level search missed it. eventStructuresFound is the count;
-        with more than one the FIRST is wired and the note says so.
-        It needs a project OPEN AND ACTIVE in the IDE: the VI is opened through
-        Application:Project:Active Project so the edit lands in the copy the user is looking at.
-        IT ALSO FINISHES A USER-EVENT FRAME, which nothing else can, and that is why a VI with one
-        ends this call EXECUTABLE instead of eBad. LabVIEW normalises a user-event EventSpec when
-        it LOADS the VI, against the wire present in the FILE at that moment - so the spec
-        lvai_generate_vi_with_events writes is necessarily discarded, by the very save this tool
-        performs. Afterwards it sticks, so the spec is written AGAIN here and the VI rebuilt:
-        measured 2026-09-11 on two VIs, both eBad -> eIdle on exactly that step. Read
-        userEventStep; `changed` says whether there was anything to do.
-        THE BUNDLE STEP CLOSES THE ACTIVE PROJECT, saving it, because pylabview writes the file
-        while LabVIEW keeps serving its own copy - so without the release the verification reads
-        the VI it replaced. It is ONE round trip for both jobs (user-event specs, use-default
-        flags), and it is skipped entirely, project included, when neither has anything to do.
-        projectClosed says whether it happened and projectClosedFor why. finishUserEvents: false
-        turns off the user-event half.
-        SEVERAL USER-EVENT FRAMES ARE FINISHED TOO (since 2026-10-10): dynIndex is the event's
-        position among the registration's items, lvai_generate_vi_with_events writes it per frame,
-        and this tool reads it off the VI BEFORE its wiring save destroys it, then writes each
-        frame back. A VI generated before that date wrote dynIndex 1 on every frame and is refused
-        rather than guessed - a wrong dynIndex gives a VI that loads, compiles and fires the WRONG
-        event; generate it again.
-        IT ALSO WIRES THE RIGHT SIDE (wireRightSide, default true): the structure's SOURCE-side
-        Event Registration Refnum terminal to the event registration refnum input of Unregister
-        For Events, found at any depth by Traverse (class Function, exact, with a sink of that
-        lower-case name), Auto Wire and Auto Route TRUE, LabVIEW making the tunnels. Read
-        rightSide: no Unregister node is {skipped: "noUnregisterForEvents"}, more than one is
-        refused and named with the count, an input already wired is a no-op, and a helper that
-        stopped before searching (no active project) is {skipped: "notReached"}. It runs on its own
-        error branch, so a right-side failure does not lose the left wire.
-        A TUNNEL THAT WIRE CREATES ON AN ENCLOSING CASE STRUCTURE IS UNWIRED IN THE OTHER FRAMES
-        AND BREAKS THE VI, so "Use Default if Unwired" is set on it - in the pylabview bundle,
-        because AIXML refuses that property ("Invalid property"). ONLY tunnels this call created:
-        the VI is extracted BEFORE the helper runs and only selTun uids absent from that baseline
-        are touched; if any baseline tunnel is missing afterwards the uids are not comparable and
-        nothing is patched. useDefaultSet names the tunnels.
+        Edit: wire a VI's event registration refnum onto its Event Structure's DYNAMIC EVENT
+        terminal and save the VI - the one connection AIXML cannot express; without it a VI with
+        user-event frames does not run. Second step after lvai_generate_vi_with_events (grpc).
+        PRECONDITION: a project OPEN and ACTIVE in the IDE.
+        SOURCE (`sourceFrom`): preferred, the structure's own Event Registration Refnum TUNNEL -
+        author it in AIXML so the route survives regeneration; fallback, the Register For Events
+        node (ONE assumed, count reported). Searched at any depth; with several Event Structures the
+        FIRST is wired (`eventStructuresFound`).
+        USER-EVENT FRAMES are finished too: their EventSpecs are written again after the wire exists
+        and the VI rebuilt (`userEventStep`, `changed`), several frames by `dynIndex`. A VI whose
+        frames all carry dynIndex 1 (an old generation) is refused - regenerate it. This bundle step
+        CLOSES THE ACTIVE PROJECT, saving it (`projectClosed`, `projectClosedFor`); skipped when
+        nothing needs it.
+        RIGHT SIDE (wireRightSide): the source-side refnum to Unregister For Events; `rightSide`
+        reports {skipped: "noUnregisterForEvents"} / {skipped: "notReached"}, more than one node is
+        refused, an already-wired input is a no-op. Case-structure tunnels this call created get
+        Use Default if Unwired (`useDefaultSet`).
+        VERIFY BY RENDERING (lvai_render_diagrams) from a path LabVIEW has not loaded - no property
+        shows whether the wire is drawn.
         """)]
     public async Task<string> WireDynamicEventsAsync(
         [Description("Absolute path of the .vi to wire. It is SAVED in place on success.")]
         string viPath,
         [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user temp directory.
-            Generated once and reused, and regenerated when the shipped AIXML is newer.
+            Where to keep the generated helper VI (default: a per-user temp directory)
             """)]
         string? helperViPath = null,
         [Description("""
-            The helper's AIXML source. Defaults to lvai_wire_dyn_events.xml inside the folder
-            lvai_status reports as scriptsDirectory.
+            The helper's AIXML source (default: lvai_wire_dyn_events.xml in scriptsDirectory)
             """)]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists and is current")]
         bool regenerateHelper = false,
         [Description("""
-            After wiring, write the VI's USER-EVENT EventSpecs again and rebuild - the step that
-            can only happen once the wire exists, because LabVIEW discards a user-event spec it
-            cannot resolve when it LOADS the VI. On by default: without it a VI with a user-event
-            frame is left eBad, which is not a deliverable. It CLOSES THE ACTIVE PROJECT (saving
-            it) to release the VI from LabVIEW's memory, because pylabview writes the file happily
-            while LabVIEW keeps serving its own copy. Skipped entirely, project included, when the
-            VI has no user-event frame to finish.
+            Rewrite the user-event EventSpecs after wiring and rebuild; false leaves such a VI eBad.
+            Closes the active project (saving it) when there is something to finish.
             """)]
         bool finishUserEvents = true,
         [Description("""
-            Also wire the RIGHT side: the Event Structure's source-side Event Registration Refnum
-            terminal to Unregister For Events, then set Use Default if Unwired on any Case
-            Structure output tunnel that wire created. On by default. Costs one extra pylabview
-            extract up front (the baseline the new tunnels are told apart by).
+            Also wire the source-side refnum to Unregister For Events and set Use Default if Unwired
+            on the Case tunnels that wire created.
             """)]
         bool wireRightSide = true,
         [Description("Local budget in seconds")]
         int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription + """
-             On pylabview the helper is COMPOSED and run over ActiveX, and every later step
-            inherits the backend. A VI the composer wrote needs none of this - it is wired and its
-            user events registered in the compose - and is answered as already wired.
+             A VI the pylabview composer wrote is already wired and is answered as such.
             """)]
         string? backend = null) =>
         await BackendRoute.WithBackendAsync(backend, "lvai_wire_dynamic_events", () => Rpc.GuardAsync(async () =>

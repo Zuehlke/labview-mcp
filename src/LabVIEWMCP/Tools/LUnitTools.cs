@@ -64,93 +64,41 @@ internal sealed class LUnitTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_lunit_add_test_method", Destructive = true, OpenWorld = true,
                    Title = "Turn authored AIXML into LUnit test methods of a test case class")]
     [Description("""
-        MUTATING: takes AIXML you authored for one or more LUnit test methods and finishes each one -
-        converts it, puts its connector pane on LUnit's 4815 pattern, retypes the class-typed
-        terminals, makes the VI a MEMBER of the test case class, and verifies from LabVIEW's own
-        export. Many methods in ONE call.
-        USE THIS INSTEAD OF lvai_generate_vi, which cannot do it: lvai_validate_aixml type-checks
-        subVI wiring and REFUSES a class wire fed from a `path` stand-in, while
-        lvai_convert_aixml_to_vi writes the identical file with errorCode 0. For this one case the
-        validator is stricter than the generator, so validating first only blocks you.
-        WHAT YOU AUTHOR is the test method with `path` STAND-INS for its two class terminals, named
-        `<TestClassName> In` and `<TestClassName> Out`, at conIdx 11 and 3, with `error in (no
-        error)` at 8 and `error out` at 0. Assert with a member of the base class, e.g.
-        target="Test Case.lvclass\3APass If Equal.vim". The terminal on the assertion is called
-        `LUnit Test Case In` even though your control is `<TestClassName> In`.
-        THE TERMINAL NAMES ARE DERIVED from the .lvclass file name, so you do not pass them and
-        cannot misspell them; pass classTerminalNames only for a pane that deviates.
-        methodsJson is a JSON ARRAY, one entry per test method:
-          [{"aixml":"C:\\t\\tm_marke.xml","vi":"C:\\t\\Tests\\Test Marke Round Trip.vi"}]
-        PASS projectPath AND IT MANAGES THE PROJECT FOR YOU, which it has to, because the two halves
-        of this job want OPPOSITE states. Converting and repairing a pane need the project CLOSED - a
-        VI generated while it is open is adopted as a loose project item and the membership step then
-        answers `Error 56002` - while the membership step needs it OPEN AND ACTIVE, because the
-        helper reaches the class through Project:Active Project -> Application so it edits the copy
-        the project holds rather than a second one beside it, and answers `Error 1055` otherwise.
-        So the run is two phases: close, then convert+pane for EVERY method, then open, then
-        retype+member+verify for every method. Without projectPath both phases run in whatever state
-        you left the IDE in, and 56002 or 1055 is then yours to interpret.
-        AND THE CLASS MUST NOT HAVE BEEN CREATED IN THIS LabVIEW SESSION. lvai_create_class leaves
-        it LOCKED and this answers `Error 1562`, "the specified project or library is locked". A
-        project close and reopen does NOT clear it - only a LabVIEW restart does. Create the class,
-        restart, then call this.
-        ORDER IS ENFORCED, membership LAST: saving the VI before it is a member writes it with no
-        owning-library link, and LabVIEW then marks the whole LIBRARY broken, blocking every VI it
-        owns with Error 1003. A method that fails before membership can simply be regenerated; one
-        that fails after cannot.
-        RE-RUNNING OVER AN EXISTING TEST METHOD IS SAFE SINCE 2026-09-08, and before that date it
-        SILENTLY EMPTIED THE SUITE. AddItemFromMemory answers 56002 or 1004 for a method the class
-        already lists; that error used to stop the helper's chain after the convert had already
-        overwritten the .vi, so the file was left carrying a fresh diagram with NO owning-library
-        link while the .lvclass still listed it. Nothing reported it - lvai_describe_class still
-        showed every method as a public member - and lvai_run_lunit_tests answered `tests: 0` with
-        `allPassed: true`.
-        THE REPAIR IS IN TWO PARTS, AND TOLERATING THE ERROR WAS ONLY THE SMALLER ONE. Measured
-        2026-09-08: with both codes filtered the run reported `memberAlreadyExisted: true`, both
-        saves executing, and `isClassMember` STILL FALSE - because AddItemFromMemory does not
-        re-adopt an item the project already holds, so there was no link to save. What fixes it is
-        the `dropExistingMembers` phase: with the project closed, the .lvclass entry for every
-        method this call is regenerating is removed, and the ordinary add path then writes the link
-        into the .vi. `projectPath` IS REQUIRED for that - without it the caller owns the project
-        state, and editing the class file under an open project would be undone by LabVIEW's own
-        save. The filter is kept as the guard that makes any remaining refusal visible.
-        SO ADDING COMMENTS OR CHANGING VALUES IN A FINISHED SUITE IS: edit the AIXML, call this
-        with projectPath, redo every lvai_swap_subvis, re-apply icons and any placed comments -
-        the convert destroys all three - then run the tests.
-        `verify` re-exports each finished VI and is the only real proof: it must report the VI's
-        name as `<Class>.lvclass:<Method>.vi` and both class terminals back as `ref{UDClassInst}`.
+        Test: finish authored AIXML into LUnit test METHODS of a test case class - convert, 4815
+        pane, retype the class terminals, class membership, verify - many in one call. MUTATING.
+        Use this, not lvai_generate_vi: validation refuses the `path` stand-ins this route needs.
+        AUTHOR the method with `path` stand-ins `<TestClassName> In` / `<TestClassName> Out` at
+        conIdx 11 and 3, `error in (no error)` at 8, `error out` at 0; assert with e.g.
+        target="Test Case.lvclass\3APass If Equal.vim" (its input is `LUnit Test Case In`).
+        Pass projectPath: the convert phase needs the project CLOSED (else Error 56002), the
+        membership phase OPEN and ACTIVE (else 1055); the tool sequences both. A class created by
+        lvai_create_class in THIS LabVIEW session is locked (Error 1562) - restart LabVIEW first.
+        Membership is LAST; a method failing after it cannot simply be regenerated.
+        A re-run over an existing method drops its class entry first (needs projectPath). To change
+        a finished suite: edit the AIXML, call this, redo every lvai_swap_subvis, icons and placed
+        comments, then run. `verify` is the proof: `<Class>.lvclass:<Method>.vi` and both class
+        terminals as `ref{UDClassInst}`.
         """)]
     public async Task<string> AddTestMethodAsync(
         [Description(@"Absolute path to the test case .lvclass the methods become members of")]
         string classPath,
         [Description("""
-            JSON array of {aixml, vi} - the authored AIXML and where the test method .vi goes.
-            One entry per test method; they are processed in order.
+            JSON array, in order: [{"aixml":"C:\\t\\tm_marke.xml","vi":"C:\\t\\Tests\\Test Marke.vi"}]
+            - the authored AIXML and where the test method .vi goes.
             """)]
         string methodsJson,
-        [Description("""
-            Pipe-separated names of the two class-typed terminals. Omit to derive them from the
-            .lvclass file name as `<Name> In|<Name> Out`, which is the convention this tool's own
-            documentation prescribes.
-            """)]
+        [Description("Pipe-separated class terminal names; omit to derive `<Name> In|<Name> Out` from the .lvclass name.")]
         string? classTerminalNames = null,
         [Description("""
-            Absolute path to the .lvproj, FILE NAME INCLUDED. Pass it and the tool closes the
-            project for the convert-and-pane phase and reopens it for the membership phase, which
-            is the only order that works. Omit only if you are managing that yourself.
+            Absolute path to the .lvproj, file name included; the tool closes and reopens it per
+            phase. Omit only if you manage that yourself.
             """)]
         string? projectPath = null,
         [Description("Connector pane pattern to force; LUnit needs 4815, the 4-2-2-4 pattern")]
         int panePattern = LUnitPanePattern,
         [Description("Re-export each finished VI and check the member link and terminal types")]
         bool verify = true,
-        [Description("""
-            Keep every sub-answer whole. OFF by default because the full ones overflow a client's
-            token limit: measured 2026-09-01, six methods produced 86 000 characters, almost all of
-            it LabVIEW's AIXML export per method plus the pylabview extract listing, and digging
-            `methodsAdded` back out of it cost three extra turns. A step that FAILED is always
-            reported whole regardless of this flag.
-            """)]
+        [Description("Keep every sub-answer whole (very large); a FAILED step is always reported whole.")]
         bool verbose = false,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,
         [Description($"The helper's AIXML source; defaults to {AddMethodHelperFileName} in scriptsDirectory")]
@@ -160,11 +108,7 @@ internal sealed class LUnitTools(LvaiConnection connection)
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default,
-        [Description("""
-            Lay out each test method's block diagram with our layout engine (lvai_layout_diagram's)
-            once it is a verified member, and save it in place (the cleanUpDiagram step). Reported,
-            never gating.
-            """)]
+        [Description("Lay out each verified test method's diagram (lvai_layout_diagram's engine) and save it; never gates `ok`.")]
         bool cleanUpDiagram = true) =>
         await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_lunit_add_test_method", async () =>
         {
@@ -621,34 +565,17 @@ internal sealed class LUnitTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_lunit_scaffold_class_tests", Destructive = true, OpenWorld = true,
                    Title = "Emit the AIXML for a class's LUnit test methods")]
     [Description("""
-        MUTATING (it writes .xml files and may install socket VIs into the LabVIEW installation):
-        emits the AIXML for a whole LUnit suite over a class - one round-trip test per private data
-        field, one all-defaults test and one write-all/read-all independence test - and hands back
-        the `methodsJson` for lvai_lunit_add_test_method and the `swapsJson`/`constantsJson` for
-        lvai_swap_subvis, ready to paste.
-        THIS IS THE TRANSCRIPTION HALF OF THE ROUTE, and it was the largest item left in it: measured
-        over seven builds, authoring these six files cost 60-90 s of wall clock against 1.7 s inside
-        tools, in one turn, writing about 19 kB of text whose shape never varies.
-        IT DERIVES EVERYTHING IT CAN. Fields and their types come from the class's own Read/Write
-        accessors; the sockets come from lvai_placeholder_subvi, which it calls per accessor and
-        which caches, so a rebuild of the same class costs nothing. You do not pass field names,
-        types, terminal names or stub hashes, and so cannot misspell them.
-        YOU SUPPLY THE VALUES, and that is deliberate. valuesJson gives one value per field:
-          [{"field":"Sorte","value":"Boskoop"},{"field":"Gewicht g","value":"182.5"}]
-        A generator that invented them would produce six green tests that pin nothing, which is the
-        one failure this route must not make easy. Every value must be NON-DEFAULT and distinct, or a
-        Write that stores nothing - or into the wrong field - passes.
-        NO ROUND TRIP IS WRITTEN FOR A `timestamp` FIELD, and that is not a gap. ConvertAIXMLToVI
-        DISCARDS a non-empty literal of that type - measured 2026-09-15 against five types that keep
-        theirs - so a round trip would author the written value and Expected in one document, lose
-        both, compare empty with empty and PASS. The field is named under `roundTripsSkipped`; the
-        defaults and independence tests still cover it, and a real test of it has to set the value at
-        RUN TIME.
-        WHAT IT DOES NOT DO: create the test case class, add the methods, swap the sockets or run
-        anything. The order is lvai_create_class -> RESTART LabVIEW -> this -> the .lvproj entry ->
-        lvai_lunit_add_test_method -> lvai_swap_subvis (all methods in ONE message) ->
-        lvai_run_lunit_tests. scripts/templates/lunit/README.md is that recipe in full, and the
-        templates there are this tool's specification - LUnitScaffoldTests compares the two.
+        Test: emit the AIXML for a whole LUnit suite over a class - one round-trip test per private
+        data field, an all-defaults test and a write-all/read-all independence test - plus the
+        `methodsJson` for lvai_lunit_add_test_method and `swapsJson`/`constantsJson` for
+        lvai_swap_subvis, ready to paste. MUTATING (writes .xml, may install socket VIs in user.lib).
+        Fields, types and sockets are derived from the class's accessors; YOU supply one
+        NON-DEFAULT, distinct value per field, or a Write that stores nothing would pass.
+        A `timestamp` field gets no round trip (AIXML discards its literal) and is named under
+        `roundTripsSkipped`; the other two tests still cover it.
+        It does not create the test class, add, swap or run. Order: lvai_create_class -> RESTART
+        LabVIEW -> this -> the .lvproj entry -> lvai_lunit_add_test_method -> lvai_swap_subvis (all
+        methods in one message) -> lvai_run_lunit_tests. scripts/templates/lunit/README.md.
         """)]
     public async Task<string> ScaffoldClassTestsAsync(
         [Description(@"Absolute path to the SUBJECT .lvclass - the code under test")]
@@ -658,15 +585,11 @@ internal sealed class LUnitTools(LvaiConnection connection)
         [Description(@"Directory to write the .xml files into; created if absent")]
         string outputDirectory,
         [Description("""
-            JSON array of {field, value} - one NON-DEFAULT, distinct value per field, as the string
-            AIXML will carry. Every field of the class must appear.
+            JSON array, EVERY field once, values as AIXML strings, non-default and distinct:
+            [{"field":"Sorte","value":"Boskoop"},{"field":"Gewicht g","value":"182.5"}]
             """)]
         string valuesJson,
-        [Description("""
-            Where the test method .vi files will go, which is what the returned methodsJson names.
-            Defaults to the folder holding testClassPath - a member VI belongs beside its class -
-            so the answer is paste-ready. Pass it only for a layout that separates them.
-            """)]
+        [Description("Where the test method .vi files go (named in the returned methodsJson); defaults to testClassPath's folder.")]
         string? testMethodDirectory = null,
         [Description("Local budget in seconds, per placeholder")] int timeoutSeconds = 300,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
@@ -983,41 +906,22 @@ internal sealed class LUnitTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_run_lunit_tests", Destructive = true, OpenWorld = true,
                    Title = "Run an LUnit suite and return the parsed report")]
     [Description("""
-        MUTATING (it EXECUTES the code under test): runs an LUnit suite through LUnit's own
-        execution API and returns the report already parsed - per test case, with the failure
-        message for each one that failed.
-        testPath takes a .lvclass, a .lvlib or a .lvproj. A class runs just that test case and is
-        MUCH faster: measured 3.2 s against 12.2 s for the .lvproj that contained it, finding the
-        same tests. Point it at the narrowest thing you want run.
-        THE TRAP THIS CLOSES: LUnit does NOT overwrite an existing report - it writes a numbered
-        sibling, `report (1).xml`. So reading back the path you passed returns the PREVIOUS run's
-        numbers, with no error anywhere. This deletes the target and its numbered siblings first
-        (freshReport), and if a sibling still appears afterwards it says so instead of reporting
-        stale figures.
-        A SUITE THAT RAN NOTHING IS NOT A GREEN SUITE, AND `allPassed` ALONE CANNOT TELL YOU.
-        LUnit answers `All Passed?` true when it found no test methods, and `failures == 0` is
-        vacuously true for an empty report, so the two figures a caller naturally reads both say
-        pass. CHECK `tests`, or branch on `foundNoTests`; `ok` is false in that case since
-        2026-09-08. It is a real state and not a hypothetical: a test method that is listed in the
-        .lvclass but no longer carries the owning-library link inside the .vi is invisible to LUnit,
-        while lvai_describe_class still reports it as a public member.
-        READ `allPassed` AND `failures`, never the error cluster: an error cluster carries the first
-        failure only, so a partial run and a single failing assertion are indistinguishable in it.
-        `cases` carries one entry per test method with its status, assertion count and, for a
-        failure, LUnit's own message - which for Pass If Equal.vim already contains Expected and
-        Actual, so there is nothing to look up.
-        AN ALL-GREEN RUN PROVES NOTHING ON ITS OWN. Break one thing on purpose - repointing a read
-        accessor with lvai_swap_subvis is the cheapest way and needs no regeneration - confirm the
-        report names that case, then restore.
-        A .xml report path produces JUnit XML, which is what this parses; a .txt path produces plain
-        text and comes back unparsed under `output`.
+        Test: run an LUnit suite through LUnit's execution API and return the parsed JUnit report -
+        per test case status, assertion count and failure message (Expected/Actual for Pass If
+        Equal). MUTATING - it EXECUTES the code under test. testPath is a .lvclass (fastest), .lvlib
+        or .lvproj; point it at the narrowest one. Stale reports are deleted first (`freshReport`).
+        A suite that ran NOTHING answers `ok: false` / `foundNoTests` - check `tests`, since
+        `allPassed` is true for an empty run. Read `allPassed` and `failures`, never the error
+        cluster. It leaves NO active project - reopen one before lvai_swap_subvis.
+        An all-green run proves nothing alone: break one case on purpose (e.g. repoint an accessor
+        with lvai_swap_subvis), confirm it fails, restore.
         """)]
     public async Task<string> RunLunitTestsAsync(
         [Description(@"Absolute path to the .lvclass, .lvlib or .lvproj holding the tests")]
         string testPath,
         [Description("""
-            Where to write the report. Defaults to a fresh timestamp-free path beside the test
-            target. A .xml extension gives JUnit XML and is parsed; .txt gives plain text.
+            Report path; defaults to one beside the target. .xml gives parsed JUnit; .txt gives plain
+            text, unparsed under `output`.
             """)]
         string? reportPath = null,
         [Description("Run test cases in parallel threads - faster, but reorders the report")]

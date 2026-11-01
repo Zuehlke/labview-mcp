@@ -63,17 +63,13 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_remove_event", Destructive = true, OpenWorld = true,
         Title = "Remove a DQMH event")]
     [Description("""
-        MUTATING: removes one event from a DQMH module in the ACTIVE project with NO dialog -
-        Delacor's own Remove Event.vi, driven through a generated wrapper. Removing the REQUEST of
-        a Round Trip removes its broadcast half too, exactly as Delacor's dialog does; the answer
-        names it as `dependentBroadcast`. DELACOR LEAVES CLEAN-UP FOR A PERSON, measured
-        2026-10-06: Main.vi keeps a loose call to a removed Broadcast and a Round Trip's message
-        frame with a #Code_Review_Todo label, and the API tester keeps the removed event's frame -
-        so both are typically NOT executable afterwards (Delacor's dialog opens the Error List).
-        `completionNeeded` says what to clean up. Names may be bare or as Delacor spells them (`Heater.lvlib`,
-        `Do Something.vi`). Refused while any module has unsaved changes or is locked - Delacor's
-        dialog refuses the same. Unit tests of the removed event are NOT removed; the answer lists
-        files that were deleted.
+        DQMH: removes one event from a module in the ACTIVE project, no dialog (Delacor's Remove
+        Event.vi). Removing a Round Trip's REQUEST removes its broadcast half too
+        (`dependentBroadcast`). Delacor leaves clean-up for a person: Main.vi keeps a loose call to
+        a removed Broadcast and a #Code_Review_Todo frame, the API tester keeps the event's frame -
+        so both are typically NOT executable afterwards; `completionNeeded` says what to clean up.
+        Unit tests of the event are NOT removed; deleted files are listed. Refused while any module
+        has unsaved changes or is locked.
         """)]
     public async Task<string> RemoveEventAsync(
         [Description("DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
@@ -90,13 +86,11 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_rename_event", Destructive = true, OpenWorld = true,
         Title = "Rename a DQMH event")]
     [Description("""
-        MUTATING: renames one event of a DQMH module in the ACTIVE project with NO dialog -
-        Delacor's own Rename Event.vi through a generated wrapper. The new name is checked first
-        the way Delacor's dialog would check it with a MODAL: not blank, a valid file name, no
-        `<new>.vi` already in the module folder, no event and no Main.vi case of that name.
-        Refused while any module has unsaved changes or is locked. Delacor does not
-        save the module's .lvlib after a rename - measured: the file on disk still listed the old
-        VIs - so this call saves it, and says so in `librarySaved`.
+        DQMH: renames one event of a module in the ACTIVE project, no dialog (Delacor's Rename
+        Event.vi). The new name is checked first (Delacor's dialog would raise a MODAL): not
+        blank, a valid file name, no `<new>.vi` in the module folder, no event or Main.vi case of
+        that name. Refused while any module has unsaved changes or is locked. Delacor does not save
+        the .lvlib after a rename, so this call does (`librarySaved`).
         """)]
     public async Task<string> RenameEventAsync(
         [Description("DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
@@ -126,16 +120,13 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_convert_event", Destructive = true, OpenWorld = true,
         Title = "Convert a DQMH request into Request and Wait for Reply")]
     [Description("""
-        MUTATING: converts a plain DQMH Request into a Request and Wait for Reply - or, on DQMH
-        7.x, into a Round Trip (`toEventType`, with `roundTripBroadcastName` for the broadcast half
-        it creates) - in the ACTIVE project, with NO dialog - Delacor's own Convert Event.vi
-        through a generated wrapper. DQMH 5/6 offer only the first conversion, and a Round Trip is
-        refused there by name. `eventNotFound` lists the plain requests the module has. Delacor's converter raises a MODAL when it meets a non-standard wiring in
-        Main.vi's event loop; a module Delacor scripted does not, and a run that does not return is
-        answered as `scriptingTimedOut` naming the windows on screen. Refused while any module has
-        unsaved changes or is locked. Delacor KEEPS the old message frame, labelled
-        #Code_Review_Todo, beside the new one of the same name - measured - and that frame is for a
-        person to delete; `completionNeeded` says so.
+        DQMH: converts a plain Request into a Request and Wait for Reply - or, on DQMH 7.x only,
+        a Round Trip - in the ACTIVE project, no dialog (Delacor's Convert Event.vi).
+        `eventNotFound` lists the module's plain requests. Non-standard wiring in Main.vi's event
+        loop makes Delacor raise a MODAL; a run that does not return answers `scriptingTimedOut`
+        naming the windows on screen. Delacor KEEPS the old message frame (#Code_Review_Todo)
+        beside the new one for a person to delete; `completionNeeded` says so. Refused while any
+        module has unsaved changes or is locked.
         """)]
     public async Task<string> ConvertEventAsync(
         [Description("DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
@@ -176,10 +167,9 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_validate_module", ReadOnly = true, OpenWorld = true,
         Title = "Validate the DQMH modules of a project")]
     [Description("""
-        READ-ONLY: runs Delacor's own `Validate DQMH Module (Headless).vi` over a project - the
-        checks of Tools > DQMH > Module > Validate DQMH Module, with no dialog (its error handlers
-        are wired to "no dialog"). Returns Delacor's `Validation Results` text as it reports it.
-        Nothing is fixed: Delacor's fixers belong to its interactive validator.
+        DQMH: validates a project's DQMH modules with Delacor's `Validate DQMH Module
+        (Headless).vi`, no dialog. Returns Delacor's `Validation Results` text. Read-only, nothing
+        is fixed. It checks STRUCTURE, not executability - use lvai_exec_state for that.
         """)]
     public async Task<string> ValidateModuleAsync(
         [Description("The .lvproj to validate; empty means the ACTIVE project")] string projectPath = "",
@@ -239,14 +229,11 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_rename_module", Destructive = true, OpenWorld = true,
         Title = "Rename a DQMH module")]
     [Description("""
-        MUTATING: renames a DQMH module in the ACTIVE project with NO dialog - Delacor's own
-        Scripter - Rename Module.vi through a generated wrapper. The new name is checked first the
-        way Delacor's dialog checks it with a MODAL: not blank, a valid file name, and no library of
-        that name already in the project. Refused while any module has unsaved changes or is
-        locked. The answer reads the module back under its new name. DELACOR SAVES THE WHOLE
-        PROJECT at the end (Save All This Project) - measured: 52 files in other modules re-saved -
-        so `modifiedFiles` is long; the project's virtual folder keeps the OLD `<Name> Module`
-        label.
+        DQMH: renames a module in the ACTIVE project, no dialog (Delacor's Scripter - Rename
+        Module.vi). The new name is checked first: not blank, a valid file name, no library of
+        that name in the project. Refused while any module has unsaved changes or is locked. The
+        answer reads the module back under its new name. Delacor SAVES THE WHOLE PROJECT, so
+        `modifiedFiles` is long; the project's virtual folder keeps the OLD `<Name> Module` label.
         """)]
     public async Task<string> RenameModuleAsync(
         [Description("DQMH module to rename, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
@@ -271,17 +258,13 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_duplicate_module", Destructive = true, OpenWorld = true,
         Title = "Duplicate a DQMH module")]
     [Description("""
-        MUTATING, DQMH 7.x ONLY: copies a DQMH module of the ACTIVE project into a NEW module under a
-        new name, with NO dialog - Delacor's own Scripter - Duplicate Module.vi through a generated
-        wrapper, the result of Tools > DQMH > Module > Duplicate DQMH Module. Every event, the API
-        tester and Main.vi are copied and renamed; the RT tester is not (Delacor's own scope,
-        measured). The new module goes into `<saveFolder>\<newModuleName>` - saveFolder is the
-        PARENT folder, measured - and the project lists it. The new name is checked first the way
-        Delacor's dialog checks it with a MODAL: not blank, a valid file name, no library of that
-        name in the project, no non-empty folder of that name. A source module whose Main.vi still
-        calls a VI that no longer exists makes LabVIEW open a file dialog while it copies - remove
-        such leftovers first. Refused while any module has unsaved changes or is locked. On DQMH
-        5/6 it answers `needsDqmh7`.
+        DQMH: copies a module of the ACTIVE project into a NEW module, no dialog - DQMH 7.x only
+        (`needsDqmh7` on 5/6). Events, API tester and Main.vi are copied and renamed; the RT tester
+        is not. The module goes into `<saveFolder>\<newModuleName>` and the project lists it. The
+        name is checked first: not blank, a valid file name, no library of that name, no non-empty
+        folder of that name. A source Main.vi still calling a VI that no longer exists makes
+        LabVIEW open a file dialog - remove such leftovers first. Refused while any module has
+        unsaved changes or is locked.
         """)]
     public async Task<string> DuplicateModuleAsync(
         [Description("DQMH module to copy, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
@@ -322,13 +305,10 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_add_helper_loop", Destructive = true, OpenWorld = true,
         Title = "Add a helper loop to a DQMH module")]
     [Description("""
-        MUTATING, DQMH 7.x ONLY: adds a helper loop to a DQMH module's Main.vi in the ACTIVE
-        project, with NO dialog - Delacor's own Script New Helper Loop.vi through a generated
-        wrapper, the result of Tools > DQMH > Module > Add Helper Loop to DQMH Module. The loop gets
-        its own event structure, so a PRIVATE request can name it as its consuming loop
-        (lvai_dqmh_new_event requestScoping + consumingLoop). The name is checked first against the
-        loops Main.vi already has, which Delacor's dialog refuses with a MODAL. Refused while any
-        module has unsaved changes or is locked. On DQMH 5/6 it answers `needsDqmh7`.
+        DQMH: adds a helper loop to a module's Main.vi in the ACTIVE project, no dialog - DQMH 7.x
+        only (`needsDqmh7` on 5/6). The loop gets its own event structure, so a PRIVATE request can
+        name it as its consuming loop (lvai_dqmh_new_event requestScoping + consumingLoop). A name
+        Main.vi already has is refused. Refused while any module has unsaved changes or is locked.
         """)]
     public async Task<string> AddHelperLoopAsync(
         [Description("DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
@@ -397,14 +377,11 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_create_rt_tester", Destructive = true, OpenWorld = true,
         Title = "Create a DQMH RT tester")]
     [Description("""
-        MUTATING: creates the Real-Time API tester (`Test <Module> API-RT.vi`) of a DQMH module in
-        the ACTIVE project with NO dialog - Delacor's own Scripter - Create RT Tester.vi through a
-        generated wrapper. Delacor offers it for Singleton and Cloneable modules alike (measured:
-        its menu VI asks Parse for Both). Its scripter answers two cases with a MODAL - an RT tester
-        that already exists, and a standard tester it cannot find - so the dry run asks Delacor's
-        own finders first and refuses both by name. THE NEW RT TESTER IS NOT EXECUTABLE, by
-        Delacor's design: each request frame carries #CodeNeeded for its required inputs. Refused
-        while any module has unsaved changes or is locked.
+        DQMH: creates a module's Real-Time API tester (`Test <Module> API-RT.vi`) in the ACTIVE
+        project, no dialog; Singleton and Cloneable alike. An existing RT tester or a missing
+        standard tester is refused by name. THE NEW RT TESTER IS NOT EXECUTABLE by Delacor's
+        design: each request frame carries #CodeNeeded for its required inputs. Refused while any
+        module has unsaved changes or is locked.
         """)]
     public async Task<string> CreateRtTesterAsync(
         [Description("Cloneable DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,
@@ -420,12 +397,10 @@ internal sealed class DqmhEventEditTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_remove_do_something", Destructive = true, OpenWorld = true,
         Title = "Remove a DQMH module's Do Something examples")]
     [Description("""
-        MUTATING: removes the "Do Something" example events from a DQMH module in the ACTIVE
-        project with NO dialog - Delacor's own Remove Do Something.vi, the step Add New DQMH
-        Module runs when its Do Something box is cleared, through a generated wrapper. It rescripts
-        Main.vi and the API tester, which stay executable (measured). A module that has no Do
-        Something event left is refused from the dry run - Delacor's VI answers Error 1055 for it.
-        Refused while any module has unsaved changes or is locked.
+        DQMH: removes the "Do Something" example events from a module in the ACTIVE project, no
+        dialog (Delacor's Remove Do Something.vi). Main.vi and the API tester are rescripted and
+        stay executable. A module with no Do Something event left is refused. Refused while any
+        module has unsaved changes or is locked.
         """)]
     public async Task<string> RemoveDoSomethingAsync(
         [Description("DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,

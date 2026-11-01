@@ -29,25 +29,18 @@ internal sealed class CarayaRunTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_run_caraya_tests", Destructive = true, OpenWorld = true,
                    Title = "Run a Caraya suite runner and read its JUnit report")]
     [Description("""
-        MUTATING: EXECUTES a Caraya suite runner (the VI lvai_generate_caraya_test_runner writes) and
-        answers from the JUnit report it writes: per suite the test and failure counts, and every
-        failing case NAMED with its suite and the test VI it lives in. `ok` is true only when the
-        report was written BY THIS RUN, carries at least one test, and has no failure or error.
-        DO NOT READ THE RUNNER'S `error out` FOR THE VERDICT - it is Caraya's single error for the
-        whole run, 7002 when something failed, and its SOURCE is not the failing VI: measured
-        2026-09-25, it named `Test Channel.vi` while the failing case was in
-        `Test Channel Defaults.vi`. It is reported under `runnerErrorOut` for completeness, with
-        `sourceNamesAFailingSuite` saying whether it points at the right place.
-        A Caraya failure body is the literal string "FAIL", so the case LABEL is what identifies it -
-        which is why the generators label every case.
-        The report is found by itself: `reportPath` if given, else the `*.xml` beside the runner that
-        this run wrote. A report older than the run is never used; `reportFresh: false` says so.
+        Test: RUN a Caraya suite runner (from lvai_generate_caraya_test_runner) and answer from its
+        JUnit report: per suite the test and failure counts, every failing case NAMED with its suite
+        and test VI. `ok` only when the report was written BY THIS RUN (`reportFresh`), has at least
+        one test and no failure or error. Executes the code under test.
+        The runner's `error out` is NOT the verdict (7002 on any failure, and its source can name
+        the wrong VI) - it is under `runnerErrorOut` with `sourceNamesAFailingSuite`. A Caraya
+        failure body is just "FAIL", so the case LABEL identifies it.
         """)]
     public async Task<string> RunCarayaTestsAsync(
         [Description(@"Absolute path to the Caraya runner .vi")] string runnerViPath,
         [Description("""
-            The JUnit report the runner writes. Omit to take the .xml beside the runner that this
-            run wrote - the runner generator's default is '<runner>-TestReport.xml'.
+            The JUnit report path; omit to take the .xml this run wrote beside the runner.
             """)]
         string? reportPath = null,
         [Description("Local budget in seconds - a suite runs every test VI in it")]

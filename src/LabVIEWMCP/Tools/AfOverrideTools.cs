@@ -47,31 +47,19 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_create_override", Destructive = true, OpenWorld = true,
         Title = "Create an override of a parent method (AF lifecycle or plain class)")]
     [Description("""
-        MUTATING: creates the override of ONE parent method in a class through NI's own provider
-        CLSUIP_CreateOverride - the IDE's "New > VI for Override" - so the new VI carries Call Parent
-        and its parent's pane. NEVER build an Actor Framework override with lvai_add_class_method or
-        AIXML: AIXML cannot author Call Parent, and a generated override is eBad whatever its
-        diagram, so Actor Core would lose its message loop and Stop Core the stop of its children.
-        parentMethod is an AF lifecycle name - Pre Launch Init, Actor Core, Stop Core, Handle Error,
-        Handle Last Ack Core - resolved under the LabVIEW installation the actor's own parent links
-        land in, or the path of a parent class's .vi for a plain class.
-        CHECKED FROM THE FILES BEFORE LABVIEW: the class exists; its ancestry reaches the parent;
-        the method is not a member yet and no file is at the new path; the parent method is not
-        static. The `vi name in memory` the provider's new VI is opened by is derived from the
-        class file and LIBRARY-QUALIFIED (Lib.lvlib:Cls.lvclass:Actor Core.vi) - a shorter name
-        answers `open new vi error` and nothing is saved, measured.
-        NEEDS A PROJECT OPEN AND ACTIVE (Project:Active Project); pass projectPath and this call
-        opens it. One stage per helper step, so a failure names it (`failedAtStep`).
-        VERIFIED FROM THE SAVED .lvclass: the member is listed, its scope (protected for an AF
-        override - NI's own lifecycle methods are protected; a plain override keeps its parent's
-        scope) and dynamic dispatch (from the class file, or from the VI's pane with pylabview -
-        no LabVIEW). The answer carries the override's pane for an AF method.
-        The helper route is measured (2026-09-17, a message class's Do.vi; four AF overrides on a
-        throwaway actor, 2026-10-09); this tool measured 2026-10-10 - five lifecycle overrides on an
-        actor in no library, five on one in a .lvlib, one plain override (parent's protected scope
-        kept), every one state 1 cold. Read the new
-        override cold with lvai_exec_state after closing the project; then hook bodies into it
-        with lvai_af_add_hook.
+        AF: creates the override of ONE parent method in a class through NI's provider (the IDE's
+        "New > VI for Override"), so it carries Call Parent and the parent's pane. NEVER build an
+        Actor Framework override with lvai_add_class_method or AIXML: AIXML cannot author Call
+        Parent and a generated override is eBad. parentMethod is an AF lifecycle name (Pre Launch
+        Init, Actor Core, Stop Core, Handle Error, Handle Last Ack Core) or, for a plain class, the
+        parent method's .vi path.
+        Refused from the files before LabVIEW: class missing, ancestry not reaching the parent,
+        method already a member or a file at the new path, static parent method.
+        NEEDS A PROJECT OPEN AND ACTIVE - pass projectPath and it is opened. A failure names its
+        stage (`failedAtStep`). Verified from the saved .lvclass: membership, scope (protected for
+        an AF override; a plain one keeps its parent's) and dynamic dispatch. Then read it cold
+        with lvai_exec_state after closing the project, and add bodies with lvai_af_add_hook.
+        docs/af-override-tools.md.
         """)]
     public async Task<string> CreateOverrideAsync(
         [Description(@"Absolute path to the child class's .lvclass")] string classPath,
@@ -81,14 +69,12 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
             """)]
         string parentMethod,
         [Description("""
-            The .lvproj to open first. The provider reaches LabVIEW through Project:Active Project,
-            so without an active project every stage answers Error 1055. Omit only when the
-            class's project is already open and active.
+            The .lvproj to open first; omit only when the class's project is already open and
+            active (otherwise Error 1055).
             """)]
         string? projectPath = null,
         [Description("""
-            Where to save the new override. Defaults to the class's own folder with the parent's
-            file name, which is NI's convention - an override keeps its parent's file name.
+            Where to save the override; omit for the class's folder with the parent's file name.
             """)]
         string? newViPath = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
@@ -373,40 +359,23 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_af_add_hook", Destructive = true, OpenWorld = true,
         Title = "Hook a member VI into an override, beside, before or after Call Parent")]
     [Description("""
-        MUTATING: places ONE hook VI (normally a member of the same class) on an override's
-        diagram and wires it, then saves the override and the class in a SEPARATE step. Shapes:
-        `branch` - the override's class input tapped beside Call Parent (the hook runs in
-        parallel; the helper loop of Actor Core); `series` - the hook between the class/error
-        inputs and Call Parent (a body that hands a changed object to the parent);
-        `seriesAfter` - the hook between Call Parent and the override's outputs (Pre Launch Init's
-        creating body, whose error then fails the launch; a Handle Error handler; a Stop Core
-        release); `branchFromNode` - a branch off the output of a series hook already placed, so it
-        sees that hook's result (pass sourceHookName). Place series hooks before branches.
-        THE PANES ARE BUILT IN, per AF override: Pre Launch Init has no error in; Stop Core no
-        error terminals; Handle Error takes `error in (no error)` and returns `stop actor?`; Actor
-        Core's class output is `Actor out`, typed Actor, so seriesAfter is refused there. Class
-        terminals take the class's name (`<Class> in` / `<Class> out`).
-        REFUSED BEFORE ANYTHING CHANGES: a hook whose REQUIRED input the planned wires leave unfed
-        (one unwired required input breaks the override and only a cold exec state shows it); a
-        Handle Error hook before Call Parent (error 43 arrives there at every normal stop, and the
-        parent returns stop actor? TRUE whatever the hook did) unless
-        allowHandleErrorBeforeCallParent; a series insert into a wire that already branches; a name
-        that matches no terminal; the same hook already on the diagram; an override that already
-        carries unsaved edits (`overrideHasUnsavedEdits` - the save would write them). dryRun reads the diagram
-        and returns the planned wires without changing anything.
-        Wiring is by NAME: series and branch wires use the kit's measured panel-terminal route
-        (Control.Terminal + Connect Wire; series cuts the wire and reconnects its far end), a
-        branchFromNode wire uses lvbd_connect_by_names. NEEDS THE PROJECT OPEN AND ACTIVE. The answer
-        lists every wire made and the override's execution state before and after - read in the
-        project's instance, so read it again COLD (lvai_exec_state, project closed) before trusting
-        it. The kit shapes are measured by hand (branch, series on Actor Core, seriesAfter on Pre
-        Launch Init and a plain override, branchFromNode). THIS TOOL measured 2026-10-10 on throwaway
-        actors: branch, series and branchFromNode on Actor Core, seriesAfter on Pre Launch Init (its
-        error 5000 came out of Launch), Stop Core and Handle Error (both hooks ran after their Call
-        Parent at the stop), dryRun and the refusals; every override state 1 cold. THE UNSAVED-EDIT
-        CHECK reads the FP/BD Mods Bitsets: a hand edit in the IDE sets them, but edits made by VI
-        Server scripting leave them at 0 (a moved object, a new node, inside an undo transaction too -
-        both measured 2026-10-10), so scripted unsaved edits are NOT seen.
+        AF: places ONE hook VI (normally a member of the same class) on an override's diagram,
+        wires it by NAME and saves override and class. Create the override first with
+        lvai_create_override. Shapes: `branch` - tapped off the class input beside Call Parent
+        (runs in parallel, e.g. Actor Core's helper loop); `series` - between the inputs and Call
+        Parent; `seriesAfter` - between Call Parent and the outputs (Pre Launch Init body, Handle
+        Error handler, Stop Core release); `branchFromNode` - off a placed series hook's output
+        (sourceHookName). Place series hooks before branches.
+        AF panes are built in: Pre Launch Init has no error in, Stop Core no error terminals,
+        Handle Error takes `error in (no error)` and returns `stop actor?`; Actor Core's output is
+        `Actor out`, so seriesAfter is refused there.
+        REFUSED BEFORE ANYTHING CHANGES: a hook REQUIRED input left unfed; a Handle Error hook
+        before Call Parent (unless allowHandleErrorBeforeCallParent); a series insert into a
+        branching wire; a name matching no terminal; the same hook already placed; an override with
+        unsaved IDE edits (`overrideHasUnsavedEdits`; scripted unsaved edits are not seen).
+        dryRun returns the planned wires and changes nothing. NEEDS THE PROJECT OPEN AND ACTIVE.
+        The answer lists every wire and the execution state before and after - read it again COLD
+        (lvai_exec_state, project closed) before trusting it. lvai_af_remove_hook undoes one.
         """)]
     public async Task<string> AddHookAsync(
         [Description(@"Absolute path to the override .vi (a member of classPath)")] string overridePath,
@@ -414,8 +383,8 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         [Description(@"Absolute path to the hook .vi to place")] string hookViPath,
         [Description("branch, branchFromNode, series or seriesAfter")] string shape,
         [Description("""
-            Also wire the error chain. Default: series and seriesAfter wire it where the override's
-            pane has the terminal; branch and branchFromNode do not.
+            Also wire the error chain; omitted, series/seriesAfter wire it where the pane has the
+            terminal, branch/branchFromNode do not.
             """)]
         bool? wireError = null,
         [Description("For branchFromNode: the series hook to tap, by file name or VI name")]
@@ -599,39 +568,24 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_af_remove_hook", Destructive = true, OpenWorld = true,
         Title = "Remove one hook VI from an override")]
     [Description("""
-        MUTATING: deletes ONE hook subVI node from an override's diagram, runs Remove Bad Wires on
-        the override, and saves - the override always, its SIBLING overrides only where the edit
-        left them modified, then the class. BEFORE ANYTHING CHANGES it reads the unsaved state of the
-        override and every sibling lifecycle override: one that already carries unsaved edits -
-        someone else's work - is refused (`overrideHasUnsavedEdits` / `siblingHasUnsavedEdits`,
-        naming it), so the only siblings ever saved are the ones this call made modified.
-        WHY THE SIBLINGS: deleting a node that sat on a branched
-        wire leaves a loose end, and both the override and a sibling override of the same class then
-        read state 0 ("error of type 1000088"); Remove Bad Wires on the edited VI cleared both
-        (measured). The node is chosen by the hook's VI name; with two of the same name pass
-        `occurrence`. A dry run lists the subVIs on the diagram. A SERIES HOOK IS BYPASSED, the
-        inverse of the series insert: `hookShape` (read off the override's own export) names each
-        output something reads, the call pairs it with the hook's input of the same stem
-        (`<C> out` -> `<C> in`, `error out` -> `error in`), and the helper connects the wire's
-        source at that input straight to every sink of that output before the node goes
-        (`bypassed`, `sinksReconnected`). An output with no input of its stem is refused before
-        anything changes (`seriesHookNotRemovable`). Before 2026-10-17 a series remove cut the
-        class wire and SAVED the eBad override; a remove that leaves the override broken anyway is
-        still NOT SAVED (`removeBrokeOverride`): the file on disk stays the working one. NEEDS THE
-        PROJECT OPEN AND ACTIVE. The kit's delete + clean route is measured;
-        Measured 2026-10-10: one hook removed (matches 1, state 1 cold for the override and every
-        sibling), `hookNodeAmbiguous` and `occurrence`. NOT RELIABLE: the unsaved-edit check and the
-        sibling re-save both read the FP/BD Mods Bitsets. A hand edit in the IDE sets them - a sibling
-        with one was refused (`siblingHasUnsavedEdits`), nothing changed - but edits made by VI Server
-        scripting leave them at 0 (both measured), so a scripted unsaved edit is NOT refused and a
-        sibling this call's own scripting touched is not re-saved on their word.
+        AF: deletes ONE hook subVI node from an override, runs Remove Bad Wires, and saves the
+        override, any SIBLING override the edit left modified (a loose end breaks siblings too),
+        then the class. Refused before anything changes when the override or a sibling already has
+        unsaved IDE edits (`overrideHasUnsavedEdits` / `siblingHasUnsavedEdits`; scripted unsaved
+        edits are not seen). The node is chosen by VI name; with several pass `occurrence`
+        (`hookNodeAmbiguous` otherwise). dryRun lists the diagram's subVIs.
+        A SERIES HOOK IS BYPASSED first: each read output is paired with the input of the same
+        stem (`<C> out` -> `<C> in`, `error out` -> `error in`) and its source is wired to every
+        sink (`bypassed`, `sinksReconnected`); an output with no matching input is refused
+        (`seriesHookNotRemovable`). A remove that leaves the override broken is NOT saved
+        (`removeBrokeOverride`). NEEDS THE PROJECT OPEN AND ACTIVE.
         """)]
     public async Task<string> RemoveHookAsync(
         [Description(@"Absolute path to the override .vi")] string overridePath,
         [Description(@"Absolute path to the class's .lvclass")] string classPath,
         [Description("The hook to remove: its path, file name or VI name")] string hookName,
         [Description("Which of several nodes with that name, from 0 in diagram order")] int? occurrence = null,
-        [Description("Save the sibling overrides the remove made modified (default true)")]
+        [Description("Save the sibling overrides the remove made modified")]
         bool resaveSiblings = true,
         [Description("List what would be removed; change nothing")] bool dryRun = false,
         [Description("The .lvproj to open first; omit when it is already open and active")]

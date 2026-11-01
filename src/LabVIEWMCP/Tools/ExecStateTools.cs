@@ -66,35 +66,20 @@ internal sealed class ExecStateTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_exec_state", ReadOnly = true, OpenWorld = true,
                    Title = "Is this VI executable?")]
     [Description("""
-        READ-ONLY: reads a VI's {LV.VI} Execution:State and VI Linker Errors through VI Server and
-        says whether it is executable. This is the only thing in the toolset that answers that
-        question without RUNNING the VI - which matters because a top-level UI loop never ends on
-        its own, so "just run it" is not available for the VI that most needs checking.
-        WHAT THE NUMBER MEANS: 0 eBad - BROKEN, 1 eIdle - fine and not running, 2 eRunTopLevel,
-        3 eRunning. And -1 means the REFERENCE NEVER OPENED, which is not a verdict about the VI at
-        all: read `code` and `source` for why. Those two are kept apart on purpose, because a failed
-        open leaves the state property unread at 0 and would otherwise read as eBad.
-        LINKER ERRORS NAME THE CAUSE of a missing link - `Missing subVI X.vi in VI Y.vi.` - as
-        LabVIEW's flattened XML of the string; an empty `<Val>` means none. Both backends read them
-        with the same helper VI; on pylabview `linkerErrorsAvailable` says whether they were read.
-        WHEN TO REACH FOR IT: after any pylv_apply retarget, after generating a VI that calls
-        project-local code, and whenever a chain of green answers still leaves you unsure. Measured:
-        pylv_apply reported ok with every callTarget correct over a caller that was Error 1003.
-        Opening and closing a VI REFERENCE does not burn the path for a later regeneration - only
-        lvai_open_file does that - and the helper opens WITHOUT an application instance, so this
-        also answers while pylv_apply has the project closed.
-        A BROKEN CLASS MEMBER ALSO GETS `missingInterfaceOverrides`, read from the files with no
-        LabVIEW: every dynamic-dispatch method of every interface the owning .lvclass implements
-        that the class does not override by name, with the interface's own `mustOverride` flag. A
-        missing override broke EVERY member of its class in this repository's measurements, and
-        the broken VI does not name it. Members whose dispatch cannot be read are listed under
-        `dispatchUnknown`, never as missing; a VI in no class, or a class with no interface, gets
-        null with `missingInterfaceOverridesReason`. An executable VI skips the check.
-        SEVERAL VIs IN ONE CALL: pass viPaths, one path per line (with or without viPath). The
-        answer is then one object - `brokenVis`, `executableVis`, `couldNotOpenVis`, `failed`, and
-        every VI's whole single answer under `results`. Measured over this repository's transcripts
-        the tool was called straight after itself 54 % of the time; a batch costs one model turn
-        where N did, and the VIs are read one after another, so nothing is faster inside LabVIEW.
+        Inspect: is a VI executable? Reads {LV.VI} Execution:State and its linker errors WITHOUT
+        running it - the check for a UI loop that never ends. State: 0 eBad (BROKEN), 1 eIdle (fine),
+        2 eRunTopLevel, 3 eRunning; -1 means the reference never opened - not a verdict, read `code`
+        and `source`. Linker errors name a missing link (`Missing subVI X.vi in VI Y.vi.`) as
+        flattened XML; an empty `<Val>` means none; `linkerErrorsAvailable` says whether they were
+        read. Use it after a pylv_apply retarget, after generating a VI that calls project-local
+        code, and whenever green answers still leave doubt - it often sees what nothing else does.
+        It does not burn the path for a later regeneration and needs no project.
+        A broken CLASS MEMBER also gets `missingInterfaceOverrides` (from the files): interface
+        methods the class does not override - a missing override breaks EVERY member of the class.
+        `dispatchUnknown` lists members it could not classify; null plus
+        `missingInterfaceOverridesReason` when not applicable.
+        SEVERAL VIs: viPaths, one per line - answers `brokenVis`, `executableVis`,
+        `couldNotOpenVis`, `failed` and each VI's answer under `results`.
         """)]
     public async Task<string> ExecStateAsync(
         [Description("Absolute path to the .vi to interrogate. Optional when viPaths is given.")]
@@ -107,12 +92,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         bool regenerateHelper = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview the SAME helper is COMPOSED into %TEMP%\LabVIEWMCP\helpers-pylabview and
-            run over LabVIEW's ActiveX server instead of NI's service, so linker errors are named
-            there too. Only when that helper cannot be composed or run is the state read directly
-            over ActiveX, which has no linker-error property: the answer then says
-            `linkerErrorsAvailable: false` and why. LabVIEW must already be running - this never
-            starts it.
+             On pylabview LabVIEW must already be running - this never starts it; if its helper
+            cannot run, the state is read without linker errors (`linkerErrorsAvailable: false`).
             """)]
         string? backend = null,
         [Description("Absolute .vi paths, ONE PER LINE, for several VIs in one answer. May be combined with viPath.")]

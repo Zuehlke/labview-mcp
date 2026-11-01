@@ -18,61 +18,24 @@ internal sealed class PaletteTools
     [McpServerTool(Name = "lvai_palette_index", ReadOnly = true,
                    Title = "Palette-reachable VIs of the installed LabVIEW")]
     [Description("""
-        The VIs reachable from this LabVIEW installation's palettes, read from its .mnu files.
-        Use this to FIND a VI to Call - it is the searchable catalogue of what this station has.
-        THIS LIST IS NOT THE SET OF LEGAL TARGETS, and this description claimed it was until
-        2026-08-27. Generation resolves a target BY NAME against what the installation can find, so
-        things absent from here resolve too: a library member with its qualifier
-        (`Caraya.lvlib:VI Name.vi`, in no palette), and a loose VI in a plain folder under vi.lib or
-        user.lib by its bare name - which is what lets a GENERATED placeholder dropped into
-        user.lib be callable with no .lvlib, no .mnu and no restart. What does NOT resolve: a VI
-        inside an .llb by bare name, a path in any spelling, and project-local code, loose or in a
-        project library. Full table in lvai_aixml_reference, section 9.
-        A MISS HERE IS NOT PROOF THAT A CALL IS ILLEGAL - settle a target with a throwaway
-        ValidateAIXML instead.
-        THE INDEX USED TO MISS WHOLE TOOLKITS AND EVERY INSTRUMENT DRIVER, and that is fixed as of
-        2026-09-07. It scanned only `menus` folders, so a .mnu anywhere else was invisible: a query
-        for "Caraya" answered "no match" for VIs that validate and run, because its 18 palette
-        files live under vi.lib\addons\_JKI Toolkits\dynamic_palette\. Swept the whole
-        installation: 157 .mnu files sit outside every `menus` folder, and reading them took the
-        index from 582 palette files to 743 and from 2835 VIs to 3335 - 500 more, 15%.
-
-          vi.lib     404 new   Caraya, VI Tester, JSONtext, Wovalab, plus NI's own 3D Picture
-                               Control, SFTP and SSH
-          instr.lib   71 new   INSTRUMENT DRIVERS - and this station has one real driver and nine
-                               _Template skeletons, so a real test rig yields far more
-          user.lib    25 new   OpenG, and whatever the user installed
-          Targets      0 new   its FPGA palettes carry .ctl controls, which this index filters out
-
-        Entries from those trees are labelled `vi.lib: <path>`, `instr.lib: <path>` and so on.
-        A HIT IS THE VI, NOT NECESSARILY THE TARGET STRING. A palette VI owned by a library needs
-        its `lvlib:` qualifier and is refused by bare name - MEASURED: `Draw Image from
-        File__ogtk.vi` gives "Unsupported SubVI" where `openg_picture.lvlib:Draw Image from
-        File__ogtk.vi` validates and runs. A .mnu stores only the bare name, so this tool cannot
-        print the qualifier and it is not derivable from the palette path either. Get it by
-        exporting a VI that already calls the target, or settle it in one throwaway ValidateAIXML
-        with both spellings as two Calls - an unresolvable target is named in the message, a
-        resolved one only complains about unwired terminals.
-        Scanned from disk at call time because the palette is station-specific - installed
-        toolkits and add-ons hook into it - and cached for the process lifetime. THREE kinds of
-        location are read: LabVIEW's own menus folder; every LVAddon under
-        %ProgramFiles%\NI\LVAddons, which is where drivers such as NI-DAQmx now install; and the
-        trees vi.lib, user.lib, instr.lib and Targets, swept whole for the .mnu files that sit
-        outside any menus folder. An entry from anything but the IDE's own menus is labelled with
-        the tree it came from. The one .mnu deliberately left out is
-        resource\plugins\PopupMenus\...\Class Methods Shortcut Palette.mnu - a right-click menu,
-        not a palette of callable VIs.
-        Without a query: the totals plus the scan location. With query: matching VI names and the
-        palette each was found in; EVERY word of the query must appear, in the name or in the
-        palette path. Note BUILT-IN FUNCTIONS ARE NOT LISTED: a palette entry for a
-        primitive carries only its display label, which is not the AIXML node name (the palette
-        says "To XML" where AIXML wants "Flatten To XML"), and a Call is the wrong construct for
-        one anyway - primitives are `Node` elements.
+        Knowledge: search the palette VIs of this LabVIEW installation (its .mnu files: menus,
+        LVAddons, and vi.lib/user.lib/instr.lib/Targets swept whole - Caraya, OpenG, instrument
+        drivers included) to FIND a VI to Call. Query it BEFORE designing a diagram: a hit is the
+        design - use it, OpenG/JKI dependencies included. No running LabVIEW needed; cached per process.
+        A MISS IS NOT PROOF A CALL IS ILLEGAL: targets resolve BY NAME against the installation -
+        a library member by its qualifier, a loose vi.lib/user.lib VI by bare name, an `.llb`
+        member either way. Project-local code does not resolve unless loaded. Settle a target with a
+        throwaway lvai_validate_aixml. lvai_aixml_reference section 9.
+        A HIT PRINTS THE BARE NAME: a library-owned VI needs its `lvlib:` qualifier
+        (`openg_picture.lvlib:Draw Image from File__ogtk.vi`), which neither the name nor the palette
+        path shows - export a VI that calls it, or validate both spellings in one document.
+        BUILT-IN FUNCTIONS ARE NOT LISTED: a primitive is a `Node`, and its palette label is not its
+        AIXML name. For a whole working diagram use lvai_example_index.
+        No query: totals plus scan locations. query: matching VIs with their palette.
         """)]
     public static string PaletteIndexTool(
-        [Description("Words to look for, e.g. 'PNG', 'Error Handler', 'read spreadsheet'. EVERY " +
-                     "word must appear, but each may come from either the VI name or its palette " +
-                     "path - so 'file read' reaches file.mnu. Fewer words match more")]
+        [Description("Words, e.g. 'Error Handler'; EVERY word must appear in the VI name or its " +
+                     "palette path. Fewer words match more")]
         string? query = null,
         [Description("Max rows to return (default 40, max 400)")] int limit = DefaultLimit,
         [Description("Rescan instead of using the cached index")] bool refresh = false,

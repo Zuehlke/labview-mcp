@@ -47,76 +47,40 @@ internal sealed class PlaceholderTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_placeholder_subvi", Destructive = true, OpenWorld = true,
                    Title = "Ensure a placeholder subVI matching a VI's connector pane")]
     [Description("""
-        MUTATING: makes sure a placeholder subVI exists whose connector pane is an exact clone of
-        viPath's, generating it into <LabVIEW>\user.lib\LV_MCP\ if it is not already there, and
-        answers with the bare name to use as a `Call` target plus the ready-to-paste Call element.
-        THIS IS HOW A GENERATED VI COMES TO CALL YOUR OWN CODE. AIXML refuses a Call to
-        project-local code (Error 53) and pylabview cannot create a node, so: author the new VI
-        with a Call to this placeholder, generate it, then repoint that call with
-        pylv_apply {"op":"retarget","from":"<placeholder>","to":"<your VI>","path":"..."}.
-        The placeholder is never executed - it is a socket, not a function.
-        IT WRITES INTO THE LABVIEW INSTALLATION, one folder, and says so in `installed`. Nothing
-        else on the station is touched and no .lvlib, .mnu, palette entry or restart is involved -
-        a loose VI in a plain folder under user.lib resolves by bare name, measured. Uninstall by
-        deleting the folder. If the folder cannot be written the answer says so rather than
-        failing obscurely; the station may need the directory created by hand once.
-        CACHED PER TARGET: the stub name is a hash of the SUBJECT's identity - its qualified name, or
-        its full path when it has none - plus the terminal names, types, conIdx and connection. So a
-        second call for the same VI with an unchanged pane writes nothing, and two VIs NEVER share a
-        stub. They did until 2026-10-11, keyed on the pane alone: two Actor Framework methods with
-        identical panes, or methods of different classes (an export writes every class as bare
-        `ref{UDClassInst}`), got ONE socket, and lvai_swap_subvis could not tell their nodes apart.
-        Stubs cached under the old key are left where they are. Pass refresh to regenerate anyway.
-        A CLASS INSIDE A CLUSTER keeps its cluster: `cluster{ref{UDClassInst}.hardware,uint32.n}`
-        becomes `cluster{path.hardware,uint32.n}` - only the element is the stand-in - where it
-        used to collapse the whole terminal to `path`. Named under `classElementsInClusters`.
-        THE CLONE IS EXACT ON PURPOSE. A generic Variant placeholder does NOT work: the pane's type
-        descriptor is part of the link binding, and retargeting a Variant stub onto a double VI
-        gives `Error 7, Bad Linkage`. Measured on a controlled pair.
-        A POLYMORPHIC viPath is refused - it has no pane of its own to clone. Point this at the
-        instance you mean to call.
+        Generate: ensures a placeholder subVI whose connector pane is an EXACT clone of viPath's,
+        in <LabVIEW>\user.lib\LV_MCP\, and answers its bare name plus a ready-to-paste `<Call>`.
+        The socket route for a generated VI that calls your own code: author the Call against the
+        placeholder, generate, then repoint it with lvai_swap_subvis (or pylv_apply retarget). If
+        the target can simply be OPENED in LabVIEW, lvai_generate_vi calls it directly instead.
+        The stub is never executed. Never hand-write or borrow one: a non-exact pane (a Variant
+        stub) gives `Error 7, Bad Linkage` after the swap.
+        Writes into the LabVIEW installation (`installed`); uninstall by deleting the folder.
+        Cached per TARGET (its qualified name or path plus the pane), so two VIs never share a stub;
+        `refresh` regenerates. A class terminal becomes a `path` stand-in; a class inside a cluster
+        stays in its cluster (`classElementsInClusters`). Typedef terminals are reported under
+        `typedefTerminals`. A POLYMORPHIC viPath is refused - point it at the instance.
         """)]
     public async Task<string> PlaceholderSubViAsync(
         [Description("""
-            Absolute path to the VI whose connector pane the placeholder must match. OPTIONAL only
-            in the sense that `viPaths` replaces it - one of the two must be given, and that is
-            checked here rather than by the schema. It was declared REQUIRED until 2026-09-03,
-            which made the documented batch call impossible: passing `viPaths` alone was refused by
-            the CLIENT with `MCP error -32602 ... expected string, received undefined`, before the
-            server saw it, so this tool's own "viPath is ignored" was unreachable text.
+            Absolute path to the VI whose pane the placeholder must match; give this or viPaths.
             """)]
         string? viPath = null,
         [Description("Regenerate the stub even when one for this signature already exists")]
         bool refresh = false,
         [Description("""
-            SEVERAL VIs AT ONCE, one absolute path per line, plain text and NOT JSON. Given this,
-            `viPath` is ignored and the answer carries one entry per VI under `placeholders`.
-            THE SAVING IS ROUND TRIPS, NOT LABVIEW TIME - LabVIEW serialises the export either way,
-            so this is the same trade `lvai_generate_vis` makes. Measured 2026-09-03 on the socket
-            route over one class: nine placeholders cost 25 s of wall clock against 2.5 s inside
-            LabVIEW, because they went out as four separate calls and a round trip is a model turn.
+            SEVERAL VIs, one absolute path per line (plain text, not JSON); viPath is then ignored
+            and each VI gets an entry under `placeholders`.
             """)]
         string? viPaths = null,
         [Description("""
-            After the stub exists, give its typedef terminals the SUBJECT'S REAL TYPES with every
-            typedef link removed at every depth - lvai_flatten_typedefs, run for you. A no-op when
-            the pane carries no typedef, so leaving it on costs nothing on most panes.
-            WHY IT IS NOT FREE WHERE IT APPLIES: it copies each `.ctl` of the chain into
-            user.lib\LV_MCP, clears its TypeDefVI flag with pylabview, and installs it with
-            {LV.Control} Replace - one LabVIEW round trip per level. Turn it off to get the old
-            behaviour, where the stub keeps AIXML's approximation of the type.
-            IT CANNOT FAIL THE PLACEHOLDER. A stub whose types could not be improved is still a
-            usable stub, so the outcome is reported under `typedefFlatten` and `ok` above stays
-            about the placeholder itself - but a failure is ALSO named at the top level, in
-            `typedefFlattenWarning`, because a green `ok` over a stub that kept an approximation is
-            exactly the answer nobody reads far enough into.
+            Give the stub's typedef terminals the subject's REAL types, typedef links removed
+            (lvai_flatten_typedefs, run for you); a no-op without typedefs. It never fails the
+            placeholder: a failure shows in `typedefFlatten` and `typedefFlattenWarning`.
             """)]
         bool flattenTypedefs = true,
         [Description("""
-            Which route the flatten uses, "flag" (the default) or "disconnect" - see
-            lvai_flatten_typedefs. "flag" needs nothing of you. "disconnect" is faster and copies
-            no `.ctl`, but REQUIRES a project open and active, opens this stub in the editor, and
-            kills LabVIEW if either precondition is missing.
+            Flatten route: "flag" (needs nothing) or "disconnect" (faster, but REQUIRES a project
+            open and active and kills LabVIEW without one). See lvai_flatten_typedefs.
             """)]
         string typedefRoute = "flag",
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,

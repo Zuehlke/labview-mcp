@@ -50,145 +50,71 @@ internal sealed class MethodTestTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_generate_method_test", Destructive = true, OpenWorld = true,
                    Title = "Generate a Caraya suite over a class's methods")]
     [Description("""
-        MUTATING: writes a Caraya unit test that calls a class's METHODS as ORDINARY STATIC SUBVIS
-        and asserts either the error code they return or that the class wire survives them.
-        THE COMPANION TO lvai_generate_class_test, which does accessors. Measured 2026-09-02:
-        authoring a method suite by hand was the largest single item of that run - ~80 s of wall
-        clock for 0 s inside LabVIEW, because the shape never varies.
-        TWO ROUTES, and `route` in the answer says which ran and why. DIRECT, the default since
-        2026-09-25: one method is opened through the project that lists the class (found by
-        itself, or projectPath), the suite names the REAL methods and accessors - a class with one
-        member open is a legal Call target, docs/aixml-call-loaded-vi.md - each chain's seed `path`
-        constant becomes the class through {LV.Constant} Replace, and the project is closed. No
-        socket is generated and no node is swapped. When no single project lists the class or the
-        members do not resolve, the SOCKET route runs: a socket per method call and per accessor,
-        swapped for the real member afterwards. A case the method cannot serve - a wire-survival
-        case on a method that returns no object - is REFUSED on the direct route before anything is
-        written, where the socket route would have generated a suite that cannot run.
-        casesJson is a JSON ARRAY, one object per case, in one of FOUR shapes:
-          [{"method":"Describe","expectOutput":"description",
-            "expectValue":"Bicycle - a human-powered two-wheeled vehicle.",
-            "label":"Describe names the class"},
-           {"method":"Initialize","expectErrorCode":-200099,
-            "label":"Initialize with no device reports invalid physical channel"},
-           {"method":"Start","writeField":"Timeout","value":"10.0",
-            "label":"Timeout survives Start"},
-           {"method":"Zero","writeField":"Reading","value":"12.5","expectFieldValue":"0",
-            "label":"Zero sets Reading to 0"}]
-        AN UNKNOWN CASE KEY IS REFUSED BY NAME, with the accepted ones listed. It used to be
-        dropped in silence: measured 2026-09-15, two test agents independently reached for
-        `expectFieldValue` before it existed, had it discarded, and got `ok: true` for a suite
-        whose assertion asserted the OPPOSITE of the one asked for. `expectErrorCode` must be an
-        unquoted NUMBER, and a quoted one is refused rather than discarded.
-        `expectOutput` + `expectValue` assert a value the method RETURNS on a named terminal -
-        which is what a `Describe.vi`, a formatter or any non-accessor getter needs, and what this
-        tool could NOT express until 2026-09-07. The gap cost a cold build's test phase 634 s ->
-        890 s, because four such tests were hand-authored instead. The terminal's TYPE is read off
-        the method's own export (override with `outputType`), and a name the method does not
-        declare is REFUSED BY NAME with the available ones listed: the socket swap re-attaches
-        wires by terminal name, so a misspelling would leave the real terminal unwired and the
-        suite would pass having asserted a default. `expectValue":""` is legal and means the empty
-        value - an interface declaration body returning "" is the normal case.
-        `expectErrorCode` asserts the `code` of the method's own error cluster. `writeField` +
-        `value` writes a field, calls the method, and reads the field back OFF THE RETURNED OBJECT -
-        pass `readField` when it differs. That shape asserts the field SURVIVED the call unchanged,
-        which is the one assertion a dynamic dispatch mistake fails. For a method whose JOB is to
-        change the field - a Zero, a Reset, an Increment - add `expectFieldValue`: the seed still
-        comes from `value`, and the read-back is asserted against `expectFieldValue` instead. Its
-        absence meant such a method could not be tested at all, because seeding 12.5 into a `Zero`
-        asserted `12.5 == 0`. A case may carry any combination.
-        `seed` WRITES FIELDS WITHOUT ASSERTING THEM, as many as the method needs:
-          {"method":"Read Value","seed":{"Current":"3","Gain":"2"},
-           "expectOutput":"reading","expectValue":"6"}
-        That is the shape for a method reading two fields, which one `writeField` could not
-        express. The answer's `assertions` step lists every assertion each case generated, and
-        warns where `writeField` beside `expectOutput`/`expectErrorCode` implies "the field is
-        UNCHANGED after the call" - move the field to `seed` if it only has to be set.
-        `expectFields` ASSERTS SEVERAL CHANGED FIELDS from one request, each starting from `seed`:
-          {"method":"Add Value","inputs":{"Value":"2.5"},"seed":{"Sum":"1.5","Count":"1"},
-           "expectFields":{"Sum":"4","Count":"2"}}
-        It becomes one case per field, labelled `<label> (<field>)`.
-        `setup` CALLS OTHER VIs BEFORE THE METHOD, exactly as in lvai_generate_test - a fixture
-        written before a Deposit, a file reset before a Withdraw:
-          "setup":[{"vi":"C:\\...\\Write Accounts File.vi","inputs":{"accounts path":"...","accounts":"[[1,A,B,10]]"}}]
-        Their chain feeds the METHOD's error in, which is what orders them; a setup error therefore
-        reaches the method, which is the honest outcome. Direct route only. The cases of one test
-        VI RUN IN PARALLEL, so a path given to a setup in one case and used by another is refused -
-        one fixture per writing case.
-        WHAT AN `expectValue` PINS IS OBSERVED BEHAVIOUR, not a specification, unless the user gave
-        you the value. Say which in your report - a measured string asserted as if it were the spec
-        freezes whatever the method happens to do today.
-        THE METHOD'S ERROR IS NEVER CHAINED INTO THE ASSERTIONS. A method under test is expected to
-        fail with no hardware; chaining it would poison every later assertion and report failures
-        the test itself caused. It is fed `no error` - or its case's setup chain - and its
-        `error out` is only unbundled.
-        EVERY REQUIRED INPUT OF THE METHOD IS WIRED, and that is not optional. A `required` input
-        left empty makes the whole suite NOT EXECUTABLE - Caraya answers `7101, At least one test is
-        not in a executable state` - and nothing upstream sees it: measured 2026-09-03, this call
-        answered `ok: true` for exactly such a suite. The method's own export is read for them, and
-        a type with no honest default (a refnum, an IO-name tag, a variant) is REFUSED BY NAME
-        rather than guessed. Supply those per case:
-          [{"method":"Initialize","expectErrorCode":-200099,
-            "inputs":{"Physical Channel":"Dev1/ai0"}}]
-        `inputs` sets ANY input terminal of the method, required or not: a required one is always
-        wired (with the default where the case gives none), any other only when the case names it,
-        so an unnamed one keeps the method's own default. A name the method does not declare is
-        refused (`inputTerminalNotFound`), as is the class or error input (`inputNotSettable`), and
-        a front-panel object with no conIdx in `inputs` or `expectOutput` (`terminalNotOnPane`) -
-        a Call cannot wire it, and LabVIEW says only `An input parameter is invalid`.
-        Until 2026-09-25 a value for a non-required terminal was dropped in silence.
-        EVERY METHOD MUST ALREADY BE A CLASS MEMBER with a class-typed pane - use
-        lvai_add_class_method first. A method whose .vi is missing is named rather than generated.
-        A CLIENT TIMEOUT IS NOT EVIDENCE THAT THE WORK FAILED. Measured 2026-09-03, twice in one
-        run: the MCP client answered `Request timed out` / `Connection closed` while the server
-        kept going and completed correctly - the .vi on disk, its mtime and a fresh AIXML export
-        all confirmed the full generate, the swaps and the project entry had landed. VERIFY
-        BEFORE RETRYING: check the file, or you generate the same suite twice and the second
-        attempt fights the first for the sockets.
-        READ THE JUNIT REPORT, NOT `error out`, and PROVE IT CAN FAIL once: change one
-        expectErrorCode by a digit, confirm exactly one failure, put it back.
-        A COLD EXPORT OF A DRIVER-DEPENDENT METHOD HAS KILLED LabVIEW. Measured 2026-09-03: three
-        deaths in one session, every one while this call pulled a DAQmx class member's hierarchy in
-        for the first time; the log tail was hundreds of `DSToExtFuncLinkRef::UnFlatten` lines for
-        DAQmx channel variants. Exporting one method FIRST, on its own, made the call succeed. This
-        tool now does that warm-up itself and reports it as its own step, so a death there is
-        attributed to the warm-up rather than to a case - but it is a mitigation, not a fix, and
-        the crash is in NI's code. If it happens anyway, restart LabVIEW and call again: the second
-        attempt has always succeeded.
+        Test: write a Caraya test VI that calls a class's METHODS as ordinary static subVIs and
+        asserts what they return, their error code, or a field afterwards. Accessors are
+        lvai_generate_class_test; plain VIs lvai_generate_test.
+        EVERY METHOD MUST ALREADY BE A CLASS MEMBER (lvai_add_class_method first); a missing .vi is
+        named, not generated.
+        ROUTES (`route` says which ran): DIRECT by default - the class is opened through the one
+        project that lists it (or projectPath) and the real methods are called, then the project is
+        closed; else the SOCKET route (placeholders swapped afterwards). On the direct route a case
+        the method cannot serve (wire survival on a method returning no object) is refused first.
+        casesJson, one object per case; keys combine:
+          {"method":"Describe","expectOutput":"description","expectValue":"Bicycle","label":"..."}
+          {"method":"Initialize","expectErrorCode":-200099,"inputs":{"Physical Channel":"Dev1/ai0"}}
+          {"method":"Start","writeField":"Timeout","value":"10.0"}
+          {"method":"Zero","writeField":"Reading","value":"12.5","expectFieldValue":"0"}
+          {"method":"Read Value","seed":{"Current":"3","Gain":"2"},"expectOutput":"reading","expectValue":"6"}
+          {"method":"Add Value","inputs":{"Value":"2.5"},"seed":{"Sum":"1.5"},"expectFields":{"Sum":"4"}}
+        - expectOutput+expectValue: a RETURNED value; type read off the method (`outputType`
+          overrides); an undeclared terminal is refused; "" is a legal value.
+        - expectErrorCode: an unquoted NUMBER (a quoted one is refused).
+        - writeField+value: asserts the field SURVIVED the call unchanged (read off the returned
+          object; `readField` if different). For a method that CHANGES it add expectFieldValue.
+        - seed: writes fields without asserting; expectFields: one case per field.
+        - setup: other VIs called first, as in lvai_generate_test (direct route only). Cases of one
+          test VI RUN IN PARALLEL, so a fixture path shared between cases is refused.
+        - inputs: ANY input terminal; required ones are always wired, a type with no honest
+          default (refnum, IO name, variant) must be given. Refused: an undeclared name
+          (`inputTerminalNotFound`), the class or error input (`inputNotSettable`), a panel object
+          with no conIdx (`terminalNotOnPane`).
+        An UNKNOWN case key is refused by name. The method's error is never chained into the
+        assertions. An expectValue you measured pins OBSERVED behaviour, not the spec - say which.
+        A client timeout does not mean failure: check the file before retrying. Read the JUnit
+        report, not `error out`, and prove the suite can fail once. A cold export of a DAQmx-
+        dependent method can kill LabVIEW; the tool warms up first, and a restart plus a second
+        call has always worked.
         """)]
     public async Task<string> GenerateMethodTestAsync(
         [Description(@"Absolute path to the .lvclass whose methods are the subject")]
         string lvclassPath,
         [Description("JSON array of cases: method, plus expectOutput+expectValue, " +
-                     "expectErrorCode, or writeField+value")]
+                     "expectErrorCode, writeField+value[+expectFieldValue], seed, expectFields, " +
+                     "inputs, setup, label")]
         string casesJson,
         [Description(@"Absolute path of the test .vi - WILL BE OVERWRITTEN. Defaults to
                        'Test <Class> Methods.vi' beside the class.")]
         string? testViPath = null,
         [Description("""
-            The .lvclass each chain is seeded with. Defaults to lvclassPath; point it at a CHILD to
-            run a parent's methods on a child object.
+            The .lvclass each chain is seeded with (default lvclassPath); a CHILD runs a parent's
+            methods on a child object.
             """)]
         string? seedClassPath = null,
         [Description("""
-            The .lvproj that lists the class. The direct route opens the class through it, and the
-            test VI is listed in it under testFolderName. Omitted, the direct route uses the one
-            project that lists the class and lists the test there too; the socket route lists it
-            nowhere.
+            The .lvproj listing the class; the test is listed there under testFolderName. Omitted:
+            the one project listing the class (direct route), none on the socket route.
             """)]
         string? projectPath = null,
         [Description("""
-            Virtual folder inside the project to list the test in. A test LabVIEW's own save has
-            just adopted at the project's top level is MOVED into it; one that was listed elsewhere
-            before this call stays where it was, and `listedElsewhere` names it.
+            Project folder for the test. An entry this call's save created is moved into it; one
+            listed before the call stays (`listedElsewhere`).
             """)]
         string testFolderName = "Tests",
         [Description("Keep the generated AIXML instead of deleting what succeeded")]
         bool keepAixml = false,
         [Description("""
-            Call the methods and accessors DIRECTLY with the class open through its project,
-            instead of through sockets. The socket route still runs when no single project lists
-            the class or the calls do not resolve; `route` in the answer says which ran.
+            Call the methods directly with the class open through its project; false forces the
+            socket route.
             """)]
         bool directCall = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,

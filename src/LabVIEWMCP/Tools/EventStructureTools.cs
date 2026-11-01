@@ -69,36 +69,20 @@ internal sealed class EventStructureTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_generate_vi_with_events", Destructive = true, OpenWorld = true,
                    Title = "Generate a VI and register its front-panel events")]
     [Description("""
-        MUTATING: generates a VI from AIXML and REGISTERS its Event Structure's front-panel events,
-        which lvai_generate_vi cannot do. Use it for any document whose Event Structure has a frame
-        other than Timeout.
-        IT SKIPS VALIDATION ON PURPOSE. ValidateAIXML refuses every static event frame ("one or
-        more event cases have no events defined") while ConvertAIXMLToVI on the same bytes answers
-        errorCode 0 and writes the VI - measured on both NI design-pattern templates and on
-        documents authored from scratch. So run lvai_check_aixml first if you want a cheap
-        pre-filter; nothing here type-checks your wiring, and `ok` says the events are registered
-        and LabVIEW can run the result, not that the diagram is right.
-        NO EVENT MAPPING ARGUMENT, because the document already carries it: a selector spells its
-        control and its trigger (` "Setpoint"\3A Value Change `), and a second mapping would just be
-        somewhere for the two to disagree. Frames are registered in document order - position IS
-        `diagramIdx`. A `Timeout` frame is left alone; it needs no registration.
-        AN UNKNOWN TRIGGER IS REFUSED BY NAME rather than written as a Value Change, and so is a
-        document with two Event Structures - `diagramIdx` is a position within ONE structure, so
-        mapping two of them would be a guess.
-        THE EVENT DATA NODE'S FIELD SELECTION DOES NOT SURVIVE CONVERSION - every node comes back
-        `Source,Type,Time` - AND A WIRE AUTHORED FROM A DROPPED TERMINAL IS DROPPED WITH IT,
-        silently, leaving the consumer's input unwired at errorCode 0. AIXML is not the limitation:
-        LabVIEW's own export writes that attribute. The importer discards it, because the frame
-        carries no registration yet at that point. Whatever your document asked for is reported
-        back per frame as `dataFieldsDropped`, so this is visible instead of being something you
-        find weeks later. For a front-panel event, read the control's own TERMINAL in its frame
-        (what NI's templates do); for a USER EVENT there is no such terminal and the gesture stays
-        in the IDE - and a front-panel Local Variable is NOT a substitute, it holds what the panel
-        has at that instant rather than what the event carried.
-        A diagram comment too long for its box is also cut off in silence; only
-        lvai_render_diagrams shows that.
-        `ok: false` is never a rollback - the .vi on disk carries whatever got as far as it got, and
-        `steps` holds each sub-answer whole.
+        Generate: create a VI from AIXML and REGISTER its Event Structure's events, which
+        lvai_generate_vi cannot do. Use it for any Event Structure with a frame other than Timeout.
+        It SKIPS ValidateAIXML on purpose (it refuses every static event frame); run lvai_check_aixml
+        first. `ok` means events registered and the VI runnable, not that the diagram is right.
+        The document carries the mapping: a selector spells control and trigger
+        (` "Setpoint"\3A Value Change `); frames register in document order. Refused by name: an
+        unknown trigger, and a document with two Event Structures.
+        The Event Data Node's field selection does NOT survive conversion (`dataFieldsDropped` per
+        frame), and a wire from a dropped field is lost silently. For a front-panel event read the
+        control's own TERMINAL in its frame; for a USER EVENT's payload use a labelled placeholder
+        constant plus lvai_set_event_data_fields, and lvai_wire_dynamic_events for the dynamic event
+        terminal - never a Local Variable.
+        A long diagram comment is clipped silently - only lvai_render_diagrams shows it.
+        `ok: false` is no rollback: the .vi holds whatever got written; `steps` has each sub-answer.
         """)]
     public async Task<string> GenerateViWithEventsAsync(
         [Description("Absolute path to the source AIXML .xml file")] string aiXmlFilePath,
@@ -106,20 +90,15 @@ internal sealed class EventStructureTools(LvaiConnection connection)
         [Description("Read execState back afterwards, which is the only check that sees a frame left unregistered")]
         bool verify = true,
         [Description("""
-            Where to put the extracted bundle. Defaults to a fresh temp directory, deleted on
-            success. Pass a path to keep it - useful when a spec write needs debugging.
+            Where to put the extracted bundle; omit for a temp directory deleted on success.
             """)]
         string? bundleDirectory = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         CancellationToken ct = default,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview this is lvai_generate_vi on that backend, ONE step: the composer writes
-            every event frame's registration, the dynamic event terminal's wire and a user event's
-            payload field itself, so there is no pylabview registration pass, no
-            lvai_wire_dynamic_events and no lvai_set_event_data_fields to follow - and NI's
-            service is not asked. Read a user event's payload by naming its field in the Event
-            Data Node (`fields="Source,Samples,Time"`); a grpc-route placeholder constant stays
-            the constant it is.
+             On pylabview it is ONE step: registrations, the dynamic event wire and a user event's
+            payload (name the field in the Event Data Node, `fields="Source,Samples,Time"`) are all
+            composed, so no lvai_wire_dynamic_events or lvai_set_event_data_fields follows.
             """)]
         string? backend = null)
     {

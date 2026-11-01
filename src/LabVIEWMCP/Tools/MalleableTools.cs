@@ -30,40 +30,25 @@ internal sealed class MalleableTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_make_malleable", Destructive = true, OpenWorld = true,
                    Title = "Create a malleable VI (.vim) from AIXML in one call")]
     [Description("""
-        MUTATING: the whole create-a-MALLEABLE-VI route in one round trip - generate an ordinary
-        .vi from your AIXML, pylv_extract it, set the four LVSR flags a .vim needs, pylv_rebuild to
-        the .vim path, and read execState back.
-        USE THIS INSTEAD OF DOING THE FOUR STEPS BY HAND. They never vary, and lvai_generate_vi
-        REFUSES a .vim path outright because generating straight to one produces a VI that is eBad
-        while every cheap check stays green.
-        THE VERIFY IS THE POINT, not the saved turns. execState is the only cheap thing that sees a
-        broken malleable VI: validate, convert, lvai_connector_pane and both linters all pass one.
-        `ok` is false when the result is not eIdle.
-        IT ALSO GATES ON THE INTERMEDIATE .vi, and that gate earns its keep: a diagram that is
-        broken as an ordinary VI is not rescued by anything below, and failing at that step names
-        the real fault instead of reporting a malleable VI that will not load.
-        THE INTERMEDIATE .vi IS KEPT ON PURPOSE - next to the .vim, same base name, reported as
-        `intermediateViPath`. It is what you regenerate from, and it is the pane donor
-        lvai_placeholder_subvi needs when a caller has to reach this .vim from inside a project.
-        IT DOES NOT CLOSE THE PROJECT, and that is deliberate rather than an omission. A rebuild
-        onto a path LabVIEW still holds writes the file while LabVIEW keeps serving its in-memory
-        copy, so the verification confirms the VI you REPLACED - but closing a project SAVES
-        LabVIEW's copy over the .lvproj and is forbidden to an agent sharing one instance. So when
-        the target already existed, the answer says so in `staleReadRisk` and names the remedy
-        rather than taking it. On a fresh path there is no risk and nothing is reported.
-        docs/malleable-vis.md has the flags, the eight-arm bisect and the caller-side swap route.
+        Generate: creates a MALLEABLE VI (.vim) from AIXML in one call - generates an ordinary .vi,
+        sets the .vim flags with pylabview, rebuilds to the .vim path and reads execState back. Use
+        it for every .vim: lvai_generate_vi refuses a .vim path, and only execState sees a broken
+        malleable VI. `ok` is false unless the result is eIdle; the intermediate .vi is gated too,
+        so a diagram broken as an ordinary VI fails there with the real fault.
+        The intermediate .vi is KEPT beside the .vim (`intermediateViPath`) - regenerate from it, and
+        use it as the pane donor for lvai_placeholder_subvi. The project is NOT closed: when the
+        target already existed LabVIEW may still serve its old copy, which `staleReadRisk` reports
+        with the remedy. docs/malleable-vis.md.
         """)]
     public async Task<string> MakeMalleableAsync(
         [Description(@"Absolute path to the source AIXML .xml file")] string aiXmlFilePath,
         [Description(@"Absolute path of the .vim to create - WILL BE OVERWRITTEN")] string viPath,
         [Description("""
-            Where to put the intermediate ordinary .vi. Defaults to the .vim path with a .vi
-            extension, which keeps the pair together and is what you want almost always.
+            Where to put the intermediate ordinary .vi; defaults to the .vim path with a .vi extension.
             """)]
         string? intermediateViPath = null,
         [Description("""
-            Keep the pylabview bundle instead of deleting it, and report where. Off by default;
-            worth turning on only when a patch step needs debugging.
+            Keep the pylabview bundle and report where (for debugging a patch step).
             """)]
         bool keepBundle = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,

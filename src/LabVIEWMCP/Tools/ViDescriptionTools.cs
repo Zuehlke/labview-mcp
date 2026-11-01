@@ -40,33 +40,20 @@ internal sealed class ViDescriptionTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_set_vi_descriptions", Destructive = true, OpenWorld = true,
         Title = "Set the descriptions of many VIs without regenerating them")]
     [Description("""
-        MUTATING: sets the VI Description of each listed VI and saves it with Save.Instrument -
-        NO REGENERATION, so the diagram, the front panel and the ICON stay exactly as they are.
-        One helper run per VI inside this one call.
-        THE PROJECT MUST BE CLOSED. The route (open by path in the default application instance,
-        write, read back, Save.Instrument) was measured that way on a production tree, 62
-        descriptions; with a project active this call refuses (errorKind projectActive) - close it
-        with lvai_close_active_project first.
-        THE TEXT IS STORED ANSI (Windows-1252): any character outside CP1252, and any control
-        character other than TAB, CR and LF, is refused for the whole batch before LabVIEW is
-        touched (textNotCp1252, naming the entry, each character, its position and an ASCII
-        replacement). Line breaks inside a description are fine and are written CRLF.
-        A VI THAT ALREADY HAS UNSAVED CHANGES IS LEFT ALONE (that entry answers
-        viHasUnsavedChanges): its Save.Instrument would write those changes too.
-        VERIFIED PER VI FROM THE SAVED FILE: the VI's STRG resource is read back offline and
-        compared with the text (line breaks as LF), and the icon pixels (icl8/icl4/ICON resources)
-        are compared before and after - `iconUnchanged`. `otherFilesChanged` lists any file under
-        the VIs' folders that changed and is not one of the listed VIs. Entries are independent:
-        one failing does not stop the rest, and `results` has one entry per VI.
-        Only .vi files; an empty description is refused (an empty value cannot travel to the
-        helper), so clearing a description is not supported here. For a class or library
-        description use lvai_set_class_description.
+        Edit: sets the VI Description of many VIs and saves each - NO REGENERATION, so diagram,
+        panel and ICON stay as they are. For a class or library description use
+        lvai_set_class_description.
+        THE PROJECT MUST BE CLOSED (`projectActive` otherwise - lvai_close_active_project first).
+        Text outside Windows-1252, or a control character other than TAB/CR/LF, refuses the whole
+        batch before LabVIEW (`textNotCp1252`, naming each character). An empty description is
+        refused; only .vi files. A VI with unsaved changes is left alone (`viHasUnsavedChanges`).
+        Verified per VI from the saved file (text read back, `iconUnchanged`); `otherFilesChanged`
+        lists any other file that changed. Entries are independent; `results` has one per VI.
         """)]
     public async Task<string> SetViDescriptionsAsync(
         [Description("""
-            JSON array of entries, e.g. [{"viPath":"C:\\p\\Read.vi","description":"Reads the value."}].
-            `viPath` (absolute .vi) and `description` (the whole new text, replacing the old) are
-            both required; no other key is accepted. Each VI at most once.
+            JSON array, e.g. [{"viPath":"C:\\p\\Read.vi","description":"Reads the value."}]; both
+            keys required, no other key, each VI once. The text replaces the old.
             """)]
         string entriesJson,
         [Description(HousekeepingHelpers.CheckUnsavedDescription)] bool checkUnsaved = true,

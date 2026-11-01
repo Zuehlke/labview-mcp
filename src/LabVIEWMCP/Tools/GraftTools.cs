@@ -40,53 +40,29 @@ internal sealed class GraftTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_graft_diagram", Destructive = true, OpenWorld = true,
                    Title = "Put a generated block diagram into a VI whose front panel must survive")]
     [Description("""
-        MUTATING: writes a COPY of a supplied VI (panelViPath) to outputViPath and puts the block
-        diagram of a generated SCAFFOLD VI into it, wired to the SUPPLIED controls - so the result
-        carries the supplied front panel untouched (layout, decorations, styled controls, typedef
-        bindings, VI properties, icon) and the generated program. The route for a CLD exam template
-        or any customer panel that must not be regenerated. The supplied VI itself is never changed.
-        THE SCAFFOLD is an ordinary generated VI whose controls and indicators carry EXACTLY the
-        supplied labels and types (the supplied VI's AIXML export gives both) and whose diagram is
-        the finished, verified program. Refused before anything is pasted when a label's kind or
-        type differs, when the supplied diagram already holds code (unless replaceDiagram), and - unless allowNewControls -
-        when a scaffold control is not on the supplied panel.
-        NEW CONTROLS (allowNewControls true): a scaffold control whose label the panel lacks is
-        pasted as a NEW control, wired as in the scaffold, and listed under newControls. LabVIEW
-        places it and gives it the default style - tidy the layout by hand afterwards. The panel is
-        then no longer identical, so panelIdentical is reported but does not decide ok.
-        THE CONNECTOR PANE IS THE SUPPLIED VI'S: nothing of the scaffold's pane travels, so a new
-        control - error in and error out included - gets no slot. Assign one afterwards if needed.
-        HOW: LabVIEW's scripted clipboard pastes the scaffold diagram, which makes a duplicate of
-        every supplied control ('Start 2'); each duplicate's terminal is replaced by the supplied
-        one at the same place and reconnected to the same wire ends, the loose ends are removed,
-        and the VI is saved. About 0.6 s of LabVIEW for a CLD panel.
-        OK IS DECIDED FROM THE FILE: execState 1, no duplicate left, every terminal feeding the
-        same sinks as in the scaffold, node counts equal, typedef references kept, and the panel
-        render byte-identical to the supplied one (comparePanel). The helpers' own error 0 is not
-        evidence - one probe saved an eBad VI with every error cluster clean.
-        NEEDS AN ACTIVE PROJECT (the edit happens in the IDE's application instance - Error 1055
-        otherwise). USES THE SYSTEM CLIPBOARD: whatever the user had copied is replaced, and two
-        grafts at once would paste each other's diagrams - run it from the orchestrator only, one
-        at a time. The scaffold's file name must differ from the output's.
-        SWITCH ACTION: switchActionControls sets the named boolean controls to Switch When Pressed
-        in the same IDE session, before the save, and switchActions reports each from the saved
-        file - a latched boolean cannot be signalled by a test (Error 1193). true there means the
-        saved control is NOT latched; switchActionsWereLatched says whether the supplied one was,
-        so true/false there means it was a switch already and nothing was changed for it.
-        A FAILED STEP LEAVES NO HALF-GRAFT: outputViPath is put back to the plain supplied copy.
-        An unwired scaffold terminal is refused up front (scaffoldTerminalUnwired).
-        ONLY FOR THE MAIN GUI: use it for the one top-level VI whose front panel is supplied or
-        user-facing. A subVI's panel carries nothing worth this route - regenerate subVIs.
-        A SUPPLIED DIAGRAM THAT ALREADY HOLDS CODE is refused unless replaceDiagram is true: the
-        copy's diagram is then EMPTIED first - every control's terminal moved onto the top-level
-        diagram so none is deleted with a structure, then every node, wire and decoration deleted
-        - and the scaffold grafted into it. The old code is DISCARDED in the output; the supplied
-        VI itself is untouched. Measured 2026-10-02 on NI's Display a URL example: loop, event
-        structure, local variable and comments gone, all three controls kept, execState 1.
-        TO GRAFT IN PLACE - the supplied VI must keep its path and name, as an exam requires - copy
-        it aside first and pass that COPY as panelViPath and the original path as outputViPath with
-        overwrite true. Do not open the supplied VI itself before: LabVIEW would keep serving the
-        copy it loaded. Measured with the output NOT listed in the active project, which works.
+        Edit: puts a generated SCAFFOLD VI's block diagram into a COPY of a SUPPLIED VI
+        (panelViPath -> outputViPath), wired to the supplied controls, so the supplied front panel
+        survives untouched (layout, styles, typedef bindings, properties, icon). For a CLD exam
+        template or customer panel - the MAIN GUI only; regenerate subVIs. The supplied VI is
+        never changed.
+        The scaffold's controls carry EXACTLY the supplied labels and types (read them from the
+        supplied VI's AIXML export) and its diagram is the finished program. Refused before
+        pasting: a label whose kind or type differs; a scaffold control not on the panel (unless
+        allowNewControls); an unwired scaffold terminal (`scaffoldTerminalUnwired`); a supplied
+        diagram holding code (unless replaceDiagram, which EMPTIES the copy's diagram first and
+        DISCARDS the old code, keeping every control). The scaffold's file name must differ from
+        the output's.
+        New controls (allowNewControls) are placed by LabVIEW in default style, listed under
+        `newControls`; then `panelIdentical` does not decide ok. The connector pane is the
+        SUPPLIED VI's: no new control - error in/out included - gets a slot.
+        `ok` is decided from the file: execState 1, no duplicate control left, every terminal
+        feeding the same sinks as in the scaffold, typedefs kept, panel render identical. A failed
+        step puts the plain supplied copy back.
+        NEEDS AN ACTIVE PROJECT (Error 1055 otherwise). USES THE SYSTEM CLIPBOARD: run it from the
+        orchestrator, one graft at a time. To graft IN PLACE, copy the supplied VI aside, pass the
+        copy as panelViPath and the original as outputViPath with overwrite; do not open the
+        supplied VI first. `switchActions` true means the saved control is NOT latched.
+        docs/keep-supplied-front-panel.md.
         """)]
     public async Task<string> GraftDiagramAsync(
         [Description("Absolute path of the SUPPLIED VI whose front panel must survive. Never changed")]
@@ -104,7 +80,7 @@ internal sealed class GraftTools(LvaiConnection connection)
         bool allowNewControls = false,
         [Description("Empty the supplied diagram first when it already holds code - the old code is DISCARDED in the output, every control is kept")]
         bool replaceDiagram = false,
-        [Description("Boolean controls to set to Switch When Pressed, ONE LABEL PER LINE - e.g. latched buttons a test must be able to signal. Set in the same run, verified from the saved file")]
+        [Description("Boolean controls to set to Switch When Pressed, ONE LABEL PER LINE - latched buttons a test must signal (Error 1193 otherwise)")]
         string? switchActionControls = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,

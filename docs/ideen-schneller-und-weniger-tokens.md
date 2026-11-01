@@ -160,7 +160,17 @@ Vorschlag für jede Beschreibung:
 - ein Verweis auf die docs/-Stelle.
 
 Parameterbeschreibungen werden genauso behandelt. Schätzung: Die Schemas halbieren sich, das sind
-pro Agenten-Request 15–35 k Tokens. **Das ist gleichzeitig der Findbarkeits-Hebel**: ToolSearch
+pro Agenten-Request 15–35 k Tokens.
+
+*Umgesetzt am 2026-11-01:*
+- Das servierte Schema schrumpft von 454 k auf 258 k Zeichen (−43 %):
+  - Tool-Beschreibungen: 215 k → 93 k;
+  - Parameter: 152 k → 83 k;
+  - datierte Einträge: 146 → 0.
+- Pro Request eines Agenten sind das etwa 19 k Tokens weniger beim vi-generator und etwa 31 k beim
+  class-generator.
+- Der vorherige Wortlaut ist unverändert in `docs/tool-descriptions-archive.md` erhalten.
+- Jede Beschreibung beginnt jetzt mit einem Familienpräfix („Generate:“, „Class:“, „DQMH:“ …).* **Das ist gleichzeitig der Findbarkeits-Hebel**: ToolSearch
 und das Modell gewichten den ersten Satz, und der verschwindet heute in Messgeschichte.
 
 **3b. Ein Präfix-Vokabular für die Suche.** Etwa „DQMH:“, „Class:“, „Test:“, „Generate:“,

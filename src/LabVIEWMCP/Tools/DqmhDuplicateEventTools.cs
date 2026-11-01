@@ -34,17 +34,13 @@ internal sealed class DqmhDuplicateEventTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_duplicate_event", Destructive = true, OpenWorld = true,
         Title = "Duplicate a DQMH event")]
     [Description("""
-        MUTATING, DQMH 7.x ONLY: copies ONE event of a DQMH module in the ACTIVE project under a new
-        name - into the same module or into another one (destinationModuleName) - with NO dialog:
-        Delacor's own Duplicate Event.vi through a generated wrapper, the result of Tools > DQMH >
-        Event > Duplicate DQMH Event. Arguments, reply payload and type are copied; the description
-        too, unless `description` replaces it. A Round Trip is copied as a pair and needs
-        roundTripBroadcastName for the new broadcast half. The names are checked first the way
-        Delacor's dialog checks them with a MODAL. `events` in a refusal lists what the source module
-        offers, as Delacor's ring shows it. What Delacor leaves for a person - a Broadcast's loose
-        #CodeNeeded call, a reply frame's Merge Errors, a tester case - is the same as for a new event
-        and named in `completionNeeded`. Refused while anything in the project is unsaved or a module
-        is locked. On DQMH 5/6 it answers `needsDqmh7`.
+        DQMH: copies ONE event of a module in the ACTIVE project under a new name, into the same or
+        another module (destinationModuleName), no dialog - DQMH 7.x only (`needsDqmh7` on 5/6).
+        Arguments, reply payload, type and description are copied. A Round Trip is copied as a
+        pair and needs roundTripBroadcastName. Names are checked first; a refusal's `events` lists
+        what the source module offers. What Delacor leaves for a person (a Broadcast's #CodeNeeded
+        call, a reply frame's Merge Errors, a tester case) is named in `completionNeeded`. Refused
+        while anything in the project is unsaved or a module is locked.
         """)]
     public async Task<string> DuplicateEventAsync(
         [Description("Source DQMH module, e.g. 'Heater' or 'Heater.lvlib'")] string moduleName,

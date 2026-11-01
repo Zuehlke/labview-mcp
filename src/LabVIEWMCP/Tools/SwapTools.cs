@@ -39,99 +39,34 @@ internal sealed class SwapTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_swap_subvis", Destructive = true, OpenWorld = true,
                    Title = "Repoint many subVI nodes and class constants on one diagram")]
     [Description("""
-        MUTATING: repoints subVI nodes and diagram constants on ONE block diagram through LabVIEW's
-        own {LV.SubVI} / {LV.Constant} Replace, all in a single run, then saves the VI in place.
-        THIS IS HOW A GENERATED VI COMES TO CALL CLASS CODE. AIXML refuses a class-typed terminal, so
-        no generated Call can name an accessor and lvai_placeholder_subvi answers `stubRefused`.
-        Replace is the IDE's own "Replace with a VI from disk" and RE-TYPES THE WIRES, which a
-        pylabview link retarget cannot - so a test authored against sockets whose class terminals are
-        `path` stand-ins becomes a test that calls the real accessors statically.
-        swapsJson is a JSON ARRAY of nodes to repoint:
-          [{"socket":"LVMCP Acc W1.vi","target":"C:\\cls\\Write Hersteller.vi"}]
-        constantsJson is a JSON ARRAY of constants to turn into class constants:
-          [{"label":"seed 1","class":"C:\\cls\\Netzteil.lvclass"}]
-        NODES ARE SWAPPED FIRST AND CONSTANTS LAST, always. A dynamic dispatch input is a REQUIRED
-        terminal, so a class chain needs a class value; with the nodes already swapped that wire has
-        a class sink and Replace re-types it, where the other order breaks it.
-        A CONSTANT IS FOUND AT ANY DEPTH since 2026-10-11 - inside a loop or a Case frame too. It
-        was read off the top-level diagram's All Objects[], which does not descend, so a seed
-        constant in a structure was never found. A LABEL THAT MORE THAN ONE CONSTANT CARRIES IS
-        REFUSED: it is not replaced, `constantsAmbiguous` names it with its match count, `ok` is
-        false (`errorKind: constantLabelAmbiguous`), and every other label is still replaced and
-        the VI saved - matching is by label, so two constants with one label cannot say which one
-        is meant. A label no constant carries is `constantsNotOnDiagram`. `constantMatches` gives
-        every label's count; `constantsSeen` is how many constants the traversal returned, and
-        zero there means the helper's class name matched nothing. Measured 2026-10-17 on both
-        backends: `Constant` matched all five constants of a probe (path, bool), a path seed
-        inside a Case frame inside a While Loop became a class constant, and a label two
-        constants carried was refused with both left as they were.
-        A CALL INSIDE A LOOP OR A CASE FRAME IS REACHED, and that is new as of 2026-09-16. The
-        helper collected from {LV.Diagram} SubVIs[], which lists the diagram it is asked about and
-        does NOT descend into structures, so a nested call came back under `socketsNotOnDiagram`
-        while sitting plainly on the diagram - measured on a VI with three calls at the top level
-        and two inside a Case frame, where `diagramSubVis` listed three of five. It traverses the
-        whole block diagram now, verified on a main VI whose six calls all sit inside its event
-        loop: all six listed, five of five swapped in one call. The pylabview fallback was no
-        answer either: a
-        {"op":"retarget"} on the same VI rewrote the links and LabVIEW then refused to load it with
-        `Missing subVI`, while callTargets and the AIXML export were both green.
-        EVERY SOCKET NAME MUST BE UNIQUE IN `swapsJson` - this refuses a name given twice, because
-        matching is by VI Name and two ENTRIES for one name cannot say which node gets which target.
-        A name that is not on the diagram is refused too: the helper's array search answers -1 and
-        Index Array then clamps to element 0, silently swapping a node you did not name. WHEN THAT
-        HAPPENS THE ANSWER NAMES EVERY subVI THE DIAGRAM HAS, in `diagramSubVis`, so the correction
-        costs no round trip - the names were always in the helper's reply and were reachable only
-        inside the swap step's sub-answer, which `verbose: false` strips.
-        AND A NODE ALREADY POINTED AT A CLASS MEMBER CARRIES ITS QUALIFIED NAME. A second swap over
-        the same diagram must say `Centrifugal Pump.lvclass:Read Last Event.vi`, not
-        `Read Last Event.vi` - the bare name matches nothing. Measured twice, on
-        `DAQmxAnalogInput.lvclass:Start.vi` and again 2026-09-15 while setting up a negative control.
-        `nodesSwapped` IS AN OUTCOME, NOT AN ECHO OF THE REQUEST - `nodesAsked` is the request. It
-        WAS the request, and the answer then contradicted itself: `nodesSwapped: 8` beside a
-        `socketsNotOnDiagram` listing five of those eight, which cost ~100 s of wall clock to
-        disbelieve (docs/class-method-tooling.md D1). Nothing landed when the helper errored,
-        because the error on the wire stops Save.Instrument and the file is untouched.
-        ERROR 1055 MEANS NO ACTIVE PROJECT, and it is reported as `errorKind: noActiveProject`
-        rather than as a bare number beside an Invoke Node's name. `{LV.SubVI}` Replace is a silent
-        no-op outside the IDE's own application instance, so this tool needs the project OPEN.
-        MEASURED 2026-09-15: `lvai_run_lunit_tests` leaves no active project behind, so a swap
-        issued straight after a test run lands here every time - call `lvai_open_file` between them.
-        THE DIAGRAM IS A DIFFERENT QUESTION, and this said "EVERY SOCKET NAME MUST BE UNIQUE on the
-        diagram" until 2026-09-15, which is FALSE and read as "a generated VI cannot call the same
-        method twice". Measured on a two-call probe: one call swaps ONE node, answers `ok: false`
-        with `socketsLeft: 1`, and the SAME call again swaps the other and answers `socketsLeft: 0`.
-        The result is executable - `execState 1` with a class constant feeding the chain. So a
-        diagram MAY call one method several times, and it costs ONE CALL PER NODE whatever N is -
-        measured to three on 2026-09-15.
-        `socketsLeft` IS NOT A NODE COUNTER, and this said it was. It counts how many of the
-        `swapsJson` ENTRIES still occur in the export, so with one entry naming a repeated socket it
-        reads 1 until the last node goes and then 0 - measured over three swaps as 1, 1, 0 while
-        two, one and zero nodes remained. The two-call probe this was written from could not see
-        that: at N=2 a count and a flag are the same two numbers. `callTargets` is de-duplicated by
-        name and cannot answer it either. READ `diagramSubVis`, which lists the diagram's subVI
-        names WITH REPETITION - it shows the state BEFORE the swap it accompanies, so it says what
-        this call was working on rather than what is left afterwards.
-        NOTHING IS READ BACK FROM A REPLACED OBJECT, because the reference does not survive it -
-        Error 1055 - and that error would travel down the wire and stop the save. `verify` therefore
-        re-exports the VI through LabVIEW afterwards and reports its call targets; that export is the
-        only real proof, and `socketsLeft` above zero means a swap did not land.
-        THE LAST STEP CLEARS BROKEN WIRES (`removeBadWires`, default true, since 2026-10-11): a
-        Replace that cannot re-type a wire leaves it broken and the VI at state 0. It runs before
-        the verify export, lists every removed wire under `badWireCleanup`, and a sink that lost its
-        wire from a source makes `ok` false (`errorKind: badWireCleanupLostConnection`).
+        Edit: repoints subVI nodes and class constants on ONE block diagram through LabVIEW's own
+        {LV.SubVI} / {LV.Constant} Replace, then saves the VI in place. This is how a generated VI
+        comes to call class or project-local code: author the Call against a placeholder socket
+        (lvai_placeholder_subvi), then swap. Replace RE-TYPES THE WIRES, which a pylabview
+        retarget cannot - do not use pylv_apply's retarget for this.
+        swapsJson: [{"socket":"LVMCP Acc W1.vi","target":"C:\cls\Write Hersteller.vi"}]
+        constantsJson: [{"label":"seed 1","class":"C:\cls\Netzteil.lvclass"}]
+        Nodes are swapped first, constants last. Nodes and constants are found at ANY DEPTH (loops,
+        Case frames).
+        PRECONDITION: the project must be OPEN and ACTIVE - Replace is a silent no-op outside the
+        IDE's instance; Error 1055 is `errorKind: noActiveProject` (lvai_run_lunit_tests leaves no
+        active project - call lvai_open_file between them).
+        REFUSALS: a socket named twice in swapsJson; a socket not on the diagram (`diagramSubVis`
+        then lists every subVI name on the diagram, with repetition, as it was before this call). A
+        node already pointed at a class member carries its QUALIFIED name
+        (`Pump.lvclass:Read.vi`); the bare name matches nothing. A constant label carried by more
+        than one constant is not replaced (`constantsAmbiguous`, `ok: false`,
+        `errorKind: constantLabelAmbiguous`) while the rest are; an absent label is
+        `constantsNotOnDiagram`; `constantsSeen` 0 means the traversal matched nothing.
+        FIELDS: `nodesSwapped` is the outcome (`nodesAsked` the request; an errored helper landed
+        nothing). One socket on N nodes costs N calls: each call swaps one, `ok: false` until the
+        last. `socketsLeft` counts swapsJson ENTRIES still present, not nodes - read
+        `diagramSubVis` for nodes. `callTargets` from the verify export is the proof.
+        Broken wires are cleared last (removeBadWires); a lost connection makes `ok` false.
         """)]
     public async Task<string> SwapSubVisAsync(
         [Description("""
-            Absolute path to the .vi to edit - it is SAVED IN PLACE. Omit it when you pass
-            `editsJson`, which carries a path per VI.
-
-            IT USED TO BE REQUIRED, WHICH MADE `editsJson` UNREACHABLE. The description promised
-            that `viPath` is ignored when `editsJson` is given, and a required parameter is
-            enforced by the CLIENT against the schema - so the batch call was refused with
-            `-32602 Invalid arguments` before the server could honour its own contract. Measured
-            2026-09-07; the caller worked around it with a dummy path. Identical to the defect
-            fixed on lvai_placeholder_subvi on 2026-09-03, which is why the lesson is written on
-            both: a parameter that ONE mode ignores must not be mandatory in the schema.
+            Absolute path to the .vi to edit - SAVED IN PLACE. Omit it when you pass `editsJson`.
             """)]
         string? viPath = null,
         [Description(@"JSON array of {socket, target} node swaps. Omit to swap no nodes.")]
@@ -139,25 +74,12 @@ internal sealed class SwapTools(LvaiConnection connection)
         [Description(@"JSON array of {label, class} constant swaps. Omit to swap no constants.")]
         string? constantsJson = null,
         [Description("""
-            Export the VI BEFORE and AFTER, and report what it now calls plus a wiring comparison.
-            On by default; the before-export is the whole added cost - one RPC, not a model turn.
-            `callTargets` and `socketsLeft` are the verdict. `wiringLost` is REPORTING ONLY.
-            IT IS NOT A VERDICT, AND THAT IS MEASURED. It gated `ok` for one day and produced false
-            negatives on three separate runs, for two reasons that together make the comparison
-            undecidable: a uid is NOT stable across `Replace` when several nodes move - five Write
-            nodes were measured jumping to 1070/273/269/230/124, so a before/after pairing by uid
-            compares unrelated nodes - and a correct swap onto a real accessor legitimately ends
-            with FEWER wired terminals than the socket had, because the accessor's error terminals
-            are fed a fresh `no error` constant instead of being chained. Read `wiringLost` against
-            the export when a diagram looks wrong; never branch on it.
+            Re-export the VI before and after and report `callTargets`, `socketsLeft` (the verdict)
+            and `wiringLost` (REPORTING ONLY - uids are unstable across Replace; never branch on it).
             """)]
         bool verify = true,
         [Description("""
-            Keep every sub-answer whole. OFF by default because the full ones are large for no
-            benefit: measured 2026-09-01, six swaps in one message returned about 34 kB, most of it
-            LabVIEW's entire AIXML export inline plus a flattened per-node value dump. What a caller
-            reads - callTargets, nodesSwapped, socketsLeft - is lifted out already. A step that
-            FAILED is reported whole regardless of this flag.
+            Keep every sub-answer whole (large); a failed step is reported whole regardless.
             """)]
         bool verbose = false,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,
@@ -166,35 +88,25 @@ internal sealed class SwapTools(LvaiConnection connection)
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("""
-            SEVERAL VIs IN ONE CALL, as a JSON array - given this, `viPath`, `swapsJson` and
-            `constantsJson` are ignored and the answer carries one entry per VI under `edits`:
-              [{"vi":"C:\\t\\A.vi","swaps":[{"socket":"LVMCP Mth1.vi","target":"C:\\c\\M.vi"}],
-                "constants":[{"label":"Seed1","class":"C:\\c\\Daq.lvclass"}]}]
-            THE SAVING IS ROUND TRIPS, NOT LABVIEW TIME. LabVIEW serialises the work either
-            way, so this makes the same trade `lvai_generate_vis` does. Measured 2026-09-03
-            over a four-method class: four swap calls cost 30 s of wall clock against 4.4 s
-            inside LabVIEW, because each was its own model turn.
-            EVERY VI IS STILL SAVED IN PLACE, and a failure STOPS the batch at that VI - the
-            ones before it are already written, and the answer says how many.
+            Several VIs in one call; then viPath, swapsJson and constantsJson are ignored and the
+            answer has one entry per VI under `edits`:
+              [{"vi":"C:\t\A.vi","swaps":[{"socket":"LVMCP Mth1.vi","target":"C:\c\M.vi"}],
+                "constants":[{"label":"Seed1","class":"C:\c\Daq.lvclass"}]}]
+            Each VI is saved in place; a failure STOPS the batch there (earlier VIs stay written).
             """)]
         string? editsJson = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         [Description("""
-            Lay out each VI's block diagram with our layout engine (lvai_layout_diagram's) after a
-            successful swap and save it in place (the cleanUpDiagram field) - a Replace keeps each
-            node's position while its size and terminals change. Reported, never gating; a DQMH
-            module's Main.vi is never touched.
+            Lay out each block diagram (lvai_layout_diagram's engine) after a successful swap.
+            Reported, never gating; a DQMH Main.vi is never touched.
             """)]
         bool cleanUpDiagram = true,
         [Description("""
-            After a saved swap, clear the BROKEN wires left on the diagram (BD.Remove Bad Wires, in
-            the IDE's instance) and report each removed wire under `badWireCleanup`. Default true -
-            the user's rule of 2026-10-11. A sink that had a wire from a source before and none
-            after is a LOST CONNECTION: it is named in `inputsLeftUnwired` and `ok` is false
-            (`errorKind: badWireCleanupLostConnection`). A VI with no broken wire is not touched.
-            Runs before the layout, so the layout sees the cleaned diagram.
+            After a saved swap, clear BROKEN wires and list them under `badWireCleanup`. A sink that
+            lost its sourced wire is named in `inputsLeftUnwired` and `ok` is false
+            (`errorKind: badWireCleanupLostConnection`).
             """)]
         bool removeBadWires = true)
     {

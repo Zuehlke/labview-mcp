@@ -51,68 +51,37 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_create_message_class", Destructive = true, OpenWorld = true,
         Title = "Create an Actor Framework message class for one actor method")]
     [Description("""
-        MUTATING: creates a complete Actor Framework MESSAGE class for one public method of an
-        actor - the class, its private data (one field per parameter of the method), the `Do.vi`
-        override that calls the method, and the `Send <Method>.vi` that enqueues it.
-        IT AUTHORS NO DIAGRAM. A generated override of Message.lvclass:Do.vi is eBad whatever is on
-        it; this drives NI's own Message Maker instead, which clones a template whose Do.vi is
-        already a real override. Measured 2026-09-17 on Counter.lvclass:Increment.vi: Do.vi at
-        execState 1 calling Counter.lvclass:Increment.vi with Amount wired from the message's own
-        private data, and Send Increment.vi at execState 1 with the pane
-        `Message Enqueuer` (11, required), `Amount` (10), `Message Priority (Normal)` (7),
-        `error in (no error)` (8) -> `error out` (0), `Message Enqueuer out` (3) - byte for byte
-        NI's own Send VI shape.
-        NEEDS A PROJECT OPEN AND ACTIVE: every step reaches LabVIEW through Project:Active Project
-        and answers Error 1055 without one. Pass projectPath and this call opens it.
-        THE CLASS IS SAVED AT THE END, and that is not a detail. The Message Maker's changes to the
-        CLASS - its private data control and the renamed Send member - live in memory, so a run that
-        saves only the two VIs reports 0 at every stage, gives two VIs at execState 1, and leaves
-        BOTH eBad after the next project close, with the class on disk still listing
-        `Send Template.vi` and no payload field. Measured, then fixed with LVClass.Open + Save.
-        VERIFIED FROM THE SAVED FILE: the answer's `verify` block is read back with pylabview, not
-        from the run, so `fields` and `members` are what is on disk.
-        THE ACTOR MUST DESCEND FROM Actor.lvclass - checked by walking the class file's own parent
-        links, which is also how the LabVIEW installation is located, so the template and the
-        message parent always come from the same install as the actor.
-        PUT THE ACTOR IN ITS LIBRARY FIRST. An actor added to a .lvlib after its messages exist
-        leaves every Do.vi eBad (measured 2026-09-18) with every file-level check green; the
-        repair is rebuilding the messages. Order: class, methods, library, messages.
+        AF: create an Actor Framework MESSAGE class for one public actor method - the class, one
+        private data field per method parameter, the `Do.vi` override calling the method and
+        `Send <Method>.vi`. MUTATING. Drives NI's Message Maker; never author Do.vi yourself (a
+        generated override is always eBad).
+        Needs a project OPEN and ACTIVE (Error 1055 otherwise; pass projectPath to open it). The
+        actor must descend from Actor.lvclass. Put the actor in its LIBRARY FIRST - order: class,
+        methods, library, messages; an actor added to a .lvlib afterwards leaves every Do.vi eBad
+        and the repair is rebuilding the messages.
+        The class is saved at the end; `verify` (`fields`, `members`) is read from the saved file.
         """)]
     public async Task<string> CreateMessageClassAsync(
         [Description(@"Absolute path to the actor's .lvclass - it must descend from Actor.lvclass")]
         string actorClassPath,
         [Description("""
-            The actor method the message should call, e.g. "Increment" or "Increment.vi". It must
-            be a PUBLIC member of the actor class (refused as `methodNotPublic` otherwise,
-            before anything is written) and live beside it on disk. Its non-class,
-            non-error inputs become the message's payload, one private data field each.
+            The actor method to call, e.g. "Increment". Must be a PUBLIC member beside the class on
+            disk (`methodNotPublic` otherwise); its non-class, non-error inputs become the payload.
             """)]
         string actorMethodName,
-        [Description("""
-            Name for the new message class. Defaults to "<method> Msg", which is NI's own
-            convention - `Increment` gives `Increment Msg`.
-            """)]
+        [Description("Name of the new message class; defaults to \"<method> Msg\".")]
         string? className = null,
         [Description("""
-            Folder to create the message class in. Defaults to `<method> Msg` in the folder that
-            holds the actor's own folder, i.e. a sibling of it. The class lands directly in this
-            folder, not in a subfolder of it, so give EVERY message its own folder: two message
-            classes in one folder answer Error 1055 at replaceActorMethod. A layout that keeps an
-            actor's messages together is `<actor folder>\..\<Actor> Messages\<Method> Msg`, which
-            earlier builds passed explicitly and the AF guide describes as NI's wizard's own.
+            Folder for the message class; defaults to `<method> Msg` beside the actor's folder.
+            EVERY message needs its own folder (two in one answer Error 1055), e.g.
+            `<actor folder>\..\<Actor> Messages\<Method> Msg`.
             """)]
         string? directory = null,
-        [Description("""
-            The .lvproj to open first. The Message Maker reaches LabVIEW through
-            Project:Active Project, so without an active project every stage answers Error 1055.
-            Omit only when you have opened one yourself.
-            """)]
+        [Description("The .lvproj to open first; omit only when one is already active.")]
         string? projectPath = null,
         [Description("""
-            The message class template to clone. Defaults to NI's `Message Template.lvclass` in the
-            actor's own LabVIEW installation. DO NOT pass `Concrete Message Template.lvclass`: it
-            ships no `Send Template.vi`, so the Send step answers Error 7 naming a file that was
-            never copied, and it needs a different builder chain entirely.
+            Template to clone; defaults to NI's `Message Template.lvclass`. Never pass
+            `Concrete Message Template.lvclass` (no Send Template.vi, Error 7).
             """)]
         string? templatePath = null,
         [Description("Parent of the new class. Defaults to Actor Framework's Message.lvclass")]

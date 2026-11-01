@@ -51,71 +51,43 @@ internal sealed class RunTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_run_vi_and_read_values", Destructive = true, OpenWorld = true,
                    Title = "Run a VI and read every control and indicator value back")]
     [Description("""
-        MUTATING: EXECUTES the VI, with whatever side effects it has.
-        Use this instead of lvai_run_vi_as_top_level whenever the VI has ANY output that is not
-        a string - boolean, numeric, cluster, array, waveform. That tool returns those empty
-        with errorCode 91 after the VI has run; this one returns their real values, because the
-        helper reads them through VI Server and flattens them to XML before they cross back.
-        Values are returned per control name with a type and a native JSON value.
-        INPUTS ARE STILL WRITTEN AS TEXT, BUT THEY ARE NO LONGER LIMITED TO STRING CONTROLS.
-        The helper reads the target's panel, asks each named control what it is, and converts
-        before setting - so a path, a double, an integer and a boolean can all be set by passing
-        their text ("C:\\data\\in.csv", "12.5", "42", "true"). Measured 2026-09-16 on one control
-        of each type.
-        AN ENUM OR A TEXT RING takes an item NAME ("withdraw", exact and case-sensitive) or an
-        index ("2"). Text that is neither is refused by Ctrl Val.Set BEFORE the run - it used to
-        be the case that nothing but a string could be set at all.
-        VALUES COME BACK AS NATIVE JSON under `value` since 2026-10-30 - a cluster as an object, an
-        array as a list, an enum as its item name - and the flattened XML is left out unless
-        includeXml is true; a timestamp, waveform, variant or refnum keeps its `xml`.
-        AN ARRAY OR A CLUSTER takes LabVIEW's own XML for the value - what this tool returns
-        under `xml` with includeXml: true, so a value read back can be pasted in as the
-        next call's input. A bare <Array> or <Cluster> is wrapped in <LvVariant> for you, and
-        the indentation between its tags is folded away; the helper then turns it into a Variant
-        that carries its own type, so you never name the type. Since 2026-09-25. Do not write a
-        line break as &#10; there - Unflatten From XML decodes no character reference, measured.
-        AN EMPTY ARRAY NEEDS ONE ELEMENT AS A TYPE TEMPLATE, as LabVIEW writes it: Dimsize 0 plus
-        e.g. <String><Name></Name><Val></Val></String>. Without it the helper cannot tell the type
-        (Error 1103), so it is refused here (emptyArrayWithoutTemplate). Measured 2026-10-01.
-        A LINE BREAK IN A VALUE IS FINE - a multi-line string, or an XML value with a multi-line
-        member: it travels encoded (LF as 0x1E, CR as 0x1D) and the helper decodes it before it
-        converts anything; `lineBreaksEncoded` names the inputs it applied to. Only the default
-        helper decodes, so with runForMs or the legacy helper a line break is still refused. A
-        line break in a control NAME is always refused - names and values are paired by line.
-        A control name that matches nothing on the target's panel is Error 1055 and the target
-        does NOT run - watch helperFailed, because errorCode is RunVIAsTopLevel's and reads 0.
-        Reading is done through a VI REFERENCE, which is released afterwards, so this does not
-        burn the target's path for a later lvai_convert_aixml_to_vi.
-        A VI INSIDE AN `.llb` CONTAINER FILE runs by its path THROUGH the `.llb`, as LabVIEW links
-        it (`...\JKI_EasyXML.llb\Escape-Unescape String for XML__JKI EasyXML.vi`), on both
-        backends since 2026-10-15; until then the existence check refused it.
+        Run: EXECUTES a VI (with its side effects) and reads every control and indicator back as
+        native JSON under `value` (cluster -> object, array -> list, enum -> item name; timestamp,
+        waveform, variant and refnum keep `xml`). Use it instead of lvai_run_vi_as_top_level
+        whenever any output is not a string - that tool returns them empty with errorCode 91.
+        INPUTS are text and converted to each control's type: path, numeric, boolean, string; an
+        enum or text ring takes an exact item NAME or an index (anything else is refused before the
+        run); an array or cluster takes LabVIEW XML - the `xml` this tool returns with includeXml.
+        An EMPTY array needs one element as type template (else `emptyArrayWithoutTemplate`). Do
+        not write a line break as &#10; in XML; a real line break in a value is fine with the
+        default helper (`lineBreaksEncoded`), refused with runForMs; never in a control NAME.
+        A control name not on the panel is Error 1055 and the VI does NOT run - read
+        `helperFailed` / `helperErrorCode`, since `errorCode` reads 0. NEVER run a VI that does not
+        end without runForMs: the untimed helper waits for ever and blocks the whole service.
+        An event-driven VI is verified by DRIVING events (signalsJson), not by a start-up snapshot.
+        A VI inside an `.llb` file runs by its path through the `.llb`. The VI reference is
+        released, so the path stays free for a later convert.
         """)]
     public async Task<string> RunViAndReadValuesToolAsync(
         [Description(@"Absolute path to the .vi to run")] string viPath,
         [Description("""
-            Control values as a JSON object, e.g. {"file name":"C:\\data\\in.csv","count":"42"}.
-            Keys are control labels, values are always TEXT - the helper converts each one to
-            whatever type the named control actually is. String, path, numeric, boolean, enum
-            and ring controls take plain text; an array or cluster control takes its value as
-            LabVIEW XML (<Array>…</Array>, <Cluster>…</Cluster>, or wrapped in <LvVariant>).
-            Omit for a VI that needs no inputs.
+            Control values as a JSON object of label -> TEXT, e.g.
+            {"file name":"C:\data\in.csv","count":"42"}; arrays and clusters as LabVIEW XML
+            (<Array>, <Cluster> or <LvVariant>).
             """)]
         string? inputsJson = null,
         [Description("""
-            Also return the helper's raw flattened XML under valuesXml. Off by default because
-            it repeats everything in values; it is returned regardless when parsing yields
-            nothing, so a parse failure never costs you the data.
+            Also return the helper's raw flattened XML under valuesXml (always returned when parsing
+            yields nothing).
             """)]
         bool includeRawXml = false,
         [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user cache directory,
-            because the scripts folder next to the exe may be read-only. Generated once and
-            reused; pass regenerateHelper to force a rebuild.
+            Where to keep the generated helper VI (per-user cache by default); reused until
+            regenerateHelper.
             """)]
         string? helperViPath = null,
         [Description("""
-            The helper's AIXML source. Defaults to lvai_run_and_read.xml inside the folder
-            lvai_status reports as scriptsDirectory.
+            The helper's AIXML source; defaults to lvai_run_and_read.xml in scriptsDirectory.
             """)]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
@@ -123,67 +95,34 @@ internal sealed class RunTools(LvaiConnection connection)
         [Description("Local budget in seconds - raise it for long-running VIs")]
         int timeoutSeconds = 300,
         [Description("""
-            Run the VI for this many milliseconds, read its front panel, then ABORT it - instead of
-            waiting for it to finish. Zero, the default, keeps the original behaviour.
-            THIS IS THE ONLY WAY TO LOOK AT A VI THAT NEVER ENDS, which is every event or polling
-            loop and therefore every real application. Without it such a VI times out the call and
-            keeps running, and the caller has to generate a scriptable copy of their own program to
-            test it at all.
-            TWO THINGS TO KNOW. The values are a SNAPSHOT at the moment the time elapsed, not a
-            result: a loop that has not reached its second state yet shows the first. And Abort is
-            not a stop button - it kills the VI where it stands and runs NO cleanup the diagram may
-            contain, so a VI that closes files or releases hardware on its normal path does not do
-            that here.
-            IT ALSO ANSWERS `disabled`: every control's label with its Disabled state at the snapshot
-            (0 enabled, 1 disabled, 2 disabled and greyed out) - the one thing a snapshot of values
-            cannot show, and nothing can look afterwards because the VI leaves memory. Since
-            2026-09-26; null when that read failed.
-            IT PICKS ITS OWN HELPER, and a helperAixmlPath naming the untimed one is corrected
-            rather than obeyed - the answer says so in `helperOverridden`. Only lvai_run_for_ms.vi
-            has a `run for ms` control; lvai_run_and_read.vi waits for the target to finish, so
-            aiming this at it while asking for runForMs waits for a VI that never ends and BLOCKS
-            THE WHOLE SERVICE until LabVIEW is killed. Measured 2026-09-16; it cost two restarts.
+            Run for this many ms, snapshot the panel, then ABORT - the only way to look at a VI that
+            never ends. The values are a SNAPSHOT, and Abort runs no cleanup. Also answers `disabled`
+            per control (0 enabled, 1 disabled, 2 greyed). Picks its own timed helper; a
+            helperAixmlPath naming the untimed one is overridden (`helperOverridden`).
             """)]
         int runForMs = 0,
         [Description("""
-            EVENTS TO FIRE while the VI runs, with runForMs only: a JSON ARRAY, in order, e.g.
+            Events to fire, with runForMs only: a JSON array in order, e.g.
             [{"control":"Card Simulator","value":"true"},{"control":"User Input","value":"23456"}].
-            After runForMs has elapsed each control is written with Value (Signaling) - which fires
-            its Value Change event exactly as a click or a keystroke would - and signalGapMs is
-            waited after each one; the snapshot comes after the last. Values are text: a boolean
-            TRUE/1, a numeric its number, a string its text, a cluster or array LabVIEW XML.
-            THIS IS WHAT A START-UP SNAPSHOT CANNOT SEE. The seventh ATM build passed validation,
-            execState, 58 unit tests and a runForMs snapshot while its consumer read User Input
-            before the user had typed; only driving an event would have shown it.
-            A LATCHED BOOLEAN CANNOT BE SIGNALLED - LabVIEW refuses Value (Signaling) on one with
-            Error 1193, reported under `signals`. The snapshot is taken either way.
+            Each is written with Value (Signaling) after runForMs, signalGapMs apart; the snapshot
+            follows the last. A LATCHED boolean is refused (Error 1193, under `signals`).
             """)]
         string? signalsJson = null,
         [Description("Wait after each signal, so the target handles it before the next")]
         int signalGapMs = 500,
         [Description("""
-            Close the target's front panel afterwards when the RUN left it open - a program that
-            opens its own panel (FP.Open, as a Web Browser control needs) keeps the VI in memory
-            otherwise, and the next generation onto its path answers Error 1357. Measured
-            2026-10-02. Only a panel open in the instance the run used is touched.
+            Close the target's front panel if the run left it open; otherwise the VI stays in memory
+            and the next generation onto its path answers Error 1357.
             """)]
         bool closePanelAfterRun = true,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview the VI is run over LabVIEW's ActiveX server instead of NI's service: no
-            helper VI, the panel's names and types read from the file by pylabview, inputs and
-            values in AIXML literals ("3.5", "[1,2,3]", "[false,0,]"), runForMs honoured. signalsJson
-            runs the timed helper COMPOSED by our composer, over ActiveX, against the target whose
-            typed inputs were set first - Value (Signaling) needs VI Server, which ActiveX lacks.
+             On pylabview inputs and values are AIXML literals ("3.5", "[1,2,3]", "[false,0,]");
             LabVIEW must already be running - this never starts it.
             """)]
         string? backend = null,
         [Description("""
-            Also return each value's flattened LabVIEW XML under `xml`. Off by default: every value
-            whose type is decoded comes back as native JSON under `value` instead - a cluster as an
-            object, an array as a list, a boolean as true/false, an enum as its item name - which
-            is a fraction of the XML. Turn it on to paste a read value back in as an array or
-            cluster INPUT, which takes LabVIEW's XML. A value that is not decoded (a timestamp,
-            waveform, variant, refnum or complex number) keeps its `xml` either way.
+            Also return each value's flattened LabVIEW XML under `xml` - needed to paste a value back
+            in as an array or cluster input.
             """)]
         bool includeXml = false,
         CancellationToken ct = default)

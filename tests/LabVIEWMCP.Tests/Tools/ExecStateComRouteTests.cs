@@ -349,8 +349,9 @@ public sealed class ExecStateComRouteTests
         var backend = method.GetParameters().Single(p => p.Name == "backend")
                             .GetCustomAttribute<DescriptionAttribute>()!.Description;
 
+        // The helper's folder (helpers-pylabview) is no longer named: since 2026-11-01 a
+        // description carries what the caller acts on, and that is the field.
         Assert.DoesNotContain("no linker errors", backend);
         Assert.Contains("linkerErrorsAvailable", backend);
-        Assert.Contains("helpers-pylabview", backend);
     }
 }

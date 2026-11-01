@@ -38,23 +38,16 @@ internal sealed class ConstantTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_set_constant", Destructive = true, OpenWorld = true,
                    Title = "Set one labelled block diagram constant of a VI")]
     [Description("""
-        MUTATING: sets the value of ONE block diagram constant, found by its LABEL, and saves the VI
-        in place - no regeneration, so the rest of the VI is untouched. The generated tests label
-        every constant (`written 1`, `expected 2`), so this is the cheap way to run a NEGATIVE
-        CONTROL: set an expectation wrong, run the suite, confirm exactly one failure, set it back.
-        Before 2026-09-25 that cost two full regenerations of about 56 s each.
-        The value is TEXT and is converted to the constant's own type, read off the VI's export:
-        a number for any integer, float or enum constant (an enum also takes an item name), TRUE /
-        FALSE or 1 / 0 for a boolean, the text itself for a string. AN ARRAY OR A CLUSTER takes
-        the AIXML literal - `[[9,X,Y,1]]` for an array.2{string}, `[true,5000,src]` for an error
-        cluster - which is the form lvai_generate_test lists under `expectedConstants`; its
-        members may be string, bool or numeric. A path, or an enum inside a compound, is refused
-        rather than guessed at.
-        THE VERDICT IS THE FILE: the VI is exported again afterwards and `verified` says the
-        constant now holds the value asked for. `before` and `after` are both from exports.
-        A label that is not on the diagram, or is on it twice, is refused with the labels that
-        are there. Close any project holding the VI first - the helper edits it in the addon's
-        application instance, and a copy open in the IDE would not see the change.
+        Edit: sets ONE block diagram constant, found by its exact LABEL, and saves the VI in place -
+        no regeneration. The cheap NEGATIVE CONTROL for a generated test (its constants are labelled
+        `written 1`, `expected 2`): set an expectation wrong, run, confirm one failure, set it back.
+        The value is text converted to the constant's type: a number (integer, float, enum - an enum
+        also takes an item name), TRUE/FALSE or 1/0, a string; an ARRAY or CLUSTER takes the AIXML
+        literal (`[[9,X,Y,1]]`, `[true,5000,src]`) as lvai_generate_test lists under
+        `expectedConstants`, members string, bool or numeric. A path, or an enum inside a compound,
+        is refused. `verified` comes from a fresh export (`before` and `after` too). A label absent
+        or present twice is refused with the labels that exist. CLOSE ANY PROJECT HOLDING THE VI
+        FIRST - a copy open in the IDE would not see the change.
         """)]
     public async Task<string> SetConstantAsync(
         [Description(@"Absolute path to the .vi - it is saved in place")] string viPath,

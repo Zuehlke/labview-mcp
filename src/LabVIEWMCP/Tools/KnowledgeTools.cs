@@ -198,29 +198,20 @@ internal sealed class KnowledgeTools
     [McpServerTool(Name = "lvai_aixml_reference", ReadOnly = true,
                    Title = "AIXML format reference")]
     [Description("""
-        The rules for reading and WRITING LabVIEW AIXML. Call this before authoring or editing
-        any AIXML - the format has no published schema and its wiring model is
-        counter-intuitive, so generating without it produces plausible but wrong XML.
-        Without arguments: the essential rules plus a section list (cheap, start here).
-        With node: ONLY the passages mentioning that node or term - the right call when you
-        want one node's terminal names, e.g. node='Build Waveform', node='Index Array',
-        node='graph21703'. Section 8 alone is 54 kB, far past what is worth reading whole.
-        PASS EVERY NODE YOUR DIAGRAM NEEDS IN ONE CALL, comma-separated:
-        node='Select,Index Array,Build Waveform,Greater?'. Terms are matched by substring, so
-        single lookups return the same text over and over - the 2D-indexing block answers
-        `Index Array`, `disabled index` and `Array Subset` alike. A batch prints each passage
-        ONCE and each table header once instead of once per term. Measured on one VI: 18 single
-        lookups where 3 batched calls carried the same content.
-        With section: that section's full text ('types', 'structures', 'escaping', 'wiring',
-        a heading number, or part of a title). With section='all': the whole document.
+        Knowledge: the AIXML format reference (docs/aixml-reference.md) - wiring model, type
+        literals, escaping, structures, primitive terminal names, call-target rules. Read it before
+        authoring or editing any AIXML; the format has no published schema.
+        No arguments: the essential rules plus a section list (start here). node: only the passages
+        about that node or term, e.g. node='Build Waveform' - PASS EVERY NODE OF YOUR DIAGRAM IN ONE
+        CALL, comma-separated (node='Select,Index Array,Greater?'), so each passage prints once.
+        section: one section ('types', 'structures', 'escaping', 'wiring', a number or a title
+        fragment); an over-long section returns its subsection index first. section='all': the
+        whole document.
         """)]
     public static string AixmlReference(
         [Description("Section number, keyword or title fragment; 'all' for everything; omit for the essentials")]
         string? section = null,
-        [Description("Node or term to look up, e.g. 'Build Waveform'. Returns only the table " +
-                     "rows, code blocks and paragraphs that mention it, each under its heading. " +
-                     "SEVERAL TERMS AT ONCE, comma-separated - 'Select,Index Array,Not' - which " +
-                     "is one round trip and prints each passage once rather than once per term. " +
+        [Description("Node or term to look up; several comma-separated ('Select,Index Array,Not'). " +
                      "Takes precedence over section")]
         string? node = null,
         [Description("Max passages to return (default 40, max 400)")] int limit = DefaultLimit,
@@ -271,21 +262,16 @@ internal sealed class KnowledgeTools
     [McpServerTool(Name = "lvai_dqmh_reference", ReadOnly = true,
                    Title = "DQMH module structure reference")]
     [Description("""
-        How a DQMH (Delacor Queued Message Handler) module is built, as it appears in AIXML:
-        the fixed set of module VIs, the two-loop Main.vi, the typed request/broadcast event
-        clusters, and the naming conventions. Read this before analysing or discussing a
-        project that uses DQMH - the two loops sit inside a case frame rather than at the
-        diagram root, so a naive tree walk finds nothing.
-        Note it also records what CANNOT be generated: every DQMH framework call is a
-        project-local subVI, which AIXML generation rejects.
-        Without arguments: a section list. With section: that section, or 'all'. A section value
-        that is not a heading is looked up as a TERM instead - and it may be a comma-separated
-        list, which costs one round trip and prints each passage once.
+        Knowledge: how a DQMH module is built, as seen in AIXML (docs/dqmh-patterns.md) - the fixed
+        module VIs, the two-loop Main.vi (inside a case frame, not at the diagram root), the typed
+        request/broadcast event clusters, naming conventions, and what cannot be generated. Read it
+        before analysing a DQMH project. To CREATE modules and events use the lvai_dqmh_* tools.
+        No arguments: a section list. section: that section, or 'all'; a value that is not a
+        heading is looked up as a term (comma-separated list allowed).
         """)]
     public static string DqmhReference(
-        [Description("Section number or title fragment; 'all' for everything; omit for the " +
-                     "section list. A value that matches no heading is looked up as a term, and " +
-                     "may be a comma-separated list of them")]
+        [Description("Section number or title fragment, 'all', or terms (comma-separated); " +
+                     "omit for the section list")]
         string? section = null) => Serve(DqmhResourceName, section);
 
     [McpServerResource(Name = "dqmh-patterns", UriTemplate = "labview://dqmh-patterns",
@@ -297,22 +283,17 @@ internal sealed class KnowledgeTools
     [McpServerTool(Name = "lvai_lvproj_reference", ReadOnly = true,
                    Title = "LabVIEW project file (.lvproj) reference")]
     [Description("""
-        The grammar of a LabVIEW `.lvproj` file: item types, virtual versus auto-populating
-        folders, the `URL` forms, property scopes, build specifications, formatting rules and
-        recipes for generating one. Derived by census over a corpus of real project files, with
-        counts throughout so a rule can be told apart from a single observation.
-        Read this before parsing or writing a `.lvproj`. Two traps it documents: a project's
-        own library members are NOT listed in the file (the `.lvlib` owns them), and no RPC adds
-        a file to a project - `.lvproj` generation is on NI's unsupported list, so any project
-        edit is plain XML work outside the AIXML path.
-        Without arguments: a section list. With section: that section, or 'all'. A section value
-        that is not a heading is looked up as a TERM instead - and it may be a comma-separated
-        list, which costs one round trip and prints each passage once.
+        Knowledge: the grammar of a LabVIEW `.lvproj` (docs/lvproj-structure.md) - item types,
+        virtual vs auto-populating folders, `URL` forms, property scopes, build specifications,
+        formatting, and a minimal project to write (section 2). Read it before parsing or writing a
+        `.lvproj`. Traps it documents: library members are NOT listed in the project (the `.lvlib`
+        owns them), and no RPC adds a file to a project - to list VIs use lvai_add_vis_to_project.
+        No arguments: a section list. section: that section, or 'all'; a value that is not a
+        heading is looked up as a term (comma-separated list allowed).
         """)]
     public static string LvprojReference(
-        [Description("Section number or title fragment; 'all' for everything; omit for the " +
-                     "section list. A value that matches no heading is looked up as a term, and " +
-                     "may be a comma-separated list of them")]
+        [Description("Section number or title fragment, 'all', or terms (comma-separated); " +
+                     "omit for the section list")]
         string? section = null) => Serve(LvprojResourceName, section);
 
     [McpServerResource(Name = "lvproj-structure", UriTemplate = "labview://lvproj-structure",
@@ -324,21 +305,17 @@ internal sealed class KnowledgeTools
     [McpServerTool(Name = "lvai_lvlib_reference", ReadOnly = true,
                    Title = "LabVIEW library and class file (.lvlib/.lvclass) reference")]
     [Description("""
-        The grammar of a `.lvlib` and a `.lvclass`: the item types, where ACCESS SCOPE is
-        recorded and how it is inherited, and how a class names its parent. Read this before
-        deciding what is public - no RPC reports access scope, so the library file is the only
-        source, and the two scope properties behave differently: on a `.lvlib` the scope sits on
-        the FOLDER and its members inherit it, while a `.lvclass` records it per member.
-        Also covers the encoded parent-class record, which is where inheritance comes from on
-        LabVIEW versions that do not write plain-text Parent items.
-        Without arguments: a section list. With section: that section, or 'all'. A section value
-        that is not a heading is looked up as a TERM instead - and it may be a comma-separated
-        list, which costs one round trip and prints each passage once.
+        Knowledge: the grammar of `.lvlib` and `.lvclass` files (docs/lvlib-lvclass-structure.md) -
+        item types, where ACCESS SCOPE is recorded and inherited, and how a class names its parent
+        (including the encoded parent record). Read it before deciding what is public: no RPC
+        reports access scope. A `.lvlib` sets scope on the FOLDER (members inherit it); a
+        `.lvclass` records it per member.
+        No arguments: a section list. section: that section, or 'all'; a value that is not a
+        heading is looked up as a term (comma-separated list allowed).
         """)]
     public static string LvlibReference(
-        [Description("Section number or title fragment; 'all' for everything; omit for the " +
-                     "section list. A value that matches no heading is looked up as a term, and " +
-                     "may be a comma-separated list of them")]
+        [Description("Section number or title fragment, 'all', or terms (comma-separated); " +
+                     "omit for the section list")]
         string? section = null) => Serve(LvlibResourceName, section);
 
     [McpServerResource(Name = "lvlib-lvclass-structure",
@@ -351,24 +328,18 @@ internal sealed class KnowledgeTools
     [McpServerTool(Name = "lvai_vi_server_reference", ReadOnly = true,
                    Title = "VI Server methods and properties catalogue")]
     [Description("""
-        Look up the exact Invoke Node / Property Node vocabulary for generating a VI that calls
-        VI Server: 3094 methods and 6451 properties over 157 classes, with their terminal names.
-        Use this whenever you author AIXML containing an Invoke Node or Property Node.
-        A method's `target` string CANNOT be derived any other way - method names are binary IDs
-        inside a .vi, LabVIEW.exe does not carry them as text, and SearchInfoCache covers palette
-        items rather than VI Server. Guessing produces XML that validates and then does nothing.
-        Without arguments: how to use it plus the class list. With query and/or cls: matching
-        rows only. SEVERAL NAMES IN ONE CALL, comma-separated - query='Callees,Icon,Print' -
-        which is one round trip and never prints the same row twice.
-        A row with a `source` field was added without a harvest and says where it came from -
-        a `lvserver.rsc` row is a candidate name, not a validated one.
-        Combine with lvai_run_vi_as_top_level to reach capabilities no RPC exposes -
-        that is how a VI's icon and connector pane are obtained.
+        Knowledge: the VI Server catalogue (docs/vi-server-reference.md) - exact Invoke Node and
+        Property Node names and terminal names, ~3100 methods and ~6450 properties over 157 classes.
+        Use it for every AIXML Invoke or Property Node, and for "a property or action of a LabVIEW
+        object" (a VI, control, panel, project). Names cannot be derived elsewhere; a guessed one
+        validates and does nothing, and a property name missing its category can kill LabVIEW.
+        No arguments: usage plus the class list. query and/or cls: matching rows only - several
+        names in one call, comma-separated (query='Callees,Icon,Print'). A row with a `source`
+        field was not harvested; a `lvserver.rsc` row is a candidate name, not a validated one.
         """)]
     public static string ViServerReference(
-        [Description("Substring of the method or property name, e.g. 'To HTML', 'Callees'. " +
-                     "Several at once, comma-separated: 'Callees,Icon' - matching rows are " +
-                     "merged and de-duplicated")]
+        [Description("Substring of the method or property name, e.g. 'To HTML'; several " +
+                     "comma-separated ('Callees,Icon'), merged and de-duplicated")]
         string? query = null,
         [Description("Class filter, with or without braces: 'LV.VI', '{LV.Application}'")]
         string? cls = null,

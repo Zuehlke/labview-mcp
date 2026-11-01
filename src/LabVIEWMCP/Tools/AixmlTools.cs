@@ -24,31 +24,17 @@ internal sealed class AixmlTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_convert_vi_to_aixml", ReadOnly = true,
                    Title = "Convert a VI to AIXML")]
     [Description("""
-        RPC ConvertVIToAIXML. Serializes an existing VI into LabVIEW's AIXML text format and
-        writes it to aiXmlFilePath. Does NOT modify the VI. With returnContent the XML is also
-        returned inline, which is normally what you want when reading code.
-        This is the reference path for learning the AIXML dialect before generating any.
-        CACHED ON DISK, but only for VIs that belong to the LabVIEW INSTALLATION - the examples
-        tree, vi.lib, user.lib and every LVAddon, which is to say exactly the example and palette
-        VIs you read to learn from. MEASURED over 1677 of them: median 331 ms per export, p99 24 s,
-        worst case 93 s, and the cost is loading the VI rather than writing the XML (size and
-        duration correlate at r = 0.002). A second read of the same VI is a file copy, and needs no
-        running LabVIEW at all.
-        YOUR OWN CODE IS NEVER CACHED and needs no flag for that: an export depends on a VI's
-        subVIs too, and user code changes one subVI at a time behind a caller whose own timestamp
-        never moves. Every answer carries fromCache and a one-line cacheNote, so which of the two
-        happened is visible rather than guessed. Pass refresh to re-export a cached VI anyway.
-        A VI INSIDE AN `.llb` CONTAINER FILE - every DAQmx VI - is read by its path THROUGH the
-        `.llb`, as LabVIEW writes it (`...\configure\task.llb\DAQmx Clear Task.vi`): NI's converter
-        takes it as it is, and its export is cached keyed on the `.llb`'s stat since 2026-10-15;
-        on pylabview the reader extracts the container into %USERPROFILE%\.labviewmcp\cache\llb
-        once and reads the member there.
-        ON pylabview THE CACHE IS USED TOO, since 2026-10-15, kept apart from NI's entries by its
-        key: a cached NI export of the VI is served first (higher fidelity, no NI service needed to
-        read it), then the reader's own earlier export, else a fresh read is cached under the
-        reader's key. A reader entry is never served to a grpc call, and the reader's code hash is
-        part of its key, so a fixed reader never serves an old reading. `exportBy` names whose
-        export came back.
+        Inspect: export an existing VI to AIXML text (RPC ConvertVIToAIXML) and write it to
+        aiXmlFilePath; the VI is not modified. With returnContent the XML also comes back inline.
+        The reference path for learning AIXML: export an NI example or palette VI and copy its shape.
+        Exports of INSTALLATION VIs (examples, vi.lib, user.lib, LVAddons) are cached on disk, so a
+        second read needs no LabVIEW; your own code is NEVER cached (its subVIs change behind it).
+        `fromCache`/`cacheNote` say which happened; `refresh` re-exports. A first export can take
+        seconds to over a minute - the cost is LabVIEW loading the VI.
+        A VI inside an `.llb` container file (every DAQmx VI) is read by its path THROUGH the `.llb`:
+        `...\configure\task.llb\DAQmx Clear Task.vi`.
+        On pylabview a cached NI export is served first, then the reader's own; a reader entry is
+        never served to a grpc call. `exportBy` names whose export came back.
         """)]
     public async Task<string> ConvertViToAixmlAsync(
         [Description(@"Absolute path to the source .vi")] string viPath,
@@ -136,21 +122,12 @@ internal sealed class AixmlTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_convert_vis_to_aixml", ReadOnly = true,
                    Title = "Convert several VIs to AIXML in one call")]
     [Description("""
-        Several VIs through ConvertVIToAIXML in one call, written into outputDirectory. Use this
-        when TRIAGING CANDIDATES - deciding which example or template is the right starting point -
-        where the alternative is one tool call per candidate.
-        WHAT IT DOES AND DOES NOT PARALLELISE, both measured. Cached exports are served
-        CONCURRENTLY: a hit is a file copy in this process with no LabVIEW involved, and concurrent
-        file reads are worth about 21x on a cold tree. Anything not cached is exported
-        SEQUENTIALLY, because LabVIEW serialises the RPC anyway - six ConvertAIXMLToVI calls issued
-        at once took 559 ms against 543 ms one after another, so firing them concurrently buys
-        nothing and a slow one would make every other call queue behind it.
-        The practical consequence: the first pass over a set of candidates costs what it costs, and
-        every later pass is nearly free. Caching rules are those of lvai_convert_vi_to_aixml -
-        installation VIs only, never your own code.
-        Content is NOT returned inline by default: a batch of full exports is large, and the point
-        here is to get the files onto disk cheaply so you can read the ones worth reading. Each
-        answer gives that VI's xmlPath.
+        Inspect: export SEVERAL VIs to AIXML in one call, into outputDirectory. Use it to triage
+        candidates (which example or template to start from) instead of one call per VI - and do
+        not fan out parallel lvai_convert_vi_to_aixml calls: LabVIEW serialises them anyway.
+        Cached exports come back concurrently, uncached ones go through LabVIEW one at a time.
+        Caching rules are those of lvai_convert_vi_to_aixml (installation VIs only). Content is not
+        returned inline by default; each answer gives that VI's xmlPath to read.
         """)]
     public async Task<string> ConvertVisToAixmlAsync(
         [Description("Absolute .vi paths, ONE PER LINE")] string viPaths,
@@ -163,9 +140,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
         [Description("Ignore cached exports and ask LabVIEW again")] bool refresh = false,
         CancellationToken ct = default,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview each VI is read by vi2aixml.py through the export cache, as
-            lvai_convert_vi_to_aixml reads one - NI's cached export first, then the reader's own -
-            and no LabVIEW is asked.
+             On pylabview no LabVIEW is asked; the cache is read as in lvai_convert_vi_to_aixml.
             """)]
         string? backend = null)
     {
@@ -359,90 +334,46 @@ internal sealed class AixmlTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_check_aixml", ReadOnly = true,
                    Title = "Pre-check an AIXML file without LabVIEW")]
     [Description("""
-        Checks an AIXML file for the faults ValidateAIXML was MEASURED not to catch. Needs no
-        LabVIEW, no gRPC and no licence - it is pure text analysis, so it costs milliseconds and
-        works in CI. Run it before lvai_validate_aixml, not instead of it.
-        WHAT IT CATCHES, all measured 2026-09-03 by putting one small VI per case through the real
-        validator: a `uid_parent` naming no element - an ERROR, because LabVIEW silently reparents
-        that element to the TOP-LEVEL diagram, which moves a node out of the loop it belonged in and
-        reports nothing at validate, convert or run; a duplicate `uid`, which LabVIEW silently
-        renumbers so the export stops matching your file; and a Ring whose default `value` is not
-        among its `values`. It also reports, as INFO only, uids inside LabVIEW's reserved range.
-        THREE MORE, measured 2026-09-04 the same way: an ENUM `value` that is one of its LABELS
-        rather than an index - LabVIEW discards it and writes 0 - and an enum index past the last
-        item, which LabVIEW CLAMPS (9 became 4 on a five-item enum); plus a connector-pane terminal
-        with NO `connection` attribute, which LabVIEW reads as REQUIRED rather than as unspecified.
-        A required OUTPUT is the damaging one: it makes every CALLER non-executable with Error 1003
-        while the VI itself validates, converts, runs and exports perfectly.
-        TWO MORE, measured 2026-09-14 and 2026-09-15. A `Control`, `Indicator` or `Constant` with NO
-        `value` attribute is an ERROR that costs the WHOLE document: ConvertAIXMLToVI answers
-        `Error -2628, An error occurred while parsing the document` and writes NOTHING, while the
-        file is perfectly well-formed XML - so that message is about the SCHEMA, not your quoting.
-        And a `timestamp` carrying a NON-EMPTY `value` is a WARNING, because LabVIEW accepts the
-        document and silently DISCARDS the literal; measured against five types that keep theirs.
-        That one matters most in a generated round-trip test, which authors the written value and
-        the expected value in one document: both vanish, and the assertion then compares empty with
-        empty and PASSES while pinning nothing.
-        AND ONE MORE, measured 2026-09-15: the NET attribute is required too, and on an UNWIRED
-        terminal as much as a wired one - `outputs` on a Control or a Constant, `inputs` on an
-        Indicator. Same -2628, same whole-document loss, one attribute over. An interface
-        declaration passes its class wire through and leaves the payload alone, so its own payload
-        terminals are deliberately unwired and this is their normal shape; the spelling is the
-        attribute present with an EMPTY net, `outputs="value:"`.
-        AND PROPERTY/INVOKE NAMES, measured 2026-10-10: `fields="read+Version Number"` on
-        {LV.Application} KILLED LabVIEW inside ConvertAIXMLToVI, 4 of 4 runs; the name is
-        `Application:Version Number`. An ERROR (`propertyNameUnknown`) when a property name is
-        unknown and a known name of the class is `Category:` plus it - lvai_convert_aixml_to_vi
-        and lvai_validate_aixml REFUSE such a document before any RPC, and `fix` writes the full
-        name when only ONE fits (`Version Number` fits two - `Operating System:Version Number` is
-        the other - so it stays an error naming both). A WARNING (`propertyNameNotKnown`, `methodNameNotKnown`, `viServerClassUnknown`) for
-        any other unknown name, with the nearest known one. Known means in LabVIEW's catalogue OR
-        in AIXML known to work (NI's exports, our helpers): the catalogue alone misses half of
-        our own working helpers' names, so a warning is a prompt to verify, not a verdict.
-        WHAT THIS DOES NOT CHECK, and will not: an attribute the schema does not DECLARE at all -
-        `text` on a FreeLabel where the name is `comment`. Same -2628, but catching it cheaply
-        needs a copy of NI's attribute list per element, and a list one entry short would refuse a
-        WORKING document. ValidateAIXML names that one with a line and a column in about 6 ms,
-        which is the right place for it.
-        WHAT `fix: true` WILL NOT DO is as deliberate as what it will. It writes the type's literal
-        for a Control or an Indicator, whose value is a default state the type decides - and leaves
-        a CONSTANT alone, naming it, because there the literal is the DATA: an author who omitted it
-        may have meant 42, and writing 0 turns a document that refuses to convert into one that
-        converts and computes the wrong answer. The discarded timestamp is likewise reported and
-        never repaired, since no non-empty timestamp literal exists to correct it to. A missing NET
-        attribute is repaired only where the document decides it: the empty net when nothing reads
-        the terminal, the real net when exactly ONE thing does, and nothing at all when several do.
-        WHAT IT DOES NOT DO, on purpose: terminal names, types, wiring, cycles and case completeness
-        are things only LabVIEW knows, and it checks them well. This is a pre-filter that moves cheap
-        failures off the round trip; lvai_validate_aixml is still required.
-        A NEW VI NEEDS A REQUIRED INPUT - the user's rule of 2026-10-31, which replaced the old
-        "error in is recommended": with newVi (the default) `error in` must be connection=
-        "required" (`errorInNotRequired`, repaired by fix), and a VI with inputs but no `error in`
-        must have its most important input required (`noRequiredInput`, an ERROR never repaired -
-        only the author knows which input that is). Pass newVi: false for the AIXML of a VI that
-        ALREADY EXISTS - an extension or revision keeps every connector-pane flag as it was, and
-        then fix touches none of them.
+        Inspect: pre-check an AIXML file for the faults ValidateAIXML does NOT catch. Pure text
+        analysis - no LabVIEW, milliseconds, works in CI. Run it BEFORE lvai_validate_aixml, never
+        instead of it: terminal names, types, wiring and cycles are left to LabVIEW.
+        ERRORS: a `uid_parent` naming no element (LabVIEW silently moves the element to the top-level
+        diagram); a Control, Indicator or Constant with no `value`, or with no net attribute
+        (`outputs` on Control/Constant, `inputs` on Indicator - required even when unwired, spelled
+        `outputs="value:"`) - each costs the WHOLE document as `Error -2628` with nothing written;
+        `propertyNameUnknown`, a property name with its category dropped (`read+Version Number` on
+        {LV.Application} killed LabVIEW; lvai_convert_aixml_to_vi and lvai_validate_aixml REFUSE such
+        a document before the RPC); `noRequiredInput` on a new VI.
+        WARNINGS: a duplicate `uid` (renumbered silently); a Ring default not in its `values`; an
+        enum `value` given as a LABEL (written as 0) or past the last item (clamped); a pane terminal
+        with no `connection` (read as REQUIRED - a required output breaks every caller with 1003); a
+        non-empty `timestamp` value (silently discarded - a round-trip test then compares empty with
+        empty and passes); `propertyNameNotKnown`/`methodNameNotKnown`/`viServerClassUnknown` with the
+        nearest known name (a prompt to verify, not a verdict). INFO: uids in LabVIEW's reserved range.
+        Not checked: an attribute the schema does not declare (`text` on FreeLabel) - ValidateAIXML
+        names it with line and column.
+        `fix` writes a missing value literal for a Control/Indicator but NEVER for a Constant (the
+        literal is data), never repairs a timestamp, and writes a missing net only where the document
+        decides it (empty net if nothing reads it, the net if exactly one thing does).
+        newVi (default): `error in` must be connection="required" (`errorInNotRequired`, repaired by
+        fix); without `error in` the most important input must be required (`noRequiredInput`, never
+        repaired). Pass newVi: false for a VI that ALREADY EXISTS - then no pane flag is checked or
+        repaired.
         """)]
     public Task<string> CheckAixmlAsync(
         [Description(@"Absolute path to the .xml file to check")] string aiXmlFilePath,
-        [Description("Also REPAIR what can be repaired unambiguously - a duplicate uid nothing is "
-                   + "nested inside, a uid in LabVIEW's reserved range, an enum value given as a "
-                   + "LABEL (set to that label's index), and an output terminal with no "
-                   + "`connection` (set to recommended, because a required output is never right), "
-                   + "and a property name with its category dropped when exactly one full name "
-                   + "fits (`Version Number` -> `Application:Version Number`, in fields and terminals). "
-                   + "A dangling uid_parent, a bad Ring default, an enum index out of range and a "
-                   + "required INPUT are never repaired: the author's intent is unknown, and for "
-                   + "the parent, putting it on root IS the damage LabVIEW already does")]
+        [Description("Also REPAIR what is unambiguous: a duplicate uid, a reserved-range uid, an enum "
+                   + "LABEL value (to its index), an output with no `connection` (to recommended), a "
+                   + "property name missing its category when exactly one full name fits. Never "
+                   + "repaired: a dangling uid_parent, a bad Ring default, an enum index out of range, "
+                   + "a required INPUT")]
         bool fix = false,
         [Description("Where to write the repaired XML. Omit to overwrite aiXmlFilePath in place")]
         string? fixedPath = null,
         CancellationToken ct = default,
         [Description("""
-            TRUE (the default) for a VI generated COMPLETELY NEW: it must have a required input -
-            `error in`, or without one its most important input. FALSE for the AIXML of a VI that
-            already exists, being extended or revised: no connector-pane flag is checked or repaired,
-            so callers of that VI keep working.
+            True for a COMPLETELY NEW VI (needs a required input); false for a VI that already
+            exists, so no pane flag is checked or repaired and its callers keep working.
             """)]
         bool newVi = true)
     {
@@ -697,35 +628,27 @@ internal sealed class AixmlTools(LvaiConnection connection)
 
     [McpServerTool(Name = "lvai_validate_aixml", ReadOnly = true, Title = "Validate an AIXML file")]
     [Description("""
-        RPC ValidateAIXML. Asks LabVIEW whether an AIXML file is well-formed and semantically
-        acceptable, WITHOUT creating anything. Always run this before lvai_convert_aixml_to_vi
-        or lvai_apply_aixml_to_vi - it is the cheap failure path.
-        Reading the messages: "Unsupported SubVI: X" means the Call target cannot be resolved
-        by validation - project-local subVIs and Express VIs never can, EVEN WHEN the project
-        subVI is open in LabVIEW, while lvai_convert_aixml_to_vi then ACCEPTS it (measured
-        2026-09-25, docs/aixml-call-loaded-vi.md); "Object terminal not found for
-        input" means a misspelled terminal name, or fallout from such a Call.
-        lvai_aixml_reference has the authoring rules and a verified terminal-name table.
-        A REFUSAL NO LONGER BURNS THE VI's NAME. Validation runs against a throwaway copy whose
-        `_name` is replaced, because a failed validate used to register the real name in LabVIEW's
-        memory and every later ConvertAIXMLToVI for it answered Error 1051 until a restart -
-        measured, on a file that had never existed on disk. The answer says what name LabVIEW
-        actually saw under `validatedAs`. Pass preserveName to validate the real one.
+        Generate: validate an AIXML file (RPC ValidateAIXML) without creating anything - the cheap
+        failure path before lvai_convert_aixml_to_vi; lvai_generate_vi runs it for you.
+        "Unsupported SubVI: X": the Call target does not resolve for validation - project-local
+        subVIs never do, EVEN WHEN open in LabVIEW, while lvai_convert_aixml_to_vi then ACCEPTS a
+        loaded one (docs/aixml-call-loaded-vi.md). "Object terminal not found for input": a
+        misspelled terminal name, or fallout from such a Call. A `-2628` here names the missing or
+        undeclared attribute with line and column. Validation runs on a throwaway `_name`, so a
+        refusal does not burn the VI's name (`validatedAs` shows it). Authoring rules:
+        lvai_aixml_reference.
         """)]
     public async Task<string> ValidateAixmlAsync(
         [Description(@"Absolute path to the .xml file to validate")] string aiXmlFilePath,
         [Description("Local budget in seconds")] int timeoutSeconds = 120,
         [Description("""
-            Hand LabVIEW the document's REAL `_name` instead of a throwaway. Off by default: a
-            failed validation registers the name in LabVIEW's memory and burns it for every later
-            ConvertAIXMLToVI until a restart. Turn it on only to check the name itself.
+            Validate the REAL `_name` instead of a throwaway; a failed validation then burns that
+            name (Error 1051 on later converts until a restart). Only to check the name itself.
             """)]
         bool preserveName = false,
         [Description("""
-            Hand LabVIEW a document whose Property Node uses a SHORT property name the check knows
-            the full form of (`Version Number` for `Application:Version Number`). Off by default:
-            the short form was measured killing LabVIEW inside ConvertAIXMLToVI, so the document is
-            refused before any RPC. Turn it on only to measure that.
+            Send a document whose property name lacks its category (`Version Number`) instead of
+            refusing it; that shape has killed LabVIEW. Only for measuring it.
             """)]
         bool allowUnknownPropertyNames = false,
         [Description(AixmlBackend.ParameterDescription)] string? backend = null,
@@ -784,28 +707,17 @@ internal sealed class AixmlTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_convert_aixml_to_vi", Destructive = true, OpenWorld = true,
                    Title = "Create a VI from AIXML (writes a .vi)")]
     [Description("""
-        RPC ConvertAIXMLToVI. MUTATING: creates a real .vi file at viPath from an AIXML file,
-        overwriting whatever is there. This is LabVIEW code generation.
-        With openVI the new VI is also opened in the IDE.
-        Validate the XML first (lvai_validate_aixml) and write to a scratch path until the
-        output is what you expect.
-        BEFORE authoring AIXML call lvai_aixml_reference - the format has no published schema
-        and two rules fail silently: a `uid.terminal` string names a NET (wire), not a
-        pointer to an element, and fan-out is expressed by repeating that net string; and
-        terminal names are literal LabVIEW labels that must be looked up, not guessed
-        (`Increment` -> `x+1`, but `Greater?` -> `x > y?` with spaces).
-        A Call to a project-local subVI is rejected (Error 53) UNLESS that subVI is OPEN in
-        LabVIEW - through its project or loose - when this runs; then it resolves by bare name
-        and the link is written into the file. Validation refuses it either way; lvai_generate_vi
-        converts past that refusal for you, under a throwaway name, and checks executability. A
-        failed convert here burns the caller's name (1051 next time). Measured 2026-09-25 on plain VIs and on class members (open one member and
-        the whole class resolves); a .ctl is NOT accepted. docs/aixml-call-loaded-vi.md.
-        IT WRITES WHAT VALIDATION REFUSES, ON PURPOSE - that tolerance is the route for class
-        methods and loaded subVIs - so a written file is not a working one. checkExecutable (on
-        by default) reads the result's execution state afterwards and answers `executable`; a
-        broken VI comes back with ok false and `warning` saying so, instead of a clean errorCode 0.
-        Measured 2026-10-01: a Web Browser document the validator refused was written here, eBad,
-        with nothing in the answer to say so.
+        Generate: create a .vi at viPath from an AIXML file (RPC ConvertAIXMLToVI), OVERWRITING
+        whatever is there. Prefer lvai_generate_vi, which validates, converts, checks the pane and
+        lays out in one call. Read lvai_aixml_reference before authoring: a `uid.terminal` string
+        names a NET, fan-out repeats it, and terminal names are literal labels to look up.
+        It writes what validation refuses, on purpose (the route for class methods and loaded
+        subVIs), so a written file is not a working one: checkExecutable answers `executable`, and a
+        broken VI comes back ok false with a `warning`.
+        A Call to a project-local subVI is Error 53 UNLESS that subVI (or one member of its class)
+        is OPEN in LabVIEW; then it resolves by bare name. A .ctl is never accepted as a target. A
+        failed convert burns the caller's `_name` (1051 next time). A `-2628` here does not name its
+        cause - lvai_validate_aixml does. docs/aixml-call-loaded-vi.md.
         """)]
     public async Task<string> ConvertAixmlToViAsync(
         [Description(@"Absolute path to the source AIXML .xml file")] string aiXmlFilePath,
@@ -815,10 +727,8 @@ internal sealed class AixmlTools(LvaiConnection connection)
         [Description("Read the written VI's execution state and answer `executable`; a broken VI then answers ok false")]
         bool checkExecutable = true,
         [Description("""
-            Convert a document whose Property Node uses a SHORT property name the check knows the
-            full form of (`Version Number` for `Application:Version Number`). Off by default: that
-            was measured KILLING LabVIEW in this RPC, 4 of 4 runs, so the document is refused
-            before anything reaches LabVIEW. lvai_check_aixml with fix repairs it.
+            Convert a document whose property name lacks its category (`Version Number`) instead of
+            refusing it; that shape KILLS LabVIEW here. lvai_check_aixml with fix repairs it.
             """)]
         bool allowUnknownPropertyNames = false,
         [Description(AixmlBackend.ParameterDescription)] string? backend = null,
@@ -914,30 +824,19 @@ internal sealed class AixmlTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_apply_aixml_to_vi", Destructive = true, OpenWorld = true,
                    Title = "Apply AIXML to an existing VI (CLOSED - does nothing from here)")]
     [Description("""
-        RPC ApplyAIXMLToVI. MUTATING in principle: applies an AIXML description onto an EXISTING
-        VI. This is the RPC behind LabVIEW's AI code completion.
-        DO NOT CALL IT. It is gated on a per-VI attachment bound to the CALLER, which no
-        third-party client can obtain, and from here it has never patched anything: `Error 42`
-        through 2026-09-11 with sixteen variables ruled out, and a SILENT `errorCode 0` since
-        2026-09-16 - measured on one VI twice, closed and then open in the IDE, with the AIXML
-        export identical both times.
-        THE SILENCE IS THE WHOLE PROBLEM: `errorCode 0` is what success looks like everywhere else
-        in this interface, so "try it, it costs one round trip" now means reporting a VI as
-        surgically patched when the file was never touched.
-        So this tool REFUSES unless userAskedForThisByName is true - the user's standing rule of
-        2026-09-16. An edit is a full REGENERATION (lvai_generate_vi over the same path), and a VI
-        whose existing front panel must survive cannot be edited at all: say so and let the user
-        choose the route. docs/aixml-reference.md section 14 has the evidence.
+        Edit: RPC ApplyAIXMLToVI (AIXML onto an EXISTING VI). DO NOT CALL IT: it is gated on a
+        per-VI attachment no third-party client can obtain, and from here it answers a SILENT
+        `errorCode 0` while changing nothing. REFUSED unless userAskedForThisByName is true. An edit
+        is a full REGENERATION (lvai_generate_vi over the same path); where the existing front panel
+        must survive, say so and let the user choose the route. docs/aixml-reference.md section 14.
         """)]
     public async Task<string> ApplyAixmlToViAsync(
         [Description(@"Absolute path to the .vi to modify")] string viPath,
         [Description(@"Absolute path to the AIXML .xml describing the change")] string aiXmlFilePath,
         [Description("Local budget in seconds")] int timeoutSeconds = 240,
         [Description("""
-            The user asked for THIS RPC, by name, in THIS session. Without it the call is refused
-            and no RPC is made. It is not a force flag for an agent that thinks it knows better:
-            the path is closed because it does not work, and because re-establishing that costs
-            turns and teaches nobody anything.
+            True only when the user asked for THIS RPC by name in THIS session - not a force flag.
+            Without it the call is refused and no RPC is made.
             """)] bool userAskedForThisByName = false,
         CancellationToken ct = default)
     {

@@ -230,104 +230,50 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_add_class_method", Destructive = true, OpenWorld = true,
                    Title = "Make generated VIs into dynamic dispatch class methods")]
     [Description("""
-        MUTATING: turns AIXML-generated VIs into real class METHODS - class-typed connector pane,
-        DYNAMIC DISPATCH, and class membership - for many methods in ONE call.
-        THIS IS THE STEP AIXML CANNOT DO. A class-typed terminal is `Control with type=UDClassInst
-        is not supported`, so a method is authored with `path` stand-ins and repaired here. Measured
-        2026-09-02: doing it by hand cost ~105 s of wall clock for 3.3 s inside LabVIEW.
-        Each method is either an `aixml` file or a `vi` that already exists (repaired in place).
-        The AIXML is VALIDATED FIRST and the verdict CLASSIFIED: a refusal naming a class type is
-        the documented case where ValidateAIXML is stricter than ConvertAIXMLToVI, and is converted
-        anyway; anything else STOPS, because the converter writes a broken diagram from it and the
-        fault then surfaces as Error 1003 at RUN time with every file-level check green - measured
-        2026-09-07 on three overrides that all reported ok. `validateFirst: false` restores the old
-        convert-blind behaviour.
-        RE-RUNNING OVER AN EXISTING MEMBER USED TO DESTROY THE CLASS, and this tool said it was
-        SAFE until 2026-09-14. Measured on a minimal probe - one field, its two wizard accessors,
-        one method with no subVI calls: a single re-run left EVERY member eBad ON DISK, accessors
-        the call never named included, with privateDataBytes grown 5454 -> 5466. It survived a
-        LabVIEW restart, and the call reported ok: true, terminalsRetyped: 2, verifiedOnDisk: true
-        throughout. The pylabview conpane rebuild was the obvious suspect and is NOT the cause: the
-        same re-run with panePattern 0, which skips that step, broke it identically.
-        SO A RE-RUN NOW DROPS THE CLASS'S ENTRY FIRST, in the project-closed window, and takes the
-        first-run path that is measured clean - reported as the `dropExistingMembers` step. That
-        needs projectPath: editing the class file while LabVIEW holds the project open is undone by
-        LabVIEW's own save. Without it, a re-run is REFUSED (`memberAlreadyListedWithoutProject`)
-        rather than allowed to proceed with a green answer.
-        A LOADED CALLER STILL BREAKS A RE-RUN: when a loaded VI (an override hook, any caller)
-        calls the member, the re-add answers Error 56003 AFTER the entry was dropped (measured
-        1.7.2-1.8.5). So before anything changes, a re-run asks the project's instance for the
-        member's callers in memory and refuses with `memberHasLoadedCallers`, naming them (measured
-        2026-10-10: an override's series hook was refused naming the override, class file unchanged;
-        after the hook was swapped off, the re-run went through; `checkLoadedCallers: false` skips
-        it). A re-run needs the member's `aixml`: a `vi`-only re-run over a listed member is refused
-        (`rerunNeedsAixml`) - measured, it dropped a wizard accessor from its class (1004). And a re-add puts the
-        member at the class root as public; `keepPlacement` (default) writes its old scope and
-        virtual folder back in a project-closed window afterwards (`restorePlacement` step; the
-        scope lines are measured on this route 2026-10-10 - protected came back and survived
-        LabVIEW's next save, state 1 cold; the folder move is UNMEASURED).
-        AddItemFromMemory's 56002 (already a loose project item) and 1004 (already a member) are
-        still tolerated and still reported as `memberAlreadyExisted`, gated on the .lvclass itself
-        listing the VI, because 1004 is also what a wrong `Name` input produces.
-        A METHOD PASSED AS AN EXISTING `vi` IS NOT DROPPED when the VI names the class as its owner
-        (LIBN): it keeps that link, so a drop made AddItemFromMemory answer 1004 and left the class
-        file WITHOUT the entry (measured 2026-10-12). Such a method takes the tolerated path
-        (`keepExistingMembers`); one the class file no longer lists is refused (`memberOrphaned`) -
-        pass its aixml. Each terminal's Replace error and its class read back off the panel are in
-        the `retype` step, and the verify also requires the class file to list the VI.
-        methodsJson is a JSON ARRAY:
-          [{"aixml":"C:\\x\\Initialize.xml","vi":"C:\\cls\\Initialize.vi",
-            "classTerminals":["obj in","obj out"],"dispatchTerminals":["obj in","obj out"]}]
-        `classTerminals` are the pane terminals to retype to the class - found BY NAME, never by
-        index, because Controls[] order is not portable. `dispatchTerminals` (names) or
-        `dispatchTerminalIndices` (conIdx numbers) are the ones set to dynamic dispatch; names are
-        resolved from the VI's own AIXML export. Omit both for a STATIC member.
-        A TERMINAL MAY CARRY A DIFFERENT CLASS. Write it as an object instead of a name:
-          "classTerminals":["obj in","obj out",{"terminal":"Engine in","class":"C:\x\Engine.lvclass"}]
-        That is NI's own interface shape - `Lever.lvclass:Pry.vi` takes a `Pryable` - and it works
-        on an INTERFACE too: this tool does not care that the .lvclass carries IsInterface.
-        THE PROJECT MUST BE OPEN AND ACTIVE for the repair, and CLOSED for the conversion. Pass
-        projectPath and this call sequences both - closed for every convert and pane repair, then
-        opened once for every retype. Getting that backwards is Error 56002 on one side and a
-        silent no-op on the other.
-        VERIFIED FROM THE SAVED FILE, with pylabview and no LabVIEW: each retyped terminal must show
-        as `class="udClassDDO"` in the front panel heap and no `stdPath` stand-in may remain beyond
-        the method's own path terminals and the `path` ELEMENTS inside its cluster or array
-        controls (`cluster{path.protocol}`) - those are counted from the AIXML, reported as
-        `pathsInsideClusters`, and left for lvai_bind_pane_typedef where they stand in for a class. A run
-        that reported four working methods from `Execution:State = 1` was reading an in-memory copy
-        that never reached disk; this check is what caught it, so `ok` is false without it.
-        EACH ADDED METHOD THEN HAS ITS BROKEN WIRES CLEARED (`removeBadWires`, default true), with
-        the project still open and active: a retype that could not re-type a wire leaves it broken
-        and the method at state 0. The removed wires are listed per method under
-        `badWireCleanup`; a sink that lost its wire from a source makes `ok` false
-        (`errorKind: badWireCleanupLostConnection`, the methods named in
-        `methodsWithLostConnections`). UNMEASURED on a class member: whether Save.Instrument alone
-        persists a Remove Bad Wires there is not established - read the method COLD afterwards.
+        Class: turn AIXML-generated VIs into class METHODS - class-typed pane, DYNAMIC DISPATCH,
+        class membership - for many methods in one call. MUTATING. AIXML cannot write a
+        class-typed terminal, so author the method with `path` stand-ins and repair it here.
+        Author against pane pattern 4815 (class in 11, error in 8, class out 3, error out 0); a
+        conIdx not on the target pattern is refused before converting. Not for Actor Framework
+        lifecycle overrides - use lvai_create_override.
+        Project: pass projectPath - it is CLOSED for the conversions and OPENED (active) for the
+        retype, and left open.
+        Each AIXML is VALIDATED first: a class-type refusal is converted anyway, any other fault
+        STOPS (`validateFirst: false` skips this).
+        RE-RUN over an existing member: its class entry is dropped first (`dropExistingMembers`),
+        which needs projectPath (else `memberAlreadyListedWithoutProject`) and the member's `aixml`
+        (else `rerunNeedsAixml`); a LOADED caller refuses it (`memberHasLoadedCallers`, named);
+        `keepPlacement` restores scope and folder. An existing `vi` whose LIBN names the class is
+        kept (`keepExistingMembers`); one the class no longer lists is `memberOrphaned`.
+        Codes 56002/1004 are tolerated as `memberAlreadyExisted` only when the .lvclass lists the VI.
+        VERIFIED FROM THE SAVED FILE: each retyped terminal must be `udClassDDO` and no `path`
+        stand-in may remain (path elements in clusters are reported as `pathsInsideClusters`, for
+        lvai_bind_pane_typedef); `ok` is false otherwise. Broken wires are then cleared per method
+        (`badWireCleanup`); a lost connection fails `ok` (`badWireCleanupLostConnection`,
+        `methodsWithLostConnections`) - on a class member, read the method cold afterwards.
+        A missing interface override leaves EVERY member eBad - check with lvai_exec_state.
         """)]
     public async Task<string> AddClassMethodAsync(
         [Description(@"Absolute path to the .lvclass the methods belong to")] string lvclassPath,
-        [Description("JSON array of methods: aixml and/or vi, classTerminals, dispatchTerminals")]
+        [Description("""
+            JSON array: [{"aixml":"C:\\x\\Init.xml","vi":"C:\\cls\\Init.vi","classTerminals":["obj in","obj out"],
+            "dispatchTerminals":["obj in","obj out"]}]. `aixml` and/or an existing `vi`; terminals by
+            NAME; `dispatchTerminalIndices` (conIdx) instead of names; omit both dispatch keys for a
+            STATIC member. A terminal of another class: {"terminal":"Engine in","class":"C:\\x\\Engine.lvclass"}.
+            """)]
         string methodsJson,
         [Description("""
-            The .lvproj to sequence. CLOSED for the conversions, then OPENED for the repairs and
-            left open. Omit only when you are driving that sequence yourself - with no project
-            active the helper answers Error 1055 and nothing is retyped.
+            The .lvproj to sequence (closed to convert, opened for the retype, left open). Omit only
+            when driving that yourself - with no active project nothing is retyped (Error 1055).
             """)]
         string? projectPath = null,
-        [Description("""
-            The connector pane pattern to stamp before the repair. 4815 is NI's accessor layout and
-            the default; ConvertAIXMLToVI takes no pattern, so a new VI otherwise carries the
-            station default from LabVIEW.ini. Pass 0 to leave the pane alone.
-            """)]
+        [Description("Connector pane pattern stamped before the repair (4815 = NI's accessor layout); 0 leaves the pane alone.")]
         int panePattern = DefaultPanePattern,
         [Description("Read each saved file back and confirm the terminals really are class-typed")]
         bool verify = true,
         [Description("""
-            Validate each method's AIXML before converting it, and stop on a fault that is NOT the
-            class-wire strictness. On by default. Turn it off only when the classifier wrongly
-            calls a class-wire refusal a real fault - and report that, because the classifier then
-            needs the message adding to it.
+            Validate each AIXML first and stop on a fault that is not class-wire strictness. Turn
+            off only when a class-wire refusal is misclassified - and report it.
             """)]
         bool validateFirst = true,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,
@@ -337,39 +283,20 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview NO STEP touches NI's service: each method is COMPOSED from its AIXML (the
-            path stand-ins compose like any path), the pane repaired by pylabview as before, and the
-            retype-and-membership helper COMPOSED and run over LabVIEW's ActiveX server, where
-            {LV.Control} Replace, AddItemFromMemory and both saves work as in the add-on's instance.
-            A pylabview "validation" is a scratch compose, not NI's wiring check. helperViPath is
-            ignored there. LabVIEW must already be running.
+             On pylabview no step touches NI's service; validation is a scratch compose, not NI's
+            wiring check, helperViPath is ignored, and LabVIEW must already be running.
             """)]
         string? backend = null,
-        [Description("""
-            Lay out each method's block diagram with our layout engine (lvai_layout_diagram's)
-            once it is a verified member, and save it in place (the cleanUpDiagram step). Reported,
-            never gating: a layout that does not finish leaves the method as converted and still ok.
-            """)]
+        [Description("Lay out each verified method's diagram (lvai_layout_diagram's engine) and save it; never gates `ok`.")]
         bool cleanUpDiagram = true,
-        [Description("""
-            After each method is added and verified, clear the BROKEN wires left on its diagram
-            (BD.Remove Bad Wires, in the IDE's instance, project still open) and list each under the
-            method's `badWireCleanup`. Default true. A lost connection fails `ok`. Runs before the
-            layout, so the layout sees the cleaned diagram.
-            """)]
+        [Description("Clear each method's BROKEN wires after verification, listed under `badWireCleanup`; a lost connection fails `ok`.")]
         bool removeBadWires = true,
         [Description("""
-            On a re-run, ask the project's instance first whether any LOADED VI calls a member
-            about to be dropped, and refuse (`memberHasLoadedCallers`) before anything changes.
-            Default true; turn it off only when the check itself cannot run and you have unhooked
-            every caller by hand.
+            On a re-run, refuse (`memberHasLoadedCallers`) when a LOADED VI calls a member about to
+            be dropped. Turn off only when every caller is unhooked by hand.
             """)]
         bool checkLoadedCallers = true,
-        [Description("""
-            On a re-run, put each re-added member's access scope and virtual folder back - the add
-            puts it at the class root as public. Default true; a project close/open cycle is added
-            only when a member was non-public or in a folder.
-            """)]
+        [Description("On a re-run, restore each re-added member's access scope and virtual folder (the add makes it public at the root).")]
         bool keepPlacement = true)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_add_class_method", out var choice, out var badBackend))

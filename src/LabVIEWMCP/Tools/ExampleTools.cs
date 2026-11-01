@@ -18,43 +18,27 @@ internal sealed class ExampleTools
     [McpServerTool(Name = "lvai_example_index", ReadOnly = true,
                    Title = "Shipping examples of the installed LabVIEW")]
     [Description("""
-        The shipping examples of this LabVIEW installation, with NI's own description and search
-        keywords, read from the example VIs themselves. Query this BEFORE designing a diagram from
-        scratch: where lvai_palette_index answers "which VI may I Call", this answers "has NI
-        already wired this up" - a whole working diagram rather than a single node. Feed a .vi hit's
-        path to lvai_convert_vi_to_aixml to read how it is built; a hit may also be a .lvproj, a
-        whole example application, and for that the follow-up is lvai_describe_project instead.
-        Matches on name, category, keywords and description; EVERY word of the query must appear,
-        though each may come from a different field. Without a query: the totals plus the
-        scan location.
-        Needs NO running LabVIEW - the metadata is plain text inside each .vi.
-        CACHED ON DISK and reused by every later session. Scanning is a read of 2510 files and
-        costs about a minute the first time on a machine; after that it is read back in under a
-        second, and the server warms it at start-up so the first call does not pay even that. The
-        cache never expires on its own - pass refresh after installing or upgrading LabVIEW or an
-        add-on, and only then.
-        Both roots are read: <LabVIEW>\examples AND every LVAddon under %ProgramFiles%\NI\LVAddons,
-        which is where driver and toolkit examples now install.
-        Examples that carry no in-VI metadata are covered too: some drivers - NI-DAQmx above all -
-        register through an external binary index (exbins\*.bin3 and *.bin4), and those are read as
-        well. An index file that does not fit the known format is skipped whole and named in the
-        output, so any remaining gap stays visible rather than silent.
-        A VI absent here may still have a description: lvai_filter_example_search_candidates reads
-        any VI's own description property, including vi.lib.
-        BY DEFAULT ONLY PLAIN-LabVIEW EXAMPLES ARE LISTED. An example needing LabVIEW FPGA,
-        LabVIEW Real-Time or a licensed toolkit is worse than no hit - it reads as the answer, and
-        the VI built from it will not open where that module is missing. NI-DAQmx is treated as
-        always installed and stays in. The count held back is always reported; pass
-        includeSpecialised to see them, each labelled with what it needs.
+        Knowledge: search the shipping examples of this LabVIEW installation (examples folder and
+        LVAddons, NI's own descriptions and keywords) - "has NI already built this whole diagram?".
+        Query it FIRST for anything pattern-shaped: state machine, producer/consumer, queued message
+        handler, continuous acquisition, file streaming. lvai_palette_index answers "which VI may I
+        Call" instead. Feed a .vi hit to lvai_convert_vi_to_aixml; a .lvproj hit (a whole example
+        application) to lvai_describe_project.
+        EVERY query word must appear (name, category, keywords or description). No query: totals.
+        No running LabVIEW needed. Cached on disk and warmed at start-up; the first build on a
+        machine takes about a minute. The cache never expires: pass refresh after installing or
+        upgrading LabVIEW or an add-on - every answer carries its build date.
+        By default only plain-LabVIEW examples (NI-DAQmx counted as installed); those needing FPGA,
+        Real-Time or a licensed toolkit are counted and shown with includeSpecialised. A VI absent
+        here may still have a description: lvai_filter_example_search_candidates reads any VI's.
         """)]
     public static string ExampleIndexTool(
-        [Description("Words to look for, e.g. 'TDMS', 'state machine', 'read binary file'. " +
-                     "EVERY word must appear in the entry, but each may come from a different " +
-                     "field - name, category, keyword or description. Fewer words match more")]
+        [Description("Words, e.g. 'TDMS', 'state machine'; EVERY word must appear in some field. " +
+                     "Fewer words match more")]
         string? query = null,
         [Description("Max rows to return (default 10, max 60)")] int limit = DefaultLimit,
-        [Description("Rebuild the index from disk. Costs about a minute - only after installing " +
-                     "or upgrading LabVIEW or an add-on")]
+        [Description("Rebuild the index (about a minute) - only after installing or upgrading " +
+                     "LabVIEW or an add-on")]
         bool refresh = false,
         [Description("Also list examples needing FPGA, Real-Time or a licensed toolkit")]
         bool includeSpecialised = false,

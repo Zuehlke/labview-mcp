@@ -46,81 +46,47 @@ internal sealed class TestTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_generate_test", Destructive = true, OpenWorld = true,
                    Title = "Generate a Caraya unit test for a VI, wired to call it")]
     [Description("""
-        MUTATING: writes a Caraya unit-test VI that calls viPath as an ordinary static subVI, one
-        node per case, and leaves it ready to run.
-        TWO ROUTES, and the answer's `route` says which ran and why. DIRECT, the default since
-        2026-09-25: the subject is opened through the .lvproj that lists it (found by itself, or
-        projectPath), the test's Call names the subject itself - a loaded project VI is a legal
-        Call target, docs/aixml-call-loaded-vi.md - and the project is closed again, which releases
-        the subject; the test is then listed under testFolderName (`projectEntry` step). No
-        placeholder, no retarget, no pylabview. When no
-        single project lists the subject, when it will not become active, or when the subject
-        still does not resolve, the PLACEHOLDER route runs as before: lvai_placeholder_subvi for a
-        call node AIXML is allowed to create, lvai_generate_vi for the test, then pylv_apply's
-        retarget to point that node at your VI. Either way the active project is closed at the
-        end. Each sub-answer comes back whole under `steps`, so a failure reads the same as calling
-        them by hand. Measured: 18 calls by hand before this existed, 10 of them editing an object
-        heap.
-        casesJson is a JSON ARRAY, one object per test case:
-          [{"label":"boiling point","inputs":{"celsius":"100"},"expect":{"fahrenheit":"212"}}]
-        The only case keys are `label`, `inputs`, `expect` and `setup`; ANY OTHER IS REFUSED BY
-        NAME, with the accepted set listed. It used to be dropped in silence - measured on the
-        sibling tool lvai_generate_method_test, where two agents invented a key, had it discarded
-        and got `ok: true` for a suite that asserted the opposite of what they asked.
-        `setup` CALLS OTHER VIs BEFORE THE SUBJECT, in order, each one's `error out` into the next
-        one's `error in` and the last into the subject's - a round trip (write, then read back) or a
-        reset before a transaction is one case:
-          "setup":[{"vi":"C:\\...\\Write Accounts File.vi","inputs":{"accounts path":"...","accounts":"[[1,A]]"}}]
-        Direct route only; each setup VI needs an error in/out pair and the subject an `error in`.
-        The subject is still called ONCE per case; its outputs are what `expect` asserts.
-        THE CASES OF ONE TEST VI RUN IN PARALLEL - only a case's own error wire orders its setup
-        before its subject - so a path given to a SETUP in one case and used by any other case is
-        REFUSED before anything is written: give every case that writes its own fixture path.
-        Measured on the fourth ATM cold build, where three cases sharing one fixture failed and
-        passed by turns.
-        EVERY EXPECTED CONSTANT IS LABELLED `expected <n>` and listed in `expectedConstants` with
-        its case - lvai_set_constant breaks one for a negative control.
-        `inputs` and `expect` are keyed by the SUBJECT's own terminal names - lvai_vi_terminals
-        prints them, and so does this tool's placeholder step. CONNECTOR-PANE TERMINALS ONLY: a
-        front-panel object with no conIdx (a UI VI's Stop button), an `inputs` key that is an
-        output or an `expect` key that is an input is refused by name, with the pane listed under
-        `refusal` - a Call naming an off-pane control is `Error 1 ... An input parameter is
-        invalid` from LabVIEW, measured 2026-10-12. Values are written verbatim into an
-        AIXML constant of that terminal's type, so "100" is a double if the terminal is a double;
-        a value the format cannot express as a constant is refused at validation, by name.
-        EVERY assertion is `Assert Equal Value_Variant`, and float equality is EXACT - Caraya's
-        Assert Almost Equal is not wired up here. Choose case values that are exact in IEEE754, or
-        assert on something else.
-        READ THE JUNIT REPORT, NOT `error out`. The test VI's error cluster carries the FIRST failed
-        assertion only. Run the test with Caraya's runner (`Caraya.lvlib\3ARun Tests.vi`, instance
-        `Run Test (Scalar Path)`, Interactive FALSE and a Report Path ending in .xml) and read that -
-        a `.txt` extension writes no file at all.
-        `ok` false with failedAtStep `retarget` means THE TEST VI WAS WRITTEN and still calls the
-        placeholder. It is the link that needs another pass, not the diagram.
+        Test: generate a Caraya unit-test VI that calls viPath as an ordinary static subVI, one
+        node per case, ready to run. MUTATING.
+        `route` says which ran: DIRECT (default) opens the subject through the .lvproj that lists
+        it, calls it by name, closes the project and lists the test under testFolderName; the
+        PLACEHOLDER route (no single listing project, or the subject does not resolve) uses
+        lvai_placeholder_subvi plus a pylabview retarget. The active project is closed at the end.
+        Sub-answers come back under `steps`.
+        Case keys are only `label`, `inputs`, `expect`, `setup`; any other is REFUSED by name.
+        `inputs`/`expect` use the subject's CONNECTOR-PANE terminal names (lvai_vi_terminals) -
+        an off-pane control, an output under `inputs` or an input under `expect` is refused.
+        Values are written verbatim as constants of the terminal's type.
+        `setup` (direct route) calls other VIs first, chained by error wires; each needs error
+        in/out. The cases of one test VI RUN IN PARALLEL, so a setup path used by another case is
+        REFUSED - give every case its own fixture.
+        Every assertion is `Assert Equal Value_Variant` with EXACT float equality. Expected
+        constants are labelled `expected <n>` (`expectedConstants`) for lvai_set_constant.
+        Read the JUnit report (lvai_run_caraya_tests), not `error out` - it carries the first
+        failure only. `failedAtStep: retarget` means the test VI was written and still calls the
+        placeholder. Plan about three cases per test VI (diagram size budget).
         """)]
     public async Task<string> GenerateTestAsync(
         [Description(@"Absolute path to the VI under test")] string viPath,
-        [Description("JSON array of cases: label, inputs and expect, keyed by terminal name")]
+        [Description("""
+            JSON array, one object per case:
+            [{"label":"boiling point","inputs":{"celsius":"100"},"expect":{"fahrenheit":"212"},
+              "setup":[{"vi":"C:\\...\\Write File.vi","inputs":{"path":"..."}}]}] - setup optional.
+            """)]
         string casesJson,
         [Description(@"Absolute path of the test .vi - WILL BE OVERWRITTEN. Defaults to
                        'Test <subject>.vi' beside the subject.")]
         string? testViPath = null,
         [Description("""
-            The .lvproj the subject belongs to, for the DIRECT route. Omit it and the one project
-            at or up to three folders above the subject that LISTS it is used; with none, or with
-            more than one, the placeholder route runs instead and the answer says why.
+            The subject's .lvproj for the DIRECT route; omitted, the one project listing it at or up
+            to three folders above is used (none or several: placeholder route).
             """)]
         string? projectPath = null,
-        [Description("""
-            Call the subject DIRECTLY instead of through a placeholder: open it through its
-            project, author the test's Call against the subject's own name, generate, close the
-            project. On by default. False forces the placeholder route.
-            """)]
+        [Description("Call the subject directly through its project; false forces the placeholder route.")]
         bool directCall = true,
         [Description("""
-            Virtual folder of the subject's project the test is listed in, on the DIRECT route.
-            LabVIEW's own save adopts the freshly generated test at the project's top level; that
-            entry is moved here. A test listed somewhere else BEFORE the call stays where it is.
+            Project virtual folder the test is listed in (direct route); a test already listed
+            elsewhere before the call stays there.
             """)]
         string testFolderName = "Tests",
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
@@ -507,124 +473,58 @@ internal sealed class TestTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_generate_class_test", Destructive = true, OpenWorld = true,
                    Title = "Generate a Caraya round-trip test for a class's accessors")]
     [Description("""
-        MUTATING: writes a Caraya unit test that exercises a .lvclass's accessors as ORDINARY STATIC
-        SUBVIS - one write-then-read round trip per field - and leaves it ready to run.
-        THIS IS THE CALL THAT REPLACES ABOUT FORTY. Measured 2026-08-29 building the same thing by
-        hand for a three-class hierarchy: sockets generated one at a time, the test authored, then
-        nineteen further calls alternating a node listing and a node swap. Everything below happens
-        inside this one call.
-        TWO ROUTES, and `route` in the answer says which ran and why. DIRECT, the default since
-        2026-09-25: one accessor is opened through the project that lists the class (found by
-        itself, or projectPath), the test names the REAL accessors - a class with one member open
-        is a legal Call target, docs/aixml-call-loaded-vi.md - each chain's seed `path` constant is
-        turned into the class with {LV.Constant} Replace, and the project is closed. When no single
-        project lists the class, or the accessors do not resolve, the SOCKET route runs:
-        WHY SOCKETS AT ALL. lvai_generate_test's placeholder is a pane clone generated through
-        AIXML, and AIXML refuses a class-typed terminal - `Control with type=UDClassInst is not
-        supported` - so it answers `stubRefused` for any class member. This route instead authors
-        sockets whose class terminals are `path` stand-ins and then uses LabVIEW's own {LV.SubVI}
-        Replace, which RE-TYPES THE WIRES where a pylabview link retarget cannot.
-        casesJson is a JSON ARRAY, one object per field:
-          [{"field":"Hersteller","value":"Fluke"},{"field":"Max Spannung V","value":"30"}]
-        A CLUSTER FIELD'S `value` is AIXML's cluster literal: the elements in the cluster's own
-        order, comma separated, in square brackets, a nested cluster bracketed again, a string
-        UNQUOTED and an enum as its INDEX, not its item name. Channel Config {Name, Channel Mode
-        (Off,Voltage,Current), Range {Min,Max}, Samples} as Voltage, -10..10, 1000 samples:
-          {"field":"Config","value":"[CH1,1,[-10,10],1000]"}
-        Measured 2026-09-25 - LabVIEW's export of the saved test read that literal back
-        unchanged. A comma inside a string element is not measured.
-        A FRESH OBJECT'S DEFAULT is a case too - `expectDefault` in place of `value` reads the field
-        off the seed object with no Write and asserts that: {"field":"Gain","expectDefault":"1"}.
-        One round trip and one default case per field.
-        The only case keys are `field`, `value`, `expectDefault`, `label` and `type`; ANY OTHER IS
-        REFUSED BY NAME,
-        with the accepted set listed and a pointer to the tool that can do what the stray key was
-        reaching for. In particular a value the field should hold AFTER some method ran is
-        lvai_generate_method_test's `expectFieldValue`, not a case key here.
-        `label` is optional and names the case in the JUnit report. `type` is optional too - when
-        omitted the field's type is read off the Write accessor's own export, which is authoritative
-        and costs one export per field.
-        THE EXPECTED VALUE IS WHAT WAS WRITTEN. A round trip needs no invented expectation, and the
-        same constant feeds both the write and the assertion, so the two cannot drift apart. Float
-        equality is EXACT - choose values that are exact in IEEE754.
-        seedClassPath tests INHERITANCE: leave it out and each chain starts from lvclassPath's own
-        constant, or point it at a CHILD class to run the parent's accessors on a child object.
-        A CLIENT TIMEOUT IS NOT EVIDENCE THAT THE WORK FAILED. Measured 2026-09-03, twice in one
-        run: the MCP client answered `Request timed out` / `Connection closed` while the server
-        kept going and completed correctly - the .vi on disk, its mtime and a fresh AIXML export
-        all confirmed the full generate, the swaps and the project entry had landed. VERIFY
-        BEFORE RETRYING: check the file, or you generate the same suite twice and the second
-        attempt fights the first for the sockets.
-        READ THE JUNIT REPORT, NOT `error out` - the cluster carries the first failed assertion only.
-        AND PROVE IT CAN FAIL before believing a green run: lvai_set_constant on a DEFAULT case's
-        `expected <n>` constant, confirm exactly one failure, set it back. A round trip cannot be
-        broken that way - its `written <n>` constant feeds both the Write and the assertion.
+        Test: generate a Caraya unit test of a .lvclass's ACCESSORS, called as ordinary static
+        subVIs - one write-then-read round trip per field (or a default case) - ready to run.
+        MUTATING. For METHODS use lvai_generate_method_test.
+        `route` says which ran: DIRECT (default) opens one accessor through the project listing the
+        class, calls the real accessors and turns the seed `path` constant into the class; the
+        SOCKET route (no single listing project, or accessors do not resolve) authors `path`
+        stand-in sockets and swaps them with {LV.SubVI} Replace.
+        Case keys are only `field`, `value`, `expectDefault`, `label`, `type`; any other is REFUSED
+        by name (a value a field holds AFTER a method ran is lvai_generate_method_test's
+        `expectFieldValue`). `type` is read off the Write accessor when omitted.
+        The expected value of a round trip IS the written value (one constant feeds both). Float
+        equality is EXACT. A cluster `value` is AIXML's literal: elements in order, bracketed,
+        strings unquoted, an enum as its INDEX - "[CH1,1,[-10,10],1000]". `expectDefault` reads a
+        fresh object's field with no Write. seedClassPath = a CHILD class tests inheritance.
+        A client timeout is not proof of failure: check the .vi on disk before retrying.
+        Read the JUnit report, not `error out`. Prove it can fail: lvai_set_constant on a DEFAULT
+        case's `expected <n>` (a round trip's `written <n>` feeds both sides and cannot be broken).
         """)]
     public async Task<string> GenerateClassTestAsync(
         [Description(@"Absolute path to the .lvclass whose accessors are the subject")]
         string lvclassPath,
-        [Description("JSON array of cases: field, value, and optionally label and type")]
+        [Description("""
+            JSON array, one object per case:
+            [{"field":"Hersteller","value":"Fluke"},{"field":"Gain","expectDefault":"1"}]
+            """)]
         string casesJson,
         [Description(@"Absolute path of the test .vi - WILL BE OVERWRITTEN. Defaults to
                        'Test <Class>.vi' beside the class.")]
         string? testViPath = null,
-        [Description("""
-            The .lvclass each chain is seeded with. Defaults to lvclassPath. Point it at a CHILD
-            class to test that an inherited accessor works on a child object - the accessors stay
-            the parent's, only the object changes.
-            """)]
+        [Description("The class each chain is seeded with; defaults to lvclassPath. A CHILD class tests inherited accessors.")]
         string? seedClassPath = null,
         [Description("""
-            The `.lvproj` to LIST the test VIs in. Pass it whenever the class belongs to a project,
-            which is nearly always: nothing else writes a VI into a `.lvproj`, and a suite that is
-            not listed is one the user cannot find. Measured 2026-08-29 - a complete, green, verified
-            suite was handed over and the Project Explorer showed the classes and no tests at all.
-            The project is CLOSED before the file is edited and left closed, because LabVIEW's
-            close saves its own copy over the file and would destroy the edit.
-            On the DIRECT route an omitted projectPath is not "list it nowhere": the route uses the
-            one project that lists the class, and lists the test there under testFolderName.
+            The .lvproj to LIST the test VIs in - pass it whenever the class has a project. It is
+            CLOSED for the edit and left closed. Omitted on the direct route, the project listing
+            the class is used.
             """)]
         string? projectPath = null,
         [Description("""
-            Virtual folder inside the project to list the tests in. A test LabVIEW's own save has
-            just adopted at the project's top level - which is what happens to every test generated
-            with the project open - is MOVED into it; one that was listed elsewhere before this
-            call stays where it was, and `listedElsewhere` names it.
+            Project virtual folder for the tests; a test LabVIEW just adopted at top level is moved
+            in, one listed elsewhere before the call stays (`listedElsewhere`).
             """)]
         string testFolderName = "Tests",
         [Description("""
-            Further VIs to list in that same folder, ONE ABSOLUTE PATH PER LINE, plain text and NOT
-            JSON - normally the suite runner. A bracket, a quote or a relative path is refused by
-            name before anything is generated; it used to be resolved against the SERVER's working
-            directory and written into the .lvproj as a path that cannot exist.
-            They go in through this call because the project has to be CLOSED while the file is
-            edited, and doing it here costs one close/re-open instead of two.
-            A runner is not this call's artefact - it spans several classes, and one exists per
-            suite rather than per class - so it cannot be derived. Measured 2026-08-29: the runner
-            reached the project only because LabVIEW happened to adopt it while saving, which is
-            luck rather than a mechanism.
-            THE FILE MUST ALREADY EXIST. A path named here before its VI has been generated used
-            to be written into the .lvproj, counted in `added`, and then swept back out by the tidy
-            pass's dangling check - `ok: true`, nothing in the tree. It is now refused by name and
-            reported in `notOnDisk`, so generate the runner FIRST and name it on the last call.
+            More VIs to list in that folder (normally the suite runner), ONE ABSOLUTE PATH PER LINE,
+            not JSON. Each file MUST ALREADY EXIST (else `notOnDisk`) - generate the runner first.
             """)]
         string? alsoListInProject = null,
         [Description("Keep the generated AIXML instead of deleting what succeeded")]
         bool keepAixml = false,
-        [Description("""
-            Keep every sub-answer whole. OFF by default, and that default is a measurement: this
-            call answered 72 818 characters for a five-field class on 2026-09-03, over the MCP
-            output limit, so it spilled to a file and cost the caller two extra reads to get at
-            three numbers. It nests a complete lvai_generate_vi answer PER SOCKET - ten of them for
-            five fields, each with its own validate, convert and pane sub-answers. A step that
-            FAILED is reported whole regardless of this flag, so nothing diagnostic is lost.
-            """)]
+        [Description("Keep every sub-answer whole (very large); a FAILED step is always reported whole.")]
         bool verbose = false,
-        [Description("""
-            Call the accessors DIRECTLY instead of through sockets: open one of them through the
-            class's project, name the real accessors in the test, turn the seed constants into the
-            class, close the project. On by default. False forces the socket route.
-            """)]
+        [Description("Call the real accessors through the class's project; false forces the socket route.")]
         bool directCall = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
@@ -1187,35 +1087,23 @@ internal sealed class TestTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_add_vis_to_project", Destructive = true, OpenWorld = true,
                    Title = "List VIs under a folder of a LabVIEW project")]
     [Description("""
-        MUTATING: lists VIs in a `.lvproj` under one virtual folder, as a FILE edit made with the
-        project CLOSED - it closes the active project first, because LabVIEW's close saves its own
-        copy over the file and would destroy the edit - and leaves it closed unless `reopen`.
-        USE THIS INSTEAD OF EDITING A .lvproj BY HAND. Measured 2026-09-25 on the ATM cold build: a
-        hand edit listed three VIs under `SubVIs` that LabVIEW's own save had already listed at
-        target level, and the next open answered `Error 74` and loaded nothing.
-        A VI ALREADY LISTED IS NEVER LISTED TWICE. One at TARGET level - where LabVIEW's save drops
-        every VI it adopts - is MOVED into the folder (`movedIntoFolder`); one inside another folder
-        stays and is named under `listedElsewhere`. Any file the project already lists twice is
-        repaired, keeping the entry inside a folder (`duplicateEntriesRemoved`), and the strays our
-        own tools leave behind - helper VIs, user.lib\LV_MCP sockets, entries whose file is gone -
-        are swept as on every close. A path with no file behind it is NOT listed (`notOnDisk`).
-        `lvai_open_file` refuses a project that lists a file twice (`duplicateProjectEntries`);
-        this call with that projectPath and the VIs you meant to list is the repair.
-        TARGET LEVEL ONLY WHEN ASKED: `targetLevel: true` lists the VIs directly under My Computer,
-        beside the classes and libraries - a top-level application VI, say - and then a VI already
-        at target level stays there. Without it every VI goes into a folder, because an entry at
-        target level is also what LabVIEW's own save writes for a VI it adopts.
+        Project: list VIs in a `.lvproj` under one virtual folder, as a file edit with the project
+        CLOSED (the active project is closed first, left closed unless `reopen`). MUTATING. Use
+        this, never a hand edit - a file listed twice makes the project answer Error 74 on open.
+        A VI is never listed twice: one at target level is MOVED into the folder
+        (`movedIntoFolder`), one in another folder stays (`listedElsewhere`); existing duplicates
+        are repaired (`duplicateEntriesRemoved`) - the fix when lvai_open_file refuses
+        `duplicateProjectEntries`. Stray helper VIs and sockets are swept. A path with no file is
+        not listed (`notOnDisk`). `targetLevel: true` lists directly under My Computer instead.
         """)]
     public async Task<string> AddVisToProjectAsync(
         [Description("The .lvproj to list the VIs in")] string projectPath,
         [Description("The VIs to list, one absolute path per line")] string viPaths,
-        [Description("Virtual folder to list them under; created at target level if missing. NAME " +
-                     "IT for what it holds: the default suits subVIs. Ignored with targetLevel")]
+        [Description("Virtual folder, created if missing; name it for what it holds. Ignored with targetLevel")]
         string folderName = "SubVIs",
         [Description("Open the project again afterwards. Leave false when the next step generates")]
         bool reopen = false,
-        [Description("List the VIs directly under My Computer instead of in a folder - for a " +
-                     "top-level VI the user starts from the Project Explorer")]
+        [Description("List the VIs directly under My Computer - for a top-level application VI")]
         bool targetLevel = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         CancellationToken ct = default,
@@ -1251,46 +1139,27 @@ internal sealed class TestTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_generate_caraya_test_runner", Destructive = true, OpenWorld = true,
                    Title = "Generate the Caraya suite runner for a set of test VIs")]
     [Description("""
-        MUTATING: writes the ONE VI that runs a whole Caraya suite - every test VI's path built
-        relative to the runner's own location, collected into an array, handed to
-        `Caraya.lvlib\3ARun Tests.vi` (instance `Run Test (Array Path)`) with `Interactive (T)`
-        FALSE and a `Report Path` ending in .xml - and lists it in the project.
-        THIS REPLACES THE MOST EXPENSIVE HAND-AUTHORED STEP OF A TEST RUN. Measured 2026-08-30 over
-        a three-class, five-suite build: authoring, generating and debugging the runner took 186 s
-        of wall clock against 6.1 s inside LabVIEW. Almost all of it was the model writing AIXML it
-        had written twice before, because the runner's shape never varies - only the file names do.
-        The whole build was 920 s, so this one step was a fifth of it.
-        RELATIVE PATHS ARE THE DESIGN, not a detail. `Current VI's Path` -> `Strip Path` ->
-        `Build Path` per test means the folder can be copied or renamed and the suite still runs. A
-        test VI that does not live under the runner's own folder is therefore REFUSED by name rather
-        than written as an absolute constant that breaks at run time with `Error 7`.
-        `Interactive (T)` IS FALSE AND STAYS FALSE - TRUE opens Caraya's modal report dialog, and a
-        modal dialog stops LabVIEW's whole gRPC service until a human dismisses it.
-        READ THE JUNIT REPORT, NOT `error out`. Caraya answers 7002 when a suite FAILED, which is a
-        pass/fail signal rather than a fault, and the cluster carries the first failed assertion
-        only. The runner returns the report's absolute path in `Report Path used`.
-        CARAYA ONLY. The array-of-paths shape and both target spellings were measured off a working
-        runner's export; nothing equivalent has been measured here for LUnit or VI Tester, so this
-        does not pretend to be framework-neutral.
+        Test: generate the ONE runner VI of a Caraya suite - every test VI's path relative to the
+        runner, handed to Caraya's `Run Tests.vi` non-interactively with a .xml JUnit report - and
+        list it in the project. MUTATING. Caraya only; run it with lvai_run_caraya_tests.
+        A test VI not under the runner's own folder is REFUSED (the suite must survive a copy).
+        Read the JUnit report, not `error out`: 7002 means the suite FAILED (a verdict, not a
+        fault) and the cluster holds the first failure only. The report's path comes back in
+        `Report Path used`.
         """)]
     public async Task<string> GenerateCarayaTestRunnerAsync(
         [Description("""
-            The test VIs to run, ONE ABSOLUTE PATH PER LINE, plain text and NOT JSON. Every one of
-            them must live under the runner's own folder, directly or in a subfolder.
+            The test VIs, ONE ABSOLUTE PATH PER LINE, not JSON; each under the runner's folder or a
+            subfolder of it.
             """)]
         string testViPaths,
         [Description(@"Absolute path of the runner .vi - WILL BE OVERWRITTEN.")]
         string runnerViPath,
-        [Description("""
-            File name of the JUnit report, written beside the runner. MUST end in .xml - a .txt
-            extension makes Caraya write no file at all. Defaults to '<runner>-TestReport.xml'.
-            """)]
+        [Description("JUnit report file name beside the runner; MUST end in .xml. Defaults to '<runner>-TestReport.xml'.")]
         string? reportFileName = null,
         [Description("""
-            The `.lvproj` to list the runner in. Pass it whenever the tests belong to a project: the
-            project is CLOSED before the file is edited and LEFT closed, because LabVIEW's close saves
-            its own copy over the file and would destroy the edit. A runner runs with its project
-            closed - measured, class suites included.
+            The .lvproj to list the runner in; CLOSED for the edit and left closed (the runner runs
+            with it closed).
             """)]
         string? projectPath = null,
         [Description("Virtual folder inside the project to list the runner in")]
@@ -3518,9 +3387,8 @@ internal sealed class TestTools(LvaiConnection connection)
 
     /// <summary>The `measureDiagram` switch of the three Caraya test generators.</summary>
     internal const string MeasureTestDiagramDescription = """
-        Render the test VI to report its `diagramSize`, after our layout of its diagram (the
-        cleanUpDiagram step, lvai_layout_diagram's engine) - on by default, because a test VI has
-        the same 1920 x 1080 budget as any other. False skips the render AND the clean-up.
+        Lay out the test VI's diagram and report its `diagramSize` against the 1920 x 1080 budget;
+        false skips the render AND the layout.
         """;
 
     /// <summary>What to do when a generated test VI is over the size budget, or "" when it is not.</summary>

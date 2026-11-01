@@ -50,77 +50,42 @@ internal sealed class MockTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_generate_mock_class", Destructive = true, OpenWorld = true,
                    Title = "Generate an LMock mock class for an interface")]
     [Description("""
-        MUTATING: creates an Astemes LMock mock class on disk for an INTERFACE - the .lvclass, a
-        Create.vi constructor, one override per dynamic dispatch member, and one `When <Method>.vi`
-        per member. LMock's own generator does the work, so the result is what its right-click
-        entry produces; measured against the mock NI ships with the LMock example, the two differ
-        only in uid numbering.
-        THE SOURCE MUST BE AN INTERFACE. An ordinary .lvclass is refused HERE, before LabVIEW is
-        touched, because LMock answers Error 1704 with a MODAL DIALOG that stops this whole gRPC
-        service until someone clicks Continue. NI.LVClass.IsInterface is read straight out of the
-        file - plain XML, no LabVIEW, no cost. If the dependency is not an interface, mocking is
-        not available until one is extracted, which is a design change to the code under test.
-        TO LIST THE MOCK IN A PROJECT, PASS `projectPath` - NOT `addToProject`. The entry is then
-        written into the .lvproj as a FILE edit with LabVIEW uninvolved, which is the same route
-        lvai_create_class uses and the only one measured to survive. The ACTIVE PROJECT IS CLOSED
-        FIRST and has to be: the two requirements are mutually exclusive, because LMock's terminal
-        needs the project OPEN and an edit that survives needs it CLOSED.
-        `addToProject` IS FALSE BY DEFAULT, and since 2026-09-15 that is not only about the modal
-        dialog - IT DOES NOT SURVIVE. Measured: a mock generated with addToProject:true against an
-        open, active project wrote all four files and appeared in the .lvproj NOT AT ALL, because
-        the next lvai_close_active_project saves LabVIEW's in-memory copy over the file and the
-        mock is not in that copy. The same save also deleted an entry for an earlier mock that had
-        been added to the file BY HAND, which is what makes the mechanism unambiguous. The answer
-        reported ok:true and four filesOnDisk throughout, so nothing anywhere said the project
-        entry had been lost.
-        The old reason still holds too: LMock's own terminal defaults to TRUE when left unwired,
-        and with no active project that is Error 1055 - as a modal dialog that stops this service.
-        READ `ok` AND `filesOnDisk`, NOT `filesCreated`. LMock reports the files it set out to
-        write; a failed run has been measured returning two paths and writing neither. `ok` is true
-        only when the error cluster is clean AND the .lvclass is really there.
-        Mock generation is only the first step of a mock-based test. The mock's own VIs are
-        project-local class code, so a generated test reaches them through lvai_placeholder_subvi
-        plus lvai_swap_subvis, exactly as any other class code. docs/labview-lmock-mocking.md has
-        the whole route and every target spelling.
+        Test: generate an Astemes LMock mock class for an INTERFACE - the .lvclass, Create.vi, one
+        override and one `When <Method>.vi` per dynamic dispatch member - through LMock's own
+        generator. MUTATING.
+        The source MUST be an interface; an ordinary class is refused here from the file, because
+        LMock's refusal is a MODAL dialog that stops the gRPC service.
+        To list the mock in a project pass `projectPath`, NOT `addToProject`: the entry is a file
+        edit with the active project CLOSED first. An `addToProject` entry is lost on the next
+        project close, and with no active project it is Error 1055 as a modal dialog.
+        Read `ok` and `filesOnDisk`, not `filesCreated` (what LMock meant to write).
+        A test reaches the mock's VIs through lvai_placeholder_subvi plus lvai_swap_subvis.
+        docs/labview-lmock-mocking.md.
         """)]
     public async Task<string> GenerateMockClassAsync(
         [Description("""
-            Absolute path to the .lvclass to mock. MUST be an interface - one whose
-            NI.LVClass.IsInterface property is true. An ordinary class is refused here rather than
-            by LMock, whose refusal is a modal dialog.
+            Absolute path to the .lvclass to mock; MUST be an interface (NI.LVClass.IsInterface).
             """)]
         string interfacePath,
-        [Description("""
-            Absolute path of the mock .lvclass to create. Its directory is created if absent -
-            LMock does not create one, and its failure to do so is not reported usefully.
-            """)]
+        [Description("Absolute path of the mock .lvclass to create; its directory is created if absent.")]
         string destinationPath,
         [Description("""
-            Ask LMock to list the new class in the ACTIVE project. FALSE by default. LMock's own
-            terminal defaults to TRUE when unwired, which is Error 1055 plus a modal dialog when no
-            project is active - that is the trap this default exists to close. Pass true only when
-            a project is open and active.
+            Ask LMock to list the class in the ACTIVE project. The entry does not survive the next
+            close; pass true only with a project active, and prefer projectPath.
             """)]
         bool addToProject = false,
         [Description("""
-            The .lvproj to LIST the finished mock in, written as a FILE edit with LabVIEW
-            uninvolved - the same route lvai_create_class uses, and the only one measured to
-            survive. Use this INSTEAD of addToProject.
-            THE ACTIVE PROJECT IS CLOSED FIRST, because it has to be: LabVIEW's save-on-close
-            writes its in-memory copy over the file, so an entry written while it holds the
-            project is deleted moments later.
+            The .lvproj to list the mock in, as a file edit - use this INSTEAD of addToProject.
+            The active project is closed first.
             """)]
         string? projectPath = null,
         [Description("Replace an existing destination .lvclass. Refused by default.")]
         bool overwrite = false,
-        [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user temp directory, because
-            the scripts folder next to the exe may be read-only. Generated once and reused.
-            """)]
+        [Description("Where to keep the generated helper VI; defaults to a per-user temp directory.")]
         string? helperViPath = null,
         [Description("""
-            The helper's AIXML source. Defaults to lmock_generate_mock.xml inside the folder
-            lvai_status reports as scriptsDirectory.
+            The helper's AIXML source; defaults to lmock_generate_mock.xml in lvai_status's
+            scriptsDirectory.
             """)]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]

@@ -51,37 +51,20 @@ internal sealed class CloseTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_close_vi", Destructive = true, OpenWorld = true,
                    Title = "Close a VI in the IDE so its path can be regenerated")]
     [Description("""
-        MUTATING (IDE state): closes a VI's front panel INSIDE the IDE's application instance,
-        which releases the VI from memory. Call this when lvai_convert_aixml_to_vi answers
-        Error 1357, "a LabVIEW file from that path already exists in memory" - opening a VI with
-        lvai_open_file is enough to cause that, so it is the normal state after looking at
-        generated code.
-        There is NO RPC for this: nothing in the lvai surface closes anything, and the VI Server
-        catalogue has no unload method, so this composes the VI Server route - generate the helper
-        from scripts\lvai_close_vi.xml (once, then reused) and run it.
-        TWO PRECONDITIONS, both measured. A project must be ACTIVE in the IDE, or the chain fails
-        with Error 1055. And the VI must be a MEMBER of that project, opened through it - a VI
-        opened loose is loaded where the project's application cannot see its panel, and the write
-        fails naming Front Panel Window:State. Generate VIs into a project and this holds by
-        construction.
-        Do NOT reach for FP.Close or FP.Set Close If Lonely instead: measured, they report no error
-        and do nothing, because a generated helper runs in the ADDON's instance where the VI's
-        windows do not exist.
-        `closed` says the chain raised no error. The decisive proof is the regeneration itself,
-        which this tool deliberately does not perform.
+        Project: release a VI from LabVIEW's memory by closing its front panel in the IDE's
+        application instance. MUTATING (IDE state). Use it when lvai_convert_aixml_to_vi answers
+        Error 1357 ("already exists in memory") - lvai_open_file alone causes that.
+        Preconditions: a project must be ACTIVE (Error 1055 otherwise) and the VI a MEMBER of it,
+        opened through it - a loose VI fails at Front Panel Window:State. Do not hand-build
+        FP.Close / FP.Set Close If Lonely instead: from a helper they do nothing.
+        `closed` only says the chain raised no error; the regeneration is the real proof. To
+        release everything, lvai_close_active_project.
         """)]
     public async Task<string> CloseViAsync(
         [Description(@"Absolute path to the .vi to release from memory")] string viPath,
-        [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user temp directory, because
-            the scripts folder next to the exe may be read-only. Generated once and reused; pass
-            regenerateHelper to force a rebuild.
-            """)]
+        [Description("Where to keep the generated helper VI; defaults to a per-user temp directory.")]
         string? helperViPath = null,
-        [Description("""
-            The helper's AIXML source. Defaults to lvai_close_vi.xml inside the folder
-            lvai_status reports as scriptsDirectory.
-            """)]
+        [Description("The helper's AIXML source; defaults to lvai_close_vi.xml in lvai_status's scriptsDirectory.")]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
@@ -132,49 +115,35 @@ internal sealed class CloseTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_close_active_project", Destructive = true, OpenWorld = true,
                    Title = "Save and close the project active in the IDE")]
     [Description("""
-        MUTATING: SAVES the project that is active in the LabVIEW IDE and then CLOSES it, releasing
-        it and its members from memory. There is no RPC for this either; it composes the VI Server
-        route, reached through Application:Project:Active Project.
-        IT SAVES FIRST, and that is not a convenience. The Close method carries NO save parameter -
-        verified by generating the node and exporting it back, its only inputs are `reference` and
-        `error in`. An unsaved project would therefore risk LabVIEW's modal save prompt, and a modal
-        dialog stops the entire gRPC service until a human dismisses it. If you do not want the
-        project saved, close it by hand in the IDE instead.
-        Error 1055 means no project was active, so there was nothing to close. That is also what a
-        second call returns, which is how the close can be verified.
-        Both Save and Close were found by PROBING: the VI Server catalogue does not list the
-        {LV.Project} class at all, and an earlier revision of docs/vi-server-reference.md concluded
-        from that there was no way to close a project. ValidateAIXML accepts a real method name and
-        rejects an invented one, which is what turned the guess into a measurement.
+        Project: SAVE and then CLOSE the project active in the LabVIEW IDE, releasing it and its
+        members from memory. MUTATING. It always saves first (an unsaved close would raise a modal
+        prompt that stops the gRPC service); to close without saving, do it by hand in the IDE.
+        The save writes LabVIEW's in-memory copy over the .lvproj, so a file edit made while the
+        project was open is lost - read the .lvproj afterwards. The saved file is then swept of
+        adopted strays, each named in `projectSweep`.
+        Error 1055 means no project was active - also what a second call answers, which verifies
+        the close.
         """)]
     public async Task<string> CloseActiveProjectAsync(
-        [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user temp directory. Generated
-            once and reused; pass regenerateHelper to force a rebuild.
-            """)]
+        [Description("Where to keep the generated helper VI; defaults to a per-user temp directory.")]
         string? helperViPath = null,
         [Description("""
-            The helper's AIXML source. Defaults to lvai_close_active_project.xml inside the folder
-            lvai_status reports as scriptsDirectory.
+            The helper's AIXML source; defaults to lvai_close_active_project.xml in lvai_status's
+            scriptsDirectory.
             """)]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("""
-            The .lvproj being closed. OPTIONAL: without it the ACTIVE project's path is read from
-            LabVIEW before the close, so the sweep runs either way (`projectPathFrom` says which).
-            The saved file is swept for items LabVIEW adopted into
-            it - helper VIs out of our temp trees, sockets under <userlib>/LV_MCP, and entries whose
-            file is not there - and the answer NAMES every one it removed. The save this tool
-            performs is what writes those entries, so this is the step where they appear.
+            The .lvproj being closed; optional - otherwise the active project's path is read first
+            (`projectPathFrom`). The saved file is swept of helper VIs, LV_MCP sockets and entries
+            whose file is missing, each named.
             """)]
         string? projectPath = null,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview the close helper is COMPOSED and run over LabVIEW's ActiveX server - the
-            same Save and Close, the same sweep afterwards. helperViPath and regenerateHelper apply
-            to the grpc helper only.
+             helperViPath and regenerateHelper apply to the grpc helper only.
             """)]
         string? backend = null)
     {

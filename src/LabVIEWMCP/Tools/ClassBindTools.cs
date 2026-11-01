@@ -49,37 +49,25 @@ internal sealed class ClassBindTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_bind_class_fields", Destructive = true, OpenWorld = true,
                    Title = "Bind typedefs onto a class's private data fields")]
     [Description("""
-        MUTATING: binds one or more `.ctl` TYPEDEFS onto fields of a `.lvclass`'s private data
-        control - export the cluster, Replace each field, move it back - in ONE call.
-        REPLACES FIVE ROUND TRIPS. Measured 2026-09-02: the same sequence by hand cost 116 s of
-        wall clock for 0.8 s inside LabVIEW, the worst ratio of that run.
-        EVERY SOURCE IS VETTED FIRST and a non-typedef is REFUSED BY NAME before anything is
-        touched. This is the failure the tool exists for: a `.ctl` that is not a typedef binds with
-        `error out = 0`, installs the right type, and produces NO typedef link - measured on two of
-        NI's own controls. Pass `force: true` to install the type anyway, knowing it will not bind.
-        bindingsJson is a JSON ARRAY, one object per field. Name the field EITHER way:
-          [{"field":"Task Reference","ctlPath":"C:\\ctl\\Task.ctl"},{"fieldIndex":1,"ctlPath":"..."}]
-        A name is resolved against the private data control's own field labels, read off the class
-        file with pylabview - so a misspelling is answered with the list of real names.
-        THE PROJECT MUST BE OPEN AND ACTIVE, and stays open. Pass projectPath and this call opens
-        it; with no project open the helpers answer Error 1055, and with the class held by a
-        project the unwired route answers Error 1073 on Move. Do NOT cycle the project around this
-        call - a close/reopen around a class rewritten through an unwired open killed LabVIEW.
-        BIND BEFORE GENERATING ACCESSORS. An accessor generated before the binding keeps the bare
-        type for ever; nothing refreshes it. `accessorsAlreadyPresent` in the answer is the warning.
-        Every field reports `typedefBefore` and `typedefAfter` from the helper AND `boundInFile`
-        read back off the saved class - `ok` is false unless the file agrees.
+        Typedef: bind `.ctl` TYPEDEFS onto fields of a `.lvclass`'s private data control in one
+        call (export the cluster, Replace each field, import it back). MUTATING.
+        Every source is vetted first and a non-typedef is REFUSED by name - it would "bind" with
+        error 0 and produce no link (lvai_describe_ctl tells beforehand); `force` installs the type
+        anyway. Fields by `field` label (a misspelling answers the real names) or `fieldIndex`.
+        The project must be OPEN and ACTIVE and stays open (pass projectPath to open it); do NOT
+        close/reopen it around this call. BIND BEFORE GENERATING ACCESSORS - an earlier accessor
+        keeps the bare type; `accessorsAlreadyPresent` warns. Each field reports `typedefBefore`,
+        `typedefAfter` and `boundInFile`; `ok` is false unless the saved file agrees.
         """)]
     public async Task<string> BindClassFieldsAsync(
         [Description(@"Absolute path to the .lvclass whose private data is to be bound")]
         string lvclassPath,
-        [Description("JSON array of bindings: field or fieldIndex, plus ctlPath")]
-        string bindingsJson,
         [Description("""
-            The .lvproj to open and leave open. Required in practice: the helpers reach the class
-            through Project:Active Project and answer Error 1055 with nothing open. Omit only when
-            a project is ALREADY open and active.
+            JSON array, field or fieldIndex plus ctlPath:
+            [{"field":"Task Reference","ctlPath":"C:\\ctl\\Task.ctl"},{"fieldIndex":1,"ctlPath":"..."}]
             """)]
+        string bindingsJson,
+        [Description("The .lvproj to open and leave open; omit only when one is already active (Error 1055).")]
         string? projectPath = null,
         [Description("Bind even when the source .ctl is not a typedef. It will not bind.")]
         bool force = false,

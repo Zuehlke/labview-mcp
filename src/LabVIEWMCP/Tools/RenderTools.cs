@@ -40,59 +40,34 @@ internal sealed class RenderTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_render_diagrams", Destructive = false, OpenWorld = true,
                    Title = "Render VI block diagrams to PNG")]
     [Description("""
-        Renders the BLOCK DIAGRAM of one or more VIs to PNG through LabVIEW's own
-        Print.VI To HTML, and reports the image files per VI so you know which ones to read.
-        SEVERAL VIs IN ONE CALL - one absolute path per line in viPaths. LabVIEW serialises the
-        work either way, so what this saves is round trips, which is the only thing that costs
-        real time: measured 2026-09-08, one agent run spent 1000 s of wall clock against 120 s
-        inside its tools, so a call is worth about 9.8 s and doing three VIs by hand cost ten.
-        USE IT AFTER PLACING DIAGRAM COMMENTS, and LOOK at what comes back. Nothing else in this
-        interface can see a comment that is clipped, sitting on a Case selector, or off the
-        visible diagram - all three were measured passing validation, rebuild, export and a run
-        on the same day, and only the picture disagreed.
-        THE IMAGE DIRECTORY IS CREATED FOR YOU. LabVIEW does not create it and answers Error 118
-        instead, which reads like a rendering failure and is a missing folder.
-        DO NOT judge this by errorCode: RunVIAsTopLevel cannot read the helper's indicators back,
-        so a successful render can still report 91. The verdict is `rendered` per VI, taken from
-        the PNG files that actually appeared during the call.
-        Each VI gets `diagrams`: the top-level diagram first, then one entry per Case frame
-        (LabVIEW names them <base>d.png and <base>d1..dN.png). A VI whose diagram has no Case
-        structure yields exactly one.
-        IT LOADS EACH VI INTO LABVIEW, which is the one side effect worth knowing: do any
-        pylabview edit (pylv_apply) BEFORE rendering, not after, or the rebuild writes the file
-        while LabVIEW keeps serving the copy it just loaded.
+        Inspect: render the BLOCK DIAGRAM of one or more VIs to PNG (LabVIEW's Print.VI To HTML)
+        and list the image files per VI - then READ them. Several VIs in ONE call. The only check
+        that sees a clipped comment, a comment on the wrong node, or a dynamic event wire not drawn.
+        The verdict is `rendered` per VI (from the PNGs that appeared), NOT errorCode - a good render
+        can report 91. `diagrams`: the top-level diagram first, then one per Case frame.
+        It LOADS each VI into LabVIEW: do any pylabview edit (pylv_apply) BEFORE rendering, never
+        after, or LabVIEW keeps serving the copy it loaded.
         """)]
     public async Task<string> RenderDiagramsAsync(
         [Description("""
-            The VIs to render, ONE ABSOLUTE PATH PER LINE, plain text and not JSON. A single
-            path is fine.
+            The VIs to render, ONE ABSOLUTE PATH PER LINE (plain text, not JSON).
             """)]
         string viPaths,
         [Description("""
-            Directory for the HTML and PNG output. CREATED IF MISSING, which is the point -
-            LabVIEW's own writer does not create it and fails with Error 118. Defaults to a
-            per-user temp directory.
+            Directory for the HTML and PNG output, created if missing (default: a per-user temp
+            directory).
             """)]
         string? outputDirectory = null,
-        [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user cache directory,
-            because the scripts folder next to the exe may be read-only. Generated once and
-            reused; pass regenerateHelper to force a rebuild.
-            """)]
+        [Description("Where to keep the generated helper VI (default: a per-user cache directory)")]
         string? helperViPath = null,
-        [Description("""
-            The helper's AIXML source. Defaults to lvdoc_print.xml inside the folder
-            lvai_status reports as scriptsDirectory.
-            """)]
+        [Description("The helper's AIXML source (default: lvdoc_print.xml in scriptsDirectory)")]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("Local budget in seconds, per VI")]
         int timeoutSeconds = 300,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview each VI is printed by LabVIEW's own Print.VI To HTML over ActiveX - no
-            helper VI and no NI service - so the helper arguments are not used, and LabVIEW must
-            already be running.
+             On pylabview the helper arguments are unused and LabVIEW must already be running.
             """)]
         string? backend = null,
         CancellationToken ct = default)

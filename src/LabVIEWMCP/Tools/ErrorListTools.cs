@@ -52,24 +52,13 @@ internal sealed class ErrorListTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_error_list", ReadOnly = true, OpenWorld = true,
                    Title = "What does LabVIEW's Error List say?")]
     [Description("""
-        READ-ONLY: what LabVIEW's Error List window shows - every BROKEN VI in memory, each with the
-        Error List's own lines (`Add: Contains unwired or bad terminal`, `Wire: Wire has loose ends.`)
-        and the explanation the dialog prints under them. lvai_exec_state says THAT a VI is broken;
-        this says WHY, which nothing else here does for a loose wire, an unwired required input or a
-        type conflict.
-        TWO APPLICATION INSTANCES ARE READ: the IDE's main one, and the ACTIVE PROJECT's, because a
-        VI opened inside a project lives there. `instances` reports each; the project one answers
-        `available: false` when no project is active, which is not a failure.
-        IT SEES WHAT IS IN MEMORY, NOT WHAT IS ON DISK. A broken VI nobody has open is not listed, and
-        the in-memory copy is what the IDE shows - an unsaved edit included. To ask about a file on
-        disk, open it first with lvai_open_file, then call this.
-        `viName` narrows the answer to one VI (a name or a path; the file name is matched).
-        NEEDS A RUNNING LabVIEW, not NI's service: the helper is composed by our composer (NI's
-        converter is the fallback) and run over LabVIEW's ActiveX server, which runs it in the
-        IDE's main instance - through NI's service it would run in the addon's own instance and see
-        nothing, measured. Warnings are not reported: the methods return errors only.
-        lvai_exec_state names the same lines for ONE VI read from disk, which every tool that
-        checks executability now forwards as `errors`.
+        Inspect: what LabVIEW's Error List shows - every BROKEN VI IN MEMORY with the Error List's
+        own lines (`Wire: Wire has loose ends.`) and their explanation. lvai_exec_state says THAT a
+        VI is broken (and forwards these lines for one VI from disk as `errors`); this says WHY for
+        everything loaded. Reads the main instance and the ACTIVE project's (`instances`; the
+        project one is `available: false` when none is active - not a failure). Memory, not disk: a
+        broken VI nobody has open is not listed - open it with lvai_open_file first. Needs a running
+        LabVIEW, not NI's service. Errors only, no warnings.
         """)]
     public async Task<string> ErrorListAsync(
         [Description("Only this VI: a VI name or a path - its file name is matched, case-insensitively")]
