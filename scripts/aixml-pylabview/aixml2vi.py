@@ -3161,7 +3161,14 @@ class Composer:
             a.append(copy.deepcopy(x))
             return a
         deltas = {depth(new_types[i]) - depth(donor[i]) for i in wired_in}
-        if len(deltas) == 1 and 0 not in deltas and name not in self.WHOLE_VALUE:
+        # A QUEUE's (notifier's, user event's) element is carried WHOLE: an array element does not
+        # put the primitive in array mode. Obtain Queue of array{string} made `queue out`,
+        # `created new?` and `error out` arrays, the Enqueue behind it followed through its wires,
+        # and LabVIEW died on LOAD - `DAbort 0x87FB5957: I expected a container refnum here!`,
+        # proptyp3.cpp(970) - three times in the ATM cold build of 2026-11-01 (tests/t186).
+        carries_container = any(d.get("Type") == "Refnum" and d.get("RefType") in REFNUM_CONTAINERS.values()
+                                for d in donor)
+        if len(deltas) == 1 and 0 not in deltas and name not in self.WHOLE_VALUE and not carries_container:
             k = deltas.pop()
             donor_in_depth = {depth(donor[i]) for i in wired_in}
             for j, t in enumerate(terms):

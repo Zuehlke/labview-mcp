@@ -2118,6 +2118,69 @@ Close. Two smaller gaps it found:
   run with `inputNotConvertible`, so a test run cannot name a device. Closed the same day by the
   composed set helper (previous section), for VISA sessions and DAQmx tasks too.
 
+## A queue of ARRAYS killed LabVIEW on load (fixed 2026-11-01)
+
+**The symptom.** The second ATM cold build (`docs/build-contract.md` §6) composed its main VI's
+scaffold, and LabVIEW died loading it - three times, the same line each time in NI's log:
+
+```
+#** Loading: "...\Automatic Teller Machine (ATM) Scaffold.vi"
+source\diagram\proptyp3.cpp(970) : DAbort 0x87FB5957: I expected a container refnum here!
+```
+
+The agent guessed a Value Change frame on a CLUSTER control (Left/Right Buttons), and that was
+wrong: a probe with exactly that frame loaded clean.
+
+**Bisected on the real document, one load per step.** The document's elements were removed in
+halves, each variant composed and loaded, and the crash re-confirmed on the untouched document
+first:
+
+| step | variant | crashed |
+|---|---|---|
+| 1 | the whole scaffold | yes |
+| 2 | consumer half only | yes |
+| 3 | no loops at all | yes |
+| 4 | init call + queue, 10 elements | yes |
+| 5 | queue alone, 7 elements | yes |
+| 6 | `Obtain Queue` of `array{string}` alone | no |
+| 7 | the same + `Enqueue Element` of an array constant | **yes** |
+
+Two other control arms loaded clean:
+- a String reference through tunnels into a Property Node;
+- `Value (Signaling)` on a Boolean reference.
+
+**The cause, read off NI's build of the same probe.** The composer typed several of the queue
+nodes' terminals as ARRAYS:
+
+| terminal | composer wrote | NI wrote |
+|---|---|---|
+| Obtain Queue `queue out` | `Array{Refnum(Queue){Array{String}}}` | `Refnum(Queue){Array'Command Type'{String}}` |
+| Obtain Queue `created new?` | `Array{Boolean}` | `Boolean` |
+| Obtain Queue `error out` | `Array{error cluster}` | error cluster |
+| Enqueue Element (followed through its wires) | `queue`, `error in`, `queue out`, `timed out?`, `error out` as arrays | all scalar |
+
+The rule that did it is the right one for other primitives: an output follows the ARRAY SHAPE of a
+wired input when the donor took a scalar there (`Not A Number?` on an array answers an array). The
+queue's element was an array where the donor (Queued Message Handler Fundamentals) queued a
+cluster, so the depth delta was 1, and every other output was wrapped. The queue's refnum then
+reached the next node inside an array, which is the "container refnum" LabVIEW expected.
+
+**The fix.** A primitive with a container refnum on any terminal (Queue, Notifier, User Event,
+`REFNUM_CONTAINERS`) carries its element whole and never takes the array-shape rule
+(`aixml2vi.py`, beside `WHOLE_VALUE`, which is not reused because it also copies the input's
+label onto the output).
+
+**Accepted:**
+- suite test `t202_array_queue`: an `array{string}` queue through Obtain, Enqueue, Dequeue and
+  Release, the two strings indexed back out, runs `command=Enter, data=23456`;
+- the queue, notifier and event tests stay green;
+- the real ATM scaffold composed by the fixed composer loads with `execState 1` - before the fix,
+  that same document killed LabVIEW every time.
+
+**Rule kept from the hunt:** bisect on the document that crashed, with the crash re-confirmed on
+the untouched document first; a guess built from the symptom's wording ("container" → cluster)
+pointed at the wrong construct.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the

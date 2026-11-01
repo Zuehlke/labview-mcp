@@ -127,10 +127,60 @@ wave.
 5. **Test builders** take the contract too: their subjects' panes come from it, and their calls
    use the qualified names it prescribes.
 
-## 6. What is not measured yet
+## 6. Measured: the second ATM cold build, 2026-11-01
 
-The time and token saving is an estimate (`docs/ideen-schneller-und-weniger-tokens.md` §2). It
-needs a second ATM cold build run with a contract.
+The same task as on 2026-10-31 (ATM, DQMH), built in `C:\Temp\ATM_DQMH_Cold_3`. It used everything
+on the branch:
+- the contract;
+- the shortened tool descriptions and `CLAUDE.md`;
+- compact answers;
+- the graft and fixture fixes.
+
+Effort levels and models were unchanged. The figures cover the five builder agents; the
+orchestrating session is not counted, in either run.
+
+| | 2026-10-31 | 2026-11-01 |
+|---|---|---|
+| wall clock, start to delivered | ~30 min | 28 min (incl. 2 LabVIEW crashes, ~7 min lost) |
+| contract + spec + panel | - | 2.5 min |
+| DQMH module + 4 events | 7.0 min | 3.4 min |
+| account + UI subVIs | 7.8 min | 4.6 / 3.5 min (parallel) |
+| handlers | 2.5 min | 0.4 min |
+| Caraya | 7.5 min, 3 of 4 runs failed | 5.1 min, 41/0 first run |
+| main VI (scaffold, graft, drive) | 19.2 min | 24.8 min active, incl. both crashes |
+| agent requests | 227 | 169 |
+| agent context at first request | 184-218 k | 68-93 k |
+| cache-read tokens | 62.6 M | 30.1 M (−52 %) |
+| cache-creation + output tokens | 1.64 M | 1.08 M (−34 %) |
+
+**What worked:**
+- Every leaf stage was 2-6x faster.
+- No `vi_terminals` round trips for contract VIs.
+- No name clash: the loose file VIs were named apart from the module's.
+- The fixtures were reset by the tool.
+- All agents but the main VI agent stayed under 200 k context throughout.
+
+**What did not:** the main VI is still the critical path (97 requests, 101 k output tokens,
+context up to 335 k). Its scaffold, composed by the pylabview composer, crashed LabVIEW twice on
+load:
+- the error was `DAbort 0x87FB5957: I expected a container refnum here!` in `proptyp3.cpp(970)`;
+- the agent suspected the composer's event-data refnum for a Value Change frame on a CLUSTER
+  control (Left/Right Buttons);
+- the files are kept in `C:\Temp\ATM_DQMH_Cold_3\Scratch\crash\`.
+
+The agent then generated the scaffold through NI's converter (grpc) and the build finished.
+
+The agent's suspicion was wrong. The cause, found by bisecting the document afterwards, is a
+queue whose element is an ARRAY: the composer typed `queue out`, `error out` and the Enqueue
+behind them as arrays. Fixed the same day; `docs/aixml-backends.md`, "A queue of ARRAYS killed
+LabVIEW on load".
+Without the crashes the main VI would have taken roughly 17 min.
+
+**Found on the way:**
+- `lvai_generate_test` leaves the subject's REQUIRED `error in` unwired (the rule of 2026-10-31
+  made it required), and a `setup` VI's too, while answering `ok: true`.
+- The DQMH tool's `createdFiles` lists files other agents wrote in parallel (it diffs the
+  folder).
 
 ## 7. Acceptance, 2026-11-01 - the ATM build of 2026-10-31, over raw stdio
 
