@@ -30,6 +30,16 @@ agent's `NEEDS CLARIFICATION` block to the user verbatim and continue THAT agent
 project-open/close and swap rules under "ONE AGENT, ONE OUTPUT DIRECTORY" apply to every
 multi-agent task.
 
+**A MULTI-VI APPLICATION STARTS WITH A BUILD CONTRACT, written by the orchestrator BEFORE the first
+agent** - the user's decision of 2026-11-01, after the ATM DQMH cold build. `build-contract.json` in
+the build folder names every VI with its path, owner, builder, connector pane and callees;
+`lvai_check_build_contract mode=plan` checks it without LabVIEW and answers the build WAVES. Every
+builder gets the contract path and implements against it, the main-VI agent authors its scaffold
+in parallel with wave 0, and `mode=verify` gates each wave before the next is built. In the ATM
+build the interfaces were settled by each agent for itself: sixteen `lvai_vi_terminals` calls, a
+bare `Deposit.vi` call that linked to the DQMH module's request VI (Error 403681, found by the
+test run), and a 19-minute main VI on the critical path. `docs/build-contract.md`.
+
 ## Generating LabVIEW code
 
 **First decide what kind of thing you are looking for.** This routing question comes before any
@@ -2977,6 +2987,7 @@ literally it argued away 600 usable palette VIs.
 | How do I read a VI's non-string outputs? | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
 | What are a `Call` target's terminals called? | `docs/aixml-reference.md` §8 | `lvai_vi_terminals` |
 | Where do a VI's own terminals sit on the pane? | `docs/aixml-reference.md` §2, `docs/connector-pane-patterns.tsv` | `lvai_connector_pane` |
+| How do several agents build ONE application without settling its interfaces each for itself? | `docs/build-contract.md` | `lvai_check_build_contract` — `plan` before the first agent (house rules, name clashes, ambiguous calls, build waves, Call skeletons), `verify` after each wave |
 | How do I build a new VI, end to end? | `.claude/agents/labview-vi-generator.md` | — |
 | How do I change an existing VI? | `.claude/agents/labview-vi-editor.md` | — |
 | How do I document LabVIEW code? | `.claude/agents/labview-doc-generator.md` | — |

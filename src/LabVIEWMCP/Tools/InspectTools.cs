@@ -138,90 +138,8 @@ internal sealed class InspectTools(LvaiConnection connection)
             if (!LlbPath.Exists(viPath))
                 throw new FileNotFoundException($"No VI at '{viPath}'.", viPath);
 
-            // Under the cache root, not %TEMP%: this file exists only to be parsed, and keeping
-            // everything the server writes in one always-present place is worth more than the
-            // habit of using TEMP for scratch. Measured safe - see CacheDirectory.Scratch.
-            var scratch = Path.Combine(CacheDirectory.Scratch,
-                $"terminals-{Path.GetFileNameWithoutExtension(viPath)}.xml");
-            Directory.CreateDirectory(CacheDirectory.Scratch);
-
-            // The reader goes through the cache too since 2026-10-15, under its own key
-            // (CachedReader): NI's cached export first, then its own, then a fresh read.
-            var composed = choice.Name == AixmlBackend.PyLabview;
-
-            // Through the export cache, both ways. This tool used to call the RPC directly and so
-            // never touched the cache at all - measured by watching the cache directory during a
-            // VI-generator run: the run produced no entries, because a terminal lookup was the only
-            // export it did. That is backwards. A palette VI's terminals are the single most
-            // repeated read in the whole workflow - every generator run looks up the same handful -
-            // and it was the one read paying a full LabVIEW export every time.
-            var fromCache = !composed && !refresh && AixmlExportStore.TryCopyTo(viPath, scratch);
-
-            // Where the export came from, in the caller's words rather than only in the file
-            // timestamps. Three VI-generator runs reported this omission independently - the tool
-            // used the cache but said nothing about it, so a hit and a fresh export looked
-            // identical and the only way to tell them apart was to watch the cache directory from
-            // outside. That is exactly the invisible-invalidation complaint this repository makes
-            // about everything else, so it does not get to stand here.
-            string provenance;
-
-            if (composed)
-            {
-                if (AixmlComposer.Locate(out var missing) is not { } setup)
-                    return Json.Error("backendNotAvailable", missing, new { viPath });
-
-                var cached = await CachedReader.ReadAsync(setup, viPath, scratch, timeoutSeconds, ct,
-                                                          refresh);
-                var read = cached.Result;
-                if (!read.Written)
-                    return Json.Error("exportFailed",
-                        $"vi2aixml.py could not read '{viPath}': {read.Message}",
-                        new { viPath, readerExitCode = read.ExitCode });
-
-                // whose export it is, then where it came from - each said once
-                provenance = cached.ServedFrom == AixmlBackend.Grpc
-                    ? cached.Note
-                    : CachedReader.ReaderProvenance + " " + cached.Note;
-            }
-            else if (fromCache)
-            {
-                provenance = AixmlExportStore.CachedUtc(viPath) is { } taken
-                    ? $"Export served from the cache, taken {taken:yyyy-MM-dd HH:mm}Z - no LabVIEW " +
-                      "round trip. Pass refresh to re-export."
-                    : "Export served from the cache - no LabVIEW round trip. Pass refresh to re-export.";
-            }
-            else
-            {
-                var response = await connection.InvokeAsync((c, t) =>
-                    c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest
-                    {
-                        ViPath = viPath,
-                        AiXMLFilePath = scratch,
-                    }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
-
-                if (response.ErrorCode != 0)
-                    return Json.Error("exportFailed",
-                        $"Could not export '{viPath}': {response.ErrorMessage}",
-                        new { viPath, errorCode = response.ErrorCode });
-
-                // Only installation VIs are cacheable; Save decides that and reports false for the
-                // rest, which is not a failure - but it IS the difference between "next read is
-                // free" and "next read costs this again", so the caller is told which.
-                provenance = AixmlExportStore.Save(viPath, scratch)
-                    ? "Exported from LabVIEW and written to the cache; the next read of this VI is " +
-                      "a file copy."
-                    : "Exported from LabVIEW, NOT cached - only VIs inside the LabVIEW installation " +
-                      "are, because an export depends on subVIs a per-VI key cannot see.";
-            }
-
-            // The RPC writes the file; the content is not on the response.
-            var xml = File.Exists(scratch) ? await File.ReadAllTextAsync(scratch, ct) : null;
-
-            var parsed = ViTerminals.Parse(xml);
-            if (parsed is null)
-                return Json.Error("exportUnreadable",
-                    "The export reported success but no readable AIXML was written.",
-                    new { viPath, exportPath = scratch, xmlBytes = xml?.Length ?? 0 });
+            var read = await ReadTerminalsAsync(connection, viPath, refresh, timeoutSeconds, choice, ct);
+            if (read.Parsed is not { } parsed) return read.Error!;
 
             // A childless <VI> is the documented silent failure: the diagram was withheld, not
             // absent. Saying "0 terminals" here would be the empty answer this tool exists to
@@ -231,11 +149,113 @@ internal sealed class InspectTools(LvaiConnection connection)
                     $"'{parsed.ViName}' exported with no controls, indicators or instances. For a " +
                     "200-byte export that means the diagram was not readable - password-protected " +
                     "or otherwise withheld - not that the VI has no terminals.",
-                    new { viPath, viName = parsed.ViName, xmlBytes = xml?.Length ?? 0 });
+                    new { viPath, viName = parsed.ViName, xmlBytes = read.XmlBytes });
 
             return ViTerminals.Render(parsed) + Environment.NewLine + Environment.NewLine +
-                   provenance;
+                   read.Provenance;
         });
+
+    /// <summary>What <see cref="ReadTerminalsAsync"/> found: the parsed export, or the error answer.</summary>
+    internal sealed record TerminalRead(ViTerminals.Result? Parsed, string? Error, string Provenance, int XmlBytes)
+    {
+        public static TerminalRead Failed(string error) => new(null, error, "", 0);
+    }
+
+    /// <summary>
+    /// A VI's export, parsed for its terminals, through the export cache and on either backend -
+    /// the read behind <c>lvai_vi_terminals</c>, shared with <c>lvai_check_build_contract</c> so
+    /// the two cannot come to read a pane differently. The caller checks that the path exists.
+    /// </summary>
+    internal static async Task<TerminalRead> ReadTerminalsAsync(LvaiConnection connection, string viPath,
+        bool refresh, int timeoutSeconds, AixmlBackend.Choice choice, CancellationToken ct)
+    {
+        // Under the cache root, not %TEMP%: this file exists only to be parsed, and keeping
+        // everything the server writes in one always-present place is worth more than the
+        // habit of using TEMP for scratch. Measured safe - see CacheDirectory.Scratch.
+        var scratch = Path.Combine(CacheDirectory.Scratch,
+            $"terminals-{Path.GetFileNameWithoutExtension(viPath)}.xml");
+        Directory.CreateDirectory(CacheDirectory.Scratch);
+
+        // The reader goes through the cache too since 2026-10-15, under its own key
+        // (CachedReader): NI's cached export first, then its own, then a fresh read.
+        var composed = choice.Name == AixmlBackend.PyLabview;
+
+        // Through the export cache, both ways. This tool used to call the RPC directly and so
+        // never touched the cache at all - measured by watching the cache directory during a
+        // VI-generator run: the run produced no entries, because a terminal lookup was the only
+        // export it did. That is backwards. A palette VI's terminals are the single most
+        // repeated read in the whole workflow - every generator run looks up the same handful -
+        // and it was the one read paying a full LabVIEW export every time.
+        var fromCache = !composed && !refresh && AixmlExportStore.TryCopyTo(viPath, scratch);
+
+        // Where the export came from, in the caller's words rather than only in the file
+        // timestamps. Three VI-generator runs reported this omission independently - the tool
+        // used the cache but said nothing about it, so a hit and a fresh export looked
+        // identical and the only way to tell them apart was to watch the cache directory from
+        // outside. That is exactly the invisible-invalidation complaint this repository makes
+        // about everything else, so it does not get to stand here.
+        string provenance;
+
+        if (composed)
+        {
+            if (AixmlComposer.Locate(out var missing) is not { } setup)
+                return TerminalRead.Failed(Json.Error("backendNotAvailable", missing, new { viPath }));
+
+            var cached = await CachedReader.ReadAsync(setup, viPath, scratch, timeoutSeconds, ct,
+                                                      refresh);
+            var read = cached.Result;
+            if (!read.Written)
+                return TerminalRead.Failed(Json.Error("exportFailed",
+                    $"vi2aixml.py could not read '{viPath}': {read.Message}",
+                    new { viPath, readerExitCode = read.ExitCode }));
+
+            // whose export it is, then where it came from - each said once
+            provenance = cached.ServedFrom == AixmlBackend.Grpc
+                ? cached.Note
+                : CachedReader.ReaderProvenance + " " + cached.Note;
+        }
+        else if (fromCache)
+        {
+            provenance = AixmlExportStore.CachedUtc(viPath) is { } taken
+                ? $"Export served from the cache, taken {taken:yyyy-MM-dd HH:mm}Z - no LabVIEW " +
+                  "round trip. Pass refresh to re-export."
+                : "Export served from the cache - no LabVIEW round trip. Pass refresh to re-export.";
+        }
+        else
+        {
+            var response = await connection.InvokeAsync((c, t) =>
+                c.ConvertVIToAIXMLAsync(new ConvertVIToAIXMLRequest
+                {
+                    ViPath = viPath,
+                    AiXMLFilePath = scratch,
+                }, deadline: Rpc.Deadline(timeoutSeconds), cancellationToken: t).ResponseAsync, ct);
+
+            if (response.ErrorCode != 0)
+                return TerminalRead.Failed(Json.Error("exportFailed",
+                    $"Could not export '{viPath}': {response.ErrorMessage}",
+                    new { viPath, errorCode = response.ErrorCode }));
+
+            // Only installation VIs are cacheable; Save decides that and reports false for the
+            // rest, which is not a failure - but it IS the difference between "next read is
+            // free" and "next read costs this again", so the caller is told which.
+            provenance = AixmlExportStore.Save(viPath, scratch)
+                ? "Exported from LabVIEW and written to the cache; the next read of this VI is " +
+                  "a file copy."
+                : "Exported from LabVIEW, NOT cached - only VIs inside the LabVIEW installation " +
+                  "are, because an export depends on subVIs a per-VI key cannot see.";
+        }
+
+        // The RPC writes the file; the content is not on the response.
+        var xml = File.Exists(scratch) ? await File.ReadAllTextAsync(scratch, ct) : null;
+
+        var parsed = ViTerminals.Parse(xml);
+        if (parsed is null)
+            return TerminalRead.Failed(Json.Error("exportUnreadable",
+                "The export reported success but no readable AIXML was written.",
+                new { viPath, exportPath = scratch, xmlBytes = xml?.Length ?? 0 }));
+
+        return new TerminalRead(parsed, null, provenance, xml?.Length ?? 0);
+    }
 
     [McpServerTool(Name = "lvai_describe_project", ReadOnly = true, Title = "Describe a LabVIEW project")]
     [Description("""

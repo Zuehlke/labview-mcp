@@ -2,7 +2,7 @@
 name: labview-vi-editor
 description: >-
   MUST BE USED for every change to an EXISTING LabVIEW VI - delegate to this agent instead of editing the VI directly in the main session. Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". Also for a request only to lay out or tidy up an existing VI's block diagram ("räume das Diagramm auf", "clean up this diagram") - that runs lvai_layout_diagram and regenerates nothing. For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. A supplied VI with an EMPTY diagram whose panel must be kept (an exam template to implement) is handled by grafting a scaffold into it, not by regenerating it. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__pylv_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_error_list, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram, mcp__labview__lvai_bind_control_references, mcp__labview__lvai_layout_diagram, mcp__labview__lvai_layout_diagrams, mcp__labview__lvai_set_vi_descriptions
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__pylv_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_error_list, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram, mcp__labview__lvai_bind_control_references, mcp__labview__lvai_layout_diagram, mcp__labview__lvai_layout_diagrams, mcp__labview__lvai_set_vi_descriptions, mcp__labview__lvai_check_build_contract
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -187,6 +187,27 @@ instance holds its own copy of the VI.
   a diff the user has to review.
 - **The icon goes on last**, after the final regeneration. `lvai_convert_aixml_to_vi` over an
   existing path destroys it, so a second regeneration means a second icon restore.
+
+## Building against a BUILD CONTRACT
+
+When the task prompt names a **build contract** (`build-contract.json`, docs/build-contract.md),
+the orchestrator has already settled every interface of the application. The contract is the
+specification, not a suggestion:
+
+- **Names, types, `conIdx` and `connection` of every terminal come from the contract.** Author the
+  AIXML from it verbatim. A named type `@X` is the literal under `types.X`.
+- **A callee's terminals come from the contract, not from its file.** Ask
+  `lvai_check_build_contract mode=plan callSkeletonsFor=<callees>` for ready `<Call>` elements -
+  one call for all of them - instead of `lvai_vi_terminals` per callee. The callee may not exist
+  yet; author against the contract anyway and generate once it does.
+- **Call an owned VI by the qualified name the contract gives** (`Account Manager.lvlib:Deposit.vi`),
+  never by its bare file name.
+- **Build only the VIs whose `builder` is you, in the folder the contract gives.**
+- **When you are done, run `lvai_check_build_contract mode=verify vis=<your VIs>`** and report
+  its answer. `ok: false` is not done: fix the VI. If the contract itself is wrong (a type that
+  cannot work, a missing terminal), STOP and say so in your report - never change an interface
+  silently, because other agents are building against it at the same time.
+- Settle nothing the contract leaves open by research beyond two calls: name it as an open point.
 
 ## Workflow
 
