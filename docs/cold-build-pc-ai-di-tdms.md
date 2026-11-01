@@ -61,8 +61,9 @@ logging agent was still building. The tests were the critical path.
    `Tests\Signals` - the composer searches the caller's folder, two levels below its parent and one
    below the grandparent (#82). `lvai_generate_test` passes extra folders; `lvai_generate_vi` has no
    parameter for it. The agent fell back to grpc.
-5. Open: the pylabview run route cannot set an array-of-clusters input over COM
-   (`ComValues.cs`, #82); the logging agent ran those cases on grpc.
+5. The pylabview run route could not set an array-of-clusters input given as a LITERAL
+   (`ComValues.cs`, #82); the logging agent ran those cases on grpc. FIXED 2026-11-01, see the
+   tank-monitor section.
 
 ## Second cold build, with the generate_test fix (2026-11-01, `C:\Temp\PC_AI_DI_TDMS_2`)
 
@@ -163,7 +164,16 @@ What it found:
   `Transpose 2D Array`'s output, typed `SubArray`. NI's converter builds the row of a transposed
   `[[1,2,3],[4,5,6]]`; the composer now takes a `SubArray` as the array it is a view of, as its
   indexing tunnel already did. Both backends answer row 1 as `[2,5]`.
-- Open, known: the pylabview run route cannot set an array-of-clusters input over COM.
+- **An array of clusters on the pylabview run route** - FIXED. It was narrower than reported:
+  LabVIEW's ActiveX server takes an array of clusters as `object[]` of `object[]`, and the XML
+  route already built that - two `{Event Source, Event Text}` clusters given as LabVIEW XML set
+  `Write Alarm Log.vi`'s `Events` and reached its CSV intact (measured before the change). Only
+  the LITERAL `[[Tank 0,High],[Valve 1,Opened]]` was refused. It now builds the same shape. The
+  test found a second fault behind it: a nested list was unescaped one level too early, so
+  `[[Valve 1,Opened\2C late]]` read three fields - 2D string arrays had the same fault
+  (`ComValuesTests`). Verified after a client restart: that literal on `Write Alarm Log.vi`
+  answered `Lines Written 2` and the CSV holds `Tank 0,High` and `Valve 1,Opened, late` - the
+  escaped comma arrives as a comma (the CSV writer itself does not quote it, by its contract).
 - **No tolerance for 2D float arrays** - FIXED. `tolerance` takes `array.N{double|single|extended}`;
   the size check compares `Array Size` with `Equal?` `aggregate="true"`, because a 2D array's sizes
   are an array. The chain, run on both backends: within 1e-9 true, one value off by 0.1 false, one
