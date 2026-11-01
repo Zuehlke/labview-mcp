@@ -18,6 +18,11 @@ compatibility, case completeness — is LabVIEW's job and a second implementatio
 `lvai_check_aixml` remains the in-server counterpart; this tool overlaps it deliberately on
 duplicate uids and enum defaults and goes past it on the three checks below.
 
+**A lint reads the DOCUMENT, so it cannot see a fault our pylabview COMPOSER makes while building
+from a correct one.** The ATM scaffold of 2026-11-01 was valid AIXML that NI's converter built
+clean, and still killed LabVIEW when the composer built it. That class of fault is checked
+inside the composer, by the type guard: `docs/aixml-backends.md`, "The type guard".
+
 ## Why: the three faults nothing reported
 
 Measured over one session, **~24 of ~80 tool calls were corrective**, and three of those fault

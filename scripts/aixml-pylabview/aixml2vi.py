@@ -3174,6 +3174,11 @@ class Composer:
             for j, t in enumerate(terms):
                 out = int(t.find("dco").findtext("objFlags") or 0) & 1
                 same_group = any(canon[j] == canon[i] for i in wired_in)
+                # an ERROR output is one cluster whatever shape went in: Close Reference on an
+                # array of references reports one error, and the shape rule made it an array -
+                # four NI exports in the AIXML cache, caught by the type guard (2026-11-01)
+                if canon[j].startswith(b"error terminal"):
+                    continue
                 if out and not same_group and j not in wired_in and depth(donor[j]) in donor_in_depth:
                     r = reshape(new_types[j], k)
                     if r is not None:
@@ -3228,6 +3233,7 @@ class Composer:
                     stream_types[outsd["endpoint out"]] = st
                 if name == "Read Single Element from Stream" and "data out" in by_name:
                     new_types[idx_of[id(by_name["data out"])]] = plain(lvheap.strip_label(copy.deepcopy(st)))
+        self._guard_terminal_types(el, name, terms, by_name, donor, new_types, canon)
         for tname, net in outs:
             if net:
                 self.net_type[net] = new_types[idx_of[id(by_name[tname])]]
@@ -3256,6 +3262,48 @@ class Composer:
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
         diag.placed.append((prim, el))
         self.report.append("Node %r = primResID %s <- %s" % (name, rid, src))
+
+    @staticmethod
+    def _type_kind(t):
+        """`Refnum(Queue)`, `Array`, `Cluster`, ... - what a guard compares, not the full type."""
+        t = typedef_inner(t)
+        return t.get("Type", "?") + ("(%s)" % t.get("RefType") if t.get("RefType") else "")
+
+    def _guard_terminal_types(self, el, name, terms, by_name, donor, new_types, canon):
+        """THE TYPE GUARD: the last look at a primitive's terminal types before they reach the file.
+
+        The retyping above adapts a donor's terminals to what is wired, and a wrong adaptation is
+        not a broken VI - LabVIEW can DIE loading it. Obtain Queue of an array{string} came out
+        with `queue out`, `created new?` and `error out` as arrays, and LabVIEW aborted on load
+        with `I expected a container refnum here!` (proptyp3.cpp, the ATM cold build of
+        2026-11-01, three crashes) - while NI's converter built the same document clean. What
+        the guard holds is what no adaptation may change, measured on NI's build of it:
+          - a terminal the donor types as a QUEUE, NOTIFIER or USER EVENT refnum stays exactly
+            that kind of refnum - an element type may change inside it, its kind may not. A
+            breach is REFUSED by name: a refusal costs a fallback to the grpc backend, a crash
+            costs LabVIEW and whatever else was open in it.
+          - an ERROR OUTPUT stays an error cluster. A breach is only REPORTED: Close Reference on
+            an array came out with an array `error out` (four cached NI exports), and LabVIEW
+            loaded that VI executable anyway - it re-derives the type - so refusing it would turn
+            a document LabVIEW accepts into a failure."""
+        names = {id(t): n for n, t in by_name.items() if not n.startswith("?parm")}
+        for j, t in enumerate(terms):
+            d, n = typedef_inner(donor[j]), typedef_inner(new_types[j])
+            tname = names.get(id(t), "terminal %d" % j)
+            if d.get("Type") == "Refnum" and d.get("RefType") in REFNUM_CONTAINERS.values():
+                if n.get("Type") != "Refnum" or n.get("RefType") != d.get("RefType"):
+                    raise Unsupported(
+                        "type guard: %s %s `%s` would be written as %s where the primitive carries a %s "
+                        "refnum - refused, because LabVIEW dies loading such a VI ('I expected a "
+                        "container refnum here!'). Convert this document with backend grpc."
+                        % (name, el.get("uid"), tname, self._type_kind(n), d.get("RefType")))
+            out = int(t.find("dco").findtext("objFlags") or 0) & 1
+            if out and canon[j].startswith(b"error terminal") and d.get("Type") == "Cluster" \
+                    and n.get("Type") != "Cluster":
+                self.report.append(
+                    "type guard WARNING: %s %s `%s` written as %s where it is an error cluster - "
+                    "an adaptation went wrong; LabVIEW has re-derived such a type on load"
+                    % (name, el.get("uid"), tname, self._type_kind(n)))
 
     STREAM_PASS = {"Read Single Element from Stream": ("endpoint in", "endpoint out"),
                    "Write Single Element to Stream": ("endpoint in", "endpoint out"),
