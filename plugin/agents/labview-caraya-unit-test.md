@@ -219,9 +219,13 @@ For a class, the natural unit is one case per private data field: write it throu
 accessor, read it back through the Read accessor, assert equality. That is a **round trip**, and it
 catches a mis-generated accessor pair, a wrong dispatch and a broken private data control at once.
 
-**Float equality is EXACT.** `Assert Equal Value_Variant` does not approximate, and Caraya's
-`Assert Almost Equal_Float.vi` is not wired up here. Choose values that are exact in IEEE754 —
-`30`, `10.5`, `12.5`, `2.25`, `230` all are — or assert on something else and say so.
+**Float equality is EXACT unless the case says otherwise.** `Assert Equal Value_Variant` does not
+approximate. Prefer values that are exact in IEEE754 — `30`, `10.5`, `12.5`, `2.25`, `230` all are.
+Where the result is not (a sine, a division by 3), give the case `"tolerance": 1e-9` in
+`lvai_generate_test`: its float scalars then go through Caraya's `Assert Almost Equal_Float.vi`, and
+its 1D float arrays are compared element by element with the lengths checked too. Never build such
+a test by hand. A tolerance on a case with no float expectation is refused. `lvai_generate_class_test`
+and `lvai_generate_method_test` do not take one yet.
 
 Ask as a `NEEDS CLARIFICATION` block when a correct value is genuinely unknowable, then **stop**:
 

@@ -2136,6 +2136,17 @@ Wire the scalar form to an array indicator and `ValidateAIXML` says
 `You have connected a scalar type to an array of that type ... The type of the source is string.`
 — a precise message, but only if you are looking for a type problem rather than a mode problem.
 
+`convertEol="true"` is the 0x2000000 bit of the node's `objFlags` (640 -> 33555072 on NI's
+converter's build of a probe pair, 2026-11-01); the pylabview composer writes and reads it since then.
+
+**Wiring alone can change an output's type.** `TDMS List Contents` with `group name` UNWIRED
+answers `group names` as `array{string}` and `group/channel names` as the names of every group;
+with `group name` WIRED (a string), `group names` becomes a single `string` - the group passed
+through - and `group/channel names` holds that group's channel names. Wiring `group names` into
+an `array{string}` indicator then breaks the VI ("source string, sink 1D array of string") on
+NI's converter and the composer alike - measured on both backends, 2026-11-01. It was reported as
+a composer defect by the PC AI DI TDMS cold build and is not one.
+
 The lesson generalises: when a node has modes, copy a **variant that is in the state you want**
 from an export. A single specimen of the node does not reveal the type consequences of its modes.
 `Read from Text File` in read-lines mode also needs no refnum handling at all — hand it a path

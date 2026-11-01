@@ -986,7 +986,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             $"type=\"path\" uid=\"{objIn}\" uid_parent=\"root\" value=\"\"/>");
         sb.AppendLine(
             $"  <Control _name=\"error in\"{ConIdx(geometry?.ErrorIn)} " +
-            "connection=\"recommended\" description=\"Error cluster in.\" " +
+            "connection=\"required\" description=\"Error cluster in.\" " +
             $"outputs=\"value:{errIn}.value\" type=\"{ErrorCluster}\" uid=\"{errIn}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
         sb.AppendLine(
@@ -1134,7 +1134,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         var errorIn = uid++;
         sb.AppendLine(
             $"  <Control _name=\"error in\"{ConIdx(geometry?.ErrorIn)} " +
-            "connection=\"recommended\" description=\"Error cluster in.\" " +
+            "connection=\"required\" description=\"Error cluster in.\" " +
             $"outputs=\"value:{errorIn}.value\" type=\"{ErrorCluster}\" uid=\"{errorIn}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
 

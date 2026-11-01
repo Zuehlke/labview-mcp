@@ -2782,7 +2782,7 @@ class Composer:
     # on NI's In Range and Coerce.vi (aggregate=true)
     NODE_ATTRS = {"_name", "inputs", "outputs", "uid", "uid_parent", "_id"}
     PRIM_MODES = {"In Range and Coerce": ("includeHigh", "includeLow", "aggregate"),   # name -> mode attributes add_node writes
-                  "Read from Text File": ("readLines",),
+                  "Read from Text File": ("readLines", "convertEol"),
                   "Array To Cluster": ("elements",)}
     # COMPARE AGGREGATES (aggregate="true") is the 0x80000 bit of a comparison prim's objFlags,
     # one boolean for two whole clusters or arrays: read off NI's 3D Graph axes_auto_range.vi
@@ -2802,7 +2802,9 @@ class Composer:
     PRIM_MODE_BITS = {"In Range and Coerce": {"includeLow": 0x200000, "includeHigh": 0x100000},
                       # Read Lines: 640 -> 67109504 on NI's converter's build of a probe pair
                       # differing only in readLines="true", 2026-10-10 (lvpane_sweep.xml uses it)
-                      "Read from Text File": {"readLines": 0x4000000}}
+                      # Convert EOL: 640 -> 33555072, the same way, 2026-11-01 (it was refused
+                      # until then, and a test helper of the PC AI DI TDMS build dropped it)
+                      "Read from Text File": {"readLines": 0x4000000, "convertEol": 0x2000000}}
     for _n in AGGREGATE_PRIMS:
         PRIM_MODE_BITS.setdefault(_n, {})["aggregate"] = 0x80000
     del _n

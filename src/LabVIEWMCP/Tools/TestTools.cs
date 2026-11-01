@@ -36,6 +36,9 @@ internal sealed class TestTools(LvaiConnection connection)
     private const string DefineTest = @"Caraya.lvlib\3ATest.lvclass\3ADefine Test.vi";
     private const string AssertEqual =
         @"Caraya.lvlib\3AAssert.lvclass\3AAssert Equal Value_Variant.vi";
+    // Expected/Actual/Tolerance are `extended`; read off the installed file's export, 2026-11-01
+    private const string AssertAlmostEqual =
+        @"Caraya.lvlib\3AAssert.lvclass\3AAssert Almost Equal_Float.vi";
     private const string ErrorCluster = "cluster{bool.status,int32.code,string.source}";
 
     // The runner is a POLYMORPHIC call: `target` is the wrapper, `instance` picks the array-of-paths
@@ -53,14 +56,16 @@ internal sealed class TestTools(LvaiConnection connection)
         PLACEHOLDER route (no single listing project, or the subject does not resolve) uses
         lvai_placeholder_subvi plus a pylabview retarget. The active project is closed at the end.
         Sub-answers come back under `steps`.
-        Case keys are only `label`, `inputs`, `expect`, `setup`; any other is REFUSED by name.
+        Case keys are only `label`, `inputs`, `expect`, `setup`, `tolerance`; any other is REFUSED.
         `inputs`/`expect` use the subject's CONNECTOR-PANE terminal names (lvai_vi_terminals) -
         an off-pane control, an output under `inputs` or an input under `expect` is refused.
         Values are written verbatim as constants of the terminal's type.
         `setup` (direct route) calls other VIs first, chained by error wires; each needs error
         in/out. The cases of one test VI RUN IN PARALLEL, so a setup path used by another case is
         REFUSED - give every case its own fixture.
-        Every assertion is `Assert Equal Value_Variant` with EXACT float equality. Expected
+        Assertions are `Assert Equal Value_Variant`, EXACT. A case's `tolerance` (a number >= 0)
+        compares its float scalars with `Assert Almost Equal_Float` and its 1D float arrays
+        element by element, lengths included; a case with no float expectation is refused. Expected
         constants are labelled `expected <n>` (`expectedConstants`) for lvai_set_constant.
         Read the JUnit report (lvai_run_caraya_tests), not `error out` - it carries the first
         failure only. `failedAtStep: retarget` means the test VI was written and still calls the
@@ -164,6 +169,9 @@ internal sealed class TestTools(LvaiConnection connection)
                           Terminal.From(stub["notOnPane"] as JsonArray)) is { Ok: false } refused)
                 return Outcome(false, "cases", steps, total, testViPath, null,
                     refused.Message("casesJson"), route: route, refusal: refused.ToJson());
+            if (ToleranceFault(cases, terminals) is { } toleranceFault)
+                return Outcome(false, "cases", steps, total, testViPath, null, toleranceFault,
+                    route: route);
 
             // 2. author and generate against the placeholder
             var aixmlPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
@@ -300,7 +308,10 @@ internal sealed class TestTools(LvaiConnection connection)
             route["projectFrom"] = "discovered";
         }
         route["projectPath"] = project;
-        route["listedInProject"] = ProjectMembership.Lists(project, viPath);
+        // THE SUBJECT's membership, named so: as `listedInProject` it was read as the TEST VI's, and
+        // a subject not listed yet (a fresh test helper) looked like a failed listing (2026-11-01).
+        // The test VI's own is `testListedInProject`, read from the file after the listing step.
+        route["subjectListedInProject"] = ProjectMembership.Lists(project, viPath);
 
         // 2. the subject's own terminals - the same export the placeholder clones its pane from
         var exportPath = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
@@ -337,6 +348,9 @@ internal sealed class TestTools(LvaiConnection connection)
         if (CaseNames(cases, subject.ViName, terminals, offPane) is { Ok: false } refused)
             return (Outcome(false, "cases", steps, total, testViPath, null,
                 refused.Message("casesJson"), route: Direct(route), refusal: refused.ToJson()), null);
+        if (ToleranceFault(cases, terminals) is { } toleranceFault)
+            return (Outcome(false, "cases", steps, total, testViPath, null, toleranceFault,
+                route: Direct(route)), null);
 
         // 2b. THE SETUP VIs, each read off its own export like the subject, and refused before
         //     anything is opened when it cannot be chained: the error wire is what orders the
@@ -416,8 +430,11 @@ internal sealed class TestTools(LvaiConnection connection)
         //    on four ATM suites - and a later listing then correctly treated it as placed by
         //    someone and left it there (docs/class-method-tooling.md D2).
         if (!NotResolved(answer) && answer?["viExistsNow"]?.GetValue<bool>() is true)
+        {
             steps.Add(await ListInProjectAsync(project, testFolderName, [testViPath],
                                                timeoutSeconds, ct, reopen: false));
+            route["testListedInProject"] = ProjectMembership.Lists(project, testViPath);
+        }
         else
             steps.Add(await ReleaseProjectAsync(project, timeoutSeconds, ct));
 
@@ -2204,7 +2221,7 @@ internal sealed class TestTools(LvaiConnection connection)
         var errorIn = uid++;
         sb.AppendLine(
             $"  <Control _name=\"error in\"{ConIdx(geometry?.ErrorIn)} " +
-            "connection=\"recommended\" description=\"Error cluster in.\" " +
+            "connection=\"required\" description=\"Error cluster in.\" " +
             $"outputs=\"value:{errorIn}.value\" type=\"{ErrorCluster}\" uid=\"{errorIn}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
 
@@ -2573,7 +2590,7 @@ internal sealed class TestTools(LvaiConnection connection)
         var errorIn = uid++;
         sb.AppendLine(
             $"  <Control _name=\"error in\"{ConIdx(geometry?.ErrorIn)} " +
-            $"connection=\"recommended\" description=\"Error cluster in.\" " +
+            $"connection=\"required\" description=\"Error cluster in.\" " +
             $"outputs=\"value:{errorIn}.value\" type=\"{ErrorCluster}\" uid=\"{errorIn}\" " +
             "uid_parent=\"root\" value=\"[false,0,]\"/>");
 
@@ -2663,9 +2680,36 @@ internal sealed class TestTools(LvaiConnection connection)
 
                 var assertion = uid++;
                 assertions.Add(assertion);
+                if (test.Tolerance is { } tolerance && IsFloat(terminal.Type))
+                {
+                    // Caraya's own float assertion: |Expected - Actual| <= Tolerance
+                    var tol = uid++;
+                    sb.AppendLine(Constant(tol, "double", Invariant(tolerance), "Tolerance"));
+                    sb.AppendLine(
+                        $"  <Call target=\"{AssertAlmostEqual}\" inputs=\"Label:{label}.value," +
+                        $"error in (no error):{define}.error out,Expected:{wanted}.value," +
+                        $"Actual:{call}.{name},Assert Only? (F):,Tolerance:{tol}.value," +
+                        "Use Percentage of X (F):,Execution time (s):\" " +
+                        $"outputs=\"error out:{assertion}.error out,Properties.Assert:\" " +
+                        $"uid=\"{assertion}\" uid_parent=\"root\"/>");
+                    continue;
+                }
+
+                var actual = $"{call}.{name}";
+                var wantedNet = $"{wanted}.value";
+                if (test.Tolerance is { } arrayTolerance && IsFloatArray(terminal.Type))
+                {
+                    // ELEMENT BY ELEMENT, AND THE LENGTHS: Subtract truncates to the shorter
+                    // array, so a missing element would pass on the differences alone.
+                    actual = EmitWithinTolerance(sb, ref uid, actual, wantedNet, arrayTolerance);
+                    var allTrue = uid++;
+                    sb.AppendLine(Constant(allTrue, "bool", "true", "within tolerance"));
+                    wantedNet = $"{allTrue}.value";
+                }
+
                 sb.AppendLine(
-                    $"  <Call target=\"{AssertEqual}\" inputs=\"Expected:{wanted}.value," +
-                    $"Actual:{call}.{name},Register with caller test (F):," +
+                    $"  <Call target=\"{AssertEqual}\" inputs=\"Expected:{wantedNet}," +
+                    $"Actual:{actual},Register with caller test (F):," +
                     $"error in (no error):{define}.error out,Label:{label}.value," +
                     "Assert Only? (F):,error code (1):,Execution time (s):\" " +
                     $"outputs=\"Properties.Assert:,error out:{assertion}.error out\" " +
@@ -2861,13 +2905,18 @@ internal sealed class TestTools(LvaiConnection connection)
         var n = 0;
         foreach (var test in cases)
             foreach (var (name, expected) in test.Expect)
-                list.Add(new JsonObject
+            {
+                var entry = new JsonObject
                 {
                     ["label"] = $"expected {++n}",
                     ["case"] = test.Label,
                     ["terminal"] = name,
                     ["value"] = expected,
-                });
+                };
+                // applies to the float expectations of the case; the rest compare exactly
+                if (test.Tolerance is { } tolerance) entry["tolerance"] = tolerance;
+                list.Add(entry);
+            }
         return list;
     }
 
@@ -2876,6 +2925,45 @@ internal sealed class TestTools(LvaiConnection connection)
     /// every other terminal, which stays unwired and keeps the callee's default. Every VI we
     /// generate has `error in` required, so without it each generated test of one was eBad.
     /// </summary>
+    /// <summary>
+    /// The net of one boolean: every |actual - expected| &lt;= tolerance AND both arrays the same
+    /// length. Primitives only, terminal names from docs/aixml-reference.md.
+    /// </summary>
+    internal static string EmitWithinTolerance(StringBuilder sb, ref int uid, string actual,
+                                               string expected, double tolerance)
+    {
+        var diff = uid++;
+        sb.AppendLine($"  <Node _name=\"Subtract\" inputs=\"x:{actual},y:{expected}\" " +
+                      $"outputs=\"x-y:{diff}.x-y\" uid=\"{diff}\" uid_parent=\"root\"/>");
+        var abs = uid++;
+        sb.AppendLine($"  <Node _name=\"Absolute Value\" inputs=\"x:{diff}.x-y\" " +
+                      $"outputs=\"abs(x):{abs}.abs(x)\" uid=\"{abs}\" uid_parent=\"root\"/>");
+        var tol = uid++;
+        sb.AppendLine(Constant(tol, "double", Invariant(tolerance), "Tolerance"));
+        var within = uid++;
+        sb.AppendLine($"  <Node _name=\"Less Or Equal?\" inputs=\"x:{abs}.abs(x),y:{tol}.value\" " +
+                      $"outputs=\"x &lt;= y?:{within}.x &lt;= y?\" uid=\"{within}\" uid_parent=\"root\"/>");
+        var all = uid++;
+        sb.AppendLine($"  <Node _name=\"And Array Elements\" inputs=\"Boolean array:{within}.x &lt;= y?\" " +
+                      $"outputs=\"logical AND:{all}.logical AND\" uid=\"{all}\" uid_parent=\"root\"/>");
+        var actualSize = uid++;
+        sb.AppendLine($"  <Node _name=\"Array Size\" inputs=\"array:{actual}\" " +
+                      $"outputs=\"size(s):{actualSize}.size(s)\" uid=\"{actualSize}\" uid_parent=\"root\"/>");
+        var expectedSize = uid++;
+        sb.AppendLine($"  <Node _name=\"Array Size\" inputs=\"array:{expected}\" " +
+                      $"outputs=\"size(s):{expectedSize}.size(s)\" uid=\"{expectedSize}\" uid_parent=\"root\"/>");
+        var sameSize = uid++;
+        sb.AppendLine($"  <Node _name=\"Equal?\" inputs=\"x:{actualSize}.size(s),y:{expectedSize}.size(s)\" " +
+                      $"outputs=\"x = y?:{sameSize}.x = y?\" uid=\"{sameSize}\" uid_parent=\"root\"/>");
+        var both = uid++;
+        sb.AppendLine($"  <Node _name=\"And\" inputs=\"x:{all}.logical AND,y:{sameSize}.x = y?\" " +
+                      $"outputs=\"x .and. y?:{both}.x .and. y?\" uid=\"{both}\" uid_parent=\"root\"/>");
+        return $"{both}.x .and. y?";
+    }
+
+    private static string Invariant(double value) =>
+        value.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+
     internal static string? NoErrorConstant(StringBuilder sb, ref int uid, Terminal terminal)
     {
         if (!terminal.IsInput || !terminal.Required || !ConnectorPane.IsErrorIn(terminal.Name))
@@ -3021,7 +3109,7 @@ internal sealed class TestTools(LvaiConnection connection)
         // 2026-09-25 - the fourth TypedefAfterGDevCon build noticed that nothing measured its
         // pane. The numbers are the station pattern's, from `geometry` above.
         sb.AppendLine($"  <Control _name=\"error in\"{ConIdx(geometry?.ErrorIn)} " +
-                      "connection=\"recommended\" description=\"Runs nothing when it carries an " +
+                      "connection=\"required\" description=\"Runs nothing when it carries an " +
                       $"error.\" outputs=\"value:{errorIn}.value\" type=\"{ErrorCluster}\" " +
                       $"uid=\"{errorIn}\" uid_parent=\"root\" value=\"[false,0,]\"/>");
 
@@ -3192,13 +3280,13 @@ internal sealed class TestTools(LvaiConnection connection)
 
     internal sealed record Case(string Label, Dictionary<string, string> Inputs,
                                Dictionary<string, string> Expect,
-                               IReadOnlyList<SetupCall>? Setup = null)
+                               IReadOnlyList<SetupCall>? Setup = null, double? Tolerance = null)
     {
         public IReadOnlyList<SetupCall> Calls => Setup ?? [];
 
         /// <summary>Every key a case may carry. Anything else is refused by name.</summary>
         private static readonly HashSet<string> CaseKeys =
-            new(StringComparer.Ordinal) { "label", "inputs", "expect", "setup" };
+            new(StringComparer.Ordinal) { "label", "inputs", "expect", "setup", "tolerance" };
 
         /// <summary>
         /// Only <c>label</c>. <c>inputs</c> and <c>expect</c> are deliberately absent: <see
@@ -3212,6 +3300,7 @@ internal sealed class TestTools(LvaiConnection connection)
         {
             ["label"] = JsonValueKind.String,
             ["setup"] = JsonValueKind.Array,
+            ["tolerance"] = JsonValueKind.Number,
         };
 
         public static List<Case> ParseAll(string? json)
@@ -3257,8 +3346,19 @@ internal sealed class TestTools(LvaiConnection connection)
                     $"casesJson[{index}] asserts nothing: \"expect\" is missing or empty. A case " +
                     "that calls the subject and checks no output always passes.");
 
+            double? tolerance = null;
+            if (o["tolerance"] is JsonValue t)
+            {
+                var value = t.GetValue<double>();
+                if (!double.IsFinite(value) || value < 0)
+                    throw new ArgumentException(
+                        $"casesJson[{index}] \"tolerance\" is {value}; it is the largest absolute " +
+                        "difference a floating-point expectation may have, so it must be 0 or more.");
+                tolerance = value;
+            }
+
             return new Case(label, Map(o["inputs"], index, "inputs"), expect,
-                            SetupOf(o["setup"] as JsonArray, index));
+                            SetupOf(o["setup"] as JsonArray, index), tolerance);
         }
 
         internal static List<SetupCall> SetupOf(JsonArray? setup, int index)
@@ -3335,6 +3435,37 @@ internal sealed class TestTools(LvaiConnection connection)
             [.. offPane.Select(t => (t.Name, t.IsInput))],
             cases.SelectMany(c => c.Inputs.Keys),
             cases.SelectMany(c => c.Expect.Keys));
+
+    private static readonly HashSet<string> FloatTypes =
+        new(StringComparer.Ordinal) { "double", "single", "extended" };
+
+    /// <summary>A floating-point scalar: compared with Caraya's Assert Almost Equal_Float.</summary>
+    internal static bool IsFloat(string type) => FloatTypes.Contains(type);
+
+    /// <summary>A 1D floating-point array: compared element by element, lengths included.</summary>
+    internal static bool IsFloatArray(string type) =>
+        type.StartsWith("array{", StringComparison.Ordinal) && type.EndsWith('}') &&
+        FloatTypes.Contains(type["array{".Length..^1]);
+
+    /// <summary>
+    /// A case whose `tolerance` would compare nothing: none of its expectations is a float or a
+    /// 1D float array. Refused rather than ignored - a tolerance that silently does nothing reads
+    /// as a looser test than the exact one that actually ran.
+    /// </summary>
+    internal static string? ToleranceFault(IReadOnlyList<Case> cases, IReadOnlyList<Terminal> terminals)
+    {
+        foreach (var test in cases.Where(c => c.Tolerance is not null))
+        {
+            var types = test.Expect.Keys
+                .Select(name => terminals.FirstOrDefault(t => t.Name == name && !t.IsInput))
+                .Where(t => t is not null).Select(t => t!).ToList();
+            if (!types.Any(t => IsFloat(t.Type) || IsFloatArray(t.Type)))
+                return $"Case '{test.Label}' carries a \"tolerance\", and none of its expectations is " +
+                       $"a floating-point scalar or a 1D floating-point array ({string.Join(", ", types.Select(t => $"'{t.Name}' {t.Type}"))}), " +
+                       "so it would compare nothing. Drop it, or expect a float output.";
+        }
+        return null;
+    }
 
     // ------------------------------------------------------------------ answer
 

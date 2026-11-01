@@ -88,15 +88,33 @@ The logging agent hit the TDMS channel trap again and solved it the other way: o
 a 2D array, one row per channel. The main VI kept the 11-stage chain because the rendered diagram
 (1792 x 807) was within budget.
 
-Still open after run 2, reported by the agents:
-- `lvai_generate_test` answers `route.listedInProject: false` for tests with setup calls while its
-  own `projectEntry` step says `added: 1` and the file lists them; the flag is not reliable.
-- Regenerating over an EXISTING test VI skipped the `errorInNotRequired` repair, so that test VI's
-  own `error in` came out `recommended`.
-- Composer: `Read from Text File` with `convertEol="true"` is refused; `TDMS List Contents` with
-  `group name` wired is written broken (string into a 1D-array sink).
-- `lvai_generate_test` has no tolerance assertion; `[5,0,-5,0]` cannot be asserted against
-  `[5, 6.1e-16, -5, -1.2e-15]` - run 1 hand-built the test on grpc, run 2 chose exact cases.
+Reported by the agents after run 2, and what each turned out to be (all settled 2026-11-01):
+- **`route.listedInProject: false` "although the test is listed"** - not wrong, misnamed: it was
+  the SUBJECT's membership (a fresh test helper, not listed yet). Renamed `subjectListedInProject`;
+  the test VI's own is `testListedInProject`, read from the `.lvproj` after the listing step.
+- **A regenerated test VI's `error in` came out `recommended`** - every test template wrote
+  `recommended` and relied on the `errorInNotRequired` repair, which a VI that already exists does
+  not get (its flags are kept). The templates now write `required`, so the repair has nothing to do
+  and no longer shows up on every generate call.
+- **`Read from Text File` `convertEol="true"` refused by the composer** - real; the bit is
+  0x2000000 of the node's objFlags (640 -> 33555072 on NI's converter's probe pair). Composed and
+  read back since (`PylabviewConvertEolTests`).
+- **`TDMS List Contents` with `group name` wired "written broken"** - NOT a composer defect: NI's
+  converter writes the same broken VI. Wiring `group name` turns the `group names` output into a
+  single `string`; the agent wired it to an array indicator. Recorded in `docs/aixml-reference.md`.
+- **No tolerance assertion** - `lvai_generate_test` takes a per-case `"tolerance"`: float scalars
+  go to Caraya's `Assert Almost Equal_Float.vi`, 1D float arrays to |a-e| <= tol on every element
+  AND equal lengths; a tolerance on a case with no float expectation is refused
+  (`GenerateTestToleranceTests`, fixture: the delivered `Simulate AI.vi`).
+
+Verified in LabVIEW after a client restart (`C:\Temp\PC_AI_DI_TDMS_2\Tests\Tolerance\`): one runner,
+two generated test VIs, both executable with no repair step, `subjectListedInProject` and
+`testListedInProject` both true. Caraya: 6 tests, 3 failures - exactly the three NEGATIVE CONTROL
+cases (array off by 0.1 in one element; array ONE ELEMENT SHORT, caught by the length check;
+scalar 1/3 against 0.34). Passing: `[5,0,-5,0]` within 1e-9 on `Simulate AI.vi`, 1/3 within 1e-9
+on a scalar subject, and an exact case beside them. A tolerance on `Simulate DI.vi`'s boolean
+array was refused at `cases` and nothing was written. `convertEol` composed on pylabview and run
+on a CRLF file: `a\r\nb` became `a\nb`; the same probe without the attribute kept `a\r\nb`.
 
 Tests: `RequiredErrorInTestTests` - fixture `Fixtures\pane\Simulate DI.xml` is the reader's export
 of the delivered `Simulate DI.vi`; `Sensor Event Demo.xml` (error in `recommended`) is the control.
