@@ -66,35 +66,21 @@ internal sealed class ExecStateTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_exec_state", ReadOnly = true, OpenWorld = true,
                    Title = "Is this VI executable?")]
     [Description("""
-        READ-ONLY: reads a VI's {LV.VI} Execution:State and VI Linker Errors through VI Server and
-        says whether it is executable. This is the only thing in the toolset that answers that
-        question without RUNNING the VI - which matters because a top-level UI loop never ends on
-        its own, so "just run it" is not available for the VI that most needs checking.
-        WHAT THE NUMBER MEANS: 0 eBad - BROKEN, 1 eIdle - fine and not running, 2 eRunTopLevel,
-        3 eRunning. And -1 means the REFERENCE NEVER OPENED, which is not a verdict about the VI at
-        all: read `code` and `source` for why. Those two are kept apart on purpose, because a failed
-        open leaves the state property unread at 0 and would otherwise read as eBad.
-        LINKER ERRORS NAME THE CAUSE of a missing link - `Missing subVI X.vi in VI Y.vi.` - as
-        LabVIEW's flattened XML of the string; an empty `<Val>` means none. Both backends read them
-        with the same helper VI; on pylabview `linkerErrorsAvailable` says whether they were read.
-        WHEN TO REACH FOR IT: after any pylv_apply retarget, after generating a VI that calls
-        project-local code, and whenever a chain of green answers still leaves you unsure. Measured:
-        pylv_apply reported ok with every callTarget correct over a caller that was Error 1003.
-        Opening and closing a VI REFERENCE does not burn the path for a later regeneration - only
-        lvai_open_file does that - and the helper opens WITHOUT an application instance, so this
-        also answers while pylv_apply has the project closed.
-        A BROKEN CLASS MEMBER ALSO GETS `missingInterfaceOverrides`, read from the files with no
-        LabVIEW: every dynamic-dispatch method of every interface the owning .lvclass implements
-        that the class does not override by name, with the interface's own `mustOverride` flag. A
-        missing override broke EVERY member of its class in this repository's measurements, and
-        the broken VI does not name it. Members whose dispatch cannot be read are listed under
-        `dispatchUnknown`, never as missing; a VI in no class, or a class with no interface, gets
-        null with `missingInterfaceOverridesReason`. An executable VI skips the check.
-        SEVERAL VIs IN ONE CALL: pass viPaths, one path per line (with or without viPath). The
-        answer is then one object - `brokenVis`, `executableVis`, `couldNotOpenVis`, `failed`, and
-        every VI's whole single answer under `results`. Measured over this repository's transcripts
-        the tool was called straight after itself 54 % of the time; a batch costs one model turn
-        where N did, and the VIs are read one after another, so nothing is faster inside LabVIEW.
+        Inspect: is a VI executable? Reads {LV.VI} Execution:State and its linker errors WITHOUT
+        running it - the check for a UI loop that never ends. State: 0 eBad (BROKEN), 1 eIdle (fine),
+        2 eRunTopLevel, 3 eRunning; -1 means the reference never opened - not a verdict, read `code`
+        and `source`. Linker errors name a missing link (`Missing subVI X.vi in VI Y.vi.`) as
+        flattened XML; an empty `<Val>` means none; `linkerErrorsAvailable` says whether they were
+        read. Use it after a pylv_apply retarget, after generating a VI that calls project-local
+        code, and whenever green answers still leave doubt - it often sees what nothing else does.
+        It does not burn the path for a later regeneration and needs no project.
+        A broken CLASS MEMBER also gets `missingInterfaceOverrides` (from the files): interface
+        methods the class does not override - a missing override breaks EVERY member of the class.
+        `dispatchUnknown` lists members it could not classify; null plus
+        `missingInterfaceOverridesReason` when not applicable.
+        SEVERAL VIs: viPaths, one per line - answers `brokenVis`, `executableVis`,
+        `couldNotOpenVis`, `failed` and each VI's answer under `results` - an executable VI's reduced
+        to its path and state, with the notes they share said once under `common`.
         """)]
     public async Task<string> ExecStateAsync(
         [Description("Absolute path to the .vi to interrogate. Optional when viPaths is given.")]
@@ -107,17 +93,15 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         bool regenerateHelper = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview the SAME helper is COMPOSED into %TEMP%\LabVIEWMCP\helpers-pylabview and
-            run over LabVIEW's ActiveX server instead of NI's service, so linker errors are named
-            there too. Only when that helper cannot be composed or run is the state read directly
-            over ActiveX, which has no linker-error property: the answer then says
-            `linkerErrorsAvailable: false` and why. LabVIEW must already be running - this never
-            starts it.
+             On pylabview LabVIEW must already be running - this never starts it; if its helper
+            cannot run, the state is read without linker errors (`linkerErrorsAvailable: false`).
             """)]
         string? backend = null,
         [Description("Absolute .vi paths, ONE PER LINE, for several VIs in one answer. May be combined with viPath.")]
         string? viPaths = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        [Description("Return every VI's full answer even when it is executable (several VIs only)")]
+        bool verbose = false)
     {
         var paths = BatchAnswer.Paths(viPath, viPaths);
         if (paths.Count == 0)
@@ -143,9 +127,89 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             }
             items.Add((p, answer));
         }
-        return Json.Document(Summarise(BatchAnswer.Aggregate(items,
-            n => n["ok"]?.GetValue<bool>() == true && n["couldNotOpen"]?.GetValue<bool>() != true)));
+        var batch = Summarise(BatchAnswer.Aggregate(items,
+            n => n["ok"]?.GetValue<bool>() == true && n["couldNotOpen"]?.GetValue<bool>() != true));
+        return Json.Document(verbose ? batch : Compact(batch));
     }
+
+    /// <summary>The per-VI fields that are the same text for every executable VI of a batch.</summary>
+    private static readonly string[] SharedKeys =
+        ["note", "meaning", "backend", "backendSource", "via", "route", "helperViPath",
+         "missingInterfaceOverridesReason"];
+
+    /// <summary>
+    /// A batch answer as the MCP client gets it by default. Measured in an application build
+    /// (docs/ideen-schneller-und-weniger-tokens.md §4): 5-10 k characters per call, almost all of it
+    /// the same notes repeated per EXECUTABLE VI. Such a VI is reduced to `viPath` and `execState`,
+    /// plus anything that is not the clean default - linker errors or Error List lines, a caveat
+    /// that they were not read, a non-zero `code` - and the shared notes go once under `common`.
+    /// A broken VI, one whose reference never opened and one the tool could not read keep their
+    /// whole answer. The verdict lists are untouched. Pure, so it is tested without LabVIEW.
+    /// </summary>
+    internal static JsonObject Compact(JsonObject batch)
+    {
+        if (batch["results"] is not JsonArray results) return batch;
+        var reduced = new List<JsonObject>();
+        for (var i = 0; i < results.Count; i++)
+        {
+            if (results[i] is not JsonObject r || !Executable(r)) continue;
+            var c = new JsonObject
+            {
+                ["viPath"] = r["viPath"]?.DeepClone(),
+                ["execState"] = r["execState"]?.DeepClone(),
+            };
+            if (r["linkerErrorsAvailable"] is JsonValue available
+                && available.TryGetValue<bool>(out var read) && !read)
+            {
+                c["linkerErrorsAvailable"] = false;
+                c["linkerErrorsUnavailableBecause"] = r["linkerErrorsUnavailableBecause"]?.DeepClone();
+            }
+            if (r["linkerErrors"] is JsonValue linker && linker.TryGetValue<string>(out var xml)
+                && !LinkerErrorsEmpty(xml))
+                c["linkerErrors"] = xml;
+            if (r["errors"] is JsonArray { Count: > 0 } errors) c["errors"] = errors.DeepClone();
+            if (r["code"] is JsonValue code && code.TryGetValue<int>(out var n) && n != 0)
+            {
+                c["code"] = n;
+                c["source"] = r["source"]?.DeepClone();
+            }
+            foreach (var key in SharedKeys)
+                if (r.ContainsKey(key)) c[key] = r[key]?.DeepClone();
+            results[i] = c;
+            reduced.Add(c);
+        }
+        if (reduced.Count == 0) return batch;
+
+        var common = Json.Hoist(reduced, SharedKeys);
+        // what is null on every executable VI (no helper path on grpc) says nothing
+        foreach (var key in common.Where(p => p.Value is null).Select(p => p.Key).ToList())
+            common.Remove(key);
+        foreach (var c in reduced)
+            foreach (var key in SharedKeys)
+                if (c.ContainsKey(key) && c[key] is null) c.Remove(key);
+        if (common.Count > 0) batch["common"] = common;
+        batch["slimmed"] = reduced.Count;
+        batch["note"] = "One answer for several VIs, read one after another. `allExecutable` is the " +
+                        "verdict; `brokenVis` names the VIs LabVIEW cannot run, `failed` the ones this " +
+                        "tool could not read at all. A broken VI's full answer is under `results`; an " +
+                        "executable one's is reduced, `common` holding what they all said - verbose: " +
+                        "true returns every full answer.";
+        return batch;
+    }
+
+    /// <summary>Read, opened and not broken: the one case whose answer is reduced.</summary>
+    private static bool Executable(JsonObject r) =>
+        r["ok"] is JsonValue ok && ok.TryGetValue<bool>(out var isOk) && isOk
+        && !(r["couldNotOpen"] is JsonValue cno && cno.TryGetValue<bool>(out var notOpened) && notOpened)
+        && r["broken"] is JsonValue broken && broken.TryGetValue<bool>(out var isBroken) && !isBroken;
+
+    /// <summary>
+    /// Whether flattened linker-error XML names nothing: blank, or no `&lt;Val&gt;` with content -
+    /// "an empty `&lt;Val&gt;` means none", as the tool's description says.
+    /// </summary>
+    internal static bool LinkerErrorsEmpty(string? xml) =>
+        string.IsNullOrWhiteSpace(xml)
+        || !System.Text.RegularExpressions.Regex.IsMatch(xml, @"<Val>\s*[^<\s]");
 
     /// <summary>
     /// The per-VI answer a batch loop calls in place of the live one - set by a test only, which

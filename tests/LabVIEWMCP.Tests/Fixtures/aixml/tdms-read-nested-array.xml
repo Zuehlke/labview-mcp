@@ -1,0 +1,21 @@
+<VI _name="Nested Probe.vi" description="Scratch check\3A reads groups Level and Valve back from a TDMS file.">
+  <Control _name="TDMS File" type="path" uid="4200" uid_parent="root" value="" conIdx="0" connection="required" outputs="value:4200.value" />
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]" conIdx="11" connection="required" outputs="value:4201.value" />
+  <Indicator _name="Level Data" type="array{array{double}}" uid="4202" uid_parent="root" value="[]" conIdx="4" connection="recommended" inputs="value:4213.data" />
+  <Indicator _name="Level Channels" type="array{string}" uid="4203" uid_parent="root" value="[]" conIdx="6" connection="recommended" inputs="value:4213.channel name(s) out" />
+  <Indicator _name="Valve Data" type="array{array{uint8}}" uid="4204" uid_parent="root" value="[]" conIdx="8" connection="recommended" inputs="value:4214.data" />
+  <Indicator _name="Valve Channels" type="array{string}" uid="4205" uid_parent="root" value="[]" conIdx="10" connection="recommended" inputs="value:4214.channel name(s) out" />
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="4206" uid_parent="root" value="[false,0,]" conIdx="15" connection="recommended" inputs="value:4215.error out" />
+  <Constant _name="operation" type="uint16{open,open or create,create or replace,create,open (read-only)}" uid="4207" uid_parent="root" value="4" outputs="value:4207.value" />
+  <Constant _name="Group Level" type="string" uid="4208" uid_parent="root" value="Level" outputs="value:4208.value" />
+  <Constant _name="Group Valve" type="string" uid="4209" uid_parent="root" value="Valve" outputs="value:4209.value" />
+  <Constant _name="Level Type" type="array{array{double}}" uid="4210" uid_parent="root" value="[]" outputs="value:4210.value" />
+  <Constant _name="Valve Type" type="array{array{uint8}}" uid="4211" uid_parent="root" value="[]" outputs="value:4211.value" />
+  <Node _name="TDMS Open" uid="4212" uid_parent="root" inputs="error in (no error):4201.value,operation (0\3Aopen):4207.value,file path:4200.value" outputs="error out:4212.error out,tdms file out:4212.tdms file out" />
+  <Node _name="TDMS Read" uid="4213" uid_parent="root" outputs="tdms file out:4213.tdms file out,channel name(s) out:4213.channel name(s) out,data:4213.data,error out:4213.error out" inputs="tdms file:4212.tdms file out,group name in:4208.value,error in (no error):4212.error out,data type:4210.value" />
+  <Node _name="TDMS Read" uid="4214" uid_parent="root" outputs="tdms file out:4214.tdms file out,channel name(s) out:4214.channel name(s) out,data:4214.data,error out:4214.error out" inputs="tdms file:4213.tdms file out,group name in:4209.value,error in (no error):4213.error out,data type:4211.value" />
+  <Node _name="TDMS Close" uid="4215" uid_parent="root" outputs="error out:4215.error out" inputs="error in (no error):4214.error out,tdms file:4214.tdms file out" />
+  <FreeLabel comment="Scratch read-back check" uid="20512" uid_parent="root" />
+</VI>
+
+

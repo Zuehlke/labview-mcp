@@ -1,0 +1,19 @@
+<VI _name="T202 Array Queue.vi" description="A queue whose element is an ARRAY of strings carries one [command, data] message through: Obtain, Enqueue, Dequeue with a timeout, Release; Index Array takes the two strings back apart. The ATM cold build of 2026-11-01 died loading exactly this shape.">
+  <Control _name="command in" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value=""/>
+  <Control _name="data in" outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value=""/>
+  <Node _name="Build Array" inputs="element:4201.value,element:4202.value" outputs="appended array:4203.appended array" uid="4203" uid_parent="root"/>
+  <Constant _name="queue type" outputs="value:4200.value" type="array{string}" uid="4200" uid_parent="root" value="[]"/>
+  <Node _name="Obtain Queue" inputs="element data type:4200.value" outputs="queue out:4210.queue out,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Enqueue Element" inputs="queue:4210.queue out,element:4203.appended array,error in (no error):4210.error out" outputs="queue out:4230.queue out,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Constant _name="timeout" outputs="value:4235.value" type="int32" uid="4235" uid_parent="root" value="100"/>
+  <Node _name="Dequeue Element" inputs="queue:4230.queue out,timeout in ms (-1):4235.value,error in (no error):4230.error out" outputs="queue out:4240.queue out,element:4240.element,timed out?:4240.timed out?,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Node _name="Release Queue" inputs="queue:4240.queue out,error in (no error):4240.error out" outputs="error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Constant _name="first" outputs="value:4255.value" type="int32" uid="4255" uid_parent="root" value="0"/>
+  <Constant _name="second" outputs="value:4256.value" type="int32" uid="4256" uid_parent="root" value="1"/>
+  <Node _name="Index Array" inputs="array:4240.element,index:4255.value" outputs="element:4260.element" uid="4260" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4240.element,index:4256.value" outputs="element:4261.element" uid="4261" uid_parent="root"/>
+  <Indicator _name="command" inputs="value:4260.element" type="string" uid="4300" uid_parent="root" value=""/>
+  <Indicator _name="data" inputs="value:4261.element" type="string" uid="4310" uid_parent="root" value=""/>
+  <Indicator _name="timed out" inputs="value:4240.timed out?" type="bool" uid="4320" uid_parent="root" value="false"/>
+  <Indicator _name="error out" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4350" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -35,20 +35,13 @@ internal sealed class LibraryCreateTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_create_library", Destructive = true, OpenWorld = true,
                    Title = "Create a LabVIEW library (.lvlib)")]
     [Description("""
-        MUTATING: creates a NEW, empty .lvlib through LabVIEW's own VI Server -
-        {LV.Application} Library.Create in the ACTIVE project's instance, then {LV.Library} Save
-        to libraryPath - lists it in the project at target level, and optionally sets its
-        description and adds existing VIs, classes or controls to it in the same call.
-        A library that already exists is refused, never overwritten. The project is opened
-        (projectPath, required) and made active first; it is CLOSED before the .lvproj entry is
-        written, because LabVIEW's close saves its own copy over the file.
-        `description` goes through lvai_set_class_description (CP1252 only - checked before
-        anything is created). `itemsJson` goes through lvai_add_to_library, which relinks callers
-        through NI's AddItem; a member that was listed in the project on its own is then taken
-        out of the target level (`looseEntriesRemoved`), since it belongs through the library now.
-        VERIFIED FROM THE FILES: the .lvlib exists and is a <Library>, the project lists it, and
-        the description and members read back from the saved .lvlib.
-        The icon is a separate call: lvai_set_owner_icon, with the project closed.
+        Library: creates a NEW .lvlib through NI's VI Server, lists it in the project at target
+        level, and optionally sets its description and adds existing VIs, classes or controls (via
+        lvai_add_to_library; their loose project entries are removed, `looseEntriesRemoved`). An
+        existing library is refused (fill it with lvai_add_to_library). projectPath is required:
+        opened and made active, then CLOSED before the .lvproj entry is written. A description
+        outside Windows-1252 is refused before anything is created. Verified from the saved files.
+        The icon is a separate call: lvai_set_owner_icon, project closed.
         """)]
     public async Task<string> CreateLibraryAsync(
         [Description("Absolute path of the new .lvlib, e.g. C:\\p\\Utils\\Utils.lvlib. Its folder is created if missing")]

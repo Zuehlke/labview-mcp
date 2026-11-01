@@ -42,35 +42,26 @@ internal sealed class FolderTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_move_to_folder", Destructive = true, OpenWorld = true,
         Title = "Move class or library members into a virtual folder")]
     [Description("""
-        MUTATING: moves members of ONE .lvclass or plain .lvlib into a virtual folder of that
-        owner, creating the folder at the owner's root when it is missing and createFolder is true.
-        A virtual folder exists only in the owner's XML, so NO FILE MOVES, no qualified name changes
-        and nothing relinks - only the owner file is saved.
-        Route: LVClass.Open / Library.Open in the ACTIVE PROJECT's instance, {LV.Library} AddItem
-        (Type Folder) when needed, Get All Descendents, {LV.ProjectItem} Move per item, then Save of
-        the owner only. Measured on every member of 15 classes (a field run, 2026-10-11/12); the
-        .lvlib arm is the unmeasured twin.
-        NEEDS A PROJECT OPEN AND ACTIVE (Error 1055 otherwise, errorKind noActiveProject). Pass
-        projectPath and this call opens it.
-        REFUSED BEFORE LABVIEW, from the owner file: a name that is not a member (`members` lists
-        what is there), the class private data control, a Property Definition, an accessor INSIDE a
-        Property Definition, a folder, items of different types in one call (one per call: VI, or
-        LVClass in a library), a folder name that occurs twice, a missing folder with
-        createFolder=false, and a folder PATH ("A/B") - the helper finds a folder by name and
-        creates one at the root, so nested paths are not supported. An item already in the folder
-        is skipped and named under `alreadyThere`.
-        ALL OR NOTHING: if LabVIEW does not list one of the items, or the owner already carries
-        unsaved changes, nothing is moved (itemsNotFoundByLabview / ownerHasUnsavedChanges).
-        VERIFIED FROM THE SAVED FILE: each item's parent in the re-read XML must be the folder,
-        every member listed before must still be listed, and `otherFilesChanged` must be empty.
+        Class: move members of ONE .lvclass or plain .lvlib into a virtual folder of that owner,
+        creating the folder at the owner's root if missing (createFolder). Only the owner file
+        changes - no file moves, no rename, no relink.
+        PRECONDITION: a project OPEN and ACTIVE (pass projectPath; else `noActiveProject`).
+        REFUSED from the owner file before LabVIEW: a non-member (`members` lists them), the private
+        data control, a Property Definition or an accessor inside one, a folder, mixed item types
+        in one call (VI, or LVClass in a library), a duplicated folder name, a missing folder with
+        createFolder=false, and a nested path ("A/B"). An item already there is skipped
+        (`alreadyThere`).
+        ALL OR NOTHING: an item LabVIEW does not list, or unsaved changes in the owner, moves
+        nothing (`itemsNotFoundByLabview` / `ownerHasUnsavedChanges`). Verified from the saved file:
+        each item under the folder, no member lost, `otherFilesChanged` empty.
         """)]
     public async Task<string> MoveToFolderAsync(
         [Description("Absolute path to the .lvclass or .lvlib")] string ownerPath,
         [Description("Virtual folder name, e.g. \"Accessors\". A single name; nested paths are refused")]
         string folder,
         [Description("""
-            JSON array of member names as the owner lists them, e.g. ["Read Name.vi","Set Name.vi"].
-            Names are matched exactly first, then ignoring case.
+            JSON array of member names, e.g. ["Read Name.vi","Set Name.vi"]; exact match first,
+            then ignoring case.
             """)]
         string itemNames,
         [Description("Create the folder at the owner's root when it is not there")]

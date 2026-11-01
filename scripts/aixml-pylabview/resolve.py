@@ -418,10 +418,20 @@ class Resolver:
             _INSTALL_INDEX[key] = got
         self._files, self._owners, self._llbs = got[1], got[2], got[3]
 
+    # OUR OWN SCRATCH TREES hold COPIES of the user's VIs - the layout step's backups above all
+    # (LabVIEWMCP\layout\<id>\<VI>.vi, taken before the icon step) - and a near search that reaches
+    # them links a Call to a stale copy. Measured 2026-11-01: a test VI regenerated from its AIXML in
+    # %TEMP%\LabVIEWMCP linked `Detect Pump Changes.vi` to layout\b322f9edf88f\, and its call drew
+    # the backup's blank icon. Never walked into.
+    SCRATCH_DIRS = {"layout", "compose-validate", "symbolic", "diagramsize", "helpers",
+                    "helpers-pylabview", "classes", "carriers"}
+
     @staticmethod
     def _walk(d, files, owners, depth=None, llbs=None):
         base = d.rstrip(os.sep).count(os.sep)
         for dirpath, dirnames, filenames in os.walk(d):
+            if os.path.basename(dirpath).lower() == "labviewmcp":
+                dirnames[:] = [n for n in dirnames if n.lower() not in Resolver.SCRATCH_DIRS]
             if depth is not None and dirpath.count(os.sep) - base >= depth:
                 dirnames[:] = []
             for f in filenames:

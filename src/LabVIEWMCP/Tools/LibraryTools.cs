@@ -45,33 +45,17 @@ internal sealed class LibraryTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_add_to_library", Destructive = true, OpenWorld = true,
         Title = "Add existing classes or VIs to a LabVIEW library")]
     [Description("""
-        MUTATING: adds files that ALREADY EXIST to a `.lvlib`, through NI's own `{LV.Library}`
-        `AddItem` plus `Save All This Library.vi` - the gesture that RELINKS, which writing
-        `NI.Lib.ContainingLib` by hand does not.
-        THE HAND EDIT IS THE TRAP THIS EXISTS FOR. Measured 2026-09-17: hand-writing that property
-        and a matching `.lvlib` took all three VIs of a class from execState 1 to eBad, with
-        lvai_describe_class reporting the right qualifiedName and containingLibrary throughout,
-        both files well-formed, BOM and CRLF intact. Through AddItem the same kind of change left
-        every caller executable after a project close.
-        NEEDS A PROJECT OPEN AND ACTIVE: the helper reaches LabVIEW through Project:Active Project
-        and answers Error 1055 without one. Pass projectPath and this call opens it.
-        IT DOES NOT EDIT THE .lvproj. A file that was listed in the project on its own should lose
-        that entry once it belongs through a library - the answer names it under
-        `projectEntriesToRemove`, and you remove it with the project CLOSED. Doing both in one call
-        is not possible: AddItem wants the project open and a surviving .lvproj edit wants it shut.
-        A `folder` PUTS THE ITEM INSIDE A VIRTUAL FOLDER, the way NI's own Message Maker places a
-        message class: AddItem is invoked on the FOLDER's project item, not on the library.
-        NI FALLS BACK TO THE ROOT IN SILENCE when the folder does not exist, so a folder that is
-        not in the library is REFUSED here before LabVIEW is touched, naming the ones that are -
-        and `verify.placedIn` says where each item really landed.
-        ONE HELPER RUN PER ITEM, all inside this one call, so a five-item library costs one round
-        trip rather than five.
-        VERIFIED FROM THE SAVED .lvlib, which is re-read afterwards - `verify.items` is what is on
-        disk, not what the runs reported.
-        AN ACTOR JOINS ITS LIBRARY BEFORE ITS MESSAGES ARE BUILT. Adding an actor class whose
-        message classes already exist leaves every message's Do.vi eBad (measured 2026-09-18)
-        while this call answers ok; only lvai_exec_state sees it, and the repair is rebuilding
-        the messages. Order: class, methods, library, messages.
+        Library: add EXISTING classes or VIs to a `.lvlib` through NI's `{LV.Library}` `AddItem`
+        plus `Save All This Library.vi`, which RELINKS. MUTATING. Never write
+        `NI.Lib.ContainingLib` by hand - that leaves every member eBad with all file checks green.
+        Needs a project OPEN and ACTIVE (Error 1055 otherwise; pass projectPath to open it).
+        It does NOT edit the .lvproj: entries that now belong through the library are named under
+        `projectEntriesToRemove` - remove them with the project CLOSED.
+        `folder` adds into a virtual folder; a folder not in the library is REFUSED (NI would
+        silently fall back to the root); `verify.placedIn` says where each item landed.
+        `verify.items` is re-read from the saved .lvlib.
+        ORDER for an actor: class, methods, library, messages - an actor added after its message
+        classes exist leaves every Do.vi eBad while this answers ok; only lvai_exec_state sees it.
         """)]
     public async Task<string> AddToLibraryAsync(
         [Description("Absolute path to the .lvlib the items should belong to. It must already exist")]
@@ -79,23 +63,16 @@ internal sealed class LibraryTools(LvaiConnection connection)
         [Description("""
             JSON array of items to add, e.g.
             [{"path":"C:\\p\\Pump\\Pump.lvclass"},{"path":"C:\\p\\Log.vi","type":"VI"}]
-            `path` is required and the file must exist. `name` defaults to the file's own name,
-            which is what NI writes. `type` defaults to `LVClass` for a .lvclass and `VI` for a .vi;
-            any other extension must say its own type, because guessing one is how a library gets an
-            item LabVIEW then cannot bind.
+            `path` required, file must exist; `name` defaults to the file name; `type` defaults to
+            LVClass/VI by extension - any other extension must give its type.
             """)]
         string itemsJson,
         [Description("""
-            Virtual folder inside the library to add into, e.g. "Messages for this Actor". Omit
-            for the library root. It must already exist in the .lvlib - a name that is not there
-            is refused rather than quietly landing at the root, which is what NI's own AddItem
-            does. The whole call uses one folder; add to two folders with two calls.
+            Existing virtual folder in the library to add into, e.g. "Messages for this Actor";
+            omit for the root. One folder per call.
             """)]
         string? folder = null,
-        [Description("""
-            The .lvproj to open first. Without an active project every AddItem answers Error 1055.
-            Omit only when you have opened one yourself. This file is never EDITED here.
-            """)]
+        [Description("The .lvproj to open first; omit only when one is already active. Never edited.")]
         string? projectPath = null,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,
         [Description("The helper's AIXML source; defaults to the scripts folder's copy")]

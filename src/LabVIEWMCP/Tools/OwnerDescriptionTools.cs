@@ -43,43 +43,24 @@ internal sealed class OwnerDescriptionTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_set_class_description", Destructive = true, OpenWorld = true,
         Title = "Set the description of a LabVIEW class or library")]
     [Description("""
-        MUTATING: sets the description (NI.Lib.Description) of ONE .lvclass or plain .lvlib
-        through LabVIEW's own VI Server - LVClass.Open / Library.Open in the ACTIVE PROJECT's
-        instance, write Description, read it back, then Save of that one file
-        ({LV.LVClassLibrary} Save / {LV.Library} Save). Nothing else is saved.
-        NEEDS A PROJECT OPEN AND ACTIVE: the helper reaches LabVIEW through Project:Active Project
-        and answers Error 1055 without one, reported as errorKind noActiveProject. Pass projectPath
-        and this call opens it.
-        THE TEXT IS STORED ANSI (Windows-1252). Measured 2026-10-11/12 on 15 classes: an arrow came
-        back as "?" with no error from the write, the read-back or the save. So any character
-        outside CP1252 - and any control character other than TAB, CR and LF - is REFUSED before
-        LabVIEW is touched (errorKind textNotCp1252), each one named with its position and an
-        ASCII replacement where one is obvious ("->" for an arrow); suggestedText carries the whole
-        text rewritten when every offender has one. Line breaks are SENT as LF: LabVIEW's Save
-        writes each LF as CRLF, and a CRLF sent in reached the file as CR CR LF (measured
-        2026-10-13), a blank line per break. The file ends up CRLF either way.
-        AN OWNER WITH UNSAVED CHANGES IS LEFT ALONE (errorKind ownerHasUnsavedChanges): its Save
-        would write those changes too. Save or revert it first.
-        VERIFIED FROM THE SAVED FILE: the .lvclass/.lvlib is re-read as XML and its
-        NI.Lib.Description compared with the text (line breaks compared as LF) - `verified` never
-        comes from LabVIEW's own read-back, which reads memory. `filesChanged` lists every file
-        under the owner's folder whose write time or length changed, so "only that file was
-        saved" is checked rather than assumed.
-        The .lvclass route is measured (a field run, 15 classes); the .lvlib route, its twin
-        through {LV.Library}, on one library (2026-10-13). An empty text is refused: an empty value
-        cannot travel to the helper, so clearing a description is not supported here.
+        Class: set the description (NI.Lib.Description) of ONE .lvclass or plain .lvlib through
+        VI Server, saving only that file. MUTATING.
+        Needs a project OPEN and ACTIVE (errorKind noActiveProject otherwise; pass projectPath to
+        open it). The text is stored as Windows-1252: any other character, and any control
+        character but TAB/CR/LF, is REFUSED before LabVIEW (textNotCp1252, each named with a
+        replacement; `suggestedText` when all have one). An empty text is refused - clearing is not
+        supported. An owner with unsaved changes is left alone (ownerHasUnsavedChanges).
+        `verified` comes from the saved file's XML, never LabVIEW's read-back; `filesChanged` lists
+        every file under the owner's folder that changed.
         """)]
     public async Task<string> SetClassDescriptionAsync(
         [Description("Absolute path to the .lvclass or .lvlib")] string ownerPath,
         [Description("""
-            The new description, whole - it replaces the old one. Windows-1252 characters only;
-            line breaks allowed. LabVIEW's description fields understand <b>bold</b> tags.
+            The whole new description, replacing the old. Windows-1252 only; line breaks and
+            <b>bold</b> tags allowed.
             """)]
         string text,
-        [Description("""
-            The .lvproj to open (and make active) first. Omit when the owner's project is already
-            open and active. This file is not edited.
-            """)]
+        [Description("The .lvproj to open and make active first; omit when it already is. Not edited.")]
         string? projectPath = null,
         [Description(HousekeepingHelpers.CheckUnsavedDescription)] bool checkUnsaved = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 120,

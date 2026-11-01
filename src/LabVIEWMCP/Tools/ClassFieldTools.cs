@@ -40,46 +40,31 @@ internal sealed class ClassFieldTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_add_class_field", Destructive = true, OpenWorld = true,
         Title = "Add private data fields to a LabVIEW class that already exists")]
     [Description("""
-        MUTATING: adds private data FIELDS to a `.lvclass` that ALREADY EXISTS, through NI's own
-        `Message Maker.lvlib:Add Member Data to Private Data Control.vi` - the same provider
-        `lvai_create_class` drives, which does not care how old the class is.
-        USE THIS RATHER THAN RE-CREATING THE CLASS. `lvai_create_class`'s `overwrite` would drop
-        every member; this leaves them alone. Measured 2026-09-17 on a class with 9 members and
-        again on a fixture with 4 wizard accessors: the field is APPENDED, the members are
-        untouched, and every VI is still executable after a project close.
-        IT ADDS ONLY - there is no remove and no rename here. A field name the class already
-        carries is refused before LabVIEW is touched, because NI's provider would take it and you
-        would end up with two fields of one name.
-        NEEDS A PROJECT OPEN AND ACTIVE: the provider reaches LabVIEW through
-        Project:Active Project and answers Error 1055 without one. Pass projectPath and this call
-        opens it.
-        THE ACCESSORS ARE NOT CREATED - a new field has none. Follow with
-        `lvai_create_accessors` passing `fromField` as the new field's index, which is the old
-        field count (the answer reports it as `nextFromField`); leaving it at -1 resumes from the
-        MEMBER count, which is wrong on a class that also has methods.
-        VERIFIED FROM THE SAVED FILE, and `ok` is gated on the OLD fields surviving as well as the
-        new ones arriving - "it appends" is a measured property, not a promise NI made.
+        Class: adds private data FIELDS to a `.lvclass` that ALREADY EXISTS, appending them and
+        leaving every member alone - use it instead of lvai_create_class's `overwrite`, which drops
+        every member. ADDS ONLY: no remove, no rename; a field name the class already has is refused
+        before LabVIEW is touched. NEEDS A PROJECT OPEN AND ACTIVE (Error 1055 otherwise) - pass
+        projectPath and this call opens it.
+        NO ACCESSORS are created: follow with lvai_create_accessors with `fromField` = the answer's
+        `nextFromField` (the old field count) - fromField -1 resumes from the MEMBER count, which is
+        wrong on a class that also has methods. Verified from the saved file; `ok` requires the old
+        fields to survive as well as the new ones to arrive.
         """)]
     public async Task<string> AddClassFieldAsync(
         [Description("Absolute path to the .lvclass to extend. It must already exist")]
         string lvclassPath,
         [Description("""
-            Fields to ADD, as `<type>.<name>`, comma separated - the same spelling
-            `lvai_create_class` takes, e.g. `bool.Rechtslauf` or `string.Hersteller,int32.Baujahr`.
-            A name the class already has is refused. Cluster, array and enum fields are not
-            supported here, for the same reason they are not there.
+            Fields to add as `<type>.<name>`, comma separated, as lvai_create_class takes them, e.g.
+            `string.Hersteller,int32.Baujahr`. Existing names are refused; no cluster, array or enum.
             """)]
         string fields,
         [Description("""
-            The .lvproj to open first. Without an active project the provider answers Error 1055.
-            Omit only when you have opened one yourself. This file is never EDITED here.
+            The .lvproj to open first; omit only when one is already active. The file is never edited.
             """)]
         string? projectPath = null,
         [Description("""
-            Where to keep the generated CARRIER VI, whose controls become the fields. It is KEPT,
-            not deleted: LabVIEW adopts the carrier into the open project, and deleting it leaves
-            LabVIEW holding a project whose items no longer exist - the same trap
-            `lvai_create_class`'s `keepCarrier` documents. Defaults to a per-user temp directory.
+            Where to keep the generated carrier VI (per-user temp by default). It is KEPT: deleting it
+            leaves LabVIEW holding a project with a missing item.
             """)]
         string? carrierViPath = null,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,

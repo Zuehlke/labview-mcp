@@ -36,26 +36,18 @@ internal sealed class BindReferenceTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_bind_control_references", Destructive = true, OpenWorld = true,
                    Title = "Replace refnum stand-ins with bound control references")]
     [Description("""
-        MUTATING: edits a VI IN PLACE, through VI Server scripting in the IDE's application
-        instance. For each STAND-IN - a refnum control such as `WB Ref` of type
-        ref{LV.WebBrowser} - it creates a BOUND control reference of a real front-panel control
-        (what right-click > Create > Reference makes), wires it to every sink the stand-in fed,
-        deletes the stand-in and saves.
-        USE IT WHEN AIXML CANNOT MAKE THE CONTROL ITSELF - the Web Browser control is the measured
-        case: AIXML writes it as a string, so `link=` on a {LV.WebBrowser} Invoke Node and a
-        `VI Server Reference` to it are both broken. Author the program against a stand-in
-        control of the reference type instead (ref{LV.WebBrowser} is a valid type literal and an
-        unlinked Invoke Node on it validates), graft it into the supplied panel that holds the
-        real control (lvai_graft_diagram allowNewControls), then call this. For a control AIXML
-        CAN create, author the reference directly - <Node _name="VI Server Reference"
-        element="<label>" outputs="<label>:<net>"/> - and this tool is not needed.
-        bindingsJson maps stand-in label to control label: {"WB Ref":"Web Browser Control"}.
-        THE FRONT PANEL IS OPENED in the IDE for the edit and put back afterwards: Create Control
-        Ref answers Error 53 on a Web Browser control whose panel is closed (measured).
-        NEEDS AN ACTIVE PROJECT (Error 1055 otherwise); the VI need not be listed in it.
-        OK IS DECIDED FROM THE FILE: execState 1, no stand-in left, and each control's reference
-        node feeding the same sinks its stand-in fed. A copy of the VI from before the edit is
-        kept and named under backupPath.
+        Edit: replace refnum STAND-IN controls (e.g. `WB Ref` of type ref{LV.WebBrowser}) with
+        BOUND control references to real front-panel controls, rewire every sink, delete the
+        stand-in, save IN PLACE. MUTATING.
+        Use it only where AIXML cannot make the control - the Web Browser control (AIXML writes it
+        as a string): author against a ref{LV.WebBrowser} stand-in, graft into the panel holding
+        the real control (lvai_graft_diagram), then call this. For a control AIXML CAN create,
+        author <Node _name="VI Server Reference" element="<label>" outputs="<label>:<net>"/>
+        directly instead.
+        Needs an ACTIVE project (Error 1055 otherwise); the VI need not be listed in it. The panel
+        is opened for the edit and put back. `ok` is decided from the file: execState 1, no
+        stand-in left, each reference feeding the stand-in's sinks. The pre-edit copy is named
+        under `backupPath`.
         """)]
     public async Task<string> BindControlReferencesAsync(
         [Description("Absolute path of the VI to edit. Saved in place")] string viPath,

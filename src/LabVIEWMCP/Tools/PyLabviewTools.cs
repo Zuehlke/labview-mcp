@@ -33,17 +33,11 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
 
     [McpServerTool(Name = "pylv_status", ReadOnly = true, Title = "pylabview bundle status")]
     [Description("""
-        Whether the bundled pylabview is present and usable, where it is, and what it is made of -
-        Python version and architecture, the pinned upstream commit, when it was provisioned, and
-        whether the two name tables travelled with it.
-        Start here: every other pylv_* tool is unusable without the bundle. It is about 38 MB, so
-        it is not committed: a CHECKOUT has none until tools\pylabview\provision.ps1 has run,
-        while a BINARY install carries it inside the release archive - every release up to and
-        including v0.9.0 shipped without one, and there the fix is updating the plugin, not
-        running a script that is not installed.
-        Needs NO running LabVIEW and no Python installation. The bundle is isolated by a
-        pythonNNN._pth file beside its python.exe, python.org's own embeddable mechanism, so it
-        ignores PYTHONPATH, PYTHONHOME, the registry and every site-packages directory.
+        Status: whether the bundled pylabview is present and usable - directory, Python version,
+        pinned commit, name tables, the server version and the AIXML backend default. Start here:
+        every other pylv_* tool needs the bundle. A source checkout has none until
+        tools\pylabview\provision.ps1 has run; a binary install carries it (if missing, update the
+        plugin). Needs NO running LabVIEW and no Python installation.
         """)]
     public Task<string> StatusAsync(CancellationToken ct = default) =>
         Rpc.GuardAsync(() =>
@@ -94,22 +88,13 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
 
     [McpServerTool(Name = "pylv_extract", ReadOnly = true, Title = "VI to XML with pylabview")]
     [Description("""
-        Extract a .vi, .ctl or .llb into a directory of XML plus binary sidecars, and annotate the
-        numbers with names. Does NOT modify the source file, and needs NO running LabVIEW.
-        This reads what AIXML cannot: icons, panel images, layout, decorations, and the diagram of
-        a VI whose constructs the AIXML generator refuses. Measured, 38 of 38 .vi and .ctl files
-        round-tripped content-identical on LabVIEW 2026 Q3.
-        A .lvclass, .lvlib or .lvproj is NOT an RSRC container in LabVIEW 2026 - those are already
-        plain XML on disk, so read them with an XML parser instead. This tool reports that rather
-        than failing obscurely.
-        annotate (default true) writes primitive and terminal names in as XML comments -
-        `<primResID>1050</primResID><!-- Add -->`. A trailing `?` marks a name resting on fewer
-        than three sightings in the corpus; 218 of the 574 terminal roles rest on one. The comments
-        are inert: a rebuild from an annotated bundle is byte-identical to one from an
-        un-annotated bundle, measured.
-        Expect warnings on stderr about blocks that could not be parsed - VITS alone falls back on
-        nearly every file. Those blocks are copied through verbatim, which is why the round trip is
-        lossless, so they are reported separately from an actual failure.
+        pylabview: extracts a .vi, .ctl or .llb into a directory of XML plus binary sidecars
+        (lossless round trip with pylv_rebuild). Read-only, needs NO running LabVIEW. Reads what
+        AIXML cannot: icons, panel images, layout, decorations, typedef bindings. A .lvclass,
+        .lvlib or .lvproj is plain XML already and is refused - read it directly. `annotate` writes
+        primitive and terminal names in as inert XML comments (a trailing `?` marks a weakly
+        attested name). `rawFallbackWarnings` lists blocks copied through unparsed - not damage.
+        For a whole edit cycle use pylv_apply instead.
         """)]
     public Task<string> ExtractAsync(
         [Description("Absolute path to the .vi/.ctl/.llb to read")] string viPath,
@@ -193,21 +178,13 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
     [McpServerTool(Name = "pylv_rebuild", Destructive = true, OpenWorld = true,
                    Title = "XML back to a VI with pylabview (writes a .vi)")]
     [Description("""
-        MUTATING: rebuild a .vi from an XML bundle produced by pylv_extract, writing to viPath and
-        overwriting whatever is there. Needs NO running LabVIEW.
-        THE PATH MUST NOT BE LOADED IN LABVIEW, and the failure is silent rather than loud.
-        Measured: LabVIEW does not lock a .vi file, so this write always succeeds - but LabVIEW
-        keeps serving its in-memory copy, so a verification run afterwards confirms the VI you
-        REPLACED, not the one you built. Call lvai_close_vi on the target first. That tool needs
-        the VI to be a member of a project that is active in the IDE, which is why generating into
-        a project matters; for a loose VI, rebuild to a fresh path instead.
-        Annotation comments left by pylv_extract are ignored on the way back in, so an annotated
-        bundle rebuilds byte-identically to an un-annotated one.
-        Byte equality with the ORIGINAL is the wrong acceptance test: LabVIEW compresses block
-        sections at zlib level 9 and pylabview at level 6, which shifts every offset after the
-        first section. Compare decompressed block content, or just load the result.
-        Verify afterwards - this tool cannot. Read ExecState through VI Server (1 is eIdle, 0 is
-        eBad), then AIXML-export the result and confirm the change you intended is present.
+        pylabview: rebuilds a .vi from a pylv_extract bundle, OVERWRITING viPath. Needs NO running
+        LabVIEW. Prefer pylv_apply, which runs the whole cycle with its gates.
+        THE PATH MUST NOT BE LOADED IN LABVIEW: the write succeeds anyway and LabVIEW keeps serving
+        its stale copy, so a later check confirms the VI you REPLACED. Close the project first
+        (lvai_close_active_project), or rebuild to a fresh path. Byte equality with the original is
+        the wrong test (different zlib level). Verify afterwards - this tool cannot: lvai_exec_state
+        (0 is broken), then AIXML-export and look; `gatesNotChecked` lists what is left.
         """)]
     public Task<string> RebuildAsync(
         [Description("Absolute path to the bundle's MAIN .xml (the one pylv_extract reports as mainXml)")]
@@ -256,21 +233,13 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
     [McpServerTool(Name = "pylv_route", ReadOnly = true,
                    Title = "Which route can edit this VI, AIXML or pylabview")]
     [Description("""
-        Decide, by measurement rather than guess, whether an existing VI can be edited through
-        AIXML or has to go through pylabview - and say why. Call this BEFORE planning any edit.
-        Two checks, because one is not sound:
-        A. export the VI and hand the export straight back to ValidateAIXML without changing a
-           byte. errorCode 1 means AIXML cannot rebuild this VI at all.
-        B. scan the export for node families NI publishes as unsupported - Event Structure,
-           Timed Loop. These pass check A with errorCode 0 and then come back GUTTED: measured on
-           NI's own VI, every CaseFrame gone and one frame left labelled '[0] Timeout'. Check A
-           alone would route them to AIXML and destroy them.
-        Context for the answer: over 1687 of NI's VIs, 1679 export but only 627 regenerate. For
-        editing existing code AIXML is the minority route, and 737 of the 1052 failures are a Call
-        to the VI's own subVIs - which is a capability AIXML lacks entirely, not a bug.
-        This tool decides; it does not switch. A pylabview edit is a surgical change to an object
-        heap, so it cannot be synthesised from a high-level request - you still have to author it.
-        Needs a running LabVIEW for check A.
+        pylabview: decides whether an EXISTING VI can be edited through AIXML or must go through
+        pylabview, and says why (`route`, `routeReason`). Call it BEFORE planning an edit. Check A
+        validates the untouched export (a failure means AIXML cannot rebuild it - typically a Call
+        to the VI's own subVIs); check B scans for node families that validate but come back
+        GUTTED (`silentlyUnsupported`). Neither sees a TYPEDEF - an AIXML edit replaces every
+        typedef with a de-linked copy; check with pylv_extract separately. It decides, it does not
+        edit. Needs a running LabVIEW.
         """)]
     public Task<string> RouteAsync(
         [Description("Absolute path to the .vi to assess")] string viPath,

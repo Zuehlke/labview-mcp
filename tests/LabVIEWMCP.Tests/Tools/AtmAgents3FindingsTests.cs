@@ -30,7 +30,9 @@ public sealed class AtmAgents3FindingsTests
         [
             new("accounts path", "path", IsInput: true),
             new("accounts", "array.2{string}", IsInput: true),
-            new("error in", "cluster{bool.status,int32.code,string.source}", IsInput: true),
+            // recommended: a REQUIRED one starts the chain on a no-error constant instead
+            // (RequiredErrorInTestTests), and an omitted connection reads as required
+            new("error in", "cluster{bool.status,int32.code,string.source}", IsInput: true, "recommended"),
             new("error out", "cluster{bool.status,int32.code,string.source}", IsInput: false),
         ]),
     };

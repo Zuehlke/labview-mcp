@@ -304,7 +304,7 @@ public class ViServerKnowledgeTests
         var rules = KnowledgeTools.Load("CLAUDE.md");
 
         Assert.Contains("lvai_palette_index", rules);
-        Assert.Contains("palette reachability", rules, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("A miss in the index is not proof", rules, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

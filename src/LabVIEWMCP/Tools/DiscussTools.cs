@@ -62,45 +62,26 @@ internal sealed class DiscussTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_discuss_file", Destructive = true, OpenWorld = true,
                    Title = "Put Nigel into Discuss mode on a VI or project")]
     [Description("""
-        MUTATING: launches NI's Nigel chat application if it is not already running and attaches
-        the given VI or project to it - the same two stages as the IDE's "Discuss with Nigel"
-        command, driven over VI Server. The chat then shows the file with its diagram, description
-        and terminal table.
-        IT REPORTS A REAL VERDICT, which is why it drives NI's two packed-library VIs rather than
-        the menu callback that wraps them: the callback returns nothing at all, discarding
-        InvokeDiscussVI's own error code. `discussErrorCode` and `discussErrorMessage` are that
-        discarded verdict, and `ok` is gated on them.
-        This is the EMITTING side of the Discuss feature. Intercepting it is a different question
-        and remains impossible: lvai_monitor_discuss_vi cannot receive the event, because the
-        monitors are single-subscriber streams and NI's own service always wins.
-        IT DOES NOT UNLOCK lvai_apply_aixml_to_vi. Measured: Discuss fired on a VI, Apply on that
-        same VI 30 s later, still Error 42. The gate is on the caller, not on the VI.
-        The chat also validates the file ITSELF, in its window - handed a path that is not a VI it
-        shows "The file you selected is not a VI." - so the extension is checked here, before the
-        call.
+        Knowledge: put NI's Nigel chat into Discuss mode on a VI or project - launches Nigel if
+        needed and attaches the file, like the IDE's "Discuss with Nigel" command. MUTATING.
+        `ok` is gated on `discussErrorCode`/`discussErrorMessage`, NI's InvokeDiscussVI verdict
+        that the menu callback discards. The file extension must match `fileType` and is checked
+        here (the chat would only show the refusal in its own window).
+        It does NOT unlock lvai_apply_aixml_to_vi (still Error 42), and lvai_monitor_discuss_vi
+        cannot intercept the event - NI's own service always wins that stream.
         """)]
     public async Task<string> DiscussFileAsync(
         [Description("Absolute path of the .vi or .lvproj to discuss")] string targetPath,
-        [Description("""
-            The name Nigel shows for the file. Defaults to the file name, which is what NI's own
-            menu callback passes.
-            """)]
+        [Description("The name Nigel shows for the file; defaults to the file name, as NI's menu does.")]
         string? targetName = null,
-        [Description("""
-            'VI' or 'PROJECT', case-insensitive. Defaults to VI, which is what the IDE's own
-            Discuss command hardcodes. It must agree with the file's extension.
-            """)]
+        [Description("'VI' or 'PROJECT', case-insensitive; must agree with the file's extension.")]
         string fileType = "VI",
         [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user temp directory.
-            Generated once and reused - but regenerated automatically when the shipped AIXML is
-            newer, so an upgrade cannot leave a stale helper behind.
+            Where to keep the generated helper VI; defaults to a per-user temp directory.
+            Regenerated automatically when the shipped AIXML is newer.
             """)]
         string? helperViPath = null,
-        [Description("""
-            The helper's AIXML source. Defaults to lvai_discuss.xml inside the folder lvai_status
-            reports as scriptsDirectory.
-            """)]
+        [Description("The helper's AIXML source; defaults to lvai_discuss.xml in lvai_status's scriptsDirectory.")]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists and is current")]
         bool regenerateHelper = false,

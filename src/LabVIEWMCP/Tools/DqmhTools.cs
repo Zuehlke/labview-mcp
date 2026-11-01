@@ -63,75 +63,53 @@ internal sealed class DqmhTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_new_event", Destructive = true, OpenWorld = true,
         Title = "Create a DQMH event")]
     [Description("""
-        MUTATING: creates a DQMH event - Request, Broadcast, Request and Wait for Reply or Round
-        Trip - with typed arguments on a module in the ACTIVE project.
-
-        WITH NO DIALOG AND NO KEYSTROKE, so it is safe unattended: a generated wrapper
-        calls Delacor's own Parse Project for DQMH Modules.vi and Script New Event.vi as loaded
-        subVIs of ONE caller, which keeps Module Info's refnums alive (docs/dqmh-scripting.md
-        section 9). A dry run first finds the module and its folder, and the checks Delacor's
-        dialog would answer with a MODAL - blank or invalid names, reserved or duplicate argument
-        labels, an event name already used as a file or as a Main.vi case - are made here and
-        refused by name. The answer lists the files written with each VI's exec state and
-        confirms Main.vi is still executable. Names may be bare or as Delacor spells them.
-
-        BOTH DQMH GENERATIONS: DQMH 5/6 (scripting under project\Delacor\DQMH) and DQMH 7.x
-        (shared scripting VIs moved to vi.lib, Script New Event.vi taking one Event Info cluster)
-        are read off the installation and driven by their own wrapper; `dqmhGeneration` in the
-        answer says which ran. On 7.x a Broadcast also leaves the API tester NOT executable until
-        its #DQMH_CodeNeeded status string is wired - `completionNeeded` says so.
-
-        A project must be OPEN AND ACTIVE.
+        DQMH: create a DQMH event - Request, Broadcast, Request and Wait for Reply or Round Trip -
+        with typed arguments on a module of the ACTIVE project, through Delacor's own scripting
+        with NO dialog (safe unattended). PRECONDITION: a project OPEN and ACTIVE.
+        What Delacor's dialog would answer with a modal - blank or invalid names, reserved or
+        duplicate argument labels, an event name already used - is refused here by name first. The
+        answer lists the files written with each VI's exec state and whether Main.vi is still
+        executable. Works with DQMH 5/6 and 7.x (`dqmhGeneration`). What Delacor leaves for a person
+        is in `completionNeeded` - a frame's #CodeNeeded code (lvai_dqmh_place_handler), and on 7.x a
+        Broadcast's tester status string. docs/dqmh-scripting.md section 9c.
         """)]
     public async Task<string> NewEvent(
-        [Description("Module to add the event to, e.g. 'Heater' or 'Heater.lvlib'. Matched " +
-                     "against the project's DQMH modules, case-insensitively.")]
+        [Description("Module, e.g. 'Heater' or 'Heater.lvlib', matched case-insensitively")]
         string moduleName,
         [Description("Name of the new event, e.g. 'Do Something Else'")]
         string eventName,
         [Description("""
-            Arguments as JSON: [{"name":"Channel","type":"string"},{"name":"Gain","type":"double"}].
-            The names and types become the event's Argument--cluster.ctl fields, so they are the
-            event's public contract. Pass [] for an event with no arguments.
-            Types are AIXML type names - string, double, int32, uint32, bool, path and so on.
+            Arguments, the event's public contract: [{"name":"Channel","type":"string"},
+            {"name":"Gain","type":"double"}]; AIXML type names; [] for none.
             """)]
         string argumentsJson,
         [Description("Event type: Request, Broadcast, Request and Wait for Reply, or Round Trip")]
         string eventType = "Request",
         [Description("""
-            Reply data, same JSON shape as argumentsJson, for the two types that carry a reply -
-            Request and Wait for Reply, and Round Trip. These become the REPLY cluster, a second
-            Argument--cluster.ctl, and they are a different set from argumentsJson: those are what
-            the caller sends, these are what the module sends back. Leave empty for a reply that
-            carries only the error cluster. Refused on Request and Broadcast, which have no reply.
+            The REPLY cluster, same JSON shape, for Request and Wait for Reply and Round Trip only
+            (refused otherwise); empty for an error-only reply.
             """)]
         string replyArgumentsJson = "",
         [Description("""
-            Round Trip only, and required for it: the name of the BROADCAST half of the pair. A
-            Round Trip is a request plus the broadcast that answers it, so it needs two names -
-            eventName is the request. Refused on the other three types.
+            Round Trip only, and required there: the name of its BROADCAST half (eventName is the
+            request). Refused on other types.
             """)]
         string roundTripBroadcastName = "",
-        [Description("Event description. Delacor writes it into the message-handling frame's " +
-                     "label, where it documents the event on the module's block diagram.")]
+        [Description("Event description, written into the message-handling frame's label")]
         string description = "",
-        [Description("Add a button to the module's API tester that fires this event. FALSE STILL " +
-                     "ADDS AN EVENT CASE to the tester - Delacor's own behaviour - with no button and " +
-                     "nothing wired, which leaves the tester NOT executable until that case is assigned " +
-                     "or deleted (issue #112); keep true unless that is what you want")]
+        [Description("Add a tester button firing the event. FALSE still adds an empty tester event " +
+                     "case, leaving the tester NOT executable until it is assigned or deleted")]
         bool addTesterButton = true,
-        [Description("DQMH 7.x only, Request and Request and Wait for Reply only: 'Public Request' " +
-                     "(default), 'Private Request' or 'Local Instance'. A private or local-instance " +
-                     "request is consumed by the loop named in consumingLoop")]
+        [Description("DQMH 7.x, Request types only: 'Public Request', 'Private Request' or " +
+                     "'Local Instance' (the latter two consumed by consumingLoop)")]
         string requestScoping = "Public Request",
-        [Description("DQMH 7.x only: the loop of Main.vi that consumes a PRIVATE or LOCAL INSTANCE " +
-                     "request - 'Event Handling Loop' (default) or a helper loop made with " +
-                     "lvai_dqmh_add_helper_loop")]
+        [Description("DQMH 7.x: the Main.vi loop consuming a private or local-instance request - " +
+                     "'Event Handling Loop' or a loop from lvai_dqmh_add_helper_loop")]
         string consumingLoop = "Event Handling Loop",
         [Description("Local budget in seconds; the scripting itself takes tens of seconds")]
         int timeoutSeconds = 600,
-        [Description("Answer within this many seconds; past it the event is still scripted in the " +
-                     "server and the SAME call again collects the answer (the client gives up at 60 s)")]
+        [Description("Answer within this many seconds; past it the work continues and the SAME " +
+                     "call again collects the answer (the client gives up at 60 s)")]
         int answerWithinSeconds = 45,
         [Description(BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
@@ -217,12 +195,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
 
     /// <summary>The `backend` parameter text every DQMH tool shares.</summary>
     internal const string BackendDescription = AixmlBackend.RouteParameterDescription + """
-         For DQMH that means: the wrapper around Delacor's scripters, the argument carriers and
-        every helper are COMPOSED (the composer finds Delacor's VIs by FILE under LabVIEW's
-        project\ folder, so nothing is opened first), each runs over LabVIEW's ActiveX server in
-        its main application instance, and Main.vi is read by our own reader. On grpc the route is
-        the one these tools always had. Either way LabVIEW must be running with the project open
-        and active.
+         Either way the project must be open and active.
         """;
 
     // ------------------------------------------------------------------ the arguments carrier

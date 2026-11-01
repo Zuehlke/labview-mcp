@@ -565,6 +565,21 @@ uses the emptied copy as its baseline - a typedef constant in the discarded code
 **The old code is discarded in the OUTPUT; the supplied VI itself is never changed.** The answer
 reports `diagramReplaced` with the counts.
 
+### 6i. Two refusals from the ATM build, 2026-10-31 - added 2026-11-01
+
+- **`projectPath`.** Without an active project the graft answered `noActiveProject`, and the agent
+  opened the project and called again. Given `projectPath`, the tool now opens that project itself
+  before anything is exported (`openProject` in the answer, through the same open-and-read-back
+  `lvai_create_typedef` uses); `projectDidNotBecomeActive` when it does not take. Without it the
+  answer is still `noActiveProject`. NOT yet accepted against a live LabVIEW.
+- **`scaffoldBoundReferences`.** A scaffold `<Node _name="VI Server Reference" element="<label>">`
+  is bound to the SCAFFOLD's control; pasted, it is bound to the duplicate, and the swap deletes the
+  duplicate and the reference with it - silently, measured in that build. The graft does not try to
+  re-bind it (unmeasured scripting); it refuses such a scaffold up front, from the scaffold's export,
+  before the copy is cleared or pasted into, and names each node. The route is §6g: a `ref{LV.<Class>}`
+  stand-in control in its place, `allowNewControls`, then `lvai_bind_control_references`. A
+  reference to a NEW control is not refused - that control is kept.
+
 ### Still open
 
 - Placing and styling a new control to match the panel (`Position`, and `Move`/`duplicate` or

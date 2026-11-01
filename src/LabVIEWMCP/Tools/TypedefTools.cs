@@ -70,81 +70,50 @@ internal sealed class TypedefTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_bind_typedef_constants", Destructive = true, OpenWorld = true,
                    Title = "Bind a call's constants to the typedefs its subVI expects")]
     [Description("""
-        MUTATING: re-points block diagram CONSTANTS so they carry the typedef their subVI terminal
-        expects, which is what removes a coercion dot. Saves the VI in place.
-        WHEN YOU NEED IT: after lvai_placeholder_subvi + pylv_apply retarget, whenever the real
-        subVI's connector pane carries typedefs. AIXML cannot express a typedef, so the stub is
-        cloned with the bare underlying type and every such terminal comes out coerced. The call
-        still links, still runs and still validates - nothing reports it, which is why this exists.
-        NO .ctl PATH IS PASSED IN. The helper calls {LV.Terminal} Create Constant to obtain a
-        throwaway constant carrying the terminal's exact type, reads Typedef:Path off it, deletes
-        it, and only then Replaces the wired constant. Create Constant alone is NOT the fix -
-        measured, it creates a floating constant and does not rewire, so the coercion dot survives.
-        THE CONSTANT MUST CARRY A LABEL, and AIXML's `_name` on a Constant is what becomes one.
-        Author every constant you wire into a subVI call as `_name="<terminal name>"`; without a
-        label this tool cannot tell two boolean constants apart. Pass constantLabels only when the
-        labels differ from the terminal names.
-        PRECONDITION: a project must be OPEN and ACTIVE in the IDE - the helper reaches the VI
-        through Application:Project:Active Project so it edits the copy the project holds. Error
-        1055 is blamed on the project only once the subVI is known to be on the diagram - a name
-        matching no node fails with the same code.
-        THE NAME IS RESOLVED FIRST, against the names the sweep before the edit sees: an exact
-        match wins, a bare class-member name ('Write Config.vi') maps onto the one qualified name
-        it matches ('Channel.lvclass:Write Config.vi'), and a name matching nothing
-        (`subViNotOnDiagram`) or several qualified names (`subViNameAmbiguous`) is refused before
-        anything is edited, with the names on the diagram listed. `subViNameResolved` says which
-        name the helper used.
-        THE VERDICT IS `coercedAfter` AND `stillCoerced`, from a sweep over EVERY subVI call node
-        run before and after the edit - not the per-terminal rows. Those come from a helper that
-        matches one node by VI Name, which cannot speak for a diagram calling the same subVI twice:
-        measured, it reported terminals as already clean when it had in fact just replaced their
-        constants. `coercedAfter: 0` is the proof; `coercedAfter: null` means the sweep could not
-        run and nothing should be concluded.
-        Nothing is read back from the constant after the Replace: that method invalidates the
-        reference it was called on (error 1055) and its return value cannot be consumed either.
-        THE LAST STEP CLEARS BROKEN WIRES (`removeBadWires`, default true): a Replace that cannot
-        re-type a wire leaves it broken, and the VI then reads state 0. Every removed wire is listed
-        under `badWireCleanup`; a sink that lost its wire from a source makes `ok` false.
+        Typedef: re-point block diagram CONSTANTS wired into a subVI call so they carry the typedef
+        the subVI terminal expects - removes the coercion dots a placeholder swap leaves (AIXML
+        cannot express a typedef). Saves the VI in place. No .ctl path is passed: it is read off the
+        terminal. For a dot whose source is a pane CONTROL use lvai_bind_pane_typedef instead.
+        Each constant is found by its LABEL: author it as `_name="<terminal name>"`, else pass
+        constantLabels.
+        PRECONDITION: a project OPEN and ACTIVE in the IDE (else Error 1055).
+        subViName is resolved first: a bare class-member name maps onto the one qualified name it
+        matches; no match (`subViNotOnDiagram`) or several (`subViNameAmbiguous`) is refused before
+        any edit, listing the diagram's names. `subViNameResolved` says which name was used.
+        THE VERDICT is `coercedAfter`/`stillCoerced` from a sweep over every subVI node, not the
+        per-terminal rows (wrong when one subVI is called twice). `coercedAfter: 0` is the proof;
+        null means the sweep could not run - conclude nothing.
+        Finally broken wires are removed (`removeBadWires`), listed under `badWireCleanup`; a sink
+        that lost its source makes `ok` false.
         """)]
     public async Task<string> BindTypedefConstantsAsync(
         [Description(@"Absolute path to the .vi whose constants should be bound")] string viPath,
         [Description("""
-            The subVI call to work on, by its VI Name as LabVIEW reports it - e.g.
-            'CalculateSomething.vi'. A class or library member may be named bare ('Write
-            Config.vi') or qualified ('Channel.lvclass:Write Config.vi'); a bare name is resolved
-            to the one qualified name it matches on the diagram before the helper runs.
+            The subVI call by VI Name, e.g. 'CalculateSomething.vi'; a class member bare ('Write
+            Config.vi') or qualified ('Channel.lvclass:Write Config.vi').
             """)]
         string subViName,
         [Description("""
-            Comma-separated terminal names on that call whose constants should be bound - e.g.
-            'Borkenkaefer,PlantColor'. Spelled exactly as lvai_vi_terminals prints them, including
-            any double spaces. A terminal whose constant already carries the typedef is replaced
-            again harmlessly; the sweep afterwards is what says whether anything was wrong.
+            Comma-separated terminal names on that call, exactly as lvai_vi_terminals prints them,
+            e.g. 'Borkenkaefer,PlantColor'. An already-bound one is replaced again harmlessly.
             """)]
         string terminals,
         [Description("""
-            Comma-separated constant labels, positionally matched to `terminals`. Omit unless the
-            labels differ from the terminal names, which is the convention this tool expects.
+            Comma-separated constant labels, matched positionally to `terminals`. Only when the
+            labels differ from the terminal names.
             """)]
         string? constantLabels = null,
-        [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user temp directory, because
-            the scripts folder next to the exe may be read-only.
-            """)]
+        [Description("Where to keep the generated helper VI (default: a per-user temp directory)")]
         string? helperViPath = null,
-        [Description("""
-            The helper's AIXML source. Defaults to lvbd_bind_constant.xml inside the folder
-            lvai_status reports as scriptsDirectory.
-            """)]
+        [Description("The helper's AIXML source (default: lvbd_bind_constant.xml in scriptsDirectory)")]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         [Description("""
-            After the binds, clear the BROKEN wires left on the diagram (BD.Remove Bad Wires, in the
-            IDE's instance) and list each under `badWireCleanup`. Default true. A sink that had a
-            wire from a source and has none afterwards fails `ok`
+            After the binds, remove broken wires (BD.Remove Bad Wires) and list each under
+            `badWireCleanup`; a sink that lost its source fails `ok`
             (`errorKind: badWireCleanupLostConnection`). A VI with no broken wire is not touched.
             """)]
         bool removeBadWires = true,
@@ -624,52 +593,27 @@ internal sealed class TypedefTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_coercion_dots", ReadOnly = true, OpenWorld = true,
                    Title = "Find coercion dots on a VI's subVI calls")]
     [Description("""
-        READ-ONLY: reports every terminal of every subVI call on a VI's block diagram together with
-        its {LV.Terminal} Coercion Dot?. A dot means the wired type is not identical to the terminal
-        type, so LabVIEW is converting on the wire.
-        WHY IT EXISTS: the placeholder-plus-retarget route - the only way a generated VI can call
-        project-local code - leaves a dot on every terminal whose real subVI carries a typedef,
-        because AIXML cannot express a typedef and the stub is cloned with the bare underlying type.
-        Validation, the retarget and a run ALL pass in that state. This is the only thing that sees
-        it, the same way lvai_connector_pane is the only thing that sees a misplaced pane.
-        WHICH REPAIR depends on what feeds the terminal, and the answer comes back in
-        `repairs`: a diagram CONSTANT is lvai_bind_typedef_constants, a front-panel CONTROL of
-        the calling VI is lvai_bind_pane_typedef. This description named only the first until
-        2026-09-18 and was measured sending a build at the tool that could not reach its case.
-        Needs no active project. With one active it opens the VI in that project's application
-        instance, where the IDE holds it; with none, in its own, so it also works while pylv_apply
-        has the project closed. It used to open the VI outside the project always, and measured
-        2026-10-13 that copy read NO subVI calls while the project held the VI.
-        ONE ENTRY PER CALL NODE, not per subVI name. A diagram may call the same subVI several
-        times and each call is wired separately, so each is reported on its own with the
-        `nodeIndex` that identifies it. Omit subViName to sweep the whole diagram; pass it to
-        restrict the sweep to one subVI's calls - it still reports every node that calls it.
-        Unassigned connector pane slots are dropped rather than reported as nameless terminals.
-        `clean` is only ever true when nodes were actually examined: a sweep that saw nothing says
-        so instead of passing for a clean bill of health.
-        A DOT ON A VARIANT INPUT IS NOT A FINDING: it is LabVIEW's ordinary conversion into a
-        Variant (every Caraya assert input is one), there is nothing to bind, and it is reported
-        as `intoVariant` and counted under `coercedIntoVariant` instead of `coerced`, so it does
-        not make `clean` false.
+        Typedef: report every terminal of every subVI call on a VI's diagram with its Coercion Dot?.
+        Read-only. The only check that sees the dots a placeholder swap leaves where the real subVI
+        carries a typedef - validation, the swap and a run all pass in that state.
+        `repairs` names the fix per source: a diagram CONSTANT -> lvai_bind_typedef_constants, a
+        front-panel CONTROL of the caller -> lvai_bind_pane_typedef.
+        No active project needed; with one active, the VI is read in that project's instance.
+        One entry per call NODE (`nodeIndex`), so a subVI called twice is reported twice. `clean` is
+        true only when nodes were actually examined. A dot on a VARIANT input is not a finding:
+        reported as `intoVariant`, counted under `coercedIntoVariant`, and does not make `clean`
+        false.
         """)]
     public async Task<string> CoercionDotsAsync(
         [Description(@"Absolute path to the .vi to inspect")] string viPath,
         [Description("""
-            Check only this subVI call, by its VI Name - e.g. 'CalculateSomething.vi'. A class or
-            library member may be named bare ('Write Config.vi') or qualified
-            ('Channel.lvclass:Write Config.vi'); a name that matches nothing is refused with the
-            names that ARE on the diagram. Omit to sweep every subVI call on the diagram, which
-            costs one helper run per call.
+            Only this subVI's calls, by VI Name (bare or class-qualified); a name matching nothing is
+            refused with the diagram's names. Omit to sweep every call.
             """)]
         string? subViName = null,
-        [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user temp directory.
-            """)]
+        [Description("Where to keep the generated helper VI (default: a per-user temp directory)")]
         string? helperViPath = null,
-        [Description("""
-            The helper's AIXML source. Defaults to lvbd_coercion_dots.xml inside the folder
-            lvai_status reports as scriptsDirectory.
-            """)]
+        [Description("The helper's AIXML source (default: lvbd_coercion_dots.xml in scriptsDirectory)")]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
@@ -1057,54 +1001,32 @@ internal sealed class TypedefTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_bind_pane_typedef", Destructive = true, OpenWorld = true,
                    Title = "Bind a .ctl typedef onto a class member's own pane controls")]
     [Description("""
-        MUTATING: installs a .ctl typedef onto named FRONT PANEL controls of an existing CLASS
-        MEMBER through {LV.Control} Replace, and saves the VI and its owning class in one run.
-        THIS IS THE OTHER HALF OF lvai_bind_typedef_constants, and the half nothing else reaches. A
-        GENERATED VI CANNOT CARRY A TYPEDEF ON ITS OWN PANE: AIXML has no typedef in its grammar,
-        so a control it authored is the bare underlying type, and a call into a subVI whose terminal
-        IS the typedef then wears a coercion dot that survives the placeholder flatten and the swap.
-        lvai_bind_typedef_constants finds its target by the CONSTANT's label and cannot reach a
-        front-panel control; this does.
-        THE CLASS PATH IS REQUIRED, AND THAT IS A MEASUREMENT. Measured 2026-09-18 on a plain VI in
-        no project and no class: with the class save left out, Replace plus Save.Instrument answered
-        error 0 at every stage and the saved file carried ZERO typedef objects - LabVIEW rewrote it
-        and dropped the binding. The class Save is what commits it. What commits it for a VI that is
-        NOT a class member is not established, so this tool does not offer that.
-        PRECONDITION: a project must be OPEN and ACTIVE - {LV.Control} Replace is a SILENT no-op
-        outside the IDE's own application instance, reporting terminals retyped while changing
-        nothing. Pass projectPath to have it opened here.
-        THE VERDICT IS `verified`, AND IT IS THREE CONDITIONS AT ONCE. Each requested .ctl must
-        appear as a <Label> in the SAVED VI's own type descriptors - read with pylabview, no
-        LabVIEW - AND every requested terminal must be on the panel AND the helper must have matched
-        as many as were asked for. `terminalsBound` alone is not the verdict: a run reported 1 for a
-        file that ended up with none. The FILE alone is not either, measured on acceptance - asked
-        to bind a terminal that does not exist on a VI whose .ctl was ALREADY bound, the file check
-        passed on its own and the call answered ok for something it never did. `terminalsNotOnPanel`
-        names the terminals that disqualified a run; `terminalNamesSeen` is what the panel has.
-        AND A FIRST OPEN READS EVERY CONTROL NAME AS EMPTY. Measured twice on one fixture: the
-        first run after LabVIEW had never loaded the VI saw four nameless controls and bound
-        nothing at error 0; the second saw all four names and bound. This tool retries once for
-        exactly that and reports it as `retriedAfterEmptyNames`.
+        Typedef: install a .ctl typedef onto named FRONT PANEL controls of an existing CLASS MEMBER
+        ({LV.Control} Replace), saving the VI and its owning class in one run. Use it for a coercion
+        dot whose source is the method's own pane CONTROL - lvai_bind_typedef_constants reaches only
+        constants. A VI that is NOT a class member is not supported: Save.Instrument alone does not
+        commit the binding.
+        PRECONDITION: a project OPEN and ACTIVE (pass projectPath) - Replace is a SILENT no-op
+        outside the IDE's instance.
+        THE VERDICT IS `verified`, three conditions: each .ctl appears in the SAVED VI's type
+        descriptors, every requested terminal is on the panel, and the helper matched as many as
+        asked. `terminalsBound` alone is not the verdict. `terminalsNotOnPanel` names what failed;
+        `terminalNamesSeen` lists the panel. A first open can read every control name as empty; the
+        tool retries once and says so in `retriedAfterEmptyNames`.
         """)]
     public async Task<string> BindPaneTypedefAsync(
         [Description(@"Absolute path to the class member .vi whose pane controls should be bound")]
         string viPath,
         [Description("""
-            Absolute path to the .lvclass that owns the VI. REQUIRED: Save.Instrument alone does
-            not commit a Replace - measured, on a class member AND on a plain VI.
+            Absolute path to the .lvclass owning the VI; its Save is what commits the binding.
             """)]
         string lvclassPath,
         [Description("""
-            JSON array of bindings, e.g.
-            [{"terminal":"Profil","ctlPath":"C:\\p\\Ofenprofil.ctl"}]
-            `terminal` is the control's label exactly as lvai_vi_terminals prints it. An unknown
-            key is refused by name rather than dropped.
+            JSON array, e.g. [{"terminal":"Profil","ctlPath":"C:\\p\\Ofenprofil.ctl"}]; `terminal`
+            is the label as lvai_vi_terminals prints it. Unknown keys are refused.
             """)]
         string bindingsJson,
-        [Description("""
-            The .lvproj to open first. Without an active project the Replace is a silent no-op.
-            Omit only when you have opened one yourself.
-            """)]
+        [Description("The .lvproj to open first; omit only if you opened one yourself")]
         string? projectPath = null,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,
         [Description("The helper's AIXML source; defaults to the scripts folder's copy")]
@@ -1301,23 +1223,15 @@ internal sealed class TypedefTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_resave_ctl", Destructive = true, OpenWorld = true,
                    Title = "Make LabVIEW write a flag-patched .ctl in its own shape")]
     [Description("""
-        MUTATING: opens a .ctl in the IDE's own application instance and saves it in place with
-        {LV.VI} Save.Instrument, the path left UNWIRED, which is how LabVIEW writes a control back
-        over itself.
-        WHY IT EXISTS: a .ctl built the fixture way - generate a VI to a .ctl path, then patch
-        <Instrument Type> and TypeDefVI in the pylabview bundle - has never been written by LabVIEW
-        and still carries that VI's CONNECTOR PANE. lvai_describe_ctl shows it as
-        `wrappedType: "Function"` with 16 fields and flags it as `needsLabviewSave`. Everything that
-        only needs the TYPE reads straight through it, and NI's ACCESSOR WIZARD DOES NOT:
-        lvai_create_accessors answers Error 1061 at CreateControlFromReference.vi for the field it
-        is bound to, on the Read side and the Write side alike, which is a hard stop in the middle
-        of a class build with nothing naming the cause.
-        PRECONDITION: a project must be OPEN and ACTIVE - the helper reaches the file through
-        Project:Active Project. Pass projectPath to have it opened here.
-        THE VERDICT IS `wrappedTypeAfter`, re-read from the saved file with pylabview: it must be
-        `TypeDef`. `errorCode 0` on its own says only that LabVIEW answered.
-        This is a no-op on a .ctl LabVIEW has already written, which is why it is safe to run
-        whenever lvai_describe_ctl asks for it.
+        Typedef: open a flag-patched .ctl in the IDE's instance and save it in place
+        (Save.Instrument, path unwired), so LabVIEW writes it in its own shape. Needed when
+        lvai_describe_ctl reports `needsLabviewSave` (`wrappedType: "Function"`): such a .ctl still
+        carries a connector pane, and NI's accessor wizard (lvai_create_accessors) answers Error 1061
+        on its field. A NEW typedef is better made with lvai_create_typedef, which needs no resave.
+        It converts only a .ctl that was generated with the project CLOSED.
+        PRECONDITION: a project OPEN and ACTIVE (pass projectPath).
+        THE VERDICT IS `wrappedTypeAfter`, re-read from the saved file: it must be `TypeDef`;
+        `errorCode 0` alone proves nothing. A no-op on a .ctl LabVIEW already wrote.
         """)]
     public async Task<string> ResaveCtlAsync(
         [Description(@"Absolute path to the .ctl to rewrite in place")] string ctlPath,

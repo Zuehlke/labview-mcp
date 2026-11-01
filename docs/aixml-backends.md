@@ -612,7 +612,13 @@ node class, the registration refnum becomes a four-ended wire onto the dynamic t
 EventSpec has `dynIndex 1`, and the payload is field 4 of the data cluster. Measured: the skeleton
 runs `Ticks Received = 5`, LabVIEW's export of the finished VI (which names the payload) does too,
 and a variant that only the payload can stop stopped on it. A cluster payload is flattened into the
-data node (its elements are fields 4, 5, ...), measured on a two-element one reading both. Several
+data node (its elements are fields 4, 5, ...), measured on a two-element one reading both. **A
+payload field named like the event's own field (`Source`, `Type`, `Time`) is read from the PAYLOAD**
+(since 2026-11-01; the composer reports it). Until then the first match won, `fields="Source"` read the
+event's Source, and the producer/consumer CSV build had to repoint the node with
+`lvai_set_event_data_fields` - after which every regeneration needed that step again
+(`docs/cold-build-pc-userevent-csv.md`). The event's own field of that name is then not reachable by
+name; name the payload field differently if a handler needs both. Several
 user events may share one registration (each frame's `dynIndex` is its event's position there, as in
 MGI's shipped `Actor Core.vi`) - and the gRPC route finishes that now as well (2026-10-11): it refused
 more than one user-event frame until then. `scripts/aixml-skeletons/user-event-two-loops.md`,
@@ -2117,6 +2123,111 @@ Close. Two smaller gaps it found:
 - **`lvai_run_vi_and_read_values` cannot set a `ref{IVI.*}` control over COM** - refused before the
   run with `inputNotConvertible`, so a test run cannot name a device. Closed the same day by the
   composed set helper (previous section), for VISA sessions and DAQmx tasks too.
+
+## A queue of ARRAYS killed LabVIEW on load (fixed 2026-11-01)
+
+**The symptom.** The second ATM cold build (`docs/build-contract.md` §6) composed its main VI's
+scaffold, and LabVIEW died loading it - three times, the same line each time in NI's log:
+
+```
+#** Loading: "...\Automatic Teller Machine (ATM) Scaffold.vi"
+source\diagram\proptyp3.cpp(970) : DAbort 0x87FB5957: I expected a container refnum here!
+```
+
+The agent guessed a Value Change frame on a CLUSTER control (Left/Right Buttons), and that was
+wrong: a probe with exactly that frame loaded clean.
+
+**Bisected on the real document, one load per step.** The document's elements were removed in
+halves, each variant composed and loaded, and the crash re-confirmed on the untouched document
+first:
+
+| step | variant | crashed |
+|---|---|---|
+| 1 | the whole scaffold | yes |
+| 2 | consumer half only | yes |
+| 3 | no loops at all | yes |
+| 4 | init call + queue, 10 elements | yes |
+| 5 | queue alone, 7 elements | yes |
+| 6 | `Obtain Queue` of `array{string}` alone | no |
+| 7 | the same + `Enqueue Element` of an array constant | **yes** |
+
+Two other control arms loaded clean:
+- a String reference through tunnels into a Property Node;
+- `Value (Signaling)` on a Boolean reference.
+
+**The cause, read off NI's build of the same probe.** The composer typed several of the queue
+nodes' terminals as ARRAYS:
+
+| terminal | composer wrote | NI wrote |
+|---|---|---|
+| Obtain Queue `queue out` | `Array{Refnum(Queue){Array{String}}}` | `Refnum(Queue){Array'Command Type'{String}}` |
+| Obtain Queue `created new?` | `Array{Boolean}` | `Boolean` |
+| Obtain Queue `error out` | `Array{error cluster}` | error cluster |
+| Enqueue Element (followed through its wires) | `queue`, `error in`, `queue out`, `timed out?`, `error out` as arrays | all scalar |
+
+The rule that did it is the right one for other primitives: an output follows the ARRAY SHAPE of a
+wired input when the donor took a scalar there (`Not A Number?` on an array answers an array). The
+queue's element was an array where the donor (Queued Message Handler Fundamentals) queued a
+cluster, so the depth delta was 1, and every other output was wrapped. The queue's refnum then
+reached the next node inside an array, which is the "container refnum" LabVIEW expected.
+
+**The fix.** A primitive with a container refnum on any terminal (Queue, Notifier, User Event,
+`REFNUM_CONTAINERS`) carries its element whole and never takes the array-shape rule
+(`aixml2vi.py`, beside `WHOLE_VALUE`, which is not reused because it also copies the input's
+label onto the output).
+
+**Accepted:**
+- suite test `t202_array_queue`: an `array{string}` queue through Obtain, Enqueue, Dequeue and
+  Release, the two strings indexed back out, runs `command=Enter, data=23456`;
+- the queue, notifier and event tests stay green;
+- the real ATM scaffold composed by the fixed composer loads with `execState 1` - before the fix,
+  that same document killed LabVIEW every time.
+
+**Rule kept from the hunt:** bisect on the document that crashed, with the crash re-confirmed on
+the untouched document first; a guess built from the symptom's wording ("container" → cluster)
+pointed at the wrong construct.
+
+### The type guard: a composed VI is checked before LabVIEW loads it (2026-11-01)
+
+**Why a lint cannot catch this.** `lvai_check_aixml` and `scripts/aixml_lint.py` read the AIXML,
+and the AIXML was right: NI's converter built the same document clean. The fault was in the
+composer's own retyping of a primitive's terminals, which no reading of the document sees. So the
+check sits where the types are decided: `_guard_terminal_types` in `aixml2vi.py`, run on every
+primitive after its terminals are adapted and before they reach the file.
+
+| rule | on a breach | why that severity |
+|---|---|---|
+| a terminal the donor types as a Queue, Notifier or User Event refnum stays that kind of refnum (its element type may change) | **refused**: `type guard: <node> <uid> '<terminal>' would be written as Array where the primitive carries a Queue refnum ... Convert this document with backend grpc` | measured: LabVIEW dies loading such a VI |
+| an error OUTPUT stays an error cluster | **reported** as `type guard WARNING` in the composer report | measured: LabVIEW loaded such a VI executable (it re-derives the type), so refusing would fail a document LabVIEW accepts |
+
+**Proved against the bug it was built for:**
+- With the queue fix switched off, the crashing probe is refused by name instead of written.
+- With it on, the probe composes and runs.
+
+**The false-alarm check is `experiments/aixml-without-grpc/guard_sweep.py`.** It composes every
+suite test and every shipped helper document with no LabVIEW and lists each guard line.
+
+| corpus | documents | composed | guard lines |
+|---|---|---|---|
+| suite tests + helper documents | 301 | 270 | 0 |
+| cached NI exports, first run | 111 | 57 | 4 |
+| cached NI exports, after the fix below | 111 | 59 | 0 |
+
+**The four hits on the first cache run were a SECOND defect of the same kind, not false alarms.**
+- `Close Reference` on an array of references reports ONE error, and the array-shape rule had made
+  its `error out` an array.
+- The shape rule now leaves error terminals alone.
+- Two of the four now compose and load executable. The other two need DQMH libraries the composer
+  does not find, which is unrelated.
+
+**What the guard does NOT do.** It checks a few invariants of kind, not the whole type: a wrong
+element type inside a queue refnum, or a wrong type on any other terminal, still passes. The
+complete check is a comparison with NI's build of the same document, terminal by terminal. That
+needs NI's service and is not built.
+
+- Run `guard_sweep.py` after any change to the retyping code.
+- Read every line it prints: a refusal there is either a false alarm to fix in the guard, or a
+  defect the guard found.
 
 ## Not covered, and not measured
 

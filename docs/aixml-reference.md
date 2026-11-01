@@ -808,7 +808,7 @@ same document from `errorCode 1` to `errorCode 0`, and the generated VI then ran
 Same shape, with `maxin` / `maxout` alongside `count`.
 
 **In short, each rule measured below:** `maxin` = `N`; `count` = `<loop uid>.value`, the loop's
-`i` - or `count=""` when nothing reads `i`. `<Tunnel _id="Out1" inputs="value:<net inside>" mode="index" outputs="value:<net outside>"/>`
+`i` - or `count=""` when nothing reads `i`. `<Tunnel _id="Out1" inputs="value:<net inside>" mode="index" outputs="value:<net outside>" uid="<uid>" uid_parent="<loop uid>"/>`
 builds an array; WITHOUT `mode` the tunnel carries the LAST value (the IDE does the opposite), and
 the type's default when the loop runs zero times. A shift register's `Right` output net is read
 outside the loop directly - no `Out` tunnel; its spelling is under "Shift registers" below.
@@ -878,7 +878,7 @@ or `N` beside it; the export of the saved VI carried no `mode` on that tunnel ei
 
 **It works on an `Out` tunnel too, which this section only ever showed on `In` tunnels** — that is
 how a loop *builds* an array, one element per iteration, without `Build Array` and a shift register.
-`<Tunnel _id="Out1" inputs="value:530.waveform out" mode="index" outputs="value:540.value"/>`
+`<Tunnel _id="Out1" inputs="value:530.waveform out" mode="index" outputs="value:540.value" uid="540" uid_parent="<loop uid>"/>`
 validated, generated and round-tripped, and NI's own example exports carry the same shape. The pair
 of them is the whole accumulate-per-channel idiom: index two `In` tunnels, index the `Out` tunnel
 back out.
@@ -927,7 +927,7 @@ idiom:
 it.** The snippet above is silent on how `146.value` reaches a consumer outside, and the obvious
 completion is wrong. Measured on an accumulate-and-join loop: naming the `Right` output net
 `460.value` and reading it directly from a root-level `Write to Text File` validates; inserting
-`<Tunnel _id="Out1" inputs="value:460.value" outputs="value:470.value"/>` between them fails with
+`<Tunnel _id="Out1" inputs="value:460.value" outputs="value:470.value" uid="470" uid_parent="<loop uid>"/>` between them fails with
 
 ```
 For Loop: Is a member of a cycle
@@ -2135,6 +2135,17 @@ Some nodes carry boolean attributes for their right-click modes — `Read from T
 Wire the scalar form to an array indicator and `ValidateAIXML` says
 `You have connected a scalar type to an array of that type ... The type of the source is string.`
 — a precise message, but only if you are looking for a type problem rather than a mode problem.
+
+`convertEol="true"` is the 0x2000000 bit of the node's `objFlags` (640 -> 33555072 on NI's
+converter's build of a probe pair, 2026-11-01); the pylabview composer writes and reads it since then.
+
+**Wiring alone can change an output's type.** `TDMS List Contents` with `group name` UNWIRED
+answers `group names` as `array{string}` and `group/channel names` as the names of every group;
+with `group name` WIRED (a string), `group names` becomes a single `string` - the group passed
+through - and `group/channel names` holds that group's channel names. Wiring `group names` into
+an `array{string}` indicator then breaks the VI ("source string, sink 1D array of string") on
+NI's converter and the composer alike - measured on both backends, 2026-11-01. It was reported as
+a composer defect by the PC AI DI TDMS cold build and is not one.
 
 The lesson generalises: when a node has modes, copy a **variant that is in the state you want**
 from an export. A single specimen of the node does not reveal the type consequences of its modes.

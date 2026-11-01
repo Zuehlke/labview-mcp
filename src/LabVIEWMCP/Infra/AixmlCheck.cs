@@ -136,6 +136,8 @@ internal static class AixmlCheck
         CheckEnums(root, findings);
         CheckTerminalWireRules(root, findings, policy);
         CheckIndicatorValues(root, findings);
+        CheckNestedArrays(root, findings);
+        CheckWireEndsHaveUids(root, findings);
         CheckNetAttributes(root, findings);
         CheckTimestampValues(root, findings);
         CheckNonFiniteConstants(root, findings);
@@ -370,6 +372,56 @@ internal static class AixmlCheck
     /// was honest about what it had measured, which is right - what was missing is that nobody ran
     /// the three-minute probe that would have settled it.
     /// </summary>
+    /// <summary>
+    /// An array nested in an array, <c>array{array{double}}</c>: LabVIEW has no such type. A 2D
+    /// array is <c>array.2{double}</c>. scripts/aixml_lint.py has refused it since 2026-09-09
+    /// (<c>array-nested</c>); this check did not, and the two backends then failed differently on
+    /// the same document, measured 2026-11-01 on a TDMS read-back of the tank-monitor cold build:
+    /// NI's converter answered `Error 53, Manager call not supported` and wrote nothing, while the
+    /// pylabview composer WROTE an eBad VI ("source string, sink 1D array of string" on `TDMS Read`
+    /// `channel name(s) out`, and "Polymorphic terminal cannot accept this data type"). With
+    /// `array.2{...}` the same document is executable on both and reads the file back correctly.
+    /// </summary>
+    private static void CheckNestedArrays(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            if (element.Attribute("type")?.Value is not { } type ||
+                !type.Replace(" ", "").Contains("array{array{", StringComparison.Ordinal))
+                continue;
+            var name = element.Attribute("_name")?.Value ?? element.Name.LocalName;
+            findings.Add(new Finding(Severity.Error, "arrayNested",
+                $"{element.Name.LocalName} \"{name}\" has type=\"{type}\": an array nested in an " +
+                "array, which LabVIEW does not have. A multidimensional array is written " +
+                "array.N{...} - array.2{double} for 2D. NI's converter refuses the nested form " +
+                "with an Error 53 that names nothing; the pylabview composer writes a BROKEN VI.",
+                (string?)element.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// An element that carries `inputs` or `outputs` - a wire end - with no `uid`. A net is named
+    /// `uid.terminal`, so such an element cannot be wired at all. Measured 2026-11-01 on a For Loop
+    /// `&lt;Tunnel&gt;` written without `uid`/`uid_parent`, as several prose examples in the
+    /// reference showed it: NI's converter refused the document (`Error -2628`, nothing written)
+    /// and the composer said "ends at in None of Tunnel, which is not composable yet", which the
+    /// pump-station cold build's Caraya agent read as a composer gap.
+    /// </summary>
+    private static void CheckWireEndsHaveUids(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.Descendants())
+        {
+            if (element.Attribute("inputs") is null && element.Attribute("outputs") is null) continue;
+            if ((string?)element.Attribute("uid") is { Length: > 0 }) continue;
+            var name = element.Attribute("_name")?.Value ?? element.Attribute("_id")?.Value ?? "";
+            findings.Add(new Finding(Severity.Error, "wireEndWithoutUid",
+                $"<{element.Name.LocalName}{(name.Length > 0 ? $" {name}" : "")}> carries inputs or " +
+                "outputs and has no uid. A net is named uid.terminal, so nothing can wire to it: " +
+                "give it uid (and uid_parent - its structure's uid, or root). NI's converter refuses " +
+                "the whole document for it with Error -2628."));
+        }
+    }
+
     private static void CheckIndicatorValues(XElement root, List<Finding> findings)
     {
         foreach (var element in root.DescendantsAndSelf())

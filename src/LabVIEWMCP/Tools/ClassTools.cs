@@ -49,79 +49,44 @@ internal sealed class ClassTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_create_class", Destructive = true, OpenWorld = true,
                    Title = "Create a .lvclass with its private data in one call")]
     [Description("""
-        MUTATING: creates a real `.lvclass` on disk, with a private data control carrying the fields
-        you name, and lists it in a project. LabVIEW's OWN project provider VIs do the work -
-        `Add Class.lvlib:Add Class to Project (path).vi` and `Message Maker.lvlib:Add Member Data to
-        Private Data Control.vi` - which is the whole design, because a private data control is
-        COMPILER OUTPUT. Building one from a converted VI gave classes LabVIEW reported normally and
-        its compiler refused, for weeks. docs/lvclass-creation.md section 2a has that diagnosis.
-        The sequence, all of it returned under `steps`: prepare the .lvproj, open it, generate a
-        CARRIER VI whose front-panel controls are the fields, run NI's two providers against it,
-        close the project, write the class entry into the .lvproj, then verify FROM THE CLASS FILE.
-        A RUNNING, ACTIVE PROJECT IS THE PRECONDITION. The providers reach LabVIEW through
-        `Project:Active Project` and answer Error 1055 without one.
-        BACK-TO-BACK CALLS ON ONE PROJECT WORK, and no LabVIEW restart is needed between them. That
-        was not true until 2026-08-28: the helper leaked the Class refnum NI's provider returns,
-        which kept the new class in LabVIEW's memory after the project closed, so the next run could
-        not bind the project item to it and created the child as a ROOT class with no error. Closing
-        that one reference fixed it. THE PARENT NO LONGER COMES FROM THE PROJECT AT ALL: the helper
-        opens it from its path with {LV.Application} LVClass.Open, which needs no project membership
-        - probed against a project listing no classes. That removes the whole chain that made this
-        fragile (parent must be a project member -> the .lvproj must list it -> the file must be
-        written -> the project must be closed to allow writing it). `parent opened` replaces the old
-        `parent index`: a boolean, false when a parent was asked for and did not open.
-        FIELDS are `<type>.<name>`, comma separated, the same spelling AIXML's cluster grammar uses:
-        `string.Manufacturer,int32.Year Of Manufacture,double.Top Speed kmh`. Scalars only - string,
-        path, bool, double, single, timestamp and the int/uint widths. A cluster, array or enum field is
-        not supported and is refused by name. Omit `fields` for a class with empty private data.
-        INHERITANCE: pass parentClassPath. The parent must already be LISTED IN THE PROJECT - NI's
-        provider finds it by searching the active project's classes and, finding nothing, silently
-        makes a ROOT class with no error at all. That is checked here rather than trusted, and the
-        answer says which of the two causes it was.
-        ACCESSORS ARE A SEPARATE CALL: `lvai_create_accessors`, which drives the IDE's own
-        "VI for Data Member Access" wizard. AIXML cannot author them - it refuses a class-typed
-        terminal (`Control with type=UDClassInst is not supported`).
-        Needs a running LabVIEW throughout. No pylabview bundle is involved any more.
+        Class: creates a `.lvclass` with a private data control holding the named fields, and lists
+        it in a project. NI's own project providers do the work (a private data control is compiler
+        output and cannot be written from AIXML); every step is returned under `steps`, and the
+        result is verified FROM THE CLASS FILE. Needs a running LabVIEW; the providers run in the
+        project this call opens and answer Error 1055 when no project became active. CLOSE THE
+        PROJECT FIRST if another tool left it open - this call writes the .lvproj as a file, and a
+        later save of LabVIEW's older copy deletes the entry. Back-to-back calls on one project work.
+        FIELDS: scalars only (string, path, bool, double, single, timestamp, int/uint widths); a
+        cluster, array or enum field is refused by name - use typedefFieldsJson for a typedef.
+        INHERITANCE: parentClassPath is opened from its path (no project membership needed);
+        `parent opened: false` means a requested parent did not open. INTERFACES can only be linked
+        here, at creation (parentInterfaces) - finish each interface and all its methods first.
+        ACCESSORS are a separate call: lvai_create_accessors. To add a field to a class that already
+        has members use lvai_add_class_field - `overwrite` drops every member.
+        docs/lvclass-creation.md.
         """)]
     public async Task<string> CreateClassAsync(
         [Description("Class name without the extension, e.g. Auto")] string className,
         [Description("Folder to create <className>.lvclass in; created if absent")]
         string directory,
         [Description("""
-            Private data fields as `<type>.<name>`, comma separated, e.g.
-            `string.Manufacturer,int32.Year Of Manufacture`. A DEFAULT is `<type>.<name>=<value>`,
-            e.g. `double.Gain=1,bool.Enabled=true` - without one a field defaults to its type's
-            empty value (0, false, ""). Not for timestamp fields. Omit for empty private data.
-            A TYPEDEF field from typedefFieldsJson may be PLACED here as `typedef.<name>`, e.g.
-            `typedef.Config,double.Gain=1` - it then keeps that position. Left out, it goes after
-            every field listed here. Naming it here with a real type (`string.Config`) is refused.
+            Fields as `<type>.<name>[=<default>]`, comma separated, e.g.
+            `string.Manufacturer,double.Gain=1` (no default for timestamp). Place a typedefFieldsJson
+            field with `typedef.<name>`; naming it with a real type is refused. Omit for empty data.
             """)]
         string? fields = null,
         [Description("""
-            Fields that are TYPEDEF instances, as a JSON object: field name -> absolute path of an
-            existing typedef .ctl, e.g. {"Config":"C:\\T\\Typedefs\\Channel Config.ctl"}. Each
-            is created as a placeholder and then bound to its .ctl with lvai_bind_class_fields in
-            the same call, so the field keeps its name and carries the typedef. Needs projectPath.
-            Do NOT also list it in `fields` with a type; write `typedef.<name>` there to fix its
-            position, or leave it out and it comes after the fields listed there.
-            Create the accessors AFTER this call - an accessor made before the bind keeps the bare
-            type. Until 2026-09-25 this took two calls and a placeholder type chosen by hand.
+            TYPEDEF fields as JSON, field name -> existing .ctl path, e.g.
+            {"Config":"C:\\T\\Channel Config.ctl"}; bound in the same call. Needs projectPath. Without
+            `typedef.<name>` in `fields` they go last. Create accessors AFTER this call.
             """)]
         string? typedefFieldsJson = null,
         [Description("Absolute path to the parent .lvclass this one derives from")]
         string? parentClassPath = null,
         [Description("""
-            Interfaces this class implements, ONE ABSOLUTE PATH PER LINE. Each must be a .lvclass
-            whose NI.LVClass.IsInterface is true - checked here from the file, because passing an
-            ordinary class would land in NI's `Parent Interfaces` terminal where nothing says it is
-            wrong. This is MULTIPLE inheritance and it is legal: a class may implement any number of
-            interfaces alongside its single parent class. NI's Basic Interfaces example has Flathead
-            implementing both Rotating Tool and Lever.
-            THE LINK IS ONLY SETTABLE AT CREATION TIME - NI's provider takes it as an input, and
-            there is no scriptable way to add one afterwards (CLSUIP_ChangeInterfaceInheritance.vi
-            is a modal dialog, which would stop the gRPC service). So a class that should implement
-            an interface has to be created with it, or deleted and created again. That is why this
-            is a parameter here rather than a separate tool.
+            Interfaces to implement, one absolute .lvclass path per line; each must be an interface
+            (checked from the file). Any number beside one parent. ONLY SETTABLE AT CREATION - adding
+            one later means deleting and recreating the class.
             """)]
         string? parentInterfaces = null,
         [Description("""
@@ -130,40 +95,27 @@ internal sealed class ClassTools(LvaiConnection connection)
             """)]
         string? projectPath = null,
         [Description("""
-            Read the finished .lvclass back and gate `ok` on it: field count, private data size and
-            the parent link. FROM THE FILE, not through lvai_describe_project - that check was here
-            and reported `ok: false` for a perfectly sound class, because LabVIEW still had the
-            project loaded from step 1 and served its cached copy rather than the .lvproj just
-            written. Measured 2026-08-28 on a cold run.
+            Read the finished .lvclass FILE back and gate `ok` on field count, private data size and
+            parent link.
             """)]
         bool verify = true,
         [Description("Replace an existing .lvclass. Refused by default - it would drop its members")]
         bool overwrite = false,
         [Description("""
-            Milliseconds to wait after the .lvproj has been written and before LabVIEW opens it.
-            A MITIGATION FOR A SUSPECTED RACE, not a diagnosis: the file is written and LabVIEW
-            reads it milliseconds later, and this run has repeatedly seen LabVIEW open a project
-            without a class the file plainly listed. Whether timing causes that is unproven - the
-            pause is a parameter so it can be set to 0 and measured against.
+            Milliseconds to wait between writing the .lvproj and LabVIEW opening it; a mitigation for
+            a suspected race (LabVIEW opening a project without a listed class), not a proven fix.
             """)]
         int settleMs = 400,
         [Description("""
-            Keep the generated carrier VI on disk instead of deleting it with the rest of the work
-            directory. TRUE by default, and it is not tidiness that is being traded away: LabVIEW
-            adopts the carrier into the project, and deleting it leaves LabVIEW holding a project
-            whose items no longer exist. That broken copy survives the close, overwrites the
-            .lvproj with itself, and stops `Project:Active Project` answering - which the accessor
-            phase reports as Error 1055. The carrier's project ENTRY is stripped from the file
-            either way; only a 6 kB VI in %TEMP% is left behind.
+            Keep the carrier VI in %TEMP%. Deleting it leaves LabVIEW holding a project with a missing
+            item, which later surfaces as Error 1055 in lvai_create_accessors. Its project entry is
+            stripped either way.
             """)]
         bool keepCarrier = true,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         CancellationToken ct = default,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview NO STEP touches NI's service: the throwaway project is opened and closed,
-            the carrier composed, and NI's own class provider run, all through COMPOSED helpers over
-            LabVIEW's ActiveX server. LabVIEW must already be running. typedefFieldsJson binds on
-            the same route - lvai_bind_class_fields inherits the backend.
+             On pylabview no step uses NI's service; LabVIEW must already be running.
             """)]
         string? backend = null)
     {
@@ -692,40 +644,17 @@ internal sealed class ClassTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_create_interface", Destructive = true, OpenWorld = true,
                    Title = "Create a LabVIEW interface (.lvclass with no private data)")]
     [Description("""
-        MUTATING: creates a real LabVIEW INTERFACE on disk and lists it in a project. An interface
-        is a `.lvclass` file - there is no `.lvinterface` - and NI's manual defines it as "a class
-        without a private data control". That one difference is what enables a form of MULTIPLE
-        inheritance: a class has one parent class but any number of interfaces, so its objects can
-        be passed into several modules each requiring a different role.
-        LabVIEW's OWN project provider does the work: `Add Interface.lvlib:Add Interface to Project
-        (path).vi`, an exact mirror of the class provider - measured 2026-08-31 with
-        lvai_vi_terminals against both - with two differences that matter. There is NO `Parent
-        Class` terminal at all, because an interface may only inherit from other interfaces, and
-        the refnum it returns is called `Interface`. A RUNNING, ACTIVE PROJECT IS THE PRECONDITION,
-        as for classes: the provider reaches LabVIEW through `Project:Active Project` and answers
-        Error 1055 without one. LabVIEW works in a THROWAWAY project it opens itself, so the
-        project you keep is never opened, adopted into, or saved over.
-        NO FIELDS PARAMETER, and that is not an omission: an interface cannot hold private data, so
-        there is no carrier VI and no call to add-member-data - the two steps that make up most of
-        `lvai_create_class`. If you want data, you want a class.
-        INTERFACE METHODS ARE SCRIPTABLE - use `lvai_add_class_method`. This description said they
-        were an IDE gesture until 2026-09-14, which was already wrong when written: CLAUDE.md
-        corrected it on 2026-09-07, measured over five VIs on IVehicle.lvclass. An interface IS a
-        `.lvclass`, so LVClass.Open, AddItemFromMemory, {LV.Control} Replace and SetWireRule all
-        behave the same on one, and the tool does not inspect NI.LVClass.IsInterface at all.
-        Following this paragraph cost one agent a hand-built duplicate of a tool that worked.
-        FINISH THE INTERFACE - the .lvclass AND every method - BEFORE the first class that
-        implements it. `lvai_create_class` takes the interface list at CREATION time only, and a
-        declared method breaks every implementing class until that class's override exists.
-        docs/lvclass-interfaces.md has the measurements.
-        NAMING, from NI's manual: avoid a leading capital `I`. LabVIEW distinguishes interfaces and
-        classes by GLYPH, most of the IDE treats them identically, and callers do not care which
-        they have - so avoiding the `I` lets a class become an interface, or the reverse, without
-        refactoring caller code. Prefer a capability (`Can Measure Voltage`) or a category (`Lever`).
-        Advice, not a rule: the name you pass is used as given.
-        Verification is FROM THE FILE - `NI.LVClass.IsInterface` and the absence of a private data
-        item - because `lvai_describe_project` reports an interface as `Type="LVClass"`, exactly
-        like a class, and cannot tell you which you got.
+        Class: creates a LabVIEW INTERFACE - a `.lvclass` with no private data - and lists it in a
+        project, through NI's own interface provider. Needs a running LabVIEW; the provider runs in
+        a throwaway project this call opens (Error 1055 when none became active), so the project
+        you keep is never opened or saved over. No fields: if you want data, you want a class.
+        An interface inherits only from interfaces (parentInterfaces).
+        METHODS: add them with lvai_add_class_method. FINISH THE INTERFACE - the .lvclass AND every
+        method - BEFORE the first class that implements it: lvai_create_class links interfaces only
+        at creation, and a declared method breaks every implementing class until its override exists.
+        Naming advice (not enforced): avoid a leading `I`; prefer a capability or category (`Lever`).
+        Verified FROM THE FILE (IsInterface, no private data) - lvai_describe_project reports an
+        interface as `Type="LVClass"` like a class. docs/lvclass-interfaces.md.
         """)]
     public async Task<string> CreateInterfaceAsync(
         [Description("Interface name without the extension, e.g. Lever or Can Measure Voltage")]
@@ -733,37 +662,30 @@ internal sealed class ClassTools(LvaiConnection connection)
         [Description("Folder to create <interfaceName>.lvclass in; created if absent")]
         string directory,
         [Description("""
-            Interfaces this one inherits from, ONE ABSOLUTE PATH PER LINE. An interface may inherit
-            from other interfaces and from nothing else - there is no Parent Class terminal on NI's
-            provider. Each path is checked to BE an interface before anything is written.
+            Parent interfaces, one absolute path per line; each is checked to be an interface first.
             """)]
         string? parentInterfaces = null,
         [Description("""
-            A .lvproj to list the interface in - created if absent, extended if it exists. When
-            omitted a throwaway project is used for the run and deleted afterwards.
+            A .lvproj to list the interface in - created if absent, extended if it exists. Omitted:
+            a throwaway project is used and deleted.
             """)]
         string? projectPath = null,
         [Description("""
-            Read the finished file back and gate `ok` on it: the IsInterface flag and the absence of
-            a private data item, plus every parent link asked for. From the FILE, never through
-            lvai_describe_project - that reported ok:false for a sound class because LabVIEW served
-            its cached copy of the project.
+            Read the finished file back and gate `ok` on the IsInterface flag, no private data item and
+            every parent link asked for.
             """)]
         bool verify = true,
         [Description("Replace an existing .lvclass. Refused by default - it would drop its members")]
         bool overwrite = false,
         [Description("""
-            Milliseconds to wait after the .lvproj has been written and before LabVIEW opens it.
-            Carried over from lvai_create_class, where it mitigates a SUSPECTED race that has never
-            been diagnosed. Set to 0 to measure against it.
+            Milliseconds to wait between writing the .lvproj and LabVIEW opening it (mitigates a
+            suspected race); 0 disables.
             """)]
         int settleMs = 400,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         CancellationToken ct = default,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview NO STEP touches NI's service: the throwaway project is opened and closed
-            and NI's own interface provider run through COMPOSED helpers over LabVIEW's ActiveX
-            server, as lvai_create_class does there. LabVIEW must already be running.
+             On pylabview no step uses NI's service; LabVIEW must already be running.
             """)]
         string? backend = null)
     {
@@ -1037,55 +959,28 @@ internal sealed class ClassTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_describe_class", ReadOnly = true, OpenWorld = false,
                    Title = "Read a .lvclass: its ancestry, members and access scope")]
     [Description("""
-        Read-only, and needs NO running LabVIEW: a `.lvclass` is plain XML on disk, so this parses
-        it directly.
-        THE REASON IT EXISTS IS INHERITANCE. `lvai_describe_project` reports a class's `parent` as
-        its OWNING LIBRARY, not its base class - measured on NI's own hierarchy, where
-        `Circle Message.lvclass` derives from `Draw Message.lvclass` and reports
-        `"parent": "Draw Messages.lvlib"`. Nothing in the 23-RPC gRPC interface reports inheritance
-        or access scope, so the file is the only source and this is the only reader.
-        It checks BOTH representations, in the order the census established: plain-text
-        `Parent Libraries` items (LabVIEW 2026 writes these) then the encoded
-        `NI.LVClass.ParentClassLinkInfo` for older files. No file carried both; a class with neither
-        derives from `LabVIEW Object`, which is reported as such rather than as an empty answer.
-        `ancestorSource` says which representation the answer came from, because the encoded one is
-        recovered by regex over decoded bytes and its ORDER is not guaranteed.
-        Members come back with their effective scope from `NI.ClassItem.MethodScope` - per member,
-        no propagation, unlike a `.lvlib` where the scope sits on the folder. Folder names are
-        ignored on purpose: the census found folders called `private` whose members were all public.
-        `fields` REPORTS EACH PRIVATE DATA FIELD with its label, its type descriptor, whether it
-        is a bound typedef, and its `default` - decoded from the flattened private data, a
-        cluster as an object of its members, an enum as value and item; a type whose layout is
-        not decoded (path, refnum, array, timestamp) stops the walk and `fieldsDefaultsNote`
-        says where. Nothing else reported this: measured 2026-09-03, establishing what types
-        a class's fields carry by hand cost 154 s of wall clock for 4.2 s inside LabVIEW - reading
-        the 6-bit codec out of the source, unwrapping the flattened control, and extracting it. It
-        is also the check that distinguishes a successful typedef bind from one that installed the
-        type and no link. Costs one pylabview read, no LabVIEW; `includeFields: false` skips it.
-        `privateDataBytes` is the size of the control inside the class file. `-1` means the
-        flattened property is there but does not decode, which is what a corrupt or wrongly wrapped
-        blob looks like - and the state in which LabVIEW reports the class with every field blank.
+        Class: reads a `.lvclass` from disk - ancestry, members with access scope, private data
+        fields - with NO running LabVIEW. Use it for INHERITANCE: lvai_describe_project reports a
+        class's `parent` as its owning LIBRARY, not its base class. A class with no recorded parent
+        derives from `LabVIEW Object`; `ancestorSource` names the representation read (the encoded,
+        older one does not guarantee ORDER). Member scope comes per member from the class file;
+        folder names are ignored.
+        `fields`: each private data field with label, type, whether it is a bound typedef, and its
+        `default` (a type whose layout is not decoded - path, refnum, array, timestamp - stops the
+        walk; `fieldsDefaultsNote` says where). This is the check that tells a real typedef bind
+        from one that installed only the type. `privateDataBytes` is the control's size in the
+        class file; `-1` means it does not decode (corrupt blob - LabVIEW then shows every field
+        blank).
         """)]
     public Task<string> DescribeClassAsync(
         [Description("Absolute path to the .lvclass to read")] string lvclassPath,
         [Description("""
-            Also report each private data FIELD with its label and type descriptor. On by default.
-            It costs one pylabview read of the class's own private data control - no LabVIEW, about
-            300 ms - and it is the only way to see what a field actually carries: `lvai_describe_ctl`
-            on the unwrapped control stops one level up at `Cluster of class private data`, and
-            nothing else reports it at all. Pass false to skip it on a class you only want the
-            member list for.
+            Report each private data field (one pylabview read, no LabVIEW). False lists members only.
             """)]
         bool includeFields = true,
         [Description("""
-            Read each member VI's own saved file with pylabview (no LabVIEW, about 250 ms per VI,
-            four at a time) for two things. `dynamicDispatch` where the .lvclass records no
-            IsStaticMethod: a connector pane terminal flagged 0x8000 means dynamic dispatch,
-            measured against NI's own IsStaticMethod on 149 of 149 class members, and
-            `dynamicDispatchFrom` says which source answered. And `paneTypedefs`: every pane
-            terminal that carries a typedef, with the .ctl it names - so an accessor still bound
-            to its field's typedef reads [{"terminal":"Channel Config","typedef":"Channel
-            Config.ctl"}]. Pass false to skip the file reads. On by default.
+            Read each member VI's file (no LabVIEW) for `dynamicDispatch` where the class records none
+            (`dynamicDispatchFrom` names the source) and `paneTypedefs`, the typedefs on each pane.
             """)]
         bool readMemberFiles = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 45,
@@ -1923,73 +1818,24 @@ internal sealed class ClassTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_create_accessors", Destructive = true, OpenWorld = true,
                    Title = "Create the accessor VIs for a class's private data fields")]
     [Description("""
-        MUTATING: creates Read and/or Write accessor VIs for EVERY private data field of a
-        .lvclass, saves each one beside the class, and writes the member list into the class file.
-        This is LabVIEW's own wizard, not a reimplementation: it calls
-        MemberVICreation.lvlib:CLSUIP_CreateNewAccessor.vi, the body behind the IDE's
-        "New >> VI for Data Member Access", so the VIs are correct by construction. Verified by a
-        pylabview diff against wizard-made accessors for another class - same front-panel heap
-        including both udClassDDO objects, same class refnums, same connector pane pattern, same
-        .lvclass item block.
-        NEITHER AIXML NOR PYLABVIEW CAN DO THIS. An accessor needs a front-panel control whose type
-        is the class; AIXML refuses to author one, and the heap object it needs (udClassDDO) is of a
-        class pylabview never writes from scratch. docs/lvclass-creation.md has both measurements.
-        PRECONDITION: the class must belong to a project that is ACTIVE in the IDE, because the
-        class reference is found among Project:Active Project's classes. `classIndex` -1 in the
-        answer means the path was not among them - check the project is open and that lvclassPath
-        spells the same path LabVIEW reports.
-        accessUi = "R/W" creates BOTH accessors per field in one wizard call, which is the default
-        and halves the work. dynamicDispatch true gives dynamic dispatch terminals.
-        The answer lists every VI created with the path it was saved to, so which field an accessor
-        belongs to is reported rather than assumed; fieldIndex is the field's REAL position in the
-        cluster, not its position within this call's slice.
-        A CLASS WITH MANY FIELDS NEEDS SEVERAL CALLS, and fieldCount DEFAULTS TO 2 for that reason.
-        The per-field cost is not constant: Save All This Library checks the whole library every time,
-        so it went 11.5 s with an empty class, about 20 s at 6 members and past 30 s at 12 - which
-        means three fields fit the FIRST call and two fit any of them, against a client that gives up
-        near 60 s.
-        BUT YOU NO LONGER TRACK THE OFFSET, AND THAT IS THE POINT: `fromField` defaults to -1, which
-        RESUMES from the class file's own member count, and one call now takes slice after slice
-        until either the class is finished or `budgetSeconds` (45, deliberately under the client's
-        limit) is spent. So the whole class is "call it, read moreToDo, call it again with the same
-        arguments" - no offset arithmetic, and a retry after a timeout is correct by default.
-        `slicesRun` and `slices` say what one call actually did. The library is saved after EVERY
-        field, so an interrupted call leaves a consistent partial class rather than orphan VIs the
-        class file does not mention.
-        A TIMED-OUT CALL HAS USUALLY DONE ITS WORK, and "usually" is now the honest word. The client
-        gives up near 60 s while the helper keeps going, and the library is saved after every field.
-        This paragraph claimed the class is therefore "left consistent - never a mismatch"; that is
-        true only when the timeout lands BETWEEN fields. Measured 2026-09-02: one landed inside a
-        pair, leaving SEVEN accessor members, and the resume then rebuilt that field and NI's wizard
-        appended a number rather than refusing - `Read Bio 2.vi` - while every step reported
-        errorCode 0. So on "Request timed out", call again: the default -1 reads the class file and
-        continues. If it finds a half-built field it now REFUSES with `halfBuiltAccessors` and names
-        it, instead of resuming onto it; delete that orphaned accessor and its <Item> block with the
-        project closed, then call again. And any run that ends with duplicate accessors on disk
-        answers `ok: false` with `mangledAccessors`, because LabVIEW does not consider the
-        duplication an error and nothing else would report it. Every successful answer also carries membersBefore,
-        membersAfter and nextFromField, all read off the class file rather than from the run.
-        VERIFY IMMEDIATELY - lvai_describe_class reads the .lvclass file and needs no LabVIEW, so
-        the check survives whatever the IDE does next. This used to read "expect LabVIEW to go down
-        a few minutes after the run", and that is no longer what happens: the helper left the
-        project reference and the IDE application reference open, and closing both changed the
-        outcome. Before: LabVIEW left about three minutes after ONE run. After: three runs back to
-        back, twice, with the process still up half an hour later.
-        The leak is reduced rather than gone, so do not read this as a clean bill of health. The
-        session log still carries `DestroyPlatformEvent failed with MgErr 42`, roughly 13 per run
-        against 15 for a single run before. Every faulting site is NI's own code, and the minidump
-        count means nothing - a three-node VI with no VI Server in it also produces three.
-        RUN IT ONCE PER CLASS ON A CLEAN MEMORY. An earlier failed run leaves accessors in memory
-        unsaved, and then the next run names them "Read X 2.vi" and the class file never gets its
-        member list. Restart LabVIEW or close the project first.
-        EVERY ACCESSOR COMES OUT SOURCE-ONLY - no VICD, TM80, DFDS or CCST - and `sourceOnly` says
-        so per VI, read from each saved file. The wizard decides that from the PROJECT's
-        NI.LV.All.SourceOnly ("Separate compiled code from new project items"): measured
-        2026-10-12, false gave all six accessors all four blocks, true gave none. So with
-        projectPath this call sets it first when the project lacks it - closing the project if
-        LabVIEW holds it, because it is a file edit - and reports that as `projectSourceOnly`;
-        compiled code in an accessor after that is `ok: false`. Without projectPath nothing can be
-        set, and `sourceOnlyNote` says why the accessors carry compiled code.
+        Class: creates Read and/or Write accessor VIs for the private data fields of a .lvclass,
+        through LabVIEW's own "VI for Data Member Access" wizard, saves them beside the class and
+        lists them in the class file. AIXML cannot author an accessor (class-typed terminal).
+        PRECONDITION: the class's project must be OPEN and ACTIVE in the IDE. `classIndex` -1 means
+        the class was not among the active project's classes - check the project and the path
+        spelling. Run it ONCE PER CLASS on a clean memory: unsaved accessors from a failed run make
+        the next run produce "Read X 2.vi"; close the project or restart LabVIEW first.
+        SLICED AND RESUMABLE: fromField -1 resumes from the class file's member count, and one call
+        builds slice after slice until done or budgetSeconds is spent; answers `moreToDo`, `slices`,
+        `membersBefore`, `membersAfter`, `nextFromField`. On "Request timed out" call again with
+        the same arguments - the work usually completed. A half-built field is REFUSED as
+        `halfBuiltAccessors` (delete that accessor and its <Item> with the project closed, then
+        retry); duplicate accessors on disk give `ok: false` with `mangledAccessors`.
+        `fieldIndex` is the field's real position in the cluster.
+        Accessors come out SOURCE-ONLY (`sourceOnly` per VI): with a project, its "Separate compiled
+        code" setting is switched on first (`projectSourceOnly`); compiled code after that is
+        `ok: false`. Verify with lvai_describe_class (reads the file, no LabVIEW).
+        docs/lvclass-creation.md.
         """)]
     public async Task<string> CreateAccessorsAsync(
         [Description(@"Absolute path to the .lvclass whose fields need accessors")]
@@ -2005,98 +1851,57 @@ internal sealed class ClassTools(LvaiConnection connection)
         [Description("Virtual folder inside the class to put them in; empty for the class root")]
         string virtualFolderName = "",
         [Description("""
-            First private data field to build accessors for, counting from 0. Together with
-            fieldCount this bounds one call to a SLICE of the cluster, which is how a class with
-            many fields gets built without any single call outliving the MCP client's patience.
-            MEASURED: a 7-field class needs about 70 s and the client gives up near 60 s, twice
-            leaving 12 of 14 VIs on disk. Two calls of 4 and 3 fields fit with room to spare.
-            LEAVE IT AT -1, WHICH RESUMES. The class file's own member count says how many fields
-            already have accessors, so -1 reads it and starts there - which is what nextFromField
-            has always reported and what a caller used to spend a turn passing back in. It also
-            makes the retry after a client timeout correct by default: measured 2026-08-29, a slice
-            that answered `Request timed out` had COMPLETED on disk, and resuming from the file
-            picked up exactly where it stopped. Pass an explicit index only to rebuild a slice.
+            First field (from 0) of the slice. -1 RESUMES from the class file's member count; pass an
+            index only to rebuild a slice (an explicit index duplicates rather than repairs).
             """)]
         int fromField = -1,
         [Description("""
-            How many fields to build from fromField. TWO by default, and the number is measured
-            rather than chosen: the per-field library save gets slower as the class grows, because
-            Save All This Library checks the whole library every time. On one 7-field class the
-            cost per field went 11.5 s with an empty class, about 20 s at 6 members, past 30 s at
-            12 - so three fields fit only the FIRST call and two is the honest default. A larger
-            number is harmless in itself (Array Subset clamps past the end); it may just not come
-            back inside the client's patience.
+            Fields per slice; each field's library save slows as the class grows, so two keeps a
+            slice inside the client's ~60 s limit.
             """)]
         int fieldCount = 2,
         [Description("""
-            Strip helper items out of the .lvproj on disk when the run is done. OFF BY DEFAULT, and
-            the reason is the worst regression this tool has had: it rewrites the project FILE while
-            LabVIEW still holds that project OPEN, and LabVIEW does not survive it.
-            MEASURED as an A/B/A on 2026-08-26, three accessor runs each time from the same reset
-            state. The build from before this option existed: three runs ok, 14/10/10 members,
-            LabVIEW stable four minutes. The build with it on: three runs FAILED, 0 members, LabVIEW
-            gone in twenty seconds. The old build again, immediately after: ok again, stable. Then
-            the same new build with tidyProject FALSE: 14 members, LabVIEW alive. So it is this
-            option, not the machine, and not the Auto Dispose Ref edit that was reverted first while
-            chasing it.
-            Turn it on ONLY when LabVIEW does not have the project open - after --finish-project has
-            stopped LabVIEW, for instance. It is otherwise safe and idempotent: it edits only items
-            whose URL points into the helpers directory.
+            Strip helper items from the .lvproj file afterwards. ONLY when LabVIEW does not have the
+            project open - rewriting it under a live LabVIEW killed LabVIEW.
             """)]
         bool tidyProject = false,
         [Description("""
-            Also SAVE and CLOSE the active project first, which flushes the in-memory helper item
-            so it can be stripped. MEASURED TO HAVE KILLED LABVIEW when done immediately after an
-            accessor run - eight BadLinkerObjs assertions naming the class private data control,
-            and the process gone two seconds later. Off by default for that reason; if you want it,
-            restart LabVIEW between the run and the close.
+            Save and close the active project first. Killed LabVIEW when run right after an accessor
+            run; restart LabVIEW in between if you use it.
             """)]
         bool closeProject = false,
         [Description("""
-            The class's .lvproj. It is opened first, its "Separate compiled code from new project
-            items" is set so NI's wizard writes SOURCE-ONLY accessors, and it is the one tidied.
-            Omit it and the ACTIVE project is used - the one the wizard works on - else the nearest
-            .lvproj above the class that lists it; `projectPathFrom` says which. Until 2026-10-13
-            an omitted projectPath skipped the setting, and the accessors carried compiled code.
+            The class's .lvproj: opened first, set to write source-only accessors, and tidied.
+            Omitted: the active project, else the nearest .lvproj above the class that lists it
+            (`projectPathFrom`).
             """)]
         string? projectPath = null,
         [Description("""
-            Where to keep the generated helper VI. Defaults to a per-user temp directory. Generated
-            once and reused; pass regenerateHelper to force a rebuild.
+            Where to keep the generated helper VI (per-user temp by default); reused until
+            regenerateHelper.
             """)]
         string? helperViPath = null,
         [Description("""
-            The helper's AIXML source. Defaults to lvai_create_accessors.xml inside the folder
-            lvai_status reports as scriptsDirectory.
+            The helper's AIXML source; defaults to lvai_create_accessors.xml in scriptsDirectory.
             """)]
         string? helperAixmlPath = null,
         [Description("Regenerate the helper VI even when it already exists")]
         bool regenerateHelper = false,
         [Description("""
-            How long this call may keep taking SLICES before it returns, in seconds. It runs slice
-            after slice - resuming from the class file each time - until the class is finished or
-            this budget is spent, then answers with moreToDo.
-            45 by default, and the number is the MCP client's limit rather than a preference: the
-            client gives up near 60 s, so a loop that simply built every field would reliably
-            outlive its own answer, which is the exact failure slicing exists to prevent. The
-            budget is checked BETWEEN slices, so one slow slice can still overrun it - the check
-            bounds how many are started, not how long one takes.
+            Seconds this call may keep starting slices before answering with moreToDo; checked
+            BETWEEN slices, so one slow slice can overrun it. Keep it under the client's ~60 s.
             """)]
         int budgetSeconds = 45,
         [Description("Local budget in seconds")] int timeoutSeconds = 600,
         CancellationToken ct = default,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview NO STEP touches NI's service: the wizard helper is COMPOSED and run over
-            LabVIEW's ActiveX server, and the project opened and closed the same way. NI's accessor
-            wizard is the same VI either way. helperViPath is ignored there - composed helpers live
-            in their own folder. LabVIEW must already be running.
+             On pylabview no step uses NI's service and helperViPath is ignored; LabVIEW must already
+            be running.
             """)]
         string? backend = null,
         [Description("""
-            Draw an icon on every accessor this call creates - the class's first word as the
-            banner, READ or WRITE and the field under it - as the last step of each slice. Default
-            true; a class that has its OWN icon keeps the template the wizard laid on and is not
-            touched. Reported per VI under `icons`, never gating.
+            Draw an icon on each new accessor (class word banner, READ/WRITE and the field). A class
+            with its own icon keeps the wizard's template. Reported under `icons`, never gating.
             """)]
         bool setIcons = true)
     {

@@ -299,25 +299,22 @@ internal static class AixmlBackend
     /// <summary>
     /// The parameter text for a tool that runs a whole ROUTE - a test generator, a swap, a runner -
     /// whose inner conversions, runs and helpers all follow the one choice.
+    ///
+    /// SHORT ON PURPOSE (2026-11-01): this text is served once per tool that takes `backend`, about
+    /// sixty times in every request, and almost every caller should omit the argument. The full
+    /// explanation is in docs/aixml-backends.md and docs/tool-descriptions-archive.md.
     /// </summary>
     public const string RouteParameterDescription = """
-        Which route the WHOLE call takes: "grpc" (NI's service, the default) or "pylabview" (no NI
-        service at all). On pylabview every step inside this call follows - each VI it writes is
-        COMPOSED, each helper composed into %TEMP%\LabVIEWMCP\helpers-pylabview and run over
-        LabVIEW's ActiveX server, each export read by our own reader - and a step that has no such
-        route yet is refused by name rather than sent to NI's service. LabVIEW must be running. Omit
-        it to use the server's default. docs/aixml-backends.md.
+        Omit it: the server's default applies. "grpc" (NI's service) or "pylabview" (no NI
+        service); every step inside the call follows the choice, and a step with no pylabview
+        route is refused by name. LabVIEW must be running. docs/aixml-backends.md.
         """;
 
-    /// <summary>The parameter text, shared so the four tools describe it alike.</summary>
+    /// <summary>The parameter text, shared so the tools describe it alike - short, see above.</summary>
     public const string ParameterDescription = """
-        Which route does the work: "grpc" (NI's service inside LabVIEW, the default) or
-        "pylabview" (no NI service at all: our own composer and reader write and read a VI with no
-        LabVIEW, and what needs a running LabVIEW - executability, a run, a render - goes over
-        its ActiveX server). Omit it to use the server's default - --aixml-backend or
-        LABVIEWMCP_AIXML_BACKEND, else "aixmlBackend" in %USERPROFILE%\.labviewmcp\settings.json
-        (grpc, pylabview or auto - the file explains each), else pylabview when the LabVIEW in use
-        is older than 2026, else grpc. Every answer names the backend that ran under
-        `backend` and why under `backendSource`. docs/aixml-backends.md has what each covers.
+        Omit it: the server's default applies (settings.json `aixmlBackend`). "grpc" is NI's
+        service; "pylabview" our own composer and reader, with no NI service (a run, an
+        executability check or a render then goes over LabVIEW's ActiveX server). The answer names
+        the route under `backend`. docs/aixml-backends.md.
         """;
 }

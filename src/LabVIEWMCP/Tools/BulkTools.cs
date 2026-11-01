@@ -49,100 +49,87 @@ internal sealed class BulkTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_generate_vi", Destructive = true, OpenWorld = true,
                    Title = "Validate, generate and pane-check a VI in one call")]
     [Description("""
-        MUTATING: the whole create-a-VI sequence in one round trip - lvai_validate_aixml, then
-        lvai_convert_aixml_to_vi, then lvai_connector_pane on the result. Stops at the first step
-        that fails and reports which one, so a failure reads the same as calling the three by hand.
-        USE THIS INSTEAD OF THE THREE SEPARATE CALLS when you are generating from AIXML you have
-        just authored. It is not a shortcut past them: each step's own answer is returned under
-        `steps`, including elapsedMs, so nothing is hidden.
-        THE PANE CHECK IS THE POINT, not the saved turns. lvai_convert_aixml_to_vi cannot see a
-        badly placed connector pane and neither can a run: a VI whose inputs sit on the output edge
-        validates, generates and executes. That defect has shipped twice. `ok` here is false when
-        the pane breaches NI's style guide, and the corrected conIdx values come back ready to
-        paste - author them into the AIXML and call this again.
-        `ok` false with `paneViolations` > 0 still means the .vi FILE WAS WRITTEN. The generation
-        succeeded; it is the pane that needs another pass.
-        Pass measurePane=false to skip the measurement - only worth it for a scratch probe with no
-        connector pane at all.
-        Pass panePattern to put the result on a SPECIFIC pane pattern instead of the station
-        default - needed when the VI must match a pane that already exists, because a caller's
-        wires bind to terminal positions and the same conIdx means different edges on a different
-        pattern. It runs before the measurement, so what comes back describes the final pane.
-        IT CALLS YOUR OWN CODE DIRECTLY WHEN THAT CODE IS OPEN IN LABVIEW. ValidateAIXML refuses a
-        Call to a project-local VI or class member in every state, while ConvertAIXMLToVI resolves
-        it by name once the target is loaded - opened through its project, opened loose, or for a
-        class any one member opened. So when validation names ONLY `Unsupported SubVI` targets,
-        this converts anyway, under a throwaway _name so a refusal burns nothing, and then gates
-        on the VI being EXECUTABLE in place of the validation that could not check those calls.
-        The answer says so under `loadedSubVIs`. If the targets were not loaded the convert
-        answers Error 53 and the note names them: open one through its project with
-        lvai_open_file and call again. That replaces lvai_placeholder_subvi + lvai_swap_subvis
-        for a caller of project code; a .ctl is NOT a Call target, and a constant feeding a
-        typedef input still needs lvai_bind_typedef_constants. docs/aixml-call-loaded-vi.md.
+        Generate: a VI from AIXML in one call - check/repair, validate, convert, connector-pane
+        check, diagram layout and size, panel clean-up, icon. Use it instead of calling
+        lvai_validate_aixml + lvai_convert_aixml_to_vi + lvai_connector_pane by hand; it stops at
+        the first failing step (`failedAtStep`) and returns each step's answer under `steps`.
+        A `.vim` target is refused (use lvai_make_malleable). A fault LabVIEW would accept silently
+        and that cannot be repaired (`danglingParent`, `uidParentContradictsNesting`,
+        `noRequiredInput`) stops it before anything is written.
+        `ok` is false when the pane breaches NI's style guide; the corrected conIdx values come back
+        to paste into the AIXML. `ok: false` with `paneViolations` > 0 or `failedAtStep:
+        execState` still means the .vi WAS WRITTEN. `diagramSize.withinBudget: false` (over
+        1920 x 1080) does not fail the call but means fold the named chain into a subVI.
+        A Call to your OWN project code works when that code is OPEN in LabVIEW (lvai_open_file
+        through its project; for a class, one member): validation refusing ONLY `Unsupported
+        SubVI` is converted anyway and gated on executability (`loadedSubVIs`); not loaded, the
+        convert answers Error 53 naming the targets. A .ctl is not a Call target; a constant
+        feeding a typedef input still needs lvai_bind_typedef_constants.
+        docs/aixml-call-loaded-vi.md. On success each step is slimmed to its verdict (`execState`,
+        `preCheck` and `repairs` lifted to the top); a failed step keeps its whole answer.
         """)]
-    public async Task<string> GenerateViAsync(
+    public async Task<string> GenerateViToolAsync(
         [Description(@"Absolute path to the source AIXML .xml file")] string aiXmlFilePath,
         [Description(@"Absolute path of the .vi to create - WILL BE OVERWRITTEN")] string viPath,
         [Description("Open the created VI in the LabVIEW editor")] bool openVI = false,
         [Description("Measure the connector pane afterwards and gate `ok` on it")]
         bool measurePane = true,
         [Description("""
-            Connector pane PATTERN the generated VI must end up on, e.g. 4815. Omit to keep
-            whatever LabVIEW.ini's DefaultConPane gives it, which is the normal case.
-            Pass it when the VI has to match a pane that already exists - a caller's wires bind to
-            terminal positions, and the same conIdx means different edges on a different pattern.
-            Applied after generation by the same pylabview step as
-            pylv_apply {"op":"conpane"}, so it moves NO terminal and no caller has to change; it
-            also closes the active project first, because a rebuild under a loaded VI writes the
-            file while LabVIEW keeps serving its stale copy. The VI comes back SOURCE-ONLY: its
-            compiled code is stripped so LabVIEW recompiles it, because the stale copy of that code
-            was measured running the old VI (wrong result, no error) and reported crashing 64-bit
-            LabVIEW. docs/pylabview-stale-compiled-code.md.
+            Connector pane PATTERN to put the VI on, e.g. 4815; omit for LabVIEW.ini's
+            DefaultConPane. Use it to match an existing pane - the same conIdx means different
+            edges on another pattern. Moves no terminal; closes the active project first; the VI
+            comes back source-only. docs/pylabview-stale-compiled-code.md.
             """)]
         int? panePattern = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description("""
-            Render the generated block diagram and report its size under `diagramSize`, with the
-            longest dependency chain read off the AIXML. On by default: the rule is a diagram of
-            about 1920 x 1080, and three agent builds in a row shipped main VIs 3306-4152 px wide
-            while every other check was green. An over-budget diagram does not fail the call - the
-            VI is written - but the answer says so and names the chain to fold into a subVI.
-            Costs one render, 90-320 ms measured.
+            Render the diagram and report `diagramSize` against the 1920 x 1080 budget, with the
+            longest dependency chain. Over budget does not fail the call. False also skips
+            clean-up and icon (for helpers and carriers).
             """)]
         bool measureDiagram = true,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview the validate step is skipped - the composer refuses by name instead - and
-            the VI's executability is read in its place, because the composer does not type-check
-            wiring. NO STEP touches NI's service: executability and the diagram size go over
-            LabVIEW's ActiveX server (which needs a RUNNING LabVIEW and never starts one), the pane
-            is read from the file by pylabview, and panePattern rebuilds without closing a project.
+             On pylabview the validate step is skipped and executability is read instead (the
+            composer does not type-check wiring); every step then needs a RUNNING LabVIEW over
+            ActiveX, never NI's service.
             """)]
         string? backend = null,
         [Description("""
-            Lay out the written VI's block diagram with OUR layout engine - the pipeline of
-            lvai_layout_diagram, since 2026-10-16 in place of LabVIEW's BD.CleanUp - and save it in
-            place, BEFORE the diagram is measured, so diagramSize is the diagram you get. Omit it
-            to clean up whenever the diagram is measured, which is every deliverable; helpers and
-            carriers skip it. Skipped with openVI, where the IDE holds its own copy, and for a DQMH
-            module's Main.vi. A VI that had no compiled code comes back with none. A failed layout
-            does not fail the call - the VI is put back as generated, and the cleanUpDiagram step
-            (engine: lvai_layout_diagram) says why.
+            Lay out the block diagram with lvai_layout_diagram's engine and save in place before it
+            is measured. Omit to follow measureDiagram. Skipped with openVI and for a DQMH Main.vi.
+            A failed layout puts the VI back as generated and does not fail the call.
             """)]
         bool? cleanUpDiagram = null,
         [Description("""
-            Arrange the FRONT PANEL with the algorithm behind LabVIEW's Edit - Clean Up Panel and
-            save in place - the user's rule for every VI that is NOT the application's MAIN VI,
-            whose panel is the user interface and laid out on purpose: pass false for that one.
-            Omit it to follow cleanUpDiagram. A panel holding a tab control or a splitter is left
-            alone (the algorithm answers it with a modal dialog), reported as skipped.
+            Arrange the FRONT PANEL (LabVIEW's Clean Up Panel algorithm) and save. Pass false for
+            the application's MAIN VI, whose panel is the user interface. Omit to follow
+            cleanUpDiagram. A panel with a tab control or splitter is skipped.
             """)]
         bool? cleanUpPanel = null,
         [Description(DefaultIcon.ParameterDescription + """
-             Drawn on every deliverable (whenever the diagram is measured), after every other
-            step; helpers and carriers get none.
+             Drawn on every deliverable (whenever the diagram is measured); helpers and carriers get
+            none.
             """)]
-        string? icon = null)
+        string? icon = null,
+        [Description("Return every step's full answer even on success")] bool verbose = false)
+    {
+        var answer = await GenerateViAsync(aiXmlFilePath, viPath, openVI, measurePane, panePattern,
+                                           timeoutSeconds, ct, measureDiagram, backend, cleanUpDiagram,
+                                           cleanUpPanel, icon);
+        return verbose ? answer : CompactGenerateAnswer(answer);
+    }
+
+    /// <summary>
+    /// lvai_generate_vi with every step's whole answer - what the server's own route tools call
+    /// (twenty-odd of them parse `steps`), so the compaction of <see cref="GenerateViToolAsync"/>
+    /// happens only at the MCP boundary.
+    /// </summary>
+    public async Task<string> GenerateViAsync(
+        string aiXmlFilePath, string viPath, bool openVI = false, bool measurePane = true,
+        int? panePattern = null, int timeoutSeconds = 300, CancellationToken ct = default,
+        bool measureDiagram = true, string? backend = null, bool? cleanUpDiagram = null,
+        bool? cleanUpPanel = null, string? icon = null)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_generate_vi", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
@@ -173,9 +160,17 @@ internal sealed class BulkTools(LvaiConnection connection)
     /// That last one is the routine state of a class test whose seeds are still paths, and leaving it
     /// out drew no icon on lvai_generate_class_test's test VI in the cold build of 2026-10-17.
     /// </summary>
-    internal static bool IconWanted(JsonObject answer)
+    internal static bool IconWanted(JsonObject answer) =>
+        answer["ok"]?.GetValue<bool>() == true || WrittenNotExecutable(answer);
+
+    /// <summary>
+    /// Whether a generate answer WROTE the VI and LabVIEW cannot run it - on either backend. gRPC
+    /// stops at `execState`; the pylabview composer stops at `convert` with `executable: false`.
+    /// lvai_generate_test read only the first and answered `ok: true` for a broken test VI on
+    /// pylabview (PC AI DI TDMS cold build, 2026-11-01).
+    /// </summary>
+    internal static bool WrittenNotExecutable(JsonObject answer)
     {
-        if (answer["ok"]?.GetValue<bool>() == true) return true;
         var failedAt = answer["failedAtStep"]?.GetValue<string>();
         if (failedAt == "execState") return true;
         if (failedAt != "convert") return false;
@@ -946,6 +941,136 @@ internal sealed class BulkTools(LvaiConnection connection)
         return result.ToJsonString(Indented);
     }
 
+    // ---------------------------------------------------------------- compact answers
+
+    /// <summary>
+    /// lvai_generate_vi's answer as the MCP client gets it by default: unchanged when the call did
+    /// not succeed, else every step that did not fail slimmed to its verdict and the fields a
+    /// reader acts on lifted to the top. Measured in an application build
+    /// (docs/ideen-schneller-und-weniger-tokens.md §4): a batch of these answered 32-43 k
+    /// characters, almost all of it the steps' sub-answers of VIs that had SUCCEEDED.
+    /// </summary>
+    internal static string CompactGenerateAnswer(string answer) =>
+        Parse(answer) is JsonObject o ? Json.Document(CompactGenerate(o, keepSteps: true)) : answer;
+
+    /// <summary>
+    /// The compaction itself. <paramref name="keepSteps"/> false drops the successful steps
+    /// entirely (lvai_generate_vis) and keeps only the failed ones, under `failedSteps`.
+    /// </summary>
+    internal static JsonObject CompactGenerate(JsonObject full, bool keepSteps)
+    {
+        if (!IsTrue(full["ok"]) || full["steps"] is not JsonArray steps) return full;
+
+        var compact = new JsonObject();
+        foreach (var (key, value) in full)
+            if (key != "steps") compact[key] = value?.DeepClone();
+
+        JsonObject? Named(string name) =>
+            steps.OfType<JsonObject>().LastOrDefault(s => StepName(s) == name);
+
+        // what stands for executability: the execState step (both routes read it) and, on
+        // pylabview, the convert answer's own `executable`
+        var execStep = Named("execState");
+        var convertAnswer = Named("convert")?["answer"] as JsonObject;
+        if (execStep is not null)
+        {
+            compact["execState"] = execStep["execState"]?.DeepClone();
+            if (execStep["measured"] is JsonValue m && m.TryGetValue<bool>(out var measured) && !measured)
+                compact["execStateMeasured"] = false;
+        }
+        if (convertAnswer?["executable"] is JsonValue executable)
+            compact["executable"] = executable.DeepClone();
+        else if (execStep?["execState"] is JsonValue stateNode && stateNode.TryGetValue<int>(out var state)
+                 && IsTrue(execStep["measured"]))
+            compact["executable"] = state > 0;
+
+        // the warnings: the pre-check findings on the validate (else convert) answer, the repairs
+        // made into the copy, and the pane's warnings when there are any
+        var preCheck = (Named("validate")?["answer"] as JsonObject)?["preCheck"] ?? convertAnswer?["preCheck"];
+        if (preCheck is not null) compact["preCheck"] = preCheck.DeepClone();
+        if ((Named("repair")?["answer"] as JsonObject)?["repairs"] is { } repairs)
+            compact["repairs"] = repairs.DeepClone();
+        if (full["paneWarnings"] is JsonValue pw && pw.TryGetValue<int>(out var paneWarnings)
+            && paneWarnings > 0 && Named("connectorPane")?["answer"] is { } paneText)
+            compact["paneWarningsDetail"] = paneText.DeepClone();
+
+        var reduced = new JsonArray();
+        var failedSteps = new JsonArray();
+        foreach (var step in steps.OfType<JsonObject>())
+        {
+            if (StepFailed(step))
+            {
+                reduced.Add(step.DeepClone());
+                failedSteps.Add(step.DeepClone());
+                continue;
+            }
+            if (!keepSteps) continue;
+            var slim = new JsonObject { ["step"] = StepName(step) };
+            if (step["skipped"] is { } skipped) slim["skipped"] = skipped.DeepClone();
+            if (step.ContainsKey("errorCode")) slim["errorCode"] = step["errorCode"]?.DeepClone();
+            if (step["answer"] is JsonObject inner)
+                slim["answer"] = Json.Slim(inner, keep: false)?.DeepClone();
+            else
+                slim["slimmed"] = true;
+            reduced.Add(slim);
+        }
+        if (keepSteps) compact["steps"] = reduced;
+        else if (failedSteps.Count > 0) compact["failedSteps"] = failedSteps;
+        return compact;
+    }
+
+    /// <summary>
+    /// A step that must keep its whole answer: Slim's failure rule on the step or on its answer, a
+    /// stripCompiled/clean-up/icon step answering ok false, or a diagram over budget - whose chain
+    /// names what to fold into a subVI.
+    /// </summary>
+    internal static bool StepFailed(JsonObject step) =>
+        Json.LooksFailed(step)
+        || (step["answer"] is JsonObject answer && Json.LooksFailed(answer))
+        || (step["withinBudget"] is JsonValue within && within.TryGetValue<bool>(out var w) && !w);
+
+    private static string? StepName(JsonObject step) =>
+        step["step"] is JsonValue v && v.TryGetValue<string>(out var name) ? name : null;
+
+    private static bool IsTrue(JsonNode? node) =>
+        node is JsonValue v && v.TryGetValue<bool>(out var b) && b;
+
+    /// <summary>What a generated entry of lvai_generate_vis does not need to repeat.</summary>
+    private static readonly string[] EntryRedundant =
+        ["viPath", "viExistsNow", "viBytes", "failedAtStep", "backend", "backendSource", "totalElapsedMs"];
+
+    /// <summary>
+    /// lvai_generate_vis's answer as the MCP client gets it by default: each entry whose answer is
+    /// ok reduced to its decision fields (<see cref="CompactGenerate"/> without steps), the entry's
+    /// own path and backend fields dropped (the entry and the batch carry them), and a `note` every
+    /// generated entry shares said once under `common`. Failed entries are untouched.
+    /// </summary>
+    internal static string CompactGenerateVisAnswer(string answer)
+    {
+        if (Parse(answer) is not JsonObject batch || batch["results"] is not JsonArray results)
+            return answer;
+
+        var compacted = new List<JsonObject>();
+        foreach (var entry in results.OfType<JsonObject>())
+        {
+            if (entry["answer"] is not JsonObject inner || !IsTrue(inner["ok"])) continue;
+            var c = CompactGenerate(inner, keepSteps: false);
+            if (ReferenceEquals(c, inner)) continue;   // no steps to reduce: left as it is
+            foreach (var key in EntryRedundant) c.Remove(key);
+            foreach (var key in c.Where(p => p.Value is null).Select(p => p.Key).ToList()) c.Remove(key);
+            entry["answer"] = c;
+            compacted.Add(c);
+        }
+        if (compacted.Count == 0) return answer;
+
+        var common = Json.Hoist(compacted, ["note"]);
+        if (common.Count > 0) batch["common"] = common;
+        batch["slimmed"] = compacted.Count;
+        batch["slimmedNote"] = "Entries that generated carry only their decision fields; `common` " +
+                               "holds what they all said. verbose: true returns each whole answer.";
+        return Json.Document(batch);
+    }
+
     // ---------------------------------------------------------------- pylv_apply
 
     // ---------------------------------------------------------------- generate, plural
@@ -953,31 +1078,20 @@ internal sealed class BulkTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_generate_vis", Destructive = true, OpenWorld = true,
                    Title = "Generate several VIs from AIXML in one call")]
     [Description("""
-        MUTATING: several AIXML files through the whole lvai_generate_vi sequence - validate,
-        convert, measure the pane - in ONE call, applied in the order given, EXCEPT that entries
-        with a `panePattern` run after the ones without: a pane repair closes the project, which
-        unloads the callees of everything after it (measured 2026-09-26, Error 53). `results` is
-        in the order given, and `ranLast` names what moved.
-        USE IT FOR BOILERPLATE SETS, which is where it pays: the socket VIs a class unit test needs
-        are one per test slot and fully determined by the subject's pane. Measured 2026-08-29 over a
-        three-class hierarchy, generating them one at a time cost 34 calls of lvai_generate_vi for
-        29 distinct targets - about four minutes, nearly all of it turn latency rather than LabVIEW.
-        pairsJson is a JSON ARRAY, one object per VI:
+        Generate: several AIXML files through the lvai_generate_vi sequence (validate, convert,
+        pane check) in ONE call - for boilerplate sets such as test sockets. Applied in the order
+        given, except entries with a `panePattern` run last (a pane repair closes the project and
+        unloads later entries' callees); `results` keeps the given order, `ranLast` names what
+        moved. pairsJson is a JSON ARRAY, one object per VI:
           [{"aixml":"C:\\t\\a.xml","vi":"C:\\t\\a.vi","panePattern":4815},
            {"aixml":"C:\\t\\b.xml","vi":"C:\\t\\b.vi"}]
-        `panePattern` is optional and per VI - a socket that has to match an accessor's pane needs
-        4815 while the test beside it takes the station default.
-        SEQUENTIAL ON PURPOSE, exactly like lvai_convert_vis_to_aixml: six generate calls issued
-        together took 559 ms against 543 ms one after another, because LabVIEW serialises the RPC.
-        The saving here is round trips, not throughput.
-        IT DOES NOT STOP AT THE FIRST FAILURE. Each entry gets its own answer under `results`, so
-        one bad AIXML does not cost you the other nine; `ok` is true only when every entry
-        generated. A failure reads exactly as lvai_generate_vi's would.
-        THE AIXML IS DELETED ON SUCCESS and KEPT ON FAILURE, the same bargain pylv_apply makes with
-        its bundle: the intermediate is noise once the .vi exists, and it is the only evidence when
-        the .vi does not. Pass keepAixml to keep it either way.
+        `panePattern` is optional and per VI. Runs sequentially (LabVIEW serialises the work).
+        It does NOT stop at the first failure: each entry has its own answer, and `ok` is true only
+        when every entry generated. The AIXML is deleted on success and kept on failure, unless
+        keepAixml. An entry that generated keeps only its decision fields (execState, diagramSize,
+        pane, warnings) with notes shared by all said once under `common`; a failed one keeps all.
         """)]
-    public async Task<string> GenerateVisAsync(
+    public async Task<string> GenerateVisToolAsync(
         [Description("JSON array of {aixml, vi, panePattern?} objects, applied in order")]
         string pairsJson,
         [Description("Open each created VI in the LabVIEW editor")] bool openVI = false,
@@ -987,7 +1101,22 @@ internal sealed class BulkTools(LvaiConnection connection)
         bool keepAixml = false,
         [Description("Local budget in seconds, per VI")] int timeoutSeconds = 300,
         [Description(AixmlBackend.ParameterDescription)] string? backend = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        [Description("Return every step's full answer even on success")] bool verbose = false)
+    {
+        var answer = await GenerateVisAsync(pairsJson, openVI, measurePane, keepAixml, timeoutSeconds,
+                                            backend, ct);
+        return verbose ? answer : CompactGenerateVisAnswer(answer);
+    }
+
+    /// <summary>
+    /// lvai_generate_vis with every entry's whole answer - what lvai_generate_test and
+    /// lvai_generate_method_test call for their sockets; the compaction happens only at the MCP
+    /// boundary, in <see cref="GenerateVisToolAsync"/>.
+    /// </summary>
+    public async Task<string> GenerateVisAsync(
+        string pairsJson, bool openVI = false, bool measurePane = true, bool keepAixml = false,
+        int timeoutSeconds = 300, string? backend = null, CancellationToken ct = default)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_generate_vis", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
@@ -1170,63 +1299,36 @@ internal sealed class BulkTools(LvaiConnection connection)
     [McpServerTool(Name = "pylv_apply", Destructive = true, OpenWorld = true,
                    Title = "Close, extract, edit and rebuild a VI in one call")]
     [Description("""
-        MUTATING: the whole pylabview edit cycle in one round trip - close the active project,
-        pylv_extract, run the helper scripts you name, pylv_rebuild, and AIXML-export the result to
-        check the edit landed. The bundle is an implementation detail; it is deleted on success and
-        KEPT (and named) on failure.
-        WITH NO OPERATIONS IT IS READ-ONLY AND INSPECTS: extract, then every helper script's listing
-        mode at once - the pane (`--show`), the subVI link table (`--list`), and the diagram
-        comments with their placeable anchors (`--list`). That is the call to make FIRST, because
-        the mapping you pass back in as operations is only knowable from those listings. Nothing is
-        rebuilt, the .vi is not touched, and the active project is NOT closed - inspect mode has no
-        side effects at all.
+        pylabview: the whole edit cycle of an existing VI in one call - close the active project,
+        extract, run the operations, strip compiled code, rebuild, AIXML-export to verify. Use it
+        instead of pylv_extract + pylv_rebuild by hand: a rebuild under a loaded VI leaves LabVIEW
+        serving its stale copy, which is why closeProject runs FIRST. The bundle is deleted on
+        success and kept (and named) on failure.
+        WITH NO OPERATIONS it is READ-ONLY and inspects: the pane (`--show`), the subVI link table
+        and the diagram comments with their anchors. Make that call FIRST - operations are written
+        from those listings. Nothing is rebuilt and the project is NOT closed.
         operationsJson is a JSON ARRAY, applied IN ORDER:
           {"op":"conpane","pattern":4815}
-              change the connector pane PATTERN, moving no terminal - so no caller has to change.
-              This is the fix for a pane whose conIdx values were cloned from a VI on another
-              pattern. A genuinely wrong ASSIGNMENT is not repairable here: regenerate from AIXML.
+              change the pane PATTERN, moving no terminal. A wrong ASSIGNMENT is not repairable
+              here: regenerate from AIXML.
           {"op":"retarget","from":"Old.vi","to":"New.vi","path":"C:\\dir\\New.vi"}
-              point a subVI Call at a different subVI. Give `path` whenever the new VI is not in
-              the same folder as the old one. A POLYMORPHIC target needs TWO entries, one for the
-              instance and one for the wrapper, or the diagram caption keeps naming NI's wrapper.
-              `from` takes the qualified name the inspect listing prints - a library-owned subVI
-              reads `NI_Gmath.lvlib:Error Function.vi` - or just the file name when only one link
-              ends in it. `to` is always a plain file name; a library-owned NEW target is refused,
-              because its owning-library path cannot be derived.
-              The new subVI must keep the connector pane contract - check both with
-              lvai_connector_pane first; this tool cannot. When it is breached the symptom does
-              not mention linking at all: LabVIEW reports the CALLER as not executable.
+              point a subVI Call at another subVI; give `path` when it is in another folder. A
+              POLYMORPHIC target needs TWO entries (instance and wrapper). `from` is the qualified
+              name the inspect listing prints (`NI_Gmath.lvlib:Error Function.vi`) or a unique file
+              name; `to` is a plain file name - a library-owned NEW target is refused. The pane
+              contract must hold (check with lvai_connector_pane): a breach shows only as the
+              CALLER not executable.
           {"op":"placeLabels","place":"9001:130,9002:140","side":"auto","gap":20}
-              move diagram comments onto the nodes they describe. `side` is auto|above|below and
-              auto is right nearly always: a comment about a subVI CALL goes below it, because the
-              subVI's own label already occupies the space above.
-        WHY THIS IS ONE TOOL AND NOT FOUR CALLS. pylv_rebuild answers with a `gatesNotChecked` list
-        because it cannot check them from where it stands. The first of those gates is the
-        expensive one: LabVIEW does not lock a .vi, so a rebuild under a loaded VI succeeds and
-        LabVIEW then keeps serving its stale in-memory copy - a verification run afterwards
-        confirms the VI you REPLACED. Worse, the usual way to release it (lvai_open_file) makes
-        LabVIEW COMPILE the VI, and the VICD blocks that leaves are copied through unparsed, so the
-        rebuilt file carries compiled code describing the state before your edit. Measured
-        2026-08-24 on one VI pair: 0 VICD blocks generated, ran and wrote its files; 3 VICD blocks
-        returned 1039 "VI was aborted" and then wedged LabVIEW into a restart. Hence closeProject
-        defaults to true and runs FIRST.
-        AND EVERY EDIT STRIPS THE COMPILED CODE before the rebuild (`stripCompiled` step), marking
-        the VI source-only so LabVIEW recompiles it from the diagram on load. Closing the project
-        is not enough: a VI CONVERTED while its callees were loaded already carries VICD when it
-        is written. Measured 2026-09-29: a conpane-only edit on such a VI ran and returned 0 where
-        the unedited VI returns 8 - error out clean, execState 1 - and a 64-bit user saw the same
-        route crash LabVIEW. The rebuilt file is then checked for a VICD block, and one left
-        behind fails the call.
-        Needs no running LabVIEW for the pylabview half. closeProject and verify do; when LabVIEW
-        is unreachable both are reported as skipped, with why - an unreachable LabVIEW cannot be
-        holding the VI in memory either, so skipping the close is safe rather than silent.
+              move diagram comments onto nodes; `side` auto|above|below.
+        Every edit strips compiled code (`stripCompiled`); a VICD block left in the rebuilt file
+        fails the call. The pylabview half needs no LabVIEW; closeProject and verify do, and are
+        reported as skipped when LabVIEW is unreachable.
         """)]
     public async Task<string> PyApplyAsync(
         [Description(@"Absolute path to the .vi to edit - WILL BE OVERWRITTEN unless operations is empty")]
         string viPath,
         [Description("""
-            JSON array of operations, applied in order. Omit or pass [] for the read-only inspect
-            mode, which extracts and returns every listing instead of rebuilding.
+            JSON array of operations, applied in order; omit or [] for the read-only inspect mode.
             """)]
         string? operationsJson = null,
         [Description("Save and close the project active in the IDE before extracting")]
@@ -1237,20 +1339,13 @@ internal sealed class BulkTools(LvaiConnection connection)
             """)]
         bool verify = true,
         [Description("""
-            Where to put the extracted bundle. Defaults to a fresh temp directory, deleted on
-            success. Pass a path to keep it - useful when an operation needs debugging.
+            Where to put the extracted bundle; omit for a temp directory deleted on success.
             """)]
         string? bundleDirectory = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 120,
         [Description("""
-            Let a NOT EXECUTABLE result make `ok` false. On by default, because `ok` is the field a
-            script reads before moving on, and a retarget that breaks the connector pane contract
-            is invisible everywhere else - measured, a caller was Error 1003 while callTargets, the
-            export and validate were all green.
-            `ok: false` is a measurement and NOT a rollback: the .vi on disk carries the edit.
-            Turn it OFF for a deliberately unfinished intermediate state. The
-            placeholder-plus-retarget route is built out of those, and a gate that forbade them
-            would break the one workflow this tool exists to serve.
+            Let a NOT EXECUTABLE result make `ok` false. `ok: false` is NOT a rollback - the .vi
+            carries the edit. Turn off for a deliberately unfinished intermediate state.
             """)]
         bool gateOnExecState = true,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,

@@ -51,46 +51,30 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_add_to_class", Destructive = true, OpenWorld = true,
         Title = "Add existing VIs or typedefs to a LabVIEW class")]
     [Description("""
-        MUTATING: adds EXISTING .vi and .ctl files to ONE .lvclass - at the class root, or into a
-        virtual folder (created at the root when missing and createFolder is true) - through
-        {LV.ProjectItem} AddItem in the ACTIVE PROJECT's instance, then Save All This Library.vi on
-        the class with Save Only Modified TRUE (the class and the files it took in; a .ctl saves only
-        through a library save).
-        ADDING A TYPEDEF RENAMES IT (Class.lvclass:X.ctl), and every caller outside the class must
-        relink - which happens only for callers that are LOADED. A caller that is not loaded keeps
-        the old link with no error anywhere. So: pass every caller outside the class in callerPaths;
-        they are opened through the project before the add, and afterwards every one of them is
-        saved with Save.Instrument - the relink sets no Mods bitset, so waiting for LabVIEW to mark
-        them saved none (measured 2026-10-17); `verified` requires each one saved (callersNotSaved).
-        Nothing else is saved; other modified VIs are reported under modifiedNotSaved. A VI in the
-        project's instance whose bitsets cannot be read refuses the call (unsavedCheckFailed).
-        CALLERS ARE NOT GUESSED, BUT THEY ARE CHECKED: the project folder is scanned OFFLINE for
-        files whose link records name an item's file name (a heuristic - same-named files in two
-        folders are not told apart). A hit that is not in callerPaths and not a member of this class
-        REFUSES the call (callersNotLoaded) before LabVIEW is touched; acceptUnlistedCallers=true
-        proceeds anyway and reports them.
-        PROJECT REQUIRED (projectPath): it is opened and must become active; callers are opened
-        through it. If anything in the project's instance already carries unsaved changes, the call
-        is refused (unsavedChangesBefore) - its saves would write them.
-        Refused before LabVIEW: a file already owned by a class or library (read from the file's
-        own LIBN resource), a file already listed in this class, an extension other than .vi/.ctl,
-        a nested folder path, an ambiguous or (createFolder=false) missing folder.
-        VERIFIED FROM THE FILES: the re-read .lvclass must list every item (in the folder when one
-        was asked for), each item's own LIBN must name the class, and `filesChanged` lists every file
-        under the project folder that the call rewrote.
-        The folder route is a field run's (11 typedefs, 2026-10-11/12); the class-root route, adding
-        a .vi, the saved-callers restriction and the guards are unmeasured until acceptance.
+        Class: adds EXISTING .vi and .ctl files to ONE .lvclass, at the root or into a virtual
+        folder (created when missing and createFolder), through NI's AddItem and a library save.
+        PROJECT REQUIRED: projectPath is opened and must become active.
+        ADDING A TYPEDEF RENAMES IT (Class.lvclass:X.ctl) and only LOADED callers relink - pass every
+        caller outside the class in callerPaths; they are opened through the project first and each
+        is saved afterwards (`callersNotSaved` otherwise). An OFFLINE link scan of the project
+        folder that finds a caller not listed REFUSES the call (`callersNotLoaded`) unless
+        acceptUnlistedCallers. Nothing else is saved (`modifiedNotSaved`).
+        Refused before LabVIEW: a file already owned by a class or library, already listed here,
+        not .vi/.ctl; a nested folder path; an ambiguous or (createFolder false) missing folder;
+        unsaved changes in the project's instance (`unsavedChangesBefore`, see checkUnsaved) or
+        unreadable ones (`unsavedCheckFailed`).
+        Verified from the files: the .lvclass lists every item, each item's LIBN names the class;
+        `filesChanged` lists every rewritten file. docs/lvclass-creation.md §10d.
         """)]
     public async Task<string> AddToClassAsync(
         [Description("Absolute path to the .lvclass the files should belong to")] string lvclassPath,
         [Description("""
-            JSON array of absolute paths of the files to add, e.g. ["C:\\p\\Mode.ctl","C:\\p\\Helper.vi"].
-            Each must exist, be a .vi or .ctl, and belong to no class or library yet.
+            JSON array of absolute paths of existing .vi/.ctl files owned by no class or library,
+            e.g. ["C:\\p\\Mode.ctl","C:\\p\\Helper.vi"].
             """)]
         string itemPaths,
         [Description("""
-            The .lvproj the class belongs to. Required: it is opened and made active, and callers are
-            opened through it. It is not edited here.
+            The class's .lvproj; opened and made active (not edited here).
             """)]
         string projectPath,
         [Description("Virtual folder inside the class to add into; omit for the class root")]
@@ -98,14 +82,12 @@ internal sealed class ClassMembershipTools(LvaiConnection connection)
         [Description("Create the folder at the class root when it is not there")]
         bool createFolder = true,
         [Description("""
-            JSON array of absolute paths of every VI OUTSIDE the class that uses one of the items.
-            They are loaded through the project before the add so they relink, and every one is
-            saved afterwards. Omit when there are none.
+            JSON array of absolute paths of every VI OUTSIDE the class that uses an item; loaded
+            before the add so they relink, saved afterwards.
             """)]
         string? callerPaths = null,
         [Description("""
-            Proceed even though the offline scan found files linking to an item that are not in
-            callerPaths. They will keep the old link unless something loads and saves them.
+            Proceed although the offline scan found unlisted callers; they keep the old link.
             """)]
         bool acceptUnlistedCallers = false,
         [Description(HousekeepingHelpers.CheckUnsavedDescription)] bool checkUnsaved = true,

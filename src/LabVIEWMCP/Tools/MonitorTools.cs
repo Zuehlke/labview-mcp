@@ -41,9 +41,8 @@ internal sealed class MonitorTools(LvaiConnection connection)
 {
     private const string Waits = """
 
-        Blocks until LabVIEW pushes an item or the timeout expires. A timeout is a normal
-        result, not an error: it means nobody triggered the feature in the IDE meanwhile.
-        Trigger it by hand in LabVIEW while this call is pending.
+        Blocks until LabVIEW pushes an item or the timeout expires; trigger the feature in the IDE
+        while it waits. A timeout is normal - NI's own service usually takes the event. Diagnostic.
         """;
 
     private static readonly JsonSerializerOptions Indented = Json.Answer;
@@ -51,13 +50,12 @@ internal sealed class MonitorTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_monitor_project_changes", ReadOnly = true,
                    Title = "Watch project changes")]
     [Description("""
-        RPC MonitorProjectChanges (server streaming). Emits an event whenever a project item is
-        added, modified or removed. The only monitor that is a plain one-way stream.
+        Monitor: RPC MonitorProjectChanges - an event per project item added, modified or removed
+        (one-way stream).
         """ + Waits)]
     public async Task<string> MonitorProjectChangesAsync(
         [Description("Max events to collect before returning")] int maxMessages = 5,
-        [Description("How long to wait, in seconds (capped at 45 - see MaxToolWaitSeconds; "
-                     + "use the CLI --watch mode for longer watches)")]
+        [Description("Seconds to wait, capped at 45 (use the CLI --watch mode for longer)")]
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -80,22 +78,17 @@ internal sealed class MonitorTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_monitor_discuss_vi", ReadOnly = true,
                    Title = "Wait for a Discuss-VI request")]
     [Description("""
-        RPC MonitorDiscussVI (bidirectional). Fires when the user invokes "Discuss VI" in
-        LabVIEW; the inbound item names the VI or project the user wants to talk about.
-        Reply shape (replyJson, MonitorDiscussVIRequest): {"errorCode":0,"errorMessage":""}
-        EXPECT THIS ONE TO TIME OUT EVEN WHEN THE FEATURE FIRES. The monitors are
-        single-subscriber streams and NI's own service always wins - measured, including with
-        the service stopped first, where the click starts it and the event still goes there.
-        lvai_discuss_file TRIGGERS the feature, but it does not make the event arrive here:
-        emitting it and receiving it are separate questions, and only the first one is open.
+        Monitor: RPC MonitorDiscussVI - fires when the user invokes "Discuss VI"; the item names
+        the VI or project. Reply (replyJson): {"errorCode":0,"errorMessage":""}. Expect a TIMEOUT
+        even when the feature fires: NI's service always takes the event. lvai_discuss_file triggers
+        the feature but does not make the event arrive here.
         """ + Waits)]
     public async Task<string> MonitorDiscussViAsync(
         [Description("Send an empty request first to register the monitor")] bool sendReady = false,
         [Description("Optional protobuf-JSON MonitorDiscussVIRequest to answer with")]
         string? replyJson = null,
         [Description("Max items to collect")] int maxMessages = 1,
-        [Description("How long to wait, in seconds (capped at 45 - see MaxToolWaitSeconds; "
-                     + "use the CLI --watch mode for longer watches)")]
+        [Description("Seconds to wait, capped at 45 (use the CLI --watch mode for longer)")]
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await WaitBidiAsync<MonitorDiscussVIRequest, MonitorDiscussVIResponse>(
@@ -104,10 +97,8 @@ internal sealed class MonitorTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_monitor_palette_searches", ReadOnly = true,
                    Title = "Wait for a palette-search request")]
     [Description("""
-        RPC MonitorPaletteSearches (bidirectional). Fires when the user runs LabVIEW's AI
-        palette search; the inbound item carries searchString + guid. Answer with the palette
-        items you consider relevant, echoing the SAME guid.
-        Reply shape (MonitorPaletteSearchesRequest):
+        Monitor: RPC MonitorPaletteSearches - fires on LabVIEW's AI palette search (searchString +
+        guid). Reply echoing the SAME guid:
         {"items":[{"itemGuid":"...","rationale":"why"}],"guid":"<echo>","errorCode":0}
         """ + Waits)]
     public async Task<string> MonitorPaletteSearchesAsync(
@@ -115,8 +106,7 @@ internal sealed class MonitorTools(LvaiConnection connection)
         [Description("Optional protobuf-JSON MonitorPaletteSearchesRequest to answer with")]
         string? replyJson = null,
         [Description("Max items to collect")] int maxMessages = 1,
-        [Description("How long to wait, in seconds (capped at 45 - see MaxToolWaitSeconds; "
-                     + "use the CLI --watch mode for longer watches)")]
+        [Description("Seconds to wait, capped at 45 (use the CLI --watch mode for longer)")]
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await WaitBidiAsync<MonitorPaletteSearchesRequest, MonitorPaletteSearchesResponse>(
@@ -125,18 +115,15 @@ internal sealed class MonitorTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_monitor_example_searches", ReadOnly = true,
                    Title = "Wait for an example-search request")]
     [Description("""
-        RPC MonitorExampleSearches (bidirectional). Fires when the user runs LabVIEW's AI
-        example search; the inbound item carries searchString + guid.
-        Reply shape (MonitorExampleSearchesRequest):
-        {"examples":[{"examplePath":"...","rationale":"why"}],"guid":"<echo>","errorCode":0}
+        Monitor: RPC MonitorExampleSearches - fires on LabVIEW's AI example search (searchString +
+        guid). Reply: {"examples":[{"examplePath":"...","rationale":"why"}],"guid":"<echo>","errorCode":0}
         """ + Waits)]
     public async Task<string> MonitorExampleSearchesAsync(
         [Description("Send an empty request first to register the monitor")] bool sendReady = false,
         [Description("Optional protobuf-JSON MonitorExampleSearchesRequest to answer with")]
         string? replyJson = null,
         [Description("Max items to collect")] int maxMessages = 1,
-        [Description("How long to wait, in seconds (capped at 45 - see MaxToolWaitSeconds; "
-                     + "use the CLI --watch mode for longer watches)")]
+        [Description("Seconds to wait, capped at 45 (use the CLI --watch mode for longer)")]
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await WaitBidiAsync<MonitorExampleSearchesRequest, MonitorExampleSearchesResponse>(
@@ -145,21 +132,16 @@ internal sealed class MonitorTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_monitor_code_completion", ReadOnly = true,
                    Title = "Wait for a code-completion request")]
     [Description("""
-        RPC MonitorCodeCompletion (bidirectional). The most interesting hook: fires when the
-        user asks LabVIEW for AI code completion. The inbound item carries the user's prompt in
-        'request' plus a guid, and 'incomplete' when more is coming.
-        Answer with AIXML change descriptions - this is the same channel Nigel uses to write
-        code into the block diagram.
-        Reply shape (MonitorCodeCompletionRequest):
-        {"guid":"<echo>","suggestions":[{"changes":"<aixml>","rationale":"why"}],"errorCode":0}
+        Monitor: RPC MonitorCodeCompletion - fires when the user asks LabVIEW for AI code
+        completion ('request' = prompt, guid, 'incomplete' when more follows). Answer with AIXML
+        changes: {"guid":"<echo>","suggestions":[{"changes":"<aixml>","rationale":"why"}],"errorCode":0}
         """ + Waits)]
     public async Task<string> MonitorCodeCompletionAsync(
         [Description("Send an empty request first to register the monitor")] bool sendReady = false,
         [Description("Optional protobuf-JSON MonitorCodeCompletionRequest to answer with")]
         string? replyJson = null,
         [Description("Max items to collect")] int maxMessages = 1,
-        [Description("How long to wait, in seconds (capped at 45 - see MaxToolWaitSeconds; "
-                     + "use the CLI --watch mode for longer watches)")]
+        [Description("Seconds to wait, capped at 45 (use the CLI --watch mode for longer)")]
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await WaitBidiAsync<MonitorCodeCompletionRequest, MonitorCodeCompletionResponse>(
@@ -168,18 +150,15 @@ internal sealed class MonitorTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_monitor_front_panel_cleanup", ReadOnly = true,
                    Title = "Wait for a front-panel-cleanup request")]
     [Description("""
-        RPC MonitorFrontPanelCleanup (bidirectional). Fires when the user asks LabVIEW to tidy
-        a front panel. The inbound item carries panel state in 'request' plus a guid.
-        Reply shape (MonitorFrontPanelCleanupRequest):
-        {"guid":"<echo>","panelInfo":"<layout>","errorCode":0}
+        Monitor: RPC MonitorFrontPanelCleanup - fires when the user asks LabVIEW to tidy a front
+        panel ('request' = panel state, guid). Reply: {"guid":"<echo>","panelInfo":"<layout>","errorCode":0}
         """ + Waits)]
     public async Task<string> MonitorFrontPanelCleanupAsync(
         [Description("Send an empty request first to register the monitor")] bool sendReady = false,
         [Description("Optional protobuf-JSON MonitorFrontPanelCleanupRequest to answer with")]
         string? replyJson = null,
         [Description("Max items to collect")] int maxMessages = 1,
-        [Description("How long to wait, in seconds (capped at 45 - see MaxToolWaitSeconds; "
-                     + "use the CLI --watch mode for longer watches)")]
+        [Description("Seconds to wait, capped at 45 (use the CLI --watch mode for longer)")]
         int timeoutSeconds = 45,
         CancellationToken ct = default) =>
         await WaitBidiAsync<MonitorFrontPanelCleanupRequest, MonitorFrontPanelCleanupResponse>(

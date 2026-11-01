@@ -40,17 +40,13 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_create_module_template", Destructive = true, OpenWorld = true,
         Title = "Create a DQMH module template")]
     [Description("""
-        MUTATING, and it writes into the user's LabVIEW Data folder: turns an existing DQMH module
-        into a module TEMPLATE, which Add New DQMH Module then offers as a module type - the result
-        of Tools > DQMH > Module > Create DQMH Module Template with NO dialog (Delacor's own VI ends
-        in a modal even on success, so this repeats its two steps itself).
-        With copyToLabviewData (default) the module's folder is COPIED to
-        `<LabVIEW Data>\DQMH Module Templates\Source\<relativeLocation>\<Name>` and the metadata
-        refers to that copy; without it nothing is copied and the metadata refers to the module in
-        place with absolute paths, as Delacor's own option does. Either way a metadata file
-        `<Name>.xml` is written into `...\MetaData`. An existing template of that name is refused
-        unless overwrite is true - Delacor's own tool silently wipes it. The answer confirms the new
-        type appears in Delacor's module-type catalogue and gives its index.
+        DQMH: turn an existing DQMH module into a module TEMPLATE that lvai_dqmh_new_module (and Add
+        New DQMH Module) then offers as a type - Delacor's Create DQMH Module Template with NO
+        dialog. Writes into the user's LabVIEW Data folder: with copyToLabviewData the module is
+        copied to `<LabVIEW Data>\DQMH Module Templates\Source\<relativeLocation>\<Name>`, else
+        referred to in place; `<Name>.xml` metadata goes into `...\MetaData`. An existing template
+        of that name is REFUSED unless overwrite. The answer confirms the type in the catalogue and
+        gives its index.
         """)]
     public async Task<string> CreateModuleTemplateAsync(
         [Description("Absolute path of the module's .lvlib")] string libraryPath,
@@ -61,12 +57,11 @@ internal sealed class DqmhTemplateTools(LvaiConnection connection)
         [Description("Copy the module into LabVIEW Data (Delacor's default); false refers to it in place")]
         bool copyToLabviewData = true,
         [Description("Replace an existing template of the same name")] bool overwrite = false,
-        [Description("DQMH 7.x only: the project virtual folder a module made from this template puts " +
-                     "its tester in; empty is Delacor's default, 'Testers'")] string testerVirtualFolder = "",
-        [Description("DQMH 7.x only: the project virtual folder for the module library; empty is " +
-                     "Delacor's default, 'Modules'")] string libraryVirtualFolder = "",
-        [Description("DQMH 7.x only: where a module made from this template is saved, relative to " +
-                     "its project; empty or absolute is Delacor's default, 'Libraries'")]
+        [Description("DQMH 7.x: project folder for the tester; empty = 'Testers'")]
+        string testerVirtualFolder = "",
+        [Description("DQMH 7.x: project folder for the module library; empty = 'Modules'")]
+        string libraryVirtualFolder = "",
+        [Description("DQMH 7.x: save path relative to the project; empty or absolute = 'Libraries'")]
         string relativeSavePath = "",
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         [Description(DqmhTools.BackendDescription)] string? backend = null,

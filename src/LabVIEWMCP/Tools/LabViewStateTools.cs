@@ -28,34 +28,24 @@ internal sealed class LabViewStateTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_labview_state", ReadOnly = true,
                    Title = "LabVIEW from outside: processes, windows, dialogs, CPU")]
     [Description("""
-        Read-only and makes NO LabVIEW call, so it answers while the service is blocked - and it
-        answers the same whichever AIXML backend is in force, because it reads Windows, not
-        LabVIEW. Lists the LabVIEW processes (pid, start time, path) and whether THIS server
-        started one (recorded by lvai_ensure_labview), the Nigel processes
-        (NI.NigelLocalService, LVNigelChat), the LVAutoSave folder (resolved through the
-        Documents known folder, which may be redirected) and its file count, every LabVIEW
-        window sorted into kinds, and one CPU sample.
-        `unsaved` = titles with `*`; labview-mcp's own scratch VIs (`LVMCP Validate…`) are
-        marked `labviewMcpScratch`. Each possible dialog carries `screenshot`, a PNG path to
-        READ: LabVIEW draws its dialogs, so the picture is the only way to see which one it is.
-        `possibleDialogs` = VISIBLE titled windows that are not a VI, project or frame window,
-        and VISIBLE UNTITLED windows that a LabVIEW frame owns or that sit beside a disabled
-        frame or Project Explorer (measured in the fork 2026-10-10: LabVIEW's "has changed on
-        disk" prompt is untitled and owned by the frame, which it disables), each with a
-        `reason`, named with class, buttons and text where Windows exposes them.
-        `hiddenUnrecognised` = HIDDEN titled windows nothing measured explains, named the same
-        way: measured 2026-10-06, LabVIEW dialogs on screen reported themselves invisible
-        (docs/scratch-vis-in-memory.md §2a). Hidden windows of measured system classes (IME,
-        OLE, DDE, GDI+) and LabVIEW's measured hidden windows are not listed there. A VI panel
-        with a custom window title is flagged too - look at it.
-        CPU: quiet below 1 CPU s per 30 s; idle is not safe - a modal dialog leaves LabVIEW idle.
-        NOTHING is pressed, fronted or closed. A modified VI with no open window does not show
-        here: lvai_vis_in_memory reads the modification bits. docs/labview-state.md.
+        Status: LabVIEW from OUTSIDE - makes NO LabVIEW call, so it answers while the service is
+        blocked, on any backend. Lists LabVIEW processes (pid, start, path, whether this server
+        started one), the Nigel processes, the LVAutoSave folder and its file count, every LabVIEW
+        window by kind, and one CPU sample.
+        `unsaved` = window titles with `*` (labview-mcp scratch VIs marked `labviewMcpScratch`).
+        `possibleDialogs` = visible windows that are not a VI, project or frame, plus untitled
+        windows a frame owns or that sit beside a disabled frame, each with `reason`, class,
+        buttons and text, and `screenshot` - a PNG path to READ, the only way to see which dialog it
+        is. `hiddenUnrecognised` = hidden titled windows nothing explains (LabVIEW dialogs can report
+        themselves invisible while on screen). A VI panel with a custom title is flagged too.
+        CPU below 1 CPU s per 30 s is quiet - but idle is not safe: a modal dialog leaves LabVIEW
+        idle. NOTHING is pressed, fronted or closed. A modified VI with no open window does not show
+        here - use lvai_vis_in_memory. docs/labview-state.md.
         """)]
     public static async Task<string> LabViewStateAsync(
         [Description("Seconds of CPU sampling, 0 to skip (capped at 30)")] int cpuSampleSeconds = 5,
         [Description("Also list hidden system windows (normally left out)")] bool includeHiddenWindows = false,
-        [Description(@"A PNG of each VISIBLE possible dialog (PrintWindow: nothing is brought to the front), path under `screenshot`, in %TEMP%\LabVIEWMCP\dialogs. On by default: a few ms, and only when a dialog is up.")]
+        [Description(@"A PNG of each VISIBLE possible dialog, taken without fronting it, path under `screenshot`; only when a dialog is up.")]
         bool screenshots = true,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -118,32 +108,21 @@ internal sealed class LabViewStateTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_vis_in_memory", ReadOnly = true, OpenWorld = true,
                    Title = "VIs in memory, and which carry unsaved changes")]
     [Description("""
-        Every VI in memory of the APPLICATION INSTANCES you name, with each VI's front-panel and
-        block-diagram modification bitsets (nonzero = unsaved), each sorted as service (NI's
-        `LV AI …lvlibp`), labview (`GSW.lvlibp`, the start window), helper (labview-mcp's own
-        helpers and LVMCP scratch VIs) or other. Only the modified, unreadable and `other` lines
-        come back, never all 400. Classes and libraries are never listed, only VIs and controls.
-        `context` CHOOSES THE INSTANCE - LabVIEW keeps one per context, and a VI is in exactly one:
-          main    - LabVIEW's main application instance, where a VI opened loose lives. Reached
-                    over LabVIEW's ActiveX server on BOTH backends (that IS the main instance);
-                    on grpc the NI-built helper is run there, on pylabview the composed one.
-          project - the ACTIVE project's instance (Project:Active Project, then its Application),
-                    where a project's VIs live. Pass projectPath to make sure it is that project:
-                    another active project is refused by name, and none answers noActiveProject.
-                    Nothing is opened or activated here - this tool is read-only.
-          addon   - NI's AI add-on's own instance, where a grpc helper runs (the service's VIs;
-                    the fork measured 419). grpc only: ActiveX cannot reach it, so pylabview
-                    refuses it by name.
-          all     - main, the active project if there is one, and addon on grpc. The default.
-        Each instance answers under `instances` with its own `onlyServiceAndHelpers`; `modified`
-        at the top joins them, each line tagged with its context.
-        A probe run while a project is open may be adopted into that project on its next save.
-        Runs scripts\lvai_vis_modified.xml (main, addon) and lvai_vis_modified_project.xml
-        (project). On grpc a helper is generated once into %TEMP%\LabVIEWMCP\helpers, and
-        generating validates it, which leaves an `LVMCP Validate` VI in memory - generate at the
-        start of a session. On pylabview the composer needs no validation. NI's packed-library
-        .ctl lines answer 1035 and do not count against `onlyServiceAndHelpers`.
-        docs/labview-state.md.
+        Status: every VI in memory of the APPLICATION INSTANCES you name, with front-panel and
+        block-diagram modification bits (nonzero = unsaved), each sorted as service, labview
+        (start window), helper (labview-mcp's own and LVMCP scratch VIs) or other. Only modified,
+        unreadable and `other` lines come back; only VIs and controls, never classes or libraries.
+        `context` - a VI lives in exactly one instance:
+          main    - LabVIEW's main instance, where a loose VI lives (both backends).
+          project - the ACTIVE project's instance. With projectPath, another active project is
+                    refused by name; none answers noActiveProject. Nothing is opened.
+          addon   - NI's AI add-on's instance, where grpc helpers run; grpc only (pylabview refuses).
+          all     - main, the active project if any, and addon on grpc.
+        Each instance answers under `instances` with `onlyServiceAndHelpers`; top-level `modified`
+        joins them, tagged by context. A probe run while a project is open may be adopted into it on
+        its next save. On grpc the first call generates a helper, leaving an `LVMCP Validate` VI in
+        memory - call it early in a session. NI packed-library .ctl lines answer 1035 and do not
+        count. docs/labview-state.md.
         """)]
     public async Task<string> VisInMemoryAsync(
         [Description("main, project, addon or all (default all). See the description.")] string? context = null,

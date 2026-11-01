@@ -18,25 +18,15 @@ internal sealed class StatusTools(LvaiConnection connection)
 
     [McpServerTool(Name = "lvai_status", ReadOnly = true, Title = "LabVIEW gRPC connection status")]
     [Description("""
-        Show whether LabVIEW's embedded AI gRPC server is reachable: the discovered port,
-        how it was found, and the service list reported by server reflection. Start here -
-        every other lvai_* tool depends on this connection. The port is ephemeral and
-        changes on each LabVIEW restart, so it is re-discovered automatically.
-        Also reports scriptsDirectory: the absolute path of the helper scripts shipped next to
-        this server's exe. Use it instead of a relative path - it works from any working
-        directory, and from a binary-only install with no repository checkout.
-        `labviewHealth` counts the `DWarn` EVENTS in NI's OWN crash log, which is where
-        LabVIEW records faults - its crash handler means Windows Error Reporting never sees them,
-        so an empty event log is not an alibi. Events, not lines: NI writes each one twice and
-        this counted the substring until 2026-09-08, so `dwarnCount` was double throughout and
-        every DWarn figure in this repository predating that halves. `dwarnCountedBy` names the
-        rule that counted. USE IT AFTER A FAILURE, NEVER AS A GATE BEFORE
-        WORK: measured 2026-09-03 over two runs, it was wrong in BOTH directions - an instance at
-        200 completed a whole cold class build without incident, and an instance reading 0
-        crashed inside ConvertAIXMLToVI minutes later. What it is good for is the retrospective
-        question: a class-editing call has failed for no reason the project state explains, so did
-        the count move, and does a restart cure it? The log is reset at start, so the count covers
-        this instance only.
+        Status: is LabVIEW's embedded AI gRPC server reachable - the discovered port (ephemeral,
+        re-discovered on every LabVIEW restart), how it was found, and the reflected service list.
+        Start here; every gRPC-backed lvai_* tool depends on it. Also reports scriptsDirectory (the
+        absolute path of the shipped helper scripts - use it instead of a relative path),
+        `serverVersion`, and `labviewUpSeconds`.
+        `labviewHealth` counts DWarn EVENTS in NI's own crash log for this LabVIEW instance
+        (`dwarnCountedBy` names the rule). Use it AFTER a failure, NEVER as a gate before work - it
+        has been wrong in both directions. An `Unavailable` gRPC status is explained in the Nigel
+        service log under %ProgramData%\National Instruments\AIAssistants\Logs.
         """)]
     public async Task<string> StatusAsync(CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -343,8 +333,7 @@ internal sealed class StatusTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_get_application_configuration", ReadOnly = true,
                    Title = "Get LabVIEW application configuration")]
     [Description("""
-        RPC GetApplicationConfiguration. Returns the LabVIEW application configuration
-        (currently just the UI language). Cheapest possible liveness probe.
+        Status: RPC GetApplicationConfiguration - the LabVIEW UI language. Cheapest liveness probe.
         """)]
     public async Task<string> GetApplicationConfigurationAsync(CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -358,11 +347,9 @@ internal sealed class StatusTools(LvaiConnection connection)
 
     [McpServerTool(Name = "lvai_dump_schema", ReadOnly = true, Title = "Dump the served gRPC schema")]
     [Description("""
-        Ask the running LabVIEW server for its own schema via gRPC server reflection and
-        render it. Use this to detect schema drift: the interface is private and NI can
-        change it between LabVIEW versions, so this is the authoritative list of what the
-        installed version actually supports - not what this MCP server was built against.
-        format: 'summary' (services, rpcs, message fields) or 'json' (raw FileDescriptorProto).
+        Status: dump the running LabVIEW gRPC server's own schema via server reflection - the
+        authoritative list of what the installed version supports, to detect drift from what this
+        server was built against. format: 'summary' (services, rpcs, fields) or 'json'.
         """)]
     public async Task<string> DumpSchemaAsync(
         [Description("'summary' (default) or 'json'")] string format = "summary",

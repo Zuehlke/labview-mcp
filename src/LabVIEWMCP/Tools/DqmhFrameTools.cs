@@ -55,28 +55,18 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_place_handler", Destructive = true, OpenWorld = true,
         Title = "Put a handler subVI into a DQMH message frame")]
     [Description("""
-        MUTATING: fills ONE message frame of a DQMH module's Main.vi - the frame Delacor scripts
-        with a #CodeNeeded label - by dropping a HANDLER subVI into it and wiring it BY NAME:
-        each request argument (the frame's Unbundle By Name) into the handler input of the same
-        name, Variant To Data's error out into the handler's `error in`, and for a Request and
-        Wait for Reply each handler output into the reply field of the same name plus its
-        `error out` into `<Event>_error` AND into the frame's Merge Errors, whose second input
-        Delacor leaves unwired - that unwired input is what keeps Main.vi from running after a
-        Request and Wait for Reply event. In a plain Request frame, which has no reply, the
-        handler goes IN SERIES into the frame's error wire instead (error source -> handler ->
-        whatever that wire fed), so its error out reaches the frame's error chain.
-        THE HANDLER IS PLACED VISIBLY: right of the argument source and inside the frame's case
-        structure, and the answer reports `placement` read back from LabVIEW. `ok` is false when
-        the handler sits OUTSIDE the frame - a DQMH frame does not grow, so a node outside it is
-        cut off out of sight while Main.vi still runs (the user's finding of 2026-10-31: until
-        then the handler was dropped at the argument source's pane coordinates, which a frame
-        reads relative to its own origin) - or when its error out reached nothing.
-        The #CodeNeeded text (#DQMH_CodeNeeded in DQMH 7) is deleted and Main.vi saved.
-        So name the handler's terminals after the event's argument and reply fields - that is
-        the whole contract. A dry run first reads the frame; a handler input or reply field that
-        finds no partner is reported, never guessed, and a frame that already holds a subVI is
-        refused. Needs the module's project OPEN AND ACTIVE. The answer gives Main.vi's exec
-        state before and after.
+        DQMH: put a HANDLER subVI into ONE message frame of a module's Main.vi (the #CodeNeeded
+        frame) and wire it BY NAME. MUTATING. Name the handler's terminals after the event's
+        argument and reply fields - that is the whole contract. Arguments go to same-named
+        inputs, Variant To Data's error out to `error in`. Request and Wait for Reply: outputs go
+        to same-named reply fields, `error out` to `<Event>_error` AND the frame's Merge Errors
+        (its unwired input otherwise keeps Main.vi broken). Plain Request: the handler goes in
+        series into the frame's error wire.
+        `ok` is false when the handler lands OUTSIDE the frame (`placement` is read back) or its
+        error out reaches nothing. An input or field with no partner is reported, never guessed;
+        a frame already holding a subVI is refused. The #CodeNeeded text is deleted and Main.vi
+        saved; its exec state before and after is reported. Use `dryRun` first.
+        Needs the module's project OPEN and ACTIVE.
         """)]
     public async Task<string> PlaceHandlerAsync(
         [Description("Module, e.g. 'Bank' or 'Bank.lvlib'")] string moduleName,

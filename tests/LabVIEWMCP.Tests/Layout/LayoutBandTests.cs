@@ -44,6 +44,24 @@ public class LayoutBandTests(ITestOutputHelper output)
         Assert.True(bands.PredictedTop.W <= columns.PredictedTop.W, "and it is no wider");
     }
 
+    /// <summary>
+    /// The size budget decides between bands and columns when only one of them fits. The fixture
+    /// is the dump of a generated test of the pump-station build (2026-11-01): three cases, four
+    /// assertions. Bands won on crossings and laid it out at 1033 x 1110, over the 1080 px budget,
+    /// while three assertions of the same suite had come out 1432 x 350 in columns.
+    /// </summary>
+    [Fact]
+    public void A_test_that_only_fits_in_columns_is_not_banded_over_the_budget()
+    {
+        var columns = DiagramLayout.Plan(Load("test-pump-eventlog-four-asserts.txt"), bands: false);
+        var chosen = DiagramLayout.Plan(Load("test-pump-eventlog-four-asserts.txt"));
+        output.WriteLine($"columns {columns.PredictedTop.W} x {columns.PredictedTop.H}, " +
+                         $"chosen {chosen.PredictedTop.W} x {chosen.PredictedTop.H}");
+        Assert.True(columns.PredictedTop.H <= 1080, "the control arm: columns fit");
+        Assert.True(chosen.PredictedTop.W <= 1920 && chosen.PredictedTop.H <= 1080,
+                    $"chosen {chosen.PredictedTop.W} x {chosen.PredictedTop.H}");
+    }
+
     /// <summary>The error wires too run forward: Merge Errors and error out come after the last
     /// band column, where the first Merge Errors of Test Heater.vi had sat among the round-trip
     /// assertions and LabVIEW routed two error wires back round it.</summary>

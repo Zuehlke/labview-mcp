@@ -71,9 +71,14 @@ lvai_generate_vi { aiXmlFilePath, viPath, openVI?, measurePane?, timeoutSeconds?
 ```
 
 Runs `lvai_validate_aixml`, then `lvai_convert_aixml_to_vi`, then `lvai_connector_pane` on the
-result. Stops at the first failure and names it in `failedAtStep`. Every sub-answer is returned
-whole under `steps`, including each step's own `elapsedMs`, so a failure reads the same as it would
-from calling the three tools by hand.
+result. Stops at the first failure and names it in `failedAtStep`. A failed step's sub-answer is
+returned whole under `steps`, so a failure reads the same as it would from calling the three tools
+by hand. **Since 2026-11-01 a SUCCESS is compact**: each step keeps its name, `skipped` and
+`errorCode`, its answer is slimmed (`Json.Slim`), and `execState`, `executable`, `preCheck` and
+`repairs` are lifted to the top; `verbose: true` returns every step whole. `lvai_generate_vis`
+drops a successful entry's `steps` entirely and states a note shared by every entry once under
+`common`; multi-VI `lvai_exec_state` does the same for executable VIs. A broken or failed entry is
+never reduced. In-process callers get the full answer (the compaction is in the MCP wrappers).
 
 **`ok: false` with `failedAtStep: "connectorPane"` still means the `.vi` was written.** The
 generation succeeded; the pane needs another pass. The corrected `conIdx` values come back in the

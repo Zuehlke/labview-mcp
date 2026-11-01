@@ -29,27 +29,27 @@ internal sealed class CarayaRunTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_run_caraya_tests", Destructive = true, OpenWorld = true,
                    Title = "Run a Caraya suite runner and read its JUnit report")]
     [Description("""
-        MUTATING: EXECUTES a Caraya suite runner (the VI lvai_generate_caraya_test_runner writes) and
-        answers from the JUnit report it writes: per suite the test and failure counts, and every
-        failing case NAMED with its suite and the test VI it lives in. `ok` is true only when the
-        report was written BY THIS RUN, carries at least one test, and has no failure or error.
-        DO NOT READ THE RUNNER'S `error out` FOR THE VERDICT - it is Caraya's single error for the
-        whole run, 7002 when something failed, and its SOURCE is not the failing VI: measured
-        2026-09-25, it named `Test Channel.vi` while the failing case was in
-        `Test Channel Defaults.vi`. It is reported under `runnerErrorOut` for completeness, with
-        `sourceNamesAFailingSuite` saying whether it points at the right place.
-        A Caraya failure body is the literal string "FAIL", so the case LABEL is what identifies it -
-        which is why the generators label every case.
-        The report is found by itself: `reportPath` if given, else the `*.xml` beside the runner that
-        this run wrote. A report older than the run is never used; `reportFresh: false` says so.
+        Test: RUN a Caraya suite runner (from lvai_generate_caraya_test_runner) and answer from its
+        JUnit report: per suite the test and failure counts, every failing case NAMED with its suite
+        and test VI. `ok` only when the report was written BY THIS RUN (`reportFresh`), has at least
+        one test and no failure or error. Executes the code under test.
+        The runner's `error out` is NOT the verdict (7002 on any failure, and its source can name
+        the wrong VI) - it is under `runnerErrorOut` with `sourceNamesAFailingSuite`. A Caraya
+        failure body is just "FAIL", so the case LABEL identifies it.
+        fixturesJson copies each fixture file over its working copies BEFORE the run, so tests that
+        write files start from the same state every time (`fixturesReset`).
         """)]
     public async Task<string> RunCarayaTestsAsync(
         [Description(@"Absolute path to the Caraya runner .vi")] string runnerViPath,
         [Description("""
-            The JUnit report the runner writes. Omit to take the .xml beside the runner that this
-            run wrote - the runner generator's default is '<runner>-TestReport.xml'.
+            The JUnit report path; omit to take the .xml this run wrote beside the runner.
             """)]
         string? reportPath = null,
+        [Description("""
+            JSON array of {"from":"<file>","to":["<file>",...]}, paths absolute or relative to the
+            runner's folder: each "from" is copied over every "to" before the run (folders created).
+            """)]
+        string? fixturesJson = null,
         [Description("Local budget in seconds - a suite runs every test VI in it")]
         int timeoutSeconds = 600,
         CancellationToken ct = default,
@@ -59,11 +59,12 @@ internal sealed class CarayaRunTools(LvaiConnection connection)
             return AixmlBackend.Refusal(badBackend);
         // Every answer names the backend that ran - the run's own answer had neither field until
         // 2026-10-12, so a suite run on pylabview read exactly like one on grpc.
-        return AixmlBackend.Named(await RunCarayaTestsCoreAsync(runnerViPath, reportPath,
+        return AixmlBackend.Named(await RunCarayaTestsCoreAsync(runnerViPath, reportPath, fixturesJson,
                                                                 timeoutSeconds, ct), choice);
     }
 
     private async Task<string> RunCarayaTestsCoreAsync(string runnerViPath, string? reportPath,
+                                                       string? fixturesJson,
                                                        int timeoutSeconds, CancellationToken ct) =>
         await Rpc.GuardAsync(async () =>
         {
@@ -71,6 +72,26 @@ internal sealed class CarayaRunTools(LvaiConnection connection)
             if (!File.Exists(runner))
                 return Json.Error("fileNotFound", $"No runner at '{runner}'.", new { runnerViPath });
             var folder = Path.GetDirectoryName(runner)!;
+
+            // ---- the fixtures, all checked before ANY is copied and before the run: a half-reset
+            // set is the state the ATM build's forgotten hand reset left behind (2026-10-31).
+            List<Fixture> fixtures;
+            try { fixtures = ParseFixtures(fixturesJson, folder); }
+            catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
+            if (fixtures.Where(f => !File.Exists(f.From)).Select(f => f.From).ToArray() is { Length: > 0 } missing)
+                return Json.Error("fixtureNotFound",
+                    "These fixture sources do not exist, so nothing was reset and nothing ran.",
+                    new { missing });
+            JsonArray? reset = null;
+            if (fixtures.Count > 0)
+            {
+                try { reset = ResetFixtures(fixtures); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    return Json.Error("fixtureResetFailed",
+                        $"A fixture could not be copied, so the suite was not run: {e.Message}");
+                }
+            }
 
             var started = DateTime.UtcNow.AddSeconds(-2);   // file-system clock granularity
             var wall = Stopwatch.StartNew();
@@ -86,6 +107,7 @@ internal sealed class CarayaRunTools(LvaiConnection connection)
                 ["elapsedMs"] = wall.ElapsedMilliseconds,
                 ["reportPath"] = report.Path,
                 ["reportFresh"] = report.Fresh,
+                ["fixturesReset"] = reset,
             };
             if (report.Path is null || !report.Fresh)
             {
@@ -123,6 +145,81 @@ internal sealed class CarayaRunTools(LvaiConnection connection)
         });
 
     internal readonly record struct Report(string? Path, bool Fresh);
+
+    internal sealed record Fixture(string From, IReadOnlyList<string> To);
+
+    internal static readonly string[] FixtureKeys = ["from", "to"];
+
+    /// <summary>
+    /// The fixtures of a fixturesJson argument, every path made absolute against the runner's
+    /// folder. Throws ArgumentException naming the entry: an unknown key is refused like a case
+    /// key (a dropped "target" would leave a test running on yesterday's file), and a "to" equal
+    /// to its "from" is refused because the copy would be a no-op that reads like a reset.
+    /// </summary>
+    internal static List<Fixture> ParseFixtures(string? json, string folder)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        JsonNode? parsed;
+        try { parsed = JsonNode.Parse(json); }
+        catch (JsonException e) { throw new ArgumentException($"fixturesJson is not valid JSON: {e.Message}"); }
+        if (parsed is not JsonArray array)
+            throw new ArgumentException(
+                "fixturesJson must be a JSON ARRAY of {\"from\":\"<file>\",\"to\":[\"<file>\",...]}.");
+
+        string Resolve(string path) => Path.GetFullPath(Path.Combine(folder, path));
+        var fixtures = new List<Fixture>();
+        for (var i = 0; i < array.Count; i++)
+        {
+            if (array[i] is not JsonObject o)
+                throw new ArgumentException($"fixturesJson[{i}] is not an object of \"from\" and \"to\".");
+            TestTools.RejectUnknownCaseKeys(o, i, FixtureKeys, arrayName: "fixturesJson");
+            if (o["from"] is not JsonValue fromValue || !fromValue.TryGetValue<string>(out var from)
+                || string.IsNullOrWhiteSpace(from))
+                throw new ArgumentException($"fixturesJson[{i}] has no \"from\" file path.");
+            if (o["to"] is not JsonArray toArray || toArray.Count == 0)
+                throw new ArgumentException(
+                    $"fixturesJson[{i}] has no \"to\" - an ARRAY of one or more file paths.");
+            var source = Resolve(from);
+            var targets = new List<string>();
+            foreach (var node in toArray)
+            {
+                if (node is not JsonValue v || !v.TryGetValue<string>(out var to) || string.IsNullOrWhiteSpace(to))
+                    throw new ArgumentException($"fixturesJson[{i}].to holds an entry that is not a file path.");
+                var target = Resolve(to);
+                if (string.Equals(target, source, StringComparison.OrdinalIgnoreCase))
+                    throw new ArgumentException(
+                        $"fixturesJson[{i}] copies '{source}' onto itself. \"from\" is the pristine " +
+                        "fixture and must not be one of the files the tests write.");
+                targets.Add(target);
+            }
+            fixtures.Add(new Fixture(source, targets));
+        }
+        return fixtures;
+    }
+
+    /// <summary>Copies each fixture over every target, creating folders; what was reset.</summary>
+    internal static JsonArray ResetFixtures(IReadOnlyList<Fixture> fixtures)
+    {
+        var reset = new JsonArray();
+        foreach (var fixture in fixtures)
+        {
+            foreach (var target in fixture.To)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                // File.Copy carries a read-only source's attribute over, and the tests then cannot
+                // write the copy - nor can the next reset overwrite it.
+                if (File.Exists(target)) File.SetAttributes(target, FileAttributes.Normal);
+                File.Copy(fixture.From, target, overwrite: true);
+                File.SetAttributes(target, File.GetAttributes(target) & ~FileAttributes.ReadOnly);
+            }
+            reset.Add(new JsonObject
+            {
+                ["from"] = fixture.From,
+                ["to"] = new JsonArray(fixture.To.Select(t => (JsonNode)t).ToArray()),
+            });
+        }
+        return reset;
+    }
 
     /// <summary>The report this run wrote: the given path, or the newest Caraya JUnit file beside the runner.</summary>
     internal static Report FindReport(string folder, string runner, string? reportPath, DateTime startedUtc)

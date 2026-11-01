@@ -43,39 +43,22 @@ internal sealed class CtlTools
     [McpServerTool(Name = "lvai_describe_ctl", ReadOnly = true,
                    Title = "What kind of control a .ctl is, and what type it wraps")]
     [Description("""
-        READ-ONLY and NEEDS NO RUNNING LABVIEW: what kind of control a `.ctl` is, what type it
-        wraps, and whether it can be bound to as a typedef.
-        ASK THIS BEFORE BINDING ANYTHING. A `.ctl` that is not a typedef binds with `error out = 0`
-        and produces NO typedef link - measured 2026-09-02 on two of NI's own controls, where both
-        Replace calls succeeded and neither bound, because `DAQmx Task Name NI_Silver.ctl` and
-        `errclust.llb\Error Cluster.ctl` are ordinary controls (`TypeDefVI="0"`). The success and
-        the failure look identical from the calling side; only the source tells them apart.
-        `controlVIType` is LabVIEW's own enum, reconstructed from the saved file rather than from a
-        running IDE: 0 not a typedef, 1 typedef, 2 strict typedef, 3 class private data.
-        `{LV.VI} Control VI Type` in VI Server is ONE HIGHER - 1 plain control, 2 typedef, 3 strict -
-        measured 2026-09-25: `scripts/lvctl_kind.xml` read 1 for a file this tool reads 0, and a
-        control saved with 1 written was not a typedef. This text claimed the two agreed until then.
-        `bindable` is the verdict to act on, and `whyNotBindable` names the reason in one sentence.
-        `wrappedType` is what the control actually carries - the type a binding would install, and
-        the type a generated constant must be authored as. Each entry of `fields` says its `kind`:
-        `enum` with its `items` (pylabview's `UnitUInt*` types), or `numeric` - which is what a RING is
-        too, because a ring keeps its labels on the panel rather than in the type. A field that is a
-        typedef instance names it in `typedef` and describes the type inside it.
-        AND READ `needsLabviewSave`. A .ctl produced by the fixture route - generate a VI to a .ctl
-        path, then patch the flags in the pylabview bundle - has never been written by LabVIEW and
-        still carries that VI's CONNECTOR PANE, which shows up here as `wrappedType: "Function"`
-        with 16 fields instead of `"TypeDef"` with one. It binds, it flattens, it validates; NI's
-        accessor wizard then refuses the field it is bound to with Error 1061 in the middle of a
-        class build. lvai_resave_ctl is the one-call repair.
-        A `.vi` is accepted too and reports `isControl: false`, because pointing this at the wrong
-        file is a likelier mistake than wanting it.
+        Typedef: what kind of control a `.ctl` is, what type it wraps, and whether it can be bound
+        as a typedef - read from the file, NO running LabVIEW. ASK THIS BEFORE BINDING: binding to a
+        `.ctl` that is not a typedef succeeds with error 0 and links nothing.
+        `bindable` is the verdict (`whyNotBindable` says why). `controlVIType` is the FILE's enum:
+        0 not a typedef, 1 typedef, 2 strict, 3 class private data (VI Server's `Control VI Type`
+        is one higher). `wrappedType` is the type a binding installs and a constant must be
+        authored as; each of `fields` has a `kind` (`enum` with `items`, or `numeric` - a ring too)
+        and names a nested `typedef`. `needsLabviewSave` true (`wrappedType: "Function"`) means a
+        flag-patched .ctl NI's accessor wizard refuses with Error 1061 - repair with
+        lvai_resave_ctl. A `.vi` answers `isControl: false`.
         """)]
     public Task<string> DescribeCtlAsync(
         [Description(@"Absolute path to the .ctl (a .vi is accepted and reported as not a control)")]
         string ctlPath,
         [Description("""
-            Keep the pylabview bundle instead of deleting it. The bundle is an implementation
-            detail of this call; pass true only when the raw XML is wanted for something else.
+            Keep the extracted pylabview bundle (only when the raw XML is wanted).
             """)]
         bool keepBundle = false,
         [Description("Local budget in seconds")] int timeoutSeconds = 45,

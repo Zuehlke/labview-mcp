@@ -19,32 +19,24 @@ internal sealed class ActionTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_run_vi_as_top_level", Destructive = true, OpenWorld = true,
                    Title = "Run a VI as top level")]
     [Description("""
-        RPC RunVIAsTopLevel. MUTATING: actually EXECUTES the VI in LabVIEW with the given
-        control values and returns its indicator values. Side effects are whatever the VI does
-        - it can drive hardware, write files or move a stage.
-        inputs/outputs are string maps, and the values really do cross as STRINGS: measured,
-        LabVIEW does NOT coerce them to the control's type. String controls work; a numeric or
-        path control fails with errorCode 91 at Control Value:Set BEFORE the VI runs - as "42"
-        and as 42 alike. So take numbers and paths in as strings and convert them on the
-        diagram. On the way out an array or cluster indicator also fails to marshal, and there
-        errorCode 91 arrives AFTER the VI has run correctly - it is not proof of failure.
-        Details and the measurements in lvai_aixml_reference section 10.
-        Never run a VI you have not inspected with lvai_describe_vi first.
+        Run: EXECUTE a VI in LabVIEW with control values and return its indicator values (RPC
+        RunVIAsTopLevel). MUTATING - side effects are whatever the VI does (hardware, files).
+        On grpc values cross as STRINGS and are not coerced: a numeric or path control fails with
+        errorCode 91 BEFORE the run, and an array/cluster indicator gives 91 AFTER a correct run
+        (not proof of failure). For any non-string value use lvai_run_vi_and_read_values instead.
+        Inspect the VI with lvai_describe_vi before running it.
         """)]
     public async Task<string> RunViAsTopLevelAsync(
         [Description(@"Absolute path to the .vi to run")] string viPath,
         [Description("""
-            Control values as JSON object, e.g. {"X":"3","Y":"4"}. Keys are control labels.
-            Omit for a VI that needs no inputs.
+            Control values as a JSON object keyed by control label, e.g. {"X":"3","Y":"4"}.
             """)]
         string? inputsJson = null,
         [Description("Local budget in seconds - raise it for long-running VIs")]
         int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview the VI runs over LabVIEW's ActiveX server - the route of
-            lvai_run_vi_and_read_values, whose answer comes back: inputs converted to each
-            control's own type, every indicator read back with its type, NI's service not asked.
+             On pylabview it runs as lvai_run_vi_and_read_values does: typed inputs and outputs.
             """)]
         string? backend = null)
     {
@@ -88,9 +80,8 @@ internal sealed class ActionTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_build_from_build_specification", Destructive = true, OpenWorld = true,
                    Title = "Build a project build specification")]
     [Description("""
-        RPC BuildFromBuildSpecification. MUTATING: runs a build specification of a .lvproj and
-        returns the generated files. Writes build output to disk and can take minutes - raise
-        timeoutSeconds accordingly. This is the CI-shaped capability of the interface.
+        Build: run a build specification of a .lvproj and return the generated files (RPC
+        BuildFromBuildSpecification). MUTATING - writes build output; can take minutes.
         """)]
     public async Task<string> BuildFromBuildSpecificationAsync(
         [Description(@"Absolute path to the .lvproj")] string projectPath,
@@ -322,37 +313,17 @@ internal sealed class ActionTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_open_file", Destructive = true, OpenWorld = true,
                    Title = "Open a VI or project in the LabVIEW IDE")]
     [Description("""
-        RPC OpenFile. MUTATING (IDE state): opens a VI and/or a project in the running LabVIEW
-        editor. Pass the VI pair, the project pair, or both. Harmless but visible to whoever is
-        sitting in front of LabVIEW.
-        THERE IS NO `path` OR `filePath` PARAMETER, and getting that wrong is expensive because the
-        failure lies: the argument is DROPPED, all four fields reach LabVIEW empty, and LabVIEW
-        answers `Error 7, File not found` about a file nobody named. Measured 2026-08-27 and again
-        2026-09-14 - five identical Error 7 answers across three paths that plainly exist, a
-        refuted foreground hypothesis and a pointless LabVIEW restart, while lvai_describe_project
-        read the very same path with errorCode 0.
-        THIS TEXT USED TO SAY `filePath` IS "folded onto the closest declared one" AND THAT IS FALSE.
-        The fold normalises `_`, `-` and case only, so `vi_path` reaches `viPath` and `filePath`
-        reaches nothing. Believing the old sentence sends you hunting for a path that was passed as
-        a VI, which is the one thing that did not happen. Both holes are closed now - an unrecognised
-        argument name is REFUSED by name, and a call with neither path is refused here - so this is
-        history rather than a live trap.
-        A .lvproj goes in `projectPath` WITH `projectName`; that pair returns No Error immediately.
-        `No Error` DOES NOT MEAN A PROJECT BECAME ACTIVE, and that is not a quibble - almost
-        everything that edits a class needs the project ACTIVE, not merely open. Measured
-        2026-09-03: three opens in a row answered `No Error` and left no active project, so every
-        following call answered `Error 1055`; what fixed it was giving the LabVIEW WINDOW the
-        foreground, because Chrome had focus. Diagnosing that cost 270 s of wall clock for 2.9 s
-        inside LabVIEW. So a project open now reads `Project:Active Project` back and reports
-        `projectBecameActive`, with `errorKind: projectDidNotBecomeActive` and the cause named when
-        it did not. Pass `checkActive: false` to skip the check, which costs one short helper run.
-        THE FOREGROUND IS THE CAUSE OF ONE FAILURE, NOT OF EVERY ONE - read `errorCode` first.
-        `Error 1025, Application Reference is invalid` means the IDE's application reference has
-        gone invalid while the ADDON's instance keeps working, so a `1154` from a flatten, a bind
-        or a retype in the same session is the same fault and re-running it cannot help; measured
-        2026-09-18, with `lvai_status` green throughout. The `hint` used to open "The open itself
-        reported no error" whatever the code said, because it was keyed on `projectBecameActive`
-        alone.
+        Project: open a VI and/or a project in the running LabVIEW IDE (RPC OpenFile). MUTATING
+        (IDE state, visible on screen). Pass the VI pair (viPath + viName), the project pair
+        (projectPath + projectName), or both; there is NO `path`/`filePath` parameter, and a call
+        naming no file is refused. A path that does not exist is refused as `fileNotFound`
+        (LabVIEW would answer a misleading Error 1025).
+        `No Error` does not mean a project became ACTIVE, which class-editing tools need: the
+        answer reports `projectBecameActive`, and `errorKind: projectDidNotBecomeActive` when not
+        (usually LabVIEW lacked the foreground - one fronting retry is made, `foregroundRetry`).
+        Read `errorCode` first; the foreground explains only that one failure.
+        Open a VI THROUGH its project to make project-local code callable by AIXML; `viPaths`
+        loads several callees in one call.
         """)]
     public async Task<string> OpenFileAsync(
         [Description(@"Absolute path to the .vi, or empty")] string? viPath = null,
@@ -360,28 +331,19 @@ internal sealed class ActionTools(LvaiConnection connection)
         [Description(@"Absolute path to the .lvproj, or empty")] string? projectPath = null,
         [Description("Project name, or empty")] string? projectName = null,
         [Description("""
-            After opening a PROJECT, read Project:Active Project back and report whether one
-            actually became active. On by default: `No Error` alone has been measured leaving no
-            active project, and every class-editing call then fails with Error 1055 pointing
-            nowhere useful. Ignored when no projectPath is given.
+            After opening a project, read Project:Active Project back and report
+            `projectBecameActive`. Ignored without projectPath.
             """)]
         bool checkActive = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 120,
         CancellationToken ct = default,
         [Description("""
-            MORE VIs to open in the same call, ONE ABSOLUTE PATH PER LINE - each through the same
-            project pair when one is given, which is what makes project-local code resolvable as
-            an AIXML Call target. The first one stands in for viPath when that is empty. Added
-            2026-09-25: loading five callees for a direct Call cost five round trips in the third
-            ATM cold build. `alsoOpened` reports each one's own error code.
+            More VIs to open, ONE ABSOLUTE PATH PER LINE, each through the project pair when given;
+            the first stands in for an empty viPath. `alsoOpened` reports each one's error code.
             """)]
         string? viPaths = null,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview everything goes over LabVIEW's ActiveX server: a project with a composed
-            helper (Project.Open plus its window), checked for being ACTIVE the same way; a VI
-            with no project has its front panel opened in LabVIEW's main instance, and with a
-            project it is opened THROUGH it (lvai_open_vi_in_project). LabVIEW must already be
-            running.
+             On pylabview LabVIEW must already be running.
             """)]
         string? backend = null)
     {
@@ -865,8 +827,8 @@ internal sealed class ActionTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_find_palette_item", Destructive = true,
                    Title = "Highlight a palette item in the IDE")]
     [Description("""
-        RPC FindPaletteItem. MUTATING (IDE state): makes LabVIEW reveal/highlight the palette
-        item with the given GUID. Purely a UI action - useful to confirm a GUID resolves.
+        Knowledge: highlight the palette item with a GUID in the IDE (RPC FindPaletteItem) - a UI
+        action, useful to confirm a GUID resolves.
         """)]
     public async Task<string> FindPaletteItemAsync(
         [Description("Palette item GUID")] string guid,
@@ -883,10 +845,9 @@ internal sealed class ActionTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_drop_palette_item", Destructive = true, OpenWorld = true,
                    Title = "Drop a palette item onto a VI")]
     [Description("""
-        RPC DropPaletteItem. MUTATING: places the palette item with the given GUID onto the
-        block diagram of the target VI. This edits real code. Prefer the AIXML path
-        (lvai_apply_aixml_to_vi) when you need control over placement and wiring - a drop
-        gives you neither.
+        Edit: drop the palette item with a GUID onto a VI's block diagram (RPC DropPaletteItem).
+        MUTATING, with no control over placement or wiring - generate through AIXML when you need
+        either.
         """)]
     public async Task<string> DropPaletteItemAsync(
         [Description("Palette item GUID")] string guid,
@@ -913,9 +874,8 @@ internal sealed class ActionTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_log_usage_data", Destructive = true, Idempotent = false,
                    Title = "Write a usage-telemetry key/value")]
     [Description("""
-        RPC LogUsageData. Writes a key/value pair into LabVIEW's usage telemetry. Included for
-        completeness of the interface; it emits analytics data, so there is rarely a reason to
-        call it.
+        Status: write a key/value pair into LabVIEW's usage telemetry (RPC LogUsageData). Rarely
+        needed.
         """)]
     public async Task<string> LogUsageDataAsync(
         [Description("Telemetry key")] string key,

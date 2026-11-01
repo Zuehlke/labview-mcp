@@ -6,11 +6,11 @@ counts on this page against the registration in the source, so they cannot drift
 
 ## What is served
 
-**117 tools over 23 RPCs.** Seventy-eight map to no RPC: `lvai_status`, `lvai_dump_schema`,
+**118 tools over 23 RPCs.** Seventy-nine map to no RPC: `lvai_status`, `lvai_dump_schema`,
 `lvai_palette_index`, `lvai_example_index`, `lvai_set_vi_icon`, `lvai_render_diagrams`, `lvai_layout_diagram` and `lvai_discuss_file` — which compose three RPCs
 rather than wrapping one — `lvai_check_aixml`, which reads an AIXML file, `lvai_describe_class` and `lvai_describe_ctl`, which read a `.lvclass`
 and a `.ctl` off disk and need no LabVIEW at all, the knowledge tools below, and the five `pylv_*`
-tools. 40 carry `readOnlyHint`,
+tools. 41 carry `readOnlyHint`,
 68 carry `destructiveHint`, so a client can gate the writes.
 
 The server also exposes its five embedded documents as **MCP resources** —
@@ -52,6 +52,7 @@ reaches a running LabVIEW over its ActiveX server where a question needs one.
 | `lvai_check_aixml` | — (pure text analysis; **needs no LabVIEW**) | **pre-flight check for the three faults `ValidateAIXML` was MEASURED to accept**: a `uid_parent` naming no element, which LabVIEW silently reparents to the top-level diagram so a node meant to sit inside a loop ends up outside it; a duplicate `uid`, silently renumbered so the export stops matching your file; and a Ring default outside its `values`. Deliberately does NOT check terminal names, types, wiring or cycles - LabVIEW does those well, and a second source of truth would drift |
 | `lvai_validate_aixml` | `ValidateAIXML` |
 | `lvai_vi_terminals` | — (composes `ConvertVIToAIXML` and reads the pane) |
+| `lvai_check_build_contract` | — (`plan`: reads the contract JSON, **needs no LabVIEW**; `verify`: composes `ConvertVIToAIXML` per built VI) — the gate around a multi-VI build: checks the contract the orchestrator writes before any agent (house rules, clashing names, ambiguous calls, cycles), answers the build waves and Call skeletons, and after each wave compares the built panes with it. [docs/build-contract.md](../build-contract.md) |
 | `lvai_describe_class` | — (parses the `.lvclass` XML directly; **needs no LabVIEW**, so it is the one honest reading after a timeout) |
 | `lvai_coercion_dots` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + VI Server reads) — every subVI call terminal with its `Coercion Dot?`. The placeholder route leaves one on each terminal whose real subVI carries a typedef, and validation, the retarget and a run all pass in that state; this is the only thing that sees it. Needs no active project |
 | `lvai_exec_state` | — (composes `ValidateAIXML` + `ConvertAIXMLToVI` + VI Server reads) — a VI's `Execution:State` and `VI Linker Errors`, so "is this executable?" is answerable WITHOUT running it. That matters because a top-level UI loop never ends on its own. `0` is eBad; `-1` means the reference never opened, which is kept apart on purpose so it cannot read as broken. Since 2026-10-14 it also answers `errors` - the lines LabVIEW's Error List shows for the VI, through `{LV.VI}` `Get Errors` - and so does every tool that checks executability through it. Needs no active project |

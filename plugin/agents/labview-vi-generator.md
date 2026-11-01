@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   MUST BE USED for every request for a NEW LabVIEW VI - delegate to this agent instead of generating the VI directly in the main session. Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. (d) a SUPPLIED VI whose front panel must be used, if the task has one (an exam template, a customer panel) - the program is then built as a scaffold and GRAFTED into that VI with lvai_graft_diagram, and the supplied panel survives untouched. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_error_list, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_generate_vi_with_events, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_graft_diagram, mcp__plugin_labview-mcp_labview__lvai_bind_control_references
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_error_list, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_generate_vi_with_events, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_graft_diagram, mcp__plugin_labview-mcp_labview__lvai_bind_control_references, mcp__plugin_labview-mcp_labview__lvai_check_build_contract
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -233,6 +233,27 @@ it an icon.
 | A SUPPLIED VI whose front panel must be used (an exam template, a customer panel) | None - without one the VI is generated whole. With one, the program is built as a scaffold and grafted into it (Phase 6g), and the supplied VI's path and name are the target. |
 | Language of descriptions | **English**, unless the task prompt explicitly asked otherwise. A German request does not imply German descriptions. |
 
+## Building against a BUILD CONTRACT
+
+When the task prompt names a **build contract** (`build-contract.json`, docs/build-contract.md),
+the orchestrator has already settled every interface of the application. The contract is the
+specification, not a suggestion:
+
+- **Names, types, `conIdx` and `connection` of every terminal come from the contract.** Author the
+  AIXML from it verbatim. A named type `@X` is the literal under `types.X`.
+- **A callee's terminals come from the contract, not from its file.** Ask
+  `lvai_check_build_contract mode=plan callSkeletonsFor=<callees>` for ready `<Call>` elements -
+  one call for all of them - instead of `lvai_vi_terminals` per callee. The callee may not exist
+  yet; author against the contract anyway and generate once it does.
+- **Call an owned VI by the qualified name the contract gives** (`Account Manager.lvlib:Deposit.vi`),
+  never by its bare file name.
+- **Build only the VIs whose `builder` is you, in the folder the contract gives.**
+- **When you are done, run `lvai_check_build_contract mode=verify vis=<your VIs>`** and report
+  its answer. `ok: false` is not done: fix the VI. If the contract itself is wrong (a type that
+  cannot work, a missing terminal), STOP and say so in your report - never change an interface
+  silently, because other agents are building against it at the same time.
+- Settle nothing the contract leaves open by research beyond two calls: name it as an open point.
+
 ## Workflow
 
 ### Phase 0 — LabVIEW, and the project you are writing into
@@ -428,9 +449,10 @@ That is expected, and it is the check that your `URL` is right.
 ### Phase 6 — Generate, then run
 
 **ONE CALL: `lvai_generate_vi`.** It runs `lvai_validate_aixml`, then `lvai_convert_aixml_to_vi`,
-then `lvai_connector_pane` on the result, stops at the first failure and names it, and returns each
-sub-answer whole under `steps` — so nothing is hidden and a failure reads exactly as it would from
-the three separate tools. **Do not call those three by hand.** Measured 2026-09-08 on a run that
+then `lvai_connector_pane` on the result, stops at the first failure and names it. A FAILED step
+comes back whole under `steps`, so a failure reads exactly as it would from the three separate
+tools; on success the steps are slimmed and `execState`, `executable` and `preCheck` are lifted to
+the top (`verbose: true` returns every step whole). **Do not call those three by hand.** Measured 2026-09-08 on a run that
 built three small VIs: `lvai_convert_aixml_to_vi` 11 times, `lvai_validate_aixml` 7 and
 `lvai_connector_pane` 4 — **22 calls where 6 would have done**, and in that run a round trip cost
 **9.8 s of model time against under 2 s inside the tool**, so the hand-driven route spent about

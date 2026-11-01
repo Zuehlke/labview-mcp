@@ -48,52 +48,36 @@ internal sealed class EventDataFieldTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_set_event_data_fields", Destructive = true, OpenWorld = true,
                    Title = "Read a user event's payload in its handler frame")]
     [Description("""
-        MUTATING: points an Event Structure frame's EVENT DATA NODE at the payload of the user event
-        it handles, so the frame READS what the event carried. That is the default shape of a user
-        event, and it is the one thing lvai_generate_vi_with_events cannot produce: LabVIEW's
-        importer discards an Event Data Node's field selection, because at conversion time the frame
-        carries no registration and only Source, Type and Time exist.
-        CALL IT THIRD - after lvai_generate_vi_with_events and lvai_wire_dynamic_events, and after
-        lvai_set_vi_icon if you want an icon. Earlier is wasted: a regeneration replaces the diagram.
-        AUTHOR A PLACEHOLDER FIRST. This takes over an EXISTING wire and never makes one, so the
-        AIXML must wire a labelled constant (`_name="Payload Placeholder"`) into the node that
-        should consume the field. THE SINK MUST BE A PRIMITIVE OR SUBVI INPUT: a front-panel
-        indicator terminal and a tunnel carry no type in the block diagram, and the row takes its
-        type from the sink.
-        FIELD INDEX: 4 is the FIRST PAYLOAD ITEM - 0 Source, 1 Type, 2 Time, 3 UsrEvtRef, then 4 and
-        5 for a two-element cluster payload, and 4 for a scalar one. Measured; an earlier note
-        calling 3 "the payload cluster" was wrong and produced an event-refnum terminal.
-        TWO FIELDS PER FRAME IS THE CEILING. A converted frame has three rows and the Source row
-        carries no field index to rewrite; the other two are repointed and stop showing Type and
-        Time. Read anything further off the payload cluster downstream.
-        A CONSTANT PLACEHOLDER IS KEPT on the diagram, unwired, which is legal - deleting one was
-        measured as `LabVIEW load error code 6: Could not load block diagram`. A NODE placeholder is
-        deleted, because an unwired Local Variable is a broken VI. The helper decides from what it
-        finds; you do not pass a flag.
-        `ok: false` is never a rollback - the .vi on disk carries whatever got as far as it got.
+        Edit: points an Event Structure frame's EVENT DATA NODE at the payload of the user event it
+        handles, so the handler READS what the event carried - the field selection the gRPC
+        converter discards. Not needed on the pylabview backend, whose composer writes it.
+        CALL IT THIRD - after lvai_generate_vi_with_events and lvai_wire_dynamic_events (and the
+        icon); a regeneration undoes it.
+        AUTHOR A PLACEHOLDER FIRST: it takes over an EXISTING wire, so the AIXML must wire a
+        labelled constant (`_name="Payload Placeholder"`) into the consuming node - a PRIMITIVE or
+        SUBVI INPUT, never an indicator or tunnel.
+        FIELD INDEX: 0 Source, 1 Type, 2 Time, 3 UsrEvtRef, 4 the FIRST PAYLOAD ITEM (4 and 5 for a
+        two-element cluster). At most TWO fields per frame; read more off the cluster downstream.
+        A constant placeholder stays on the diagram unwired (deleting it breaks the load); a node
+        placeholder is deleted. `ok: false` is never a rollback.
         """)]
     public async Task<string> SetEventDataFieldsAsync(
         [Description("Absolute path to the .vi to edit - it is REBUILT in place")] string viPath,
         [Description("""
             One line per Event Data Node: `<dataNodeUid> <placeholderUid>:<fieldIndex> [...]`,
-            for example `4244 4280:4`. The uids are the ones YOUR AIXML wrote - for a constant
-            LabVIEW keeps it on an inner object and renumbers the outer one, and the helper resolves
-            that, so you never read a heap.
+            e.g. `4244 4280:4`, using the uids YOUR AIXML wrote.
             """)]
         string fields,
         [Description("Read execState back afterwards, from a copy LabVIEW has never loaded")]
         bool verify = true,
         [Description("""
-            Where to put the extracted bundle. Defaults to a fresh temp directory, deleted on
-            success. Pass a path to keep it - useful when an edit needs debugging.
+            Where to put the extracted bundle; omit for a temp directory deleted on success.
             """)]
         string? bundleDirectory = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription + """
-             On pylabview the verify reads execState over ActiveX and the row names back with our
-            own reader. A VI the composer wrote reads its payload already - name the field in the
-            Event Data Node - and needs no call of this tool.
+             A VI the pylabview composer wrote reads its payload already and needs no call.
             """)]
         string? backend = null) =>
         await BackendRoute.WithBackendAsync(backend, "lvai_set_event_data_fields", () => Rpc.GuardAsync(async () =>

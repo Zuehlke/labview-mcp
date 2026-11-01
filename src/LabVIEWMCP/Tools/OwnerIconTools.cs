@@ -78,56 +78,38 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_set_owner_icon", Destructive = true, OpenWorld = true,
                    Title = "Set a class or library icon and push it onto the members")]
     [Description("""
-        MUTATING: sets the icon of an EXISTING .lvclass or plain .lvlib from a 32x32 PNG and saves the
-        owner; with applyToMembers it also lays that icon onto member VIs as their NI_Library
-        TEMPLATE LAYER (LabVIEW's own ApplyIconToVIs - white is transparent, so each VI keeps its own
-        glyph where the template is white) and SAVES each member. Codes per member in `members`.
-        lvai_set_vi_icon cannot do this: it sets pixels on one VI and flattens its layers.
-        THE PROJECT MUST BE CLOSED - with it open LabVIEW answers Error 1562 and writes nothing. The
-        active project is checked first and the call refuses with `projectOpen`; close it with
-        lvai_close_active_project. Every other check runs on the files before LabVIEW is touched:
-        the owner exists and is what its extension says, the PNG is a 32x32 PNG, every member named
-        is a .vi the owner lists and its file is there.
-        BUILT AROUND THREE MEASURED, SILENT FAILURES of the bare VI Server route: ApplyIconToVIs
-        saves no member; on a plain .lvlib it changes nothing unless the members are opened first;
-        and a project left open makes it a no-op with 1562. This opens every member, applies, and
-        saves each one.
-        VERIFIED BY READ-BACK, not by the codes: the owner's icon is read back out to a PNG and
-        compared pixel by pixel with yours (`ownerIcon.pixelsDifferent`, 0 for web-safe colours;
-        LabVIEW shifts other colours and that is reported, not failed); each applied member is read
-        back too and must show every non-white pixel of the owner's icon (`templateMissing` 0).
-        SIDE EFFECTS TO REPORT: the owner and every applied member are re-saved, by the LabVIEW
-        running - a project saved in an older version is upgraded (`ownerLvVersionBefore/After`).
-        Measured through this tool 2026-10-10 on LabVIEW 2026 Q3: a class with nine members and a
-        plain library with two, every code 0, owner read-back 0 px, templateMissing 0 on every member,
-        members executable; with memberPaths only the named member changed on disk. Lists over 100
-        members (the list-file helper) are unmeasured.
+        Icon: sets the icon of an EXISTING .lvclass or plain .lvlib from a 32x32 PNG and saves the
+        owner; with applyToMembers also lays it onto member VIs as their template layer (white is
+        transparent, so each VI keeps its own glyph) and SAVES each member - codes per member in
+        `members`. For one VI's own pixels use lvai_set_vi_icon instead.
+        THE PROJECT MUST BE CLOSED - open, LabVIEW answers Error 1562 and writes nothing; the call
+        refuses with `projectOpen` (close it with lvai_close_active_project). Files are checked
+        before LabVIEW: owner exists, PNG is 32x32, every named member is a .vi the owner lists.
+        VERIFIED BY READ-BACK: `ownerIcon.pixelsDifferent` (0 for web-safe colours; other colours
+        shift and are reported, not failed) and per member `templateMissing` 0. Side effect: owner
+        and members are re-saved by the running LabVIEW, so an older-version project is upgraded
+        (`ownerLvVersionBefore/After`).
         """)]
     public async Task<string> SetOwnerIconAsync(
         [Description(@"Absolute path to the .lvclass or plain .lvlib whose icon is set - it is saved in place")]
         string ownerPath,
         [Description("""
-            Absolute path to the 32x32 PNG to use: the template - banner and glyph, WHITE wherever a
-            member's own icon should show through. Pick colours from the web-safe cube (each channel
-            00, 33, 66, 99, CC, FF) and the read-back is an exact equality check.
+            The 32x32 PNG template, WHITE wherever a member's own icon should show through. Web-safe
+            colours (channels 00/33/66/99/CC/FF) make the read-back an exact check.
             """)]
         string pngPath,
         [Description("""
-            Also apply the icon to member VIs as their template layer and save each member. Off by
-            default: setting the owner's icon changes no member, and saving members is the part with
-            side effects.
+            Also apply the icon to member VIs as their template layer and save each member.
             """)]
         bool applyToMembers = false,
         [Description("""
-            With applyToMembers: the member VIs to apply to, ONE ABSOLUTE PATH PER LINE. Omit for
-            every .vi member the owner lists. Each must be a .vi the owner lists. Naming only the
-            VIs a task added keeps existing members untouched on disk.
+            With applyToMembers: member VIs, one absolute path per line, each listed by the owner.
+            Omit for every .vi member; naming only new VIs leaves the others untouched on disk.
             """)]
         string? memberPaths = null,
         [Description("""
-            Folder for the read-back PNGs (the owner's icon, and members/ under it). Defaults to a
-            short folder under %TEMP%\LabVIEWMCP\icons. Created if missing. Keep it short: a PNG path
-            over 259 characters is written by nobody, with no error - it is refused here instead.
+            Folder for the read-back PNGs (default under %TEMP%\LabVIEWMCP\icons), created if
+            missing. Keep it short: a PNG path over 259 characters is refused.
             """)]
         string? readBackDir = null,
         [Description("Where to keep the generated helper VIs. Defaults to %TEMP%\\LabVIEWMCP\\helpers")]
@@ -331,54 +313,43 @@ internal sealed class OwnerIconTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_read_icons", Destructive = false, OpenWorld = true,
                    Title = "Read VI, class and library icons back to PNG files")]
     [Description("""
-        Reads the CURRENT icons of VIs, classes and plain libraries out to 32x32 PNG files in one
-        call, without changing them - and with expectedDir compares each one pixel by pixel with an
-        expected PNG. This is the verification step after any icon work: a regeneration, an
-        lvai_set_vi_icon, an lvai_set_owner_icon, or a "before" copy to compare against later.
-        WHY A TOOL: LabVIEW's Save VI Icon to File writes NOTHING into a missing folder or past
-        MAX_PATH and still answers code 0 - measured in a pilot project, 146 codes 0 for 145 files.
-        So every output folder is created first, every PNG path over 259 characters is refused before
-        LabVIEW, and each PNG is checked to exist and to have been written by this call. `written`
-        is the verdict, not the code.
-        PIXELS, NOT BYTES: LabVIEW writes a palette PNG, design tools write truecolour, so equal
-        images differ in every byte. The compare decodes both (status OK / DIFF / SIZE / NO
-        REFERENCE / AMBIGUOUS / ERROR, with the first differing pixels).
-        Layout: a VI goes to <outDir>\<its path relative to baseDir, .vi -> .png>; a class or
-        library to <outDir>\<its relative path>.png (Foo.lvclass.png). The expected PNG is looked up
-        at the same relative path under expectedDir, else as the one PNG of that file name anywhere
-        under it. The project must be CLOSED (checked first). VIs go through LabVIEW 100 per call.
-        Measured in a pilot project on LabVIEW 2026 Q3 (the batch helper at 146 VIs, the class and
-        library helpers 2026-10-08); the compare is a port of the measured Python script.
+        Icon: reads the current icons of VIs, classes and plain libraries out to 32x32 PNGs without
+        changing them, and with expectedDir compares each pixel by pixel - the verification step
+        after any icon work, or a "before" copy. THE PROJECT MUST BE CLOSED (checked first).
+        `written` is the verdict, not LabVIEW's code: LabVIEW writes nothing into a missing folder
+        or past MAX_PATH and still answers 0, so folders are created and a PNG path over 259
+        characters is refused before LabVIEW. The compare decodes pixels (status OK / DIFF / SIZE /
+        NO REFERENCE / AMBIGUOUS / ERROR, with the first differing pixels).
+        Layout: a VI goes to <outDir>\<path relative to baseDir, .vi -> .png>; a class or library
+        to <outDir>\<relative path>.png (Foo.lvclass.png). The expected PNG is looked up at the same
+        relative path under expectedDir, else as the one PNG of that file name anywhere under it.
         """)]
     public async Task<string> ReadIconsAsync(
         [Description("""
-            What to read, ONE ABSOLUTE PATH PER LINE: .vi files, .lvclass and .lvlib files, or
-            folders - a folder adds every .vi under it, recursively. A path containing ';' is
-            refused: the helper's list format is ';'-separated.
+            One absolute path per line: .vi, .lvclass, .lvlib, or folders (every .vi under it,
+            recursively). A path containing ';' is refused.
             """)]
         string paths,
         [Description("""
-            Output folder for the PNGs. Created if missing. KEEP IT SHORT - a PNG path over 259
-            characters is refused, because LabVIEW would silently write nothing there.
+            Output folder for the PNGs, created if missing. KEEP IT SHORT - PNG paths over 259
+            characters are refused.
             """)]
         string outDir,
         [Description("""
-            Optional folder of expected PNGs laid out like outDir (e.g. a generator's output, or an
-            earlier read-back). Each icon read is compared with its expected PNG pixel by pixel.
+            Folder of expected PNGs laid out like outDir; each icon is compared with its match.
             """)]
         string? expectedDir = null,
         [Description("""
-            The folder the relative output paths are taken from. Defaults to the deepest folder
-            holding every path given. Pass the same base the expected tree was made from.
+            Folder the relative output paths are taken from; defaults to the deepest common folder.
+            Use the same base the expected tree was made from.
             """)]
         string? baseDir = null,
         [Description("Per-channel difference still counted as equal in the compare (default 0)")]
         int tolerance = 0,
         [Description("Compare RGB only, ignoring alpha")] bool ignoreAlpha = false,
         [Description("""
-            Read every class and library icon through LabVIEW again instead of from the owner-icon
-            cache. The cache is keyed on the owner file's own NI.Lib.Icon line, so a changed icon is
-            never served stale; this is for doubting the cache itself.
+            Read class and library icons through LabVIEW again instead of from the owner-icon cache
+            (keyed on the file's NI.Lib.Icon line, so never stale on a change).
             """)]
         bool refreshOwnerIcons = false,
         [Description("Where to keep the generated helper VIs. Defaults to %TEMP%\\LabVIEWMCP\\helpers")]

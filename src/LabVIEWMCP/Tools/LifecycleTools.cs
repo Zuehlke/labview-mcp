@@ -29,43 +29,28 @@ internal sealed class LifecycleTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_ensure_labview", Destructive = true, OpenWorld = true,
                    Title = "Make sure a LabVIEW instance is running")]
     [Description("""
-        Start a LabVIEW instance. If one is already running it is used as-is and nothing is
-        started. Otherwise the newest installed LabVIEW is launched, preferring the 32-bit build
-        - that is the one hosting the AI gRPC service. No version number is hardcoded; LabVIEW
-        NXG is ignored.
-        MUTATING: may start an IDE, which is visible to whoever is at the machine.
-        The launch is VERIFIED, not assumed: a LabVIEW created as a child of this server is
-        killed by the host's job object within about half a second, so the tool tries several
-        launch routes and keeps only one whose process is still alive two seconds later. The
-        winner is reported as launchMethod; if none survives you get errorKind
-        'launch-did-not-survive' listing every attempt, never a hopeful 'starting'.
-        THE SERVICE COMES UP WITH LabVIEW ITSELF, about 45 s after a cold start, with no Nigel
-        chat opened - measured 2026-10-17 with NI.NigelLocalService running. This text said for
-        weeks that the 'LV AI gRPC Service' starts with NIGEL and not with the IDE; that is
-        refuted. What still stands is the earlier observation that a LabVIEW up for twenty
-        minutes once held 30 listener ports and served lvai.LVAI on none of them - so a
-        'starting' that persists for more than about two minutes, with LabVIEW visibly
-        running, is not this tool being slow: then ask whoever is at the machine to open
-        Nigel, and call lvai_status once.
-        Otherwise, when LabVIEW is still coming up, calling again is right - the second call
-        finds the instance and waits. For an unattended long wait use the CLI:
-        LabVIEWMCP --ensure-labview.
+        Status: makes sure a LabVIEW instance is running. A running one is used as-is; otherwise the
+        newest installed LabVIEW is launched, preferring 32-bit (the build hosting the AI gRPC
+        service). MUTATING: may start a visible IDE, and then first empties LVAutoSave (see
+        keepAutoSave). The launch is VERIFIED: only a process still alive two seconds later counts
+        (`launchMethod`); if none survives the answer is `launch-did-not-survive` with every attempt.
+        The gRPC service comes up with LabVIEW, about 45 s after a cold start; while it is coming up,
+        call again - the second call finds the instance and waits. A 'starting' that persists past
+        about two minutes with LabVIEW visibly up: ask whoever is at the machine to open Nigel, then
+        call lvai_status once. For a long unattended wait use `LabVIEWMCP --ensure-labview`.
         """)]
     public async Task<string> EnsureLabViewAsync(
         [Description("How long to wait for the gRPC service to answer, in seconds (capped at 45)")]
         int waitSeconds = 40,
         [Description("""
-            Do NOT clear Documents\\LabVIEW Data\\LVAutoSave before starting LabVIEW. It is
-            cleared by default because leftover recovery data makes LabVIEW raise a modal
-            recovery dialog on start, and a modal dialog stops this gRPC service until a
-            human dismisses it. Only ever cleared when this tool starts LabVIEW itself.
+            Do NOT clear Documents\LabVIEW Data\LVAutoSave before starting LabVIEW (it is cleared
+            only when this tool starts LabVIEW, because leftover data raises a modal recovery dialog
+            that stops the service).
             """)]
         bool keepAutoSave = false,
         CancellationToken ct = default,
         [Description(AixmlBackend.ParameterDescription + """
-             On pylabview READY means LabVIEW answers over its ActiveX server - what that backend
-            uses - not that NI's gRPC service answers: a LabVIEW older than 2026 has no such
-            service, and on pylabview nothing waits for Nigel.
+             On pylabview READY means LabVIEW answers over ActiveX; nothing waits for NI's service.
             """)]
         string? backend = null)
     {
@@ -260,9 +245,8 @@ internal sealed class LifecycleTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_list_labview_installations", ReadOnly = true,
                    Title = "List installed LabVIEW versions")]
     [Description("""
-        List the LabVIEW installations found on this machine and which one would be started,
-        without starting anything. Bitness is read from each executable's PE header rather than
-        guessed from its folder. Useful to check the choice before calling lvai_ensure_labview.
+        Status: lists the LabVIEW installations on this machine (bitness from the PE header) and
+        which one would be started, without starting anything - check it before lvai_ensure_labview.
         """)]
     public static string ListInstallations()
     {

@@ -36,20 +36,15 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_dqmh_new_module", Destructive = true, OpenWorld = true,
         Title = "Create a DQMH module")]
     [Description("""
-        MUTATING: creates a DQMH module in the ACTIVE project with NO dialog - Delacor's own
-        Script New Module.vi through a generated wrapper, the result of Tools > DQMH > Module > Add
-        New DQMH Module. About fifty files are written into `<project folder>\Libraries\<Name>`
-        (Delacor's layout; `saveFolder` overrides it). DQMH 5/6 list the library under a
-        `<Name> Module` folder with the API tester at target level; DQMH 7.x under `Modules` and
-        the tester under `Testers`, or the folders given in `libraryVirtualFolder` and
-        `testerVirtualFolder`. BOTH DQMH GENERATIONS ARE SUPPORTED: the scripting layout is read
-        off the installation and `dqmhGeneration` says which ran.
-        THE MODULE TYPE IS A NAME from the station's catalogue - Singleton, Cloneable, and whatever
-        add-ons or templates (lvai_dqmh_create_module_template) contribute; `catalogue` in every
-        answer lists them, and a name that is not there is refused. Refused too while anything in
-        the project is unsaved, or - Delacor's own checks - when the target folder already holds a
-        LabVIEW file at its top level or the project a library of that name. The answer verifies the module from the files: library, Main.vi,
-        tester, Do Something present or absent as asked, and both VIs' exec state.
+        DQMH: creates a DQMH module in the ACTIVE project, no dialog (Delacor's Script New
+        Module.vi). About fifty files go into `<project folder>\Libraries\<Name>` (or saveFolder);
+        DQMH 5/6 and 7.x both work (`dqmhGeneration`). The module type is a NAME from the
+        station's catalogue (`catalogue` in every answer); an unknown name is refused. Refused too
+        while anything in the project is unsaved, when the target folder already holds a LabVIEW
+        file at its top level, or the project has a library of that name. Verified from the files:
+        library, Main.vi, tester, Do Something as asked, both VIs' exec state.
+        Past answerWithinSeconds it answers `stillRunning`: call again with the SAME arguments to
+        collect the answer.
         """)]
     public async Task<string> NewModuleAsync(
         [Description("Module name, e.g. 'Heater' - becomes Heater.lvlib")] string moduleName,
@@ -59,10 +54,10 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
         [Description("Folder for the module's files, relative to the project folder or absolute; empty means <project folder>\\Libraries\\<Name>")]
         string saveFolder = "",
         [Description("DQMH 7.x only: the module library's description")] string moduleDescription = "",
-        [Description("DQMH 7.x only: project virtual folder for the API tester; empty is Delacor's " +
-                     "default, 'Testers' (measured)")] string testerVirtualFolder = "",
+        [Description("DQMH 7.x only: project virtual folder for the API tester; empty is " +
+                     "'Testers'")] string testerVirtualFolder = "",
         [Description("DQMH 7.x only: project virtual folder for the module library; empty is " +
-                     "Delacor's default, 'Modules' (measured)")] string libraryVirtualFolder = "",
+                     "'Modules'")] string libraryVirtualFolder = "",
         [Description("Local budget in seconds; Delacor takes 20-45 s to script a module")]
         int timeoutSeconds = 600,
         [Description("Answer within this many seconds; past it the module is still scripted in the " +

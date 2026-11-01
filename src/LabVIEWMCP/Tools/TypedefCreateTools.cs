@@ -51,32 +51,18 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_create_typedef", Destructive = true, OpenWorld = true,
                    Title = "Create a typedef .ctl, nested typedefs included")]
     [Description("""
-        MUTATING: creates a typedef `.ctl` from an AIXML type literal - `uint16{Off,Voltage,Current}`,
-        `cluster{double.Min,double.Max}`, anything a `<Control type=...>` accepts - through VI Server
-        alone. NO pylabview writes anything and no flag is patched: a carrier VI holds the control,
-        LabVIEW moves it onto a new Control VI, sets `Control VI Type` and saves it. Strict typedefs
-        via `strict`.
-        NESTED TYPEDEFS: `elementTypedefsJson` makes top-level cluster ELEMENTS instances of typedef
-        files that already exist - {"Channel Mode":"C:\\...\\Channel Mode.ctl"} - with one
-        {LV.Control} Replace each, in the IDE's application instance, so a PROJECT IS NEEDED for that
-        step: pass projectPath and the tool opens it. ALL elements are bound in ONE open and ONE
-        save - two separate runs were measured leaving a stray type descriptor in the file. Replace
-        keeps each element's LABEL, measured; `labelAfter` shows it and gates `ok`.
-        Create the inner typedefs FIRST, with this tool, then the cluster that contains them.
-        WITH projectPath the .ctl is listed in the project under folderName - together with every
-        element typedef that lies in the project's own folder tree, so the inner typedefs do not end
-        up under Dependencies only - and the project is left CLOSED: the listing is a file edit, and
-        LabVIEW's close would save over it otherwise. A typedef from vi.lib or elsewhere is used,
-        never listed.
-        THE VERDICT IS READ FROM THE SAVED FILE: `verifiedFromFile` holds lvai_describe_ctl's reading
-        (isTypedef, isStrictTypedef, needsLabviewSave) and each element typedef's name must appear
-        in the saved .ctl. The in-memory `Control VI Type` is reported beside it and is NOT the
-        verdict: VI Server's enum is one higher than the file flag - 1 plain, 2 typedef, 3 strict -
-        and writing 1 answers `error 0` for a control that is not a typedef, measured 2026-09-25.
-        A generated CONSTANT still cannot be authored as a typedef: AIXML has no spelling for one
-        (13 spellings measured with the .ctl loaded, all refused). A constant wired into a typedef
-        terminal is bound afterwards - lvai_generate_class_test and lvai_generate_method_test do it
-        themselves, lvai_bind_typedef_constants for anything else.
+        Typedef: creates a typedef (or strict) `.ctl` from an AIXML type literal -
+        `uint16{Off,Voltage,Current}`, `cluster{double.Min,double.Max}`, anything `<Control type=...>`
+        accepts - through VI Server alone (no pylabview, no flag patch).
+        NESTED TYPEDEFS: `elementTypedefsJson` makes top-level cluster elements instances of EXISTING
+        typedef files, all bound in one run; it NEEDS projectPath. Create the inner typedefs FIRST,
+        then the cluster. Element labels are kept (`labelAfter` gates `ok`).
+        With projectPath the .ctl, and every element typedef inside the project's folder tree, is
+        listed under folderName, and the project is left CLOSED.
+        The verdict is read from the SAVED FILE (`verifiedFromFile`: isTypedef, isStrictTypedef,
+        needsLabviewSave), never from the in-memory `Control VI Type`.
+        AIXML has no typedef CONSTANT: a constant wired into a typedef terminal is bound afterwards
+        with lvai_bind_typedef_constants (the test generators do it themselves).
         """)]
     public async Task<string> CreateTypedefAsync(
         [Description(@"Absolute path of the .ctl to create")] string ctlPath,
@@ -89,16 +75,14 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
         string? label = null,
         [Description("Save a STRICT typedef instead of a plain one")] bool strict = false,
         [Description("""
-            JSON object: top-level cluster element label -> absolute path of an EXISTING typedef
-            .ctl that element should be an instance of, e.g.
-            {"Channel Mode":"C:\\T\\Channel Mode.ctl","Range":"C:\\T\\Range.ctl"}. Needs a cluster
-            `type` and projectPath. Element labels are matched exactly against `type`.
+            JSON object: cluster element label (exact, as in `type`) -> absolute path of an EXISTING
+            typedef .ctl, e.g. {"Channel Mode":"C:\\T\\Channel Mode.ctl"}. Needs a cluster `type`
+            and projectPath.
             """)]
         string? elementTypedefsJson = null,
         [Description("""
-            The .lvproj the typedef belongs to. Required with elementTypedefsJson, whose Replace
-            only works in the IDE's application instance. With it the .ctl is also listed under
-            folderName, and the project is left CLOSED.
+            The typedef's .lvproj; required with elementTypedefsJson. The .ctl is listed under
+            folderName and the project is left CLOSED.
             """)]
         string? projectPath = null,
         [Description("Project folder to list the .ctl under")] string folderName = "Typedefs",
@@ -167,7 +151,7 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
                 // ---- 3. the element typedefs, in the IDE's application instance
                 if (req.Elements.Count > 0)
                 {
-                    var opened = await EnsureProjectActiveAsync(req.ProjectPath!, timeoutSeconds, ct);
+                    var opened = await EnsureProjectActiveAsync(connection, req.ProjectPath!, timeoutSeconds, ct);
                     steps.Add(opened.Step);
                     if (!opened.Active)
                         return Outcome(false, "openProject", steps, total, req,
@@ -374,10 +358,14 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ steps
 
-    private async Task<(bool Active, JsonObject Step)> EnsureProjectActiveAsync(
-        string project, int timeoutSeconds, CancellationToken ct)
+    /// <summary>
+    /// Makes <paramref name="project"/> (a full path) the active project unless it already is,
+    /// through lvai_open_file with its read-back. Shared with lvai_graft_diagram.
+    /// </summary>
+    internal static async Task<(bool Active, JsonObject Step)> EnsureProjectActiveAsync(
+        LvaiConnection lvai, string project, int timeoutSeconds, CancellationToken ct)
     {
-        var actions = new ActionTools(connection);
+        var actions = new ActionTools(lvai);
         var (active, _, path) = await actions.ProjectIsActiveAsync(timeoutSeconds, ct: ct);
         if (active == true && path is not null &&
             string.Equals(Path.GetFullPath(path), project, StringComparison.OrdinalIgnoreCase))

@@ -73,72 +73,32 @@ internal sealed class TypedefFlattenTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_flatten_typedefs", Destructive = true, OpenWorld = true,
                    Title = "Give a stub the subject's real types with no typedef links")]
     [Description("""
-        MUTATING: installs the SUBJECT's real terminal types onto a placeholder stub, with every
-        typedef link removed at every depth, and verifies it from the saved file.
-        WHEN YOU NEED IT: after lvai_placeholder_subvi, when the subject's pane carries typedefs and
-        the stub's AIXML-approximated type is not good enough. lvai_placeholder_subvi calls this for
-        you unless you pass flattenTypedefs false, so a direct call is for repairing a stub that
-        already exists.
-        HOW IT WORKS, and it is NOT `Discon Typedef`. A typedef is a `.ctl` with TypeDefVI set in
-        its save record. Each `.ctl` of the chain is copied into a cache directory, that bit is
-        cleared with pylabview - no LabVIEW - and the copy is then installed with
-        {LV.Control} Replace, which against a NON-typedef installs the type and creates no link.
-        THE COPIES DO NOT GO BESIDE THE STUB. Measured 2026-09-18 as an A/B seconds apart in one
-        LabVIEW: a Replace whose SOURCE .ctl sits under user.lib answers error 1154, and the same
-        content outside the installation answers 0. Nothing is lost by moving them out - the copy
-        is not a typedef, so the Replace leaves no link and the stub does not reference it.
-        MEASURED 2026-09-18: {LV.Control} Discon Typedef from a generated helper KILLS LabVIEW, five
-        times, with nothing in NI's crash log and the target never written. Do not reach for it.
-        THE RECURSION IS THE POINT. Clearing the flag on the outer `.ctl` alone leaves a typedef
-        embedded in its definition, which then arrives in the stub as a live typeDef heap object -
-        measured as an A/B. So the chain is flattened and rebound from the inside out.
-        THE VERDICT IS `typedefObjectsInStub`, read back off the SAVED stub: 0 is the pass. It
-        counts `class="typeDef"` objects in the front panel heap, NOT `Type="TypeDef"` entries in
-        the type pool - a flattened `.ctl` keeps stale pool entries that reach nothing.
-        AN ARRAY IS WALKED INTO as well, since 2026-09-18: `Controls[]` is not declared on
-        {LV.Array}, so the helper reads `Array Element` beside it and picks on `Class Name`, and an
-        array is then a container with exactly one child at index 0. Measured on an array of a
-        typedef enum, which had been named in `notDescended` and is now flattened like any other.
-        The flattened copies are CACHED under a hash of the source's CONTENT, so a second stub over
-        the same typedef costs one Replace and editing the typedef produces a different copy rather
-        than a stale hit.
-        A CHILD WHOSE PROPERTY READ FAILED IS REPORTED, NOT SKIPPED. The tree helper returns a read
-        code per control, because only the last iteration's error could reach its error out: a
-        control that failed came back as a plausible row with an empty path while the VI answered 0,
-        and keying on the empty path skipped it in silence. Measured 2026-09-18.
-        `subjectTypedefObjects` IS THE SUBJECT ASKED AGAIN FROM ITS FILE, with no LabVIEW involved,
-        and it exists to kill a GREEN NO-OP. Everything else here comes through VI Server, and a
-        LabVIEW that has been through many open/Replace/Discon cycles serves a STALE in-memory copy
-        whose typedef links are already gone - the walk then finds nothing and the call reports
-        success for having nothing to do. A file that holds typedef objects while the walk found NONE
-        is now `errorKind: subjectTypedefsNotSeen`, not an ok.
-        THE TWO COUNTS ARE IN DIFFERENT UNITS and only that one comparison is a verdict:
-        `typedefSites` counts the OUTERMOST typedef per branch, `subjectTypedefObjects` every
-        instance at every depth, so 1 against 2 is the ordinary shape of a typedef inside a typedef.
+        Typedef: installs the SUBJECT's real terminal types onto a placeholder stub with every
+        typedef link removed at every depth (arrays included), and verifies it from the saved file.
+        lvai_placeholder_subvi calls this itself unless flattenTypedefs is false, so call it
+        directly only to repair an existing stub. Never use {LV.Control} Discon Typedef from your own
+        helper - it kills LabVIEW.
+        VERDICT: `typedefObjectsInStub`, read off the SAVED stub - 0 is the pass.
+        `errorKind: subjectTypedefsNotSeen` means the subject's file holds typedef objects but the
+        walk through LabVIEW found none (a stale in-memory copy) - not an ok. `typedefSites` counts
+        the outermost typedef per branch and `subjectTypedefObjects` every instance, so 1 vs 2 is
+        an ordinary nested typedef. A child whose property read failed is reported, not skipped.
+        Flattened `.ctl` copies are cached outside the installation under a hash of the content.
         """)]
     public async Task<string> FlattenTypedefsAsync(
         [Description("Absolute path to the stub whose terminals should carry the real types")]
         string viPath,
         [Description("""
-            Absolute path to the SUBJECT - the VI whose pane the stub was cloned from, and the only
-            place the typedef identities still exist. The stub itself carries none, which is exactly
-            why it cannot be its own source.
+            Absolute path to the SUBJECT - the VI the stub was cloned from; only it still carries
+            the typedef identities.
             """)]
         string subjectPath,
         [Description("""
-            Which measured route to use, "flag" (the default) or "disconnect". They reach the same
-            end - the subject's real type with no link at any depth - and differ in what they need.
-            "flag" copies each `.ctl` of the chain and clears its TypeDefVI bit with pylabview. It
-            needs NO project, NO editor and NO IDE application instance, and it cannot end the
-            LabVIEW session. It writes copies into a cache.
-            "disconnect" installs the ORIGINAL `.ctl` and then calls {LV.Control} Discon Typedef. It
-            copies nothing, is faster, and on a CLASS terminal LabVIEW refuses it itself with Error
-            1088 instead of needing a guard of ours. It REQUIRES a project open and active AND the
-            stub open in the editor - this call opens it for you - and missing either kills LabVIEW
-            with nothing in NI's crash log, measured five times.
-            THE COST OF "disconnect" IS THAT IT OPENS THE STUB IN THE EDITOR, which puts its path in
-            LabVIEW's memory - so a later regeneration of that stub can answer Error 1357 until the
-            VI is closed or LabVIEW restarts. The answer says so in `stubOpenedInEditor`.
+            "flag": copies each .ctl and clears its typedef bit with pylabview - needs no project and
+            cannot end the session. "disconnect": Discon Typedef on the original - REQUIRES a project
+            open and active (missing it kills LabVIEW), opens the stub in the editor
+            (`stubOpenedInEditor`; a later regeneration may hit Error 1357), refused on a class
+            terminal (Error 1088).
             """)]
         string route = "flag",
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,

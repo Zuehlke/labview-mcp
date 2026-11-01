@@ -2539,6 +2539,14 @@ class Composer:
                 q[1] += shift
                 q[3] += shift
             p.find("bounds").text = fb(tuple(q))
+        # AN ARRAY'S ELEMENT moves with its frame. It is the array's own <ddo>, not a part, and it
+        # stayed at the donor's offset while the frame moved right of the wider label: LabVIEW drew
+        # the element left of the frame as a row of greyed elements and the frame empty (the pump
+        # station's `No Previous Pressures`, 2026-11-01). NI's converter puts it 35 px into the
+        # frame's first part, every array constant of its build of the same probe.
+        inner = ddo.find("ddo") if ddo.get("class") == "indArr" else None
+        if inner is not None and shift > 0:
+            move_obj(inner, 0, shift)
         ob = ddo.find("bounds")
         if ob is not None:
             o = lvheap.parse_bounds(ob.text)
@@ -2782,7 +2790,7 @@ class Composer:
     # on NI's In Range and Coerce.vi (aggregate=true)
     NODE_ATTRS = {"_name", "inputs", "outputs", "uid", "uid_parent", "_id"}
     PRIM_MODES = {"In Range and Coerce": ("includeHigh", "includeLow", "aggregate"),   # name -> mode attributes add_node writes
-                  "Read from Text File": ("readLines",),
+                  "Read from Text File": ("readLines", "convertEol"),
                   "Array To Cluster": ("elements",)}
     # COMPARE AGGREGATES (aggregate="true") is the 0x80000 bit of a comparison prim's objFlags,
     # one boolean for two whole clusters or arrays: read off NI's 3D Graph axes_auto_range.vi
@@ -2802,7 +2810,9 @@ class Composer:
     PRIM_MODE_BITS = {"In Range and Coerce": {"includeLow": 0x200000, "includeHigh": 0x100000},
                       # Read Lines: 640 -> 67109504 on NI's converter's build of a probe pair
                       # differing only in readLines="true", 2026-10-10 (lvpane_sweep.xml uses it)
-                      "Read from Text File": {"readLines": 0x4000000}}
+                      # Convert EOL: 640 -> 33555072, the same way, 2026-11-01 (it was refused
+                      # until then, and a test helper of the PC AI DI TDMS build dropped it)
+                      "Read from Text File": {"readLines": 0x4000000, "convertEol": 0x2000000}}
     for _n in AGGREGATE_PRIMS:
         PRIM_MODE_BITS.setdefault(_n, {})["aggregate"] = 0x80000
     del _n
@@ -3161,12 +3171,24 @@ class Composer:
             a.append(copy.deepcopy(x))
             return a
         deltas = {depth(new_types[i]) - depth(donor[i]) for i in wired_in}
-        if len(deltas) == 1 and 0 not in deltas and name not in self.WHOLE_VALUE:
+        # A QUEUE's (notifier's, user event's) element is carried WHOLE: an array element does not
+        # put the primitive in array mode. Obtain Queue of array{string} made `queue out`,
+        # `created new?` and `error out` arrays, the Enqueue behind it followed through its wires,
+        # and LabVIEW died on LOAD - `DAbort 0x87FB5957: I expected a container refnum here!`,
+        # proptyp3.cpp(970) - three times in the ATM cold build of 2026-11-01 (tests/t186).
+        carries_container = any(d.get("Type") == "Refnum" and d.get("RefType") in REFNUM_CONTAINERS.values()
+                                for d in donor)
+        if len(deltas) == 1 and 0 not in deltas and name not in self.WHOLE_VALUE and not carries_container:
             k = deltas.pop()
             donor_in_depth = {depth(donor[i]) for i in wired_in}
             for j, t in enumerate(terms):
                 out = int(t.find("dco").findtext("objFlags") or 0) & 1
                 same_group = any(canon[j] == canon[i] for i in wired_in)
+                # an ERROR output is one cluster whatever shape went in: Close Reference on an
+                # array of references reports one error, and the shape rule made it an array -
+                # four NI exports in the AIXML cache, caught by the type guard (2026-11-01)
+                if canon[j].startswith(b"error terminal"):
+                    continue
                 if out and not same_group and j not in wired_in and depth(donor[j]) in donor_in_depth:
                     r = reshape(new_types[j], k)
                     if r is not None:
@@ -3221,6 +3243,7 @@ class Composer:
                     stream_types[outsd["endpoint out"]] = st
                 if name == "Read Single Element from Stream" and "data out" in by_name:
                     new_types[idx_of[id(by_name["data out"])]] = plain(lvheap.strip_label(copy.deepcopy(st)))
+        self._guard_terminal_types(el, name, terms, by_name, donor, new_types, canon)
         for tname, net in outs:
             if net:
                 self.net_type[net] = new_types[idx_of[id(by_name[tname])]]
@@ -3249,6 +3272,48 @@ class Composer:
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": prim.get("uid")}))
         diag.placed.append((prim, el))
         self.report.append("Node %r = primResID %s <- %s" % (name, rid, src))
+
+    @staticmethod
+    def _type_kind(t):
+        """`Refnum(Queue)`, `Array`, `Cluster`, ... - what a guard compares, not the full type."""
+        t = typedef_inner(t)
+        return t.get("Type", "?") + ("(%s)" % t.get("RefType") if t.get("RefType") else "")
+
+    def _guard_terminal_types(self, el, name, terms, by_name, donor, new_types, canon):
+        """THE TYPE GUARD: the last look at a primitive's terminal types before they reach the file.
+
+        The retyping above adapts a donor's terminals to what is wired, and a wrong adaptation is
+        not a broken VI - LabVIEW can DIE loading it. Obtain Queue of an array{string} came out
+        with `queue out`, `created new?` and `error out` as arrays, and LabVIEW aborted on load
+        with `I expected a container refnum here!` (proptyp3.cpp, the ATM cold build of
+        2026-11-01, three crashes) - while NI's converter built the same document clean. What
+        the guard holds is what no adaptation may change, measured on NI's build of it:
+          - a terminal the donor types as a QUEUE, NOTIFIER or USER EVENT refnum stays exactly
+            that kind of refnum - an element type may change inside it, its kind may not. A
+            breach is REFUSED by name: a refusal costs a fallback to the grpc backend, a crash
+            costs LabVIEW and whatever else was open in it.
+          - an ERROR OUTPUT stays an error cluster. A breach is only REPORTED: Close Reference on
+            an array came out with an array `error out` (four cached NI exports), and LabVIEW
+            loaded that VI executable anyway - it re-derives the type - so refusing it would turn
+            a document LabVIEW accepts into a failure."""
+        names = {id(t): n for n, t in by_name.items() if not n.startswith("?parm")}
+        for j, t in enumerate(terms):
+            d, n = typedef_inner(donor[j]), typedef_inner(new_types[j])
+            tname = names.get(id(t), "terminal %d" % j)
+            if d.get("Type") == "Refnum" and d.get("RefType") in REFNUM_CONTAINERS.values():
+                if n.get("Type") != "Refnum" or n.get("RefType") != d.get("RefType"):
+                    raise Unsupported(
+                        "type guard: %s %s `%s` would be written as %s where the primitive carries a %s "
+                        "refnum - refused, because LabVIEW dies loading such a VI ('I expected a "
+                        "container refnum here!'). Convert this document with backend grpc."
+                        % (name, el.get("uid"), tname, self._type_kind(n), d.get("RefType")))
+            out = int(t.find("dco").findtext("objFlags") or 0) & 1
+            if out and canon[j].startswith(b"error terminal") and d.get("Type") == "Cluster" \
+                    and n.get("Type") != "Cluster":
+                self.report.append(
+                    "type guard WARNING: %s %s `%s` written as %s where it is an error cluster - "
+                    "an adaptation went wrong; LabVIEW has re-derived such a type on load"
+                    % (name, el.get("uid"), tname, self._type_kind(n)))
 
     STREAM_PASS = {"Read Single Element from Stream": ("endpoint in", "endpoint out"),
                    "Write Single Element to Stream": ("endpoint in", "endpoint out"),
@@ -4356,6 +4421,13 @@ class Composer:
             # as Unbundle By Name does; its shape and element are the wrapped array's (NI's
             # grow_prop_array.vi, the XControl sweep 2026-10-22)
             wrapped = typedef_inner(atype)
+            if wrapped.get("Type") == "SubArray":
+                # a SUB-ARRAY (Transpose 2D Array, Reverse 1D Array ...) indexes like the array it
+                # is a view of, as an indexing tunnel takes it: a row of a transposed 2D array was
+                # refused here, NI's converter builds it (tank-monitor cold build, 2026-11-01)
+                wrapped = copy.deepcopy(wrapped)
+                wrapped.set("Type", "Array")
+                atype = wrapped
             n = len(wrapped.findall("Dimension")) if wrapped.get("Type") == "Array" else 0
             if n not in (1, 2):
                 raise Unsupported("Index Array %s: a %s input is not composable yet"
@@ -5435,9 +5507,12 @@ class Composer:
                                       % (target, "input" if direction == "in" else "output", tname,
                                          ", ".join(sorted(set(by_dir["in"]) | set(by_dir["out"])))))
         for tname, net in listed["in"]:
-            src = self.net_type.get(net) if net else None
+            # its OWN name: as `src` it overwrote the part's source, and the report line below
+            # printed a wire type (`<Element 'TypeDesc' at 0x...>`) or `None` as where the Call
+            # came from - reported by the pump-station cold build, 2026-11-01
+            wired = self.net_type.get(net) if net else None
             t, want = by_dir["in"][tname]
-            if src is not None and want.get("Type") == "TypeDef" and src.get("Type") != "TypeDef":
+            if wired is not None and want.get("Type") == "TypeDef" and wired.get("Type") != "TypeDef":
                 # a PLAIN value into a TYPEDEF terminal is a coercion: term objFlags 0x40000 (the
                 # dot) and dsw 1024, as NI's converter wrote a uint64 control into
                 # mxLvGetProjectPath.vi's `Item` (ItemRef.ctl); a typedef into a plain sink - the
@@ -7903,6 +7978,13 @@ class Composer:
             if k not in labels:
                 raise Unsupported("Event Data Node %s: no field %r for %s" % (el.get("uid"), k, kind))
             idx = labels.index(k)
+            if kind == "User Event" and labels.count(k) > 1:
+                # a payload field named like the event's own (Source, Type, Time): the PAYLOAD,
+                # which is what a handler reads - first-match gave the event's Source, and the
+                # PC_UserEvent_CSV build needed lvai_set_event_data_fields to undo it (2026-11-01)
+                idx = len(labels) - 1 - labels[::-1].index(k)
+                self.report.append("Event Data Node %s: %r names an event field and a payload field - "
+                                   "the payload's (field %d) is read" % (el.get("uid"), k, idx))
             t = self._term_from(tpl, fs[idx], index=idx)
             node.find("termList").append(t)
             ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
@@ -8990,6 +9072,13 @@ class Composer:
                 # an end nothing composed - a For Loop's conditional terminal (a <Condition> in a
                 # For Loop; the part has no stop terminal) crashed seven of NI's VIs as a KeyError
                 el0 = self._by_uid.get(missing[0][0])
+                if missing[0][0] is None:
+                    # an element WITHOUT a uid - NI's schema requires one (-2628, measured
+                    # 2026-11-01 on a <Tunnel>); this said "not composable yet" until then, which
+                    # an agent of the pump-station cold build read as a composer gap
+                    raise Unsupported("net %r ends at a %s that has no uid - every element carrying "
+                                      "inputs or outputs needs uid and uid_parent (NI's converter "
+                                      "refuses it too, Error -2628)" % (net, missing[0][1]))
                 raise Unsupported("net %r ends at %s %s of %s, which is not composable yet"
                                   % (net, missing[0][1], missing[0][0],
                                      (el0.get("_name") or el0.tag) if el0 is not None else "an element"))
@@ -9977,10 +10066,17 @@ class Composer:
             parent = {c: p for p in heap.iter() for c in p}
             self._set_cluster_frames(heap, parent)
             for arr in [e for e in heap.iter() if e.get(ANCHOR_K) is not None]:
-                k = [int(x) for x in arr.attrib.pop(ANCHOR_K).split(",")]
+                arr.attrib.pop(ANCHOR_K)
                 if heap is self.fp:
                     continue
-                t, l = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+                t, l, b, r = lvheap.parse_bounds(arr.findtext("bounds"))
+                # k IS THE CENTRE OF THE ARRAY'S FINAL BOUNDS, (w div 2, h div 2). Read off NI's
+                # build of one probe with seven array constants, 2026-11-01: top level (83, 11) for
+                # 166 x 23, (83, 10) for 166 x 20, (56, 23) for 112 x 46, (64, 23) for 129 x 46; in
+                # a cluster (25, 11), (27, 10), (29, 23) - and the older measured (25, 11) of a
+                # 51 x 23 field is the same rule. The donor's offset (or index + 23, 11) left the
+                # pump station's constants drawn with rows of greyed elements beside them.
+                k = ((r - l) // 2, (b - t) // 2)
                 frame, e = None, arr
                 while e in parent:
                     e = parent[e]

@@ -13,8 +13,9 @@ namespace LabVIEWMcp.Infra;
 ///   * a CLUSTER must cross as a variant array, object[] - a double[] is accepted with no error
 ///     and silently ignored, the control stays 0;
 ///   * a 2D array crosses as ONE rectangular array, and enumerating it flattens the rows.
+/// An ARRAY OF CLUSTERS crosses as object[] of object[] (measured 2026-11-01).
 /// What is not covered is refused by name rather than guessed: a waveform, a timestamp, a
-/// refnum, a variant, an array of clusters. A NAMED session (IVI, VISA, a DAQmx task) is not
+/// refnum, a variant, a 2D array of clusters. A NAMED session (IVI, VISA, a DAQmx task) is not
 /// refused but marked, <see cref="NamedSession"/>, and set by a composed helper instead.
 /// </summary>
 internal static class ComValues
@@ -167,6 +168,12 @@ internal static class ComValues
             "bool" => values.Cast<bool>().ToArray(),
             _ when Floats.Contains(element) => values.Select(v => Convert.ToDouble(v, Invariant)).ToArray(),
             _ when Integers.ContainsKey(element) => values.Select(v => Convert.ToInt32(v, Invariant)).ToArray(),
+            // AN ARRAY OF CLUSTERS crosses as object[] of object[] - the shape the XML route below
+            // already built. Measured 2026-11-01 on the tank monitor's Write Alarm Log.vi: two
+            // {Event Source, Event Text} clusters given as LabVIEW XML reached the CSV intact,
+            // while the same value as a literal was refused here by name, and the storage agent
+            // of that cold build ran the VI on grpc instead.
+            _ when Braces(FieldType(element)) is { Head: "cluster" } => values.ToArray(),
             _ => Refuse(out problem, $"an array of {element} cannot be set over COM by this server yet"),
         };
     }
@@ -392,10 +399,22 @@ internal static class ComValues
         double d => d.ToString("R", Invariant),
         float f => f.ToString("R", Invariant),
         Array { Rank: 2 } grid => FormatGrid(grid),
-        Array items => "[" + string.Join(",", items.Cast<object?>().Select(Format)) + "]",
+        Array items => "[" + string.Join(",", items.Cast<object?>().Select(FormatItem)) + "]",
         IFormattable number => number.ToString(null, Invariant),
         _ => value.ToString() ?? "",
     };
+
+    /// <summary>
+    /// An ELEMENT of an array literal. A string element escapes its comma as `\2C` and its
+    /// backslash as `\5C`, the way AIXML reads them: `["Source,Event","plain"]` came back as
+    /// `[Source,Event,plain]` - three elements to any reader - until 2026-11-01, when a Caraya agent
+    /// of the tank-monitor cold build was misled by it. `[Source\2CEvent,plain]` composes back to the
+    /// same two strings on both backends (measured). A scalar string stays raw: there the comma is
+    /// not structure.
+    /// </summary>
+    private static string FormatItem(object? value) => value is string s
+        ? s.Replace("\\", "\\5C").Replace(",", "\\2C")
+        : Format(value);
 
     private static string FormatGrid(Array grid)
     {
@@ -407,7 +426,7 @@ internal static class ComValues
             for (var j = 0; j < grid.GetLength(1); j++)
             {
                 if (j > 0) rows.Append(',');
-                rows.Append(Format(grid.GetValue(i, j)));
+                rows.Append(FormatItem(grid.GetValue(i, j)));
             }
             rows.Append(']');
         }
@@ -604,7 +623,20 @@ internal static class ComValues
         var t = text.Trim();
         if (t.Length < 2 || t[0] != '[' || t[^1] != ']') return null;
         var inner = t[1..^1];
-        return inner.Length == 0 ? [] : SplitItems(inner).Select(i => i.Quoted ? i.Text : Unescape(i.Text)).ToList();
+        return inner.Length == 0 ? [] : SplitItems(inner)
+            .Select(i => i.Quoted || IsList(i.Text) ? i.Text : Unescape(i.Text)).ToList();
+    }
+
+    /// <summary>
+    /// A NESTED list stays escaped: its own Literal call unescapes its items. Unescaped here, the
+    /// `\2C` in `[[Valve 1,Opened\2C late]]` became a comma one level too early and the cluster
+    /// read three fields (found 2026-11-01 by the array-of-clusters test; a 2D string array had
+    /// the same fault).
+    /// </summary>
+    private static bool IsList(string text)
+    {
+        var t = text.Trim();
+        return t.Length >= 2 && t[0] == '[' && t[^1] == ']';
     }
 
     /// <summary>

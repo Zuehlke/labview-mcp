@@ -91,7 +91,16 @@ internal static class DiagramSize
         if (size is not { } s)
             return " The block diagram could not be rendered, so its size is NOT known - call " +
                    "lvai_render_diagrams and read the top-level PNG before calling it done.";
-        if (s.Width <= MaxWidth && s.Height <= MaxHeight) return "";
+        // THE STAGES OVER THEIR GUIDE WHILE THE PIXELS FIT: said, not silent. The answer carried
+        // `longestChainStages: 12` beside `chainBudgetStages: 10` and `withinBudget: true` with no
+        // word, and an agent of the pump-station cold build (2026-11-01) had to guess which one
+        // counts. The rendered size is the verdict; the stage count is the predictor before it.
+        if (s.Width <= MaxWidth && s.Height <= MaxHeight)
+            return chain is { } c && c.Stages > MaxChainStages
+                ? $" The longest chain is {c.Stages} stages against the guide of {MaxChainStages}, but " +
+                  $"the rendered diagram ({s.Width} x {s.Height} px) fits the budget, and the rendered " +
+                  "size is the verdict - nothing to fold."
+                : "";
         var wide = s.Width > MaxWidth;
         return $" THE BLOCK DIAGRAM IS OVER THE SIZE BUDGET: {s.Width} x {s.Height} px against " +
                $"{MaxWidth} x {MaxHeight}." +
@@ -235,8 +244,12 @@ internal static class DiagramSize
             var name = (string?)x.Attribute("_name") ?? x.Name.LocalName;
             var target = (string?)x.Attribute("target");
             var fields = (string?)x.Attribute("fields");
+            // a POLYMORPHIC call names its instance too - the composer's report names only the
+            // instance, and one answer showed the runner's Caraya call under two names
+            // (`Run Tests.vi` here, `Run Test (Array Path).vi` there), 2026-11-01
+            var instance = (string?)x.Attribute("instance");
             var text = x.Name.LocalName == "Call" && target is { Length: > 0 }
-                ? target
+                ? (instance is { Length: > 0 } && instance != target ? $"{target} [{instance}]" : target)
                 : target is { Length: > 0 } ? $"{name} {target}"
                 : fields is { Length: > 0 } ? $"{name} {fields}"
                 : name;

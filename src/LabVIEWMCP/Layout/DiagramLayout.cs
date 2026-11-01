@@ -226,9 +226,18 @@ internal static class DiagramLayout
         var plain = ArrangeCore(ctx, d, isTop, useBands: false, out var plainScore, out var bandsPossible, out var chains, extraGap);
         if (!bandsPossible || !ctx.Bands) return plain;
         var banded = ArrangeCore(ctx, d, isTop, useBands: true, out var bandedScore, out _, out _, extraGap);
+        // THE SIZE BUDGET DECIDES FIRST, when exactly one of the two fits it. Measured 2026-11-01 on
+        // a generated test of the pump-station build: three cases with three assertions laid out in
+        // columns at 1432 x 350; the same with a fourth assertion was banded at 1033 x 1110 - over
+        // the 1080 px budget, beside a column arrangement that fits - because bands won on
+        // crossings. Crossings still decide when both fit, or neither.
+        if (isTop && Fits(plain) != Fits(banded)) return Fits(plain) ? plain : banded;
         return bandedScore.Crossings < plainScore.Crossings
                || (chains && bandedScore.Crossings == plainScore.Crossings && bandedScore.Vertical < plainScore.Vertical)
             ? banded : plain;
+
+        static bool Fits(Arrangement a) =>
+            a.W <= LabVIEWMcp.Infra.DiagramSize.MaxWidth && a.H <= LabVIEWMcp.Infra.DiagramSize.MaxHeight;
     }
 
     private static Arrangement ArrangeCore(Context ctx, Diagram d, bool isTop, bool useBands,

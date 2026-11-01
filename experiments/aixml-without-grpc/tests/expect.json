@@ -2265,5 +2265,18 @@
     }
    }
   ]
+ },
+ "t202_array_queue": {
+  "cases": [
+   {
+    "inputs": "command in=Enter;data in=23456",
+    "outputs": {
+     "command": "Enter",
+     "data": "23456",
+     "timed out": "False",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

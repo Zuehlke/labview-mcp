@@ -33,26 +33,14 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_layout_diagram", Destructive = true, OpenWorld = true,
                    Title = "Lay out a VI's block diagram (our replacement for Clean Up Diagram)")]
     [Description("""
-        MUTATING: rearranges a VI's whole block diagram and SAVES IT IN PLACE - our replacement for
-        LabVIEW's Clean Up Diagram (BD.CleanUp), for a large existing VI as much as for a
-        generated one. A copy of the VI from before is kept and named under backupPath.
-        The layout: columns follow data flow; the error chain runs as one straight rail along the
-        bottom of each diagram with everything else stacked above it; parallel structures stack
-        vertically; on the top level controls go to the first column and indicators to the last; a
-        constant hangs left of the terminal it feeds; a comment moves with the object it describes;
-        every While/For Loop, Case and Event Structure is sized to its contents (Frame Size), its
-        tunnels levelled with what they connect, and every wire cleaned up. After the save, each
-        constant fan (two or more constants into one node) gets staggered wire geometry of its own.
-        Measured on a DQMH Main.vi: NI's Clean Up spread its diagram to 3805 x 1692 px; the
-        original Delacor layout was 1344 x 805.
-        Structures of a kind not yet measured (sequences, timed loops, in-place, disable) move as a
-        whole with their insides untouched - the answer names them.
-        dryRun computes and reports the plan without touching the VI. render puts PNGs of the
-        result beside the answer. verify (default) dumps the diagram again afterwards and reports
-        how many objects landed where they were meant to.
-        Works on the pylabview backend over ActiveX with no project open; the VI is opened by path.
-        A DQMH Main.vi IS laid out when named here - only the automatic clean-up after generation
-        skips it.
+        Layout: rearranges a VI's whole block diagram and SAVES IT IN PLACE - our replacement for
+        LabVIEW's Clean Up Diagram, for an existing VI as much as a generated one; a backup is kept
+        under `backupPath`. Columns follow data flow, the error chain is one straight rail along the
+        bottom, parallel structures stack, controls go left and indicators right, comments move with
+        their anchor, loops and Case/Event structures are sized to their contents. Structure kinds
+        not yet handled (sequences, timed loops, in-place, disable) move whole and are named in the
+        answer. A DQMH Main.vi IS laid out when named here (only the automatic post-generation
+        clean-up skips it). Needs no project open; for many VIs use lvai_layout_diagrams.
         """)]
     public async Task<string> LayoutDiagramAsync(
         [Description("Absolute path of the VI to lay out. Saved in place")] string viPath,
@@ -61,7 +49,7 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         [Description("Render the laid-out diagram to PNG, into renderDirectory")] bool render = false,
         [Description("Where the PNGs go when render is true; a temp folder otherwise")] string? renderDirectory = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 240,
-        [Description("After the save, give each CONSTANT FAN - two or more constants wired into one node - staggered wire geometry of our own through the heap, where Clean Up Wire may cross them. Skipped on a VI that carries compiled code")] bool routeFans = true,
+        [Description("After the save, give each fan of two or more constants into one node staggered wires of our own. Skipped on a VI with compiled code")] bool routeFans = true,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_layout_diagram",
@@ -70,17 +58,11 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_layout_diagrams", Destructive = true, OpenWorld = true,
                    Title = "Lay out many VIs' block diagrams, in parallel workers")]
     [Description("""
-        MUTATING: lvai_layout_diagram over MANY VIs in one call - each saved in place, each with a
-        backup - with `parallel` workers in THIS server process. viPaths takes one absolute path per
-        line; a line naming a FOLDER takes every .vi under it, so a whole project is one call.
-        PARALLEL ONLY ON pylabview. There each worker has an ActiveX lane of its own and helper VIs
-        of its own, so the workers' LabVIEW operations run beside each other; measured over
-        ATM_DQMH_Cold's 76 VIs with four server processes: 46 s against 73 s, every VI where
-        planned and executable. On grpc the work runs one VI after the other (`parallel` is
-        reported as 1): NI's service is not measured running two helper VIs at once.
-        A worker never shares a VI with another, and the default ActiveX operations of every other
-        tool still run alone. Answers one compact row per VI and the totals; a VI that failed is
-        named with its errorKind, and the others go on.
+        Layout: lvai_layout_diagram over MANY VIs in one call, each saved in place with a backup.
+        viPaths: one absolute path per line; a FOLDER takes every .vi under it, so a whole project
+        is one call. `parallel` workers run side by side on pylabview only; on grpc the VIs run one
+        after another (`parallel` reported as 1). Answers one compact row per VI plus totals; a
+        failed VI is named with its errorKind and the others go on.
         """)]
     public async Task<string> LayoutDiagramsAsync(
         [Description("The VIs, one absolute path per line; a folder takes every .vi under it")] string viPaths,

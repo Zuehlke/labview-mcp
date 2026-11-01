@@ -660,6 +660,55 @@ public sealed class GraftToolsTests
         Assert.Equal(new[] { "Call Clear Errors.vi" }, GraftTools.LeftAfterClear(vi));
     }
 
+    // ------------------------------------------------------------------ bound references
+
+    [Fact]
+    public void A_reference_bound_to_a_swapped_control_is_refused_before_anything_is_grafted()
+    {
+        var scaffold = Fixture("scaffold.xml");
+        scaffold.Add(XElement.Parse(
+            """<Node _name="VI Server Reference" element="Start" outputs="Start:9991.Start" uid="9991" uid_parent="root"/>"""));
+
+        var refusal = GraftTools.BoundReferenceRefusal(Fixture("supplied panel.xml"), scaffold);
+
+        Assert.Equal("scaffoldBoundReferences", Kind(refusal));
+        Assert.Contains("'Start'", refusal!);
+        Assert.Contains("lvai_bind_control_references", refusal);
+        var bound = JsonNode.Parse(refusal!)!["detail"]!["boundReferences"]!.AsArray();
+        Assert.Equal("9991", bound.Single()!["uid"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void A_reference_nested_in_a_structure_is_found_too()
+    {
+        var scaffold = Fixture("scaffold.xml");
+        var structure = scaffold.Descendants("Structure").First();
+        structure.Add(XElement.Parse(
+            """<Node _name="VI Server Reference" element="Elapsed Time" outputs="Elapsed Time:9992.x" uid="9992" uid_parent="1"/>"""));
+
+        Assert.Equal("scaffoldBoundReferences",
+            Kind(GraftTools.BoundReferenceRefusal(Fixture("supplied panel.xml"), scaffold)));
+    }
+
+    [Fact]
+    public void The_measured_scaffold_and_a_reference_to_a_NEW_control_are_not_refused()
+    {
+        // control arm: the real scaffold carries no bound reference
+        Assert.Null(GraftTools.BoundReferenceRefusal(Fixture("supplied panel.xml"), Fixture("scaffold.xml")));
+
+        // a new control (allowNewControls) is pasted and kept, so its reference survives the graft
+        var scaffold = Fixture("scaffold.xml");
+        var start = scaffold.Descendants("Control").Single(e => (string?)e.Attribute("_name") == "Start");
+        var extra = new XElement(start);
+        extra.SetAttributeValue("_name", "Debug Mode");
+        extra.SetAttributeValue("uid", "9990");
+        start.AddAfterSelf(extra);
+        scaffold.Add(XElement.Parse(
+            """<Node _name="VI Server Reference" element="Debug Mode" outputs="Debug Mode:9991.x" uid="9991" uid_parent="root"/>"""));
+
+        Assert.Null(GraftTools.BoundReferenceRefusal(Fixture("supplied panel.xml"), scaffold));
+    }
+
     private static string? Kind(string? refusal) =>
         refusal is null ? null : JsonNode.Parse(refusal)?["errorKind"]?.GetValue<string>();
 }
