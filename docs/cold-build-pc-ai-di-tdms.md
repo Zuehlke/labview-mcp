@@ -64,5 +64,39 @@ logging agent was still building. The tests were the critical path.
 5. Open: the pylabview run route cannot set an array-of-clusters input over COM
    (`ComValues.cs`, #82); the logging agent ran those cases on grpc.
 
+## Second cold build, with the generate_test fix (2026-11-01, `C:\Temp\PC_AI_DI_TDMS_2`)
+
+Same contract, same agent prompts, a fresh folder, the agents forbidden to read the first build.
+Client restarted (server built with the fix); LabVIEW not restarted - only `LVMCP Validate`
+helpers were in memory (`lvai_vis_in_memory`), so no earlier VI could capture a bare-name Call.
+The Caraya agent was NOT told about the `error in` workaround.
+
+| | run 1 | run 2 |
+|---|---|---|
+| start to last test report | not timed | **16 min 50 s** |
+| signals agent | 2.6 min, 27 calls, 137 k | 2.8 min, 30 calls, 144 k |
+| logging agent | 5.2 min, 50 calls, 181 k | 5.4 min, 50 calls, 170 k |
+| main agent | 7.4 min, 39 calls, 177 k | 6.9 min, 34 calls, 180 k |
+| Caraya agent, three batches | 16.6 min, 80 calls, 297 k | **13.1 min, 65 calls, 257 k** |
+| assertions | 42/42 | 40/40 |
+| `error in` workaround in the cases | in every case | **none** - the generator wired the no-error constant |
+| test helper with `error in` against the house rule | `Delete Fixture File.vi` recommended | **none** - required, and the setup chain fed it |
+
+Contract `verify` 7/7. The logger's integration test asserts the same 6 derived events as run 1
+(AI 1 below, AI 0 above, DI 0 rising, AI 0 below, Started, Stopped) and the CSV matched line by line.
+The logging agent hit the TDMS channel trap again and solved it the other way: one `TDMS Write` of
+a 2D array, one row per channel. The main VI kept the 11-stage chain because the rendered diagram
+(1792 x 807) was within budget.
+
+Still open after run 2, reported by the agents:
+- `lvai_generate_test` answers `route.listedInProject: false` for tests with setup calls while its
+  own `projectEntry` step says `added: 1` and the file lists them; the flag is not reliable.
+- Regenerating over an EXISTING test VI skipped the `errorInNotRequired` repair, so that test VI's
+  own `error in` came out `recommended`.
+- Composer: `Read from Text File` with `convertEol="true"` is refused; `TDMS List Contents` with
+  `group name` wired is written broken (string into a 1D-array sink).
+- `lvai_generate_test` has no tolerance assertion; `[5,0,-5,0]` cannot be asserted against
+  `[5, 6.1e-16, -5, -1.2e-15]` - run 1 hand-built the test on grpc, run 2 chose exact cases.
+
 Tests: `RequiredErrorInTestTests` - fixture `Fixtures\pane\Simulate DI.xml` is the reader's export
 of the delivered `Simulate DI.vi`; `Sensor Event Demo.xml` (error in `recommended`) is the control.
