@@ -151,7 +151,7 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
                 // ---- 3. the element typedefs, in the IDE's application instance
                 if (req.Elements.Count > 0)
                 {
-                    var opened = await EnsureProjectActiveAsync(req.ProjectPath!, timeoutSeconds, ct);
+                    var opened = await EnsureProjectActiveAsync(connection, req.ProjectPath!, timeoutSeconds, ct);
                     steps.Add(opened.Step);
                     if (!opened.Active)
                         return Outcome(false, "openProject", steps, total, req,
@@ -358,10 +358,14 @@ internal sealed class TypedefCreateTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ steps
 
-    private async Task<(bool Active, JsonObject Step)> EnsureProjectActiveAsync(
-        string project, int timeoutSeconds, CancellationToken ct)
+    /// <summary>
+    /// Makes <paramref name="project"/> (a full path) the active project unless it already is,
+    /// through lvai_open_file with its read-back. Shared with lvai_graft_diagram.
+    /// </summary>
+    internal static async Task<(bool Active, JsonObject Step)> EnsureProjectActiveAsync(
+        LvaiConnection lvai, string project, int timeoutSeconds, CancellationToken ct)
     {
-        var actions = new ActionTools(connection);
+        var actions = new ActionTools(lvai);
         var (active, _, path) = await actions.ProjectIsActiveAsync(timeoutSeconds, ct: ct);
         if (active == true && path is not null &&
             string.Equals(Path.GetFullPath(path), project, StringComparison.OrdinalIgnoreCase))

@@ -465,8 +465,9 @@ The documentation is part of this file, not a later step:
    measurement.) **An edit is a regeneration. Start at step 2.**
 2. **`lvai_generate_vi` to a scratch path**, and look at it. AIXML has no coordinates, so LabVIEW
    decides the layout and looking is the only way to know what you got. ONE call: it validates,
-   converts and measures the connector pane, stops at the first failure and names it, and returns
-   each sub-answer whole under `steps`. **Do not drive `lvai_validate_aixml` and
+   converts and measures the connector pane, stops at the first failure and names it. A failed
+   step comes back whole under `steps`; on success the steps are slimmed and `execState`,
+   `executable` and `preCheck` are lifted to the top (`verbose: true` returns everything). **Do not drive `lvai_validate_aixml` and
    `lvai_convert_aixml_to_vi` by hand** — measured 2026-09-08, a run that built three small VIs
    spent 22 calls on those three tools where 6 would have done, and a round trip there costs
    **9.8 s of model time against under 2 s inside the tool**. Editing several VIs? `lvai_generate_vis`

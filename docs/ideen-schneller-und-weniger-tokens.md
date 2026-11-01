@@ -251,6 +251,21 @@ Vorab-Entscheidung.
   einzeln nachgebaut, und das ist teurer als gleich einzeln zu bauen. Entweder das Resume-Muster
   aus `ResumableCall` auch hier, oder eine Obergrenze der Batchgrösse nach geschätzter Dauer.
 
+## 6a. Stand 2026-11-01 (Branch `feat/build-contract`)
+
+| Punkt | Stand | Gemessen |
+|---|---|---|
+| 2a Bauvertrag | umgesetzt | `docs/build-contract.md` §7 |
+| 3a Tool-Beschreibungen | umgesetzt | Schema 454 k → 258 k Zeichen |
+| `CLAUDE.md` gekürzt | umgesetzt | 298 kB → 35 kB, also etwa 75 k → 9 k Tokens pro Request; Wortlaut in `docs/claude-md-archive.md` |
+| 4a kompakte Erfolgsantworten | umgesetzt | `lvai_generate_vis`-Antwort: 17 % der ausführlichen (1 174 statt 7 106 Zeichen); volle Antwort mit `verbose: true` |
+| 2g Graft | umgesetzt | öffnet das Projekt selbst (`projectPath`); lehnt gebundene `VI Server Reference`s vorab ab (`scaffoldBoundReferences`) |
+| 2f Fixtures | umgesetzt | `lvai_run_caraya_tests fixturesJson`: Reset vor dem Lauf; ATM-Suite 28/0 |
+
+Bei der Abnahme fiel auf, dass das `Accounts.txt` des ATM-Builds schon am 2026-10-31 um 11:50 auf
+350 statt 550 stand. Ein Reset aus der Liefer-Datei hätte die Withdraw-Tests also rot gemacht.
+Eine Fixture-Quelle gehört deshalb in den Testordner, nicht in die Daten der Anwendung.
+
 ## 7. Vorschlag für die Reihenfolge
 
 Sortiert nach Ertrag pro Aufwand, unter der Bedingung, dass die Qualität nicht sinkt:

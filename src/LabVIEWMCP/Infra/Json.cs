@@ -118,12 +118,7 @@ internal static class Json
     public static JsonNode? Slim(JsonNode? answer, bool keep)
     {
         if (keep || answer is not JsonObject o) return answer;
-
-        var failed = o["ok"]?.GetValue<bool>() is false
-                     || (o["errorCode"] is { } code && code.GetValue<int>() != 0)
-                     || o["errorKind"] is not null
-                     || o["failedAtStep"] is not null;
-        if (failed) return answer;
+        if (LooksFailed(o)) return answer;
 
         string[] worthKeeping =
         [
@@ -138,6 +133,44 @@ internal static class Json
                 slim[key] = value.DeepClone();
         slim["slimmed"] = true;
         return slim;
+    }
+
+    /// <summary>
+    /// The rule <see cref="Slim"/> uses for "this answer failed, keep it whole": `ok` false, a
+    /// non-zero `errorCode`, or any `errorKind` / `failedAtStep`. Shared so the compact batch answers
+    /// judge a step or a VI exactly as Slim does.
+    /// </summary>
+    public static bool LooksFailed(JsonObject o) =>
+        (o["ok"] is JsonValue ok && ok.TryGetValue<bool>(out var okValue) && !okValue)
+        || (o["errorCode"] is JsonValue code && NonZero(code))
+        || o["errorKind"] is not null
+        || o["failedAtStep"] is not null;
+
+    private static bool NonZero(JsonValue v) =>
+        v.TryGetValue<int>(out var i) ? i != 0
+        : v.TryGetValue<long>(out var l) ? l != 0
+        : v.TryGetValue<double>(out var d) && d != 0;
+
+    /// <summary>
+    /// Static fields repeated per item, said ONCE: every key of <paramref name="keys"/> that ALL
+    /// <paramref name="items"/> carry with the same value is removed from each and returned. A key
+    /// whose value differs anywhere stays on every item. Measured on lvai_generate_vis and
+    /// lvai_exec_state batches (docs/ideen-schneller-und-weniger-tokens.md §4): the same notes were
+    /// most of a 32-43 k character answer.
+    /// </summary>
+    public static JsonObject Hoist(IReadOnlyList<JsonObject> items, IEnumerable<string> keys)
+    {
+        var common = new JsonObject();
+        if (items.Count == 0) return common;
+        foreach (var key in keys)
+        {
+            if (!items[0].ContainsKey(key)) continue;
+            var first = items[0][key]?.ToJsonString();
+            if (!items.All(i => i.ContainsKey(key) && i[key]?.ToJsonString() == first)) continue;
+            common[key] = items[0][key]?.DeepClone();
+            foreach (var item in items) item.Remove(key);
+        }
+        return common;
     }
 
     /// <summary>

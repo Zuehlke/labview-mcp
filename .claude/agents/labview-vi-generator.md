@@ -449,9 +449,10 @@ That is expected, and it is the check that your `URL` is right.
 ### Phase 6 — Generate, then run
 
 **ONE CALL: `lvai_generate_vi`.** It runs `lvai_validate_aixml`, then `lvai_convert_aixml_to_vi`,
-then `lvai_connector_pane` on the result, stops at the first failure and names it, and returns each
-sub-answer whole under `steps` — so nothing is hidden and a failure reads exactly as it would from
-the three separate tools. **Do not call those three by hand.** Measured 2026-09-08 on a run that
+then `lvai_connector_pane` on the result, stops at the first failure and names it. A FAILED step
+comes back whole under `steps`, so a failure reads exactly as it would from the three separate
+tools; on success the steps are slimmed and `execState`, `executable` and `preCheck` are lifted to
+the top (`verbose: true` returns every step whole). **Do not call those three by hand.** Measured 2026-09-08 on a run that
 built three small VIs: `lvai_convert_aixml_to_vi` 11 times, `lvai_validate_aixml` 7 and
 `lvai_connector_pane` 4 — **22 calls where 6 would have done**, and in that run a round trip cost
 **9.8 s of model time against under 2 s inside the tool**, so the hand-driven route spent about

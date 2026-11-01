@@ -79,7 +79,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         `dispatchUnknown` lists members it could not classify; null plus
         `missingInterfaceOverridesReason` when not applicable.
         SEVERAL VIs: viPaths, one per line - answers `brokenVis`, `executableVis`,
-        `couldNotOpenVis`, `failed` and each VI's answer under `results`.
+        `couldNotOpenVis`, `failed` and each VI's answer under `results` - an executable VI's reduced
+        to its path and state, with the notes they share said once under `common`.
         """)]
     public async Task<string> ExecStateAsync(
         [Description("Absolute path to the .vi to interrogate. Optional when viPaths is given.")]
@@ -98,7 +99,9 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         string? backend = null,
         [Description("Absolute .vi paths, ONE PER LINE, for several VIs in one answer. May be combined with viPath.")]
         string? viPaths = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        [Description("Return every VI's full answer even when it is executable (several VIs only)")]
+        bool verbose = false)
     {
         var paths = BatchAnswer.Paths(viPath, viPaths);
         if (paths.Count == 0)
@@ -124,9 +127,89 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             }
             items.Add((p, answer));
         }
-        return Json.Document(Summarise(BatchAnswer.Aggregate(items,
-            n => n["ok"]?.GetValue<bool>() == true && n["couldNotOpen"]?.GetValue<bool>() != true)));
+        var batch = Summarise(BatchAnswer.Aggregate(items,
+            n => n["ok"]?.GetValue<bool>() == true && n["couldNotOpen"]?.GetValue<bool>() != true));
+        return Json.Document(verbose ? batch : Compact(batch));
     }
+
+    /// <summary>The per-VI fields that are the same text for every executable VI of a batch.</summary>
+    private static readonly string[] SharedKeys =
+        ["note", "meaning", "backend", "backendSource", "via", "route", "helperViPath",
+         "missingInterfaceOverridesReason"];
+
+    /// <summary>
+    /// A batch answer as the MCP client gets it by default. Measured in an application build
+    /// (docs/ideen-schneller-und-weniger-tokens.md §4): 5-10 k characters per call, almost all of it
+    /// the same notes repeated per EXECUTABLE VI. Such a VI is reduced to `viPath` and `execState`,
+    /// plus anything that is not the clean default - linker errors or Error List lines, a caveat
+    /// that they were not read, a non-zero `code` - and the shared notes go once under `common`.
+    /// A broken VI, one whose reference never opened and one the tool could not read keep their
+    /// whole answer. The verdict lists are untouched. Pure, so it is tested without LabVIEW.
+    /// </summary>
+    internal static JsonObject Compact(JsonObject batch)
+    {
+        if (batch["results"] is not JsonArray results) return batch;
+        var reduced = new List<JsonObject>();
+        for (var i = 0; i < results.Count; i++)
+        {
+            if (results[i] is not JsonObject r || !Executable(r)) continue;
+            var c = new JsonObject
+            {
+                ["viPath"] = r["viPath"]?.DeepClone(),
+                ["execState"] = r["execState"]?.DeepClone(),
+            };
+            if (r["linkerErrorsAvailable"] is JsonValue available
+                && available.TryGetValue<bool>(out var read) && !read)
+            {
+                c["linkerErrorsAvailable"] = false;
+                c["linkerErrorsUnavailableBecause"] = r["linkerErrorsUnavailableBecause"]?.DeepClone();
+            }
+            if (r["linkerErrors"] is JsonValue linker && linker.TryGetValue<string>(out var xml)
+                && !LinkerErrorsEmpty(xml))
+                c["linkerErrors"] = xml;
+            if (r["errors"] is JsonArray { Count: > 0 } errors) c["errors"] = errors.DeepClone();
+            if (r["code"] is JsonValue code && code.TryGetValue<int>(out var n) && n != 0)
+            {
+                c["code"] = n;
+                c["source"] = r["source"]?.DeepClone();
+            }
+            foreach (var key in SharedKeys)
+                if (r.ContainsKey(key)) c[key] = r[key]?.DeepClone();
+            results[i] = c;
+            reduced.Add(c);
+        }
+        if (reduced.Count == 0) return batch;
+
+        var common = Json.Hoist(reduced, SharedKeys);
+        // what is null on every executable VI (no helper path on grpc) says nothing
+        foreach (var key in common.Where(p => p.Value is null).Select(p => p.Key).ToList())
+            common.Remove(key);
+        foreach (var c in reduced)
+            foreach (var key in SharedKeys)
+                if (c.ContainsKey(key) && c[key] is null) c.Remove(key);
+        if (common.Count > 0) batch["common"] = common;
+        batch["slimmed"] = reduced.Count;
+        batch["note"] = "One answer for several VIs, read one after another. `allExecutable` is the " +
+                        "verdict; `brokenVis` names the VIs LabVIEW cannot run, `failed` the ones this " +
+                        "tool could not read at all. A broken VI's full answer is under `results`; an " +
+                        "executable one's is reduced, `common` holding what they all said - verbose: " +
+                        "true returns every full answer.";
+        return batch;
+    }
+
+    /// <summary>Read, opened and not broken: the one case whose answer is reduced.</summary>
+    private static bool Executable(JsonObject r) =>
+        r["ok"] is JsonValue ok && ok.TryGetValue<bool>(out var isOk) && isOk
+        && !(r["couldNotOpen"] is JsonValue cno && cno.TryGetValue<bool>(out var notOpened) && notOpened)
+        && r["broken"] is JsonValue broken && broken.TryGetValue<bool>(out var isBroken) && !isBroken;
+
+    /// <summary>
+    /// Whether flattened linker-error XML names nothing: blank, or no `&lt;Val&gt;` with content -
+    /// "an empty `&lt;Val&gt;` means none", as the tool's description says.
+    /// </summary>
+    internal static bool LinkerErrorsEmpty(string? xml) =>
+        string.IsNullOrWhiteSpace(xml)
+        || !System.Text.RegularExpressions.Regex.IsMatch(xml, @"<Val>\s*[^<\s]");
 
     /// <summary>
     /// The per-VI answer a batch loop calls in place of the live one - set by a test only, which

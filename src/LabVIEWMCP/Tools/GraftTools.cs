@@ -58,7 +58,11 @@ internal sealed class GraftTools(LvaiConnection connection)
         `ok` is decided from the file: execState 1, no duplicate control left, every terminal
         feeding the same sinks as in the scaffold, typedefs kept, panel render identical. A failed
         step puts the plain supplied copy back.
-        NEEDS AN ACTIVE PROJECT (Error 1055 otherwise). USES THE SYSTEM CLIPBOARD: run it from the
+        Also refused: a scaffold `VI Server Reference` bound to a supplied control
+        (`scaffoldBoundReferences`) - the swap deletes it; author a ref{LV.<Class>} stand-in and
+        call lvai_bind_control_references after the graft.
+        NEEDS AN ACTIVE PROJECT: pass projectPath and the tool opens it when it is not active
+        (`noActiveProject` otherwise). USES THE SYSTEM CLIPBOARD: run it from the
         orchestrator, one graft at a time. To graft IN PLACE, copy the supplied VI aside, pass the
         copy as panelViPath and the original as outputViPath with overwrite; do not open the
         supplied VI first. `switchActions` true means the saved control is NOT latched.
@@ -82,6 +86,8 @@ internal sealed class GraftTools(LvaiConnection connection)
         bool replaceDiagram = false,
         [Description("Boolean controls to set to Switch When Pressed, ONE LABEL PER LINE - latched buttons a test must signal (Error 1193 otherwise)")]
         string? switchActionControls = null,
+        [Description("Absolute path of the .lvproj to make active before the graft when it is not; empty requires an active project")]
+        string? projectPath = null,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
@@ -97,6 +103,31 @@ internal sealed class GraftTools(LvaiConnection connection)
             var scaffold = Path.GetFullPath(scaffoldViPath);
             var output = Path.GetFullPath(outputViPath);
             if (PathRefusal(panel, scaffold, output, overwrite) is { } refused) return refused;
+            string? project = null;
+            if (!string.IsNullOrWhiteSpace(projectPath))
+            {
+                project = Path.GetFullPath(projectPath);
+                // A missing .lvproj answers 1025 from LabVIEW, naming nothing - refuse it here.
+                if (!project.EndsWith(".lvproj", StringComparison.OrdinalIgnoreCase) || !File.Exists(project))
+                    return Json.Error("fileNotFound", $"No .lvproj at '{project}' (projectPath).",
+                                      new { projectPath = project });
+            }
+
+            // ---- 0b. the project. The helpers reach the IDE through the ACTIVE project; opening it
+            // here, before anything is exported, is the order the agents used by hand after a
+            // noActiveProject answer - one call where that took three.
+            JsonObject? projectStep = null;
+            if (project is not null)
+            {
+                var (active, step) = await TypedefCreateTools.EnsureProjectActiveAsync(
+                    connection, project, timeoutSeconds, ct);
+                projectStep = step;
+                if (!active)
+                    return Json.Error("projectDidNotBecomeActive",
+                        "projectPath was opened but did not become the active project, so nothing was " +
+                        "grafted - read openProject. The supplied VI is untouched.",
+                        new { projectPath = project, openProject = step });
+            }
 
             // ---- 1. the copy, and what it and the scaffold carry
             // The checks read the COPY, never the supplied original: an export loads the VI, and the
@@ -113,6 +144,13 @@ internal sealed class GraftTools(LvaiConnection connection)
                 return Json.Error("exportFailed",
                     $"'{Path.GetFileName(panelExport is null ? output : scaffold)}' could not be exported.");
             var switches = Lines(switchActionControls);
+
+            // ---- 1a. what the swap would silently delete, decided before the copy is touched
+            if (BoundReferenceRefusal(panelExport, scaffoldExport) is { } bound)
+            {
+                if (!outputExisted) File.Delete(output);
+                return bound;
+            }
 
             // ---- 1b. replaceDiagram: empty the COPY's diagram, then plan against what is left.
             JsonObject? replaced = null;
@@ -318,6 +356,7 @@ internal sealed class GraftTools(LvaiConnection connection)
                 ["diagramChanged"] = diagramChanged,
                 ["events"] = events,
                 ["diagramReplaced"] = replaced,
+                ["openProject"] = projectStep,
                 // label -> true when the saved file no longer carries style="latched" for it
                 ["switchActions"] = switchVerdict is null || switches.Count == 0 ? null
                     : new JsonObject(switchVerdict.Select(kv =>
@@ -439,6 +478,42 @@ internal sealed class GraftTools(LvaiConnection connection)
         var used = s.Select(t => t.Label).ToHashSet();
         return new(null, s.Select(t => t.Label).Where(byLabel.ContainsKey).ToArray(),
                    p.Select(t => t.Label).Where(l => !used.Contains(l)).ToArray(), missing);
+    }
+
+    /// <summary>
+    /// Refuses a scaffold whose `VI Server Reference` nodes are bound to a control the graft SWAPS,
+    /// or null. Such a node is bound to the scaffold's control; pasted, it is bound to the duplicate,
+    /// and deleting the duplicate deletes the reference with it - in silence, measured on the ATM
+    /// build of 2026-10-31. Re-binding needs scripting nobody has measured, so the documented route
+    /// is named instead: a refnum stand-in, then lvai_bind_control_references.
+    /// A reference to a NEW control (allowNewControls) is not refused: that control is not deleted.
+    /// </summary>
+    internal static string? BoundReferenceRefusal(XElement panel, XElement scaffold)
+    {
+        var swapped = Terminals(scaffold).Select(t => t.Label)
+            .Intersect(Terminals(panel).Select(t => t.Label), StringComparer.Ordinal)
+            .ToHashSet(StringComparer.Ordinal);
+        var bound = scaffold.Descendants()
+            .Where(e => (string?)e.Attribute("_name") == "VI Server Reference"
+                        && (string?)e.Attribute("element") is { } label && swapped.Contains(label))
+            .Select(e => new
+            {
+                element = (string)e.Attribute("element")!,
+                uid = (string?)e.Attribute("uid"),
+                outputs = (string?)e.Attribute("outputs"),
+            })
+            .ToArray();
+        if (bound.Length == 0) return null;
+        var labels = bound.Select(b => b.element).Distinct(StringComparer.Ordinal).ToArray();
+        return Json.Error("scaffoldBoundReferences",
+            $"The scaffold has {bound.Length} VI Server Reference node(s) bound to supplied control(s) " +
+            $"({string.Join(", ", labels.Select(l => $"'{l}'"))}). The graft swaps each such control's " +
+            "duplicate for the supplied one and that deletes the reference with it, so nothing was " +
+            "grafted. Author a refnum STAND-IN control in its place (e.g. 'Start Ref' of type " +
+            "ref{LV.Boolean}, the class of the control), wire it where the reference was, graft with " +
+            "allowNewControls true, then call lvai_bind_control_references with " +
+            "{\"<stand-in>\":\"<control>\"} (docs/keep-supplied-front-panel.md 6g).",
+            new { boundReferences = bound });
     }
 
     /// <summary>
@@ -748,8 +823,9 @@ internal sealed class GraftTools(LvaiConnection connection)
         else if (code == 1055 && !projectProvedActive)
         {
             kind = "noActiveProject";
-            message = "No project is active in the IDE. Open one with lvai_open_file first - the graft " +
-                      "edits the VI in the IDE's own application instance, reached through the active project.";
+            message = "No project is active in the IDE. Pass projectPath (the tool then opens it) or open " +
+                      "one with lvai_open_file - the graft edits the VI in the IDE's own application " +
+                      "instance, reached through the active project.";
         }
         else if (code == 1055)
         {

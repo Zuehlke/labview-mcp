@@ -65,9 +65,10 @@ internal sealed class BulkTools(LvaiConnection connection)
         SubVI` is converted anyway and gated on executability (`loadedSubVIs`); not loaded, the
         convert answers Error 53 naming the targets. A .ctl is not a Call target; a constant
         feeding a typedef input still needs lvai_bind_typedef_constants.
-        docs/aixml-call-loaded-vi.md.
+        docs/aixml-call-loaded-vi.md. On success each step is slimmed to its verdict (`execState`,
+        `preCheck` and `repairs` lifted to the top); a failed step keeps its whole answer.
         """)]
-    public async Task<string> GenerateViAsync(
+    public async Task<string> GenerateViToolAsync(
         [Description(@"Absolute path to the source AIXML .xml file")] string aiXmlFilePath,
         [Description(@"Absolute path of the .vi to create - WILL BE OVERWRITTEN")] string viPath,
         [Description("Open the created VI in the LabVIEW editor")] bool openVI = false,
@@ -110,7 +111,25 @@ internal sealed class BulkTools(LvaiConnection connection)
              Drawn on every deliverable (whenever the diagram is measured); helpers and carriers get
             none.
             """)]
-        string? icon = null)
+        string? icon = null,
+        [Description("Return every step's full answer even on success")] bool verbose = false)
+    {
+        var answer = await GenerateViAsync(aiXmlFilePath, viPath, openVI, measurePane, panePattern,
+                                           timeoutSeconds, ct, measureDiagram, backend, cleanUpDiagram,
+                                           cleanUpPanel, icon);
+        return verbose ? answer : CompactGenerateAnswer(answer);
+    }
+
+    /// <summary>
+    /// lvai_generate_vi with every step's whole answer - what the server's own route tools call
+    /// (twenty-odd of them parse `steps`), so the compaction of <see cref="GenerateViToolAsync"/>
+    /// happens only at the MCP boundary.
+    /// </summary>
+    public async Task<string> GenerateViAsync(
+        string aiXmlFilePath, string viPath, bool openVI = false, bool measurePane = true,
+        int? panePattern = null, int timeoutSeconds = 300, CancellationToken ct = default,
+        bool measureDiagram = true, string? backend = null, bool? cleanUpDiagram = null,
+        bool? cleanUpPanel = null, string? icon = null)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_generate_vi", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
@@ -914,6 +933,136 @@ internal sealed class BulkTools(LvaiConnection connection)
         return result.ToJsonString(Indented);
     }
 
+    // ---------------------------------------------------------------- compact answers
+
+    /// <summary>
+    /// lvai_generate_vi's answer as the MCP client gets it by default: unchanged when the call did
+    /// not succeed, else every step that did not fail slimmed to its verdict and the fields a
+    /// reader acts on lifted to the top. Measured in an application build
+    /// (docs/ideen-schneller-und-weniger-tokens.md §4): a batch of these answered 32-43 k
+    /// characters, almost all of it the steps' sub-answers of VIs that had SUCCEEDED.
+    /// </summary>
+    internal static string CompactGenerateAnswer(string answer) =>
+        Parse(answer) is JsonObject o ? Json.Document(CompactGenerate(o, keepSteps: true)) : answer;
+
+    /// <summary>
+    /// The compaction itself. <paramref name="keepSteps"/> false drops the successful steps
+    /// entirely (lvai_generate_vis) and keeps only the failed ones, under `failedSteps`.
+    /// </summary>
+    internal static JsonObject CompactGenerate(JsonObject full, bool keepSteps)
+    {
+        if (!IsTrue(full["ok"]) || full["steps"] is not JsonArray steps) return full;
+
+        var compact = new JsonObject();
+        foreach (var (key, value) in full)
+            if (key != "steps") compact[key] = value?.DeepClone();
+
+        JsonObject? Named(string name) =>
+            steps.OfType<JsonObject>().LastOrDefault(s => StepName(s) == name);
+
+        // what stands for executability: the execState step (both routes read it) and, on
+        // pylabview, the convert answer's own `executable`
+        var execStep = Named("execState");
+        var convertAnswer = Named("convert")?["answer"] as JsonObject;
+        if (execStep is not null)
+        {
+            compact["execState"] = execStep["execState"]?.DeepClone();
+            if (execStep["measured"] is JsonValue m && m.TryGetValue<bool>(out var measured) && !measured)
+                compact["execStateMeasured"] = false;
+        }
+        if (convertAnswer?["executable"] is JsonValue executable)
+            compact["executable"] = executable.DeepClone();
+        else if (execStep?["execState"] is JsonValue stateNode && stateNode.TryGetValue<int>(out var state)
+                 && IsTrue(execStep["measured"]))
+            compact["executable"] = state > 0;
+
+        // the warnings: the pre-check findings on the validate (else convert) answer, the repairs
+        // made into the copy, and the pane's warnings when there are any
+        var preCheck = (Named("validate")?["answer"] as JsonObject)?["preCheck"] ?? convertAnswer?["preCheck"];
+        if (preCheck is not null) compact["preCheck"] = preCheck.DeepClone();
+        if ((Named("repair")?["answer"] as JsonObject)?["repairs"] is { } repairs)
+            compact["repairs"] = repairs.DeepClone();
+        if (full["paneWarnings"] is JsonValue pw && pw.TryGetValue<int>(out var paneWarnings)
+            && paneWarnings > 0 && Named("connectorPane")?["answer"] is { } paneText)
+            compact["paneWarningsDetail"] = paneText.DeepClone();
+
+        var reduced = new JsonArray();
+        var failedSteps = new JsonArray();
+        foreach (var step in steps.OfType<JsonObject>())
+        {
+            if (StepFailed(step))
+            {
+                reduced.Add(step.DeepClone());
+                failedSteps.Add(step.DeepClone());
+                continue;
+            }
+            if (!keepSteps) continue;
+            var slim = new JsonObject { ["step"] = StepName(step) };
+            if (step["skipped"] is { } skipped) slim["skipped"] = skipped.DeepClone();
+            if (step.ContainsKey("errorCode")) slim["errorCode"] = step["errorCode"]?.DeepClone();
+            if (step["answer"] is JsonObject inner)
+                slim["answer"] = Json.Slim(inner, keep: false)?.DeepClone();
+            else
+                slim["slimmed"] = true;
+            reduced.Add(slim);
+        }
+        if (keepSteps) compact["steps"] = reduced;
+        else if (failedSteps.Count > 0) compact["failedSteps"] = failedSteps;
+        return compact;
+    }
+
+    /// <summary>
+    /// A step that must keep its whole answer: Slim's failure rule on the step or on its answer, a
+    /// stripCompiled/clean-up/icon step answering ok false, or a diagram over budget - whose chain
+    /// names what to fold into a subVI.
+    /// </summary>
+    internal static bool StepFailed(JsonObject step) =>
+        Json.LooksFailed(step)
+        || (step["answer"] is JsonObject answer && Json.LooksFailed(answer))
+        || (step["withinBudget"] is JsonValue within && within.TryGetValue<bool>(out var w) && !w);
+
+    private static string? StepName(JsonObject step) =>
+        step["step"] is JsonValue v && v.TryGetValue<string>(out var name) ? name : null;
+
+    private static bool IsTrue(JsonNode? node) =>
+        node is JsonValue v && v.TryGetValue<bool>(out var b) && b;
+
+    /// <summary>What a generated entry of lvai_generate_vis does not need to repeat.</summary>
+    private static readonly string[] EntryRedundant =
+        ["viPath", "viExistsNow", "viBytes", "failedAtStep", "backend", "backendSource", "totalElapsedMs"];
+
+    /// <summary>
+    /// lvai_generate_vis's answer as the MCP client gets it by default: each entry whose answer is
+    /// ok reduced to its decision fields (<see cref="CompactGenerate"/> without steps), the entry's
+    /// own path and backend fields dropped (the entry and the batch carry them), and a `note` every
+    /// generated entry shares said once under `common`. Failed entries are untouched.
+    /// </summary>
+    internal static string CompactGenerateVisAnswer(string answer)
+    {
+        if (Parse(answer) is not JsonObject batch || batch["results"] is not JsonArray results)
+            return answer;
+
+        var compacted = new List<JsonObject>();
+        foreach (var entry in results.OfType<JsonObject>())
+        {
+            if (entry["answer"] is not JsonObject inner || !IsTrue(inner["ok"])) continue;
+            var c = CompactGenerate(inner, keepSteps: false);
+            if (ReferenceEquals(c, inner)) continue;   // no steps to reduce: left as it is
+            foreach (var key in EntryRedundant) c.Remove(key);
+            foreach (var key in c.Where(p => p.Value is null).Select(p => p.Key).ToList()) c.Remove(key);
+            entry["answer"] = c;
+            compacted.Add(c);
+        }
+        if (compacted.Count == 0) return answer;
+
+        var common = Json.Hoist(compacted, ["note"]);
+        if (common.Count > 0) batch["common"] = common;
+        batch["slimmed"] = compacted.Count;
+        batch["slimmedNote"] = "Entries that generated carry only their decision fields; `common` " +
+                               "holds what they all said. verbose: true returns each whole answer.";
+        return Json.Document(batch);
+    }
+
     // ---------------------------------------------------------------- pylv_apply
 
     // ---------------------------------------------------------------- generate, plural
@@ -931,9 +1080,10 @@ internal sealed class BulkTools(LvaiConnection connection)
         `panePattern` is optional and per VI. Runs sequentially (LabVIEW serialises the work).
         It does NOT stop at the first failure: each entry has its own answer, and `ok` is true only
         when every entry generated. The AIXML is deleted on success and kept on failure, unless
-        keepAixml.
+        keepAixml. An entry that generated keeps only its decision fields (execState, diagramSize,
+        pane, warnings) with notes shared by all said once under `common`; a failed one keeps all.
         """)]
-    public async Task<string> GenerateVisAsync(
+    public async Task<string> GenerateVisToolAsync(
         [Description("JSON array of {aixml, vi, panePattern?} objects, applied in order")]
         string pairsJson,
         [Description("Open each created VI in the LabVIEW editor")] bool openVI = false,
@@ -943,7 +1093,22 @@ internal sealed class BulkTools(LvaiConnection connection)
         bool keepAixml = false,
         [Description("Local budget in seconds, per VI")] int timeoutSeconds = 300,
         [Description(AixmlBackend.ParameterDescription)] string? backend = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        [Description("Return every step's full answer even on success")] bool verbose = false)
+    {
+        var answer = await GenerateVisAsync(pairsJson, openVI, measurePane, keepAixml, timeoutSeconds,
+                                            backend, ct);
+        return verbose ? answer : CompactGenerateVisAnswer(answer);
+    }
+
+    /// <summary>
+    /// lvai_generate_vis with every entry's whole answer - what lvai_generate_test and
+    /// lvai_generate_method_test call for their sockets; the compaction happens only at the MCP
+    /// boundary, in <see cref="GenerateVisToolAsync"/>.
+    /// </summary>
+    public async Task<string> GenerateVisAsync(
+        string pairsJson, bool openVI = false, bool measurePane = true, bool keepAixml = false,
+        int timeoutSeconds = 300, string? backend = null, CancellationToken ct = default)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_generate_vis", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
