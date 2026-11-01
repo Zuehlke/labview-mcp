@@ -612,7 +612,13 @@ node class, the registration refnum becomes a four-ended wire onto the dynamic t
 EventSpec has `dynIndex 1`, and the payload is field 4 of the data cluster. Measured: the skeleton
 runs `Ticks Received = 5`, LabVIEW's export of the finished VI (which names the payload) does too,
 and a variant that only the payload can stop stopped on it. A cluster payload is flattened into the
-data node (its elements are fields 4, 5, ...), measured on a two-element one reading both. Several
+data node (its elements are fields 4, 5, ...), measured on a two-element one reading both. **A
+payload field named like the event's own field (`Source`, `Type`, `Time`) is read from the PAYLOAD**
+(since 2026-11-01; the composer reports it). Until then the first match won, `fields="Source"` read the
+event's Source, and the producer/consumer CSV build had to repoint the node with
+`lvai_set_event_data_fields` - after which every regeneration needed that step again
+(`docs/cold-build-pc-userevent-csv.md`). The event's own field of that name is then not reachable by
+name; name the payload field differently if a handler needs both. Several
 user events may share one registration (each frame's `dynIndex` is its event's position there, as in
 MGI's shipped `Actor Core.vi`) - and the gRPC route finishes that now as well (2026-10-11): it refused
 more than one user-event frame until then. `scripts/aixml-skeletons/user-event-two-loops.md`,

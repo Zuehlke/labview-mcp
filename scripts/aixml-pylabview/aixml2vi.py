@@ -7958,6 +7958,13 @@ class Composer:
             if k not in labels:
                 raise Unsupported("Event Data Node %s: no field %r for %s" % (el.get("uid"), k, kind))
             idx = labels.index(k)
+            if kind == "User Event" and labels.count(k) > 1:
+                # a payload field named like the event's own (Source, Type, Time): the PAYLOAD,
+                # which is what a handler reads - first-match gave the event's Source, and the
+                # PC_UserEvent_CSV build needed lvai_set_event_data_fields to undo it (2026-11-01)
+                idx = len(labels) - 1 - labels[::-1].index(k)
+                self.report.append("Event Data Node %s: %r names an event field and a payload field - "
+                                   "the payload's (field %d) is read" % (el.get("uid"), k, idx))
             t = self._term_from(tpl, fs[idx], index=idx)
             node.find("termList").append(t)
             ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})

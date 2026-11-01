@@ -520,3 +520,9 @@ primResID	node	parmIndex	terminal
 8204	Set Variant Attribute	4	error in
 8204	Set Variant Attribute	out	error out
 8206	Delete Variant Attribute	out	error out
+8073	Set File Position	3	refnum out
+8073	Set File Position	4	error in
+8073	Set File Position	5	from (0:start)
+8073	Set File Position	6	offset (in bytes) (0)
+8073	Set File Position	7	refnum
+8073	Set File Position	out	error out
