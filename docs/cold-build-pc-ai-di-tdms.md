@@ -118,3 +118,45 @@ on a CRLF file: `a\r\nb` became `a\nb`; the same probe without the attribute kep
 
 Tests: `RequiredErrorInTestTests` - fixture `Fixtures\pane\Simulate DI.xml` is the reader's export
 of the delivered `Simulate DI.vi`; `Sensor Event Demo.xml` (error in `recommended`) is the control.
+
+## A similar application, cold: the tank monitor (2026-11-01, `C:\Temp\PC_Tank_Monitor`)
+
+Same request shape, different logic, so nothing could be copied: tank levels as a triangle wave
+(AI), one rotating open valve (DI), a TWO-limit alarm (`High`/`Low`/`Normal`, an event when the
+class changes) and valve `Opened`/`Closed`. New file names throughout - the earlier builds' VIs
+were still in memory, and a same-named VI would have captured a bare-name Call. Same agent setup
+and prompt shapes as the AI/DI runs, with the tool fixes of this file in place.
+
+| | AI/DI run 2 | tank monitor |
+|---|---|---|
+| start to last test report | 16 min 50 s | 21 min 16 s |
+| simulation agent | 2.8 min, 30 calls, 144 k | 3.0 min, 28 calls, 144 k |
+| storage agent | 5.4 min, 50 calls, 170 k | 6.8 min, 54 calls, 187 k |
+| main agent | 6.9 min, 34 calls, 180 k | 6.2 min, 33 calls, 167 k |
+| Caraya agent, three batches | 13.1 min, 65 calls, 257 k | 13.6 min, 63 calls, 311 k |
+| assertions | 40/40 | 35/35 |
+
+Contract `verify` 7/7. The integration test asserts the 14 events DERIVED from the contract before
+the run (it needed `Simulate Tank Levels.vi`'s exact values at p = 4, 16, 36 to place the limits),
+and the CSV matched line by line. The Caraya agent used `"tolerance"` unprompted for the triangle
+values that are not exact in IEEE754, and every simulation test generated `ok` on the first call.
+The main VI's lint said 13 stages; the rendered diagram was 1882 x 710, within budget, so no fold.
+
+What it found:
+- **`array{array{double}}` written by the composer as a BROKEN VI.** The storage agent's TDMS
+  read-back declared its 2D types as nested arrays. NI's converter refuses that document (Error 53,
+  naming nothing); the composer wrote it, eBad, with "source string, sink 1D array of string" on
+  `TDMS Read` - which the agent reported as a composer defect in `TDMS Read`. With `array.2{...}`
+  the same document is executable on both backends and reads the file back correctly (checked
+  against the agent's own `tank.tdms`). `scripts/aixml_lint.py` refused the nested form since
+  2026-09-09 (`array-nested`); `AixmlCheck` did not. FIXED: `arrayNested` is an ERROR there now, so
+  `lvai_generate_vi` stops before writing anything (`AixmlCheckNestedArrayTests`, fixture: the
+  reader's export of the broken VI).
+- Open: a comma inside an expected STRING-ARRAY element (`"[Source\2CEvent,...]"`) generated
+  without a warning and the assertion failed although the subject was right; the agent switched to
+  `|`. Not yet measured where the value is mis-split.
+- Open: the composer refuses `Index Array` on a 2D array with ONE index wired ("a SubArray input
+  is not composable yet").
+- Open, known: the pylabview run route cannot set an array-of-clusters input over COM.
+- Open: the generator has no tolerance for 2D float arrays, so the integration test asserted the
+  valve data and the channel names but not the levels.
