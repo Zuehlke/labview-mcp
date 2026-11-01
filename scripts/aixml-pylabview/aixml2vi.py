@@ -2539,6 +2539,14 @@ class Composer:
                 q[1] += shift
                 q[3] += shift
             p.find("bounds").text = fb(tuple(q))
+        # AN ARRAY'S ELEMENT moves with its frame. It is the array's own <ddo>, not a part, and it
+        # stayed at the donor's offset while the frame moved right of the wider label: LabVIEW drew
+        # the element left of the frame as a row of greyed elements and the frame empty (the pump
+        # station's `No Previous Pressures`, 2026-11-01). NI's converter puts it 35 px into the
+        # frame's first part, every array constant of its build of the same probe.
+        inner = ddo.find("ddo") if ddo.get("class") == "indArr" else None
+        if inner is not None and shift > 0:
+            move_obj(inner, 0, shift)
         ob = ddo.find("bounds")
         if ob is not None:
             o = lvheap.parse_bounds(ob.text)
@@ -10058,10 +10066,17 @@ class Composer:
             parent = {c: p for p in heap.iter() for c in p}
             self._set_cluster_frames(heap, parent)
             for arr in [e for e in heap.iter() if e.get(ANCHOR_K) is not None]:
-                k = [int(x) for x in arr.attrib.pop(ANCHOR_K).split(",")]
+                arr.attrib.pop(ANCHOR_K)
                 if heap is self.fp:
                     continue
-                t, l = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+                t, l, b, r = lvheap.parse_bounds(arr.findtext("bounds"))
+                # k IS THE CENTRE OF THE ARRAY'S FINAL BOUNDS, (w div 2, h div 2). Read off NI's
+                # build of one probe with seven array constants, 2026-11-01: top level (83, 11) for
+                # 166 x 23, (83, 10) for 166 x 20, (56, 23) for 112 x 46, (64, 23) for 129 x 46; in
+                # a cluster (25, 11), (27, 10), (29, 23) - and the older measured (25, 11) of a
+                # 51 x 23 field is the same rule. The donor's offset (or index + 23, 11) left the
+                # pump station's constants drawn with rows of greyed elements beside them.
+                k = ((r - l) // 2, (b - t) // 2)
                 frame, e = None, arr
                 while e in parent:
                     e = parent[e]

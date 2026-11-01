@@ -231,3 +231,34 @@ Reported by the agents, and what each was (all FIXED 2026-11-01, `docs` + tests 
 
 Not yet tried live (the gate stopped the server): the new layout choice, `wireEndWithoutUid`, the
 stray names and the composer's report line.
+
+## Array constants drawn as rows of greyed elements (reported by the user, 2026-11-01)
+
+The pump station's `Pump Station.vi` showed every array constant - `No Previous Pressures`,
+`No Previous Running`, `No Events`, `Started/Stopped Event`, the arrays in `Message Template` and
+`Message Type` - as a row of greyed elements beside an EMPTY frame. Reproduced with a seven-constant
+probe, composed and built by NI's converter, both read back with pylabview:
+
+- **The element sat outside its frame.** An array's element is its own `<ddo>`, not a part.
+  `_fit_inline` moves every PART right of the wider label and left the element at the donor's offset
+  (x 100 against NI's 150). NI puts it 35 px into the frame's first part, all seven constants. Now
+  it moves with the parts.
+- **The anchor was the donor's.** nRC/oRC = -(place + k), and k on NI's build is the CENTRE of the
+  array's final bounds, (w div 2, h div 2): (83, 11) for 166 x 23, (83, 10) for 166 x 20, (56, 23)
+  for 112 x 46, (64, 23) for 129 x 46, and in a cluster (25, 11), (27, 10), (29, 23). The composer
+  used the donor's offset (or index + 23, 11 for a field), wrong for every array but the 51 x 23
+  field it was measured on. Now k is computed from the final bounds in `set_array_anchors`.
+
+Both fixes render the probe exactly as NI's build, at the top level, in loops and in a cluster
+(`PylabviewArrayConstantTests`). `Pump Station.vi` was regenerated from its AIXML and its
+application suite stayed 6/6.
+
+**Found while regenerating the test VIs: a Call linked to a STALE TEMP COPY.** `lvai_generate_vi` of a
+test VI from its AIXML in `%TEMP%\LabVIEWMCP` linked `Detect Pump Changes.vi` to
+`%TEMP%\LabVIEWMCP\layout\<id>\Detect Pump Changes.vi` - the layout step's backup of the subVI,
+taken before its icon was drawn, so the call showed a blank icon. The AIXML's folder was a search
+folder, searched three levels deep. Fixed twice: the composer never walks into our scratch trees
+(`layout`, `compose-validate`, helpers ...), and `SearchFolders` drops our scratch tree and adds the
+folder of the `.lvproj` above the target VI instead - which also closes item 4 above (a test VI in
+`Tests\` finding `SubVIs\...` through `lvai_generate_vi`) (`ComposerSearchFolderTests`).
+`lvai_generate_test` was not affected: it passes the subject's folder, where a direct hit wins.

@@ -925,8 +925,49 @@ internal sealed class AixmlTools(LvaiConnection connection)
     /// The folder the AIXML sits in, searched for Call targets after the VI's own folder - the
     /// composer resolves a sibling by file, where NI's converter resolves one by being loaded.
     /// </summary>
-    private static string[] SearchFolders(string aixmlPath) =>
-        Path.GetDirectoryName(Path.GetFullPath(aixmlPath)) is { Length: > 0 } folder ? [folder] : [];
+    internal static string[] SearchFolders(string aixmlPath, string? viPath = null)
+    {
+        var folders = new List<string>();
+        // NOT OUR OWN SCRATCH TREE: the generators keep their AIXML in %TEMP%\LabVIEWMCP, and the
+        // composer searches a folder three levels deep - into the layout step's backups, copies of
+        // the user's VIs. A test VI regenerated from such an AIXML linked its subject to
+        // layout\<id>\Detect Pump Changes.vi (2026-11-01). That folder is scratch, never a project.
+        if (Path.GetDirectoryName(Path.GetFullPath(aixmlPath)) is { Length: > 0 } folder &&
+            !IsOurScratch(folder))
+            folders.Add(folder);
+        // THE PROJECT THE VI BELONGS TO: the folder of the nearest .lvproj up to three levels
+        // above the target. A test VI in Tests\Acquisition calls SubVIs\Acquisition\X.vi, which
+        // neither its own folder nor the AIXML's reaches - the gap the first PC AI DI TDMS build
+        // hit with lvai_generate_vi (docs/cold-build-pc-ai-di-tdms.md, item 4).
+        if (viPath is not null && NearestProjectFolder(viPath) is { } project &&
+            !folders.Contains(project, StringComparer.OrdinalIgnoreCase))
+            folders.Add(project);
+        return [.. folders];
+    }
+
+    internal static bool IsOurScratch(string folder)
+    {
+        var scratch = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "LabVIEWMCP"));
+        var full = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar);
+        return full.Equals(scratch, StringComparison.OrdinalIgnoreCase) ||
+               full.StartsWith(scratch + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static string? NearestProjectFolder(string viPath)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(Path.GetFullPath(viPath));
+            for (var level = 0; level <= 3 && dir is { Length: > 0 }; level++)
+            {
+                if (IsOurScratch(dir)) return null;
+                if (Directory.EnumerateFiles(dir, "*.lvproj").Any()) return dir;
+                dir = Path.GetDirectoryName(dir);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        return null;
+    }
 
     private static async Task<string> ValidateWithComposerAsync(
         string aixmlPath, int timeoutSeconds, AixmlBackend.Choice choice, CancellationToken ct)
@@ -970,7 +1011,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
         var existedBefore = File.Exists(viPath);
         var symbolic = SymbolicUids.Prepare(aixmlPath);
         var result = await AixmlComposer.ComposeAsync(setup, symbolic.PathForLabview, viPath,
-                                                      SearchFolders(aixmlPath), timeoutSeconds, ct);
+                                                      SearchFolders(aixmlPath, viPath), timeoutSeconds, ct);
 
         // EXECUTABILITY NEEDS LabVIEW, and today the only road to it is NI's service. So it is
         // attempted, and when it cannot be read the answer says why instead of guessing: the
