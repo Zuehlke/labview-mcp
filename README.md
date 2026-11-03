@@ -1,5 +1,21 @@
 # LabVIEW MCP (for all LV versions)
 
+<p align="center">
+  <a href="https://github.com/Zuehlke/labview-mcp/releases/latest"><img src="https://img.shields.io/github/v/release/Zuehlke/labview-mcp?sort=semver&label=release" alt="Latest release"></a>
+  <a href="https://github.com/Zuehlke/labview-mcp/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Zuehlke/labview-mcp/release.yml?label=build" alt="Release build"></a>
+  <a href="https://github.com/Zuehlke/labview-mcp/actions/workflows/verify-release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Zuehlke/labview-mcp/verify-release.yml?label=verify%20release" alt="Verify release"></a>
+  <a href="https://github.com/Zuehlke/labview-mcp/releases"><img src="https://img.shields.io/github/downloads/Zuehlke/labview-mcp/total" alt="Downloads"></a>
+  <a href="docs/README.md"><img src="https://img.shields.io/badge/docs-read-blue" alt="Documentation"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Zuehlke/labview-mcp" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/LabVIEW-2020%2B-FFDB00" alt="LabVIEW 2020 or newer">
+  <img src="https://img.shields.io/badge/platform-Windows%20x64-0078D6" alt="Windows x64">
+  <a href="https://discord.gg/labview"><img src="https://img.shields.io/badge/Discord-%23zuehlke--labview--mcp-5865F2?logo=discord&logoColor=white" alt="Discord: #zuehlke-labview-mcp on the LabVIEW server"></a>
+</p>
+
+<p align="center">
+  <img src="tools/labview-mcp-as-sketch.png" alt="Pencil sketch of a smiling AI assistant robot pointing at a LabVIEW run arrow" width="320">
+</p>
+
 **An AI assistant that can read, write and run the LabVIEW code on your machine.**
 
 [**Quickstart**](#quickstart) · [What you can ask for](#what-you-can-ask-for) · [Under the hood](#under-the-hood) · [Status](#status-research-grade-and-honest-about-it) · [Install another way](docs/guide/install.md) · [All the docs](docs/README.md)
