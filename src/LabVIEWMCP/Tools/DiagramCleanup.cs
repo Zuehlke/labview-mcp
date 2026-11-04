@@ -45,6 +45,20 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
     private static readonly Kind Panel = new("cleanUpPanel", PanelHelperFileName, "front panel",
         "LabVIEW's Clean Up Panel algorithm (Arrange FP) ran and the VI was saved in place");
 
+    /// <summary>LabVIEW's own Clean Up Diagram (<c>{LV.VI}</c> <c>BD.CleanUp</c>, then
+    /// <c>Save.Instrument</c>): the fallback <see cref="DiagramLayoutTools.LayoutCoreAsync"/> tries
+    /// on a diagram too dense for our engine (<see cref="Layout.DiagramLayout.TooDense"/>).</summary>
+    internal const string NiDiagramHelperFileName = "lvai_cleanup_diagram.xml";
+
+    private static readonly Kind NiDiagram = new("niCleanUpDiagram", NiDiagramHelperFileName, "block diagram",
+        "LabVIEW's Clean Up Diagram (BD.CleanUp) ran and the VI was saved in place");
+
+    /// <summary>LabVIEW's Clean Up Diagram on one VI, saved in place; compiled code a save brought
+    /// in is stripped again. Never throws for a LabVIEW refusal: read `ok`.</summary>
+    public Task<JsonObject> RunNiDiagramAsync(string viPath, string backend, int timeoutSeconds,
+                                              CancellationToken ct) =>
+        RunAsync(NiDiagram, viPath, backend, timeoutSeconds, ct);
+
     /// <summary>The `cleanUpDiagram` step for one VI: our layout, saved in place. Never throws
     /// for a LabVIEW refusal: the answer's `ok` says whether the diagram was laid out and saved.</summary>
     public async Task<JsonObject> RunAsync(string viPath, string backend, int timeoutSeconds,
@@ -62,8 +76,11 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
                                                                      timeoutSeconds, ct))) as JsonObject;
         foreach (var key in new[] { "before", "planned", "moves", "structuresSized", "tunnelsMoved",
                                     "structuresKeptAsTheyAre", "heldInMemory", "moveErrors", "sizeErrors",
-                                    "tunnelErrors", "compiledCodeStripped" })
+                                    "tunnelErrors", "compiledCodeStripped", "plannedCrossings", "tooDense",
+                                    "niCleanup" })
             if (answer?[key] is { } value) step[key] = value.DeepClone();
+        // a diagram too dense for our engine may have been saved with LabVIEW's layout instead
+        if (answer?["layoutEngine"]?.GetValue<string>() is { } engine) step["engine"] = engine;
 
         if (answer?["ok"]?.GetValue<bool>() != true)
         {
@@ -83,7 +100,9 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
             return Fail(step, "The diagram was laid out and saved, and LabVIEW's save wrote COMPILED CODE " +
                               "into a VI that had none; stripping it again failed. Read compiledCodeStripped.");
         step["ok"] = true;
-        step["note"] = "Our block diagram layout (lvai_layout_diagram) ran and the VI was saved in place" +
+        step["note"] = (step["engine"]?.GetValue<string>() == DiagramLayoutTools.LayoutEngineNi
+                           ? "Our plan was too dense; LabVIEW's Clean Up Diagram crossed fewer data wires and was kept, the VI saved in place"
+                           : "Our block diagram layout (lvai_layout_diagram) ran and the VI was saved in place") +
                        (compiledBefore ? " (it carried compiled code before, and still does)." : ", source only.");
         return step;
     }

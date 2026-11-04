@@ -1205,3 +1205,92 @@ Accepted over stdio on the pylabview backend:
 - Both are `execState 1`.
 
 A VI open in LabVIEW keeps the view it was loaded with until it is closed and opened again.
+
+### 6p. A dense flat diagram: MP3 Synthesize.vi, measured, 2026-11-04
+
+The user's review of `C:\Temp\MP3_ugly\MP3 Synthesize.vi` was that it looked exactly the way it
+must not look. The VI has 70 primitives and 79 wires on one level, no subVI of its own and no
+error chain, and is 2568 x 584 px. Laid out again on a copy, our engine gave the same picture,
+2458 x 553 px with wires knotted across the whole width. So the picture IS our layout, not
+something the user did by hand. Fixture: `mp3-synthesize-original.txt`, the dump of the VI as
+handed over. Test: `LayoutDenseTests`.
+
+**Where the crossings come from.** Planned, the diagram crosses 522 data wires. Without the
+wires of five numeric constants, each fanned out to 4 to 12 terminals across the whole diagram,
+it crosses 94. More than four in five crossings come from those five fans.
+
+**What did not help:** ordering each column's nodes by their neighbours, with alternating
+barycentre sweeps as in a Sugiyama layout. One to eight sweeps were planned and each plan was
+measured, and not one crossing came off. A crossing estimate made on straight wires between the
+column ranks went from 651 to 516. The real plan went from 478 to 517 instead, because
+`AlignToNeighbours`, the hanging constants and the corridors decide the geometry afterwards. The
+code was taken back.
+
+A constant fed to several nodes already sits one column before its EARLIEST consumer
+(`Layers`). That column is near the left edge whenever one of its consumers is.
+
+**What a layout that only moves objects cannot do** is shorten a wire from column 1 to column
+20. Two ways remain open, and neither is built:
+
+- a copy of the constant for each consumer column. That is a change to the code, not to the
+  layout, although it is equivalent for a scalar constant.
+- a dense flat VI that is built as subVIs in the first place. That is the rule the generator
+  already has (`diagramChain`, budget 10 stages).
+
+**Fallback to LabVIEW's Clean Up Diagram** (the user's request, the same day). The user found
+that NI's clean-up handles such a VI better than ours. The rule:
+
+1. `DiagramLayout.TooDense` marks our plan as too dense when it crosses at least one data wire
+   per top-level data wire, and at least 20 in all. Measured over the 25 layout fixtures:
+
+   | Fixture | Crossings planned | Data wires |
+   |---|---|---|
+   | MP3 Synthesize | 522 | 127 |
+   | ATM `Update Panel` | 48 | 25 |
+   | LayoutCheck `Main`, the highest of the rest | 13 | 17 |
+
+   Most of the other fixtures plan 0. The DQMH `Main.vi`s plan 0 to 2, so NI is never asked for
+   them.
+2. For such a VI, `lvai_layout_diagram` runs `scripts/lvai_cleanup_diagram.xml` first, on the
+   held VI: `BD.CleanUp`, then `Save.Instrument`. It dumps the result and counts it the same way,
+   with `DataCrossings` on the positions as they are.
+3. NI's layout is KEPT only when it crosses FEWER data wires than our plan (`KeepNi`). A tie, a
+   clean-up that did not run, or one that could not be read back keeps ours. Ours is then applied
+   over NI's: every move, size and tunnel position in the plan is absolute, and `verify` reports
+   anything that did not land.
+4. The answer says which layout was saved: `layoutEngine` (`lvai_layout_diagram` or
+   `LabVIEW Clean Up Diagram`), `plannedCrossings`, `dataWires`, `tooDense`, and `niCleanup`
+   (`crossings`, `size`, `kept`). A `dryRun` reports `tooDense` and runs nothing. The automatic
+   `cleanUpDiagram` step after generation goes through the same code and names the engine it
+   used.
+
+Not yet measured live: what NI's clean-up makes of MP3 Synthesize. The fallback was built after
+the build had stopped the server, and the decision is a measurement, so the first live run is
+what shows whether NI wins. The user's own observation is the reason the fallback exists.
+
+**Compacting NI's layout, measured live** (the user's request, 2026-11-04). The user found NI's
+clean-up of MP3 Granule Info tidier than ours, "but with a lot of room given away in X and Y".
+A compaction was tried that kept NI's arrangement and narrowed only the gaps no object spans, to
+`ColumnGap` plus a lane per wire crossing the gap. It was applied by hand through
+`lvbd_layout_apply` and measured with `scripts/lvbd_wire_metrics.py`, which reads bends, wire
+length and backward segments from the saved file. **The user rejected the compacted result as
+not nice to look at, and the code was removed: the fallback keeps NI's layout as NI leaves it.**
+
+| Granule Info | Width px | Bends | Wire length px | Backward |
+|---|---|---|---|---|
+| NI's Clean Up, unchanged | 2894 | 203 | 63 016 | 0 |
+| NI, wires re-routed by Clean Up Wire, nothing moved | 2894 | 248 | 73 375 | 0 |
+| NI compacted, 4 px lane per crossing wire | 2589 | 234 | 66 950 | 0 |
+| NI compacted, 2 px lane | 2346 | 254 | 58 003 | 1 |
+| NI compacted, wires NOT re-routed | 2346 | 254 | 47 564 | 12 |
+| Ours (the fallback answer of that day) | 2470 | 300 | 66 078 | 3 |
+
+What it shows:
+
+- **Re-routing costs the bends, not the compaction.** `CleanUpWire` over NI's own, unmoved layout
+  adds 45 bends and 16 % wire. `BD.CleanUp` routes better than `CleanUpWire` wire by wire.
+- **Not re-routing is worse.** Twelve wires then run backwards.
+- **Bends match the user's verdict.** NI's layout has the fewest, ours the most, and the user
+  preferred NI's. Crossings counted on straight runs had said the opposite (720 against 452).
+- **The y squeeze does nothing here** (605 -> 603 px). No stripe is empty across the whole width,
+  so height needs a per-object compaction, not bands.

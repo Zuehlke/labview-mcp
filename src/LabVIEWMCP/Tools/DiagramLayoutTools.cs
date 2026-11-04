@@ -40,7 +40,9 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         their anchor, loops and Case/Event structures are sized to their contents. Structure kinds
         not yet handled (sequences, timed loops, in-place, disable) move whole and are named in the
         answer. A DQMH Main.vi IS laid out when named here (only the automatic post-generation
-        clean-up skips it). Needs no project open; for many VIs use lvai_layout_diagrams.
+        clean-up skips it). A plan too dense for our engine (`tooDense`: a crossing or more per data
+        wire) is also tried with LabVIEW's Clean Up Diagram, and NI's is kept when it crosses fewer
+        (`layoutEngine`, `niCleanup`). Needs no project open; for many VIs use lvai_layout_diagrams.
         """)]
     public async Task<string> LayoutDiagramAsync(
         [Description("Absolute path of the VI to lay out. Saved in place")] string viPath,
@@ -207,11 +209,21 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
                 ["commentArrows"] = arrows.Note is null ? arrows.Arrows.Count : arrows.Note,
                 ["timingsMs"] = timings,
             };
+            // a diagram too dense for our engine is ALSO given to LabVIEW's Clean Up Diagram, and
+            // the layout that crosses fewer data wires is kept (docs/diagram-layout.md, 6p)
+            var dense = DiagramLayout.TooDense(model, plan, out var plannedCrossings, out var dataWires);
+            answer["layoutEngine"] = LayoutEngineOurs;
+            answer["plannedCrossings"] = plannedCrossings;
+            answer["dataWires"] = dataWires;
+            if (dense) answer["tooDense"] = true;
             if (dryRun)
             {
                 answer["ok"] = true;
                 answer["dryRun"] = true;
-                answer["note"] = "Nothing was changed. Run again without dryRun to apply the plan.";
+                answer["note"] = "Nothing was changed. Run again without dryRun to apply the plan." +
+                                 (dense ? " The plan crosses " + plannedCrossings + " data wires on " + dataWires +
+                                          ": a real run also tries LabVIEW's Clean Up Diagram and keeps the one " +
+                                          "that crosses fewer." : "");
                 return Json.Document(answer);
             }
 
@@ -222,6 +234,33 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
             File.Copy(vi, backup, overwrite: true);
             answer["backupPath"] = backup;
             var compiledBefore = BulkTools.ContainsCompiledCode(vi);
+
+            // ---- 3a. too dense for us: LabVIEW's own clean-up, measured with the same count. NI
+            // ahead -> keep it and stop here; otherwise our plan is applied over it - every move,
+            // size and tunnel in the plan is an absolute position, so where NI left things does
+            // not matter (verify says so if it did)
+            if (dense)
+            {
+                var kept = await TryNiCleanupAsync(vi, scripts, plannedCrossings, answer, timeoutSeconds, ct);
+                Lap("niCleanup");
+                if (kept)
+                {
+                    if (hold is not null) { await hold.DisposeAsync(); hold = null; }
+                    answer["windowView"] = await new DiagramCleanup(connection).FitViewAsync(vi, timeoutSeconds, ct);
+                    Lap("fitView");
+                    if (render)
+                    {
+                        var dir = renderDirectory ?? Path.Combine(work, "render");
+                        answer["render"] = JsonNode.Parse(await new RenderTools(connection).RenderDiagramsAsync(
+                            vi, dir, timeoutSeconds: timeoutSeconds, backend: BackendRoute.Current, ct: ct));
+                        Lap("render");
+                    }
+                    answer["ok"] = true;
+                    answer["note"] = "Our plan was too dense, and LabVIEW's Clean Up Diagram crossed fewer data " +
+                                     "wires, so its layout was kept and ours not applied. Read niCleanup.";
+                    return Json.Document(answer);
+                }
+            }
 
             var helper = await GraftTools.HelperAsync(connection, Path.Combine(scripts, ApplyHelper), timeoutSeconds, ct);
             if (helper.Failure is not null) return helper.Failure;
@@ -309,6 +348,54 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /// <summary>`layoutEngine` in the answer: whose layout the VI was saved with.</summary>
+    internal const string LayoutEngineOurs = "lvai_layout_diagram";
+    internal const string LayoutEngineNi = "LabVIEW Clean Up Diagram";
+
+    /// <summary>NI's layout is kept only when it crosses FEWER data wires than our plan; a tie
+    /// keeps ours, and a clean-up that did not run or could not be read again keeps ours.</summary>
+    internal static bool KeepNi(int? niCrossings, int ourCrossings) => niCrossings is { } n && n < ourCrossings;
+
+    /// <summary>
+    /// LabVIEW's Clean Up Diagram on the held VI, then a dump of what it made, counted as our plan
+    /// is counted (<see cref="DiagramLayout.DataCrossings"/> on the positions as they are). Writes
+    /// `niCleanup` into the answer and answers whether NI's layout is to be kept; when it is,
+    /// `layoutEngine` and `after` say so.
+    /// </summary>
+    private async Task<bool> TryNiCleanupAsync(string vi, string scripts, int ourCrossings, JsonObject answer,
+                                               int timeoutSeconds, CancellationToken ct)
+    {
+        var report = new JsonObject { ["oursPlanned"] = ourCrossings };
+        answer["niCleanup"] = report;
+        var step = await new DiagramCleanup(connection).RunNiDiagramAsync(vi, BackendRoute.Current, timeoutSeconds, ct);
+        var ran = step["ok"]?.GetValue<bool>() == true && step["skipped"] is null;
+        report["ran"] = ran;
+        if (!ran)
+        {
+            report["note"] = step["note"]?.DeepClone();
+            report["kept"] = false;
+            return false;
+        }
+        if (step["compiledCodeStripped"] is { } stripped) report["compiledCodeStripped"] = stripped.DeepClone();
+        var dump = await DumpAsync(Path.Combine(scripts, DumpHelper), vi, timeoutSeconds, ct);
+        int? niCrossings = null;
+        if (dump.Lines is not null)
+        {
+            var niModel = DiagramModel.Parse(dump.Lines);
+            niCrossings = DiagramLayout.DataCrossings(niModel, new LayoutPlan());
+            report["crossings"] = niCrossings;
+            report["size"] = Outline(TopOutline(niModel));
+            if (KeepNi(niCrossings, ourCrossings))
+            {
+                answer["after"] = Outline(TopOutline(niModel));
+                answer["layoutEngine"] = LayoutEngineNi;
+            }
+        }
+        else report["note"] = "LabVIEW's layout could not be read back, so ours is applied.";
+        report["kept"] = KeepNi(niCrossings, ourCrossings);
+        return KeepNi(niCrossings, ourCrossings);
+    }
 
     /// <summary>
     /// Where the diagram's arrowed comments point, read from the SAVED file through pylabview -
