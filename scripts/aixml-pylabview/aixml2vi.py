@@ -4835,6 +4835,50 @@ class Composer:
                      root.get("outs").split("|") if root.get("outs") else []))
         return self._tcache.get(name, [])
 
+    @staticmethod
+    def _restack_growable(node, tl, before, after):
+        """A growable node's repeated inputs after cloning or removing some: one below the other
+        at the template's pitch, what lies below them moved down (Format Into String's error out),
+        what spans them (Compound Arithmetic's result) and the node itself as much taller.
+        A clone is a copy of the last input, termBounds included, so without this a sixth input
+        lay on top of the fifth and the node kept the five-input template's height: MP3 Parse
+        Frames.vi's six-input AND drew five inputs with six wires (the user's screenshot,
+        2026-11-04). Inputs the template does not stack evenly are left as they were."""
+        if not before or len(after) == len(before):
+            return
+
+        def tb(t):
+            e = t.find("dco/termBounds")
+            return lvheap.parse_bounds(e.text) if e is not None and e.text else None
+
+        old = [tb(t) for t in before]
+        if any(b is None for b in old):
+            return
+        tops = [b[0] for b in old]
+        pitch = (tops[1] - tops[0]) if len(tops) > 1 else old[0][2] - old[0][0]
+        if pitch <= 0 or any(tops[i + 1] - tops[i] != pitch for i in range(len(tops) - 1)):
+            return
+        top, bottom = tops[0], old[-1][2]
+        height = old[0][2] - old[0][0]
+        delta = (len(after) - len(before)) * pitch
+        for i, t in enumerate(after):
+            b = tb(t)
+            if b is None:
+                continue
+            t.find("dco/termBounds").text = lvheap.fmt_bounds((top + i * pitch, b[1], top + i * pitch + height, b[3]))
+        for t in tl:
+            if any(t is a for a in after):
+                continue
+            b = tb(t)
+            if b is None:
+                continue
+            if b[0] >= bottom:
+                t.find("dco/termBounds").text = lvheap.fmt_bounds((b[0] + delta, b[1], b[2] + delta, b[3]))
+            elif b[0] <= top and b[2] >= bottom:
+                t.find("dco/termBounds").text = lvheap.fmt_bounds((b[0], b[1], b[2] + delta, b[3]))
+        b = lvheap.parse_bounds(node.find("bounds").text)
+        node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[2] + delta, b[3]))
+
     def _clone_replace_chunks(self, node, tl, by_key, chunks):
         """Replace Array Subset's element groups 2..n, each a clone of group 1's terminals shifted
         down by one group (8 px per index, 8 for the element - 16 on a 1D array, measured on
@@ -4959,6 +5003,13 @@ class Composer:
         by_key = {t.get("aixml"): t for t in tl if t.get("aixml")}
         if len(chunks) > 1:
             self._clone_replace_chunks(node, tl, by_key, chunks)
+        # the template's repeated inputs, per kind, before any is cloned or removed: their
+        # stacking is re-laid below (_restack_growable)
+        grown = {}
+        if name in self.GROWABLE:
+            for kk, t in by_key.items():
+                if kk in t_in:
+                    grown.setdefault(grow_base(kk), []).append(t)
         # growable: clone the last input of the repeated kind until every wanted key exists
         for k in want_in:
             if k in by_key:
@@ -4996,6 +5047,8 @@ class Composer:
                         dl.remove(e)
                     dl.set("elements", str(len(dl)))
         tl.set("elements", str(len(tl)))
+        for base, before in grown.items():
+            self._restack_growable(node, tl, before, [t for kk, t in by_key.items() if grow_base(kk) == base])
 
         def donor(t):
             e = t.find("dco/typeDesc")
