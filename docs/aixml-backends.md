@@ -2229,6 +2229,59 @@ needs NI's service and is not built.
 - Read every line it prints: a refusal there is either a false alarm to fix in the guard, or a
   defect the guard found.
 
+## A cloned input lay on the one before it (fixed 2026-11-04)
+
+**Symptom** (the user's screenshot of `MP3 Parse Frames.vi`, composed on pylabview): a Compound
+Arithmetic AND with six wires coming in drew five inputs. The heap showed why: the node had seven
+terminals, the last two with the same `termBounds` `(32, 0, 40, 12)`, and the node and its
+result terminal were 41 px high, the five-input template's height.
+
+**Cause.** A template node of a growable kind (Compound Arithmetic, Merge Errors, Concatenate
+Strings, Format Into String) needing more inputs than its largest template gets them by cloning
+its last input, and the clone kept the copied terminal's place. The largest Compound Arithmetic
+template has five inputs, the largest Format Into String two: a four-input Format Into String put
+inputs 3 and 4 on input 2. Wiring and execution were never affected - only the drawing.
+
+**Fix.** `_restack_growable` in `aixml2vi.py`: after cloning or removing inputs, the repeated
+inputs are stacked again at the template's pitch (8 px), a terminal below them moves down by the
+difference, a terminal spanning them (the result of Compound Arithmetic) and the node grow by it.
+A template whose inputs are not stacked evenly is left as it was.
+
+Measured on composed probes: the six-input AND renders six rows on a 49 px node and answers false
+with one input false and true with all true; the four-input Format Into String renders four rows
+and formats `1-2-3-4`. Test: `PylabviewGrowableNodeTests.A_cloned_input_gets_a_row_of_its_own_and_the_node_grows`.
+A VI composed before the fix keeps its drawing until it is composed again.
+
+## The reader dropped wires into inputs flagged 0x4000 (fixed 2026-11-04)
+
+**Symptom.** Exported by the reader, `MP3 Parse Frames.vi` came back with everything left of its
+loop unwired: the five-input Add and the three-input AND without a single terminal, the first
+`MP3 Read Fields.vi` call without `Data`, and `File Data` itself `outputs="value:"`. The export
+ended in 24 notes `signal ... has 2 sources`. A regeneration from that export would have lost
+the wiring of half the diagram, which is why the composer fix of the same day was patched into
+that VI's heap instead.
+
+**Cause.** The reader tells a wire's direction by the terminal bit `0x8000` (`SINK`): every
+terminal without it counts as a source, and a signal with more than one source is dropped. Every
+input of that part of the diagram carried **`0x4000` instead of `0x8000`** (`0x4000`, or `0x4040`
+on the growable nodes). What `0x4000` means to LabVIEW is not known. Measured over 400 NI
+examples: 36 signals have such a terminal, and in 33 of them exactly one terminal carries neither
+bit. The other three are a dangling one-terminal signal and two two-terminal signals that both
+carry it.
+
+**Fix.** `SOFT_SINK = 0x4000` in `vi2aixml.py`, used only as a fallback. When `SINK` leaves a
+signal more than one source, and exactly one of them lacks `0x4000`, that one is the source and
+the others are inputs. `0x4000` never decides a direction on its own.
+
+**Verified on the real VI:**
+
+- The export carries no notes (24 before), and every one of those nodes is wired.
+- Recomposed, it is executable.
+- Read back again, it matches the first export fact for fact: 134 elements, each terminal wired
+  or unwired as before.
+
+Test: `PylabviewSoftSinkTests`, fixture `Fixtures/reader/MP3 Parse Frames.vi`.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the

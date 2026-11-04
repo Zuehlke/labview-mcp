@@ -32,6 +32,12 @@ TYPE_TO_AIXML = {v[0]: k for k, v in aixml2vi.SCALARS.items()}
 TYPE_TO_AIXML["MeasureData.TimeStamp"] = "timestamp"
 INT_FMT = aixml2vi.INT_FMT
 SINK = 0x8000          # objFlags bit on a terminal that RECEIVES a wire (measured, see FINDINGS)
+# the second bit a receiving terminal can carry INSTEAD of SINK: every input of the code left of
+# MP3 Parse Frames.vi's loop had 0x4000 and no 0x8000, and the reader dropped its 24 wires as
+# "signal has 2 sources" (2026-11-04). Over 400 NI examples, 33 of the 36 signals with such a
+# terminal have exactly one terminal with neither bit. It decides only when SINK leaves more than
+# one source (wire), never on its own
+SOFT_SINK = 0x4000
 LOOP_STOP_IF_TRUE = aixml2vi.LOOP_STOP_IF_TRUE
 
 
@@ -1487,6 +1493,9 @@ class Reader:
                 tname = compact.get(int(dco.findtext("parmIndex") or 0), tname)
             sink = bool(int(term.findtext("objFlags") or 0) & SINK)
             self.term_owner[term.get("uid")] = (el, tname, sink)
+            if int(term.findtext("objFlags") or 0) & SOFT_SINK:
+                self.soft_sinks = getattr(self, "soft_sinks", set())
+                self.soft_sinks.add(term.get("uid"))
         return el
 
     def xnode(self, node, parent_uid):
@@ -2337,6 +2346,9 @@ class Reader:
             # Scan From String's outputs do not set bit 0 on their DCO
             sink = bool(int(t.findtext("objFlags") or 0) & SINK)
             self.term_owner[t.get("uid")] = (el, nm.split("#")[0], sink)
+            if int(t.findtext("objFlags") or 0) & SOFT_SINK:
+                self.soft_sinks = getattr(self, "soft_sinks", set())
+                self.soft_sinks.add(t.get("uid"))
         if cls == "cpdArith":
             # the operation is objFlags 0x70000 only - 0x80000 is set beside it (0x90000 is a
             # Multiply), exactly the mask the composer writes
@@ -2923,6 +2935,18 @@ class Reader:
                 self.notes.append("signal %s touches an unread terminal" % sig.get("uid"))
                 continue
             srcs = [e for e in ends if not e[2]]
+            if len(srcs) > 1:
+                # inputs flagged SOFT_SINK instead of SINK: the one end without it is the source
+                soft = getattr(self, "soft_sinks", set())
+                uids = [t.get("uid") for t in sig.find("termList")
+                        if self.term_owner.get(t.get("uid"), MISSING) is not IGNORED]
+                hard = [e for u, e in zip(uids, ends) if not e[2] and u not in soft]
+                if len(hard) == 1:
+                    for u, e in zip(uids, ends):
+                        if not e[2] and u in soft:
+                            self.term_owner[u] = (e[0], e[1], True)
+                    ends = [self.term_owner[u] for u in uids]
+                    srcs = hard
             if len(srcs) != 1:
                 self.notes.append("signal %s has %d sources" % (sig.get("uid"), len(srcs)))
                 continue
