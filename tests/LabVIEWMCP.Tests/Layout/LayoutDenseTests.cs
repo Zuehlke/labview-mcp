@@ -79,6 +79,52 @@ public class LayoutDenseTests(ITestOutputHelper output)
                      $"{crossings} crossings on {wires} wires");
     }
 
+    /// <summary>
+    /// The user's verdicts on the MP3 VIs (2026-11-04), our result and NI's Clean Up both measured
+    /// from the saved files with lvbd_wire_metrics.py: wires, bends, backward wires. NI was preferred
+    /// for Parse Frames and Granule Info, ours for the rest - Huffman Decode by name, Read
+    /// Scalefactors and Huffman Symbol "both good", the others "keep ours".
+    /// </summary>
+    [Theory]
+    [InlineData("MP3 Parse Frames", 139, 484, 8, 254, 0, true)]
+    [InlineData("MP3 Granule Info", 92, 300, 3, 203, 0, true)]
+    [InlineData("MP3 Huffman Decode", 95, 263, 2, 167, 0, false)]
+    [InlineData("MP3 Read Scalefactors", 51, 116, 0, 67, 0, false)]
+    [InlineData("MP3 Huffman Symbol", 39, 86, 1, 43, 0, false)]
+    [InlineData("MP3 Read Bits", 42, 77, 0, 43, 0, false)]
+    [InlineData("MP3 Decode Channel", 32, 81, 1, 55, 0, false)]
+    [InlineData("MP3 Decode", 29, 52, 1, 35, 0, false)]
+    [InlineData("MP3 Spectrum To Bands", 35, 36, 1, 25, 0, false)]
+    [InlineData("MP3 Read Fields", 10, 14, 0, 6, 0, false)]
+    [InlineData("MP3 Huffman Value", 19, 42, 0, 38, 0, false)]
+    public void A_tangled_result_of_ours_goes_to_NI_as_the_user_judged(string vi, int wires, int bends, int backward,
+                                                                       int niBends, int niBackward, bool takeNi)
+    {
+        var ours = new DiagramCleanup.WireMetrics(wires, bends, 0, backward, 0);
+        var ni = new DiagramCleanup.WireMetrics(wires, niBends, 0, niBackward, 0);
+        var picked = DiagramLayoutTools.Tangled(ours) && DiagramLayoutTools.KeepNiMeasured(ours, ni);
+        Assert.True(picked == takeNi, $"{vi}: {ours.BendsPerWire:F2} bends a wire, {backward} backward");
+    }
+
+    [Fact]
+    public void NI_replaces_a_tangled_result_only_with_better_drawn_wires()
+    {
+        var ours = new DiagramCleanup.WireMetrics(100, 400, 0, 5, 0);
+        Assert.True(DiagramLayoutTools.KeepNiMeasured(ours, new(100, 300, 0, 0, 0)));
+        Assert.False(DiagramLayoutTools.KeepNiMeasured(ours, new(100, 400, 0, 0, 0)));   // no fewer bends
+        Assert.False(DiagramLayoutTools.KeepNiMeasured(ours, new(100, 300, 0, 6, 0)));   // more backward
+        Assert.False(DiagramLayoutTools.KeepNiMeasured(ours, null));                      // not measured
+    }
+
+    [Fact]
+    public void The_metrics_script_line_is_read()
+    {
+        var m = DiagramCleanup.ParseWireMetrics(
+            "{\"vi\": \"x.vi\", \"wires\": 92, \"bends\": 203, \"length\": 63016, \"backward\": 0, \"undecoded\": 0}");
+        Assert.Equal(new DiagramCleanup.WireMetrics(92, 203, 63016, 0, 0), m);
+        Assert.Null(DiagramCleanup.ParseWireMetrics("{\"vi\": \"x.vi\", \"error\": \"no diagram heap\"}"));
+    }
+
     [Theory]
     [InlineData(100, 522, true)]
     [InlineData(522, 522, false)]   // a tie keeps ours

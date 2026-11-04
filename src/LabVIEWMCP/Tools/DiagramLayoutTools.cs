@@ -42,7 +42,8 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         answer. A DQMH Main.vi IS laid out when named here (only the automatic post-generation
         clean-up skips it). A plan too dense for our engine (`tooDense`: a crossing or more per data
         wire) is also tried with LabVIEW's Clean Up Diagram, and NI's is kept when it crosses fewer
-        (`layoutEngine`, `niCleanup`). Needs no project open; for many VIs use lvai_layout_diagrams.
+        (`layoutEngine`, `niCleanup`); so is a saved result whose wires come out tangled (`tangledFallback`).
+        Needs no project open; for many VIs use lvai_layout_diagrams.
         """)]
     public async Task<string> LayoutDiagramAsync(
         [Description("Absolute path of the VI to lay out. Saved in place")] string viPath,
@@ -118,7 +119,7 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
                         ["errorKind"] = answer["errorKind"]?.DeepClone(),
                         ["before"] = answer["before"]?.DeepClone(),
                         ["after"] = (answer["after"] ?? answer["planned"])?.DeepClone(),
-                        ["landedOff"] = answer["landedOff"]?.DeepClone(),
+                        ["landedOff"] = answer["landedOff"]?.DeepClone(), ["layoutEngine"] = answer["layoutEngine"]?.DeepClone(),
                         ["backupPath"] = answer["backupPath"]?.DeepClone(),
                         ["ms"] = t.ElapsedMilliseconds,
                         ["timingsMs"] = answer["timingsMs"]?.DeepClone(),
@@ -331,6 +332,11 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
             answer["windowView"] = await new DiagramCleanup(connection).FitViewAsync(vi, timeoutSeconds, ct);
             Lap("fitView");
 
+            // ---- 5d. our result as SAVED, measured: a tangled one is given to LabVIEW's Clean Up
+            // as well, and NI's layout kept where its wires are drawn better (docs/diagram-layout.md 6q)
+            await TangledFallbackAsync(vi, scripts, work, answer, timeoutSeconds, ct);
+            Lap("tangledCheck");
+
             if (render)
             {
                 var dir = renderDirectory ?? Path.Combine(work, "render");
@@ -352,6 +358,73 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
     /// <summary>`layoutEngine` in the answer: whose layout the VI was saved with.</summary>
     internal const string LayoutEngineOurs = "lvai_layout_diagram";
     internal const string LayoutEngineNi = "LabVIEW Clean Up Diagram";
+
+    /// <summary>At least this many bends per wire in OUR saved result, or this many backward
+    /// wires, and the result counts as tangled.</summary>
+    internal const double TangledBendsPerWire = 3.0;
+    internal const int TangledBackward = 3;
+
+    /// <summary>
+    /// WHEN OUR SAVED RESULT IS TANGLED - set by the user's verdicts on the MP3 VIs (2026-11-04),
+    /// both layouts measured from the saved files. NI's Clean Up was preferred for Parse Frames
+    /// (ours: 3.5 bends a wire, 8 backward) and Granule Info (3.3, 3 backward); ours was kept for
+    /// Huffman Decode (2.8, 2 backward) and for eight more, all at 2.5 bends a wire or less with at
+    /// most one backward wire. Crossings counted on the plan had said the opposite for both.
+    /// </summary>
+    internal static bool Tangled(DiagramCleanup.WireMetrics ours) =>
+        ours.BendsPerWire >= TangledBendsPerWire || ours.Backward >= TangledBackward;
+
+    /// <summary>NI's layout replaces a tangled one of ours only when its wires are drawn better:
+    /// fewer bends and no more backward wires.</summary>
+    internal static bool KeepNiMeasured(DiagramCleanup.WireMetrics ours, DiagramCleanup.WireMetrics? ni) =>
+        ni is not null && ni.Bends < ours.Bends && ni.Backward <= ours.Backward;
+
+    /// <summary>
+    /// Measures our saved result; when it is tangled, runs LabVIEW's Clean Up Diagram on the VI,
+    /// measures that, and keeps whichever <see cref="KeepNiMeasured"/> picks - ours is put back
+    /// from a copy otherwise. Writes `wireMetrics` and, when it ran NI, `tangledFallback` into the
+    /// answer. The VI must not be held: both measurements read the file.
+    /// </summary>
+    private async Task TangledFallbackAsync(string vi, string scripts, string work, JsonObject answer,
+                                            int timeoutSeconds, CancellationToken ct)
+    {
+        var cleanup = new DiagramCleanup(connection);
+        var ours = await cleanup.WireMetricsAsync(vi, timeoutSeconds, ct);
+        if (ours is null) { answer["wireMetrics"] = "not read"; return; }
+        answer["wireMetrics"] = ours.ToJson();
+        if (!Tangled(ours)) return;
+
+        var report = new JsonObject { ["ours"] = ours.ToJson() };
+        answer["tangledFallback"] = report;
+        var oursCopy = Path.Combine(work, "ours-" + Path.GetFileName(vi));
+        File.Copy(vi, oursCopy, overwrite: true);
+        var step = await cleanup.RunNiDiagramAsync(vi, BackendRoute.Current, timeoutSeconds, ct);
+        var ran = step["ok"]?.GetValue<bool>() == true && step["skipped"] is null;
+        var ni = ran ? await cleanup.WireMetricsAsync(vi, timeoutSeconds, ct) : null;
+        report["niRan"] = ran;
+        if (ni is not null) report["ni"] = ni.ToJson();
+        if (ran && KeepNiMeasured(ours, ni))
+        {
+            report["kept"] = "ni";
+            answer["layoutEngine"] = LayoutEngineNi;
+            answer["windowView"] = await cleanup.FitViewAsync(vi, timeoutSeconds, ct);
+            var dump = await DumpAsync(Path.Combine(scripts, DumpHelper), vi, timeoutSeconds, ct);
+            if (dump.Lines is not null) answer["after"] = Outline(TopOutline(DiagramModel.Parse(dump.Lines)));
+            answer["note"] = "Our layout came out tangled (bends per wire or backward wires), and LabVIEW's " +
+                             "Clean Up Diagram drew the wires better, so its layout was kept. Read tangledFallback.";
+            return;
+        }
+        // ours back - the clean-up saved over it, and LabVIEW holds nothing once its helper closed
+        report["kept"] = "ours";
+        if (ran)
+        {
+            try { File.Copy(oursCopy, vi, overwrite: true); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                report["restoreFailed"] = e.Message;
+            }
+        }
+    }
 
     /// <summary>NI's layout is kept only when it crosses FEWER data wires than our plan; a tie
     /// keeps ours, and a clean-up that did not run or could not be read again keeps ours.</summary>

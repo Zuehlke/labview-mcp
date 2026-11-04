@@ -1294,3 +1294,39 @@ What it shows:
   preferred NI's. Crossings counted on straight runs had said the opposite (720 against 452).
 - **The y squeeze does nothing here** (605 -> 603 px). No stripe is empty across the whole width,
   so height needs a per-object compaction, not bands.
+
+### 6q. A tangled result goes to NI as well, measured on the saved file, 2026-11-04
+
+**Crossings counted on the plan were the wrong indicator.** For Parse Frames they said ours was
+fine (6 crossings planned, so NI was never asked). For Granule Info they said ours was better
+than NI (452 against 720). The user preferred NI's Clean Up for both. Bends alone do not work
+either: NI has fewer bends than ours on all 16 MP3 VIs, and mostly needs more area, up to 1.8
+times.
+
+**The user's verdicts.** All 16 VIs were laid out both ways and measured from the saved files
+with `scripts/lvbd_wire_metrics.py`:
+
+| VI | Wires | Ours: bends (per wire) | Ours: backward | NI: bends | Verdict |
+|---|---|---|---|---|---|
+| Parse Frames | 139 | 484 (3.5) | 8 | 254 | NI |
+| Granule Info | 92 | 300 (3.3) | 3 | 203 | NI |
+| Huffman Decode | 95 | 263 (2.8) | 2 | 167 | ours |
+| Read Scalefactors | 51 | 116 (2.3) | 0 | 67 | both good |
+| Huffman Symbol | 39 | 86 (2.2) | 1 | 43 | both good |
+| the other six | | 2.5 or less | 1 or less | | ours |
+
+**The rule** (`DiagramLayoutTools.Tangled`, `KeepNiMeasured`):
+
+1. After our layout is saved, the file is measured (`wireMetrics` in the answer).
+2. The result counts as tangled at 3.0 bends per wire or more, or 3 backward wires or more.
+3. A tangled result is also given to LabVIEW's Clean Up Diagram, and that file is measured
+   too.
+4. NI's layout is kept when it has fewer bends and no more backward wires. Otherwise ours is put
+   back from a copy.
+5. The answer carries `tangledFallback` (`ours`, `ni`, `kept`) and `layoutEngine`.
+
+The crossing rule of 6p stays in front of it unchanged: a plan too dense is still tried with NI
+before ours is applied. Granule Info passes both: NI loses on crossings, ours is applied, comes out
+tangled, and NI wins on bends. The rule needs nothing from NI when ours is not tangled, so the 14
+VIs of the MP3 set below the line cost one file read each, about 0.3 s.
+`LayoutDenseTests.A_tangled_result_of_ours_goes_to_NI_as_the_user_judged` holds the eleven verdicts.
