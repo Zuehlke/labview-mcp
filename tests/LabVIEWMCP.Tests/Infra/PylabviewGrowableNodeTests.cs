@@ -226,6 +226,71 @@ public sealed class PylabviewGrowableNodeTests
         }
     }
 
+    private const string ClonedInputsProbe = """
+        <VI _name="Cloned Inputs Probe.vi" description="Template nodes grown past their largest template.">
+          <Control _name="a" type="bool" value="false" outputs="value:4201.v" uid="4201" uid_parent="root"/>
+          <Control _name="b" type="bool" value="false" outputs="value:4202.v" uid="4202" uid_parent="root"/>
+          <Control _name="c" type="bool" value="false" outputs="value:4203.v" uid="4203" uid_parent="root"/>
+          <Control _name="d" type="bool" value="false" outputs="value:4204.v" uid="4204" uid_parent="root"/>
+          <Control _name="e" type="bool" value="false" outputs="value:4205.v" uid="4205" uid_parent="root"/>
+          <Control _name="f" type="bool" value="false" outputs="value:4206.v" uid="4206" uid_parent="root"/>
+          <Node _name="Compound Arithmetic" operation="AND" inputs="value:4201.v,value#1:4202.v,value#2:4203.v,value#3:4204.v,value#4:4205.v,value#5:4206.v" outputs="result:4210.r" uid="4210" uid_parent="root"/>
+          <Indicator _name="all" type="bool" value="false" inputs="value:4210.r" uid="4211" uid_parent="root"/>
+          <Control _name="n1" type="int32" value="1" outputs="value:4221.v" uid="4221" uid_parent="root"/>
+          <Control _name="n2" type="int32" value="2" outputs="value:4222.v" uid="4222" uid_parent="root"/>
+          <Control _name="n3" type="int32" value="3" outputs="value:4223.v" uid="4223" uid_parent="root"/>
+          <Control _name="n4" type="int32" value="4" outputs="value:4224.v" uid="4224" uid_parent="root"/>
+          <Constant _name="fmt" type="string" value="%d-%d-%d-%d" outputs="value:4225.v" uid="4225" uid_parent="root"/>
+          <Node _name="Format Into String" inputs="format string:4225.v,input 1:4221.v,input 2:4222.v,input 3:4223.v,input 4:4224.v" outputs="resulting string:4230.s" uid="4230" uid_parent="root"/>
+          <Indicator _name="text" type="string" value="" inputs="value:4230.s" uid="4231" uid_parent="root"/>
+        </VI>
+        """;
+
+    /// <summary>
+    /// A TEMPLATE node grown by cloning its last input: the clone kept the copied terminal's
+    /// place, so MP3 Parse Frames.vi's six-input AND (largest Compound Arithmetic template: five)
+    /// drew five inputs with six wires, and a four-input Format Into String (template: two) put
+    /// inputs 3 and 4 on input 2 (the user's screenshot, 2026-11-04). Measured with the fix: both
+    /// render with every input on a row of its own, AND of six gives false with one input false,
+    /// and the Format Into String formats "1-2-3-4".
+    /// </summary>
+    [Fact]
+    public async Task A_cloned_input_gets_a_row_of_its_own_and_the_node_grows()
+    {
+        var setup = AixmlComposer.Locate(out _);
+        var bundle = PyLabview.Locate();
+        if (setup is null || bundle is null) return;
+        var dir = Path.Combine(Path.GetTempPath(), "clone-" + Guid.NewGuid().ToString("n")[..8]);
+        Directory.CreateDirectory(Path.Combine(dir, "x"));
+        try
+        {
+            var xml = Path.Combine(dir, "probe.xml");
+            var vi = Path.Combine(dir, "Cloned Inputs Probe.vi");
+            await File.WriteAllTextAsync(xml, ClonedInputsProbe);
+            var composed = await AixmlComposer.ComposeAsync(setup, xml, vi, [], 300, default);
+            Assert.True(File.Exists(vi), composed.Message);
+            var extract = await PyLabview.RunAsync(bundle, bundle.ReadRsrcPy,
+                ["-x", "-i", vi, "-m", Path.Combine(dir, "x", "ClonedInputsProbe.xml")], 120, default);
+            Assert.True(extract.ExitCode == 0, extract.StdErr);
+            var heap = XElement.Load(Directory.GetFiles(Path.Combine(dir, "x"), "*_BDHb.xml").Single());
+
+            // six 8 px rows, and the result terminal and the node 49 px high (five: 41)
+            Assert.Equal((49, new[] { 0, 8, 16, 24, 32, 40 }), Single(Nodes(heap, "cpdArith", 8)), Comparer);
+            var result = heap.Descendants().Single(e => (string?)e.Attribute("class") == "cpdArith")
+                .Element("termList")!.Elements().First().Element("dco")!.Element("termBounds")!.Value;
+            Assert.Equal(49, Bounds(result).B);
+
+            // Format Into String: inputs 1 to 4 one below the other from 20 (the two rows at 12 are
+            // the template's own pair side by side, unchanged), the node 16 px taller than the template
+            var printf = Single(Nodes(heap, "printf", 8));
+            Assert.Equal((53, new[] { 12, 12, 20, 28, 36, 44 }), printf, Comparer);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
+        }
+    }
+
     private static (int, int[]) Single(List<(int H, int L, List<int> Rows)> nodes)
     {
         var n = Assert.Single(nodes);

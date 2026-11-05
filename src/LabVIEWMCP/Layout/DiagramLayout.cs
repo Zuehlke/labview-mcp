@@ -2541,7 +2541,32 @@ internal static class DiagramLayout
     /// wires run on the rail and are left out, as are wires sharing a source (a fan-out meets at
     /// its source by design).
     /// </summary>
-    internal static int DataCrossings(DiagramModel model, LayoutPlan plan)
+    internal static int DataCrossings(DiagramModel model, LayoutPlan plan) => DataCrossingsAndWires(model, plan).Crossings;
+
+    /// <summary>At least this many crossings per top-level data wire, and at least
+    /// <see cref="DenseMinCrossings"/>, and our plan is too dense to keep without asking NI.</summary>
+    public const double DenseCrossingsPerWire = 1.0;
+    public const int DenseMinCrossings = 20;
+
+    /// <summary>
+    /// WHERE OUR ENGINE IS NOT THE RIGHT ONE: a plan that crosses at least one data wire per data
+    /// wire on the top level, and 20 or more. Measured 2026-11-04 over the 25 layout fixtures:
+    /// MP3 Synthesize.vi planned 522 crossings on 127 wires (4.1 a wire) - five constants fanned out
+    /// across a flat diagram - and ATM's Update Panel 48 on 25 (1.9); every other fixture 0.8 or
+    /// less, most 0. Such a diagram is then ALSO cleaned up by LabVIEW and the two measured with
+    /// the same count (<see cref="DiagramLayoutTools.LayoutCoreAsync"/>): the threshold only
+    /// decides when NI is asked, never that NI wins.
+    /// </summary>
+    internal static bool TooDense(DiagramModel model, LayoutPlan plan, out int crossings, out int wires)
+    {
+        (crossings, wires) = DataCrossingsAndWires(model, plan);
+        return crossings >= DenseMinCrossings && crossings >= DenseCrossingsPerWire * Math.Max(1, wires);
+    }
+
+    /// <summary>The top level's data wires, one per source and sink, as <see cref="DataCrossings"/> counts them.</summary>
+    internal static int DataWires(DiagramModel model) => DataCrossingsAndWires(model, new LayoutPlan()).Wires;
+
+    private static (int Crossings, int Wires) DataCrossingsAndWires(DiagramModel model, LayoutPlan plan)
     {
         var d = model.Top;
         var nodes = d.Objects.Where(o => !o.IsText && !o.IsDecoration && !o.IsLoopTerminal).ToList();
@@ -2554,8 +2579,9 @@ internal static class DiagramLayout
                 ? (tt.Box.L + tt.Box.W / 2.0 + dx, tt.Box.T + tt.Box.H / 2.0 + dy)
                 : (source ? b.R : b.L, b.T + b.H / 2.0);
         }
-        return OrthogonalCrossings(nodes.SelectMany(n => g.Out(n)).Where(e => !e.Error && e.From != e.To)
-            .Select(e => (At(e.From, e.FromTerm, true), At(e.To, e.ToTerm, false), (object)e.From, (object)e.To)).ToList());
+        var wires = nodes.SelectMany(n => g.Out(n)).Where(e => !e.Error && e.From != e.To)
+            .Select(e => (At(e.From, e.FromTerm, true), At(e.To, e.ToTerm, false), (object)e.From, (object)e.To)).ToList();
+        return (OrthogonalCrossings(wires), wires.Count);
     }
 
     /// <summary>Wires of the top diagram, data or error, whose sink lies left of their source's

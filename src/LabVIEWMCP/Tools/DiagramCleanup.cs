@@ -45,6 +45,20 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
     private static readonly Kind Panel = new("cleanUpPanel", PanelHelperFileName, "front panel",
         "LabVIEW's Clean Up Panel algorithm (Arrange FP) ran and the VI was saved in place");
 
+    /// <summary>LabVIEW's own Clean Up Diagram (<c>{LV.VI}</c> <c>BD.CleanUp</c>, then
+    /// <c>Save.Instrument</c>): the fallback <see cref="DiagramLayoutTools.LayoutCoreAsync"/> tries
+    /// on a diagram too dense for our engine (<see cref="Layout.DiagramLayout.TooDense"/>).</summary>
+    internal const string NiDiagramHelperFileName = "lvai_cleanup_diagram.xml";
+
+    private static readonly Kind NiDiagram = new("niCleanUpDiagram", NiDiagramHelperFileName, "block diagram",
+        "LabVIEW's Clean Up Diagram (BD.CleanUp) ran and the VI was saved in place");
+
+    /// <summary>LabVIEW's Clean Up Diagram on one VI, saved in place; compiled code a save brought
+    /// in is stripped again. Never throws for a LabVIEW refusal: read `ok`.</summary>
+    public Task<JsonObject> RunNiDiagramAsync(string viPath, string backend, int timeoutSeconds,
+                                              CancellationToken ct) =>
+        RunAsync(NiDiagram, viPath, backend, timeoutSeconds, ct);
+
     /// <summary>The `cleanUpDiagram` step for one VI: our layout, saved in place. Never throws
     /// for a LabVIEW refusal: the answer's `ok` says whether the diagram was laid out and saved.</summary>
     public async Task<JsonObject> RunAsync(string viPath, string backend, int timeoutSeconds,
@@ -62,8 +76,11 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
                                                                      timeoutSeconds, ct))) as JsonObject;
         foreach (var key in new[] { "before", "planned", "moves", "structuresSized", "tunnelsMoved",
                                     "structuresKeptAsTheyAre", "heldInMemory", "moveErrors", "sizeErrors",
-                                    "tunnelErrors", "compiledCodeStripped" })
+                                    "tunnelErrors", "compiledCodeStripped", "plannedCrossings", "tooDense",
+                                    "niCleanup", "wireMetrics", "tangledFallback" })
             if (answer?[key] is { } value) step[key] = value.DeepClone();
+        // a diagram too dense for our engine may have been saved with LabVIEW's layout instead
+        if (answer?["layoutEngine"]?.GetValue<string>() is { } engine) step["engine"] = engine;
 
         if (answer?["ok"]?.GetValue<bool>() != true)
         {
@@ -83,7 +100,9 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
             return Fail(step, "The diagram was laid out and saved, and LabVIEW's save wrote COMPILED CODE " +
                               "into a VI that had none; stripping it again failed. Read compiledCodeStripped.");
         step["ok"] = true;
-        step["note"] = "Our block diagram layout (lvai_layout_diagram) ran and the VI was saved in place" +
+        step["note"] = (step["engine"]?.GetValue<string>() == DiagramLayoutTools.LayoutEngineNi
+                           ? "Our plan was too dense; LabVIEW's Clean Up Diagram crossed fewer data wires and was kept, the VI saved in place"
+                           : "Our block diagram layout (lvai_layout_diagram) ran and the VI was saved in place") +
                        (compiledBefore ? " (it carried compiled code before, and still does)." : ", source only.");
         return step;
     }
@@ -333,6 +352,46 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
         {
             try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
         }
+    }
+
+    internal const string WireMetricsScript = "lvbd_wire_metrics.py";
+
+    /// <summary>How a saved diagram's wires are drawn (lvbd_wire_metrics.py): bends, wire length
+    /// and backward segments, read from the file with no LabVIEW.</summary>
+    internal sealed record WireMetrics(int Wires, int Bends, int Length, int Backward, int Undecoded)
+    {
+        public double BendsPerWire => Wires == 0 ? 0 : (double)Bends / Wires;
+        public JsonObject ToJson() => new()
+        {
+            ["wires"] = Wires, ["bends"] = Bends, ["bendsPerWire"] = Math.Round(BendsPerWire, 2),
+            ["length"] = Length, ["backward"] = Backward, ["undecoded"] = Undecoded,
+        };
+    }
+
+    /// <summary>The script's one JSON line for one VI; null when it carries an error or no counts.</summary>
+    internal static WireMetrics? ParseWireMetrics(string? stdout)
+    {
+        foreach (var line in (stdout ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!line.StartsWith('{')) continue;
+            try
+            {
+                if (JsonNode.Parse(line) is not JsonObject o || o["error"] is not null || o["wires"] is null) continue;
+                return new WireMetrics(o["wires"]!.GetValue<int>(), o["bends"]!.GetValue<int>(), o["length"]!.GetValue<int>(),
+                                       o["backward"]!.GetValue<int>(), o["undecoded"]?.GetValue<int>() ?? 0);
+            }
+            catch (System.Text.Json.JsonException) { }
+        }
+        return null;
+    }
+
+    /// <summary>lvbd_wire_metrics.py on a saved VI LabVIEW does not hold; null when it could not be read.</summary>
+    internal async Task<WireMetrics?> WireMetricsAsync(string viPath, int timeoutSeconds, CancellationToken ct)
+    {
+        if (PyLabview.Locate() is not { } bundle || StatusTools.ScriptsDirectory() is not { } scripts) return null;
+        var run = await EventStructureTools.RunScriptAsync(bundle, scripts, WireMetricsScript, [viPath], "wireMetrics",
+                                                           timeoutSeconds, ct);
+        return run["exitCode"]?.GetValue<int>() == 0 ? ParseWireMetrics(run["stdout"]?.GetValue<string>()) : null;
     }
 
     internal const string FitViewScript = "lvbd_fit_view.py";
