@@ -1,7 +1,7 @@
 ---
 name: labview-lunit-unit-test
 description: >-
-  MUST BE USED whenever the user asks for LUnit tests - delegate to this agent instead of writing them directly in the main session. Writes and runs LUnit (Astemes) unit tests for LabVIEW code — creates the test case class off LUnit's own Test Case.lvclass, authors each test method, retypes its class-typed connector pane, makes it a class member, runs the suite through LUnit's execution API and reads the JUnit report. Use ONLY when the user explicitly asked for LUnit, e.g. "schreib LUnit Tests", "teste das mit LUnit", "add LUnit test cases" — the default unit-test framework in this repository is Caraya, and `labview-caraya-unit-test` is the agent for it and costs far fewer calls. LUNIT IS INSTALLED AND THE ROUTE IS MEASURED END TO END, 2026-09-01, in the 32-bit LabVIEW 2026 tree — one passing test, one deliberately failing negative control, report written. This file claimed the framework was absent until then, from a sweep of the 64-bit path; do not re-derive that. The evidence and every target spelling are in docs/labview-lunit-testing.md, which the agent reads in Phase 0. MUTATING — it writes .lvclass and .vi files, edits a .lvproj, RESTARTS LabVIEW between class creation and member addition (an unavoidable lock, Error 1562), and RUNS the code under test. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory, (c) the .lvproj path if one exists, (d) any cases the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
+  MUST BE USED whenever the user asks for LUnit tests - delegate to this agent instead of writing them directly in the main session. Writes and runs LUnit (Astemes) unit tests for LabVIEW code — creates the test case class off LUnit's own Test Case.lvclass, authors each test method, retypes its class-typed connector pane, makes it a class member, runs the suite through LUnit's execution API and reads the JUnit report. It does NOT run a negative control or set test-VI icons unless the task asks for them, and says so in its report when it did not. Use ONLY when the user explicitly asked for LUnit, e.g. "schreib LUnit Tests", "teste das mit LUnit", "add LUnit test cases" — the default unit-test framework in this repository is Caraya, and `labview-caraya-unit-test` is the agent for it and costs far fewer calls. LUNIT IS INSTALLED AND THE ROUTE IS MEASURED END TO END, 2026-09-01, in the 32-bit LabVIEW 2026 tree — one passing test, one deliberately failing negative control, report written. This file claimed the framework was absent until then, from a sweep of the 64-bit path; do not re-derive that. The evidence and every target spelling are in docs/labview-lunit-testing.md, which the agent reads in Phase 0. MUTATING — it writes .lvclass and .vi files, edits a .lvproj, RESTARTS LabVIEW between class creation and member addition (an unavoidable lock, Error 1562), and RUNS the code under test. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory, (c) the .lvproj path if one exists, (d) any cases the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it returns a NEEDS CLARIFICATION block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
 tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__pylv_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_error_list, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_create_class, mcp__labview__lvai_describe_class, mcp__labview__lvai_describe_vi, mcp__labview__lvai_describe_project, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_lvproj_reference, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_generate_vis, mcp__labview__lvai_coercion_dots, mcp__labview__lvai_lunit_add_test_method, mcp__labview__lvai_run_lunit_tests, mcp__labview__lvai_lunit_scaffold_class_tests
 ---
 
@@ -27,6 +27,29 @@ tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp
 
 > 🧭 **Caraya is the default framework.** If the user did not explicitly ask for LUnit, you are the
 > wrong agent — `labview-caraya-unit-test` is the one to use, and it costs far fewer calls.
+
+> 🎯 **No negative control and no `lvai_set_vi_icon` unless the task asks for them.** Both are
+> OPT-IN (Phase 5, and the icon rule below); in the ATM build they cost 189 s nobody asked for.
+
+## Known limits - do not look these up
+
+Measured facts that each cost minutes when found at run time. Plan around them from the start.
+
+- **Compound literals on pylabview** (expected values and inputs): an array or cluster value needs
+  brackets (`[true,false]`, `[,,]`), a boolean is `true`/`false`/`1`/`0` - `TRUE` on NI's backend
+  silently reads as false - a quoted item is taken VERBATIM (`["a,b",c]` is `a,b` and `c`), and a
+  literal that does not fit its type is refused by name. On NI's backend a quote is an ordinary
+  character. The ATM build lost a failed run, a re-add and a re-run to this.
+  `docs/aixml-backends.md`, "Compound literals".
+- **A test method has the 1920 x 1080 budget too**: about THREE cases per method;
+  `lvai_check_aixml` `diagramChain` before you add it. `docs/diagram-size.md` §5.
+- **A latched boolean cannot be driven through `signalsJson`** (`Error 1193`). Test what it
+  triggers through the handler subVI it calls, and say so. `docs/cold-build-atm-agents-7.md` §4.
+- **`Format Into String` `%g` prints 50 as `50.000000`**; `%d`, `%.0f` and `%#g` print `50`
+  (measured by running, LabVIEW 2026, 2026-11-05). Derive an expected string from the format the
+  subject actually uses.
+- **A placeholder loses every typedef on its pane, silently**: check `typedefTerminals` and
+  `coercionDots`. `docs/typedef-constants.md`.
 
 ## Phase 0 — Confirm the station, then read the reference
 
@@ -193,7 +216,7 @@ REQUIRED terminal, so every chain needs a class value: author it as a **path con
 terminal it feeds** and convert it with `constantsJson` — nodes are swapped first and constants last,
 which is the order that works.
 
-## Phase 5 — `lvai_run_lunit_tests`, and prove the assertion can fail
+## Phase 5 — `lvai_run_lunit_tests`, and the negative control ONLY IF ASKED
 
 ```
 testPath    the .lvclass  (4x faster than the .lvproj and finds the same tests)
@@ -206,10 +229,17 @@ cluster — an error cluster carries the first failure only, so a partial run an
 assertion look identical in it. `tests: 0` means LUnit found nothing: the methods must be PUBLIC
 members of a class deriving from `Test Case.lvclass`.
 
-**An all-green run proves nothing.** The cheapest negative control needs no regeneration: one
-`lvai_swap_subvis` call repointing a read accessor at the wrong field — the exact fault the test
-exists to catch. Confirm the report names that case, restore with a second swap, re-run to green, and
-report both runs.
+**Do NOT run a negative control by default.** It costs a break, a run, a restore and a re-run -
+77 s in the ATM build of 2026-11 - and the user has asked for it to be off, as for Caraya. Skip it
+unless the task prompt explicitly asks for one.
+
+When it IS asked for, the cheapest one needs no regeneration: one `lvai_swap_subvis` call
+repointing a read accessor at the wrong field - the exact fault the test exists to catch. Confirm
+the report names that case, restore with a second swap, re-run to green, and report both runs.
+
+**Say what skipping it costs, in the report:** an all-green first run is weak evidence on its own -
+a `value="TRUE"` on a `bool` constant has passed here while testing nothing. Without the negative
+control, name in your report that the suite's ability to fail was not demonstrated.
 
 ## Framework-independent rules — these ARE measured, and they carry over
 
@@ -256,8 +286,9 @@ hold for LUnit too.
   anything LabVIEW adopted out of `user.lib` or `%TEMP%\LabVIEWMCP` at the same time, then verify
   with `lvai_describe_project` rather than by re-reading what you wrote.
 
-- **AN ALL-GREEN FIRST RUN PROVES NOTHING. Break something on purpose, once**, confirm the failure
-  names the case you broke, restore, and report that you did it.
+- **AN ALL-GREEN FIRST RUN PROVES LITTLE.** When the task asks for a negative control, break
+  something on purpose once, confirm the failure names the case you broke, restore, and report it;
+  when it does not, say in the report that the suite's ability to fail was not demonstrated.
 
 - **Read the machine-readable report, not `error out`** — the error cluster carries the first
   failure only, so a partial run and a single failure are indistinguishable.
@@ -276,9 +307,9 @@ hold for LUnit too.
 
 - **No newlines in `lvai_run_vi_and_read_values` inputs.** Use `|`.
 
-- **Give every VI you generated an icon, as the LAST step — this is the one that gets forgotten.**
-  A suite of test VIs all carrying the default blank icon is unreadable in the project tree and on
-  a runner's diagram. One call each, and let the tool draw the PNG:
+- **Test-VI icons are OPT-IN: set them only when the task asks for icons.** `lvai_set_vi_icon`
+  took 112 s in the ATM build of 2026-11 and nobody had asked for it. When the task does ask, do it
+  as the LAST step, and let the tool draw the PNG:
 
   ```
   lvai_set_vi_icon  viPath=<abs>  line1="LUNIT"  line2="SETP"  line3="RANGE"
@@ -296,7 +327,8 @@ together at the end, and read `failed` for the ones whose read-back did not veri
 ## Report
 
 Say, in this order: whether the framework was found and **where you looked**; every target spelling
-you settled and the evidence; the report numbers (`tests=`, `failures=`); the negative control; and
+you settled and the evidence; the report numbers (`tests=`, `failures=`); the negative control if
+one was asked for, otherwise that the suite's ability to fail was not demonstrated; and
 which facts you established yourself — those go into `docs/labview-unit-testing.md`, not only into
 your answer.
 

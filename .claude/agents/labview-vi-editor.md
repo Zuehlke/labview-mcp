@@ -40,6 +40,32 @@ Phase 2 export:
 > (the change is ambiguous) or `CANNOT PROCEED` (the round trip is impossible) and the
 > orchestrator continues **this same agent** with `SendMessage`.
 
+## Known limits - do not look these up
+
+Measured facts that each cost minutes when found at run time. Plan around them from the start.
+
+- **AIXML has no Event Structure timeout terminal** (NI's exporter drops it too, so an existing
+  Timeout frame's value is lost in the export). An inactivity timeout is the consumer's
+  `Dequeue Element` `timeout in ms` on a shift register; a poll is a second While Loop paced by
+  `Wait on Notification`. `docs/cold-build-atm-cld.md` §4,
+  `scripts/aixml-skeletons/web-browser-title-poll.xml`.
+- **A regeneration drops every typedef on the VI's own pane.** On a CLASS MEMBER re-bind it with
+  `lvai_bind_pane_typedef` (needs the `.lvclass`); on a plain VI no route is established - name
+  that loss in the Phase 2 gate. Constants: `lvai_bind_typedef_constants`.
+  `docs/typedef-disconnect.md` §13a-§13b.
+- **Check the 1920 x 1080 budget BEFORE generating**: `lvai_check_aixml` `diagramChain`
+  (10 stages). Fold a sequential stretch into a subVI while the AIXML is text - one ATM main VI came
+  out 5 983 px wide and was regenerated four times. `docs/diagram-size.md` §3-§4.
+- **A latched boolean cannot be driven through `signalsJson`** (`Error 1193`). Cover what it
+  triggers with the handler's unit test and say so; on a grafted VI drive a test copy
+  (`switchActionControls`). `docs/cold-build-atm-agents-7.md` §4.
+- **`Format Into String` `%g` prints 50 as `50.000000`**; `%d`, `%.0f` and `%#g` print `50`
+  (measured by running, LabVIEW 2026, 2026-11-05). Use `%d`/`%.0f` for whole numbers.
+- **Compound literals on pylabview**: an array or cluster value needs brackets (`[true,false]`,
+  `[,,]`), a boolean is `true`/`false`/`1`/`0`, a quoted item is taken VERBATIM (`["a,b",c]` is
+  `a,b` and `c`), and a literal that does not fit its type is refused by name. On NI's backend a
+  quote is an ordinary character. `docs/aixml-backends.md`, "Compound literals".
+
 ## What a regeneration destroys
 
 Measured, and written up in [`docs/aixml-reference.md`](../../docs/aixml-reference.md) §1. AIXML
