@@ -119,7 +119,7 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
                         ["errorKind"] = answer["errorKind"]?.DeepClone(),
                         ["before"] = answer["before"]?.DeepClone(),
                         ["after"] = (answer["after"] ?? answer["planned"])?.DeepClone(),
-                        ["landedOff"] = answer["landedOff"]?.DeepClone(), ["layoutEngine"] = answer["layoutEngine"]?.DeepClone(),
+                        ["landedOff"] = answer["landedOff"]?.DeepClone(), ["layoutEngine"] = answer["layoutEngine"]?.DeepClone(), ["tangledFallback"] = answer["tangledFallback"]?.DeepClone(),
                         ["backupPath"] = answer["backupPath"]?.DeepClone(),
                         ["ms"] = t.ElapsedMilliseconds,
                         ["timingsMs"] = answer["timingsMs"]?.DeepClone(),
@@ -402,6 +402,8 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         var ran = step["ok"]?.GetValue<bool>() == true && step["skipped"] is null;
         var ni = ran ? await cleanup.WireMetricsAsync(vi, timeoutSeconds, ct) : null;
         report["niRan"] = ran;
+        // why the clean-up did not run is the first thing to read when NI was not kept
+        if (!ran) report["niStep"] = step.DeepClone();
         if (ni is not null) report["ni"] = ni.ToJson();
         if (ran && KeepNiMeasured(ours, ni))
         {
