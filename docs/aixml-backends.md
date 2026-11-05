@@ -2282,6 +2282,56 @@ the others are inputs. `0x4000` never decides a direction on its own.
 
 Test: `PylabviewSoftSinkTests`, fixture `Fixtures/reader/MP3 Parse Frames.vi`.
 
+## Compound literals: refused when they do not fit, quoted items verbatim (fixed 2026-11-05)
+
+**Symptom.** A colleague's ATM cold build on plugin 2.4.5 (pylabview backend, LUnit) reported two
+test expectations that came out of the composer as different values, with no error: an
+`array{bool}` read as `[FALSE]`, and an expected string array as `{",,","",""}`. One failed run,
+a re-add and a re-run, about 100 s. The build's AIXML is not available, so the literals it
+used are unknown.
+
+**What reproduced and what did not.** The plain spellings were already right, as constants and
+as run inputs, read back by LabVIEW (`lvai_run_vi_and_read_values` over ActiveX): `[true,false,true]`,
+`[,,]` for an `array{string}` and for a three-string cluster, `[true,7,]`. These were wrong, all
+of them silently:
+
+| literal | type | composed as |
+|---|---|---|
+| `[[true,false,true]]` | `array{bool}` | `[FALSE]` - one element, the inner list read as a boolean |
+| `[T,F,T]` | `array{bool}` | `[FALSE,FALSE,FALSE]` - any token but true/1 was false |
+| `{true,false}`, `true,false` | `array{bool}` | `[]` - a value without `[` was the empty array |
+| `[",,"]` | `array{string}` | three strings `"`, empty, `"` - split at the commas inside the quotes |
+| `["","",""]` | `array{string}` | three strings of two quote characters each |
+| `[[1,2],[3]]` | `array.2{int32}` | 2 x 2, the missing element read from the next row |
+
+The quote rows are why a run and a composition disagreed: since the fourth CSV cold build
+(2026-10-27) the run tool's `ComValues.SplitItems` takes an item in double quotes verbatim, and
+the composer did not.
+
+**Fix** (`aixml2vi.py`):
+
+- `split_items` ports `SplitItems`/`QuoteEnd`: a quote counts only where an item starts and where
+  it ends (followed by a comma, the end, or in a nested list a closing bracket). The item is a
+  `Verbatim` and is never unescaped.
+- A literal that does not fit its type is refused by name (`value ... does not fit ...`): nesting
+  deeper or shallower than the array's rank, a ragged multi-dimensional array, more items than
+  the cluster has fields, a list where a scalar belongs, a boolean other than
+  `true`/`false`/`1`/`0` in any case, and an array or cluster value without brackets. A
+  control's DEFAULT stays as before: it is reported (`default value of ... not composed`) and the
+  control keeps its type's default.
+- `0` and the empty value stay accepted as the default of an array or cluster: the reader wrote
+  `0` for a cluster until 2026-10, and fixtures still carry it (`Sensor Event Demo.xml`).
+
+**Measured before the change was kept:** every `value=` of a Constant, Control and Indicator in
+`scripts\`, `tests\`, `experiments\` and the export cache, 8 477 values in 9 568 files. None is
+refused (two were before the `0` exception). Composed, `[",,","",""]`, `["a,b",c]` and
+`[TRUE, False, 1]` ran in LabVIEW 2026 as `",,"`/empty/empty, `a,b`/`c` and true/false/true.
+
+**On NI's backend** a quote is still an ordinary character (`docs/aixml-reference.md` §6), and
+`TRUE` still runs as false (§11). This section changes only the composer.
+
+Test: `PylabviewLiteralTests`.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the
