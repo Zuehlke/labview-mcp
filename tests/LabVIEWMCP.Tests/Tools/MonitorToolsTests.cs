@@ -133,6 +133,24 @@ public class MonitorBidiTests
         await server.Service.WaitForAsync("MonitorCodeCompletion:in");
     }
 
+    /// <summary>
+    /// The ready message must survive a server that reads late. The tool used to dispose the call
+    /// right after collecting, which sends RST_STREAM and discarded the unread message - the
+    /// test above failed on a slow CI runner (2026-11-05) with "saw 0".
+    /// </summary>
+    [Fact]
+    public async Task sendReady_reaches_a_server_that_reads_late()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.InboundReadDelay = TimeSpan.FromMilliseconds(300);
+
+        var result = await new MonitorTools(server.Connection)
+            .MonitorCodeCompletionAsync(sendReady: true, timeoutSeconds: 10);
+
+        Assert.True(Res.Bool(result, "readyMessageSent"));
+        await server.Service.WaitForAsync("MonitorCodeCompletion:in");
+    }
+
     [Fact]
     public async Task A_reply_is_written_back_on_the_request_stream()
     {
