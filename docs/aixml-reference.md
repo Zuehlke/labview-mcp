@@ -184,7 +184,10 @@ layout: `conIdx=` contains the characters `x=`.
   containing two literal quote characters — §6 takes a string element in a `value` literally.)
   Omitting `value` fails validation, which is cheap; the expensive part is the *case* of what you
   put in it. A boolean literal must be exactly lowercase `true`/`false`: `TRUE` generates without
-  complaint and runs as **false** (§11).
+  complaint and runs as **false** (§11). (On the pylabview backend `TRUE` is true, a quoted array
+  item is taken verbatim without its quotes, and a literal that does not fit its type - wrong
+  nesting, an unknown boolean, too many cluster items - is refused by name rather than composed
+  as a default: `docs/aixml-backends.md`, "Compound literals", 2026-11-05.)
 - **`inputs` is required on an `Indicator` too**, even an unwired one, where it reads
   `inputs="value:"` — the empty-net form used for any unwired terminal (§8).
 

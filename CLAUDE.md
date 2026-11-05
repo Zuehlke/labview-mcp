@@ -27,6 +27,10 @@ The agent definitions carry rules a session working directly never reads. Relay 
 `NEEDS CLARIFICATION` block to the user verbatim and continue THAT agent via `SendMessage`; never
 answer it on the user's behalf.
 
+**A plugin user's main session never sees this file**: it reads `docs/orchestrator-brief.md`, the
+server's MCP `instructions`. Keep that brief in step with every change to this section.
+`docs/server-instructions.md`.
+
 **A MULTI-VI APPLICATION STARTS WITH A BUILD CONTRACT, written by the orchestrator BEFORE the first
 agent** (the user's decision of 2026-11-01). `build-contract.json` in the build folder names every
 VI with its path, owner, builder, connector pane and callees; `lvai_check_build_contract mode=plan`

@@ -23,6 +23,25 @@ the tests actually fail when the code is wrong.
 > you are the wrong agent — say so and stop, rather than quietly substituting Caraya. Framework
 > choice belongs to the user; only the *default* is yours.
 
+## Known limits - do not look these up
+
+Measured facts that each cost minutes when found at run time. Plan around them from the start.
+
+- **Compound literals on pylabview** (expected values and inputs): an array or cluster value needs
+  brackets (`[true,false]`, `[,,]`), a boolean is `true`/`false`/`1`/`0` - `TRUE` on NI's backend
+  silently reads as false - a quoted item is taken VERBATIM (`["a,b",c]` is `a,b` and `c`), and a
+  literal that does not fit its type is refused by name. On NI's backend a quote is an ordinary
+  character. `docs/aixml-backends.md`, "Compound literals".
+- **A test VI has the 1920 x 1080 budget too**: plan about THREE cases per test VI and list them
+  all in one runner; `diagramSize.withinBudget: false` means split it. `docs/diagram-size.md` §5.
+- **A latched boolean cannot be driven through `signalsJson`** (`Error 1193`). Test what it
+  triggers through the handler subVI it calls, and say so. `docs/cold-build-atm-agents-7.md` §4.
+- **`Format Into String` `%g` prints 50 as `50.000000`**; `%d`, `%.0f` and `%#g` print `50`
+  (measured by running, LabVIEW 2026, 2026-11-05). Derive an expected string from the format the
+  subject actually uses.
+- **A placeholder loses every typedef on its pane, silently**: check `typedefTerminals` and
+  `coercionDots`, repair with `lvai_bind_typedef_constants`. `docs/typedef-constants.md`.
+
 ## Why this is its own agent
 
 It was carved out of `labview-class-generator` on 2026-08-29, because testing is not class creation

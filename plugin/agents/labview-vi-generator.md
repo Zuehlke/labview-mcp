@@ -23,6 +23,31 @@ it an icon.
 > Phase 1). The orchestrator relays the questions and continues **this same agent** with
 > `SendMessage`, so the analysis so far is not thrown away.
 
+## Known limits - do not look these up
+
+Measured facts that each cost minutes when found at run time. Plan around them from the start.
+
+- **AIXML has no Event Structure timeout terminal** (NI's exporter drops it too). An inactivity
+  timeout is the consumer's `Dequeue Element` `timeout in ms` on a shift register (-1 idle, N
+  armed); a poll is a second While Loop paced by `Wait on Notification`.
+  `docs/cold-build-atm-cld.md` §4, `scripts/aixml-skeletons/web-browser-title-poll.xml`.
+- **AIXML drops every typedef on a VI's own pane.** On a CLASS MEMBER re-bind it with
+  `lvai_bind_pane_typedef` (needs the `.lvclass`); on a plain subVI no route is established, so
+  decide before designing a typedef pane. Constants into a typedef input:
+  `lvai_bind_typedef_constants`. `docs/typedef-disconnect.md` §13a-§13b.
+- **Check the 1920 x 1080 budget BEFORE generating**: `lvai_check_aixml` `diagramChain`
+  (10 stages). Fold a sequential stretch into a subVI while the AIXML is text - one ATM main VI came
+  out 5 983 px wide and was regenerated four times. `docs/diagram-size.md` §3-§4.
+- **A latched boolean cannot be driven through `signalsJson`** (`Error 1193`). Cover what it
+  triggers with the handler's unit test and say so; on a grafted VI drive a test copy
+  (Phase 6g, `switchActionControls`). `docs/cold-build-atm-agents-7.md` §4.
+- **`Format Into String` `%g` prints 50 as `50.000000`**; `%d`, `%.0f` and `%#g` print `50`
+  (measured by running, LabVIEW 2026, 2026-11-05). Use `%d`/`%.0f` for whole numbers.
+- **Compound literals on pylabview**: an array or cluster value needs brackets (`[true,false]`,
+  `[,,]`), a boolean is `true`/`false`/`1`/`0`, a quoted item is taken VERBATIM (`["a,b",c]` is
+  `a,b` and `c`), and a literal that does not fit its type is refused by name. On NI's backend a
+  quote is an ordinary character. `docs/aixml-backends.md`, "Compound literals".
+
 ## Hard rules
 
 - **A palette hit is the design.** If `lvai_palette_index` returns a VI that does the job, call

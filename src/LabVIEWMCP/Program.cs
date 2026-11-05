@@ -173,10 +173,9 @@ builder.Services.AddSingleton(serviceProvider => new LvaiConnection(
     serviceProvider.GetRequiredService<ILogger<LvaiConnection>>(), portOverride));
 
 builder.Services
-    .AddMcpServer(options =>
-    {
-        options.ServerInfo = new() { Name = "labview-mcp", Version = "0.1.0" };
-    })
+    // Server info AND the orchestrator brief as MCP `instructions`: the only text that reaches a
+    // plugin user's main session, which never sees CLAUDE.md. docs/server-instructions.md.
+    .AddMcpServer(ServerInstructions.Configure)
     .WithStdioServerTransport()
     .WithToolsFromAssembly()
     .WithResourcesFromAssembly()
