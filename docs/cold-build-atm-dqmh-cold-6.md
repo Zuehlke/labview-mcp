@@ -58,7 +58,12 @@ explorer.exe as the parent (`PROC_THREAD_ATTRIBUTE_PARENT_PROCESS`), so LabVIEW 
 job and is in no tree of ours - then the explorer hand-off, then `breakaway`, then the shell start.
 `lvai_ensure_labview` answers `launchParent` and `outsideServerTree`. Supporting observation: the
 test gate later stopped three server processes (one of them pid 49756 above); the LabVIEW started
-through explorer at 17:47:22 was still running. A launch by the new strategy is not yet measured.
+through explorer at 17:47:22 was still running. **Measured live, 19:31:** with no LabVIEW running,
+`lvai_ensure_labview` answered `launchMethod: "shell-parent"`, `launchParent: "explorer.exe 37496"`,
+`outsideServerTree: true`, ready over ActiveX in 23 s; `Win32_Process` showed LabVIEW 144276 with
+parent explorer.exe 37496. Then `taskkill /T /F` on the server that launched it (132460, the
+client's way of ending a server) ended that server and its three children - and LabVIEW 144276 was
+still running five seconds later.
 
 Also seen: an `lvai_ensure_labview` call right after the orchestrator killed LabVIEW answered
 `state: starting` with `startedByThisCall: false` and `runningProcesses: 0` - it started nothing;
