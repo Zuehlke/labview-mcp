@@ -86,6 +86,9 @@
     <EmbeddedResource Include="..\..\.claude\agents\labview-vi-editor.md"
                       LogicalName="labview-vi-editor.md" />
     <EmbeddedResource Include="..\..\CLAUDE.md" LogicalName="CLAUDE.md" />
+    <!-- Served as the MCP `instructions` in the initialize answer (Infra/ServerInstructions.cs):
+         the orchestration rules a plugin user's main session would otherwise never see. -->
+    <EmbeddedResource Include="..\..\docs\orchestrator-brief.md" LogicalName="orchestrator-brief.md" />
   </ItemGroup>
 
   <ItemGroup>
