@@ -87,6 +87,13 @@ if (CommandLine.StringArg(args, AixmlBackend.Flag) is { Length: > 0 } wantedBack
 // the user's file. A profile that cannot be written does not stop the server.
 ServerSettings.EnsureExists();
 
+// Once per file: switch an existing installation to the pylabview default (2026-11-05). The
+// marker setDefaultDone keeps it from ever happening twice; the old file is kept as .bak.
+if (ServerSettings.MigrateDefaultOnce() == ServerSettings.Migration.Migrated)
+    Console.Error.WriteLine(
+        $"info: {ServerSettings.FilePath}: aixmlBackend switched to pylabview once (setDefaultDone); " +
+        "the previous file is settings.json.bak.");
+
 if (CommandLine.HasFlag(args, "--selftest"))
     return await SelfTest.RunAsync(
         portOverride, CommandLine.StringArg(args, "--vi"), CommandLine.StringArg(args, "--project"));

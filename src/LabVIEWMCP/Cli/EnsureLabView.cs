@@ -78,7 +78,7 @@ internal static class EnsureLabView
                 return 1;
             }
 
-            Console.WriteLine($"  launched via '{launch.Method}' (pid {launch.Pid}).");
+            Console.WriteLine($"  launched via '{launch.Method}' (pid {launch.Pid}, parent {launch.Parent}).");
         }
 
         var connection = new LvaiConnection(NullLogger<LvaiConnection>.Instance, port);

@@ -102,7 +102,7 @@ internal static class CommandLine
           --port <n>        pin LabVIEW's gRPC port instead of discovering it
           --aixml-backend <b>  which route the tools that reach LabVIEW take when a call names none:
                             grpc (NI's service in LabVIEW), pylabview (our own composer, no
-                            NI service needed) or auto. Overrides "aixmlBackend" in
+                            NI service needed; the default) or auto. Overrides "aixmlBackend" in
                             %USERPROFILE%\.labviewmcp\settings.json, the usual place to choose
                             - the file explains every value. docs/aixml-backends.md
           --lvversion <v>   LVVersion stamped into NEW .lvproj/.lvclass/.lvlib files,

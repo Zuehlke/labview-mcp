@@ -54,39 +54,52 @@ Highest wins:
 | 2 | `--aixml-backend <grpc\|pylabview\|auto>` on the server's command line | `--aixml-backend` |
 | 3 | `LABVIEWMCP_AIXML_BACKEND` in the server's environment (same three values) | `LABVIEWMCP_AIXML_BACKEND` |
 | 4 | **`"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json`** - THE place to choose | `settings file <path>` |
-| 5 | the LabVIEW in use is OLDER than 2026 → `pylabview` | `LabVIEW <year> is older than 2026 - …` |
-| 6 | nothing set | `default` (grpc) |
+| 5 | nothing set | `default` (**pylabview**, since 2026-11-05) |
+
+**pylabview is the default on every LabVIEW - the user's decision of 2026-11-05.** Before it, an
+omitted backend was grpc, and pylabview only on a LabVIEW older than 2026 (the rule of 2026-10-12,
+which the new default covers and replaces).
 
 **The settings file is the user's decision of 2026-10-13: the choice is an entry that is ALWAYS in
 a file, with every allowed value and what it means written beside it.** The server creates the file
-on its first start - with `"aixmlBackend": "auto"`, today's behaviour - and never rewrites it, so an
-edit and its comments stay. It is read on EVERY call (cached by write time), so a change takes
-effect without a restart. The comments are JSON comments, read with comments skipped:
+on its first start - with `"aixmlBackend": "pylabview"` and `"setDefaultDone": true` - and otherwise
+rewrites it ONCE (below), so an edit and its comments stay. It is read on EVERY call (cached by
+content), so a change takes effect without a restart. The comments are JSON comments, read with
+comments skipped:
 
 ```jsonc
 {
+  //   "pylabview"  The DEFAULT. Our own composer and reader (scripts\aixml-pylabview). Needs NO NI service ...
   //   "grpc"       NI's AI service inside LabVIEW (Nigel). ...
-  //   "pylabview"  Our own composer and reader (scripts\aixml-pylabview). Needs NO NI service ...
-  //   "auto"       "grpc", except "pylabview" when the LabVIEW in use is older than 2026.
-  "aixmlBackend": "auto"
+  //   "auto"       The server's default - today "pylabview".
+  "aixmlBackend": "pylabview",
+  "setDefaultDone": true
 }
 ```
+
+**The one-time switch (`setDefaultDone`).** An EXISTING file whose `setDefaultDone` is not `true`
+- every installation from before 2026-11-05 - is switched at the next server start:
+`"aixmlBackend"` becomes `"pylabview"` whatever it said, `"setDefaultDone": true` is added, the old
+template's comment promising grpc for `auto` is reworded, and everything else (comments,
+`labviewExe`, `labviewPref`) stays. The old file is kept as `settings.json.bak`, and the server logs
+one `info:` line to stderr. From then on the marker stops it: a user who sets `"grpc"` afterwards
+keeps it. A file that does not parse is left alone (the resolver refuses it by name anyway).
+`ServerSettings.MigrateDefaultOnce`, tested in `ServerSettingsMigrationTests`.
 
 It lives beside the cache under `%USERPROFILE%` rather than beside the exe: a plugin update replaces
 the exe's folder and would take the choice with it, and `%LOCALAPPDATA%` is redirected for a server
 the desktop app starts (`CacheDirectory`). `LABVIEWMCP_SETTINGS` points at another file - the test
 suite uses it to read none. **`auto` - in the file, the flag or the variable - makes NO choice**, so
-the rules below it decide; that is the only way rule 5 is reached. A file that does not parse, an
+the default decides. A file that does not parse, an
 entry that is not a string, or a value that is none of the three is REFUSED by name with the
 file's path, like an unknown name anywhere else. Rules 2 and 3 stay as overrides for a host that
 cannot edit the profile (CI, a shared registration); `pylv_status` shows the file's path, whether it
 exists, its entry and the default in force.
 
-**Rule 5 is the user's of 2026-10-12, and it holds even for LabVIEW 2025, which HAS NI's service**
-(`NI Nigel AI Advisor for LabVIEW 2025`). "In use" is the newest RUNNING LabVIEW, else the newest
-INSTALLED one - the one `lvai_ensure_labview` would start; with neither readable the rule does not
-apply. It is asked only when rules 1-4 are silent, and only for a tool the client called, like rules
-2-4. `pylv_status` shows both releases it compares, `labviewInUse` and `partsRelease`.
+**The former rule 5 (2026-10-12 to 2026-11-05)** made pylabview the default on a LabVIEW older
+than 2026, even LabVIEW 2025, which HAS NI's service. The default now covers it. "In use" - the
+newest RUNNING LabVIEW, else the newest INSTALLED - still decides which file version the composer
+writes; `pylv_status` shows `labviewInUse` and `partsRelease`.
 
 **AND THE COMPOSER WRITES FOR SUCH A LabVIEW AS THAT RELEASE - since the same evening, after the
 user's LabVIEW 2025 station refused every composed VI with `Error 1125, File version is later

@@ -34,6 +34,8 @@ internal sealed class LifecycleTools(LvaiConnection connection)
         service). MUTATING: may start a visible IDE, and then first empties LVAutoSave (see
         keepAutoSave). The launch is VERIFIED: only a process still alive two seconds later counts
         (`launchMethod`); if none survives the answer is `launch-did-not-survive` with every attempt.
+        LabVIEW is started with explorer as its parent: `outsideServerTree: false` means it ends
+        with this server process.
         The gRPC service comes up with LabVIEW, about 45 s after a cold start; while it is coming up,
         call again - the second call finds the instance and waits. A 'starting' that persists past
         about two minutes with LabVIEW visibly up: ask whoever is at the machine to open Nigel, then
@@ -77,13 +79,15 @@ internal sealed class LifecycleTools(LvaiConnection connection)
             budgetCts.CancelAfter(budget);
             var token = budgetCts.Token;
 
-            var running = LabViewLocator.RunningInstances();
             var startedNow = false;
             string? launched = null;
             LaunchOutcome? launch = null;
             AutoSaveRecovery.Result? autoSave = null;
+            var lateLaunch = false;
 
-            if (running.Count == 0)
+            // Launches LabVIEW and answers null, or the refusal to return. A local function because
+            // it runs either at once or, once, from the poll below (see there).
+            async Task<string?> LaunchAsync()
             {
                 // BEFORE the launch. Leftover auto-save data makes LabVIEW raise a modal recovery
                 // dialog on start, and a modal dialog stops this very gRPC service until somebody
@@ -125,7 +129,11 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                 launched = pick.Describe() + (pref is null ? "" : $" -pref {pref}") +
                            $" (chosen: {startContext.Source})";
                 RecordOwnership(launch.Pid);
+                return null;
             }
+
+            if (LabViewLocator.RunningInstances().Count == 0 && await LaunchAsync() is { } refused)
+                return refused;
 
             // Poll until the service answers. A cold LabVIEW start is far slower than this
             // budget, hence the explicit "call again" outcome rather than a failure.
@@ -133,6 +141,16 @@ internal sealed class LifecycleTools(LvaiConnection connection)
 
             while (!token.IsCancellationRequested)
             {
+                // A LabVIEW that is being ended still lists for a moment. Measured 2026-11-05: a
+                // call right after the orchestrator killed LabVIEW found it, launched nothing,
+                // polled out its budget and answered `starting` with runningProcesses 0. If the
+                // process this call relied on is gone, start one - once.
+                if (!startedNow && !lateLaunch && LabViewLocator.RunningInstances().Count == 0)
+                {
+                    lateLaunch = true;
+                    if (await LaunchAsync() is { } refusedLate) return refusedLate;
+                }
+
                 if (overCom)
                 {
                     // ready = a running LabVIEW with a window answers over ActiveX; NotReady keeps
@@ -155,6 +173,8 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                                 ["startedByThisCall"] = startedNow,
                                 ["launched"] = launched,
                                 ["launchMethod"] = launch?.Method,
+                ["launchParent"] = launch?.Parent,
+                ["outsideServerTree"] = launch?.OutsideServerTree,
                                 ["autoSaveCleared"] = autoSave?.Describe(),
                                 ["labviewVersion"] = version,
                                 ["waitedMs"] = stopwatch.ElapsedMilliseconds,
@@ -184,6 +204,8 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                         ["startedByThisCall"] = startedNow,
                         ["launched"] = launched,
                         ["launchMethod"] = launch?.Method,
+                ["launchParent"] = launch?.Parent,
+                ["outsideServerTree"] = launch?.OutsideServerTree,
                     ["autoSaveCleared"] = autoSave?.Describe(),
                         ["port"] = connection.Port,
                         ["discoveredVia"] = connection.DiscoveredVia,
@@ -210,6 +232,8 @@ internal sealed class LifecycleTools(LvaiConnection connection)
                 ["startedByThisCall"] = startedNow,
                 ["launched"] = launched,
                 ["launchMethod"] = launch?.Method,
+                ["launchParent"] = launch?.Parent,
+                ["outsideServerTree"] = launch?.OutsideServerTree,
                     ["autoSaveCleared"] = autoSave?.Describe(),
                 ["runningProcesses"] = stillRunning,
                 ["waitedMs"] = stopwatch.ElapsedMilliseconds,
