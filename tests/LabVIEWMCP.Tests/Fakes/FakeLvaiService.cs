@@ -32,6 +32,11 @@ internal sealed class FakeLvaiService : LVAI.LVAIBase
     public int StreamCount { get; set; } = 2;
     public int BidiPushCount { get; set; } = 1;
     public TimeSpan StreamDelay { get; set; } = TimeSpan.Zero;
+    /// <summary>
+    /// Delay before a bidi call's first READ of the client's messages - a slow server, as a slow
+    /// CI runner made this fake: a client that hangs up straight after its last write loses it.
+    /// </summary>
+    public TimeSpan InboundReadDelay { get; set; } = TimeSpan.Zero;
     /// <summary>Keep the stream open after the pushes, so the client has to time out.</summary>
     public bool StreamForever { get; set; }
 
@@ -156,6 +161,8 @@ internal sealed class FakeLvaiService : LVAI.LVAIBase
         {
             try
             {
+                if (InboundReadDelay > TimeSpan.Zero)
+                    await Task.Delay(InboundReadDelay);
                 while (await requests.MoveNext(context.CancellationToken))
                     Record(method + ":in", requests.Current);
             }

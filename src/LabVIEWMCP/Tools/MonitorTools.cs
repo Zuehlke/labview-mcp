@@ -211,11 +211,14 @@ internal sealed class MonitorTools(LvaiConnection connection)
             try { await call.RequestStream.CompleteAsync(); }
             catch { /* the server may have closed first; nothing to salvage */ }
 
-            if (replied)
+            if (replied || sendReady)
             {
                 // Hanging up straight after the write DISCARDS it: disposing an unfinished call
                 // sends RST_STREAM, and the peer can cancel out before it has read our answer.
                 // Draining lets the call end normally, which is what actually delivers the reply.
+                // The ready message is the same case: without the drain a server that had not
+                // read it yet lost it - MonitorBidiTests.sendReady_... failed on a slow CI runner
+                // (2026-11-05), and a 300 ms delay before the fake's first read reproduced it.
                 try
                 {
                     using var grace = CancellationTokenSource.CreateLinkedTokenSource(ct);
