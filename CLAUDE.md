@@ -327,8 +327,9 @@ can carry a default (`double.Gain=1`) and may be a `path`. `docs/typedef-disconn
 
 **The AIXML tools have two backends**, NI's gRPC service and our pylabview composer, chosen by
 `"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json` (or `--aixml-backend`,
-`LABVIEWMCP_AIXML_BACKEND`); a LabVIEW older than 2026 defaults to pylabview and the composer
-writes that release's file version. What needs a running LabVIEW goes over ActiveX there, which
+`LABVIEWMCP_AIXML_BACKEND`). **pylabview is the default** (the user's decision of 2026-11-05; it
+was grpc, pylabview only below LabVIEW 2026); an existing settings file is switched to it once,
+marked by `"setDefaultDone": true`. The composer writes the file version of the LabVIEW in use. What needs a running LabVIEW goes over ActiveX there, which
 only ATTACHES, never starts LabVIEW. Pass `backend` only when you mean it.
 `docs/aixml-backends.md`.
 

@@ -11,13 +11,12 @@ namespace LabVIEWMcp.Infra;
 ///   3. the LABVIEWMCP_AIXML_BACKEND environment variable
 ///   4. `aixmlBackend` in the settings file, %USERPROFILE%\.labviewmcp\settings.json - the user's
 ///      decision of 2026-10-13 that the choice is an entry ALWAYS present in a file, its values
-///      explained beside it (<see cref="ServerSettings"/>). "auto" there - the value a new file gets -
-///      and "auto" in 2. or 3. make no choice, so the rules below decide
-///   5. pylabview when the LabVIEW in use is OLDER than 2026 - the user's rule of 2026-10-12, which
-///      holds even where NI's service exists (LabVIEW 2025 has one). The composer WARNS there
-///      (`versionWarning`): its skeleton stamps every VI LabVIEW 2026, which an older LabVIEW may
-///      refuse - unmeasured (<see cref="AixmlComposer.WarningForOlderLabView"/>)
-///   6. grpc
+///      explained beside it (<see cref="ServerSettings"/>). "auto" there and in 2. or 3. makes no
+///      choice, so the default below decides
+///   5. pylabview - the user's decision of 2026-11-05: our own composer is the default on every
+///      LabVIEW. It replaced "grpc, except pylabview on a LabVIEW older than 2026" (the rule of
+///      2026-10-12), which this default covers. Existing settings files are switched over once
+///      (<see cref="ServerSettings.MigrateDefaultOnce"/>).
 ///
 /// THE SERVER DEFAULT REACHES ONLY A TOOL THE CLIENT CALLED ITSELF. About forty places in this
 /// server call lvai_generate_vi or the convert tools from C# - the class tools, the test
@@ -62,8 +61,8 @@ internal static class AixmlBackend
         }
     }
 
-    private static string OlderLabViewSource(int release) =>
-        $"LabVIEW {release} is older than {FirstGrpcRelease} - pylabview is the default there";
+    /// <summary>The backend when nothing names one - the user's decision of 2026-11-05.</summary>
+    public const string Default = PyLabview;
 
     /// <summary>The MCP tool the client invoked in this async flow; set by DiagnosingTool.</summary>
     public static readonly AsyncLocal<string?> ClientTool = new();
@@ -171,7 +170,7 @@ internal static class AixmlBackend
                                     Func<ServerSettings.BackendEntry?> settings, Func<int?> labviewInUse,
                                     out Choice choice, out string error)
     {
-        choice = new Choice(Grpc, "default");
+        choice = new Choice(Default, "default");
         error = "";
 
         if (!string.IsNullOrWhiteSpace(perCall))
@@ -242,9 +241,6 @@ internal static class AixmlBackend
             }
         }
 
-        if (labviewInUse() is { } release && release < FirstGrpcRelease)
-            choice = new Choice(PyLabview, OlderLabViewSource(release));
-
         return true;
     }
 
@@ -261,9 +257,7 @@ internal static class AixmlBackend
             return new Choice($"invalid: {unreadable}", SettingsSource(entry.Path));
         if (!string.IsNullOrWhiteSpace(entry.Value) && NormaliseSetting(entry.Value) != ServerSettings.Auto)
             return new Choice(Normalise(entry.Value) ?? $"invalid: {entry.Value}", SettingsSource(entry.Path));
-        if (LabViewInUse() is { } release && release < FirstGrpcRelease)
-            return new Choice(PyLabview, OlderLabViewSource(release));
-        return new Choice(Grpc, "default");
+        return new Choice(Default, "default");
     }
 
     /// <summary>The refusal for an unknown backend, in the shape every tool error has.</summary>

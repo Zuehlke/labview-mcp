@@ -57,7 +57,7 @@ public sealed class AixmlBackendTests
                      Resolve(null, flag: "pylabview", environment: "grpc"));
         Assert.Equal(new AixmlBackend.Choice("pylabview", AixmlBackend.Variable),
                      Resolve(null, environment: "pylabview"));
-        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), Resolve(null));
+        Assert.Equal(new AixmlBackend.Choice("pylabview", "default"), Resolve(null));
     }
 
     /// <summary>
@@ -85,43 +85,20 @@ public sealed class AixmlBackendTests
     }
 
     /// <summary>
-    /// The user's rule of 2026-10-12: a LabVIEW OLDER than 2026 in use makes pylabview the default -
-    /// even 2025, which has NI's service - while an explicit choice anywhere above still wins and an
-    /// internal call still stays grpc.
+    /// The user's decision of 2026-11-05: pylabview is the default on EVERY LabVIEW - it replaced
+    /// "grpc, except pylabview on a LabVIEW older than 2026". An explicit grpc anywhere above still
+    /// wins, and an internal call still stays grpc.
     /// </summary>
     [Fact]
-    public void An_older_LabVIEW_makes_pylabview_the_default_and_nothing_more()
+    public void Pylabview_is_the_default_on_every_LabVIEW()
     {
-        var older = ResolveWith(2025);
-        Assert.Equal("pylabview", older.Name);
-        Assert.Contains("2025", older.Source);
-        Assert.Equal("pylabview", ResolveWith(2019).Name);
+        foreach (var release in new int?[] { 2019, 2025, 2026, 2027, null })
+            Assert.Equal(new AixmlBackend.Choice("pylabview", "default"), ResolveWith(release));
 
-        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveWith(2026));
-        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveWith(2027));
-        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveWith(null));
-
-        Assert.Equal(new AixmlBackend.Choice("grpc", "call"), ResolveWith(2025, perCall: "grpc"));
-        Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Flag), ResolveWith(2025, flag: "grpc"));
-        Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Variable), ResolveWith(2025, environment: "grpc"));
-        Assert.Equal("grpc", ResolveWith(2025, clientTool: "lvai_create_class").Name);
-    }
-
-    /// <summary>
-    /// The release is read only when every rule above it is silent: it costs a look at the process
-    /// table, and a call that names its backend must not pay for it.
-    /// </summary>
-    [Fact]
-    public void The_LabVIEW_release_is_read_only_when_nothing_above_decided()
-    {
-        var asked = 0;
-        int? Count() { asked++; return 2025; }
-        AixmlBackend.TryResolve("grpc", Tool, Tool, null, null, null, Count, out _, out _);
-        AixmlBackend.TryResolve(null, Tool, Tool, "grpc", null, null, Count, out _, out _);
-        AixmlBackend.TryResolve(null, Tool, "lvai_create_class", null, null, null, Count, out _, out _);
-        Assert.Equal(0, asked);
-        AixmlBackend.TryResolve(null, Tool, Tool, null, null, null, Count, out _, out _);
-        Assert.Equal(1, asked);
+        Assert.Equal(new AixmlBackend.Choice("grpc", "call"), ResolveWith(2026, perCall: "grpc"));
+        Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Flag), ResolveWith(2026, flag: "grpc"));
+        Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Variable), ResolveWith(2026, environment: "grpc"));
+        Assert.Equal("grpc", ResolveWith(2026, clientTool: "lvai_create_class").Name);
     }
 
     /// <summary>
@@ -222,12 +199,11 @@ public sealed class AixmlBackendTests
         Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Flag),
                      ResolveFile(Entry("pylabview"), flag: "grpc"));
 
-        // "grpc" in the file holds even on a LabVIEW older than 2026 - only "auto" lets that rule decide
+        // "grpc" in the file holds; "auto", no entry and no file all fall to the default
         Assert.Equal("grpc", ResolveFile(Entry("grpc"), labviewInUse: 2025).Name);
-        Assert.Equal("pylabview", ResolveFile(Entry("auto"), labviewInUse: 2025).Name);
-        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveFile(Entry("auto")));
-        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveFile(Entry(null)));
-        Assert.Equal(new AixmlBackend.Choice("grpc", "default"), ResolveFile(null));
+        Assert.Equal(new AixmlBackend.Choice("pylabview", "default"), ResolveFile(Entry("auto")));
+        Assert.Equal(new AixmlBackend.Choice("pylabview", "default"), ResolveFile(Entry(null)));
+        Assert.Equal(new AixmlBackend.Choice("pylabview", "default"), ResolveFile(null));
 
         // and it is a SERVER default: an internal call still stays on NI's converter
         Assert.Equal("grpc", ResolveFile(Entry("pylabview"), clientTool: "lvai_create_class").Name);
@@ -266,7 +242,7 @@ public sealed class AixmlBackendTests
     /// template must parse with its comments, carry the entry, and explain every accepted value.
     /// </summary>
     [Fact]
-    public void A_new_settings_file_explains_every_value_and_starts_on_auto()
+    public void A_new_settings_file_explains_every_value_and_starts_on_pylabview_with_the_marker()
     {
         var dir = Directory.CreateTempSubdirectory("lvmcp-settings-").FullName;
         try
@@ -275,7 +251,9 @@ public sealed class AixmlBackendTests
             Assert.True(ServerSettings.EnsureExists(path));
             var entry = ServerSettings.ReadBackend(path);
             Assert.Null(entry.Error);
-            Assert.Equal("auto", entry.Value);
+            Assert.Equal("pylabview", entry.Value);
+            // a new file is never switched over: it carries the marker from the start
+            Assert.Equal(ServerSettings.Migration.AlreadyDone, ServerSettings.MigrateDefaultOnce(path));
 
             var text = File.ReadAllText(path);
             foreach (var value in AixmlBackend.SettingNames)
