@@ -120,6 +120,24 @@ without a rooted-ness check will silently accept anything at all**, because `Get
 fails on a syntactically legal relative path — it invents an answer from the process's working
 directory, and that directory belongs to the server rather than to the caller.
 
+### A fourth: the listing step closed the build's own project (`leaveProjectOpen`)
+
+The listing is a file edit, so it closes the active project first. On pylabview the generators
+open nothing, and since 2026-10-12 they close the active project only when it IS the one named in
+`projectPath` (`KeepActiveProjectReason`). In a parallel build that is precisely the wrong one: the
+build's own project, opened by the orchestrator and needed by the other agents. Measured 2026-11-05
+(ATM DQMH cold build 5, `docs/cold-build-atm-dqmh-cold-5.md`): the Caraya agent kept the
+orchestrator's project open only by passing a scratch `.lvproj` that LabVIEW had never opened.
+
+`leaveProjectOpen: true` on `lvai_generate_test`, `lvai_generate_class_test`,
+`lvai_generate_method_test` and `lvai_generate_caraya_test_runner` closes no project and lists
+nothing: every `projectEntry` comes back `deferred` with the VIs and the `lvai_add_vis_to_project`
+call to make once the build is done, and the closing message says so instead of "THE PROJECT IS
+LEFT CLOSED". On grpc the direct route still OPENS the subject through its project (that is what
+makes it resolvable) and now leaves it loaded; the grpc placeholder route is refused before anything
+is written, because its pylabview retarget closes the active project. Tests:
+`LeaveProjectOpenTests`.
+
 ## 1. The blocker: a generated test cannot call its subject statically *by AIXML alone*
 
 A unit test calls the VI under test. AIXML cannot express that call. Measured with one throwaway

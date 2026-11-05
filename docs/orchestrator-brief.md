@@ -62,6 +62,9 @@ LabVIEW's copy over the `.lvproj`. So agents GENERATE files; you alone:
 - swap subVIs (`lvai_swap_subvis`);
 - list VIs in a project (`lvai_add_vis_to_project`, never by editing the `.lvproj` by hand).
 
+A test agent in a parallel build passes `leaveProjectOpen: true` to the test generators: they
+then close no project and list nothing, and report the test VIs for you to list.
+
 Build by dependency: leaf VIs in parallel with no project open, then one agent for the callers.
 Restart LabVIEW between two builds of the same application: a same-named VI of the earlier build,
 still in memory, silently captures a bare-name call.

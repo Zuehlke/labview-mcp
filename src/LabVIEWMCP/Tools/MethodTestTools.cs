@@ -120,11 +120,13 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
-        [Description(TestTools.MeasureTestDiagramDescription)] bool measureDiagram = true) =>
+        [Description(TestTools.MeasureTestDiagramDescription)] bool measureDiagram = true,
+        [Description(TestTools.LeaveProjectOpenDescription)] bool leaveProjectOpen = false) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!AixmlBackend.TryResolve(backend, "lvai_generate_method_test", out _, out var badBackend))
                 return AixmlBackend.Refusal(badBackend);
+            TestTools.LeaveProjectOpen.Value = leaveProjectOpen;
             if (!File.Exists(lvclassPath))
                 return Json.Error("badArguments", $"No .lvclass at '{lvclassPath}'.");
             if (projectPath is { Length: > 0 } && !File.Exists(projectPath))
@@ -466,9 +468,10 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             steps.Add(AssertionsStep(cases));
             return Outcome(true, null, steps, total, testViPath, keepAixml ? testAixml : null,
                 $"Generated. {Counts(cases)}, every method called as an ordinary static subVI. " +
-                "THE PROJECT IS LEFT CLOSED, which is the state the next generate call needs, " +
-                "and lvai_run_caraya_tests runs the suite with it closed - measured four runs green " +
-                "that way 2026-10-05. Read the JUnit report, and break one " +
+                TestTools.ProjectLeftNote(
+                    "THE PROJECT IS LEFT CLOSED, which is the state the next generate call needs, " +
+                    "and lvai_run_caraya_tests runs the suite with it closed - measured four runs " +
+                    "green that way 2026-10-05.") + " Read the JUnit report, and break one " +
                 "expectation on purpose once - one of `expectedConstants`, with lvai_set_constant - " +
                 "because an all-green first run proves very little.",
                 swapAnswer["callTargets"]?.DeepClone(), route, ExpectedConstants(cases));
@@ -909,8 +912,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             $"Generated. {Counts(cases)}, every method and accessor called DIRECTLY - no sockets, " +
             "no node swaps; " + (composed ? "the seeds were composed as class constants. "
                                           : "only the seed constants were replaced. ") +
-            "THE PROJECT IS LEFT CLOSED, " +
-            "and lvai_run_caraya_tests runs the suite with it closed. Read the JUnit report, and " +
+            TestTools.ProjectLeftNote("THE PROJECT IS LEFT CLOSED, " +
+                "and lvai_run_caraya_tests runs the suite with it closed.") + " Read the JUnit report, and " +
             "break one " +
             "expectation on purpose once - one of `expectedConstants`, with lvai_set_constant - " +
             "because an all-green first run proves very little.",

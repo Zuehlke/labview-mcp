@@ -46,6 +46,49 @@ internal sealed class TestTools(LvaiConnection connection)
     private const string RunTests = @"Caraya.lvlib\3ARun Tests.vi";
     private const string RunTestArrayPath = @"Caraya.lvlib\3ARun Test (Array Path).vi";
 
+    /// <summary>
+    /// Set by a test generator's `leaveProjectOpen`: close NO project and list NOTHING for the rest
+    /// of this call. CLAUDE.md gives project state to the orchestrator in a parallel build, and on
+    /// pylabview the listing step closed the active project whenever it was the one named in
+    /// `projectPath` - the build's own. Measured 2026-11-05 (ATM DQMH cold build 5): the Caraya
+    /// agent could keep the orchestrator's project open only by passing a scratch .lvproj that was
+    /// never opened (docs/cold-build-atm-dqmh-cold-5.md §3). An AsyncLocal, like
+    /// <see cref="AixmlBackend.Inherited"/>, so every helper of one call sees it and no other call.
+    /// </summary>
+    internal static readonly AsyncLocal<bool> LeaveProjectOpen = new();
+
+    internal const string LeaveProjectOpenDescription = """
+        true: close NO project and list nothing - for a build where several agents share one
+        LabVIEW and the orchestrator owns the project. `projectEntry` comes back `deferred` with
+        the lvai_add_vis_to_project call to make afterwards. Default false.
+        """;
+
+    /// <summary>What a listing step answers under <see cref="LeaveProjectOpen"/>: nothing done, and what to do.</summary>
+    internal static JsonObject DeferredListing(string projectPath, string folderName,
+                                               IEnumerable<string> viPaths)
+    {
+        var vis = viPaths.Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        return new JsonObject
+        {
+            ["step"] = "projectEntry",
+            ["ok"] = true,
+            ["deferred"] = true,
+            ["projectPath"] = projectPath,
+            ["folder"] = folderName,
+            ["vis"] = new JsonArray([.. vis.Select(v => (JsonNode)v)]),
+            ["note"] = "leaveProjectOpen: no project was closed and nothing was listed. List these " +
+                       $"with lvai_add_vis_to_project projectPath='{projectPath}' folderName=" +
+                       $"'{folderName}' once no agent needs the project open.",
+        };
+    }
+
+    /// <summary>The project sentence of a generator's closing message, true to <see cref="LeaveProjectOpen"/>.</summary>
+    internal static string ProjectLeftNote(string closedNote) =>
+        LeaveProjectOpen.Value
+            ? "NO PROJECT WAS CLOSED AND THE TEST IS NOT LISTED (leaveProjectOpen) - list it with " +
+              "lvai_add_vis_to_project when the build is done."
+            : closedNote;
+
     [McpServerTool(Name = "lvai_generate_test", Destructive = true, OpenWorld = true,
                    Title = "Generate a Caraya unit test for a VI, wired to call it")]
     [Description("""
@@ -54,7 +97,8 @@ internal sealed class TestTools(LvaiConnection connection)
         `route` says which ran: DIRECT (default) opens the subject through the .lvproj that lists
         it, calls it by name, closes the project and lists the test under testFolderName; the
         PLACEHOLDER route (no single listing project, or the subject does not resolve) uses
-        lvai_placeholder_subvi plus a pylabview retarget. The active project is closed at the end.
+        lvai_placeholder_subvi plus a pylabview retarget. The active project is closed at the end -
+        unless `leaveProjectOpen`, which closes nothing and lists nothing (a shared LabVIEW).
         Sub-answers come back under `steps`.
         Case keys are only `label`, `inputs`, `expect`, `setup`, `tolerance`; any other is REFUSED.
         `inputs`/`expect` use the subject's CONNECTOR-PANE terminal names (lvai_vi_terminals) -
@@ -98,13 +142,15 @@ internal sealed class TestTools(LvaiConnection connection)
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
-        [Description(MeasureTestDiagramDescription)] bool measureDiagram = true) =>
+        [Description(MeasureTestDiagramDescription)] bool measureDiagram = true,
+        [Description(LeaveProjectOpenDescription)] bool leaveProjectOpen = false) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!AixmlBackend.TryResolve(backend, "lvai_generate_test", out _, out var badBackend))
                 return AixmlBackend.Refusal(badBackend);
             if (!File.Exists(viPath))
                 return Json.Error("badArguments", $"No file at viPath '{viPath}'.");
+            LeaveProjectOpen.Value = leaveProjectOpen;
 
             List<Case> cases;
             try { cases = Case.ParseAll(casesJson); }
@@ -150,6 +196,15 @@ internal sealed class TestTools(LvaiConnection connection)
                     "A case carries `setup`, which only the DIRECT route can author - each setup VI " +
                     "is called by name and must be opened through the project first. The direct " +
                     $"route did not run: {route["reason"]}", route: route);
+
+            // THE GRPC PLACEHOLDER ROUTE ENDS IN A PYLABVIEW RETARGET, which closes the active
+            // project first (stale compiled code otherwise) - exactly what leaveProjectOpen
+            // forbids. Refused here, before anything is written; pylabview swaps instead.
+            if (leaveProjectOpen && AixmlBackend.Inherited.Value?.Name != AixmlBackend.PyLabview)
+                return Outcome(false, "placeholder", steps, total, testViPath, null,
+                    "leaveProjectOpen, and the direct route did not run, so the placeholder route " +
+                    "would end in a pylabview retarget that CLOSES the active project. Nothing was " +
+                    $"written. The direct route's reason: {route["reason"]}", route: route);
 
             // 1. the call node AIXML is allowed to create
             var placeholder = await new PlaceholderTools(connection)
@@ -531,8 +586,8 @@ internal sealed class TestTools(LvaiConnection connection)
         string? seedClassPath = null,
         [Description("""
             The .lvproj to LIST the test VIs in - pass it whenever the class has a project. It is
-            CLOSED for the edit and left closed. Omitted on the direct route, the project listing
-            the class is used.
+            CLOSED for the edit and left closed (not with leaveProjectOpen). Omitted on the direct
+            route, the project listing the class is used.
             """)]
         string? projectPath = null,
         [Description("""
@@ -554,13 +609,15 @@ internal sealed class TestTools(LvaiConnection connection)
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
-        [Description(MeasureTestDiagramDescription)] bool measureDiagram = true) =>
+        [Description(MeasureTestDiagramDescription)] bool measureDiagram = true,
+        [Description(LeaveProjectOpenDescription)] bool leaveProjectOpen = false) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!AixmlBackend.TryResolve(backend, "lvai_generate_class_test", out _, out var badBackend))
                 return AixmlBackend.Refusal(badBackend);
             if (!File.Exists(lvclassPath))
                 return Json.Error("badArguments", $"No .lvclass at '{lvclassPath}'.");
+            LeaveProjectOpen.Value = leaveProjectOpen;
 
             if (projectPath is { Length: > 0 } && !File.Exists(projectPath))
                 return Json.Error("badArguments", $"No .lvproj at projectPath '{projectPath}'.");
@@ -783,8 +840,9 @@ internal sealed class TestTools(LvaiConnection connection)
                 $"Write and Read accessors, verified against {AixmlBackend.ExportName()}. Run it through " +
                 "Caraya's runner with a Report Path ending in .xml and read the JUnit report - and " +
                 "break one case on purpose once, because an all-green first run proves very " +
-                "little: " + NegativeControlHint + " THE PROJECT IS LEFT CLOSED, which is the state the next generate call " +
-                "needs, and lvai_run_caraya_tests runs the suite with it closed.",
+                "little: " + NegativeControlHint + " " + ProjectLeftNote(
+                    "THE PROJECT IS LEFT CLOSED, which is the state the next generate call " +
+                    "needs, and lvai_run_caraya_tests runs the suite with it closed."),
                 swapAnswer["callTargets"]?.DeepClone(), route, ClassExpectedConstants(cases));
         });
 
@@ -1041,7 +1099,8 @@ internal sealed class TestTools(LvaiConnection connection)
                       : "only the seed constants were replaced. ") +
             "Run it through Caraya's runner with a Report Path ending in .xml and read " +
             "the JUnit report - and break one case on purpose once, because an all-green first " +
-            "run proves very little: " + NegativeControlHint + " THE PROJECT IS LEFT CLOSED.",
+            "run proves very little: " + NegativeControlHint + " " +
+            ProjectLeftNote("THE PROJECT IS LEFT CLOSED."),
             callTargets, Direct(route),
             ClassExpectedConstants(cases)), null);
     }
@@ -1193,11 +1252,13 @@ internal sealed class TestTools(LvaiConnection connection)
         bool keepAixml = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
         CancellationToken ct = default,
-        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null) =>
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        [Description(LeaveProjectOpenDescription)] bool leaveProjectOpen = false) =>
         await Rpc.GuardAsync(async () =>
         {
             if (!AixmlBackend.TryResolve(backend, "lvai_generate_caraya_test_runner", out _, out var badBackend))
                 return AixmlBackend.Refusal(badBackend);
+            LeaveProjectOpen.Value = leaveProjectOpen;
             // The third tool that writes a VI where the caller says. Same reason as the other
             // two: ConvertAIXMLToVI does not create the folder and blames a memory conflict.
             if (Path.GetDirectoryName(Path.GetFullPath(runnerViPath)) is { Length: > 0 } runnerFolder)
@@ -1547,6 +1608,12 @@ internal sealed class TestTools(LvaiConnection connection)
     internal async Task<JsonObject> ReleaseProjectAsync(string project, int timeoutSeconds,
                                                         CancellationToken ct)
     {
+        if (LeaveProjectOpen.Value)
+            return new JsonObject
+            {
+                ["step"] = "closeProject", ["skipped"] = true,
+                ["reason"] = "leaveProjectOpen: the caller owns project state.",
+            };
         if (await KeepActiveProjectAsync(project, timeoutSeconds, ct) is { } keep)
             return new JsonObject { ["step"] = "closeProject", ["skipped"] = true, ["reason"] = keep };
         var closed = await new CloseTools(connection).CloseActiveProjectAsync(
@@ -1610,6 +1677,10 @@ internal sealed class TestTools(LvaiConnection connection)
         string projectPath, string folderName, IReadOnlyList<string> viPaths, int timeoutSeconds,
         CancellationToken ct, bool reopen = true, bool moveTargetLevel = false)
     {
+        // THE LISTING IS A FILE EDIT WITH THE PROJECT CLOSED, so under leaveProjectOpen it is not
+        // made at all - half a listing (edit while LabVIEW holds the project) is lost on its save.
+        if (LeaveProjectOpen.Value)
+            return DeferredListing(projectPath, folderName, viPaths);
         var step = new JsonObject { ["step"] = "projectEntry", ["projectPath"] = projectPath };
         try
         {

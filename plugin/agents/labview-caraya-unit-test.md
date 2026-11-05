@@ -788,6 +788,14 @@ placeholder, STOP, and report the socket name for the orchestrator to swap centr
 2026-09-16 - four agents built ten subVIs in about 11 minutes of wall clock against about 32 minutes
 of summed agent time, with no project contention at all.
 
+**In that situation pass `leaveProjectOpen: true` to EVERY generator** (`lvai_generate_test`,
+`lvai_generate_class_test`, `lvai_generate_method_test`, `lvai_generate_caraya_test_runner`) and give
+them the build's real `projectPath`. Without it the listing step closes the active project whenever
+it is the one named - on pylabview exactly the build's own, which the other agents are using
+(2026-11-05, ATM DQMH cold build 5; the agent then had to invent a scratch `.lvproj`). With it nothing
+is closed and nothing listed: each `projectEntry` comes back `deferred` with its VIs - name them all
+in your report for the orchestrator to list with `lvai_add_vis_to_project`.
+
 ## Related agents
 
 | Job | Agent |
