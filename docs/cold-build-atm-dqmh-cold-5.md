@@ -37,7 +37,9 @@ then spent its time on graft, binding and driving.
   `noActiveProject`. Log kept as `C:\Temp\ATM_DQMH_Cold_5\lv_crash_1648.txt`.
 - **17:00:23, silent.** The instance ended with NO crash dump; its log ends normally after
   start-up lines. The Caraya agent's `lvai_generate_test` answered `Connection closed`. Cause
-  unknown. Log kept as `lv_log_after_1700.txt`.
+  unknown at the time. Log kept as `lv_log_after_1700.txt`. Run 6 found the likely mechanism: a
+  LabVIEW started by `lvai_ensure_labview` is a child of that MCP server process and ends with it
+  (`cold-build-atm-dqmh-cold-6.md` §2) - the `Connection closed` fits a server restart.
 
 Both times only the orchestrator re-opened the project (`lvai_open_file`); agents had been told
 not to. An agent asking the orchestrator to re-open a project it was refused is the

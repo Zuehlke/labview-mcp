@@ -91,6 +91,45 @@ public class LabViewLauncherConfirmTests
                 () => Pids(), Pids(), Appear, Survive, Poll, cts.Token));
     }
 
+    // ---------- leaving the server's process tree (measured 2026-11-05, cold build 6 §2) ----------
+
+    [Fact]
+    public void TheFirstStrategiesLeaveTheServersProcessTree()
+    {
+        // "breakaway" leaves the job but keeps this server as LabVIEW's parent, and the client
+        // ending the server's tree took LabVIEW with it twice. It must not be tried first again.
+        Assert.Equal(["shell-parent", "explorer", "breakaway", "shell"], LabViewLauncher.StrategyOrder);
+    }
+
+    [Fact]
+    public void ADirectChildIsInTheServersTree()
+    {
+        var parents = new Dictionary<int, int> { [80712] = 49756, [49756] = 113820 };
+        Assert.True(LabViewLauncher.HasAncestor(80712, 49756, p => parents.TryGetValue(p, out var q) ? q : null));
+    }
+
+    [Fact]
+    public void AGrandchildIsInTheServersTreeToo()
+    {
+        var parents = new Dictionary<int, int> { [3] = 2, [2] = 1 };
+        Assert.True(LabViewLauncher.HasAncestor(3, 1, p => parents.TryGetValue(p, out var q) ? q : null));
+    }
+
+    [Fact]
+    public void AnExplorerParentedProcessIsOutsideTheTree()
+    {
+        var parents = new Dictionary<int, int> { [80712] = 7000, [7000] = 6000 };
+        Assert.False(LabViewLauncher.HasAncestor(80712, 49756, p => parents.TryGetValue(p, out var q) ? q : null));
+    }
+
+    [Fact]
+    public void AParentCycleEndsTheWalk()
+    {
+        // pid reuse can make a chain loop; the walk must still answer
+        var parents = new Dictionary<int, int> { [1] = 2, [2] = 1 };
+        Assert.False(LabViewLauncher.HasAncestor(1, 99, p => parents.TryGetValue(p, out var q) ? q : null));
+    }
+
     [Fact]
     public async Task TheAppearWindowIsRespectedRatherThanWaitedOutForever()
     {

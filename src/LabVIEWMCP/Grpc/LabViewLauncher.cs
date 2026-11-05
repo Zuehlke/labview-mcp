@@ -15,8 +15,13 @@ internal sealed record LaunchAttempt(
     string Method, bool Started, bool Appeared, bool Survived, string? Detail);
 
 /// <summary>Result of the whole chain. <paramref name="Method"/> is null when nothing worked.</summary>
+/// <param name="OutsideServerTree">
+/// Whether the surviving LabVIEW has this server process among its ancestors: false means it ends
+/// when the client ends the server's process tree. Null when it could not be read.
+/// </param>
 internal sealed record LaunchOutcome(
-    bool Ok, string? Method, int? Pid, IReadOnlyList<LaunchAttempt> Attempts);
+    bool Ok, string? Method, int? Pid, IReadOnlyList<LaunchAttempt> Attempts,
+    bool? OutsideServerTree = null, string? Parent = null);
 
 /// <summary>
 /// Starting LabVIEW so that it is still there a second later.
@@ -48,6 +53,17 @@ internal sealed record LaunchOutcome(
 /// by whether the launch call returned without error. That last point matters beyond this bug:
 /// <see cref="LabViewLocator.Start"/> returns null when the shell reuses an existing instance, which
 /// used to be reported as "start-failed" while LabVIEW was in fact coming up.
+///
+/// **Leaving the job is not leaving the tree.** Measured 2026-11-05 (cold build 6,
+/// docs/cold-build-atm-dqmh-cold-6.md §2): a LabVIEW started by "breakaway" survived its start,
+/// but its PARENT was still this server - <c>claude.exe → LabVIEWMCP.exe → LabVIEW.exe</c> - and
+/// when the client replaced that server process it ended the process tree, LabVIEW with it: twice
+/// in three minutes, no crash dump, a normal-looking log, every other agent's call "Connection
+/// closed". A LabVIEW started through explorer.exe lived through the rest of the build. So the
+/// first strategy now creates LabVIEW with the desktop shell as its PARENT
+/// (PROC_THREAD_ATTRIBUTE_PARENT_PROCESS): out of our tree AND out of our job (the job comes from
+/// that parent), still direct, still with a pid. "breakaway" moves to third place, and every
+/// outcome says whether the LabVIEW that survived still hangs off this server.
 /// </summary>
 internal static class LabViewLauncher
 {
@@ -61,9 +77,11 @@ internal static class LabViewLauncher
 
     /// <summary>
     /// Launch LabVIEW and return only once a process has been seen to survive, or once every
-    /// strategy has been tried. Strategy order is deliberate: breakaway is direct and yields a pid;
-    /// the Explorer hand-off is the configuration measured to work in the wild; the plain shell
-    /// start is the historical behaviour, kept last so nothing that used to work stops working.
+    /// strategy has been tried. Strategy order is deliberate: the shell-parented start is direct,
+    /// yields a pid and leaves both our job and our process tree; the Explorer hand-off leaves both
+    /// too and is the configuration measured to work in the wild; breakaway leaves only the job, so
+    /// LabVIEW still dies with this server; the plain shell start is the historical behaviour, kept
+    /// last so nothing that used to work stops working.
     /// </summary>
     /// <param name="prefFile">
     /// The INI to start LabVIEW with (`-pref`), or null for LabVIEW.ini beside the exe - issue #99:
@@ -78,9 +96,10 @@ internal static class LabViewLauncher
 
         (string Name, Func<LabViewInstall, string, (bool Started, string? Detail)> Launch)[] strategies =
         [
-            ("breakaway", StartBreakaway),
-            ("explorer", StartViaExplorer),
-            ("shell", StartViaShell),
+            (StrategyOrder[0], StartWithShellParent),
+            (StrategyOrder[1], StartViaExplorer),
+            (StrategyOrder[2], StartBreakaway),
+            (StrategyOrder[3], StartViaShell),
         ];
 
         foreach (var (name, launch) in strategies)
@@ -100,10 +119,89 @@ internal static class LabViewLauncher
                 CurrentPids, before, AppearWindow, SurviveWindow, PollInterval, ct);
 
             attempts.Add(new LaunchAttempt(name, true, appeared, survived, detail));
-            if (survived) return new LaunchOutcome(true, name, pid, attempts);
+            if (survived)
+            {
+                var self = Environment.ProcessId;
+                bool? outside = pid is { } p ? !HasAncestor(p, self, ParentOf) : null;
+                var parent = pid is { } q ? DescribeParent(q) : null;
+                return new LaunchOutcome(true, name, pid, attempts, outside, parent);
+            }
         }
 
         return new LaunchOutcome(false, null, null, attempts);
+    }
+
+    /// <summary>The strategies in the order they are tried; pinned by a test.</summary>
+    internal static readonly string[] StrategyOrder = ["shell-parent", "explorer", "breakaway", "shell"];
+
+    /// <summary>
+    /// Whether <paramref name="ancestor"/> is on <paramref name="pid"/>'s parent chain. The lister
+    /// answers null where the chain ends; a depth limit guards against a pid-reuse cycle.
+    /// </summary>
+    internal static bool HasAncestor(int pid, int ancestor, Func<int, int?> parentOf)
+    {
+        var current = pid;
+        for (var depth = 0; depth < 64; depth++)
+        {
+            if (parentOf(current) is not { } parent || parent == current) return false;
+            if (parent == ancestor) return true;
+            current = parent;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// The parent of a live process, or null. A parent pid whose process started AFTER the child is
+    /// a reused pid, not the parent - Windows keeps the number after the parent exits.
+    /// </summary>
+    private static int? ParentOf(int pid)
+    {
+        if (!OperatingSystem.IsWindows()) return null;
+        try
+        {
+            if (ParentPidFromSnapshot(pid) is not { } parent || parent == 0) return null;
+            using var child = Process.GetProcessById(pid);
+            using var candidate = Process.GetProcessById(parent);
+            return candidate.StartTime <= child.StartTime ? parent : null;
+        }
+        catch
+        {
+            return null;   // exited, or access denied: the chain ends here
+        }
+    }
+
+    private static string? DescribeParent(int pid)
+    {
+        if (ParentOf(pid) is not { } parent) return "none (parent exited)";
+        try
+        {
+            using var p = Process.GetProcessById(parent);
+            return $"{p.ProcessName}.exe {parent}";
+        }
+        catch
+        {
+            return $"pid {parent}";
+        }
+    }
+
+    private static int? ParentPidFromSnapshot(int pid)
+    {
+        var snapshot = CreateToolhelp32Snapshot(Th32csSnapProcess, 0);
+        if (snapshot == IntPtr.Zero || snapshot == new IntPtr(-1)) return null;
+        try
+        {
+            var entry = new ProcessEntry32 { dwSize = Marshal.SizeOf<ProcessEntry32>() };
+            if (!Process32FirstW(snapshot, ref entry)) return null;
+            do
+            {
+                if (entry.th32ProcessID == pid) return entry.th32ParentProcessID;
+            } while (Process32NextW(snapshot, ref entry));
+            return null;
+        }
+        finally
+        {
+            CloseHandle(snapshot);
+        }
     }
 
     /// <summary>
@@ -149,13 +247,111 @@ internal static class LabViewLauncher
     private static IReadOnlySet<int> CurrentPids() =>
         LabViewLocator.RunningInstances().Select(p => p.Id).ToHashSet();
 
-    // ---------- strategy 1: create the process outside our job ----------
+    // ---------- strategy 1: create the process with the desktop shell as its parent ----------
 
     private const uint CreateBreakawayFromJob = 0x0100_0000;
     private const uint DetachedProcess = 0x0000_0008;
     private const uint CreateNewProcessGroup = 0x0000_0200;
+    private const uint ExtendedStartupInfoPresent = 0x0008_0000;
+    private const uint ProcessCreateProcess = 0x0080;
+    private static readonly IntPtr ProcThreadAttributeParentProcess = new(0x0002_0000);
 
     /// <summary>
+    /// CreateProcess with PROC_THREAD_ATTRIBUTE_PARENT_PROCESS set to the desktop shell
+    /// (explorer.exe, found through GetShellWindow). The new process inherits job, token and
+    /// handles from THAT parent, not from us, so it is in neither our job nor our process tree,
+    /// and a client that ends this server's tree no longer ends LabVIEW. Same user, same session:
+    /// opening the shell with PROCESS_CREATE_PROCESS needs no privilege.
+    /// </summary>
+    private static (bool Started, string? Detail) StartWithShellParent(LabViewInstall install, string arguments)
+    {
+        if (!OperatingSystem.IsWindows())
+            return (false, "not Windows");
+
+        var shellWindow = GetShellWindow();
+        if (shellWindow == IntPtr.Zero)
+            return (false, "no desktop shell window (GetShellWindow) - no explorer to parent LabVIEW to");
+        GetWindowThreadProcessId(shellWindow, out var shellPid);
+        if (shellPid == 0)
+            return (false, "the shell window has no process id");
+
+        var shell = OpenProcess(ProcessCreateProcess, false, shellPid);
+        if (shell == IntPtr.Zero)
+        {
+            var code = Marshal.GetLastWin32Error();
+            return (false, $"OpenProcess(shell {shellPid}) failed: Win32 {code} " +
+                           $"({new Win32Exception(code).Message.Trim()})");
+        }
+
+        var attributeList = IntPtr.Zero;
+        var parentValue = IntPtr.Zero;
+        try
+        {
+            var size = IntPtr.Zero;
+            InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref size);
+            attributeList = Marshal.AllocHGlobal(size);
+            if (!InitializeProcThreadAttributeList(attributeList, 1, 0, ref size))
+                return (false, $"InitializeProcThreadAttributeList failed: Win32 {Marshal.GetLastWin32Error()}");
+
+            // lpValue points at the HANDLE and must stay valid until CreateProcess returns
+            parentValue = Marshal.AllocHGlobal(IntPtr.Size);
+            Marshal.WriteIntPtr(parentValue, shell);
+            if (!UpdateProcThreadAttribute(attributeList, 0, ProcThreadAttributeParentProcess,
+                    parentValue, IntPtr.Size, IntPtr.Zero, IntPtr.Zero))
+                return (false, $"UpdateProcThreadAttribute failed: Win32 {Marshal.GetLastWin32Error()}");
+
+            var startupInfo = new StartupInfoEx
+            {
+                StartupInfo = new StartupInfo { cb = Marshal.SizeOf<StartupInfoEx>() },
+                lpAttributeList = attributeList,
+            };
+            var commandLine = new StringBuilder($"\"{install.ExePath}\"" + (arguments.Length > 0 ? " " + arguments : ""));
+
+            var ok = CreateProcessExW(
+                install.ExePath,
+                commandLine,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                bInheritHandles: false,
+                ExtendedStartupInfoPresent | DetachedProcess | CreateNewProcessGroup,
+                IntPtr.Zero,
+                Path.GetDirectoryName(install.ExePath),
+                ref startupInfo,
+                out var info);
+
+            if (!ok)
+            {
+                var code = Marshal.GetLastWin32Error();
+                return (false, $"CreateProcess (parent explorer {shellPid}) failed: Win32 {code} " +
+                               $"({new Win32Exception(code).Message.Trim()})");
+            }
+
+            CloseHandle(info.hThread);
+            CloseHandle(info.hProcess);
+            return (true, $"pid {info.dwProcessId}, parent explorer.exe {shellPid}");
+        }
+        catch (Exception e)
+        {
+            return (false, $"{e.GetType().Name}: {e.Message}");
+        }
+        finally
+        {
+            if (attributeList != IntPtr.Zero)
+            {
+                DeleteProcThreadAttributeList(attributeList);
+                Marshal.FreeHGlobal(attributeList);
+            }
+            if (parentValue != IntPtr.Zero) Marshal.FreeHGlobal(parentValue);
+            CloseHandle(shell);
+        }
+    }
+
+    // ---------- strategy 3: create the process outside our job (but still our child) ----------
+
+    /// <summary>
+    /// STILL A CHILD OF THIS SERVER: it leaves the job, not the process tree, so it ends when the
+    /// client ends this server's tree (measured 2026-11-05). Kept for a station without a shell.
+    ///
     /// CreateProcess with CREATE_BREAKAWAY_FROM_JOB, so the new process joins no job of ours.
     /// DETACHED_PROCESS and CREATE_NEW_PROCESS_GROUP remove the other two ways a parent can reach
     /// a child: a shared console, and console control events sent to the group. LabVIEW is a GUI
@@ -242,7 +438,7 @@ internal static class LabViewLauncher
         }
     }
 
-    // ---------- strategy 3: what this server always did ----------
+    // ---------- strategy 4: what this server always did ----------
 
     private static (bool Started, string? Detail) StartViaShell(LabViewInstall install, string arguments)
     {
@@ -303,4 +499,72 @@ internal static class LabViewLauncher
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool CloseHandle(IntPtr hObject);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct StartupInfoEx
+    {
+        public StartupInfo StartupInfo;
+        public IntPtr lpAttributeList;
+    }
+
+    [DllImport("kernel32.dll", EntryPoint = "CreateProcessW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool CreateProcessExW(
+        string? lpApplicationName,
+        StringBuilder? lpCommandLine,
+        IntPtr lpProcessAttributes,
+        IntPtr lpThreadAttributes,
+        bool bInheritHandles,
+        uint dwCreationFlags,
+        IntPtr lpEnvironment,
+        string? lpCurrentDirectory,
+        ref StartupInfoEx lpStartupInfo,
+        out ProcessInformation lpProcessInformation);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool InitializeProcThreadAttributeList(
+        IntPtr lpAttributeList, int dwAttributeCount, int dwFlags, ref IntPtr lpSize);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool UpdateProcThreadAttribute(
+        IntPtr lpAttributeList, uint dwFlags, IntPtr attribute, IntPtr lpValue, IntPtr cbSize,
+        IntPtr lpPreviousValue, IntPtr lpReturnSize);
+
+    [DllImport("kernel32.dll")]
+    private static extern void DeleteProcThreadAttributeList(IntPtr lpAttributeList);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetShellWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+
+    private const uint Th32csSnapProcess = 0x0000_0002;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct ProcessEntry32
+    {
+        public int dwSize;
+        public int cntUsage;
+        public int th32ProcessID;
+        public IntPtr th32DefaultHeapID;
+        public int th32ModuleID;
+        public int cntThreads;
+        public int th32ParentProcessID;
+        public int pcPriClassBase;
+        public int dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+        public string szExeFile;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr CreateToolhelp32Snapshot(uint dwFlags, int th32ProcessID);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool Process32FirstW(IntPtr hSnapshot, ref ProcessEntry32 lppe);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool Process32NextW(IntPtr hSnapshot, ref ProcessEntry32 lppe);
 }
