@@ -53,11 +53,45 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
     private static readonly Kind NiDiagram = new("niCleanUpDiagram", NiDiagramHelperFileName, "block diagram",
         "LabVIEW's Clean Up Diagram (BD.CleanUp) ran and the VI was saved in place");
 
+    /// <summary>One BD.CleanUp at a time across lvai_layout_diagrams' parallel workers.</summary>
+    private static readonly SemaphoreSlim NiCleanUpGate = new(1, 1);
+
+    /// <summary>How often a clean-up LabVIEW answered with a transient error is tried in all.</summary>
+    internal const int NiCleanUpAttempts = 3;
+
+    /// <summary>
+    /// LabVIEW's answer to BD.CleanUp that is worth trying again: Error 2. Measured 2026-11-05 on
+    /// lvai_layout_diagrams with 4 workers over the MP3 VIs: MP3 Granule Info's clean-up answered
+    /// `Error 2, Invoke Node ... Block Diagram:Clean Up` while another worker laid out its caller,
+    /// MP3 Decode Channel; alone, and with the caller open in the IDE, the same VI cleaned up.
+    /// </summary>
+    internal static bool IsTransientCleanUpError(int? code) => code == 2;
+
     /// <summary>LabVIEW's Clean Up Diagram on one VI, saved in place; compiled code a save brought
-    /// in is stripped again. Never throws for a LabVIEW refusal: read `ok`.</summary>
-    public Task<JsonObject> RunNiDiagramAsync(string viPath, string backend, int timeoutSeconds,
-                                              CancellationToken ct) =>
-        RunAsync(NiDiagram, viPath, backend, timeoutSeconds, ct);
+    /// in is stripped again. Never throws for a LabVIEW refusal: read `ok`. Serialised across
+    /// parallel workers and tried again on a transient error (`attempts` in the answer).</summary>
+    public async Task<JsonObject> RunNiDiagramAsync(string viPath, string backend, int timeoutSeconds,
+                                                    CancellationToken ct)
+    {
+        await NiCleanUpGate.WaitAsync(ct);
+        try
+        {
+            JsonObject step = new();
+            for (var attempt = 1; attempt <= NiCleanUpAttempts; attempt++)
+            {
+                step = await RunAsync(NiDiagram, viPath, backend, timeoutSeconds, ct);
+                step["attempts"] = attempt;
+                if (step["ok"]?.GetValue<bool>() == true
+                    || !IsTransientCleanUpError(step["helperErrorCode"]?.GetValue<int?>())) break;
+                await Task.Delay(TimeSpan.FromMilliseconds(500 * attempt), ct);
+            }
+            return step;
+        }
+        finally
+        {
+            NiCleanUpGate.Release();
+        }
+    }
 
     /// <summary>The `cleanUpDiagram` step for one VI: our layout, saved in place. Never throws
     /// for a LabVIEW refusal: the answer's `ok` says whether the diagram was laid out and saved.</summary>

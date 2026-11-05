@@ -1348,3 +1348,13 @@ before ours is applied. Granule Info passes both: NI loses on crossings, ours is
 tangled, and NI wins on bends. The rule needs nothing from NI when ours is not tangled, so the 14
 VIs of the MP3 set below the line cost one file read each, about 0.3 s.
 `LayoutDenseTests.A_tangled_result_of_ours_goes_to_NI_as_the_user_judged` holds the eleven verdicts.
+
+**In parallel workers NI's clean-up can fail, measured 2026-11-05.** `lvai_layout_diagrams` with
+4 workers over the 16 MP3 VIs kept our tangled layout of `MP3 Granule Info` (3.26 bends a wire,
+3 backward), where a single `lvai_layout_diagram` gave it to NI. The new `niStep` in
+`tangledFallback` showed why: BD.CleanUp answered **Error 2** (`Invoke Node ... Block Diagram:Clean
+Up`) while another worker was laying out `MP3 Decode Channel`, which calls Granule Info. Alone, and
+with Decode Channel open in the IDE, the same VI cleaned up. NI's clean-up now runs one at a time
+across all workers (`DiagramCleanup.RunNiDiagramAsync`), and Error 2 is tried again up to three
+times (`attempts` in the answer). The dense path of 6p goes through the same call. Each row of
+`lvai_layout_diagrams` now carries `tangledFallback`, which was not visible there before.

@@ -116,6 +116,18 @@ public class LayoutDenseTests(ITestOutputHelper output)
         Assert.False(DiagramLayoutTools.KeepNiMeasured(ours, null));                      // not measured
     }
 
+    /// <summary>Error 2 is what BD.CleanUp answered for MP3 Granule Info while a parallel worker
+    /// laid out its caller (2026-11-05); it is tried again, any other error is final.</summary>
+    [Fact]
+    public void Only_error_2_from_NIs_clean_up_is_tried_again()
+    {
+        Assert.True(DiagramCleanup.IsTransientCleanUpError(2));
+        Assert.False(DiagramCleanup.IsTransientCleanUpError(0));
+        Assert.False(DiagramCleanup.IsTransientCleanUpError(1055));
+        Assert.False(DiagramCleanup.IsTransientCleanUpError(null));
+        Assert.True(DiagramCleanup.NiCleanUpAttempts >= 2);
+    }
+
     [Fact]
     public void The_metrics_script_line_is_read()
     {
