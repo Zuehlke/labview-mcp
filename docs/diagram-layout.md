@@ -1264,9 +1264,27 @@ that NI's clean-up handles such a VI better than ours. The rule:
    `cleanUpDiagram` step after generation goes through the same code and names the engine it
    used.
 
-Not yet measured live: what NI's clean-up makes of MP3 Synthesize. The fallback was built after
-the build had stopped the server, and the decision is a measurement, so the first live run is
-what shows whether NI wins. The user's own observation is the reason the fallback exists.
+**Measured live on the 16 MP3 VIs.** Five plans were too dense, and NI crossed fewer wires in all
+five, so NI's layout was kept:
+
+| VI | Ours planned | NI |
+|---|---|---|
+| Synthesize | 522 | 298 |
+| Requantize | 92 | 16 |
+| Decode Granule | 119 | 71 |
+| Stereo | 110 | 92 |
+| Player | 48 | 41 |
+
+A sixth, Granule Info, was too dense too, but NI lost on crossings (720 against 452) and ours was
+applied over NI's layout; all 71 objects landed exactly. The user still preferred NI there, which
+is what 6q answers.
+
+**On a whole DQMH project** (ATM_DQMH_Cold_4, 80 VIs, 2026-11-05) one plan was too dense
+(`Withdraw From File`, NI kept: 49 bends -> 34) and no result came out tangled. All VIs together
+went from 2949 bends to 3768, and 18 of the 19 VIs with clearly more bends are Delacor's DQMH
+template VIs of the module library (`Test Account Manager API` 87 -> 254, `Main` 261 -> 427).
+Our own VIs stayed level or improved; the top-level VI went from 202 to 179 bends and from 4
+backward wires to 1. The user decided to keep laying out the module library's VIs as well.
 
 **Compacting NI's layout, measured live** (the user's request, 2026-11-04). The user found NI's
 clean-up of MP3 Granule Info tidier than ours, "but with a lot of room given away in X and Y".
