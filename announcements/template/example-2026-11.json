@@ -1,0 +1,28 @@
+{
+  "title": "LabVIEW MCP News",
+  "accent": "#f2b705",
+  "brand": ">_ LabVIEW MCP",
+  "tagline": "Release News · 11/2026",
+  "headline_top": "New in",
+  "headline_marked": "LabVIEW MCP",
+  "aside": "two big\nsteps ↓",
+  "image": "sketch.webp",
+  "image_alt": "Sketch: a friendly AI assistant pointing at the LabVIEW logo",
+  "notes": [
+    {
+      "label": "LabVIEW Versions",
+      "color": "#fff3c4",
+      "title": "2018 – 2026",
+      "chips": ["2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025", "2026"],
+      "text": "LabVIEW MCP now supports every LabVIEW version from 2018 to 2026."
+    },
+    {
+      "label": "Block Diagram",
+      "color": "#dcefe9",
+      "checks": ["Stable", "Open for extensions", "Used worldwide"]
+    }
+  ],
+  "cta": "Try it now",
+  "url": "https://github.com/Zuehlke/labview-mcp",
+  "cta_note": "Scan the QR code →"
+}

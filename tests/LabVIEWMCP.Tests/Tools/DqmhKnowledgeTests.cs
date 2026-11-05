@@ -177,10 +177,16 @@ public class DqmhKnowledgeTests
         // a leak and is not one. A picture CAN of course carry a customer name visually; this
         // guard never could see that, and skipping the file does not change what it covers.
         string[] textual = [".md", ".tsv", ".html", ".txt", ".json", ".csv", ".xml"];
-        var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories)
+        // announcements\ (posters, the GdevCon7 talk) moved out of docs\ on 2026-11-05 so it no
+        // longer ships, but it is still published with the repository: walk it too.
+        var announcements = Path.Combine(Path.GetDirectoryName(folder)!, "announcements");
+        var files = new[] { folder, announcements }
+            .Where(Directory.Exists)
+            .SelectMany(d => Directory.GetFiles(d, "*", SearchOption.AllDirectories))
             .Where(f => textual.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
             .ToArray();
         Assert.True(files.Length >= 15, $"only {files.Length} text files found in {folder}");
+        Assert.Contains(files, f => Path.GetFileName(f) == "MCP_Presentation.html");
 
         foreach (var path in files)
         {
@@ -208,7 +214,7 @@ public class DqmhKnowledgeTests
     /// tokenised. Same reasoning as skipping a .png: a minified bundle and a base64 screenshot
     /// are not text a reader can reason about, and tokenising them manufactures leaks.
     ///
-    /// Measured on docs/GdevCon7/MCP_Presentation.html, 7 090 619 characters: raw, it reports
+    /// Measured on announcements/gdevcon7/MCP_Presentation.html (then docs/GdevCon7/), 7 090 619 characters: raw, it reports
     /// EOL 12x, eol 3x and datastore 2x. Stripped it is 63 620 characters and reports ONE
     /// occurrence, on the one line that really carries it. Allowlisting the raw hits instead
     /// would have made the guard blind to those two tokens in the document's actual prose.
