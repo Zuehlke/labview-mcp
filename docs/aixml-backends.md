@@ -2466,6 +2466,24 @@ than int32 keep INT_MIN/INT_MAX (not measured). `ComposerCaseRangeTests` reads N
 Financial Forecasting, Interpolation Solver, Real Root Finding and STFT Spectrogram Demo load
 executable since; IIR Filter Design no longer crashes but is broken (a separate defect).
 
+**A third silent kind: a VI Server node bound to a control the READER exports plain.** NI's
+Vertical Fill Slide.vi writes `{LV.Slide}` Fill Color to an indicator `vi2aixml.py` exports as a
+plain double - no style, no class - so it is composed as a digital numeric, and LV.Digital has no
+Fill Color: `Invalid property`. The Tree examples' trees (exported as strings; `Invalid method` on
+Custom Item Symbols.Set Symbol) and the PID and FM examples' slides the same way. The composer
+refuses such a binding now (`_refuse_foreign_members`), judged from LabVIEW's catalogue
+(`docs/vi-server-properties.tsv`, `vi-server-methods.tsv` list inherited members per class): a node
+bound to a control composed as a plain Digital, Boolean, String, Path, Cluster or Array may use only
+that class's members. Over the whole census it refused 7 more VIs, none of which had loaded
+executable. The lasting fix is the reader naming those controls' classes.
+
+The LabVIEW Error List lines of the broken ones come from `census_errors.py`, which runs the
+server's own lvai_exec_state helper over COM per VI. The 42 broken free VIs before this split into:
+the VI Server kind above (about 9), wires of different types (8), Formula Node `Undefined
+variable` (3), refnum `Class conflict` (3), arrays of different dimensions (3), clusters of
+different contents (2), a malleable `.vim` link, a community-scope class member, a Conditional
+Disable condition, an Event Structure frame with no event - and 13 whose Error List read empty.
+
 **None of the 9 crashes is left.** IIR Filter Design loads broken rather than crashing - a defect of
 its own, among the 41 broken free VIs above.
 

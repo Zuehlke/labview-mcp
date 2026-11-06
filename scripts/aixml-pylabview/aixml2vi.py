@@ -3723,6 +3723,50 @@ class Composer:
         theirs = {p for c, p in cat if c == sub}
         return sub if mine and mine <= theirs else None
 
+    # The VI Server class of a front-panel object composed from a PLAIN part. A slide, a tree, a
+    # tab control the reader does not recognise as such (no style, no fpclass) arrives as its data
+    # type and is composed as one of these.
+    PLAIN_FP_CLASS = {"stdNum": "LV.Digital", "stdBool": "LV.Boolean", "stdString": "LV.String",
+                      "stdPath": "LV.Path", "stdClust": "LV.Cluster", "indArr": "LV.Array"}
+
+    def _refuse_foreign_members(self, link, members, kind, uid):
+        """Refuse a node bound by `link=` to a control composed as a PLAIN object when one of its
+        properties (kind 'property') or methods ('method') is not that object's - LabVIEW loads such
+        a node as `Invalid property` / `Invalid method` / `Invalid dotted property`. Measured
+        2026-11-06: NI's Vertical Fill Slide.vi writes {LV.Slide} Fill Color to an indicator the
+        reader exports as a plain double (no style), and LV.Digital has no Fill Color; the trees of
+        the Tree examples and the PID examples' slides the same way. Judged from LabVIEW's catalogue
+        (docs/vi-server-*.tsv list inherited members per class), so a member the plain class has
+        passes whatever class the node names."""
+        info = getattr(self, "fp_info", {}).get(link)
+        ddo = info[2].find("ddo") if info is not None else None
+        plain = self.PLAIN_FP_CLASS.get(ddo.get("class")) if ddo is not None else None
+        if plain is None:
+            return
+        have = {m for c, m in (self._catalogue() if kind == "property" else self._method_catalogue()) if c == plain}
+        if not have:
+            return
+        top = (lambda m: m.split(".")[0].split(":")[0]) if kind == "property" else (lambda m: m)
+        missing = [m for m in members if top(m) not in have and m not in have]
+        if missing:
+            raise Unsupported("%s %s: bound to %r, which is composed as a plain %s (the export names no "
+                              "style or class for it), and %s has no %s %s"
+                              % ("Property Node" if kind == "property" else "Invoke Node", uid, link,
+                                 plain, plain, kind, ", ".join(repr(m) for m in missing)))
+
+    def _method_catalogue(self):
+        cat = getattr(self, "_mcat", None)
+        if cat is None:
+            cat = set()
+            with open(os.path.join(DOCS, "vi-server-methods.tsv"), encoding="utf-8") as f:
+                for line in f:
+                    row = line.rstrip("\r\n").split("\t")
+                    m = re.fullmatch(r"\{(LV\.[A-Za-z0-9]+)\}", row[0]) if row else None
+                    if m and len(row) > 1:
+                        cat.add((m.group(1), row[1]))
+            self._mcat = cat
+        return cat
+
     def _catalogue(self):
         cat = getattr(self, "_cat", None)
         if cat is None:
@@ -3776,6 +3820,8 @@ class Composer:
             if linked is None:
                 raise Unsupported("Property Node %s: no control %r to link to" % (el.get("uid"), link))
         fields_ = [unescape(f) for f in split_top(el.get("fields") or "") if f]
+        if link:
+            self._refuse_foreign_members(link, [f.partition("+")[2] for f in fields_], "property", el.get("uid"))
 
         def rows_for(c):
             out = []
@@ -4039,6 +4085,7 @@ class Composer:
             target = self._implicit_target(link)
             if target is None:
                 raise Unsupported("Invoke Node %s: no front-panel object %r to link to" % (el.get("uid"), link))
+            self._refuse_foreign_members(link, [meth], "method", el.get("uid"))
         import harvest_parts
         got = self.instantiate("invoke/%s/%s" % (cls, harvest_parts.meth_key(meth)), own_uid=el.get("uid"))
         if got is None:

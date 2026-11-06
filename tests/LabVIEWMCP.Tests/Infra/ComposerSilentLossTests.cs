@@ -109,6 +109,34 @@ public sealed class ComposerSilentLossTests
         Assert.DoesNotContain("System Mixed Checkbox", donor);
     }
 
+    /// <summary>
+    /// NI's Vertical Fill Slide.vi writes {LV.Slide} Fill Color to an indicator the reader exports
+    /// as a plain double - no style, no class - so it is composed as a digital numeric, and
+    /// LV.Digital has no Fill Color: LabVIEW loaded the node `Invalid property` (2026-11-06; the
+    /// trees of the Tree examples and the PID slides the same way). Refused by name now; a member
+    /// the plain class has (Visible) still composes.
+    /// </summary>
+    [Theory]
+    [InlineData("Fill Color", true)]
+    [InlineData("Visible", false)]
+    public async Task A_node_bound_to_a_plain_control_is_refused_only_for_members_the_plain_class_lacks(string property, bool refused)
+    {
+        var doc = $"""
+            <VI _name="Probe.vi" description="x">
+              <Indicator _name="Slide" type="double" uid="4201" uid_parent="root" value="0" inputs="value:" />
+              <Constant _name="v" type="bool" uid="4202" uid_parent="root" value="true" outputs="value:4202.value" />
+              <Node _name="Property Node" uid="4203" uid_parent="root" fields="write+{property}" link="Slide" type="{"{"}LV.Slide{"}"}" inputs="{property}:4202.value" />
+            </VI>
+            """;
+        if (await ComposeAsync(doc) is not { } result) return;
+
+        Assert.Equal(refused, result.Refused);
+        if (refused)
+            Assert.Contains("composed as a plain LV.Digital", result.Message);
+        else
+            Assert.True(result.Written, result.Message);
+    }
+
     [Fact]
     public async Task The_same_chart_without_a_bound_node_still_composes_as_a_plain_cluster()
     {
