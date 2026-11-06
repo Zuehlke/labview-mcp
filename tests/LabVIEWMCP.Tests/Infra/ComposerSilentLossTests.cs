@@ -84,25 +84,28 @@ public sealed class ComposerSilentLossTests
     }
 
     /// <summary>
-    /// A multicolumn listbox (rsrc 21791) holding an int32: the only 21791 parts are typed Array,
-    /// and taking one - retyped - KILLED LabVIEW on load, even with no items (4 of the 9 composed
-    /// examples that crashed, 2026-11-06). The part must be of the control's own type - here the
-    /// multicolumn INDICATOR part (rsrc 21798, NumInt32), never the Array-typed control part whose
-    /// donor is NI's System Mixed Checkbox.vi.
+    /// The two Array-typed listbox parts, both cut from NI's System Mixed Checkbox.vi, KILLED
+    /// LabVIEW on load whatever control they served - an int32 multicolumn listbox (they were the
+    /// only 21791 parts) and an array{int32} listbox (they were its exact type) alike, 2026-11-06.
+    /// They are denylisted; a NumInt32 part re-typed serves both and loads. Neither control may be
+    /// composed from that donor again.
     /// </summary>
-    [Fact]
-    public async Task A_multicolumn_listbox_never_takes_a_part_of_another_data_type()
+    [Theory]
+    [InlineData("int32", "21791", "[[2, 2], [&quot;b&quot;, &quot;d&quot;, &quot;c&quot;, &quot;e&quot;], []]")]
+    [InlineData("array{int32}", "21791", "[[5, 2], [&quot;T1&quot;, &quot;Fail&quot;, &quot;T2&quot;, &quot;Fail&quot;, &quot;T3&quot;, &quot;Pass&quot;, &quot;T4&quot;, &quot;Fail&quot;, &quot;T5&quot;, &quot;Pass&quot;], []]")]
+    [InlineData("array{int32}", "21792", "[[3, 1], [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;], []]")]
+    public async Task A_listbox_is_never_composed_from_the_denylisted_array_parts(string type, string rsrc, string strings)
     {
-        const string doc = """
+        var doc = $"""
             <VI _name="Probe.vi" description="x">
-              <Control _name="Multicolumn Listbox" type="int32" uid="4201" uid_parent="root" value="0" outputs="value:" />
+              <Control _name="Listbox" type="{type}" uid="4201" uid_parent="root" value="0" outputs="value:" />
             </VI>
-            <?lvmcp fpclass uid="4201" class="listbox" rsrc="21791" strings="[[2, 2], [&quot;b&quot;, &quot;d&quot;, &quot;c&quot;, &quot;e&quot;], []]"?>
-            """;
+            <?lvmcp fpclass uid="4201" class="listbox" rsrc="{rsrc}" strings="{strings}"?>
+            """.Replace("value=\"0\"", type.StartsWith("array", StringComparison.Ordinal) ? "value=\"[]\"" : "value=\"0\"");
         if (await ComposeAsync(doc) is not { } result) return;
 
         Assert.True(result.Written, result.Message);
-        var donor = Assert.Single(result.Report, line => line.StartsWith("Control 'Multicolumn Listbox' <-", StringComparison.Ordinal));
+        var donor = Assert.Single(result.Report, line => line.StartsWith("Control 'Listbox' <-", StringComparison.Ordinal));
         Assert.DoesNotContain("System Mixed Checkbox", donor);
     }
 

@@ -2438,15 +2438,19 @@ method (`Custom Item Symbols.Set Symbol` - `Invalid method`), refnum `Class conf
 PID and fuzzy examples, clusters of different contents, Formula Node variables, a malleable `.vim`
 link. `census_subset.py` re-measures such a list.
 
-**Three of the 9 crashes were a listbox part of the wrong data type.** A multicolumn listbox
-(rsrc 21791) holding an int32 took one of the only two 21791 parts, both typed Array (multiple
-selection), because `_listbox_part` ranked the KIND before the type - and LabVIEW died on load of
-that control alone, with no items, and logged nothing (a one-control probe; the crash log's last
-lines are the shutdown). Ranked type-first in a probe, the same control loaded executable.
-`_listbox_part` now takes parts of the control's own type only - here the multicolumn INDICATOR
-part (21798, NumInt32); with no part of that type and kind at all, the generic pick takes a listbox
-of that type and the report says so. Target - To More Specific Class,
-External Code (DLL) Execution and TDMS Read Events Data load executable since.
+**Four of the 9 crashes were two broken listbox PARTS.** Both Array-typed listbox parts
+(`fpdco/listbox/ctl/Array`, `.../Array_NumInt32`) were cut from NI's System Mixed Checkbox.vi, and a
+listbox composed with either killed LabVIEW on load - alone on its panel, with no items, logging
+nothing (the crash log's last lines are the shutdown). An int32 multicolumn listbox took them as
+the only rsrc-21791 parts; an array{int32} listbox took them as its exact type. The NumInt32 parts
+re-typed to the array load executable in every case (Listbox.vi, System Mixed Checkbox, an int32
+multicolumn probe). Both are in `parts/denylist.json` and removed. THIS SECTION FIRST SAID the cause
+was re-typing a part of another data type, and `_listbox_part` took parts of the control's own type
+only for a day: that avoided the Array parts for an int32 and SENT them to every array{int32}
+listbox instead - NI's Listbox.vi, executable before, then crashed. The ranking is back (kind,
+direction, then type, re-typing allowed). Over the 9 crashers plus every example with a listbox
+(19 VIs): 18 load executable, none crashes. Target - To More Specific Class, External Code (DLL)
+Execution, TDMS Read Events Data and System Mixed Checkbox load executable since.
 
 **Five more were OPEN CASE RANGES written with int32's limits.** The other six crashers were not
 their panels (every styled control loads alone) but one connected diagram each, so
@@ -2462,11 +2466,8 @@ than int32 keep INT_MIN/INT_MAX (not measured). `ComposerCaseRangeTests` reads N
 Financial Forecasting, Interpolation Solver, Real Root Finding and STFT Spectrogram Demo load
 executable since; IIR Filter Design no longer crashes but is broken (a separate defect).
 
-**Left: System Mixed Checkbox.** Its multicolumn listbox `Result List` (array{int32}) kills
-LabVIEW composed ALONE - with or without its items, with `hGrowNodeListLength` 0, 1 or 2 - while
-the same Array-typed listbox part loads executable in NI's Listbox.vi and 1D Explorer.vi. The
-composed listbox's heap differs from NI's only in bounds, that count and its type id, so the cause
-is outside the listbox's own heap; not found yet.
+**None of the 9 crashes is left.** IIR Filter Design loads broken rather than crashing - a defect of
+its own, among the 41 broken free VIs above.
 
 **What the composer refuses** (first blocker per VI, 595 in the first run), grouped:
 
