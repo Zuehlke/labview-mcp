@@ -83,6 +83,29 @@ public sealed class ComposerSilentLossTests
         Assert.Contains("VI Server node is bound to 'Chart'", result.Message);
     }
 
+    /// <summary>
+    /// A multicolumn listbox (rsrc 21791) holding an int32: the only 21791 parts are typed Array,
+    /// and taking one - retyped - KILLED LabVIEW on load, even with no items (4 of the 9 composed
+    /// examples that crashed, 2026-11-06). The part must be of the control's own type - here the
+    /// multicolumn INDICATOR part (rsrc 21798, NumInt32), never the Array-typed control part whose
+    /// donor is NI's System Mixed Checkbox.vi.
+    /// </summary>
+    [Fact]
+    public async Task A_multicolumn_listbox_never_takes_a_part_of_another_data_type()
+    {
+        const string doc = """
+            <VI _name="Probe.vi" description="x">
+              <Control _name="Multicolumn Listbox" type="int32" uid="4201" uid_parent="root" value="0" outputs="value:" />
+            </VI>
+            <?lvmcp fpclass uid="4201" class="listbox" rsrc="21791" strings="[[2, 2], [&quot;b&quot;, &quot;d&quot;, &quot;c&quot;, &quot;e&quot;], []]"?>
+            """;
+        if (await ComposeAsync(doc) is not { } result) return;
+
+        Assert.True(result.Written, result.Message);
+        var donor = Assert.Single(result.Report, line => line.StartsWith("Control 'Multicolumn Listbox' <-", StringComparison.Ordinal));
+        Assert.DoesNotContain("System Mixed Checkbox", donor);
+    }
+
     [Fact]
     public async Task The_same_chart_without_a_bound_node_still_composes_as_a_plain_cluster()
     {

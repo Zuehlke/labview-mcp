@@ -6636,12 +6636,17 @@ class Composer:
 
     def _listbox_part(self, want, tkey):
         """The listbox part for the original's rsrcID (the reader's fpclass trailer): the same
-        rsrcID first, then the same KIND, each preferring the direction, then the data type."""
+        rsrcID first, then the same KIND, each preferring the direction - of the control's OWN
+        data type only. A part of another type, retyped, KILLED LabVIEW on load: every
+        multicolumn listbox holding an int32 took the only 21791 parts there are, typed Array
+        (multiple selection) - 4 of the 9 composed examples that crashed LabVIEW, 2026-11-06, and
+        a one-control probe crashed with no items at all. Without a part of the type, None: the
+        caller's generic pick takes a listbox part OF THAT TYPE (another kind), and says so."""
         rsrc = getattr(self, "_listbox_rsrc", None)
         if not rsrc:
             return None
         kind = self.LISTBOX_KINDS.get(rsrc)
-        rank = []
+        rank, other_type = [], False
         for k in self._keys("fpdco/listbox/"):
             try:
                 txt = open(os.path.join(self.parts.d, k.replace("/", "__") + ".xml"), encoding="utf-8").read()
@@ -6653,8 +6658,14 @@ class Composer:
             if same is None:
                 continue
             d, t = k.split("/")[2], k.split("/")[3]
-            rank.append((same, d != want, t != tkey, k))
-        return min(rank)[3] if rank else None
+            if t != tkey:
+                other_type = True
+                continue
+            rank.append((same, d != want, k))
+        if not rank and other_type:
+            self.report.append("listbox rsrc %s (%s) has no part for %s - composed from a listbox "
+                               "part of that type and another kind" % (rsrc, kind, tkey))
+        return min(rank)[2] if rank else None
 
     @staticmethod
     def _listbox_strings(ddo, given):

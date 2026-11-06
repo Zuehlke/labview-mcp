@@ -2438,6 +2438,21 @@ method (`Custom Item Symbols.Set Symbol` - `Invalid method`), refnum `Class conf
 PID and fuzzy examples, clusters of different contents, Formula Node variables, a malleable `.vim`
 link. `census_subset.py` re-measures such a list.
 
+**Three of the 9 crashes were a listbox part of the wrong data type.** A multicolumn listbox
+(rsrc 21791) holding an int32 took one of the only two 21791 parts, both typed Array (multiple
+selection), because `_listbox_part` ranked the KIND before the type - and LabVIEW died on load of
+that control alone, with no items, and logged nothing (a one-control probe; the crash log's last
+lines are the shutdown). Ranked type-first in a probe, the same control loaded executable.
+`_listbox_part` now takes parts of the control's own type only - here the multicolumn INDICATOR
+part (21798, NumInt32); with no part of that type and kind at all, the generic pick takes a listbox
+of that type and the report says so. Target - To More Specific Class,
+External Code (DLL) Execution and TDMS Read Events Data load executable since. The other six
+(System Mixed Checkbox, Financial Forecasting, Interpolation Solver, Real Root Finding, IIR Filter
+Design, STFT Spectrogram Demo) are not their panels - every styled control of theirs loads alone -
+but one connected diagram each; `crash_pieces.py` splits a composed VI into its independent diagram
+pieces for `cov_load.py`, and these have one piece apiece, so finding the construct means removing
+elements one at a time, a LabVIEW restart each.
+
 **What the composer refuses** (first blocker per VI, 595 in the first run), grouped:
 
 | group | VIs | the leading messages |
