@@ -18,6 +18,7 @@ double/single/intN/uintN/bool/string/path; Node for any primitive whose part has
 harvested and whose name is in primitive-names.tsv; conIdx/connection on the connector pane.
 Structures, subVI calls, clusters and arrays are refused by name rather than half-written.
 """
+import collections
 import copy
 import csv
 import html
@@ -98,6 +99,35 @@ INT_FMT = {"NumInt8": ">b", "NumInt16": ">h", "NumInt32": ">i", "NumInt64": ">q"
 
 class Unsupported(Exception):
     pass
+
+
+# The notes vi2aixml.py writes into an export when it LOST STRUCTURE: a diagram node it does not
+# read, a wire with an end on such a node (dropped whole, so its other ends lose their source too), an
+# In Place pair, a panel terminal it could not place. Composed anyway, such a document builds a
+# DIFFERENT VI without a word - measured 2026-11-06 over every example of LabVIEW 2026: 32 of the 74
+# composed free VIs that were broken carried these notes (a Call Library Function node left out, so
+# the String Length beside it lost its input), and 69 that loaded EXECUTABLE carried them too - VIs
+# that run and do less than their original. Notes about a VALUE (a constant not decoded) or an XNode
+# read as its Call are not structural and pass. docs/aixml-backends.md.
+_LOSSY_READER_NOTE = re.compile(
+    r"^(diagram node of class \S+ \(uid \S+\) not read"
+    r"|signal \S+ touches an unread terminal"
+    r"|In Place pair \S+ not read"
+    r"|\S+ '.*': its terminal was not found on a walked diagram)$")
+
+
+def refuse_lossy_reader_export(text):
+    """Refuse a vi2aixml export whose notes say it lost structure (_LOSSY_READER_NOTE)."""
+    lost = [m.group(1).strip() for m in re.finditer(r"<!--\s*vi2aixml:\s*(.*?)\s*-->", text, re.S)]
+    lost = [n for n in lost if _LOSSY_READER_NOTE.match(n)]
+    if not lost:
+        return
+    kinds = collections.Counter(" ".join(re.sub(r"\(uid \S+\)|signal \S+", "", n).split()) for n in lost)
+    raise Unsupported(
+        "this document is a vi2aixml export that says it LOST STRUCTURE (%d note(s): %s) - composed, "
+        "it would be a different VI than the one read. Edit that VI in place (pylv_apply), or write "
+        "the missing part into the document and remove the note."
+        % (len(lost), "; ".join("%s x%d" % (k, n) for k, n in kinds.most_common(4))))
 
 
 _CALLEES = {}
@@ -2276,11 +2306,13 @@ class Composer:
             if got is None or type_sig(got[1][0]) != type_sig(tree):
                 self.report.append("style %r of %r not composed (no %s part for this type) - shown as a plain %s"
                                    % (style, name, force, tree.get("Type")))
+                self._note_degraded(name, style, tree)
                 force = None
         elif style == "latched" and (is_ind or tree.get("Type") != "Boolean"):
             raise Unsupported("%s %r: style latched on a %s %s" % (el.tag, name, "indicator" if is_ind else "control", tree.get("Type")))
         elif style not in (None, "", "latched"):
             self.report.append("style %r of %r not composed - shown as a plain %s" % (style, name, tree.get("Type")))
+            self._note_degraded(name, style, tree)
         xctl = getattr(self, "xcontrol_given", {}).get(el.get("uid"))
         if xctl:
             # an XCONTROL INSTANCE, named after </VI> by the reader: an xControl object typed
@@ -6573,9 +6605,28 @@ class Composer:
         self.subpanel_uid[name] = sp.get("uid")
         self.report.append("Sub panel %r <- %s" % (name, src))
 
+    def _note_degraded(self, name, style, tree):
+        """A control whose STYLE had no part and was composed as its plain type (a chart as a
+        cluster, a tree as a string). Kept so a node bound to it can refuse (_implicit_target)."""
+        if not hasattr(self, "degraded_controls"):
+            self.degraded_controls = {}
+        self.degraded_controls[name] = (style, tree.get("Type"))
+
     def _implicit_target(self, link):
         """The <ddo> uid an IMPLICIT node bound by `link=` names: a control's data object, a
-        SUB PANEL (add_subpanel) or a PANE by its label - None when nothing carries that name."""
+        SUB PANEL (add_subpanel) or a PANE by its label - None when nothing carries that name.
+
+        REFUSED for a control whose style was degraded to its plain type: the node is typed by
+        the control's class ({LV.WaveformChart}, {LV.TreeControl}) and LabVIEW rejects that class's
+        properties and methods on a plain Cluster or String - `Invalid dotted property`, `Invalid
+        method` - measured 2026-11-06 on NI's PID examples (X Scale.Range:Maximum on a chart
+        composed as a cluster) and Setting Custom Tree Item Symbols.vi. Before this the VI was
+        written and loaded broken; the panel-only degrade stays, it costs nothing without a node."""
+        degraded = getattr(self, "degraded_controls", {}).get(link)
+        if degraded is not None:
+            raise Unsupported("a VI Server node is bound to %r, whose style %r has no part here - it "
+                              "would be composed as a plain %s, on which the node's properties and "
+                              "methods are invalid" % (link, degraded[0], degraded[1]))
         info = getattr(self, "fp_info", {}).get(link)
         if info is not None:
             return info[2].find("ddo").get("uid")
@@ -9923,6 +9974,7 @@ class Composer:
         # recomposed subVI keeps the pattern its callers were linked against (vi2aixml.py)
         with open(aixml_path, encoding="utf-8", errors="replace") as f:
             tail = f.read().rsplit("</VI>", 1)
+        refuse_lossy_reader_export(tail[0])
         mp = re.search(r'<\?lvmcp\s+pane="(\d+)"\s*\?>', tail[1]) if len(tail) == 2 else None
         # and the class of each ref{UDClassInst}, per element, in its type's order
         self.pane_flags_given = {}

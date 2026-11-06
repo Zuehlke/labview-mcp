@@ -2413,7 +2413,32 @@ Specific Class target, External Code (DLL) Execution, System Mixed Checkbox, TDM
 Data, Financial Forecasting, Interpolation Solver, Real Root Finding, IIR Filter Design, STFT
 Spectrogram Demo.
 
-**What the composer refuses** (first blocker per VI, 595), grouped:
+**Two of those break kinds were the composer building a DIFFERENT VI in silence - refused by name
+since the same day** (`ComposerSilentLossTests`):
+
+- **A reader export that says it lost structure.** `vi2aixml.py` writes a note for every diagram
+  node it does not read (Call Library Function, Data Value Reference nodes, class nodes, shared
+  variables, Timed Loops, In Place pairs) and for every wire with an end on one - a wire it then
+  drops WHOLE, so its other ends lose their source too: the String Length beside a Call Library
+  Function node is `Contains unwired or bad terminal`. The composer read past the comments. 32 of
+  the 74 broken free VIs carried such notes - and 69 that loaded EXECUTABLE did too, VIs that run
+  and do less than their original. `aixml2vi.refuse_lossy_reader_export` refuses them
+  (`LOST STRUCTURE`); notes about a value (a constant not decoded) or an XNode read as its Call pass.
+- **A VI Server node bound to a control composed as its plain type.** A chart whose style has no
+  part is composed as a plain cluster (on purpose: refusing those cost 237 of NI's VIs), and a
+  `{LV.WaveformChart}` Property Node bound to it by `link=` was then `Invalid dotted property`
+  (the PID examples, `X Scale.Range:Maximum`). `_implicit_target` refuses that binding now; the
+  degraded panel alone still composes.
+
+The whole census again with both: **1 100 compose** (1 181 before), 677 refused - 80 more for a lossy
+export, 3 for a bound degraded chart, 2 fewer through the pylabview patches below; nothing else
+moved. Of the 83 broken or crashing VIs of the first run, 33 are refused by name now; 41 still
+compose broken and 9 still kill LabVIEW. What is left there is heterogeneous: a Tree's dotted
+method (`Custom Item Symbols.Set Symbol` - `Invalid method`), refnum `Class conflict` wires in the
+PID and fuzzy examples, clusters of different contents, Formula Node variables, a malleable `.vim`
+link. `census_subset.py` re-measures such a list.
+
+**What the composer refuses** (first blocker per VI, 595 in the first run), grouped:
 
 | group | VIs | the leading messages |
 |---|---|---|
