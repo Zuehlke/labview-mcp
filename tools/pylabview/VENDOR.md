@@ -30,7 +30,7 @@ Where upstream has an outright defect, the fix goes in `patches\patches.json` an
 applies it to the **assembled copy**. `vendor\` stays byte-identical to upstream, so a new release
 can still be taken by copying the package over it.
 
-Eight fixes, twenty entries.
+Nine fixes, twenty-one entries.
 
 `probe-table-guard`: `LVblock.py` calls `getNumRepeats()` on the probe table
 without checking it is a `RepeatedBlock`, and a VI whose probe table resolves to a `Cluster`,
@@ -76,6 +76,10 @@ only its RefType and rebuilt from it, losing the assembly-qualified class name -
 0.0 and the rebuilt `BDPW` lost `hash_2` (LabVIEW 8.2 files). LabVIEW refused the damaged VIs as
 `Memory is full` (error 2) or broke their owning class. After the fix 0 of those files differ in any
 decoded block but compiled code. `docs/aixml-backends.md`, "The heap route over the same examples".
+`datatype-import-os` goes with them: the raw (`.bin`) export of a type descriptor these patches
+route there calls `os.path.basename`, which `LVdatatype.py` never imports - so without it the WHOLE
+`VCTP` block fell back to raw, the round trip stayed exact, and the reader lost every type of such a
+VI (found through `pylv_extract`'s `rawFallbackWarnings` on Map Collection - Word Counting.vi).
 
 **The failure mode the mechanism is built against is silence.** A Find/Replace against a line of
 upstream source stops matching when upstream edits that line - and then the bundle assembles

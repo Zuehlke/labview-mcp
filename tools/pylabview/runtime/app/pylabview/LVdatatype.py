@@ -13,6 +13,7 @@
 
 
 import enum
+import os
 import struct
 
 from hashlib import md5

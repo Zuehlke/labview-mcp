@@ -2467,6 +2467,11 @@ the damage was below what pylabview models; `heap_rawdiff.py` compares every blo
 | `LVSR` unparsed (LabVIEW 8.2 files): file version read as 0.0, `BDPW` lost `hash_2` | 3 | `file-version-from-vers-when-lvsr-raw` |
 | compiled code (`VICD`) of the Malleable Buffer examples | 4 | none - broken in NI's own copy too |
 
+A fifth defect surfaced only through `pylv_extract`'s `rawFallbackWarnings` after the first
+patches: the raw export those types now take calls `os.path.basename`, and `LVdatatype.py` never
+imports `os`, so the whole `VCTP` block fell back to raw - round trip exact, every type of the VI
+lost to the reader (`datatype-import-os`). The measurement below was repeated with it: same result.
+
 **After the fix, the same measurement:** 1 940 of 1 941 files round-trip (`Word Finder.vi` is
 refused with an `OverflowError` in pylabview's heap writer, so nothing is written); 1 937 decode
 identically, the other 4 differ in compiled code only; **1 779 of 1 791 `.vi` load executable,

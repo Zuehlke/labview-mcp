@@ -171,6 +171,14 @@
       "replace": "        vers = self.get_one_of('LVSR', 'vers') # TODO add LVIN when its supported\r\n        if vers is not None:\r\n            ver = vers.getVersion()\r\n            if (not isinstance(ver, dict) or ver.get('major', 0) == 0) and self.get_one_of('vers') is not None:\r\n                ver = self.get_one_of('vers').getVersion()\r\n        else:\r\n",
       "why": "getFileVersion() asks LVSR first and nothing else when LVSR exists. An LVSR pylabview cannot parse is kept raw, its version then reads as 0.0, and every version-dependent writer takes the oldest branch - BDPW.hasHash2() among them, so the rebuilt password block lost hash_2 (48 -> 32 bytes). Measured 2026-11-06 on JKI VI Tester's ExampleTestSuite (setUp.vi, tearDown.vi, New.vi: LabVIEW 8.2 files whose LVSR switches to raw) among every example of LabVIEW 2026. When LVSR yields no major version, the 'vers' block - which says 8.2 there - answers instead.",
       "upstream": "not reported yet; getFileVersion has no fallback when LVSR is unparsed."
+    },
+    {
+      "id": "datatype-import-os",
+      "file": "pylabview/LVdatatype.py",
+      "find": "import enum\r\nimport struct\r\n",
+      "replace": "import enum\r\nimport os\r\nimport struct\r\n",
+      "why": "TDObject.exportXML writes an unmodelled type descriptor as a .bin file and names it with os.path.basename, but LVdatatype.py never imports os - upstream never reached that branch, because every type it met was modelled or exported inline. ref-family-non-refnum-raw and ref-unknown-content-as-bin send real TDs there, and without this the whole VCTP block hit 'name 'os' is not defined' and fell back to raw: the round trip stayed exact, but the reader saw no types at all for such a VI. Found through pylv_extract on Map Collection - Word Counting.vi, 2026-11-06.",
+      "upstream": "not reported yet; LVdatatype.py uses os without importing it."
     }
   ]
 }
