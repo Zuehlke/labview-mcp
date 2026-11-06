@@ -1254,7 +1254,11 @@ class Reader:
             # pylabview backend then had nothing to name (Trim Whitespace.vi, 2026-10-15). A name
             # the reader could not establish (`?`) stays out rather than going in as a terminal.
             # Primitives keep wired-only: their unwired names come from a table with gaps.
-            every = el.tag == "Call"
+            # A FORMULA NODE lists every variable too - its names are its own (vblName), and an
+            # unwired OUTPUT is how the code declares a variable it assigns: NI's export of Cut
+            # Length.vi writes `outputs="m:..,n:..,a:,b:,d:.."`; dropped, the composed node's
+            # `a=...` was `Undefined variable` (3 broken examples, 2026-11-06).
+            every = el.tag == "Call" or (el.tag == "Node" and el.get("_name") == "Formula Node")
             ins = ["%s:%s" % (escape(nm), self.term_net.get(tu, "")) for tu, nm, sink in terms
                    if sink and (tu in self.term_net or (every and not nm.startswith("?")))]
             outs = ["%s:%s" % (escape(nm), self.term_net.get(tu, "")) for tu, nm, sink in terms

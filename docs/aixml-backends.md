@@ -2477,6 +2477,13 @@ bound to a control composed as a plain Digital, Boolean, String, Path, Cluster o
 that class's members. Over the whole census it refused 7 more VIs, none of which had loaded
 executable. The lasting fix is the reader naming those controls' classes.
 
+**Formula Node `Undefined variable` was the reader dropping UNWIRED variables** (3 examples). An
+unwired output is how a Formula Node declares a variable its code assigns; NI's export of Cut
+Length.vi writes `outputs="m:..,n:..,a:,b:,d:.."`, the reader wrote wired ends only, and the
+composed `a=...` had no `a`. The reader lists every Formula Node variable now, as it lists every
+terminal of a Call (`ReaderFormulaNodeTests`). All three load executable since, and every example
+with a Formula Node that composes (6 of 10) loads executable.
+
 The LabVIEW Error List lines of the broken ones come from `census_errors.py`, which runs the
 server's own lvai_exec_state helper over COM per VI. The 42 broken free VIs before this split into:
 the VI Server kind above (about 9), wires of different types (8), Formula Node `Undefined
