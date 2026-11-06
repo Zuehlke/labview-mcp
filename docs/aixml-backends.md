@@ -2484,6 +2484,25 @@ composed `a=...` had no `a`. The reader lists every Formula Node variable now, a
 terminal of a Call (`ReaderFormulaNodeTests`). All three load executable since, and every example
 with a Formula Node that composes (6 of 10) loads executable.
 
+**`You have connected two terminals of different types` was the reader naming or dropping
+positional terminals** (6 examples). A Bundle with a cluster wired in replaces the fields it is
+wired to, and an unlabelled field is known by its POSITION: NI's export of IIR Filter Design.vi
+writes `element:,element:,element:..Spectrum out,cluster:..`, the reader wrote the wired element
+only, and the composed array landed on the first field, a double. The reader lists every element
+input in field order now, an unwired one as `element:`, then `cluster`. And a concatenating
+Build Array input fed by Reverse 1D Array - a SUBARRAY type, which the reader's type comparison
+did not take for an array - was named `element` (Word Wrapping in Picture Control.vi); the input's
+own concatenate flag (DCO 0x10000) names it `array` now, and the composer concatenates a subarray
+as the array it is a view of (`_as_array`). IIR Filter Design, Equiripple Filter Design and Word
+Wrapping load executable since (`ReaderPositionalTerminalsTests`).
+
+**The whole census once more, every fix of the day in (2026-11-06):** 1 098 compose, **681 load
+executable, 0 crash** (709 and 9 in the first run); no VI that loaded executable then is composed
+and broken now. The 48 it loses were executable but lossy - the `LOST STRUCTURE` refusals above
+(DLL calling VIs without their Call Library Function node, and the like). By owner: **free VIs
+615 of 644 executable (95 %)**, library members 66 of 175, class members 0 of 279 (composed out of
+their class - not a fair measure, above).
+
 The LabVIEW Error List lines of the broken ones come from `census_errors.py`, which runs the
 server's own lvai_exec_state helper over COM per VI. The 42 broken free VIs before this split into:
 the VI Server kind above (about 9), wires of different types (8), Formula Node `Undefined

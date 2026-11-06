@@ -769,6 +769,15 @@ def typedef_inner(tree):
     return tree
 
 
+def _as_array(tree):
+    """A SUB-ARRAY type (VCTP Type SubArray: Reverse 1D Array, Transpose 2D Array, Array Subset)
+    as the Array it is a view of - same element, same dimensions; any other type itself."""
+    if tree is not None and tree.get("Type") == "SubArray":
+        tree = copy.deepcopy(tree)
+        tree.set("Type", "Array")
+    return tree
+
+
 def elem_of(tree):
     return fields(tree)[0]
 
@@ -4675,6 +4684,10 @@ class Composer:
                 # Build Array of two string arrays); an `element` input stays unflagged
                 # a typedef'd array is concatenated as the array it wraps (grow_prop_array.vi)
                 arrays = [typedef_inner(wt) for (tn, _), wt in zip(ins, types) if tn == "array"]
+                # a SUB-ARRAY (Reverse 1D Array's output) concatenates as the array it is a view
+                # of, as Index Array and an indexing tunnel take it - NI's Word Wrapping in Picture
+                # Control.vi appends Reverse 1D Array's output to the array it reversed (2026-11-06)
+                arrays = [_as_array(a) for a in arrays]
                 dims = {len(a.findall("Dimension")) for a in arrays if a.get("Type") == "Array"}
                 if any(a.get("Type") != "Array" for a in arrays) or len(dims) != 1:
                     shapes = ", ".join("%s=%s" % (n, "%dD" % len(a.findall("Dimension")) if a.get("Type") == "Array"

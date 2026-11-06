@@ -2431,8 +2431,17 @@ class Reader:
         labels = [self._field_name(c) or "element" for c in (aixml2vi.fields(aixml2vi.typedef_inner(ct)) if ct is not None else [])]
         self.term_owner[agg.get("uid")] = (el, "output cluster", False)
         self.term_owner[cref.get("uid")] = (el, "cluster", True)
+        order = []
         for k, t in enumerate(terms[2:]):
-            self.term_owner[t.get("uid")] = (el, labels[k] if k < len(labels) else "element", True)
+            nm = labels[k] if k < len(labels) else "element"
+            self.term_owner[t.get("uid")] = (el, nm, True)
+            order.append((t.get("uid"), nm))
+        # EVERY element input in field order, an unwired one as `element:`, then `cluster` - as
+        # NI's export writes it. With a cluster wired in, a Bundle REPLACES the wired fields only,
+        # and an unlabelled field is known by its POSITION: wired-only, IIR Filter Design.vi's
+        # `element:Spectrum out` (the third field, an array) became the first (a double) -
+        # `1D array of double` into `double`, 2026-11-06. NI: `element:,element:,element:..,cluster:..`
+        self.ordered_inputs[id(el)] = (el, order + [(cref.get("uid"), "cluster")])
         return el
 
     def demux(self, node, parent_uid):
@@ -2501,11 +2510,15 @@ class Reader:
                 # whose array is a typedef'd (or differently labelled) copy of the output's -
                 # ex_updatePropFromTree.vi's user-def properties, stacked into a 2D array, 2026-10-23
                 same = same or (tt is not None and ot is not None and self._rank(tt) == self._rank(ot) > 0)
-                self.term_owner[t.get("uid")] = (el, "array" if same else "element", True)
                 # a CONCATENATING input carries DCO flag 0x10000 (the composer's measurement); NI
                 # writes that mode as concat="true", and the reader dropped it (Read CSV.vi,
-                # 2026-10-27)
-                if int(t.findtext("dco/objFlags") or 0) & 0x10000:
+                # 2026-10-27). The flag also NAMES the input `array`: the type comparison above
+                # misses a SUBARRAY (Reverse 1D Array's output, LabVIEW's type 0x4F), and NI's
+                # Word Wrapping in Picture Control.vi then came back as element + array - composed,
+                # `1D (sub)array of unsigned long` into an `unsigned long` element (2026-11-06)
+                concat = bool(int(t.findtext("dco/objFlags") or 0) & 0x10000)
+                self.term_owner[t.get("uid")] = (el, "array" if same or concat else "element", True)
+                if concat:
                     el.set("concat", "true")
         return el
 
