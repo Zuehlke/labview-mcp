@@ -2338,7 +2338,14 @@ class TDObjectRef(TDObjectContainer):
             self.ref_obj.parseRSRCData(bldata)
         self.parseRSRCDataFinish(bldata)
 
+    def updateData(self, avoid_recompute=False):
+        if (self.otype != TD_FULL_TYPE.Refnum or self.ref_obj is None) and self.raw_data:
+            return
+        super().updateData(avoid_recompute=avoid_recompute)
+
     def prepareRSRCData(self, avoid_recompute=False):
+        if self.otype != TD_FULL_TYPE.Refnum or self.ref_obj is None:
+            return TDObject.prepareRSRCData(self, avoid_recompute=avoid_recompute)
         data_buf = b''
         data_buf += int(self.reftype).to_bytes(2, byteorder='big', signed=False)
         if self.ref_obj is not None:
@@ -2430,6 +2437,8 @@ class TDObjectRef(TDObjectContainer):
 
     def exportXML(self, conn_elem, fname_base):
         self.parseData()
+        if self.otype != TD_FULL_TYPE.Refnum or self.ref_obj is None:
+            return TDObject.exportXML(self, conn_elem, fname_base)
 
         conn_elem.set("RefType", stringFromValEnumOrInt(REFNUM_TYPE, self.reftype))
         if self.ref_obj is not None:
@@ -3431,7 +3440,7 @@ def newTDObject(vi, blockref, idx, obj_flags, obj_type, po):
             TD_MAIN_TYPE.Array: TDObjectArray,
             TD_MAIN_TYPE.Cluster: TDObject,
             TD_MAIN_TYPE.Block: TDObject,
-            TD_MAIN_TYPE.Ref: TDObjectRef,
+            TD_MAIN_TYPE.Ref: TDObjectRef if obj_type == TD_FULL_TYPE.Refnum else TDObject,
             TD_MAIN_TYPE.NumberPointer: TDObject,
             TD_MAIN_TYPE.Terminal: TDObject,
             TD_MAIN_TYPE.Void: TDObject, # With the way we get main_type, this condition is impossible

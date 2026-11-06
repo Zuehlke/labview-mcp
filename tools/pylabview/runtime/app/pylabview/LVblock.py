@@ -3563,7 +3563,8 @@ class LVSR(CompleteBlock):
         if isGreaterOrEqVersion(section.version, 15,0):  # noqa: E231
             section.field8C = int(data.field8C)
         # Any data added in future versions
-        section.field90 = bldata.read()
+        section.field90 = b''
+        section.field90 = bytes(data)[self.expectedRSRCSize(section_num):dataLen] + bldata.read()
 
     def prepareRSRCData(self, section_num):
         section = self.sections[section_num]

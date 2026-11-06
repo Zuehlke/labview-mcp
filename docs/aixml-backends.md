@@ -2368,6 +2368,118 @@ refused (two were before the `0` exception). Composed, `[",,","",""]`, `["a,b",c
 
 Test: `PylabviewLiteralTests`.
 
+## The composer over NI's shipping examples (measured 2026-11-06)
+
+**The question: what can the pylabview route rebuild, measured on code it was not tuned on?**
+Every `.vi` under `LabVIEW 2026\examples` (1 792, add-on examples included: DQMH, Astemes, MGI,
+JKI, OpenG) was READ by `vi2aixml.py`, the reader's AIXML COMPOSED by `aixml2vi.py` into a scratch
+folder, calls resolved beside the original, and every composed VI LOADED in LabVIEW 2026 over
+ActiveX (`cov_load.py`). Then, as the control, NI's ORIGINAL of every broken copy was loaded the
+same way. Scripts: `experiments/aixml-without-grpc/census_examples.py` (8 shards, about 7 min),
+`census_buckets.py`, `census_owners.py`. The figures "252 of 792" at the top of this file are
+from 2026-10-10, over NI's exports in the cache.
+
+| stage | count |
+|---|---|
+| read by the reader | 1 779 of 1 792 (12 JKI VI Tester VIs: invalid character reference or a `None` type; 1 file pylabview cannot extract) |
+| composed | **1 181** (65.9 %); 595 refused by name (`composerRefused`), 3 composer errors (pylabview's rebuild, 3D picture and fuzzy examples) |
+| loaded executable | **709 of 1 181**; 463 broken; **9 killed LabVIEW** on load (restarted by `lv-restart.ps1`, the sweep went on) |
+| control: NI's original of each broken copy | executable for all of them (457 answered state 1, 6 not judged) - every break is the route's |
+
+**THE BROKEN ONES ARE MOSTLY OWNED VIs COMPOSED OUT OF THEIR OWNER, which this measurement does
+not test fairly.** Split by owner (`.lvclass`/`.lvlib` items, URLs relative to the owner FILE):
+
+| composed VI | composed | executable |
+|---|---|---|
+| free VI | 727 | **644 (89 %)** |
+| library member | 175 | 65 (37 %) |
+| class member | 279 | 0 |
+
+A class member copied beside its class is no member: private data, scope and dynamic dispatch all
+break it. The product route composes members INTO their class (`lvai_add_class_method`); a fair
+census of members would have to do the same. So for free code the route rebuilds 89 % of what
+it composes, and the open defects are **74 free VIs plus 9 crashes**, all with an executable
+original.
+
+**What breaks a composed free VI** (LabVIEW's error list of 27 of the 74 through `lvai_exec_state`):
+mostly `Contains unwired or bad terminal` on an ordinary node (String Length in eleven DLL
+examples, Add, Multiply, Build Array, Index Array, Match Pattern, Merge Errors, Replace Array
+Subset, a Property Node), i.e. a wire or a type lost between reader and composer; `Wire: Class
+conflict` on a refnum (PID and fuzzy examples); `You have connected two clusters with different
+contents`; Formula Node `Undefined variable`; `Bad linkage` to a malleable `.vim`. Families: the
+DLL calling VIs (11), the Python node (7), PID and fuzzy (13), tree, tab and graph property nodes,
+shared variables, TDMS, Timed Loop offset, Feedback Node enable terminal. The 9 crashes: To More
+Specific Class target, External Code (DLL) Execution, System Mixed Checkbox, TDMS Read Events
+Data, Financial Forecasting, Interpolation Solver, Real Root Finding, IIR Filter Design, STFT
+Spectrogram Demo.
+
+**What the composer refuses** (first blocker per VI, 595), grouped:
+
+| group | VIs | the leading messages |
+|---|---|---|
+| refnums and references | about 165 | `type 'ref…' is not composable` 40; a `Refnum.DataLog` wire 31 (DQMH); Bundle/Unbundle (or the In Place Element's Unbundle/Bundle) on a Refnum, i.e. a data value reference, 60; TCP, Notifier, DataSocket, TDMS, DVR refnum types and wires about 30 |
+| channel wires | about 70 | `no Stream-…/Tag-…/One Element Stream-….lvlib in the installation`: channel instance libraries LabVIEW generates per type, which the resolver does not look for (Channels, State Diagram) |
+| calls | about 45 | a terminal not on the callee's pane 29 (Express VIs, File IO); XNodes 12; a class not found 5 |
+| type inference | about 45 | a tunnel's type unknown 22, no typed wire reaches a tunnel 14, a Bundle/Unbundle cluster type unknown 8 |
+| classes | about 35 | a Property Node on a class (`{UDClassInst}`) 17 (DQMH); a class constant not feeding a Call 7; a `LabVIEW Object` front-panel control 9 |
+| VI Server parts | about 30 | XY Graph properties 11, invoke methods 8, VISA property node 6, String properties 2 |
+| other | about 205 | unit-typed numerics (`UnitFloat64`, Malleable VIs) 11; Picture and MeasureData constants 14; a net with no source 12; Expression Node 7; a Feedback Node inside a structure, or untyped, 9; unknown primitives 11; MGI control references 8; and a long tail of ones and twos |
+
+By area, the composed share runs from 92-95 % (Application Control, Waveform) to 46-49 %
+(Design Patterns, Channels, MGI) and 26 % (Data Communication: network streams, shared variables,
+TCP).
+
+### The heap route over the same examples (2026-11-06)
+
+**The control question: does an existing VI need AIXML at all, or does pylabview's own export
+carry it?** The examples tree was COPIED (72 MB) and every `.vi`, `.vim` and `.ctl` in the copy
+extracted by pylabview and rebuilt OVER ITSELF (`census_heap.py`, 8 shards, about 6 min), so
+owners and relative links stay as they were - the fair test the AIXML census could not give class
+members. Every `.vi` was then loaded over ActiveX; the ones that were not executable again on a
+fresh LabVIEW, and once more from an UNTOUCHED copy at the same depth as the control.
+
+| stage | count |
+|---|---|
+| round-tripped | 1 929 of 1 941 files (the 11 JKI VI Tester files the reader also fails on, plus `Word Finder.vi`; one read-only file) |
+| loaded executable | **1 726 of 1 780** `.vi`, no crash. 54 not: in the long run 13 answered `Memory is full` (32-bit LabVIEW after 1 700 loads), on a fresh LabVIEW all 54 stayed broken |
+| control, untouched copy | 42 of those 54 executable - so **12 are broken in NI's own copy too** (Moving Objects, Malleable Buffer, shared variables, LUnit's deliberate `Test Broken.vi`, VI Tester `New.vi`) and **42 are broken by the heap round trip** |
+
+So the heap route kept **1 726 of 1 768 (97.6 %)** of the VIs that run as NI ships them,
+class members included, against 709 executable of 1 792 on the AIXML route. The 42 it broke
+clustered: Astemes LMock and LUnit test classes (the class reports `Dependency is broken` and blocks
+its members), Collections Map/Set word counting, Registration Map, .NET Core, SFTP, Asciidoc. The
+`Memory is full` some of them answered is NOT memory: a fresh LabVIEW answers it for the damaged
+file alone - it is how LabVIEW refuses a corrupt one. `lvai_exec_state`'s
+`unresolvedInterfaceLinks` for these named a parent under `census\vi.lib` - its own reading of a
+`..\..\vi.lib` URL from a copied tree, not LabVIEW's: the untouched copy loads.
+
+**Found and fixed the same day - every one a pylabview defect, fixed as bundle patches**
+(`tools/pylabview/VENDOR.md`, `patches.json`). Re-extracting both files gave IDENTICAL bundles, so
+the damage was below what pylabview models; `heap_rawdiff.py` compares every block section DECODED,
+`heap_rawsweep.py` does it for a whole tree and names the type descriptor that differs. Over all
+1 941 files only 23 decoded differently, all explained:
+
+| cause | files | patch |
+|---|---|---|
+| types 0x73/0x74 (Collections Set/Map) parsed as refnums: a Map lost its key/value TD indices, a Set its label | 11 | `ref-family-non-refnum-raw` |
+| a Refnum with RefType 0x27 (.NET Core) exported and rebuilt with nothing but its RefType | 4 | `ref-unknown-content-as-bin`, `ref-unknown-content-as-bin-write` |
+| `LVSR` of a version-14 file lost the 7 bytes beyond that version's size; its password check then failed | 1 | `lvsr-keep-bytes-beyond-version` |
+| `LVSR` unparsed (LabVIEW 8.2 files): file version read as 0.0, `BDPW` lost `hash_2` | 3 | `file-version-from-vers-when-lvsr-raw` |
+| compiled code (`VICD`) of the Malleable Buffer examples | 4 | none - broken in NI's own copy too |
+
+**After the fix, the same measurement:** 1 940 of 1 941 files round-trip (`Word Finder.vi` is
+refused with an `OverflowError` in pylabview's heap writer, so nothing is written); 1 937 decode
+identically, the other 4 differ in compiled code only; **1 779 of 1 791 `.vi` load executable,
+no crash - the 12 left are exactly the 12 broken in NI's own copy.** The JKI VI Tester files that
+did not round-trip before now do. The heap route keeps every VI of NI's examples that runs.
+
+**What follows from it.** The two routes answer different questions. The heap route PRESERVES an
+existing VI (panel, layout, icon, typedefs, class membership) and is the base for editing one in
+place (`pylv_apply`) - but its XML is LabVIEW's object heap, not a graph of nodes and wires, so
+logic cannot be authored in it. AIXML is the AUTHORING language: a new VI, or new logic, is
+written as AIXML and composed. Regenerating an EXISTING VI through reader -> AIXML -> composer is
+needed only for a change of logic, and loses what the heap route keeps.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the

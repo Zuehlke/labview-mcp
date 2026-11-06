@@ -30,7 +30,7 @@ Where upstream has an outright defect, the fix goes in `patches\patches.json` an
 applies it to the **assembled copy**. `vendor\` stays byte-identical to upstream, so a new release
 can still be taken by copying the package over it.
 
-Four fixes, fifteen entries.
+Eight fixes, twenty entries.
 
 `probe-table-guard`: `LVblock.py` calls `getNumRepeats()` on the probe table
 without checking it is a `RepeatedBlock`, and a VI whose probe table resolves to a `Cluster`,
@@ -61,6 +61,21 @@ Streams* example included - with `TypeError: object of type 'NoneType' has no le
 `NameError` on an undefined `client` in the TypeDef data-fill's error handler, which hid the real
 exception. Swept over 1 824 VIs (every example plus the stream VIs in `vi.lib`), old against new
 runtime: 2 fixed, 0 broken, every other extract byte-identical. `docs/network-streams.md`.
+
+`ref-*`, `lvsr-keep-bytes-beyond-version`, `file-version-from-vers-when-lvsr-raw` (`LVdatatype.py`,
+`LVblock.py`, `LVrsrcontainer.py`, 2026-11-06): found by round-tripping EVERY example of LabVIEW
+2026 in place (extract, rebuild over itself) and loading the copies - 42 VIs whose original runs
+did not, and a decoded block-by-block comparison of all 1 941 files named the bytes. Four defects:
+(1) the type factory gave every type of main type 7 a `TDObjectRef`, so the Collections' Map and
+Set types (0x74, 0x73) were parsed as refnums - a Map lost its key/value type indices, a Set its
+label; (2) a refnum whose RefType upstream has no class (0x27, .NET Core) was exported inline with
+only its RefType and rebuilt from it, losing the assembly-qualified class name - although
+`newTDObjectRef` documents that such a refnum is stored as a BIN file; (3) `LVSR` dropped the bytes
+`readinto()` read beyond a version-14 file's size, which also failed its password check
+(`Another user tampered with the VI password`); (4) with `LVSR` unparsed, `getFileVersion()` read
+0.0 and the rebuilt `BDPW` lost `hash_2` (LabVIEW 8.2 files). LabVIEW refused the damaged VIs as
+`Memory is full` (error 2) or broke their owning class. After the fix 0 of those files differ in any
+decoded block but compiled code. `docs/aixml-backends.md`, "The heap route over the same examples".
 
 **The failure mode the mechanism is built against is silence.** A Find/Replace against a line of
 upstream source stops matching when upstream edits that line - and then the bundle assembles
