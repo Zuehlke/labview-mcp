@@ -2523,6 +2523,25 @@ NI's fuzzy greenhouse example hands its XY graph's reference to FL Plot Variable
 as it refuses a node bound to one; over the census it refused exactly those two. The third,
 Preserve Run-Time Class.vi, wires LabVIEW class objects - another cause.
 
+**Single cases, refused or fixed (2026-11-06).** Three more silent losses are refused by name now,
+each over the census only for the VI it was found in:
+- a Conditional Disable frame with a COMPOUND condition (`A==B||C==D`, NI's Conditional Disable
+  Structure.vi, four clauses): the reader wrote it as `Default`, and the structure got two Default
+  frames (`multiple cases with same expression`). The reader notes it now
+  (`Conditional Disable <uid> frame <n>: condition not read`) and the composer refuses that note as
+  lost structure;
+- an event only a Web Browser control (`htmlControl`) carries - `Load Finished`, `URL Navigation?`
+  (Notify and Filter Events.vi): no part creates that control, it is composed as its plain string,
+  and the frame was left with no event (`One or more event cases have no events defined`);
+- a Tab Control arrives as its enum and is composed as an `LV.Enum`; a node reading `Pages` was
+  `Invalid property`. A ring or enum part is now checked against `LV.Enum`/`LV.Ring` members like
+  any other plain control.
+`Decimal String To Number`'s second input is `default (0L)` in the learned terminal names (Stacked
+Bar Waveform Graph wired it by position). That VI still loads broken, as do eight other free VIs:
+Smith Multi Plot with Styles, Malleable Buffer Example Plots, Nonlinear Spring Constant fit,
+ellipse model, QR decomposition update by Givens rotation, Calling VI - Friend of Class A, Test For
+Square of Color and Preserve Run-Time Class - their causes not read yet.
+
 The LabVIEW Error List lines of the broken ones come from `census_errors.py`, which runs the
 server's own lvai_exec_state helper over COM per VI. The 42 broken free VIs before this split into:
 the VI Server kind above (about 9), wires of different types (8), Formula Node `Undefined

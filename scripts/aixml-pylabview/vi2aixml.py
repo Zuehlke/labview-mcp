@@ -2261,6 +2261,12 @@ class Reader:
                     for x in (expr.findall("Tag0000/SL__arrayElement") if expr is not None else [])]
             root_plot = (expr.findtext("activeDiag/SL__arrayElement/activePlot") if expr is not None else None) or ""
             op = "!=" if root_plot.upper() == "FE" else "=="
+            if len(strs) > 2:
+                # a COMPOUND condition (`A==B||C==D`, NI's Conditional Disable Structure.vi: four
+                # clauses) - not decoded; written as Default it gave the structure two Default
+                # frames, `multiple cases with same expression` (2026-11-06). Said, so the
+                # composer refuses it as lost structure rather than build a different VI
+                self.notes.append("Conditional Disable %s frame %d: condition not read" % (node.get("uid"), len(conds)))
             conds.append("%s%s%s" % (strs[0], op, strs[1]) if len(strs) == 2 else "Default")
         d_els = []
         for i, fr in enumerate(frames):

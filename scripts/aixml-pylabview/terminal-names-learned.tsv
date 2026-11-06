@@ -526,3 +526,4 @@ primResID	node	parmIndex	terminal
 8073	Set File Position	6	offset (in bytes) (0)
 8073	Set File Position	7	refnum
 8073	Set File Position	out	error out
+1184	Decimal String To Number	2	default (0L)

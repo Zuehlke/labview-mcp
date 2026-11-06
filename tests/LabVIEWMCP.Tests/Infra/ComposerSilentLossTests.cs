@@ -175,6 +175,78 @@ public sealed class ComposerSilentLossTests
         Assert.Contains("its reference would be of that class", result.Message);
     }
 
+    /// <summary>
+    /// A Conditional Disable frame with a COMPOUND condition (`A==B||C==D`) is not decoded by the
+    /// reader; written as Default it gave NI's Conditional Disable Structure.vi two Default frames
+    /// (`multiple cases with same expression`, 2026-11-06). The reader notes it, and the composer
+    /// refuses the note as lost structure.
+    /// </summary>
+    [Fact]
+    public async Task A_conditional_disable_frame_whose_condition_was_not_read_is_refused()
+    {
+        var doc = "<VI _name=\"Probe.vi\" description=\"x\">\n" + Body +
+                  "  <!-- vi2aixml: Conditional Disable 61 frame 1: condition not read -->\n</VI>\n";
+        if (await ComposeAsync(doc) is not { } result) return;
+
+        Assert.True(result.Refused, result.Message);
+        Assert.Contains("Conditional Disable 61", result.Message);
+    }
+
+    /// <summary>
+    /// A Web Browser control (htmlControl) has no part, so it is composed as its plain string; an
+    /// event only that class has (Load Finished) then has no source, and LabVIEW broke the frame -
+    /// NI's Notify and Filter Events.vi, 2026-11-06. Refused by name; Value Change on the same
+    /// plain control still composes.
+    /// </summary>
+    [Theory]
+    [InlineData("Load Finished", true)]
+    [InlineData("Value Change", false)]
+    public async Task An_event_only_a_web_browser_control_has_is_refused(string kind, bool refused)
+    {
+        var doc = $"""
+            <VI _name="Probe.vi" description="x">
+              <Control _name="Web Browser Control" type="string" uid="4201" uid_parent="root" value="" outputs="value:" />
+              <Structure _name="While Loop" uid="4210" uid_parent="root">
+                <Structure _name="Event Structure" uid="4220" uid_parent="4210">
+                  <CaseFrame selector=" &quot;Web Browser Control&quot;\3A {kind} " uid="4230" uid_parent="4220" label="" />
+                </Structure>
+              </Structure>
+            </VI>
+            """;
+        if (await ComposeAsync(doc) is not { } result) return;
+
+        Assert.Equal(refused, result.Refused);
+        if (refused)
+            Assert.Contains("an event of a htmlControl only", result.Message);
+        else
+            Assert.True(result.Written, result.Message);
+    }
+
+    /// <summary>
+    /// A Tab Control arrives from the reader as its enum, so it is composed as an LV.Enum, which
+    /// has no `Pages` - NI's Programmatically Manipulate a Tab Control.vi loaded `Invalid property`
+    /// (2026-11-06). Refused by name; a member LV.Enum has (Visible) still composes.
+    /// </summary>
+    [Theory]
+    [InlineData("Pages", true)]
+    [InlineData("Visible", false)]
+    public async Task A_node_bound_to_a_tab_control_composed_as_an_enum_is_refused_for_tab_members(string property, bool refused)
+    {
+        var doc = $"""
+            <VI _name="Probe.vi" description="x">
+              <Control _name="Tab" type="uint16{"{"}a,b{"}"}" uid="4201" uid_parent="root" value="0" outputs="value:" />
+              <Node _name="Property Node" uid="4203" uid_parent="root" fields="read+{property}" link="Tab" type="{"{"}LV.TabControl{"}"}" outputs="{property}:4203.{property}" />
+            </VI>
+            """;
+        if (await ComposeAsync(doc) is not { } result) return;
+
+        Assert.Equal(refused, result.Refused);
+        if (refused)
+            Assert.Contains("composed as a plain LV.Enum", result.Message);
+        else
+            Assert.True(result.Written, result.Message);
+    }
+
     [Fact]
     public async Task The_same_chart_without_a_bound_node_still_composes_as_a_plain_cluster()
     {

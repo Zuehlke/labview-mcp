@@ -113,6 +113,7 @@ _LOSSY_READER_NOTE = re.compile(
     r"^(diagram node of class \S+ \(uid \S+\) not read"
     r"|signal \S+ touches an unread terminal"
     r"|In Place pair \S+ not read"
+    r"|Conditional Disable \S+ frame \d+: condition not read"
     r"|\S+ '.*': its terminal was not found on a walked diagram)$")
 
 
@@ -3750,6 +3751,11 @@ class Composer:
         info = getattr(self, "fp_info", {}).get(link)
         ddo = info[2].find("ddo") if info is not None else None
         plain = self.PLAIN_FP_CLASS.get(ddo.get("class")) if ddo is not None else None
+        if plain is None and ddo is not None and ddo.get("class") == "stdRing":
+            # an enum or ring part: a TAB CONTROL arrives as its enum (NI's Programmatically
+            # Manipulate a Tab Control.vi reads `Pages`, which LV.Enum has not - `Invalid
+            # property`, 2026-11-06)
+            plain = "LV.Enum" if is_enum(info[1]) else "LV.Ring"
         if plain is None:
             return
         have = {m for c, m in (self._catalogue() if kind == "property" else self._method_catalogue()) if c == plain}
@@ -7618,6 +7624,9 @@ class Composer:
             return panes[0].get("uid")
         return None
 
+    # front-panel classes no part creates: a control of such a class arrives as its data type
+    UNCOMPOSABLE_FP_CLASSES = {"htmlControl"}
+
     def _static_row(self, uid, ctl, kind):
         """The static-events.json row for a control's NOTIFY event, or a refusal naming why not:
         a filter event (`Mouse Down?`, type with the 0x80000000 bit) needs an Event Filter Node, a
@@ -7641,6 +7650,14 @@ class Composer:
             raise Unsupported("Event Structure %s: the %s event %r is not composable yet" % (uid, r["sourceKind"], kind))
         if r.get("classDependent"):
             raise Unsupported("Event Structure %s: %r carries class-dependent data - not composable yet" % (uid, kind))
+        seen = set(r.get("classes") or {})
+        if seen and seen <= self.UNCOMPOSABLE_FP_CLASSES:
+            # an event seen ONLY on a front-panel class AIXML cannot create (the Web Browser's
+            # htmlControl): the control is composed as a plain object, the event has no source
+            # there, and LabVIEW broke the frame - `One or more event cases have no events
+            # defined`, NI's Notify and Filter Events.vi (URL Navigation?, Load Finished), 2026-11-06
+            raise Unsupported("Event Structure %s: %r is an event of a %s only, which AIXML cannot create - "
+                              "%r is composed as a plain object" % (uid, kind, " or ".join(sorted(seen)), ctl))
         # what LabVIEW's own load said (probe_scanned_events.py, 2026-10-11): an event no source an
         # AIXML document can name carries - an XControl's, a pane's - and an event bound to a class
         # on any other class (Operate Menu Dismissed on a string, Edit Cell? on a table) break the VI
