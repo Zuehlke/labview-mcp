@@ -2446,12 +2446,27 @@ lines are the shutdown). Ranked type-first in a probe, the same control loaded e
 `_listbox_part` now takes parts of the control's own type only - here the multicolumn INDICATOR
 part (21798, NumInt32); with no part of that type and kind at all, the generic pick takes a listbox
 of that type and the report says so. Target - To More Specific Class,
-External Code (DLL) Execution and TDMS Read Events Data load executable since. The other six
-(System Mixed Checkbox, Financial Forecasting, Interpolation Solver, Real Root Finding, IIR Filter
-Design, STFT Spectrogram Demo) are not their panels - every styled control of theirs loads alone -
-but one connected diagram each; `crash_pieces.py` splits a composed VI into its independent diagram
-pieces for `cov_load.py`, and these have one piece apiece, so finding the construct means removing
-elements one at a time, a LabVIEW restart each.
+External Code (DLL) Execution and TDMS Read Events Data load executable since.
+
+**Five more were OPEN CASE RANGES written with int32's limits.** The other six crashers were not
+their panels (every styled control loads alone) but one connected diagram each, so
+`crash_ddmin.py` shrank them by delta debugging - drop elements, recompose, load, keep the drop
+while LabVIEW still dies, a restart per crash (49 trials for Real Root Finding, 17 elements left).
+What was left was a Case Structure on a uint16 ring with frames `..0` and `1..`; with `0` and `1`
+it loaded. NI's own heap of it: `..0` is (start 0, end 0, types 3/1), `1..` is (1, 65535, 1/3) -
+an open end is the SELECTOR TYPE's limit - and on an ENUM it is the LAST ITEM, not the type's
+maximum (Interpolation Solver's `"Rational"..` on a 4-item uint16 enum is (3, 3, 1, 3), IIR Filter
+Design's `"Bessel"..` on 5 items (4, 4, 1, 3)). The composer wrote INT_MIN/INT_MAX for every open
+end. `finish_cases` writes the type's limits since, the enum's item range for an enum; types wider
+than int32 keep INT_MIN/INT_MAX (not measured). `ComposerCaseRangeTests` reads NI's values back.
+Financial Forecasting, Interpolation Solver, Real Root Finding and STFT Spectrogram Demo load
+executable since; IIR Filter Design no longer crashes but is broken (a separate defect).
+
+**Left: System Mixed Checkbox.** Its multicolumn listbox `Result List` (array{int32}) kills
+LabVIEW composed ALONE - with or without its items, with `hGrowNodeListLength` 0, 1 or 2 - while
+the same Array-typed listbox part loads executable in NI's Listbox.vi and 1D Explorer.vi. The
+composed listbox's heap differs from NI's only in bounds, that count and its type id, so the cause
+is outside the listbox's own heap; not found yet.
 
 **What the composer refuses** (first blocker per VI, 595 in the first run), grouped:
 

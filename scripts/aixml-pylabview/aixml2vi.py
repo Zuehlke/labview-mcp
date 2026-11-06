@@ -7123,6 +7123,21 @@ class Composer:
                                               "file keeps them in compiled code)" % el.get("uid"))
                         raise Unsupported("Case Structure %s: an integer case on a %s wire" % (el.get("uid"), st.get("Type")))
                     value = lambda x: int(x, 0)
+                # AN OPEN END IS THE SELECTOR TYPE'S OWN LIMIT, not int32's. NI's Real Root
+                # Finding.vi, a uint16 ring: `..0` is (0, 0, 3, 1), `1..` is (1, 65535, 1, 3).
+                # Written as INT_MIN/INT_MAX into that table, the VI KILLED LabVIEW on load -
+                # 5 of the 9 composed examples that crashed, 2026-11-06 (crash_ddmin.py shrank one
+                # to this Case Structure). Types wider than int32 keep INT_MIN/INT_MAX: not measured.
+                lo, hi = INT_MIN, INT_MAX
+                num = {"UnitUInt8": "NumUInt8", "UnitUInt16": "NumUInt16",
+                       "UnitUInt32": "NumUInt32"}.get(st.get("Type"), st.get("Type"))
+                if num in INT_RANGE and INT_MIN <= INT_RANGE[num][0] and INT_RANGE[num][1] <= INT_MAX:
+                    lo, hi = INT_RANGE[num]
+                if kind == "enum":
+                    # an ENUM's open end is its LAST ITEM, not the type's maximum: NI's Interpolation
+                    # Solver.vi, `"Rational"..` on a 4-item uint16 enum is (3, 3, 1, 3), IIR Filter
+                    # Design.vi's `"Bessel"..` on 5 items (4, 4, 1, 3) - both crashed composed with 65535
+                    lo, hi = 0, len([e for e in st.findall("EnumLabel")]) - 1
                 for i, its in enumerate(items):
                     for x in its:
                         if x == "Default":
@@ -7130,8 +7145,8 @@ class Composer:
                             continue
                         if ".." in x and kind != "string":
                             a, b = x.split("..", 1)
-                            s, st_t = (value(a), 1) if a else (INT_MIN, 3)
-                            e, et_t = (value(b), 1) if b else (INT_MAX, 3)
+                            s, st_t = (value(a), 1) if a else (lo, 3)
+                            e, et_t = (value(b), 1) if b else (hi, 3)
                         elif ".." in x:
                             raise Unsupported("Case Structure %s: string ranges are not composable yet" % el.get("uid"))
                         else:
