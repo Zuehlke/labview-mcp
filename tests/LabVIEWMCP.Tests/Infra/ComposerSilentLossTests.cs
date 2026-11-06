@@ -137,6 +137,28 @@ public sealed class ComposerSilentLossTests
             Assert.True(result.Written, result.Message);
     }
 
+    /// <summary>
+    /// 16 of the 36 graph parts with an AIXML type made a probe holding the graph ALONE unloadable
+    /// (`Cannot load front panel`, 1013; one killed LabVIEW) - every non-double numeric graph or
+    /// chart, dynamic data, the intensity parts - while the double-typed ones load (2026-11-06,
+    /// graph_part_probes.py). They are denylisted; such a graph is composed as its plain data type,
+    /// and 13 examples whose panel would not load are executable since.
+    /// </summary>
+    [Fact]
+    public async Task A_graph_whose_part_is_denylisted_is_composed_as_its_plain_type()
+    {
+        const string doc = """
+            <VI _name="Probe.vi" description="x">
+              <Indicator _name="Unflattened Data" type="array{int16}" style="graph21703" uid="4201" uid_parent="root" value="[]" inputs="value:" />
+            </VI>
+            """;
+        if (await ComposeAsync(doc) is not { } result) return;
+
+        Assert.True(result.Written, result.Message);
+        Assert.Contains(result.Report, line => line.Contains("not composed", StringComparison.Ordinal)
+                                               && line.Contains("Unflattened Data", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task The_same_chart_without_a_bound_node_still_composes_as_a_plain_cluster()
     {

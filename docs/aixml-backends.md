@@ -2503,6 +2503,19 @@ and broken now. The 48 it loses were executable but lossy - the `LOST STRUCTURE`
 615 of 644 executable (95 %)**, library members 66 of 175, class members 0 of 279 (composed out of
 their class - not a fair measure, above).
 
+**15 of the remaining broken free VIs had a panel LabVIEW could not load** - `Get Errors` answered
+error 42 and `lvai_open_file` `Cannot load front panel` (1013), with nothing in LabVIEW's log.
+`panel_probes.py` composed every front-panel object of theirs alone: only graphs and charts failed.
+`graph_part_probes.py` then composed every harvested graph part alone, typed with its own data
+type: **16 of the 36 are unloadable by themselves** (one, the waveform-array graph 3504, killed
+LabVIEW) - every non-double numeric graph or chart (int16, int32, int64, single, uint32), dynamic
+data, the intensity parts, the three-field cluster chart - while the double-typed parts load. The
+graph's own heap matched NI's but for the picture numbers (renumbered from 2 as NI's converter
+does, and written), so the cause is outside it; not found. All 16 are in `parts/denylist.json` and
+removed: such a graph is composed as its plain data type, as for any graph without a part.
+Over the whole census: **694 executable, 0 crash, no regression**, 13 more examples executable -
+**free VIs 628 of 642 (98 %)**.
+
 The LabVIEW Error List lines of the broken ones come from `census_errors.py`, which runs the
 server's own lvai_exec_state helper over COM per VI. The 42 broken free VIs before this split into:
 the VI Server kind above (about 9), wires of different types (8), Formula Node `Undefined
