@@ -2537,10 +2537,32 @@ each over the census only for the VI it was found in:
   `Invalid property`. A ring or enum part is now checked against `LV.Enum`/`LV.Ring` members like
   any other plain control.
 `Decimal String To Number`'s second input is `default (0L)` in the learned terminal names (Stacked
-Bar Waveform Graph wired it by position). That VI still loads broken, as do eight other free VIs:
-Smith Multi Plot with Styles, Malleable Buffer Example Plots, Nonlinear Spring Constant fit,
-ellipse model, QR decomposition update by Givens rotation, Calling VI - Friend of Class A, Test For
-Square of Color and Preserve Run-Time Class - their causes not read yet.
+Bar Waveform Graph wired it by position).
+
+The nine free VIs still broken after that, read one by one (`census_errors.py`; where its Error List
+was empty, `lvai_exec_state` and a pylabview diff against NI's original):
+- **Decimate 1D Array kept its part's `dcoList`** - the three output DCOs of make_plot_contour.vi,
+  gone once the outputs are cloned - and its `shortCount`. EVERY composed Decimate loaded
+  `VI has an error of type 200` with an empty Error List (ellipse model, Test For Square of Color;
+  a probe with the node alone reproduced it). NI's own lists the output DCOs and counts two per
+  output. Fixed: both executable.
+- **A string-to-number conversion over a string ARRAY** stayed a scalar: the shape rule saw a 0
+  delta from the scalar `default` beside the 2D string and gave up, and `number` shares the donor
+  type of `default`. Only `string` sets the shape now (Stacked Bar Waveform Graph: executable).
+- **The reader dropped a Replace Array Subset's disabled, unwired `index (col)`**, which says the
+  element is a ROW; the composer then took the template with both indices enabled (QR
+  decomposition update by Givens rotation: `arrays of different dimensions`). The reader lists
+  every input now, as on Index Array: executable.
+- **A static reference wired into a Property Node** is of the class the control is composed as -
+  Nonlinear Spring Constant fit reads {LV.Slide} `Scale.Range` of a slide the reader exports as a
+  plain double. Refused by name now, like a node bound by `link=`.
+- Smith Multi Plot with Styles: `Index & Bundle Cluster Array` keeps its donor's output type
+  (cluster{Color, String}). NI's own output there is array{cluster{array{Smith Pt}}} - ONE field
+  for TWO 1D inputs, which matches neither the documented rule (one field per input, each the
+  input's element) nor the two donors (Sphere Fit: three double arrays -> cluster of three doubles).
+  Not understood; open.
+- Still open as well: Malleable Buffer Example Plots (a `.vim` with `Bad linkage`), Calling VI -
+  Friend of Class A (community scope), Preserve Run-Time Class (class wires, `Class conflict`).
 
 The LabVIEW Error List lines of the broken ones come from `census_errors.py`, which runs the
 server's own lvai_exec_state helper over COM per VI. The 42 broken free VIs before this split into:

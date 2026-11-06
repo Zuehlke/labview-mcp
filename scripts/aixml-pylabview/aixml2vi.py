@@ -3320,6 +3320,13 @@ class Composer:
             a.append(copy.deepcopy(x))
             return a
         deltas = {depth(new_types[i]) - depth(donor[i]) for i in wired_in}
+        if name in self.STRING_TO_NUMBER and "string" in by_name and idx_of[id(by_name["string"])] in wired_in:
+            # only the STRING sets the shape: an array of strings converts element-wise, and the
+            # scalar `default` beside it does not hold the node scalar - NI's Stacked Bar Waveform
+            # Graph.vi wires a 2D string array and a double default, and the composed `number`
+            # stayed a scalar (two For Loops with no N, 2026-11-06)
+            s = idx_of[id(by_name["string"])]
+            deltas = {depth(new_types[s]) - depth(donor[s])}
         # A QUEUE's (notifier's, user event's) element is carried WHOLE: an array element does not
         # put the primitive in array mode. Obtain Queue of array{string} made `queue out`,
         # `created new?` and `error out` arrays, the Enqueue behind it followed through its wires,
@@ -3338,6 +3345,10 @@ class Composer:
                 # four NI exports in the AIXML cache, caught by the type guard (2026-11-01)
                 if canon[j].startswith(b"error terminal"):
                     continue
+                # a string conversion's `number` shares the donor type of `default`, and still
+                # takes the string's shape
+                if name in self.STRING_TO_NUMBER:
+                    same_group = False
                 if out and not same_group and j not in wired_in and depth(donor[j]) in donor_in_depth:
                     r = reshape(new_types[j], k)
                     if r is not None:
@@ -3517,6 +3528,9 @@ class Composer:
     # it an array, measured 2026-10-10 on lvai_run_and_read.xml), and the input's LABEL is data
     # it writes out. Flatten To XML is the measured one; the other two flatten the same way.
     WHOLE_VALUE = {"Flatten To XML", "Flatten To String", "To Variant"}
+    # string-to-number conversions: element-wise over an array of strings
+    STRING_TO_NUMBER = {"Decimal String To Number", "Hexadecimal String To Number",
+                        "Octal String To Number", "Fract/Exp String To Number", "Engineering String To Number"}
     # arithmetic that works element-wise on a cluster of numbers
     ELEMENTWISE = {"Add", "Subtract", "Multiply", "Divide", "Increment", "Decrement", "Negate",
                    "Absolute Value", "Square Root", "Square", "Reciprocal", "Round To Nearest"}
@@ -3739,6 +3753,20 @@ class Composer:
     PLAIN_FP_CLASS = {"stdNum": "LV.Digital", "stdBool": "LV.Boolean", "stdString": "LV.String",
                       "stdPath": "LV.Path", "stdClust": "LV.Cluster", "indArr": "LV.Array"}
 
+    def _static_ref_element(self, el):
+        """The control whose STATIC reference (a VI Server Reference node) is wired straight into
+        this node's `reference` input, or None. Such a reference is of the class the control is
+        COMPOSED as, so a plain-composed control fails a member of its original class exactly as
+        a node bound by `link=` does - NI's Nonlinear Spring Constant fit.vi reads {LV.Slide}
+        Scale.Range of a slide the reader exports as a plain double: `Invalid dotted property`
+        (2026-11-06)."""
+        net = dict(pairs(el.get("inputs"))).get("reference")
+        src = getattr(self, "_by_uid", {}).get(net.split(".", 1)[0]) if net else None
+        if src is None or src.tag != "Node" or unescape(src.get("_name") or "") != "VI Server Reference":
+            return None
+        element = src.get("element")
+        return unescape(element) if element else None
+
     def _refuse_foreign_members(self, link, members, kind, uid):
         """Refuse a node bound by `link=` to a control composed as a PLAIN object when one of its
         properties (kind 'property') or methods ('method') is not that object's - LabVIEW loads such
@@ -3837,6 +3865,9 @@ class Composer:
         fields_ = [unescape(f) for f in split_top(el.get("fields") or "") if f]
         if link:
             self._refuse_foreign_members(link, [f.partition("+")[2] for f in fields_], "property", el.get("uid"))
+        elif self._static_ref_element(el) is not None:
+            self._refuse_foreign_members(self._static_ref_element(el), [f.partition("+")[2] for f in fields_],
+                                         "property", el.get("uid"))
 
         def rows_for(c):
             out = []
@@ -4101,6 +4132,8 @@ class Composer:
             if target is None:
                 raise Unsupported("Invoke Node %s: no front-panel object %r to link to" % (el.get("uid"), link))
             self._refuse_foreign_members(link, [meth], "method", el.get("uid"))
+        elif self._static_ref_element(el) is not None:
+            self._refuse_foreign_members(self._static_ref_element(el), [meth], "method", el.get("uid"))
         import harvest_parts
         got = self.instantiate("invoke/%s/%s" % (cls, harvest_parts.meth_key(meth)), own_uid=el.get("uid"))
         if got is None:
@@ -5855,6 +5888,19 @@ class Composer:
         for e in node.iter("typeDesc"):
             e.attrib.pop("_t", None)
         tl.set("elements", str(len(tl)))
+        # dcoList names the OUTPUT DCOs, and shortCount is two per output (NI's ellipse model.vi:
+        # two outputs, dcoList of their two DCOs, shortCount 4). The part's own three stayed, naming
+        # DCOs that no longer exist, and every composed Decimate loaded `VI has an error of type
+        # 200` with an empty Error List (ellipse model, Test For Square of Color, 2026-11-06)
+        dl = node.find("dcoList")
+        if dl is not None:
+            for x in list(dl):
+                dl.remove(x)
+            for t in list(tl)[1:]:
+                ET.SubElement(dl, "SL__arrayElement", {"uid": t.find("dco").get("uid")})
+            dl.set("elements", str(len(dl)))
+        if node.find("shortCount") is not None:
+            node.find("shortCount").text = str(2 * len(names))
         b = lvheap.parse_bounds(node.find("bounds").text)
         node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + h, b[1] + 32))
         diag.nodes.append(node)

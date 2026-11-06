@@ -2346,6 +2346,12 @@ class Reader:
                 else:
                     nm = "?"
                 names.append(("disabled " if f & 0x10000 and nm.startswith("index") else "") + nm)
+            # every input listed, a DISABLED index even unwired, as on Index Array: it says the
+            # element is a row, and without it the composer took the template with both indices
+            # enabled - NI's QR decomposition update by Givens rotation.vi replaces rows and
+            # loaded `arrays of different dimensions` (2026-11-06)
+            self.ordered_inputs[id(el)] = (el, [(t.get("uid"), nm) for t, nm in zip(terms, names)
+                                               if not self._is_out(t)])
         if names is None:
             self.notes.append("node %s: no template names its terminals" % TEMPLATE_CLASSES[cls])
             names = ["?"] * len(terms)
