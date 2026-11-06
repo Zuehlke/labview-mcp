@@ -2516,6 +2516,13 @@ removed: such a graph is composed as its plain data type, as for any graph witho
 Over the whole census: **694 executable, 0 crash, no regression**, 13 more examples executable -
 **free VIs 628 of 642 (98 %)**.
 
+**Two of the three refnum `Class conflict`s were a static reference to a degraded graph.** A
+`VI Server Reference` to a graph composed as its plain type is a reference of the PLAIN class, and
+NI's fuzzy greenhouse example hands its XY graph's reference to FL Plot Variable's `graph refnum`
+(the PID example with engineering units the same way). The composer refuses such a reference now,
+as it refuses a node bound to one; over the census it refused exactly those two. The third,
+Preserve Run-Time Class.vi, wires LabVIEW class objects - another cause.
+
 The LabVIEW Error List lines of the broken ones come from `census_errors.py`, which runs the
 server's own lvai_exec_state helper over COM per VI. The 42 broken free VIs before this split into:
 the VI Server kind above (about 9), wires of different types (8), Formula Node `Undefined

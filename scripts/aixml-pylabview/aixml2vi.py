@@ -6160,6 +6160,15 @@ class Composer:
             pane_uid = self._pane_uid(element) if info is None else None
             if info is None and pane_uid is None:
                 raise Unsupported("VI Server Reference %s: no control %r" % (el.get("uid"), element))
+            degraded = getattr(self, "degraded_controls", {}).get(element)
+            if degraded is not None:
+                # a reference to a graph composed as its plain type is a reference of the PLAIN
+                # class, and a subVI that takes the graph's class rejects it - NI's fuzzy greenhouse
+                # example hands its XY graph's reference to FL Plot Variable's `graph refnum`:
+                # `Wire: Class conflict` (2026-11-06); the binding nodes refuse the same way
+                raise Unsupported("VI Server Reference %s: %r has style %r, which has no part here - "
+                                  "composed as a plain %s, its reference would be of that class, not "
+                                  "the control's" % (el.get("uid"), element, degraded[0], degraded[1]))
             if pane_uid is not None:
                 # a reference to a PANE (the 3D Math Plots' facades, their panel pane): a plain
                 # LV.Pane refnum naming the pane object

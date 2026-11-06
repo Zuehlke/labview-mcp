@@ -159,6 +159,22 @@ public sealed class ComposerSilentLossTests
                                                && line.Contains("Unflattened Data", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// A static reference to a graph composed as its plain type is a reference of the plain class:
+    /// NI's fuzzy greenhouse example hands its XY graph's reference to FL Plot Variable's `graph
+    /// refnum`, and the composed VI was `Wire: Class conflict` (2026-11-06). Refused by name now.
+    /// </summary>
+    [Fact]
+    public async Task A_static_reference_to_a_degraded_graph_is_refused()
+    {
+        var doc = "<VI _name=\"Probe.vi\" description=\"x\">\n" + Chart +
+                  "  <Node _name=\"VI Server Reference\" uid=\"4310\" uid_parent=\"root\" element=\"Chart\" outputs=\"Chart:4310.Chart\" />\n</VI>\n";
+        if (await ComposeAsync(doc) is not { } result) return;
+
+        Assert.True(result.Refused, result.Message);
+        Assert.Contains("its reference would be of that class", result.Message);
+    }
+
     [Fact]
     public async Task The_same_chart_without_a_bound_node_still_composes_as_a_plain_cluster()
     {
