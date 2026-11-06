@@ -132,3 +132,8 @@ run_id,workflow,created_at,event,conclusion,run_attempt,tag
 41785863292,verify-release.yml,2026-11-04T06:29:33Z,schedule,success,1,v2.4.3
 41980744168,verify-release.yml,2026-11-05T06:29:24Z,schedule,success,1,v2.4.3
 41984523318,release.yml,2026-11-05T07:03:16Z,push,success,1,v2.4.4
+41996848907,release.yml,2026-11-05T08:44:51Z,push,success,1,v2.4.5
+42052052933,release.yml,2026-11-05T15:09:17Z,push,failure,1,v2.4.6
+42054895156,release.yml,2026-11-05T15:25:53Z,push,success,1,v2.4.7
+42101230795,release.yml,2026-11-05T20:12:38Z,push,success,1,v2.5.0
+42174767613,verify-release.yml,2026-11-06T06:29:40Z,schedule,success,1,v2.5.0
