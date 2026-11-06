@@ -473,7 +473,7 @@ document; `experiments/` does not ship.
 | Network streams; tag refnums; IVI on pylabview | `docs/network-streams.md`, `docs/aixml-backends.md` | — |
 | What cold builds found | `docs/cold-build-*.md` | — |
 | Why a tool call failed with no detail | `docs/tool-argument-errors.md` | — |
-| Crashes | `docs/labview-crash-signatures.md` | `lvai_status` |
+| Station check; crashes | `docs/aixml-backends.md`, `docs/labview-crash-signatures.md` | `pylv_status` (`labviewHealth`, `grpcService`), `lvai_status` |
 | Releases and versions | `docs/release-versioning.md` | `LabVIEWMCP --version` |
 
 The served documents are embedded in the assembly and byte-verified on every build; all of `docs\`

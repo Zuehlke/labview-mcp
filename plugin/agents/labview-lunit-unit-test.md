@@ -53,7 +53,8 @@ Measured facts that each cost minutes when found at run time. Plan around them f
 
 ## Phase 0 — Confirm the station, then read the reference
 
-1. `lvai_status`. Then confirm the install root from the running process rather than assuming it:
+1. `pylv_status`, then `lvai_ensure_labview` until `state: ready` (`lvai_status` only when the
+   backend in force, `aixmlBackend.serverDefault`, is `grpc`). Then confirm the install root from the running process rather than assuming it:
 
    ```bash
    powershell -Command "Get-Process LabVIEW | Select-Object -ExpandProperty Path"
@@ -370,7 +371,7 @@ report, and if the VI does not load there while NI's service is up, compose it a
    `errorCode 0` means the composer CAN build the document; executability and a run stay the
    verdict, as always.
 4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
-   with an `UNSUPPORTED: ...` line. Quote it. If `lvai_status` shows NI's service up, repeat that
+   with an `UNSUPPORTED: ...` line. Quote it. If `pylv_status` shows `grpcService.reachable: true`, repeat that
    one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
    the line verbatim.
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be

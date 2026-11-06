@@ -342,6 +342,29 @@ tools (`lvai_discuss_file`, `lvai_apply_aixml_to_vi`, `lvai_build_from_build_spe
 tools). Everything else has a pylabview route. A pylabview read may still SERVE a cached export
 NI's converter made earlier - by design, it is the higher-fidelity reading and costs no service.
 
+**THE START-UP CHECK IS `pylv_status` since 2026-11-06, not `lvai_status`.** A usage count over
+every local session transcript found `lvai_status` the only one of the NI-only tools still called
+(165 calls since 2026-10-15, every other one none) - as the first step of all eight agents, which
+then waited for NI's service on a backend that does not need it. And `lvai_status` answered
+nothing at all with the service down: its first RPC failed the whole call, taking
+`scriptsDirectory` (the doc agent's path to `lvdoc_print.xml`) and the crash-log count with it.
+Now:
+
+- `pylv_status` carries everything `lvai_status` reports that needs no service
+  (`StatusTools.ServiceIndependent`: `serverVersion`, `serverCommit`, `scriptsDirectory`,
+  `claudeAssetsDirectory`, `aiAddonFingerprint`, `aiAddonRecorded`), plus `labview` - the
+  running LabVIEWs from the process table and whether ActiveX may attach (`LabViewCom.NotReady`,
+  no COM call, so the tool still needs no LabVIEW) - and `labviewHealth`, matched to the NEWEST
+  running LabVIEW (the one ActiveX attaches to) where `lvai_status` matches it by the gRPC port's
+  owner. `grpcService` probes NI's service with a 3 s budget as a SIDE fact: `reachable`, or
+  `why` with the per-port status codes of the discovery failure (Unavailable = not started yet,
+  DeadlineExceeded = busy or hung). It never fails the answer.
+- `lvai_status` with the service down answers `ok: false` with its old `errorKind` and the same
+  service-independent fields and `labviewHealth`.
+- The agents start with `pylv_status`, then `lvai_ensure_labview` (ready = answers over ActiveX on
+  pylabview); `lvai_status` only where the backend in force is `grpc`. A `composerRefused` call is
+  repeated on `grpc` only while `grpcService.reachable` is true.
+
 Before either backend: `lvai_check_aixml`'s pre-checks, and the refusal of a property name with its
 category dropped (`propertyNameWouldCrashLabview`) — that document is wrong whichever converter
 reads it.
@@ -2359,11 +2382,11 @@ Test: `PylabviewLiteralTests`.
   For the 8 patterns found in two orientations (4815 among them, so every class member) the answer
   says so; a rotated pane there is only seen on `grpc`. `lvai_render_diagrams` and
   `lvai_connector_pane` follow the switch since 2026-10-12 (previous section).
-- **Still on gRPC**: the batch export `lvai_convert_vis_to_aixml`, whose cache holds NI's output,
-  `pylv_route` (its check A IS NI's validation), `lvai_run_vi_as_top_level` (NI's RPC;
-  `lvai_run_vi_and_read_values` is the switchable run), the three-step gRPC event route, and NI's
-  own assistant features. Every other tool that reaches LabVIEW takes `backend` since 2026-10-13
-  (the DQMH tools next, the rest in "Every route tool without NI's service").
+- **Still on gRPC**: `pylv_route` (its check A IS NI's validation), the palette RPCs, build
+  specifications, and NI's own assistant features (the list under "What each tool does on
+  `pylabview`"). This bullet named `lvai_convert_vis_to_aixml`, `lvai_run_vi_as_top_level` and
+  the three-step event route as well until 2026-11-06; all three have followed the switch since
+  2026-10-16 (the table above).
 - **THE DQMH TOOLS RUN WITHOUT NI's SERVICE since 2026-10-13** - the user's request, for a DQMH
   demo built with no gRPC at all. The gap was the C# routing, never the composer: all 17
   `scripts\lvdqmh_*.xml` composed and loaded executable over ActiveX before a line changed

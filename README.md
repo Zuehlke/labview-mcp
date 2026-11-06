@@ -268,7 +268,7 @@ allow-list that lets reads run uninterrupted while every mutating tool still sto
 
 Start LabVIEW, open Claude Code in your project, and try:
 
-> *"Call `lvai_status` to check the LabVIEW connection, then tell me what `C:\path\to\My.vi`
+> *"Call `pylv_status` to check the station, then tell me what `C:\path\to\My.vi`
 > does."*
 
 
