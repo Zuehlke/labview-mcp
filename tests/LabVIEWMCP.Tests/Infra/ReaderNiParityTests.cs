@@ -99,6 +99,11 @@ public sealed class ReaderNiParityTests : IDisposable
     [InlineData(@"Connectivity\Dot NET Core\Passing Data to a .NET Core Event Callback.vi", "243", "inputs", "VI Ref:", true)]
     // a slot named by local alignment, then elimination
     [InlineData(@"File IO\TDMS\Advanced Read and Write\Align File with Disk Sector\Align TDMS File with Hard Disk Sector.vi", "626", "inputs", "create index file? (T):", true)]
+    // fourth round: IrDA by its refnum, a 3D Index Array, set and map types
+    [InlineData(@"Data Communication\Protocols\IrDA\Simple IrDA\Simple IrDA - Server.vi", "347", "_name", "IrDA Write", false)]
+    [InlineData(@"OpenG\picture\examples\Write GIF File Example.vi", "343", "inputs", "index (page):", true)]
+    [InlineData(@"Collections\Set Collection - Word Counting.vi", "1839", "type", "set{string}", false)]
+    [InlineData(@"Collections\Map Collection - Word Counting.vi", "196", "type", "map{string.word,uint64.count}", false)]
     // a reference to a subpanel is typed, with no element
     [InlineData(@"MGI\Panel Manager\Basic Panel Actors\Composite User Interface\Composite User Interface\Actor Core.vi", "1336", "type", "{LV.SubPanel}", false)]
     public async Task The_reader_writes_what_NIs_export_writes(string example, string uid, string attribute, string expected, bool contains)

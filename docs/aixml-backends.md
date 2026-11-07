@@ -2668,7 +2668,8 @@ follows: it ignores unwired terminals and descriptions.
 | before | 250 of 1 767 | 99.58 % | 97.05 % | 88.27 % | 96.82 % |
 | first round | 1 163 of 1 767 | 99.67 % | 99.33 % | 98.99 % | 98.25 % |
 | second round | 1 402 of 1 767 | 99.73 % | 99.54 % | 99.45 % | 99.16 % |
-| third round | **1 476 of 1 767** | 99.75 % | 99.59 % | 99.58 % | 99.27 % |
+| third round | 1 476 of 1 767 | 99.75 % | 99.59 % | 99.58 % | 99.27 % |
+| fourth round | **1 479 of 1 767** | 99.75 % | 99.61 % | 99.60 % | 99.31 % |
 
 What changed, each family measured on that corpus:
 
@@ -2747,6 +2748,19 @@ and two more slots learned by LOCAL alignment (an unknown whose known neighbours
 them; the next pass names the rest by elimination). compare_corpus.py itself had a defect: it
 looked a selector's net up UNESCAPED, so a source like `ExecutionAState` read as `?` on the
 reader's side.
+
+**The fourth round**: the TCP primitives named IrDA or Bluetooth by their connection refnum
+(`IrdaNetConn`, `BluetoothCon`; `primitive-names-extra.tsv` maps those names back to the same
+primResIDs for the composer), a 3D Index Array's `index (page)`, and SET and MAP types. pylabview
+keeps those raw (0x73/0x74); their bytes are the element's index into the flat type list - a map
+a count, then the key's and the value's - and a Pascal label. `lvheap.Bundle(...,
+collections=True)` rewrites them as `Set`/`Map` with TypeID children, so they inline like any
+container: `set{string}`, `map{string.word,uint64.count}`. Only the READER asks for that - the
+composer copies a callee's types as they stand, and a rewritten set would not serialize.
+
+The 12 VIs the reader cannot read at all are JKI VI Tester tests saved by a LabVIEW 8.x: their
+types are not in a VCTP block (`TM80`, `FPTD` instead), which pylabview does not decode. NI's
+converter reads them because LabVIEW upconverts on load.
 
 The composer learned one thing for it: `string{utf8}` (a String TypeDesc with Bit3), so the
 Multilingual examples compose as before rather than being refused.

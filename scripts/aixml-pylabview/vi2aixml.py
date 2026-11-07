@@ -150,6 +150,11 @@ def aixml_type(tree):
                 "DigitalWaveform": "digitalwaveform"}.get(tree.get("Flavor"))
     if t == "Picture":
         return "picture"
+    if t in ("Set", "Map") and kids:
+        # a SET or MAP (lvheap rewrites pylabview's raw 0x73/0x74): set{T}, map{K,V}, each with
+        # its label as NI writes them (2026-11-06)
+        parts = [_sub(k) for k in kids]
+        return None if any(p is None for p in parts) else "%s{%s}" % (t.lower(), ",".join(parts))
     if t == "Tag":
         n = {v: k for k, v in aixml2vi.TAG_TYPES.items()}.get(tree.get("TagType"))
         return "tag{%s}" % n if n else None
@@ -876,7 +881,7 @@ class Reader:
     Right the rSR's inner terminal, a Call the iUse node."""
 
     def __init__(self, main_xml, vi_path=None):
-        self.b = lvheap.Bundle(main_xml)
+        self.b = lvheap.Bundle(main_xml, collections=True)
         # the VI's own file: a callee linked RELATIVE to it is found from here, to name a call's
         # terminals its link carries no labels for
         self.vi_path = vi_path
@@ -1632,6 +1637,16 @@ class Reader:
         self.prim_rid = getattr(self, "prim_rid", {})
         self.prim_rid[node.get("uid")] = rid
         name = self.prim_name.get(rid)
+        if name and name.startswith("TCP "):
+            # the TCP primitives serve IrDA and Bluetooth too, told apart only by the connection
+            # refnum's type - NI names them `IrDA Read`, `Bluetooth Write` (15 over its Simple IrDA
+            # and Simple Bluetooth examples, 2026-11-06)
+            for term in node.find("termList"):
+                tr = self.tid_tree(term)
+                kind = {"IrdaNetConn": "IrDA ", "BluetoothCon": "Bluetooth "}.get(tr.get("RefType") if tr is not None else None)
+                if kind:
+                    name = kind + name[len("TCP "):]
+                    break
         el = ET.Element("Node", {"_name": name or "?primResID %s" % rid,
                                  "uid": node.get("uid"), "uid_parent": parent_uid})
         if name is None:
@@ -3057,7 +3072,10 @@ class Reader:
             el.set("dimensions", str(n))
         self.term_owner[src.get("uid")] = (el, "array", True)
         order = [(src.get("uid"), "array")]
-        d_names = ["index (row)", "index (col)"] if n == 2 else ["index"] * n
+        # a 3D array's indices are page, row and column in NI's export (OpenG's Write GIF File
+        # Example.vi, 2026-11-06)
+        d_names = (["index (row)", "index (col)"] if n == 2 else
+                   ["index (page)", "index (row)", "index (col)"] if n == 3 else ["index"] * n)
         k = 0
         for t in terms[1:]:
             if self._is_out(t):

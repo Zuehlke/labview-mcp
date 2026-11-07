@@ -85,3 +85,13 @@ primResID	name	seen	primIndex
 9151	Bluetooth Create Listener	1	
 9152	Bluetooth Discover	1	
 9153	Bluetooth Open Connection	1	
+# the TCP primitives under their IrDA and Bluetooth names (same primResID; vi2aixml names them by the
+# connection refnum type, 2026-11-06) - so the composer maps NI's names back to the primitive
+1712	IrDA Wait On Listener	0	
+1712	Bluetooth Wait On Listener	0	
+1713	IrDA Close Connection	0	
+1713	Bluetooth Close Connection	0	
+1714	IrDA Write	0	
+1714	Bluetooth Write	0	
+1716	IrDA Read	0	
+1716	Bluetooth Read	0	
