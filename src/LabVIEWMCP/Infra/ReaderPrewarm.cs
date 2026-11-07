@@ -87,11 +87,7 @@ internal static class ReaderPrewarm
                 if (stale > 0) log.LogInformation("Removed {Count} reader cache entr(ies) of older reader code.", stale);
 
                 await Task.Delay(StartDelay);
-                var targets = ExampleIndex.Build().Examples
-                    .Select(e => e.Path)
-                    .Where(p => p.EndsWith(".vi", StringComparison.OrdinalIgnoreCase))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+                var targets = Targets(ExampleIndex.Build());
                 var summary = await RunCoreAsync(setup, stamp, targets, MarkerPath(), null, stale, default);
                 log.LogInformation("Reader pre-warm: {Read} read, {Cached} already cached, {Failed} failed, of {Targets}.",
                                    summary.Read, summary.AlreadyCached, summary.Failed, summary.Targets);
@@ -103,6 +99,77 @@ internal static class ReaderPrewarm
         });
 
     private static Progress Skipped(string why) => new("skipped", 0, 0, 0, 0, 0, 0, why);
+
+    /// <summary>What a run reads: the example index's VIs, each once.</summary>
+    internal static List<string> Targets(ExampleIndex.Result index) =>
+        index.Examples
+            .Select(e => e.Path)
+            .Where(p => p.EndsWith(".vi", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    /// <summary>
+    /// How much of the run's targets the cache covers NOW, read from the files - so pylv_status can
+    /// say right after a start whether the cache is warm, before (or without) a run finishing.
+    /// </summary>
+    /// <param name="State">
+    /// <c>warm</c>: nothing left to read; <c>partial</c>: some entries; <c>cold</c>: none;
+    /// <c>unknown</c>: no example index yet (the start-up still builds it) or no examples.
+    /// </param>
+    /// <param name="Cached">Targets with an entry the default backend would serve.</param>
+    /// <param name="FromNi">Of those, NI converter entries (served first on either backend).</param>
+    /// <param name="FromReader">Of those, entries of the CURRENT reader code (pylabview only).</param>
+    /// <param name="Missing">Targets a run would still read.</param>
+    /// <param name="Unreadable">Targets the current reader failed on; not retried, not missing.</param>
+    internal sealed record Coverage(string State, int Targets, int Cached, int FromNi, int FromReader,
+                                    int Missing, int Unreadable, int Percent, long CheckedMs, string? Note);
+
+    /// <summary>
+    /// Counts <paramref name="targets"/> as <see cref="RunCoreAsync"/> would judge them, with no
+    /// read: an NI entry, else an entry of the current reader (only when <paramref name="readerCounts"/>,
+    /// i.e. on the pylabview backend - grpc never serves one), else a failure the marker of the
+    /// current reader records, else missing. A path outside the installations is not a target.
+    /// </summary>
+    internal static Coverage Measure(IReadOnlyList<string> targets, bool readerCounts, string markerPath,
+                                     IReadOnlyList<string>? roots = null)
+    {
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var stamp = readerCounts ? AixmlExportStore.ReaderStamp() : null;
+        var marker = stamp is null ? null : LoadMarker(markerPath);
+        var failed = marker is not null && marker.Stamp == stamp
+            ? new HashSet<string>(marker.Failed, StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        int total = 0, ni = 0, reader = 0, unreadable = 0, missing = 0;
+        foreach (var vi in targets)
+        {
+            if (!AixmlExportStore.IsCacheable(vi, roots)) continue;
+            total++;
+            if (AixmlExportStore.CachedUtc(vi, AixmlBackend.Grpc) is not null) ni++;
+            else if (stamp is not null && AixmlExportStore.CachedUtc(vi, AixmlBackend.PyLabview) is not null) reader++;
+            else if (failed.Contains(vi)) unreadable++;
+            else missing++;
+        }
+
+        var cached = ni + reader;
+        var state = total == 0 ? "unknown" : missing == 0 ? "warm" : cached == 0 ? "cold" : "partial";
+        var percent = total == 0 ? 0 : (int)Math.Floor(100.0 * (cached + unreadable) / total);
+        return new Coverage(state, total, cached, ni, reader, missing, unreadable, percent,
+                            watch.ElapsedMilliseconds, total == 0 ? "No example VI to cover." : null);
+    }
+
+    /// <summary>
+    /// <see cref="Measure"/> over the installed examples for pylv_status. Never scans and never
+    /// waits: with the example index not built yet the answer is <c>unknown</c>.
+    /// </summary>
+    internal static Coverage MeasureInstalled()
+    {
+        if (ExampleIndex.TryGetBuilt() is not { } index)
+            return new Coverage("unknown", 0, 0, 0, 0, 0, 0, 0, 0,
+                                "The example index is not built yet (the start-up builds it in about a minute); ask again.");
+        var readerCounts = AixmlBackend.ServerDefault().Name == AixmlBackend.PyLabview;
+        return Measure(Targets(index), readerCounts, MarkerPath());
+    }
 
     /// <summary>
     /// The run itself, over <paramref name="targets"/>: each VI not cached for NI nor for the

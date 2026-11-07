@@ -41,7 +41,9 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
         `labviewHealth` (DWarn events in NI's crash log of the LabVIEW ActiveX reaches - read it
         AFTER a failure, never as a gate), and `grpcService`: whether NI's service answers, as a
         side fact (a composerRefused call may be repeated on grpc only while it reads reachable).
-        `readerPrewarm`: the background read of the examples into the export cache.
+        `readerPrewarm`: the background read of the examples into the export cache;
+        `exportCache`: how many of those examples the cache covers NOW (`state` warm, partial, cold,
+        or unknown while the example index is still being built).
         Readiness to work is lvai_ensure_labview. A source checkout has no bundle until
         tools\pylabview\provision.ps1 has run; a binary install carries it.
         """)]
@@ -88,9 +90,15 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
             // pylabview one can run here. docs/aixml-backends.md.
             answer["aixmlBackend"] = AixmlComposer.Describe();
             // The background read of the examples into the export cache (ReaderPrewarm).
+            var camel = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
             answer["readerPrewarm"] = ReaderPrewarm.Current is { } p
-                ? JsonSerializer.SerializeToNode(p, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
+                ? JsonSerializer.SerializeToNode(p, camel)
                 : new JsonObject { ["state"] = "not started" };
+            // How much of what it reads is covered right now, from the files - warm or not is
+            // visible at once after a start, not only when a run has finished.
+            var coverage = JsonSerializer.SerializeToNode(ReaderPrewarm.MeasureInstalled(), camel)!.AsObject();
+            coverage["directory"] = AixmlExportStore.Directory;
+            answer["exportCache"] = coverage;
             answer["labview"] = LabViewPicture();
             // The crash log of the LabVIEW ActiveX attaches to - lvai_status matches it by the gRPC
             // port, which this backend does not have.

@@ -1492,6 +1492,17 @@ the reader's code hash, so EVERY reader update made every example cold again for
   (`AixmlExportStore.ReapStaleReader`) - such an entry can never be hit again, and until now none
   was ever removed: the cache of 2026-11-07 held 95 reader entries under 11 hashes.
 - Only on the pylabview backend; `LABVIEWMCP_READER_PREWARM=0` switches it off.
+- **Is the cache warm? `pylv_status`'s `exportCache`** (the user's request of 2026-11-07: "check at
+  start-up whether the cache has a sensible size"). It counts the run's targets from the FILES on
+  every call, so the answer is there right after a start, not only when a run has finished:
+  - `state` is `warm` (nothing left to read), `partial`, `cold`, or `unknown` while the example
+    index is still being built - the status never scans and never waits for that scan;
+  - the counts are `cached` (`fromNi` + `fromReader`), `missing` (what a run would still read),
+    `unreadable` (failures of the CURRENT reader, which are not retried), `percent` and `checkedMs`.
+  - **Coverage, not size, is the measure.** A cache full of reader entries of OLDER reader code is
+    large and serves nothing - exactly the state of the morning of 2026-11-07 - and a size
+    threshold would depend on the installation's add-ons. On grpc only NI's entries count, because
+    grpc never serves a reader entry.
 
 Measured on this station, first start: 95 stale entries removed, of 939 example VIs 570 already
 had NI's entry, **369 read in 111 s (20 s of it the delay), 0 failed**. Second start: 0 read, 939

@@ -60,6 +60,55 @@ public class ReaderPrewarmTests : IDisposable
         Assert.True(File.Exists(Path.Combine(dir, "0000000000000003.xml")));
     }
 
+    /// <summary>
+    /// The coverage pylv_status reports, read from the files with no read of a VI: an NI entry
+    /// counts as cached, a VI the current reader failed on as unreadable (not missing), the rest
+    /// as missing; a path outside the installations is no target. Cold, partial and warm follow.
+    /// </summary>
+    [Fact]
+    public void Coverage_counts_ni_entries_known_failures_and_missing_targets()
+    {
+        var install = Path.Combine(_tree, "LabVIEW 2026");
+        var examples = Path.Combine(install, "examples");
+        Directory.CreateDirectory(examples);
+        var targets = new[] { "A.vi", "B.vi", "C.vi" }.Select(n => Path.Combine(examples, n)).ToList();
+        foreach (var t in targets) File.WriteAllText(t, "stand-in " + t);
+        var outside = Path.Combine(_tree, "elsewhere", "D.vi");
+        Directory.CreateDirectory(Path.GetDirectoryName(outside)!);
+        File.WriteAllText(outside, "outside");
+        var marker = Path.Combine(_tree, "reader-prewarm.json");
+        IReadOnlyList<string> roots = [install];
+
+        var cold = ReaderPrewarm.Measure([.. targets, outside], readerCounts: false, marker, roots);
+        Assert.Equal(("cold", 3, 0, 3), (cold.State, cold.Targets, cold.Cached, cold.Missing));
+
+        var niExport = Path.Combine(_tree, "ni.xml");
+        File.WriteAllText(niExport, "<VI _name=\"A.vi\"/>");
+        Assert.True(AixmlExportStore.Save(targets[0], niExport, roots));
+
+        var partial = ReaderPrewarm.Measure(targets, readerCounts: false, marker, roots);
+        Assert.Equal(("partial", 1, 1, 0, 2, 33), (partial.State, partial.Cached, partial.FromNi,
+                                                   partial.FromReader, partial.Missing, partial.Percent));
+
+        // a failure recorded by the CURRENT reader code is not missing - a run would not read it
+        if (AixmlExportStore.ReaderStamp() is { } stamp)
+        {
+            File.WriteAllText(marker, JsonSerializer.Serialize(
+                new ReaderPrewarm.Marker(1, stamp, [targets[1]], "2026-11-07T00:00:00Z")));
+            var known = ReaderPrewarm.Measure(targets, readerCounts: true, marker, roots);
+            Assert.Equal((1, 1, 66), (known.Unreadable, known.Missing, known.Percent));
+
+            // ... but one recorded by other reader code is: the new reader may read it
+            File.WriteAllText(marker, JsonSerializer.Serialize(
+                new ReaderPrewarm.Marker(1, "OTHERSTAMP", [targets[1]], null)));
+            Assert.Equal(2, ReaderPrewarm.Measure(targets, readerCounts: true, marker, roots).Missing);
+        }
+
+        foreach (var t in targets.Skip(1)) Assert.True(AixmlExportStore.Save(t, niExport, roots));
+        var warm = ReaderPrewarm.Measure(targets, readerCounts: false, marker, roots);
+        Assert.Equal(("warm", 3, 0, 100), (warm.State, warm.Cached, warm.Missing, warm.Percent));
+    }
+
     private static string? Example(string relative) =>
         Directory.Exists(@"C:\Program Files (x86)\National Instruments")
             ? Directory.EnumerateDirectories(@"C:\Program Files (x86)\National Instruments", "LabVIEW 20*")

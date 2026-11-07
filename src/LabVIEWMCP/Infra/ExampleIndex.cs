@@ -152,6 +152,34 @@ internal static class ExampleIndex
         }
     }
 
+    /// <summary>
+    /// The index when it is already built - in memory or on disk - and null otherwise, WITHOUT
+    /// scanning and without waiting: a scan in progress holds <see cref="Gate"/> for about a minute,
+    /// and a status answer must not sit behind it.
+    /// </summary>
+    public static Result? TryGetBuilt(string? labviewRoot = null, string? addonsRoot = null)
+    {
+        AddonTree.IndexPlan plan;
+        try { plan = AddonTree.PlanIndex(labviewRoot, addonsRoot, "examples", "examples"); }
+        catch (InvalidOperationException) { return null; }
+
+        if (!Monitor.TryEnter(Gate)) return null;
+        try
+        {
+            if (_cache.TryGetValue(plan.Key, out var cached)) return cached;
+            if (plan.Persist && ExampleIndexStore.TryLoad(plan.Key) is { } stored)
+            {
+                _cache = Remember(plan.Key, stored);
+                return stored;
+            }
+            return null;
+        }
+        finally
+        {
+            Monitor.Exit(Gate);
+        }
+    }
+
     private static Dictionary<string, Result> Remember(string key, Result result) =>
         new(_cache, StringComparer.OrdinalIgnoreCase) { [key] = result };
 
