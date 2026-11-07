@@ -2451,7 +2451,14 @@ class Composer:
             if f is None:
                 f = ET.Element("objFlags")
                 fpdco.insert(0, f)
-            f.text = str(int(f.text or 0) | 0x10000 | {"recommended": 0x200, "required": 0x80}.get(need, 0))
+            # The part's own 0x80/0x200 are cleared first, and a dispatch input is required
+            # (0x80; NI's AF Do.vi: 0x11080). A donor cut from a required class terminal kept
+            # its 0x80 beside a recommended 0x200 on Actor in, and every AF Do.vi override was "This VI does not match other VIs in the method;
+            # connector pane terminal(s) are different" (2026-11-07; the VCTP pane was identical).
+            # A dispatch OUTPUT is recommended (Stop Core.vi's Coffee Shop out: 0x11201).
+            dyn = 0x200 if el.tag == "Indicator" else 0x80
+            f.text = str((int(f.text or 0) & ~0x280) | 0x10000
+                         | {"recommended": 0x200, "required": 0x80, "dynamic": dyn}.get(need, 0))
         fo = fpdco.find("objFlags")
         if fo is not None and "UDClassInst" in (el.get("type") or ""):
             # 0x1000 marks a DYNAMIC DISPATCH terminal - an input or the class output that

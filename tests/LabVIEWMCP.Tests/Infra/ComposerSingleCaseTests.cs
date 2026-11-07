@@ -211,6 +211,50 @@ public sealed class ComposerSingleCaseTests : IDisposable
     }
 
     /// <summary>
+    /// A pane control's fPDCO carries 0x200 when recommended and 0x80 when required or dispatching
+    /// - never both. The donor part of a class control brought its own 0x80 along beside the
+    /// recommended 0x200 (Actor in), and all 20 AF Do.vi
+    /// overrides were "This VI does not match other VIs in the method; connector pane terminal(s)
+    /// are different" while their VCTP pane equalled NI's (2026-11-07). NI's Do.vi: Actor in
+    /// 0x10200, the message 0x11080. A dispatch OUTPUT is recommended (Stop Core.vi's Coffee Shop
+    /// out 0x11201); written required, 27 overrides went broken in the census.
+    /// </summary>
+    [Theory]
+    [InlineData(@"Coffee Shop Messages\Add Barista Msg\Do.vi", 10, 0x200)]  // Actor in, recommended
+    [InlineData(@"Coffee Shop Messages\Add Barista Msg\Do.vi", 11, 0x80)]   // the message, dispatch input
+    [InlineData(@"Coffee Shop\Stop Core.vi", 3, 0x200)]                     // Coffee Shop out, dispatch output
+    public async Task An_override_marks_its_pane_controls_as_its_parent_does(string member, int slot, int bits)
+    {
+        var setup = AixmlComposer.Locate(out _);
+        var source = Directory.Exists(@"C:\Program Files (x86)\National Instruments")
+            ? Directory.EnumerateDirectories(@"C:\Program Files (x86)\National Instruments", "LabVIEW 20*")
+                .Select(d => Path.Combine(d, "examples", @"Design Patterns\Actor Framework\Classes"))
+                .FirstOrDefault(Directory.Exists)
+            : null;
+        if (setup is null || PyLabview.Locate() is null || source is null) return;
+        var copy = Path.Combine(_dir, "copy");
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var to = Path.Combine(copy, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Copy(file, to);
+        }
+        var vi = Path.Combine(copy, member);
+        var xml = Path.Combine(_dir, "member.xml");
+        var read = await AixmlComposer.ReadAsync(setup, vi, xml, 300, default);
+        Assert.True(read.Written, read.Message);
+        var composed = await AixmlComposer.ComposeAsync(setup, xml, vi, [], 300, default);
+        Assert.True(composed.Written, composed.Message);
+
+        await ExtractAsync(vi);
+        var fp = XElement.Load(Directory.GetFiles(Path.Combine(_dir, "x"), "*_FPHb.xml").Single());
+        var bySlot = fp.Descendants("SL__arrayElement")
+            .Where(e => (string?)e.Attribute("class") == "fPDCO" && e.Element("conNum") is not null)
+            .ToDictionary(e => (int)e.Element("conNum")!, e => (int)e.Element("objFlags")! & 0x280);
+        Assert.Equal(bits, bySlot[slot]);
+    }
+
+    /// <summary>
     /// Every VISA class composes - `ref{Visa.USB Raw}` as `ref{Visa.Instr}` did, its class in the
     /// refnum's Ident, so the reader reads it back the same (NI's Instrument IO examples were refused
     /// "type 'ref{Visa.USB Raw}' is not composable yet" until 2026-11-07).

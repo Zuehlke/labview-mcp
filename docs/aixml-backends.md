@@ -2865,6 +2865,7 @@ Of the 677 free VIs composed, 673 run (99 %); the members needed a fair test.
 | inplace2 | a LIBRARY member is written with its library (`LIBN`), as a class member already was | 418 of 458 |
 | inplace4 | execution settings carried through `<?lvmcp exec?>`; library only where its file is | 428 of 458 |
 | inplace5 | plain and In Place Bundle / Unbundle on a class wire work on its private data | 477 of 519 |
+| inplace7 | a pane control's required / recommended bit (fPDCO `objFlags` 0x80 / 0x200) set, not added | 498 of 519 |
 
 - **Library membership.** Written loose, a library member that calls a PRIVATE sibling was "cannot
   access the referenced item in private scope" (81 of 156 broken). The composer now writes `LIBN`
@@ -2906,6 +2907,35 @@ The remaining 42 members: an override whose pane differs from its parent method'
 6 by the members that now compose), class conflict 8, a private sibling called from outside its
 owner 6, bad linkage 4, single cases. `A_bundle_on_a_class_wire_works_on_its_private_data` composes
 four NI members over a copy of their folder; each case fails on the code before.
+
+**An override's pane "different" from its parent's** (inplace7). All 20 Actor Framework `Do.vi`
+and Messenger's `Gesture Wrapper\Merge.vi` were "This VI does not match other VIs in the method;
+connector pane terminal(s) are different" - while their VCTP connector pane equalled NI's type for
+type, flag for flag (pylabview extracts of NI's `Add Barista Msg\Do.vi` and the composed one,
+2026-11-07). The difference was on the PANEL: a control on the pane carries in its fPDCO `objFlags`
+0x200 when recommended and 0x80 when required, and the composer ORed its bit onto the donor part's
+own. A part cut from a required class terminal kept its 0x80, so `Actor in` (recommended) came out
+0x10280 where NI has 0x10200. Now both bits are cleared first. What was measured on the way:
+
+- A trivial diagram (Actor in -> Actor out, error in -> error out) on the same panel failed the same
+  way, which put the cause on the panel rather than the diagram.
+- `FuncFlags` (0x300 on NI's child, 0x200 on the composed one and on NI's parent) and the in-place
+  partner bits that the composer copies into the SECOND pane function (NI writes them in the first
+  only) do not matter: patched to NI's values, the VI stayed broken; left as they are with the
+  fPDCO bits right, it is executable.
+- A DISPATCH input is required (0x80, NI's 0x11080), a dispatch OUTPUT recommended (0x200,
+  `Stop Core.vi`'s `Coffee Shop out` 0x11201). Written 0x80 on both, 27 overrides that ran went
+  broken (inplace6, 470 of 519: Stop Core, Pre Launch Init, LUnit's Setup, Render Picture...).
+- An offline check over all 519 members, NI's pane-fPDCO bits against the rule computed from the
+  reader's AIXML: 0 differences; the same check with the dispatch-output mistake flags 104, so it
+  is not blind.
+
+In place, 21 more members run and none broke (477 -> 498); the normal census is unchanged (full21:
+1 199 composed, 744 executable, nothing newly broken). No pane mismatch is left. The error lines of the remaining 21 (one VI may have several):
+class conflict 8, a private sibling called from outside its owner 6, bad linkage 4, a subVI not
+executable 2, single cases. `An_override_marks_its_pane_controls_as_its_parent_does` pins Actor in,
+the dispatch input and a dispatch output; the first fails on the code before, the last on the
+dispatch-output mistake.
 
 ## Not covered, and not measured
 
