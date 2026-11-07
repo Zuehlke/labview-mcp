@@ -2826,6 +2826,30 @@ items of a typedef'd ring control, which the composer needs for a `Strings []` p
 the reader keeps all four. NI escapes `:` in a call target as
 `A`; the reader writes it raw, the same name to every consumer.
 
+## The composer after the reader (2026-11-07)
+
+With the reader at NI's level the composer was taken on next, by the census's first blockers
+(`census_buckets.py`). The first family:
+
+- **CHANNEL CALLS compose.** NI's export and the reader name the template (`Stream.lvlib:Write.vi`),
+  which the composer refused; the reader's `<?lvmcp calllink?>` names the INSTANCE the original
+  linked - `<extravilib>\ChannelInstances\Stream-i32\Write.vi`, which LabVIEW generated per wire
+  type into `Documents\LabVIEW Data6(32-bit)\ExtraVILib` (57 of them on this station, made
+  when NI's service exported the examples). `resolve.py` knows the `<extravilib>` anchor now, and
+  the composer calls the linked instance where it exists. A channel ENDPOINT ON THE PANEL is refused
+  by name: it is the instance's `)Channel.ctl` typedef around a queue refnum, which AIXML writes as
+  the bare `ref{Queue}{T}`, and composed so it did not wire to the instance (`two terminals of
+  different types`, 18 of 20 broken). Of the 75 channel examples refused before, 23 compose and 22
+  run; the 23rd, AI Configure.vi, calls an instance that is not executable itself.
+- **A PRIMITIVE WITH AN INPUT AND AN OUTPUT OF ONE NAME** - Rotate Right With Carry's `value` -
+  composed both wires onto one terminal, and LabVIEW DIED loading the channel example that has
+  one (Lossy Stream.vi). `out_key` keys a primitive's output `name + NUL + "out"` where an input
+  shares the name, as it already did for calls and VI Server nodes, and the primitive's terminal
+  table keeps both. Found because this family made that VI composable for the first time.
+
+Census after it: **1 137 composed, 743 executable** (721 before), 0 crashes, no VI that ran
+broken. `ComposerSingleCaseTests` pins both, each test failing on the code before.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the

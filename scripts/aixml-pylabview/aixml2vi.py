@@ -1118,6 +1118,16 @@ def keyed(ps):
     return out
 
 
+_PRIM_NAMES = None
+
+
+def _prim_names():
+    global _PRIM_NAMES
+    if _PRIM_NAMES is None:
+        _PRIM_NAMES = set(load_names()[0])
+    return _PRIM_NAMES
+
+
 def out_key(el, tname):
     """The endpoint key of an OUTPUT terminal: its name, or name + NUL + "out" when an input of
     the same element has that name too. A subVI's pane may carry an input and an output with one
@@ -1128,9 +1138,13 @@ def out_key(el, tname):
     NODE too: `write+Value,read+Value` is two terminals both named Value, and keyed by name the
     write's constant and the read's indicator met on one - the same three insane wires and DAbort,
     found by the suite's t168 on 2026-10-20."""
-    if el.tag == "Call" or (el.tag == "Node" and el.get("_name") in ("Invoke Node", "Register For Events", "Property Node",
-                                                                 "Call Parent Class Method", "Formula Node", "MATLAB script",
-                                                                 "Call By Reference")):
+    if el.tag == "Call" or (el.tag == "Node" and (el.get("_name") in ("Invoke Node", "Register For Events", "Property Node",
+                                                                  "Call Parent Class Method", "Formula Node", "MATLAB script",
+                                                                  "Call By Reference")
+                                                  or unescape(el.get("_name") or "") in _prim_names())):
+        # ...and a PRIMITIVE: Rotate Right With Carry's input and output are both `value`, and
+        # keyed by name alone the wire in and the wire out met on one terminal - LabVIEW died
+        # loading NI's Lossy Stream.vi composed (2026-11-07)
         if tname in {t for t, _ in pairs(el.get("inputs"))}:
             return tname + "\x00out"
     return tname
@@ -3055,7 +3069,16 @@ class Composer:
                 # it - an unwired one keeps a placeholder, and a wired name that matches nothing
                 # is refused below with the list of known names
                 tname = "?parm%s" % pidx
-            by_name[tname] = t
+            if tname in by_name and (int(by_name[tname].find("dco").findtext("objFlags") or 0) & 1) !=                     (int(t.find("dco").findtext("objFlags") or 0) & 1):
+                # an input and an OUTPUT of one name (Rotate Right With Carry's `value`): the
+                # output goes under name + NUL + "out", as out_key keys its wire end
+                if int(t.find("dco").findtext("objFlags") or 0) & 1:
+                    by_name[tname + "\x00out"] = t
+                else:
+                    by_name[tname + "\x00out"] = by_name[tname]
+                    by_name[tname] = t
+            else:
+                by_name[tname] = t
             # the placeholder stays a name of the terminal once the tables know its real one: a
             # document written while `create if not found? (T)` was still `?parm2` composes as
             # before (the ATM build's queue helpers, 2026-10-11)
@@ -3063,6 +3086,7 @@ class Composer:
             for alias in TERM_ALIASES.get((rid, pidx), ()):
                 by_name.setdefault(alias, t)
         ins, outs = pairs(el.get("inputs")), pairs(el.get("outputs"))
+        outs = [(t + "\x00out" if t + "\x00out" in by_name else t, n) for t, n in outs]
         for tname, net in ins + outs:
             if tname not in by_name and net is None:
                 continue        # listed but unwired (NI's exports list every terminal): no need to place it
@@ -5719,6 +5743,28 @@ class Composer:
             if lp and os.path.basename(lp).lower() == target.split(":")[-1].lower() and                     os.path.normcase(lp) != os.path.normcase(res.get("path") or ""):
                 res = {"path": lp, "qual": [target], "path_ref": self.resolver.ref(lp, getattr(self, "caller_file", None)),
                        "lib_ref": None, "kind": "linked"}
+        if "error" in res and link and "CHANNEL template" in res["error"] and link[1][:2] == ["<extravilib>", "ChannelInstances"]:
+            # a CHANNEL call: NI's export names the template (Stream.lvlib:Write.vi), and the
+            # reader's calllink the INSTANCE the original linked - <extravilib>/ChannelInstances/
+            # Stream-i32/Write.vi, which LabVIEW generated per wire type. Where that instance is on
+            # this machine it is called, as the original does (2026-11-07)
+            cands = [getattr(self, "caller_file", None)] + [os.path.join(d, "caller.vi") for d in self.search_dirs]
+            lp = self.resolver.linked_file(link[0], link[1], cands)
+            if lp and os.path.isfile(lp) and len(link[1]) >= 4:
+                # A channel ENDPOINT ON THE PANEL is the instance's `)Channel.ctl` typedef around a
+                # queue refnum; NI's export and the reader write it as the bare ref{Queue}{T}, and
+                # composed so it does not wire to the instance's terminal (`two terminals of
+                # different types`, 18 of 20 broken channel examples). Refused until the composer
+                # binds that typedef; a VI whose channels stay on its diagram composes and runs
+                panel_refs = [e for e in self.doc.iter() if e.tag in ("Control", "Indicator")
+                              and (e.get("type") or "").replace(" ", "").startswith("ref{Queue}")]
+                if panel_refs:
+                    raise Unsupported("Call %s: a channel endpoint on the panel (%r) is the instance's "
+                                      ")Channel.ctl typedef, which AIXML writes as a bare queue refnum - "
+                                      "not composable yet" % (el.get("uid"), unescape(panel_refs[0].get("_name") or "")))
+                inst_dir = os.path.dirname(os.path.dirname(lp))
+                qual = "%s.lvlib:%s" % (link[1][2], link[1][-1])
+                res = self.resolver.resolve(qual, [inst_dir] + list(self.search_dirs), getattr(self, "caller_file", None))
         if "error" in res:
             raise Unsupported("Call %s: %s" % (el.get("uid"), res["error"]))
         path = res["path"]
@@ -10170,6 +10216,7 @@ class Composer:
 
     def compose(self, aixml_path):
         vi = ET.parse(aixml_path).getroot()
+        self.doc = vi
         self.vi_name = unescape(vi.get("_name") or "Composed.vi")
         # the reader's connector pane PATTERN, after </VI> where NI's service ignores it: a
         # recomposed subVI keeps the pattern its callers were linked against (vi2aixml.py)

@@ -139,6 +139,76 @@ public sealed class ComposerSingleCaseTests : IDisposable
     }
 
     /// <summary>
+    /// A primitive with an input and an OUTPUT of one name - Rotate Right With Carry's `value` -
+    /// keeps them apart: keyed by name alone the wire in and the wire out met on one terminal, and
+    /// LabVIEW died loading NI's Lossy Stream.vi composed (2026-11-07). Read back, the input comes
+    /// from the control and the output feeds the indicator.
+    /// </summary>
+    [Fact]
+    public async Task A_primitive_input_and_output_of_one_name_stay_two_terminals()
+    {
+        var got = await ComposeAsync("""
+            <VI _name="Probe.vi" description="x">
+              <Control _name="In" type="uint8" uid="4201" uid_parent="root" value="0" outputs="value:4201.value" />
+              <Control _name="C" type="bool" uid="4204" uid_parent="root" value="false" outputs="value:4204.value" />
+              <Indicator _name="Out" type="uint8" uid="4203" uid_parent="root" value="0" inputs="value:4202.value" />
+              <Node _name="Rotate Right With Carry" uid="4202" uid_parent="root" inputs="value:4201.value,carry:4204.value" outputs="value:4202.value,lsb carry out:" />
+            </VI>
+            """);
+        if (got is not { } g) return;
+        Assert.True(g.Result.Written, g.Result.Message);
+
+        // in the heap: three signals, and no terminal of the primitive on two of them - the old
+        // composer put the control's wire and the indicator's on ONE terminal (the reader's read
+        // back hides that, so the heap is asked)
+        var (heap, _) = await ExtractAsync(g.Vi);
+        var prim = heap.Descendants("SL__arrayElement").Single(e => (string?)e.Attribute("class") == "prim");
+        var primTerms = prim.Element("termList")!.Elements().Select(t => (string?)t.Attribute("uid")).ToHashSet();
+        var signals = heap.Descendants("SL__arrayElement").Where(e => (string?)e.Attribute("class") == "signal").ToList();
+        var ends = signals.SelectMany(s => s.Element("termList")!.Elements().Select(t => (string?)t.Attribute("uid")))
+            .Where(primTerms.Contains).ToList();
+        Assert.Equal(3, signals.Count);
+        Assert.Equal(ends.Count, ends.Distinct().Count());
+    }
+
+    private static string? ExampleVi(string relative) =>
+        Directory.Exists(@"C:\Program Files (x86)\National Instruments")
+            ? Directory.EnumerateDirectories(@"C:\Program Files (x86)\National Instruments", "LabVIEW 20*")
+                .Select(d => Path.Combine(d, "examples", relative))
+                .FirstOrDefault(File.Exists)
+            : null;
+
+    /// <summary>
+    /// A CHANNEL call composes against the instance the original linked (the reader's calllink,
+    /// `<extravilib>\ChannelInstances\Stream-i32\Write.vi`) where it exists on this machine; a VI with a
+    /// channel endpoint ON ITS PANEL is refused by name - that endpoint is the instance's
+    /// )Channel.ctl typedef, which AIXML writes as a bare queue refnum (2026-11-07).
+    /// </summary>
+    [Theory]
+    [InlineData(@"Channels\Basics\Channel Basics Lesson 1.vi", true)]
+    [InlineData(@"Channels\Basics\subVIs\Add Big Noise.vi", false)]
+    public async Task A_channel_call_composes_against_the_linked_instance(string example, bool composes)
+    {
+        var setup = AixmlComposer.Locate(out _);
+        var vi = ExampleVi(example);
+        var instances = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "LabVIEW Data", "2026(32-bit)", "ExtraVILib", "ChannelInstances", "Stream-i32.lvlib");
+        if (setup is null || vi is null || !File.Exists(instances)) return;
+        var xml = Path.Combine(_dir, "channel.xml");
+        var read = await AixmlComposer.ReadAsync(setup, vi, xml, 120, default);
+        Assert.True(read.Written, read.Message);
+        var result = await AixmlComposer.ComposeAsync(setup, xml, Path.Combine(_dir, "Channel.vi"), [], 300, default);
+
+        if (composes)
+            Assert.True(result.Written, result.Message);
+        else
+        {
+            Assert.True(result.Refused, result.Message);
+            Assert.Contains("channel endpoint on the panel", result.Message);
+        }
+    }
+
+    /// <summary>
     /// The reader lists a Replace Array Subset's DISABLED index even unwired, as it does on Index
     /// Array: it says the element is a row. Without it the composer took the template with both
     /// indices enabled, and NI's QR decomposition update by Givens rotation.vi loaded `arrays of
