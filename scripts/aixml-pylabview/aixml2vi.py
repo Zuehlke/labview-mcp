@@ -116,6 +116,8 @@ _LOSSY_READER_NOTE = re.compile(
     r"|Conditional Disable \S+ frame \d+: condition not read"
     r"|Call Library Function Node \S+: its library and function are not carried by AIXML"
     r"|Event Structure \S+: its wired timeout is not carried by AIXML"
+    r"|Timed Loop \S+: its wired timing is not carried by AIXML"
+    r"|Stacked Sequence \S+: its \d+ frames are written as one, as NI's export writes them"
     r"|\S+ '.*': its terminal was not found on a walked diagram)$")
 
 

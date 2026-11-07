@@ -112,6 +112,11 @@ public sealed class ReaderNiParityTests : IDisposable
     [InlineData(@"Connectivity\Web Services\Weather Monitor\Client\Wait\Wait Message Loop.vi", "1026", "inputs", "value:909.value", false)]
     [InlineData(@"Channels\Replacing The Function At The Heart Of An Algorithm At Run Time\Bubble Sort Person Array Using Channel Closure.vi", "832", "inputs", "element:755. y',element:", true)]
     [InlineData(@"Collections\Map Collection - Comparing Test Results.vi", "190", "_name", "Build Map", false)]
+    // seventh round: a Timed Loop, its data node's net named after the first consumer, a Stacked
+    // Sequence with its tunnels
+    [InlineData(@"Structures\Timed Loop\Timed Loop Abort.vi", "216", "_name", "Timed Loop", false)]
+    [InlineData(@"Structures\Timed Loop\Timed Loop Abort.vi", "228", "selectin", "228.value", false)]
+    [InlineData(@"JKI\EasyXML\Read RSS Feed.vi", "366", "inputs", "value:513.data", false)]
     // a reference to a subpanel is typed, with no element
     [InlineData(@"MGI\Panel Manager\Basic Panel Actors\Composite User Interface\Composite User Interface\Actor Core.vi", "1336", "type", "{LV.SubPanel}", false)]
     public async Task The_reader_writes_what_NIs_export_writes(string example, string uid, string attribute, string expected, bool contains)

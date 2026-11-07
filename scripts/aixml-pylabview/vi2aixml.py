@@ -805,7 +805,8 @@ NODE_READERS = {"nMux": "nmux", "mux": "mux", "demux": "demux", "aIndx": "aindx"
                 "decimate": "decimate", "xNode": "xnode", "extFunc": "extfunc", "Class0183": "pythonnode",
                 "Class0193": "matlabnode", "mergeSignal": "mergesignals",
                 "sharedVariable": "sharedvariable", "constructorNode": "constructornode",
-                "eventRegCallback": "eventregcallback", "Class018B": "buildmap"}
+                "eventRegCallback": "eventregcallback", "Class018B": "buildmap",
+                "xDataNode": "xdatanode"}
 CA_OPS ={0: "Add", 1: "Multiply", 2: "AND", 3: "OR", 4: "XOR"}
 # a bDFixed constant's `cnst` code -> its AIXML FixedConst name (the composer's own table, reversed)
 FIXED_BY_CODE = {v.upper(): k for k, v in aixml2vi.Composer.FIXED.items()}
@@ -1340,12 +1341,15 @@ class Reader:
                 self.notes.append("%s %r: its terminal was not found on a walked diagram" % (el.tag, el.get("_name")))
         for d in self.diags:
             self.wire(d)
+        self._name_sourceless()
         if getattr(self, "event_timeouts", None):
             wired = {t.get("uid") for d in self.diags for sig in (d.find("signalList") if d.find("signalList") is not None else [])
                      for t in sig.find("termList")}
-            for tu, nuid in self.event_timeouts:
+            for tu, nuid, kind in self.event_timeouts:
                 if tu in wired:
-                    self.notes.append("Event Structure %s: its wired timeout is not carried by AIXML" % nuid)
+                    self.notes.append("%s %s: its wired timeout is not carried by AIXML" % (kind, nuid)
+                                      if kind == "Event Structure" else
+                                      "%s %s: its wired timing is not carried by AIXML" % (kind, nuid))
         # a node's inputs and outputs in TERMINAL order: signal order put Build Array's two
         # `element`s the wrong way round (a round trip of t66 built [2.5,7] for [7,2.5])
         per_el = {}
@@ -1492,12 +1496,14 @@ class Reader:
             el = None
             if cls in aixml2vi.PRIM_CLASSES:
                 el = self.prim(node, parent_uid)
-            elif cls in ("whileLoop", "forLoop"):
+            elif cls in ("whileLoop", "forLoop", "timeLoop"):
                 el = self.loop(node, parent_uid)
             elif cls == "select":
                 el = self.case(node, parent_uid)
             elif cls == "eventStruct":
                 el = self.case(node, parent_uid, event=True)
+            elif cls == "sequence":
+                el = self.stackedseq(node, parent_uid)
             elif cls == "flatSequence":
                 el = self.flatseq(node, parent_uid)
             elif cls == "decomposeRecomposeStructure":
@@ -1709,6 +1715,16 @@ class Reader:
         side, the FIRST the return value. 11 nodes over NI's Python examples were not read at all
         until 2026-11-06."""
         return self._session_call_node(node, parent_uid, "Python Node", ("module path", "function name"))
+
+    def xdatanode(self, node, parent_uid):
+        """A Timed Loop's (or Timed Sequence's) DATA NODE: NI's export writes no element for it and
+        leaves its wire ends out, naming a net it fed after that net's first consumer (`selectin=
+        "228.value"`, Timed Loop Abort.vi). Its terminals are IGNORED here the same way, so the rest
+        of each wire stays; the note keeps the loss visible, and the composer refuses on it."""
+        for t in (node.find("termList") if node.find("termList") is not None else []):
+            self.term_owner[t.get("uid")] = IGNORED
+        self.notes.append("diagram node of class xDataNode (uid %s) not read" % node.get("uid"))
+        return None
 
     def buildmap(self, node, parent_uid):
         """BUILD MAP (Class018B): out `map`, in alternating `key` and `value`, as NI's export writes
@@ -1997,7 +2013,10 @@ class Reader:
 
     def loop(self, node, parent_uid):
         cls = node.get("class")
-        el = ET.Element("Structure", {"_name": "While Loop" if cls == "whileLoop" else "For Loop",
+        # a TIMED LOOP is a While Loop's heap with timing terminals and data nodes besides: NI's
+        # export writes it `Timed Loop` with its count, Condition, tunnels and registers and none of
+        # the timing (2026-11-06)
+        el = ET.Element("Structure", {"_name": {"whileLoop": "While Loop", "timeLoop": "Timed Loop"}.get(cls, "For Loop"),
                                       "uid": node.get("uid"), "uid_parent": parent_uid})
         el.set("count", "")
         if cls == "forLoop":
@@ -2074,6 +2093,11 @@ class Reader:
                     for t in inner_terms.get(cdco.get("uid"), []):
                         self.term_owner[t.get("uid")] = (tun, "#cond", True)
                 children.append(tun)
+            elif dc == "lTiming":
+                # a timing input or output of a Timed Loop: not in AIXML; SAID when wired (below)
+                self.term_owner[term.get("uid")] = IGNORED
+                self.event_timeouts = getattr(self, "event_timeouts", [])
+                self.event_timeouts.append((term.get("uid"), node.get("uid"), "Timed Loop"))
             elif dc == "lMax":
                 self.term_owner[term.get("uid")] = (el, "#maxin", True)
                 for t in inner_terms.get(d.get("uid"), []):
@@ -2393,7 +2417,7 @@ class Reader:
                 # than build a structure that never times out
                 self.term_owner[term.get("uid")] = IGNORED
                 self.event_timeouts = getattr(self, "event_timeouts", [])
-                self.event_timeouts.append((term.get("uid"), node.get("uid")))
+                self.event_timeouts.append((term.get("uid"), node.get("uid"), "Event Structure"))
                 continue
             if dc == "caseSel":
                 sel_tree = self.tid_tree(term)
@@ -2517,6 +2541,48 @@ class Reader:
         for t in outer_tunnels:
             if t.get("_id").startswith("Out"):
                 el.append(t)
+        return el
+
+    def stackedseq(self, node, parent_uid):
+        """A STACKED SEQUENCE, as NI's export writes it: ONE Structure ("Stacked Sequence
+        Structure") with every frame's content directly in it - no frames - and each seqTun a
+        Tunnel with both sides, its uid the outer terminal (Read RSS Feed.vi, Test - Moving Objects
+        Source.vi). Sequence locals are not read. Not read at all until 2026-11-06; what frame a
+        node ran in is lost here as in NI's export, so the note keeps the composer away."""
+        el = ET.Element("Structure", {"_name": "Stacked Sequence Structure", "uid": node.get("uid"),
+                                      "uid_parent": parent_uid})
+        frames = list(node.find("diagramList")) if node.find("diagramList") is not None else []
+        inner = {}
+        for fr in frames:
+            srn = next((n for n in self.node_defs(fr) if n.get("class") == "sRN"), None)
+            for t in (srn.find("termList") if srn is not None else []):
+                d = t.find("dco")
+                if d is not None:
+                    inner.setdefault(d.get("uid"), []).append(t)
+        n_in = n_out = 0
+        tunnels = []
+        for term in (node.find("termList") if node.find("termList") is not None else []):
+            d = self.dco_def(term.find("dco"))
+            if d is None or d.get("class") != "seqTun":
+                continue
+            out = int(d.findtext("objFlags") or 0) & 1
+            if out:
+                n_out += 1
+            else:
+                n_in += 1
+            tun = ET.Element("Tunnel", {"_id": ("Out%d" % n_out) if out else ("In%d" % n_in),
+                                        "uid": term.get("uid"), "uid_parent": node.get("uid")})
+            self.term_owner[term.get("uid")] = (tun, "value", not out)
+            for t in inner.get(d.get("uid"), []):
+                self.term_owner[t.get("uid")] = (tun, "value", bool(out))
+            tunnels.append(tun)
+        for fr in frames:
+            self.walk(fr, node.get("uid"), el)
+        for t in tunnels:
+            el.append(t)
+        if len(frames) > 1:
+            self.notes.append("Stacked Sequence %s: its %d frames are written as one, as NI's export "
+                              "writes them" % (node.get("uid"), len(frames)))
         return el
 
     def flatseq(self, node, parent_uid):
@@ -3619,8 +3685,9 @@ class Reader:
         for sig in (sl if sl is not None else []):
             # an Event Structure's DYNAMIC event terminal is no AIXML terminal: NI's export simply
             # leaves that end out of the registration's net, and so does the reader (IGNORED)
-            ends = [e for e in (self.term_owner.get(t.get("uid"), MISSING) for t in sig.find("termList"))
-                    if e is not IGNORED]
+            all_ends = [self.term_owner.get(t.get("uid"), MISSING) for t in sig.find("termList")]
+            had_ignored = any(e is IGNORED for e in all_ends)
+            ends = [e for e in all_ends if e is not IGNORED]
             ends = [None if e is MISSING else e for e in ends]
             if any(e is None for e in ends):
                 self.notes.append("signal %s touches an unread terminal" % sig.get("uid"))
@@ -3638,6 +3705,13 @@ class Reader:
                             self.term_owner[u] = (e[0], e[1], True)
                     ends = [self.term_owner[u] for u in uids]
                     srcs = hard
+            if not srcs and had_ignored and ends:
+                # the source is an end AIXML has no terminal for (a Timed Loop's data node): NI
+                # names such a net after its FIRST consumer and wires every sink to it - named at
+                # the END of the wiring (_name_sourceless), when every other net name is known
+                self._sourceless = getattr(self, "_sourceless", [])
+                self._sourceless.append((sig, ends))
+                continue
             if len(srcs) != 1:
                 self.notes.append("signal %s has %d sources" % (sig.get("uid"), len(srcs)))
                 continue
@@ -3678,6 +3752,34 @@ class Reader:
                     else:
                         self._add(el, "inputs", term, net)
         return None
+
+    def _name_sourceless(self):
+        """Nets whose only source is an end AIXML has no terminal for: named after the first
+        consumer as NI names them, made unique against every net already named (a tunnel's own
+        output net is `<uid>.value` too - Wait Message Loop.vi's tunnel 312 read itself as source)."""
+        self.used_nets = getattr(self, "used_nets", set())
+        for el_ in self.out.iter():
+            for _, n in aixml2vi.pairs(el_.get("outputs")):
+                if n:
+                    self.used_nets.add(n)
+        for sig, ends in getattr(self, "_sourceless", []):
+            base = "%s.value" % ends[0][0].get("uid")
+            net, k = base, 2
+            while net in self.used_nets:
+                net = "%s%d" % (base, k)
+                k += 1
+            self.used_nets.add(net)
+            for el, term, sink in ends:
+                if term == "#selectin":
+                    el.set("selectin", net)
+                elif term == "#maxin":
+                    el.set("maxin", net)
+                elif term == "#cond":
+                    el.set("cond", net)
+                elif not term.startswith("#"):
+                    self._add(el, "inputs", term, net)
+            for tu in sig.find("termList"):
+                self.term_net[tu.get("uid")] = net
 
     @staticmethod
     def _add(el, attr, term, net):

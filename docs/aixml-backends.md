@@ -2671,7 +2671,8 @@ follows: it ignores unwired terminals and descriptions.
 | third round | 1 476 of 1 767 | 99.75 % | 99.59 % | 99.58 % | 99.27 % |
 | fourth round | 1 479 of 1 767 | 99.75 % | 99.61 % | 99.60 % | 99.31 % |
 | fifth round | 1 499 of 1 767 | 99.75 % | 99.63 % | 99.60 % | 99.31 % |
-| sixth round | **1 502 of 1 767** | 99.76 % | 99.63 % | 99.60 % | 99.37 % |
+| sixth round | 1 502 of 1 767 | 99.76 % | 99.63 % | 99.60 % | 99.37 % |
+| seventh round | **1 515 of 1 767** | 99.89 % | 99.75 % | 99.76 % | 99.51 % |
 
 What changed, each family measured on that corpus:
 
@@ -2776,6 +2777,19 @@ composer refuses on, so no VI that times out is built as one that never does) - 
 later elements of an Array Index / Replace Elements pair, and Build Map (Class018B). Still behind
 dropped wires: Express VI data nodes (xDataNode), the Timed Loop and Timed Sequence, the External
 Node, the dynamic shared-variable open, and the Stacked Sequence.
+
+**The seventh round**: the TIMED LOOP, read by the loop reader (its heap is a While Loop's plus
+timing terminals and data nodes): `Timed Loop` with count, Condition, tunnels and registers, the
+timing left out as NI leaves it and SAID when wired; its DATA NODES (xDataNode) are no element, their
+ends left out, and a net whose only source was one is named after its first consumer as NI names
+it (`selectin="228.value"`) - at the END of the wiring, made unique, because a tunnel's own output
+net has that name too. The STACKED SEQUENCE, as NI writes it: one Structure with every frame's
+content directly in it and each seqTun one Tunnel; more than one frame is noted as lossy.
+`learn_prop_names.py` re-run over the refreshed cache MERGES now (it overwrote the table): 79 more
+property names. compare_corpus.py compares `maxin` by the net's source and `maxout`/`count`/
+`selectout` for being there - they name nets, and names are arbitrary (`570.value2`); the
+percentages of this row are on that basis (the wire count went up by the edges it now resolves).
+The census after it: 1 114 composed, **721 executable**, 0 crashes, no regression.
 
 Not taken on: `async="true"` on VISA and GPIB reads and writes - every one of NI's examples has it
 set, so no bit could be told apart, and the composer would refuse the attribute.

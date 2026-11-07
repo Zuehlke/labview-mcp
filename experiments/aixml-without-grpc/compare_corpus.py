@@ -36,7 +36,12 @@ import lvheap  # noqa: E402
 import vi2aixml  # noqa: E402
 
 SKIP = {"uid", "uid_parent", "inputs", "outputs"}
-NETS = {"selectin", "selectout"}
+# attributes that NAME a net: an input one (selectin, maxin, count, a tunnel's cond) is compared by the
+# SOURCE of that net, an output one (selectout, maxout) only for being there - net names are
+# arbitrary tokens (`570.value` against `570.value2`, 2026-11-06)
+NETS_IN = {"selectin", "maxin"}
+NETS_OUT = {"selectout", "maxout", "count"}
+NETS = NETS_IN | NETS_OUT
 KINDS = ("elements", "attrs", "terms", "edges")
 
 
@@ -48,6 +53,10 @@ def facts(root):
         for term, net in aixml2vi.pairs(el.get("outputs")):
             if net:
                 src_of.setdefault(net, (el.get("uid"), term))
+        for a in NETS_OUT:
+            for net in (el.get(a) or "").split(","):
+                if net:
+                    src_of.setdefault(net, (el.get("uid"), "#" + a))
     for a, v in root.attrib.items():
         attrs.add(("VI", "VI", a, aixml2vi.unescape(v)))
     for el in all_els:
@@ -56,7 +65,9 @@ def facts(root):
         for a, v in el.attrib.items():
             if a in SKIP:
                 continue
-            if a in NETS:
+            if a in NETS_OUT:
+                v = "defined" if v else ""
+            elif a in NETS or (a == "cond" and v not in ("true", "false")):
                 # a net name is looked up as WRITTEN (escaped), as the outputs that define it
                 v = ",".join("%s.%s" % src_of[n] if n in src_of else "?" for n in v.split(",") if n)
             v = aixml2vi.unescape(v)
