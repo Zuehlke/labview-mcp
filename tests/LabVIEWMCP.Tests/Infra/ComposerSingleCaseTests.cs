@@ -171,6 +171,105 @@ public sealed class ComposerSingleCaseTests : IDisposable
         Assert.Equal(ends.Count, ends.Distinct().Count());
     }
 
+    /// <summary>
+    /// Every VISA class composes - `ref{Visa.USB Raw}` as `ref{Visa.Instr}` did, its class in the
+    /// refnum's Ident, so the reader reads it back the same (NI's Instrument IO examples were refused
+    /// "type 'ref{Visa.USB Raw}' is not composable yet" until 2026-11-07).
+    /// </summary>
+    [Theory]
+    [InlineData("Instr")]
+    [InlineData("USB Raw")]
+    [InlineData("PXI Backplane")]
+    public async Task Every_visa_class_composes(string visaClass)
+    {
+        var got = await ComposeAsync($"""
+            <VI _name="Probe.vi" description="x">
+              <Control _name="Session" type="ref{"{"}Visa.{visaClass}{"}"}" uid="4201" uid_parent="root" value="" outputs="value:4201.value" />
+              <Indicator _name="Out" type="ref{"{"}Visa.{visaClass}{"}"}" uid="4202" uid_parent="root" value="" inputs="value:4201.value" />
+            </VI>
+            """);
+        if (got is not { } g) return;
+        Assert.True(g.Result.Written, g.Result.Message);
+
+        var setup = AixmlComposer.Locate(out _)!;
+        var back = Path.Combine(_dir, "visa.xml");
+        var read = await AixmlComposer.ReadAsync(setup, g.Vi, back, 120, default);
+        Assert.True(read.Written, read.Message);
+        var control = XDocument.Load(back).Descendants("Control").Single();
+        Assert.Equal($"ref{{Visa.{visaClass}}}", (string?)control.Attribute("type"));
+    }
+
+    /// <summary>
+    /// A LIBRARY member ("Lib.lvlib:VI.vi") is written as one, like a class member: the bare file
+    /// name and the library in LIBN. Written loose, a DQMH member composed in place called its
+    /// private siblings and was "cannot access the referenced item in private scope" (81 of 156
+    /// broken members in the in-place census, 2026-11-07).
+    /// </summary>
+    [Fact]
+    public async Task A_library_member_is_written_with_its_library()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_dir, "Probe Lib.lvlib"),
+            "<?xml version='1.0' encoding='UTF-8'?>\n<Library LVVersion=\"26008000\">\n</Library>\n");
+        var got = await ComposeAsync("""
+            <VI _name="Probe Lib.lvlib:Probe.vi" description="x">
+              <Control _name="X" type="double" uid="4201" uid_parent="root" value="0" outputs="value:4201.value" />
+              <Indicator _name="Y" type="double" uid="4202" uid_parent="root" value="0" inputs="value:4201.value" />
+            </VI>
+            """);
+        if (got is not { } g) return;
+        Assert.True(g.Result.Written, g.Result.Message);
+
+        var (_, main) = await ExtractAsync(g.Vi);
+        var root = XDocument.Parse(main).Root!;
+        Assert.Equal("Probe Lib.lvlib", root.Element("LIBN")?.Element("Section")?.Element("Library")?.Value.Trim());
+        Assert.Equal("Probe.vi", (string?)root.Element("LVSR")?.Element("Section")?.Attribute("Name"));
+    }
+
+    /// <summary>
+    /// A library member composed AWAY from its library is written loose: claiming a library that
+    /// does not list it there left 70 NI members broken that ran loose (full17 -> full18, 2026-11-07).
+    /// </summary>
+    [Fact]
+    public async Task A_library_member_away_from_its_library_is_written_loose()
+    {
+        var got = await ComposeAsync("""
+            <VI _name="Nowhere Lib.lvlib:Probe.vi" description="x">
+              <Control _name="X" type="double" uid="4201" uid_parent="root" value="0" outputs="value:4201.value" />
+              <Indicator _name="Y" type="double" uid="4202" uid_parent="root" value="0" inputs="value:4201.value" />
+            </VI>
+            """);
+        if (got is not { } g) return;
+        Assert.True(g.Result.Written, g.Result.Message);
+
+        var (_, main) = await ExtractAsync(g.Vi);
+        Assert.Null(XDocument.Parse(main).Root!.Element("LIBN"));
+    }
+
+    /// <summary>
+    /// The reader's EXECUTION settings after &lt;/VI&gt; (`exec`) are written back: a dynamic-dispatch
+    /// override must match its parent's reentrancy, and composed on the skeleton's default the
+    /// Actor Framework's Do.vi overrides were "one is reentrant, one is not" (2026-11-07).
+    /// </summary>
+    [Fact]
+    public async Task Execution_settings_after_the_document_are_written_back()
+    {
+        var got = await ComposeAsync("""
+            <VI _name="Probe.vi" description="x">
+              <Control _name="X" type="double" uid="4201" uid_parent="root" value="0" outputs="value:4201.value" />
+              <Indicator _name="Y" type="double" uid="4202" uid_parent="root" value="0" inputs="value:4201.value" />
+            </VI>
+            <?lvmcp exec IsReentrant="1" PooledReentrancy="1" Priority="2"?>
+            """);
+        if (got is not { } g) return;
+        Assert.True(g.Result.Written, g.Result.Message);
+
+        var (_, main) = await ExtractAsync(g.Vi);
+        var exe = XDocument.Parse(main).Root!.Element("LVSR")!.Element("Section")!.Element("Execution")!;
+        Assert.Equal("1", (string?)exe.Attribute("IsReentrant"));
+        Assert.Equal("1", (string?)exe.Attribute("PooledReentrancy"));
+        Assert.Equal("2", (string?)exe.Attribute("Priority"));
+    }
+
     private static string? ExampleVi(string relative) =>
         Directory.Exists(@"C:\Program Files (x86)\National Instruments")
             ? Directory.EnumerateDirectories(@"C:\Program Files (x86)\National Instruments", "LabVIEW 20*")

@@ -535,8 +535,11 @@ def refnum_type(inner, plain_class=False):
         tag.append(_void_variant())
         el.append(_void_variant())
         return el
-    if inner == "Visa.Instr":
-        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "VisaRef", "Ident": "Instr",
+    mv = re.fullmatch(r"Visa\.([^{}]+)", inner)
+    if mv:
+        # every VISA class has this shape, its class in Ident as the reader writes it back:
+        # Instr, USB Raw, PXI Backplane, Generic Event (NI's Instrument IO examples, 2026-11-07)
+        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "VisaRef", "Ident": mv.group(1),
                                      "FirstClient": "0", "Format": "inline"})
         v = ET.SubElement(el, "LVVariant", {"Index": "0", "HasVarItem2": "1", "VarType2": "0", "Version": "auto"})
         ET.SubElement(v, "DataType", {"Index": "0", "Type": "Void", "Format": "inline"})
@@ -10236,6 +10239,11 @@ class Composer:
             k, _, v = item.partition(":")
             if k.strip().isdigit() and v:
                 self.pane_flags_given[int(k)] = int(v, 16)
+        # the reader's EXECUTION settings (reentrancy, priority, subroutine) - AIXML has none
+        self.exec_given = {}
+        me = re.search(r'<\?lvmcp\s+exec\s+([^?]*)\?>', tail[1]) if len(tail) == 2 else None
+        if me:
+            self.exec_given = dict(re.findall(r'(\w+)="([^"]*)"', me.group(1)))
         self.class_names = {}
         for mc in re.finditer(r'<\?lvmcp\s+classes\s+uid="([^"]*)"\s+names="([^"]*)"\s*\?>', tail[1] if len(tail) == 2 else ""):
             self.class_names[mc.group(1)] = html.unescape(mc.group(2)).split("|")
@@ -10295,7 +10303,22 @@ class Composer:
         # member of that class - the file name bare, the class in LIBN, as NI's own - or LabVIEW
         # refuses its dynamic-dispatch terminals ("Only VIs owned by a LabVIEW class may use
         # dynamic terminals", the XControl sweep 2026-10-22)
-        self.class_member_of = quals[:-1] if len(quals) > 1 and quals[-2].lower().endswith(".lvclass") else None
+        # ...and a LIBRARY member ("Lib.lvlib:VI.vi") the same way: written loose, a member that
+        # calls a PRIVATE sibling was "cannot access the referenced item in private scope" (81 of
+        # 156 broken members in the in-place census, 2026-11-07)
+        self.class_member_of = quals[:-1] if len(quals) > 1 and quals[-2].lower().endswith((".lvclass", ".lvlib")) else None
+        # ...but a LIBRARY only when its file is in the VI's folder or above: written elsewhere,
+        # the member named a library that does not list it there and went broken - 70 VIs that
+        # composed loose and ran (full17 -> full18, 2026-11-07)
+        if self.class_member_of and quals[-2].lower().endswith(".lvlib") and getattr(self, "caller_file", None):
+            if self.resolver is None:
+                self.resolver = resolve.Resolver()
+            here = os.path.normcase(os.path.dirname(os.path.abspath(self.caller_file)))
+            owners = self.resolver._owner_files(quals[-2], self.search_dirs)
+            if not any(here == d or here.startswith(d + os.sep)
+                       for d in (os.path.normcase(os.path.dirname(os.path.abspath(o))) for o in owners)):
+                self.report.append("NOTE: %s is not beside the VI - written as a loose VI" % quals[-2])
+                self.class_member_of = None
         self.pane_terms = []
         self.con_taken = {}
         self.term_label = {}
@@ -10793,6 +10816,16 @@ class Composer:
             if sec.get("File"):
                 sec.set("File", sec.get("File").replace("skeleton", base))
         m.find("LVSR/Section").set("Name", self.vi_name)
+        exe = m.find("LVSR/Section/Execution")
+        ins = m.find("LVSR/Section/Instrument")
+        for k, v in getattr(self, "exec_given", {}).items():
+            if not re.fullmatch(r"-?\d+", v):
+                continue
+            if exe is not None and k in ("IsReentrant", "PooledReentrancy", "IsSubroutine", "Priority",
+                                         "PrefExecSyst", "SaveParallel"):
+                exe.set(k, v)
+            elif ins is not None and k == "InStBit4":
+                ins.set(k, v)
         m.find("RTSG/Section/Guid").text = "%032x" % random.getrandbits(128)
         m.find("LVSR/Section/Instrument").set("Signature", "%032x" % random.getrandbits(128))
         if getattr(self, "class_member_of", None):

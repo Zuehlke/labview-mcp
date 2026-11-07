@@ -2850,6 +2850,45 @@ With the reader at NI's level the composer was taken on next, by the census's fi
 Census after it: **1 137 composed, 743 executable** (721 before), 0 crashes, no VI that ran
 broken. `ComposerSingleCaseTests` pins both, each test failing on the code before.
 
+### Members composed where they live: the in-place census (2026-11-07)
+
+The normal census composes every example into a folder of its own, so a CLASS or LIBRARY member
+is measured away from its owner - it cannot call a private sibling, and the owner does not list it.
+Of the 677 free VIs composed, 673 run (99 %); the members needed a fair test.
+`experiments/aixml-without-grpc/run_inplace.sh <out>` copies the examples tree and
+`census_inplace.py` composes each owned VI OVER ITS COPY, then loads the copies as usual
+(`census_errors.py` reads the error lists, `census_owners.py` splits free VIs from members).
+
+| run | change | members executable |
+|---|---|---|
+| inplace1 | - | 302 of 458 |
+| inplace2 | a LIBRARY member is written with its library (`LIBN`), as a class member already was | 418 of 458 |
+| inplace4 | execution settings carried through `<?lvmcp exec?>`; library only where its file is | 428 of 458 |
+
+- **Library membership.** Written loose, a library member that calls a PRIVATE sibling was "cannot
+  access the referenced item in private scope" (81 of 156 broken). The composer now writes `LIBN`
+  for `Lib.lvlib:VI.vi` - but only when that `.lvlib` is in the VI's folder or above it. Written
+  away from its library, the member named a library that does not list it there: 70 VIs that ran
+  loose went broken in the normal census (full17 -> full18), all members of NI's Weather Monitor
+  client and the Thermal Chamber DQMH library. Away from it, the VI is written loose with a NOTE.
+- **Execution settings.** A dynamic-dispatch override must match its parent's reentrancy, and on
+  the skeleton's default the Actor Framework's overrides were "one is reentrant, one is not"
+  (15). The reader writes `<?lvmcp exec IsReentrant=.. PooledReentrancy=.. IsSubroutine=..
+  Priority=.. PrefExecSyst=.. SaveParallel=.. InStBit4=..?>` after `</VI>` (the values of
+  `LVSR/Execution`, and the Instrument bit 4 that goes with reentrancy); the composer writes back
+  what it is given, numbers only. `IsReentrant` alone left 5 of the 15; `SaveParallel` and
+  `InStBit4` with it left none (inplace4: no reentrancy error left, the "Call Parent Class
+  Method" mismatches that followed from it gone too).
+- **VISA classes.** `ref{Visa.<class>}` now composes for every class (`Instr`, `USB Raw`,
+  `PXI Backplane`, ...) as a `VisaRef` refnum with that `Ident`; only `Instr` composed before.
+
+Normal census after the family (full19): **1 138 composed, 744 executable**, 0 crashes, no VI
+that ran broken; the 70 library members run loose again. What breaks the remaining 30 members:
+class conflict 8, an override's pane differing from its parent's 6, a private sibling called from
+outside its owner 6, bad linkage 4, mismatched wire types 3, and single cases. `ComposerSingleCaseTests` pins library membership (beside
+its library and away from it), the execution trailer and the VISA classes; each fails on the code
+before.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the

@@ -686,6 +686,8 @@ INT_MIN, INT_MAX = -2 ** 31, 2 ** 31 - 1
 # the reader's own names for a structure's non-AIXML terminals - a real terminal name may start
 # with '#' too (`# of Refs`, `# of taps`: 35 Call terminals over NI's examples were dropped as
 # internal until 2026-11-06)
+# the LVSR Execution attributes carried after </VI> (`exec`) and set back by the composer
+EXEC_KEPT = ("IsReentrant", "PooledReentrancy", "IsSubroutine", "Priority", "PrefExecSyst", "SaveParallel")
 INTERNAL_TERMS = {"#cond", "#count", "#maxin", "#maxout", "#selectin", "#selectout"}
 IGNORED, MISSING = object(), object()     # term_owner sentinels: an end AIXML has no terminal for
 
@@ -3880,6 +3882,17 @@ def main(argv):
     flags = getattr(reader, "pane_slot_flags", None)
     if flags:
         text += '\n<?lvmcp paneflags="%s"?>' % ",".join("%d:%04X" % kv for kv in sorted(flags.items()))
+    # the VI's EXECUTION settings AIXML has no place for - reentrancy above all: a dynamic-dispatch
+    # override must match its parent's, and composed on the skeleton's non-reentrant default 15
+    # Actor Framework members were "one is reentrant, one is not" (the in-place census, 2026-11-07)
+    exe = reader.b.main.find("LVSR/Section/Execution")
+    ins = reader.b.main.find("LVSR/Section/Instrument")
+    if exe is not None:
+        keep = [(k, exe.get(k)) for k in EXEC_KEPT if exe.get(k) is not None]
+        if ins is not None and ins.get("InStBit4") is not None:
+            keep.append(("InStBit4", ins.get("InStBit4")))
+        if keep:
+            text += '\n<?lvmcp exec %s?>' % " ".join('%s="%s"' % kv for kv in keep)
     for el, names in getattr(reader, "class_refs", []):
         # the CLASS of each ref{UDClassInst} in that element's type, in the order the type writes
         # them - AIXML names none, and without it no class-typed terminal could be composed

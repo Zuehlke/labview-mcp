@@ -27,11 +27,15 @@ def main(argv):
     d = argv[0]
     rows = []
     for l in open(os.path.join(d, "load.txt"), encoding="utf-8").read().splitlines()[1:]:
-        p = l.split(None, 2)
-        if len(p) == 3 and p[1] != "CRASH" and p[0].endswith(".vi"):
+        # a file name may hold blanks (`test broken.vi`, the in-place census keeps real names)
+        m = re.match(r"\s*(.+?\.vi)\s+(\S+)\s+(.*)$", l)
+        p = [m.group(1), m.group(2), m.group(3)] if m else []
+        if len(p) == 3 and p[1] != "CRASH":
             vi = os.path.normpath(os.path.join(d, "vis", p[0]))
             src = p[2].replace("/", "\\")
             src = src[src.lower().find("examples\\") + 9:] if "examples\\" in src.lower() else src
+            if not os.path.exists(vi) and os.path.exists(os.path.join(d, "tree", src)):
+                vi = os.path.join(d, "tree", src)     # an in-place census (census_inplace.py)
             errs = errors_of(vi)
             rows.append((p[0], src, errs))
             print("%s %s | %s" % (p[0], src[:60], " || ".join(e[:90] for e in errs[:3])), flush=True)
