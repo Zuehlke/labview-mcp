@@ -237,6 +237,15 @@ _ = PaletteIndex.WarmAsync();
 // pylabview call after a start does not pay for the imports (PythonWorkers says what it saves).
 _ = PythonWorkers.WarmAsync();
 
+// On the pylabview backend: the reader's exports of the shipping examples, read in the background
+// so an example an agent opens is a file copy - and the reader entries of older reader code, which
+// can never be hit again, deleted first. ReaderPrewarm says why this is cheap where NI's was not.
+_ = ReaderPrewarm.RunAsync(LoggerFactory.Create(b =>
+{
+    b.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
+    b.SetMinimumLevel(LogLevel.Information);
+}).CreateLogger("reader-prewarm"));
+
 await builder.Build().RunAsync();
 return 0;
 

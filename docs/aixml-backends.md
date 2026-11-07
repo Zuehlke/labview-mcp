@@ -1471,6 +1471,35 @@ escapes off there.
 tests pin the key separation in both directions. Each new test was checked against the old code:
 the two reader tests fail on the old reader, the preference test fails with the order swapped.
 
+## The examples are read into the cache in the background (2026-11-07)
+
+The user's decision of 2026-11-07: on the pylabview backend the server fills the export cache with
+the READER's exports of the shipping examples after every start (`Infra/ReaderPrewarm.cs`). The
+argument against pre-warming in `AixmlExportStore` was about NI's converter - 52 minutes of
+LabVIEW time, leaked handles, LabVIEW recycled along the way - and does not hold for a reader that
+needs no LabVIEW: 40 random examples took 48 s as fresh subprocesses, and through the resident
+workers 369 took about 90 s. What made it necessary rather than nice: a reader entry is keyed on
+the reader's code hash, so EVERY reader update made every example cold again for every user.
+
+- **What it reads:** the example index's `.vi` files (what `lvai_example_index` answers and an agent
+  opens next), each only when it has neither NI's entry nor one of the current reader - NI's is
+  served first anyway. Never `vi.lib`.
+- **What it costs a session:** two reads at a time out of the worker pool's four, after a 20 s
+  delay, so a tool call never waits behind it. Progress is `pylv_status`'s `readerPrewarm`.
+- **Failures** are written to `cache\reader-prewarm.json` with the reader hash and not retried
+  until the reader changes.
+- **Stale entries:** before it reads, every reader entry of OTHER reader code is deleted
+  (`AixmlExportStore.ReapStaleReader`) - such an entry can never be hit again, and until now none
+  was ever removed: the cache of 2026-11-07 held 95 reader entries under 11 hashes.
+- Only on the pylabview backend; `LABVIEWMCP_READER_PREWARM=0` switches it off.
+
+Measured on this station, first start: 95 stale entries removed, of 939 example VIs 570 already
+had NI's entry, **369 read in 111 s (20 s of it the delay), 0 failed**. Second start: 0 read, 939
+cached, done after the delay. `ReaderPrewarmTests` reads real NI examples copied into a temp
+installation (two read, one left to its NI entry, one broken file recorded and not retried; the
+last fails when the skip is removed) and pins that the reap leaves NI's and the current reader's
+entries alone.
+
 ## Can the reader reproduce the whole cache? (measured 2026-10-15)
 
 The question was whether every NI export in `cache\aixml` could be rebuilt on `pylabview`. All 874

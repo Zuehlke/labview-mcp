@@ -41,6 +41,7 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
         `labviewHealth` (DWarn events in NI's crash log of the LabVIEW ActiveX reaches - read it
         AFTER a failure, never as a gate), and `grpcService`: whether NI's service answers, as a
         side fact (a composerRefused call may be repeated on grpc only while it reads reachable).
+        `readerPrewarm`: the background read of the examples into the export cache.
         Readiness to work is lvai_ensure_labview. A source checkout has no bundle until
         tools\pylabview\provision.ps1 has run; a binary install carries it.
         """)]
@@ -86,6 +87,10 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
             // Which converter the AIXML tools use when a call names none, and whether the
             // pylabview one can run here. docs/aixml-backends.md.
             answer["aixmlBackend"] = AixmlComposer.Describe();
+            // The background read of the examples into the export cache (ReaderPrewarm).
+            answer["readerPrewarm"] = ReaderPrewarm.Current is { } p
+                ? JsonSerializer.SerializeToNode(p, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
+                : new JsonObject { ["state"] = "not started" };
             answer["labview"] = LabViewPicture();
             // The crash log of the LabVIEW ActiveX attaches to - lvai_status matches it by the gRPC
             // port, which this backend does not have.
