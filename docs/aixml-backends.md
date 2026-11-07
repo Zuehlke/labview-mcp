@@ -2670,7 +2670,8 @@ follows: it ignores unwired terminals and descriptions.
 | second round | 1 402 of 1 767 | 99.73 % | 99.54 % | 99.45 % | 99.16 % |
 | third round | 1 476 of 1 767 | 99.75 % | 99.59 % | 99.58 % | 99.27 % |
 | fourth round | 1 479 of 1 767 | 99.75 % | 99.61 % | 99.60 % | 99.31 % |
-| fifth round | **1 499 of 1 767** | 99.75 % | 99.63 % | 99.60 % | 99.31 % |
+| fifth round | 1 499 of 1 767 | 99.75 % | 99.63 % | 99.60 % | 99.31 % |
+| sixth round | **1 502 of 1 767** | 99.76 % | 99.63 % | 99.60 % | 99.37 % |
 
 What changed, each family measured on that corpus:
 
@@ -2765,6 +2766,19 @@ and `connection="optional"` (DQMH's Start Module.vi); a ring with no items is it
 `ref{DotNet}`; a byte pylabview could not print in a description chunk (`&#x0D;`) decoded. The
 census after it: 1 112 composed, **719 executable**, 0 crashes, no regression - two VIs the
 composer stopped on with an error compose and run now.
+
+**The sixth round** went after the wires the reader still DROPPED (`unread_terms.py` counts the
+owners of the terminals behind "signal N touches an unread terminal"): an Event Structure's
+TIMEOUT input - NI's export has no attribute for it (154 of 154) and leaves that end out, where
+the reader dropped the whole wire, the tunnel it also fed included; it is left out now and SAID
+when wired (`Event Structure N: its wired timeout is not carried by AIXML`, a lossy note the
+composer refuses on, so no VI that times out is built as one that never does) - the second and
+later elements of an Array Index / Replace Elements pair, and Build Map (Class018B). Still behind
+dropped wires: Express VI data nodes (xDataNode), the Timed Loop and Timed Sequence, the External
+Node, the dynamic shared-variable open, and the Stacked Sequence.
+
+Not taken on: `async="true"` on VISA and GPIB reads and writes - every one of NI's examples has it
+set, so no bit could be told apart, and the composer would refuse the attribute.
 
 The 12 VIs the reader cannot read at all are JKI VI Tester tests saved by a LabVIEW 8.x: their
 types are not in a VCTP block (`TM80`, `FPTD` instead), which pylabview does not decode. NI's

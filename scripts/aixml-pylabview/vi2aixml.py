@@ -805,7 +805,7 @@ NODE_READERS = {"nMux": "nmux", "mux": "mux", "demux": "demux", "aIndx": "aindx"
                 "decimate": "decimate", "xNode": "xnode", "extFunc": "extfunc", "Class0183": "pythonnode",
                 "Class0193": "matlabnode", "mergeSignal": "mergesignals",
                 "sharedVariable": "sharedvariable", "constructorNode": "constructornode",
-                "eventRegCallback": "eventregcallback"}
+                "eventRegCallback": "eventregcallback", "Class018B": "buildmap"}
 CA_OPS ={0: "Add", 1: "Multiply", 2: "AND", 3: "OR", 4: "XOR"}
 # a bDFixed constant's `cnst` code -> its AIXML FixedConst name (the composer's own table, reversed)
 FIXED_BY_CODE = {v.upper(): k for k, v in aixml2vi.Composer.FIXED.items()}
@@ -1340,6 +1340,12 @@ class Reader:
                 self.notes.append("%s %r: its terminal was not found on a walked diagram" % (el.tag, el.get("_name")))
         for d in self.diags:
             self.wire(d)
+        if getattr(self, "event_timeouts", None):
+            wired = {t.get("uid") for d in self.diags for sig in (d.find("signalList") if d.find("signalList") is not None else [])
+                     for t in sig.find("termList")}
+            for tu, nuid in self.event_timeouts:
+                if tu in wired:
+                    self.notes.append("Event Structure %s: its wired timeout is not carried by AIXML" % nuid)
         # a node's inputs and outputs in TERMINAL order: signal order put Build Array's two
         # `element`s the wrong way round (a round trip of t66 built [2.5,7] for [7,2.5])
         per_el = {}
@@ -1703,6 +1709,19 @@ class Reader:
         side, the FIRST the return value. 11 nodes over NI's Python examples were not read at all
         until 2026-11-06."""
         return self._session_call_node(node, parent_uid, "Python Node", ("module path", "function name"))
+
+    def buildmap(self, node, parent_uid):
+        """BUILD MAP (Class018B): out `map`, in alternating `key` and `value`, as NI's export writes
+        it (Map Collection - Comparing Test Results.vi, not read until 2026-11-06)."""
+        el = self._node_el(node, parent_uid, "Build Map")
+        k = 0
+        for t in node.find("termList"):
+            if self._is_out(t):
+                self.term_owner[t.get("uid")] = (el, "map", False)
+            else:
+                self.term_owner[t.get("uid")] = (el, "key" if k % 2 == 0 else "value", True)
+                k += 1
+        return el
 
     def eventregcallback(self, node, parent_uid):
         """REGISTER EVENT CALLBACK, as NI's export writes it: `event callback refnum`, `error in
@@ -2366,6 +2385,16 @@ class Reader:
                     for t in ts.get(d.get("uid"), []):
                         self.term_owner[t.get("uid")] = IGNORED
                 continue
+            if dc == "eventTimeOut":
+                # the TIMEOUT input: NI's export carries no attribute for it (154 of 154 Event
+                # Structures) and drops that wire end; unregistered, the reader dropped the WHOLE
+                # wire, the tunnel it also fed included (Wait Message Loop.vi, 2026-11-06). The end
+                # is left out as NI leaves it, and SAID when wired, so the composer refuses rather
+                # than build a structure that never times out
+                self.term_owner[term.get("uid")] = IGNORED
+                self.event_timeouts = getattr(self, "event_timeouts", [])
+                self.event_timeouts.append((term.get("uid"), node.get("uid")))
+                continue
             if dc == "caseSel":
                 sel_tree = self.tid_tree(term)
                 self.term_owner[term.get("uid")] = (el, "#selectin", True)
@@ -2570,6 +2599,12 @@ class Reader:
                 o = outer.get(d.get("uid"))
                 if o is not None:
                     self.term_owner[o.get("uid")] = (owner, role, sink_outer)
+                else:
+                    # an INNER term that is not the aggregate: the element of a further index
+                    # group (`element, element` - NI's Bubble Sort Person Array Using Channel
+                    # Closure.vi swaps two elements, the second dropped with its wires until
+                    # 2026-11-06)
+                    self.term_owner[t.get("uid")] = (owner, "element", not sink_outer)
         return right
 
     # In Place pairs whose terminals NI names BY POSITION in the node's termList - left half, right
