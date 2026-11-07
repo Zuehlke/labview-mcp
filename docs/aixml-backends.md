@@ -342,6 +342,29 @@ tools (`lvai_discuss_file`, `lvai_apply_aixml_to_vi`, `lvai_build_from_build_spe
 tools). Everything else has a pylabview route. A pylabview read may still SERVE a cached export
 NI's converter made earlier - by design, it is the higher-fidelity reading and costs no service.
 
+**THE START-UP CHECK IS `pylv_status` since 2026-11-06, not `lvai_status`.** A usage count over
+every local session transcript found `lvai_status` the only one of the NI-only tools still called
+(165 calls since 2026-10-15, every other one none) - as the first step of all eight agents, which
+then waited for NI's service on a backend that does not need it. And `lvai_status` answered
+nothing at all with the service down: its first RPC failed the whole call, taking
+`scriptsDirectory` (the doc agent's path to `lvdoc_print.xml`) and the crash-log count with it.
+Now:
+
+- `pylv_status` carries everything `lvai_status` reports that needs no service
+  (`StatusTools.ServiceIndependent`: `serverVersion`, `serverCommit`, `scriptsDirectory`,
+  `claudeAssetsDirectory`, `aiAddonFingerprint`, `aiAddonRecorded`), plus `labview` - the
+  running LabVIEWs from the process table and whether ActiveX may attach (`LabViewCom.NotReady`,
+  no COM call, so the tool still needs no LabVIEW) - and `labviewHealth`, matched to the NEWEST
+  running LabVIEW (the one ActiveX attaches to) where `lvai_status` matches it by the gRPC port's
+  owner. `grpcService` probes NI's service with a 3 s budget as a SIDE fact: `reachable`, or
+  `why` with the per-port status codes of the discovery failure (Unavailable = not started yet,
+  DeadlineExceeded = busy or hung). It never fails the answer.
+- `lvai_status` with the service down answers `ok: false` with its old `errorKind` and the same
+  service-independent fields and `labviewHealth`.
+- The agents start with `pylv_status`, then `lvai_ensure_labview` (ready = answers over ActiveX on
+  pylabview); `lvai_status` only where the backend in force is `grpc`. A `composerRefused` call is
+  repeated on `grpc` only while `grpcService.reachable` is true.
+
 Before either backend: `lvai_check_aixml`'s pre-checks, and the refusal of a property name with its
 category dropped (`propertyNameWouldCrashLabview`) — that document is wrong whichever converter
 reads it.
@@ -1448,6 +1471,48 @@ escapes off there.
 tests pin the key separation in both directions. Each new test was checked against the old code:
 the two reader tests fail on the old reader, the preference test fails with the order swapped.
 
+## The examples are read into the cache in the background (2026-11-07)
+
+The user's decision of 2026-11-07: on the pylabview backend the server fills the export cache with
+the READER's exports of the shipping examples after every start (`Infra/ReaderPrewarm.cs`). The
+argument against pre-warming in `AixmlExportStore` was about NI's converter - 52 minutes of
+LabVIEW time, leaked handles, LabVIEW recycled along the way - and does not hold for a reader that
+needs no LabVIEW: 40 random examples took 48 s as fresh subprocesses, and through the resident
+workers 369 took about 90 s. What made it necessary rather than nice: a reader entry is keyed on
+the reader's code hash, so EVERY reader update made every example cold again for every user.
+
+- **What it reads:** the example index's `.vi` files (what `lvai_example_index` answers and an agent
+  opens next), each only when it has neither NI's entry nor one of the current reader - NI's is
+  served first anyway. Never `vi.lib`.
+- **What it costs a session:** two reads at a time out of the worker pool's four, after a 20 s
+  delay, so a tool call never waits behind it. Progress is `pylv_status`'s `readerPrewarm`.
+- **Failures** are written to `cache\reader-prewarm.json` with the reader hash and not retried
+  until the reader changes.
+- **Stale entries:** before it reads, every reader entry of OTHER reader code is deleted
+  (`AixmlExportStore.ReapStaleReader`) - such an entry can never be hit again, and until now none
+  was ever removed: the cache of 2026-11-07 held 95 reader entries under 11 hashes.
+- Only on the pylabview backend; `LABVIEWMCP_READER_PREWARM=0` switches it off.
+- **Is the cache warm? `pylv_status`'s `exportCache`** (the user's request of 2026-11-07: "check at
+  start-up whether the cache has a sensible size"). It counts the run's targets from the FILES on
+  every call, so the answer is there right after a start, not only when a run has finished:
+  - `state` is `warm` (nothing left to read), `partial`, `cold`, or `unknown` while the example
+    index is still being built - the status never scans and never waits for that scan;
+  - the counts are `cached` (`fromNi` + `fromReader`), `missing` (what a run would still read),
+    `unreadable` (failures of the CURRENT reader, which are not retried), `percent` and `checkedMs`.
+  - **Coverage, not size, is the measure.** A cache full of reader entries of OLDER reader code is
+    large and serves nothing - exactly the state of the morning of 2026-11-07 - and a size
+    threshold would depend on the installation's add-ons. On grpc only NI's entries count, because
+    grpc never serves a reader entry.
+  - Measured 2026-11-07 after a client restart (commit 7d700680): `warm`, 939 of 939 cached, all
+    `fromReader`, **`checkedMs` 231** - cheap enough to compute on every call.
+
+Measured on this station, first start: 95 stale entries removed, of 939 example VIs 570 already
+had NI's entry, **369 read in 111 s (20 s of it the delay), 0 failed**. Second start: 0 read, 939
+cached, done after the delay. `ReaderPrewarmTests` reads real NI examples copied into a temp
+installation (two read, one left to its NI entry, one broken file recorded and not retried; the
+last fails when the skip is removed) and pins that the reap leaves NI's and the current reader's
+entries alone.
+
 ## Can the reader reproduce the whole cache? (measured 2026-10-15)
 
 The question was whether every NI export in `cache\aixml` could be rebuilt on `pylabview`. All 874
@@ -2345,6 +2410,575 @@ refused (two were before the `0` exception). Composed, `[",,","",""]`, `["a,b",c
 
 Test: `PylabviewLiteralTests`.
 
+## The composer over NI's shipping examples (measured 2026-11-06)
+
+**The question: what can the pylabview route rebuild, measured on code it was not tuned on?**
+Every `.vi` under `LabVIEW 2026\examples` (1 792, add-on examples included: DQMH, Astemes, MGI,
+JKI, OpenG) was READ by `vi2aixml.py`, the reader's AIXML COMPOSED by `aixml2vi.py` into a scratch
+folder, calls resolved beside the original, and every composed VI LOADED in LabVIEW 2026 over
+ActiveX (`cov_load.py`). Then, as the control, NI's ORIGINAL of every broken copy was loaded the
+same way. Scripts: `experiments/aixml-without-grpc/census_examples.py` (8 shards, about 7 min),
+`census_buckets.py`, `census_owners.py`. The figures "252 of 792" at the top of this file are
+from 2026-10-10, over NI's exports in the cache.
+
+| stage | count |
+|---|---|
+| read by the reader | 1 779 of 1 792 (12 JKI VI Tester VIs: invalid character reference or a `None` type; 1 file pylabview cannot extract) |
+| composed | **1 181** (65.9 %); 595 refused by name (`composerRefused`), 3 composer errors (pylabview's rebuild, 3D picture and fuzzy examples) |
+| loaded executable | **709 of 1 181**; 463 broken; **9 killed LabVIEW** on load (restarted by `lv-restart.ps1`, the sweep went on) |
+| control: NI's original of each broken copy | executable for all of them (457 answered state 1, 6 not judged) - every break is the route's |
+
+**THE BROKEN ONES ARE MOSTLY OWNED VIs COMPOSED OUT OF THEIR OWNER, which this measurement does
+not test fairly.** Split by owner (`.lvclass`/`.lvlib` items, URLs relative to the owner FILE):
+
+| composed VI | composed | executable |
+|---|---|---|
+| free VI | 727 | **644 (89 %)** |
+| library member | 175 | 65 (37 %) |
+| class member | 279 | 0 |
+
+A class member copied beside its class is no member: private data, scope and dynamic dispatch all
+break it. The product route composes members INTO their class (`lvai_add_class_method`); a fair
+census of members would have to do the same. So for free code the route rebuilds 89 % of what
+it composes, and the open defects are **74 free VIs plus 9 crashes**, all with an executable
+original.
+
+**What breaks a composed free VI** (LabVIEW's error list of 27 of the 74 through `lvai_exec_state`):
+mostly `Contains unwired or bad terminal` on an ordinary node (String Length in eleven DLL
+examples, Add, Multiply, Build Array, Index Array, Match Pattern, Merge Errors, Replace Array
+Subset, a Property Node), i.e. a wire or a type lost between reader and composer; `Wire: Class
+conflict` on a refnum (PID and fuzzy examples); `You have connected two clusters with different
+contents`; Formula Node `Undefined variable`; `Bad linkage` to a malleable `.vim`. Families: the
+DLL calling VIs (11), the Python node (7), PID and fuzzy (13), tree, tab and graph property nodes,
+shared variables, TDMS, Timed Loop offset, Feedback Node enable terminal. The 9 crashes: To More
+Specific Class target, External Code (DLL) Execution, System Mixed Checkbox, TDMS Read Events
+Data, Financial Forecasting, Interpolation Solver, Real Root Finding, IIR Filter Design, STFT
+Spectrogram Demo.
+
+**Two of those break kinds were the composer building a DIFFERENT VI in silence - refused by name
+since the same day** (`ComposerSilentLossTests`):
+
+- **A reader export that says it lost structure.** `vi2aixml.py` writes a note for every diagram
+  node it does not read (Call Library Function, Data Value Reference nodes, class nodes, shared
+  variables, Timed Loops, In Place pairs) and for every wire with an end on one - a wire it then
+  drops WHOLE, so its other ends lose their source too: the String Length beside a Call Library
+  Function node is `Contains unwired or bad terminal`. The composer read past the comments. 32 of
+  the 74 broken free VIs carried such notes - and 69 that loaded EXECUTABLE did too, VIs that run
+  and do less than their original. `aixml2vi.refuse_lossy_reader_export` refuses them
+  (`LOST STRUCTURE`); notes about a value (a constant not decoded) or an XNode read as its Call pass.
+- **A VI Server node bound to a control composed as its plain type.** A chart whose style has no
+  part is composed as a plain cluster (on purpose: refusing those cost 237 of NI's VIs), and a
+  `{LV.WaveformChart}` Property Node bound to it by `link=` was then `Invalid dotted property`
+  (the PID examples, `X Scale.Range:Maximum`). `_implicit_target` refuses that binding now; the
+  degraded panel alone still composes.
+
+The whole census again with both: **1 100 compose** (1 181 before), 677 refused - 80 more for a lossy
+export, 3 for a bound degraded chart, 2 fewer through the pylabview patches below; nothing else
+moved. Of the 83 broken or crashing VIs of the first run, 33 are refused by name now; 41 still
+compose broken and 9 still kill LabVIEW. What is left there is heterogeneous: a Tree's dotted
+method (`Custom Item Symbols.Set Symbol` - `Invalid method`), refnum `Class conflict` wires in the
+PID and fuzzy examples, clusters of different contents, Formula Node variables, a malleable `.vim`
+link. `census_subset.py` re-measures such a list.
+
+**Four of the 9 crashes were two broken listbox PARTS.** Both Array-typed listbox parts
+(`fpdco/listbox/ctl/Array`, `.../Array_NumInt32`) were cut from NI's System Mixed Checkbox.vi, and a
+listbox composed with either killed LabVIEW on load - alone on its panel, with no items, logging
+nothing (the crash log's last lines are the shutdown). An int32 multicolumn listbox took them as
+the only rsrc-21791 parts; an array{int32} listbox took them as its exact type. The NumInt32 parts
+re-typed to the array load executable in every case (Listbox.vi, System Mixed Checkbox, an int32
+multicolumn probe). Both are in `parts/denylist.json` and removed. THIS SECTION FIRST SAID the cause
+was re-typing a part of another data type, and `_listbox_part` took parts of the control's own type
+only for a day: that avoided the Array parts for an int32 and SENT them to every array{int32}
+listbox instead - NI's Listbox.vi, executable before, then crashed. The ranking is back (kind,
+direction, then type, re-typing allowed). Over the 9 crashers plus every example with a listbox
+(19 VIs): 18 load executable, none crashes. Target - To More Specific Class, External Code (DLL)
+Execution, TDMS Read Events Data and System Mixed Checkbox load executable since.
+
+**Five more were OPEN CASE RANGES written with int32's limits.** The other six crashers were not
+their panels (every styled control loads alone) but one connected diagram each, so
+`crash_ddmin.py` shrank them by delta debugging - drop elements, recompose, load, keep the drop
+while LabVIEW still dies, a restart per crash (49 trials for Real Root Finding, 17 elements left).
+What was left was a Case Structure on a uint16 ring with frames `..0` and `1..`; with `0` and `1`
+it loaded. NI's own heap of it: `..0` is (start 0, end 0, types 3/1), `1..` is (1, 65535, 1/3) -
+an open end is the SELECTOR TYPE's limit - and on an ENUM it is the LAST ITEM, not the type's
+maximum (Interpolation Solver's `"Rational"..` on a 4-item uint16 enum is (3, 3, 1, 3), IIR Filter
+Design's `"Bessel"..` on 5 items (4, 4, 1, 3)). The composer wrote INT_MIN/INT_MAX for every open
+end. `finish_cases` writes the type's limits since, the enum's item range for an enum; types wider
+than int32 keep INT_MIN/INT_MAX (not measured). `ComposerCaseRangeTests` reads NI's values back.
+Financial Forecasting, Interpolation Solver, Real Root Finding and STFT Spectrogram Demo load
+executable since; IIR Filter Design no longer crashes but is broken (a separate defect).
+
+**A third silent kind: a VI Server node bound to a control the READER exports plain.** NI's
+Vertical Fill Slide.vi writes `{LV.Slide}` Fill Color to an indicator `vi2aixml.py` exports as a
+plain double - no style, no class - so it is composed as a digital numeric, and LV.Digital has no
+Fill Color: `Invalid property`. The Tree examples' trees (exported as strings; `Invalid method` on
+Custom Item Symbols.Set Symbol) and the PID and FM examples' slides the same way. The composer
+refuses such a binding now (`_refuse_foreign_members`), judged from LabVIEW's catalogue
+(`docs/vi-server-properties.tsv`, `vi-server-methods.tsv` list inherited members per class): a node
+bound to a control composed as a plain Digital, Boolean, String, Path, Cluster or Array may use only
+that class's members. Over the whole census it refused 7 more VIs, none of which had loaded
+executable. The lasting fix is the reader naming those controls' classes.
+
+**Formula Node `Undefined variable` was the reader dropping UNWIRED variables** (3 examples). An
+unwired output is how a Formula Node declares a variable its code assigns; NI's export of Cut
+Length.vi writes `outputs="m:..,n:..,a:,b:,d:.."`, the reader wrote wired ends only, and the
+composed `a=...` had no `a`. The reader lists every Formula Node variable now, as it lists every
+terminal of a Call (`ReaderFormulaNodeTests`). All three load executable since, and every example
+with a Formula Node that composes (6 of 10) loads executable.
+
+**`You have connected two terminals of different types` was the reader naming or dropping
+positional terminals** (6 examples). A Bundle with a cluster wired in replaces the fields it is
+wired to, and an unlabelled field is known by its POSITION: NI's export of IIR Filter Design.vi
+writes `element:,element:,element:..Spectrum out,cluster:..`, the reader wrote the wired element
+only, and the composed array landed on the first field, a double. The reader lists every element
+input in field order now, an unwired one as `element:`, then `cluster`. And a concatenating
+Build Array input fed by Reverse 1D Array - a SUBARRAY type, which the reader's type comparison
+did not take for an array - was named `element` (Word Wrapping in Picture Control.vi); the input's
+own concatenate flag (DCO 0x10000) names it `array` now, and the composer concatenates a subarray
+as the array it is a view of (`_as_array`). IIR Filter Design, Equiripple Filter Design and Word
+Wrapping load executable since (`ReaderPositionalTerminalsTests`).
+
+**The whole census once more, every fix of the day in (2026-11-06):** 1 098 compose, **681 load
+executable, 0 crash** (709 and 9 in the first run); no VI that loaded executable then is composed
+and broken now. The 48 it loses were executable but lossy - the `LOST STRUCTURE` refusals above
+(DLL calling VIs without their Call Library Function node, and the like). By owner: **free VIs
+615 of 644 executable (95 %)**, library members 66 of 175, class members 0 of 279 (composed out of
+their class - not a fair measure, above).
+
+**15 of the remaining broken free VIs had a panel LabVIEW could not load** - `Get Errors` answered
+error 42 and `lvai_open_file` `Cannot load front panel` (1013), with nothing in LabVIEW's log.
+`panel_probes.py` composed every front-panel object of theirs alone: only graphs and charts failed.
+`graph_part_probes.py` then composed every harvested graph part alone, typed with its own data
+type: **16 of the 36 are unloadable by themselves** (one, the waveform-array graph 3504, killed
+LabVIEW) - every non-double numeric graph or chart (int16, int32, int64, single, uint32), dynamic
+data, the intensity parts, the three-field cluster chart - while the double-typed parts load. The
+graph's own heap matched NI's but for the picture numbers (renumbered from 2 as NI's converter
+does, and written), so the cause is outside it; not found. All 16 are in `parts/denylist.json` and
+removed: such a graph is composed as its plain data type, as for any graph without a part.
+Over the whole census: **694 executable, 0 crash, no regression**, 13 more examples executable -
+**free VIs 628 of 642 (98 %)**.
+
+**Two of the three refnum `Class conflict`s were a static reference to a degraded graph.** A
+`VI Server Reference` to a graph composed as its plain type is a reference of the PLAIN class, and
+NI's fuzzy greenhouse example hands its XY graph's reference to FL Plot Variable's `graph refnum`
+(the PID example with engineering units the same way). The composer refuses such a reference now,
+as it refuses a node bound to one; over the census it refused exactly those two. The third,
+Preserve Run-Time Class.vi, wires LabVIEW class objects - another cause.
+
+**Single cases, refused or fixed (2026-11-06).** Three more silent losses are refused by name now,
+each over the census only for the VI it was found in:
+- a Conditional Disable frame with a COMPOUND condition (`A==B||C==D`, NI's Conditional Disable
+  Structure.vi, four clauses): the reader wrote it as `Default`, and the structure got two Default
+  frames (`multiple cases with same expression`). The reader notes it now
+  (`Conditional Disable <uid> frame <n>: condition not read`) and the composer refuses that note as
+  lost structure;
+- an event only a Web Browser control (`htmlControl`) carries - `Load Finished`, `URL Navigation?`
+  (Notify and Filter Events.vi): no part creates that control, it is composed as its plain string,
+  and the frame was left with no event (`One or more event cases have no events defined`);
+- a Tab Control arrives as its enum and is composed as an `LV.Enum`; a node reading `Pages` was
+  `Invalid property`. A ring or enum part is now checked against `LV.Enum`/`LV.Ring` members like
+  any other plain control.
+`Decimal String To Number`'s second input is `default (0L)` in the learned terminal names (Stacked
+Bar Waveform Graph wired it by position).
+
+The nine free VIs still broken after that, read one by one (`census_errors.py`; where its Error List
+was empty, `lvai_exec_state` and a pylabview diff against NI's original):
+- **Decimate 1D Array kept its part's `dcoList`** - the three output DCOs of make_plot_contour.vi,
+  gone once the outputs are cloned - and its `shortCount`. EVERY composed Decimate loaded
+  `VI has an error of type 200` with an empty Error List (ellipse model, Test For Square of Color;
+  a probe with the node alone reproduced it). NI's own lists the output DCOs and counts two per
+  output. Fixed: both executable.
+- **A string-to-number conversion over a string ARRAY** stayed a scalar: the shape rule saw a 0
+  delta from the scalar `default` beside the 2D string and gave up, and `number` shares the donor
+  type of `default`. Only `string` sets the shape now (Stacked Bar Waveform Graph: executable).
+- **The reader dropped a Replace Array Subset's disabled, unwired `index (col)`**, which says the
+  element is a ROW; the composer then took the template with both indices enabled (QR
+  decomposition update by Givens rotation: `arrays of different dimensions`). The reader lists
+  every input now, as on Index Array: executable.
+- **A static reference wired into a Property Node** is of the class the control is composed as -
+  Nonlinear Spring Constant fit reads {LV.Slide} `Scale.Range` of a slide the reader exports as a
+  plain double. Refused by name now, like a node bound by `link=`.
+- Smith Multi Plot with Styles: the node is not an `Index & Bundle Cluster Array` at all but a
+  **Build Cluster Array** - the same heap class (`cABuild`), N elements into an array of ONE-field
+  clusters, which is exactly the array{cluster{array{Smith Pt}}} that looked unexplained. The
+  reader named every cABuild node Index & Bundle; it tells them apart by the output's field count
+  since the next section, and the composer, which has no Build Cluster Array part, now refuses the
+  VI by name. This bullet called the type "not understood" until then.
+- Still open as well: Malleable Buffer Example Plots (a `.vim` with `Bad linkage`), Calling VI -
+  Friend of Class A (community scope), Preserve Run-Time Class (class wires, `Class conflict`).
+
+The LabVIEW Error List lines of the broken ones come from `census_errors.py`, which runs the
+server's own lvai_exec_state helper over COM per VI. The 42 broken free VIs before this split into:
+the VI Server kind above (about 9), wires of different types (8), Formula Node `Undefined
+variable` (3), refnum `Class conflict` (3), arrays of different dimensions (3), clusters of
+different contents (2), a malleable `.vim` link, a community-scope class member, a Conditional
+Disable condition, an Event Structure frame with no event - and 13 whose Error List read empty.
+
+**None of the 9 crashes is left.** IIR Filter Design loads broken rather than crashing - a defect of
+its own, among the 41 broken free VIs above.
+
+**What the composer refuses** (first blocker per VI, 595 in the first run), grouped:
+
+| group | VIs | the leading messages |
+|---|---|---|
+| refnums and references | about 165 | `type 'ref…' is not composable` 40; a `Refnum.DataLog` wire 31 (DQMH); Bundle/Unbundle (or the In Place Element's Unbundle/Bundle) on a Refnum, i.e. a data value reference, 60; TCP, Notifier, DataSocket, TDMS, DVR refnum types and wires about 30 |
+| channel wires | about 70 | `no Stream-…/Tag-…/One Element Stream-….lvlib in the installation`: channel instance libraries LabVIEW generates per type, which the resolver does not look for (Channels, State Diagram) |
+| calls | about 45 | a terminal not on the callee's pane 29 (Express VIs, File IO); XNodes 12; a class not found 5 |
+| type inference | about 45 | a tunnel's type unknown 22, no typed wire reaches a tunnel 14, a Bundle/Unbundle cluster type unknown 8 |
+| classes | about 35 | a Property Node on a class (`{UDClassInst}`) 17 (DQMH); a class constant not feeding a Call 7; a `LabVIEW Object` front-panel control 9 |
+| VI Server parts | about 30 | XY Graph properties 11, invoke methods 8, VISA property node 6, String properties 2 |
+| other | about 205 | unit-typed numerics (`UnitFloat64`, Malleable VIs) 11; Picture and MeasureData constants 14; a net with no source 12; Expression Node 7; a Feedback Node inside a structure, or untyped, 9; unknown primitives 11; MGI control references 8; and a long tail of ones and twos |
+
+By area, the composed share runs from 92-95 % (Application Control, Waveform) to 46-49 %
+(Design Patterns, Channels, MGI) and 26 % (Data Communication: network streams, shared variables,
+TCP).
+
+### The heap route over the same examples (2026-11-06)
+
+**The control question: does an existing VI need AIXML at all, or does pylabview's own export
+carry it?** The examples tree was COPIED (72 MB) and every `.vi`, `.vim` and `.ctl` in the copy
+extracted by pylabview and rebuilt OVER ITSELF (`census_heap.py`, 8 shards, about 6 min), so
+owners and relative links stay as they were - the fair test the AIXML census could not give class
+members. Every `.vi` was then loaded over ActiveX; the ones that were not executable again on a
+fresh LabVIEW, and once more from an UNTOUCHED copy at the same depth as the control.
+
+| stage | count |
+|---|---|
+| round-tripped | 1 929 of 1 941 files (the 11 JKI VI Tester files the reader also fails on, plus `Word Finder.vi`; one read-only file) |
+| loaded executable | **1 726 of 1 780** `.vi`, no crash. 54 not: in the long run 13 answered `Memory is full` (32-bit LabVIEW after 1 700 loads), on a fresh LabVIEW all 54 stayed broken |
+| control, untouched copy | 42 of those 54 executable - so **12 are broken in NI's own copy too** (Moving Objects, Malleable Buffer, shared variables, LUnit's deliberate `Test Broken.vi`, VI Tester `New.vi`) and **42 are broken by the heap round trip** |
+
+So the heap route kept **1 726 of 1 768 (97.6 %)** of the VIs that run as NI ships them,
+class members included, against 709 executable of 1 792 on the AIXML route. The 42 it broke
+clustered: Astemes LMock and LUnit test classes (the class reports `Dependency is broken` and blocks
+its members), Collections Map/Set word counting, Registration Map, .NET Core, SFTP, Asciidoc. The
+`Memory is full` some of them answered is NOT memory: a fresh LabVIEW answers it for the damaged
+file alone - it is how LabVIEW refuses a corrupt one. `lvai_exec_state`'s
+`unresolvedInterfaceLinks` for these named a parent under `census\vi.lib` - its own reading of a
+`..\..\vi.lib` URL from a copied tree, not LabVIEW's: the untouched copy loads.
+
+**Found and fixed the same day - every one a pylabview defect, fixed as bundle patches**
+(`tools/pylabview/VENDOR.md`, `patches.json`). Re-extracting both files gave IDENTICAL bundles, so
+the damage was below what pylabview models; `heap_rawdiff.py` compares every block section DECODED,
+`heap_rawsweep.py` does it for a whole tree and names the type descriptor that differs. Over all
+1 941 files only 23 decoded differently, all explained:
+
+| cause | files | patch |
+|---|---|---|
+| types 0x73/0x74 (Collections Set/Map) parsed as refnums: a Map lost its key/value TD indices, a Set its label | 11 | `ref-family-non-refnum-raw` |
+| a Refnum with RefType 0x27 (.NET Core) exported and rebuilt with nothing but its RefType | 4 | `ref-unknown-content-as-bin`, `ref-unknown-content-as-bin-write` |
+| `LVSR` of a version-14 file lost the 7 bytes beyond that version's size; its password check then failed | 1 | `lvsr-keep-bytes-beyond-version` |
+| `LVSR` unparsed (LabVIEW 8.2 files): file version read as 0.0, `BDPW` lost `hash_2` | 3 | `file-version-from-vers-when-lvsr-raw` |
+| compiled code (`VICD`) of the Malleable Buffer examples | 4 | none - broken in NI's own copy too |
+
+A fifth defect surfaced only through `pylv_extract`'s `rawFallbackWarnings` after the first
+patches: the raw export those types now take calls `os.path.basename`, and `LVdatatype.py` never
+imports `os`, so the whole `VCTP` block fell back to raw - round trip exact, every type of the VI
+lost to the reader (`datatype-import-os`). The measurement below was repeated with it: same result.
+
+**After the fix, the same measurement:** 1 940 of 1 941 files round-trip (`Word Finder.vi` is
+refused with an `OverflowError` in pylabview's heap writer, so nothing is written); 1 937 decode
+identically, the other 4 differ in compiled code only; **1 779 of 1 791 `.vi` load executable,
+no crash - the 12 left are exactly the 12 broken in NI's own copy.** The JKI VI Tester files that
+did not round-trip before now do. The heap route keeps every VI of NI's examples that runs.
+
+**What follows from it.** The two routes answer different questions. The heap route PRESERVES an
+existing VI (panel, layout, icon, typedefs, class membership) and is the base for editing one in
+place (`pylv_apply`) - but its XML is LabVIEW's object heap, not a graph of nodes and wires, so
+logic cannot be authored in it. AIXML is the AUTHORING language: a new VI, or new logic, is
+written as AIXML and composed. Regenerating an EXISTING VI through reader -> AIXML -> composer is
+needed only for a change of logic, and loses what the heap route keeps.
+
+## The reader at NI's level (measured 2026-11-06)
+
+**The goal: vi2aixml.py writes what NI's ConvertVIToAIXML writes, fact for fact.** The reference is
+a fresh NI export of every example VI of LabVIEW 2026 - `LabVIEWMCP.exe --corpus <examples> --out
+<dir>` over NI's service, 1 784 exported, 8 skipped (RT and Localhost project targets), 1 h 15 min
+with LabVIEW restarted every 40 projects. Examples whose subVIs LabVIEW cannot find raise a modal
+`Find the VI Named ...` that stops the service; `lv-dialog-cancel.ps1` answers each with Cancel
+(the least-change button) for the whole run - 70 times. NI's export of such a VI is made with the
+subVI missing, so it can differ there.
+
+`compare_corpus.py <dir>` reads every VI with the reader (8 shards) and compares it with NI's
+export on EVERY attribute NI writes - only uid bookkeeping is left out, nets compared by source -
+and counts each difference by (tag, attribute); `corpus_gap.py` drills into one bucket.
+compare_full.py, which compares a chosen subset over the export cache, could not see most of what
+follows: it ignores unwired terminals and descriptions.
+
+| | VIs identical in every fact | elements | attributes | terminals | wires |
+|---|---|---|---|---|---|
+| before | 250 of 1 767 | 99.58 % | 97.05 % | 88.27 % | 96.82 % |
+| first round | 1 163 of 1 767 | 99.67 % | 99.33 % | 98.99 % | 98.25 % |
+| second round | 1 402 of 1 767 | 99.73 % | 99.54 % | 99.45 % | 99.16 % |
+| third round | 1 476 of 1 767 | 99.75 % | 99.59 % | 99.58 % | 99.27 % |
+| fourth round | 1 479 of 1 767 | 99.75 % | 99.61 % | 99.60 % | 99.31 % |
+| fifth round | 1 499 of 1 767 | 99.75 % | 99.63 % | 99.60 % | 99.31 % |
+| sixth round | 1 502 of 1 767 | 99.76 % | 99.63 % | 99.60 % | 99.37 % |
+| seventh round | **1 515 of 1 767** | 99.89 % | 99.75 % | 99.76 % | 99.51 % |
+
+What changed, each family measured on that corpus:
+
+- **Unwired sides of tunnels, shift registers, constants and conditions** are written as `value:`,
+  as NI writes them - a case frame's In half `outputs="value:"` (2 522), its Out half
+  `inputs="value:"` (1 433). Lost before: 4 281 tunnel terminals and 507 others.
+- **Every terminal of a primitive**, an unwired one as `name:` (`Wait (ms)`'s timer output on 309
+  nodes). An unwired input carries no SINK flag; a primitive takes its direction from its DCO, a
+  template node from its template part (whose inputs are wired, `sinks_for`), Replace Array Subset
+  and Delete From Array from their own DCO flags. A node bound by `link=` lists no reference
+  terminals (418 of 418).
+- **Primitive names and slot names learned from the corpus**: 23 primResIDs the tables lacked
+  (`learn_prim_names.py` -> `primitive-names-extra.tsv`: Join Numbers, UDP, Datalog, Bluetooth,
+  IrDA ...) and some 250 slots (`learn_unwired_names.py` -> `terminal-names-learned.tsv`): by
+  ELIMINATION on a node where one name is left on each side, by the WIRE's source where several are,
+  and by ORDER - NI lists inputs in descending and outputs in ascending slot order on most nodes
+  (`check_term_order.py`: 314 and 86 of the fully named ones, not all) - trusted only on a node whose
+  every known name sits where that order puts it. Learned only when every observation agrees.
+- **Control and indicator descriptions**, read off the ddo's `description` (a typedef'd control:
+  off its inner part), trailing blanks and line breaks dropped as NI drops them: 1 994 that were
+  never written.
+- **One heap class, two nodes**, named as NI names them: Build Cluster Array / Index & Bundle
+  Cluster Array (`cABuild`, by the output's field count), Build Matrix (`aBuild`, node flag
+  0x200000), Format Into File / Scan From File (`printf`/`scanf` on a path or file refnum), Start /
+  Wait On Asynchronous Call (`callByRefNode`, `CBRSaveStyle` 01/02), Waveform Unbundle / Bundle
+  Elements (an In Place pair on a MeasureData).
+- **Channel calls** name the TEMPLATE library, `Stream.lvlib:Read.vi`, where the heap links the
+  instance LabVIEW generated, `ChannelInstances\Stream-i32.lvlib` (about 400 calls).
+- **Ring constants** carry `style="Ring" items=... values=[...]` (values from `ringSparseValues`)
+  on the diagram as on the panel; a TYPEDEF'd ring constant does not, as in NI's export (59 of 59).
+- **User events in a cluster of events** are named by their path, `<Wait User Events.Stop>`:
+  `dynIndex` counts the registration in preorder, a cluster one index and each child the next.
+- **Case selectors**: a closed range of exactly two values is a list (`-2, -1`, `"Bad", "Idle"`),
+  three or more stay a range.
+- **Class wires**: a property node on a class is named without its folder (`Module ID`, not
+  `Accessors:Module ID`); Bundle, Unbundle and In Place pairs on a class name its private data
+  fields (`Entity Table`).
+- **`cond="true"`** on a Diagram/Conditional Disable structure's tunnels (the 0x200000 bit, 87 of 91).
+- **The Call Library Function Node** is read as NI writes it - its parameters by their types'
+  labels, both sides, Void terminals left out - and NOTED as lossy, since AIXML does not carry its
+  library and function: the composer still refuses it.
+
+**The second round, the same night**, each measured the same way:
+
+- **Nodes of their own heap classes, read now**: the Python Node (Class0183) and Call MATLAB
+  Function (Class0193) - fixed hGrowCItems for session, path, name and error, then argument pairs,
+  the first `return type`/`return value`, the rest `input parameter`/`value`; Merge Signals
+  (mergeSignal); and four more In Place pairs, named by POSITION in each half's termList (Array
+  Split / Replace Subarrays, Variant Attribute Get / Replace, Map Get / Replace Value) or by type
+  (Variant To / From Element).
+- **An XNode's terminals** by their types' labels, as a subVI call's: `file path` where the
+  xTunnel's id says `10`.
+- **A terminal name starting with `#`** (`# of Refs`) is a name; only the reader's own internal
+  names (`#count`, `#selectin` ...) are left out.
+- **Calls**: a nested library of the caller's chain is qualified (`Device Under
+  Test_Cloneable_DQMH.lvlib:Clone Registration.lvlib:...`, link flag 2 on a two-part name); a class
+  inside a channel INSTANCE keeps the instance's name, as NI writes it; `adapt="true"` only where
+  `preferredInstIndex` is FF - a number there is an instance the author fixed (138 of 138), and
+  no field at all is no adapt either (58 of 58).
+- **Build Array** carries `concat="true"` when every input is an array or an input's DCO has
+  0x800000 (69 of 69); the 0x10000 input flag alone set it on 125 nodes NI writes without.
+- **Types and values**: digital data and digital waveforms, `ref{Notifier}{T}` (pylabview names
+  it NotifierRef), `ref{TDMSFile}`, `string{utf8}` (a string type with Bit3), the temperature unit
+  (`double{Cdeg}`, base 6); a VISA resource name as a control's value; a timestamp inside a cluster
+  (written empty, as NI writes one alone).
+- **A cluster of event registrations** names each user event after its registration,
+  `<Pnl Actor.Actor.Stopped>`; an unlabelled source is `<#1>`.
+- **A reference to a subpanel** is `type="{LV.SubPanel}"` with no element.
+
+**The third round**: Shared Variable nodes (the value terminal named after the variable, `name4`),
+.NET constructors (`target` the type, `{DotNet}` or `{DotNetCore}`, the constructor's own item
+pair left out, each parameter on both sides), Register Event Callback (roles by DCO flags, the
+user parameter by its label), a Call Library Function Node's unwired parameter (the first
+argument is the return value, every other one has an input side - SINK is set only when wired),
+and two more slots learned by LOCAL alignment (an unknown whose known neighbours sit where NI lists
+them; the next pass names the rest by elimination). compare_corpus.py itself had a defect: it
+looked a selector's net up UNESCAPED, so a source like `ExecutionAState` read as `?` on the
+reader's side.
+
+**The fourth round**: the TCP primitives named IrDA or Bluetooth by their connection refnum
+(`IrdaNetConn`, `BluetoothCon`; `primitive-names-extra.tsv` maps those names back to the same
+primResIDs for the composer), a 3D Index Array's `index (page)`, and SET and MAP types. pylabview
+keeps those raw (0x73/0x74); their bytes are the element's index into the flat type list - a map
+a count, then the key's and the value's - and a Pascal label. `lvheap.Bundle(...,
+collections=True)` rewrites them as `Set`/`Map` with TypeID children, so they inline like any
+container: `set{string}`, `map{string.word,uint64.count}`. Only the READER asks for that - the
+composer copies a callee's types as they stand, and a rewritten set would not serialize.
+
+**The fifth round**: an OPTIONAL connector-pane slot - flags 0, which the reader skipped as
+unassigned; a slot is assigned when it has a TypeID - so a control there now carries its conIdx
+and `connection="optional"` (DQMH's Start Module.vi); a ring with no items is its plain number;
+`ref{DotNet}`; a byte pylabview could not print in a description chunk (`&#x0D;`) decoded. The
+census after it: 1 112 composed, **719 executable**, 0 crashes, no regression - two VIs the
+composer stopped on with an error compose and run now.
+
+**The sixth round** went after the wires the reader still DROPPED (`unread_terms.py` counts the
+owners of the terminals behind "signal N touches an unread terminal"): an Event Structure's
+TIMEOUT input - NI's export has no attribute for it (154 of 154) and leaves that end out, where
+the reader dropped the whole wire, the tunnel it also fed included; it is left out now and SAID
+when wired (`Event Structure N: its wired timeout is not carried by AIXML`, a lossy note the
+composer refuses on, so no VI that times out is built as one that never does) - the second and
+later elements of an Array Index / Replace Elements pair, and Build Map (Class018B). Still behind
+dropped wires: Express VI data nodes (xDataNode), the Timed Loop and Timed Sequence, the External
+Node, the dynamic shared-variable open, and the Stacked Sequence.
+
+**The seventh round**: the TIMED LOOP, read by the loop reader (its heap is a While Loop's plus
+timing terminals and data nodes): `Timed Loop` with count, Condition, tunnels and registers, the
+timing left out as NI leaves it and SAID when wired; its DATA NODES (xDataNode) are no element, their
+ends left out, and a net whose only source was one is named after its first consumer as NI names
+it (`selectin="228.value"`) - at the END of the wiring, made unique, because a tunnel's own output
+net has that name too. The STACKED SEQUENCE, as NI writes it: one Structure with every frame's
+content directly in it and each seqTun one Tunnel; more than one frame is noted as lossy.
+`learn_prop_names.py` re-run over the refreshed cache MERGES now (it overwrote the table): 79 more
+property names. compare_corpus.py compares `maxin` by the net's source and `maxout`/`count`/
+`selectout` for being there - they name nets, and names are arbitrary (`570.value2`); the
+percentages of this row are on that basis (the wire count went up by the edges it now resolves).
+The census after it: 1 114 composed, **721 executable**, 0 crashes, no regression.
+
+Not taken on: `async="true"` on VISA and GPIB reads and writes - every one of NI's examples has it
+set, so no bit could be told apart, and the composer would refuse the attribute.
+
+The 12 VIs the reader cannot read at all are JKI VI Tester tests saved by a LabVIEW 8.x: their
+types are not in a VCTP block (`TM80`, `FPTD` instead), which pylabview does not decode. NI's
+converter reads them because LabVIEW upconverts on load.
+
+The composer learned one thing for it: `string{utf8}` (a String TypeDesc with Bit3), so the
+Multilingual examples compose as before rather than being refused.
+
+**What the composer makes of it** (`run_census.sh`, the census of the section above, against the
+run before these changes): 1 088 composed instead of 1 090, **696 executable instead of 698, 0
+crashes, no VI that composed and ran before broken now.** The two fewer are six that ran AS A
+DIFFERENT VI, refused now, against four gained. Refused now, by name: the four asynchronous-call
+examples (composed before as SYNCHRONOUS Call By Reference - they ran, and did something else),
+Smith (Build Cluster Array, no part), Format Into File and Scan From File, the waveform In Place
+pair, and a 2D Delete From Array that deletes COLUMNS (Read Tab-Delimited File: the only template
+deletes rows, so it composed as a different VI). Composed as before: Build Matrix (the Build Array
+part with the node flag set) and a 2D Delete From Array that deletes rows. Channel calls are refused
+with the template named, where 29 channel examples composed against the template's own VI and
+loaded broken. After the second round: **1 110 composed, 717 executable, 0 crashes**, again no VI
+that ran before broken; of the 22 composed for the first time, 18 run (notifier and digital data
+types the reader now names) and 4 are DQMH library members calling private members - composed
+outside their library, as every census composes them.
+
+**Still different from NI, largest first**: the Timed Loop (NI's own export of it drops the left
+data node and points the inner case's `selectin` at the case itself) and the DVR In Place pair; Set and Map TYPES (`set{string}`, `map{k,v}`, pylabview's raw
+0x73/0x74 descriptors); 11 Event Data Nodes NI writes with no `outputs` at all, for a reason not
+found; a handful of primitive slots no observation names. **Kept different on purpose**: a
+one-frame Event Structure, where NI writes no CaseFrame and loses the event; a complex constant,
+where NI drops the imaginary part; a Formula Node's `text`, which NI's export leaves out; and the
+items of a typedef'd ring control, which the composer needs for a `Strings []` property node -
+the reader keeps all four. NI escapes `:` in a call target as
+`A`; the reader writes it raw, the same name to every consumer.
+
+## The composer after the reader (2026-11-07)
+
+With the reader at NI's level the composer was taken on next, by the census's first blockers
+(`census_buckets.py`). The first family:
+
+- **CHANNEL CALLS compose.** NI's export and the reader name the template (`Stream.lvlib:Write.vi`),
+  which the composer refused; the reader's `<?lvmcp calllink?>` names the INSTANCE the original
+  linked - `<extravilib>\ChannelInstances\Stream-i32\Write.vi`, which LabVIEW generated per wire
+  type into `Documents\LabVIEW Data\2026(32-bit)\ExtraVILib` (57 of them on this station, made
+  when NI's service exported the examples). `resolve.py` knows the `<extravilib>` anchor now, and
+  the composer calls the linked instance where it exists. A channel ENDPOINT ON THE PANEL is refused
+  by name: it is the instance's `)Channel.ctl` typedef around a queue refnum, which AIXML writes as
+  the bare `ref{Queue}{T}`, and composed so it did not wire to the instance (`two terminals of
+  different types`, 18 of 20 broken). Of the 75 channel examples refused before, 23 compose and 22
+  run; the 23rd, AI Configure.vi, calls an instance that is not executable itself.
+- **A PRIMITIVE WITH AN INPUT AND AN OUTPUT OF ONE NAME** - Rotate Right With Carry's `value` -
+  composed both wires onto one terminal, and LabVIEW DIED loading the channel example that has
+  one (Lossy Stream.vi). `out_key` keys a primitive's output `name + NUL + "out"` where an input
+  shares the name, as it already did for calls and VI Server nodes, and the primitive's terminal
+  table keeps both. Found because this family made that VI composable for the first time.
+
+Census after it: **1 137 composed, 743 executable** (721 before), 0 crashes, no VI that ran
+broken. `ComposerSingleCaseTests` pins both, each test failing on the code before.
+
+### Members composed where they live: the in-place census (2026-11-07)
+
+The normal census composes every example into a folder of its own, so a CLASS or LIBRARY member
+is measured away from its owner - it cannot call a private sibling, and the owner does not list it.
+Of the 677 free VIs composed, 673 run (99 %); the members needed a fair test.
+`experiments/aixml-without-grpc/run_inplace.sh <out>` copies the examples tree and
+`census_inplace.py` composes each owned VI OVER ITS COPY, then loads the copies as usual
+(`census_errors.py` reads the error lists, `census_owners.py` splits free VIs from members).
+
+| run | change | members executable |
+|---|---|---|
+| inplace1 | - | 302 of 458 |
+| inplace2 | a LIBRARY member is written with its library (`LIBN`), as a class member already was | 418 of 458 |
+| inplace4 | execution settings carried through `<?lvmcp exec?>`; library only where its file is | 428 of 458 |
+| inplace5 | plain and In Place Bundle / Unbundle on a class wire work on its private data | 477 of 519 |
+| inplace7 | a pane control's required / recommended bit (fPDCO `objFlags` 0x80 / 0x200) set, not added | 498 of 519 |
+
+- **Library membership.** Written loose, a library member that calls a PRIVATE sibling was "cannot
+  access the referenced item in private scope" (81 of 156 broken). The composer now writes `LIBN`
+  for `Lib.lvlib:VI.vi` - but only when that `.lvlib` is in the VI's folder or above it. Written
+  away from its library, the member named a library that does not list it there: 70 VIs that ran
+  loose went broken in the normal census (full17 -> full18), all members of NI's Weather Monitor
+  client and the Thermal Chamber DQMH library. Away from it, the VI is written loose with a NOTE.
+- **Execution settings.** A dynamic-dispatch override must match its parent's reentrancy, and on
+  the skeleton's default the Actor Framework's overrides were "one is reentrant, one is not"
+  (15). The reader writes `<?lvmcp exec IsReentrant=.. PooledReentrancy=.. IsSubroutine=..
+  Priority=.. PrefExecSyst=.. SaveParallel=.. InStBit4=..?>` after `</VI>` (the values of
+  `LVSR/Execution`, and the Instrument bit 4 that goes with reentrancy); the composer writes back
+  what it is given, numbers only. `IsReentrant` alone left 5 of the 15; `SaveParallel` and
+  `InStBit4` with it left none (inplace4: no reentrancy error left, the "Call Parent Class
+  Method" mismatches that followed from it gone too).
+- **VISA classes.** `ref{Visa.<class>}` now composes for every class (`Instr`, `USB Raw`,
+  `PXI Backplane`, ...) as a `VisaRef` refnum with that `Ident`; only `Instr` composed before.
+
+Normal census after the family (full19): **1 138 composed, 744 executable**, 0 crashes, no VI
+that ran broken; the 70 library members run loose again. What breaks the remaining 30 members:
+class conflict 8, an override's pane differing from its parent's 6, a private sibling called from
+outside its owner 6, bad linkage 4, mismatched wire types 3, and single cases. `ComposerSingleCaseTests` pins library membership (beside
+its library and away from it), the execution trailer and the VISA classes; each fails on the code
+before.
+
+**Bundle / Unbundle on a class wire** (inplace5). Only Bundle and Unbundle BY NAME read a class
+wire's private data; plain `Bundle` / `Unbundle` and the In Place `Unbundle / Bundle Elements`
+pair were refused "input is Refnum, not a cluster" - 62 of the 226 refused members, mostly the
+Actor Framework's message classes and Channels Messenger. All three now go through
+`class_private_data`. One more case was found on the way: a class whose private data is ITSELF a
+typedef'd cluster has no "Cluster of class private data" label and lists the typedefs inside it
+first (Messenger's `Gesture.lvclass`: an enum, `Point32`, then the `gesture` cluster), so the
+lookup took the enum. Without that label, the private data is now the type of the control on the
+private data control's panel (the FP heap's first `typeDesc`). In place, 61 more members compose
+and 49 more run (428 -> 477). Out of place the same 61 compose and are broken, as a member away
+from its class must be; nothing that ran broke (full20: 1 199 composed, 744 executable).
+
+The remaining 42 members: an override whose pane differs from its parent method's 21 (raised from
+6 by the members that now compose), class conflict 8, a private sibling called from outside its
+owner 6, bad linkage 4, single cases. `A_bundle_on_a_class_wire_works_on_its_private_data` composes
+four NI members over a copy of their folder; each case fails on the code before.
+
+**An override's pane "different" from its parent's** (inplace7). All 20 Actor Framework `Do.vi`
+and Messenger's `Gesture Wrapper\Merge.vi` were "This VI does not match other VIs in the method;
+connector pane terminal(s) are different" - while their VCTP connector pane equalled NI's type for
+type, flag for flag (pylabview extracts of NI's `Add Barista Msg\Do.vi` and the composed one,
+2026-11-07). The difference was on the PANEL: a control on the pane carries in its fPDCO `objFlags`
+0x200 when recommended and 0x80 when required, and the composer ORed its bit onto the donor part's
+own. A part cut from a required class terminal kept its 0x80, so `Actor in` (recommended) came out
+0x10280 where NI has 0x10200. Now both bits are cleared first. What was measured on the way:
+
+- A trivial diagram (Actor in -> Actor out, error in -> error out) on the same panel failed the same
+  way, which put the cause on the panel rather than the diagram.
+- `FuncFlags` (0x300 on NI's child, 0x200 on the composed one and on NI's parent) and the in-place
+  partner bits that the composer copies into the SECOND pane function (NI writes them in the first
+  only) do not matter: patched to NI's values, the VI stayed broken; left as they are with the
+  fPDCO bits right, it is executable.
+- A DISPATCH input is required (0x80, NI's 0x11080), a dispatch OUTPUT recommended (0x200,
+  `Stop Core.vi`'s `Coffee Shop out` 0x11201). Written 0x80 on both, 27 overrides that ran went
+  broken (inplace6, 470 of 519: Stop Core, Pre Launch Init, LUnit's Setup, Render Picture...).
+- An offline check over all 519 members, NI's pane-fPDCO bits against the rule computed from the
+  reader's AIXML: 0 differences; the same check with the dispatch-output mistake flags 104, so it
+  is not blind.
+
+In place, 21 more members run and none broke (477 -> 498); the normal census is unchanged (full21:
+1 199 composed, 744 executable, nothing newly broken). No pane mismatch is left. The error lines of the remaining 21 (one VI may have several):
+class conflict 8, a private sibling called from outside its owner 6, bad linkage 4, a subVI not
+executable 2, single cases. `An_override_marks_its_pane_controls_as_its_parent_does` pins Actor in,
+the dispatch input and a dispatch output; the first fails on the code before, the last on the
+dispatch-output mistake.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the
@@ -2359,11 +2993,11 @@ Test: `PylabviewLiteralTests`.
   For the 8 patterns found in two orientations (4815 among them, so every class member) the answer
   says so; a rotated pane there is only seen on `grpc`. `lvai_render_diagrams` and
   `lvai_connector_pane` follow the switch since 2026-10-12 (previous section).
-- **Still on gRPC**: the batch export `lvai_convert_vis_to_aixml`, whose cache holds NI's output,
-  `pylv_route` (its check A IS NI's validation), `lvai_run_vi_as_top_level` (NI's RPC;
-  `lvai_run_vi_and_read_values` is the switchable run), the three-step gRPC event route, and NI's
-  own assistant features. Every other tool that reaches LabVIEW takes `backend` since 2026-10-13
-  (the DQMH tools next, the rest in "Every route tool without NI's service").
+- **Still on gRPC**: `pylv_route` (its check A IS NI's validation), the palette RPCs, build
+  specifications, and NI's own assistant features (the list under "What each tool does on
+  `pylabview`"). This bullet named `lvai_convert_vis_to_aixml`, `lvai_run_vi_as_top_level` and
+  the three-step event route as well until 2026-11-06; all three have followed the switch since
+  2026-10-16 (the table above).
 - **THE DQMH TOOLS RUN WITHOUT NI's SERVICE since 2026-10-13** - the user's request, for a DQMH
   demo built with no gRPC at all. The gap was the C# routing, never the composer: all 17
   `scripts\lvdqmh_*.xml` composed and loaded executable over ActiveX before a line changed

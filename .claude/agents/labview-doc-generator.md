@@ -71,9 +71,10 @@ diagrams and builds the .docx.
 ### Phase 0 — Resolve the target, then check LabVIEW
 
 1. Resolve the target path (see table above).
-2. `lvai_status`. If it reports `ok: false`, call `lvai_ensure_labview` **once** and then
-   `lvai_status` again; the first call often answers "starting" and the second finds it.
-   If LabVIEW still is not there, **do not abort** — continue in *structure-only mode*
+2. `pylv_status` - the start-up check, which needs no NI service and no LabVIEW; it carries
+   `scriptsDirectory`. Then `lvai_ensure_labview` until `state: ready` (on the `pylabview`
+   backend: LabVIEW answers over ActiveX; NI's service is not needed). The first call often
+   answers "starting" and the second finds it. If LabVIEW still is not there, **do not abort** — continue in *structure-only mode*
    (Phase 1, 2, 6, 7 work entirely from disk). You then produce a document with the structure
    diagram, the UML diagram and a VI inventory, but no descriptions, connector panes or icons.
    Say so prominently in the final report.
@@ -239,7 +240,7 @@ generating a three-node helper VI and running it. Verified end to end on LabVIEW
 ActiveX route is a dead end on at least one station (see the table further down).
 
 **Step 1 — generate the helper once per run.** The AIXML ships as
-**`<scripts>\lvdoc_print.xml`** (`lvai_status` → `scriptsDirectory`) — do not retype it. Feed that file straight to
+**`<scripts>\lvdoc_print.xml`** (`pylv_status` → `scriptsDirectory`) — do not retype it. Feed that file straight to
 `lvai_validate_aixml`, then to `lvai_convert_aixml_to_vi` with a scratch `viPath`. It validates
 and converts as-is; `Read` it first if you want to see the diagram it describes:
 
@@ -413,7 +414,7 @@ py "<scripts>\generate_labview_doc.py" "<data.json>" "<output.docx>" ^
    --structure-out "<temp>\<Name>_structure.png" --uml-out "<temp>\<Name>_uml.png"
 ```
 
-`<scripts>` comes from **`lvai_status` → `scriptsDirectory`**: an absolute path to the `scripts\`
+`<scripts>` comes from **`pylv_status` → `scriptsDirectory`**: an absolute path to the `scripts\`
 folder shipped next to the MCP server's exe. Use it rather than a repository-relative path — your
 working directory is whatever the client chose, and a binary-only install has no repository at
 all. If the field is absent (older server), fall back to `scripts\` under this repository's root.
@@ -470,8 +471,8 @@ resolving to real page numbers, both diagrams embedded).
 ## Troubleshooting
 
 - **`python` not found** → always use the `py` launcher (`py script.py`).
-- **`lvai_status` says `ok: false` after `ensure_labview`** → LabVIEW is starting; a cold start
-  can outlast one tool call. Call `lvai_status` once more, then fall back to structure-only mode.
+- **`lvai_ensure_labview` is not `ready` after two calls** → LabVIEW is starting; a cold start
+  can outlast one tool call. Call it once more, then fall back to structure-only mode.
 - **`DeadlineExceeded` on `describe_vi`** → a cold VI load. Raise `timeoutSeconds`; if the same
   VI fails twice, record it as unreadable and move on rather than stalling the whole run.
 - **PermissionError saving the .docx** → the document is open in Word; report it or write to an
@@ -541,7 +542,7 @@ report, and if the VI does not load there while NI's service is up, compose it a
    `errorCode 0` means the composer CAN build the document; executability and a run stay the
    verdict, as always.
 4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
-   with an `UNSUPPORTED: ...` line. Quote it. If `lvai_status` shows NI's service up, repeat that
+   with an `UNSUPPORTED: ...` line. Quote it. If `pylv_status` shows `grpcService.reachable: true`, repeat that
    one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
    the line verbatim.
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be

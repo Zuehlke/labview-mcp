@@ -71,7 +71,10 @@ add-on install it needs `refresh=true` once. A hit may be a `.lvproj` - use
 
 **Exports of installation VIs are cached** under `%USERPROFILE%\.labviewmcp\cache\aixml` (not
 `%LOCALAPPDATA%`; `CacheDirectory.Root` is the authority). Your own code is never cached, because
-an export depends on its subVIs too. So browsing examples is cheap - browse. Triage several
+an export depends on its subVIs too. So browsing examples is cheap - browse. On the pylabview
+backend the server reads the examples into the cache in the background after a start and deletes
+reader entries of older reader code (`ReaderPrewarm`; progress in `pylv_status readerPrewarm`,
+coverage - warm, partial, cold - in `exportCache`). Triage several
 candidates in ONE `lvai_convert_vis_to_aixml`; LabVIEW serialises the work, so fanning out
 `lvai_*` calls gains nothing.
 
@@ -473,7 +476,7 @@ document; `experiments/` does not ship.
 | Network streams; tag refnums; IVI on pylabview | `docs/network-streams.md`, `docs/aixml-backends.md` | — |
 | What cold builds found | `docs/cold-build-*.md` | — |
 | Why a tool call failed with no detail | `docs/tool-argument-errors.md` | — |
-| Crashes | `docs/labview-crash-signatures.md` | `lvai_status` |
+| Station check; crashes | `docs/aixml-backends.md`, `docs/labview-crash-signatures.md` | `pylv_status` (`labviewHealth`, `grpcService`), `lvai_status` |
 | Releases and versions | `docs/release-versioning.md` | `LabVIEWMCP --version` |
 
 The served documents are embedded in the assembly and byte-verified on every build; all of `docs\`

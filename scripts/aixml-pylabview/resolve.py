@@ -85,6 +85,17 @@ def default_addons_root():
 _LV_IDENTITY = {}
 
 
+def extra_vilib(version, bits):
+    r"""`Documents\LabVIEW Data\<year>(<bits>-bit)\ExtraVILib` of the LabVIEW (version, bits), or
+    None where it does not exist. Measured on this station: 2026(32-bit) for LabVIEW 2026 32-bit."""
+    if not version or not bits:
+        return None
+    year = 2000 + version[0] if version[0] < 100 else version[0]
+    docs = os.path.join(os.environ.get("USERPROFILE") or os.path.expanduser("~"), "Documents")
+    d = os.path.join(docs, "LabVIEW Data", "%d(%d-bit)" % (year, bits), "ExtraVILib")
+    return d if os.path.isdir(d) else None
+
+
 def labview_identity(lv_root):
     """((major, minor), bits) of the LabVIEW in `lv_root`, read off LabVIEW.exe: the version from
     its VS_FIXEDFILEINFO (26.3.1f1 -> (26, 3)), the bitness from the PE machine field. A part that
@@ -386,6 +397,11 @@ class Resolver:
         # the add-ons of EVERY location ordered by add-on name - measured 2026-10-26: for one
         # <vilib> file in two add-ons LabVIEW took the alphabetically first add-on, whichever
         # location held it and whatever order the INI listed them in, the CustomLocation included
+        # <extravilib>: LabVIEW's per-user ExtraVILib, where it generates CHANNEL INSTANCE
+        # libraries (ChannelInstances\Stream-i32.lvlib) - a channel call links one (2026-11-07)
+        evl = extra_vilib(self.lv_version, self.lv_bits)
+        if evl:
+            self.roots.append(("<extravilib>", evl))
         self.addons = ordered_addons(self.locations, self.lv_version, self.lv_bits)
         self.stamp = _stamp(self.locations, self.addons)
         for _addon, vdir in self.addons:
@@ -612,6 +628,15 @@ class Resolver:
             candidates = self._owner_files(owners[-1], caller_dirs)
             if not candidates:
                 return {"error": "no %s in the installation or near the caller" % owners[-1]}
+            if all("\\resource\\channels\\" in os.path.normcase(c).replace("/", "\\") for c in candidates):
+                # a CHANNEL wire's endpoint, named by its TEMPLATE as NI's export names it
+                # (`Stream.lvlib:Read.vi`). LabVIEW generates a typed instance library per wire
+                # (ChannelInstances\Stream-i32.lvlib); the template's own VI called in its place
+                # composed 29 channel examples broken (2026-11-06). Refused until the composer
+                # makes the instance.
+                return {"error": "%s is a CHANNEL template (%s): a channel wire's call needs the typed "
+                                 "instance LabVIEW generates for it, which the composer does not make"
+                                 % (owners[-1], candidates[0])}
             for owner in candidates:
                 path = self.member(owner, vi_name,
                                    XCTL_VI_TYPES if owner.lower().endswith(".xctl") else ("VI",))

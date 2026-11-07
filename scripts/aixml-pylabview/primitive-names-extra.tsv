@@ -58,3 +58,40 @@ primResID	name	seen	primIndex
 1212	Power Of 10	1	
 1512	Format Value	1	
 8073	Set File Position	1	
+# found by learn_prim_names.py over NI's exports of the 1 784 shipping examples (2026-11-06): the
+# reader could only say ?primResID n, NI's export named the node on the same uid
+1087	DataSocket Write	1	
+1146	To Single Precision Float	1	
+1171	Join Numbers	12	
+1185	Hexadecimal String To Number	1	
+1228	Inverse Tangent (2 Input)	3	
+1607	Rotate Right With Carry	1	
+1723	UDP Open	4	
+1724	UDP Read	4	
+1725	UDP Write	4	
+1726	UDP Close	6	
+23781	Read Variable	2	
+23783	Close Variable Connection	2	
+2453	Remove From Set	1	
+2454	Element of Set?	1	
+8054	Open/Create/Replace Datalog	2	
+8069	Read Datalog	1	
+8072	Set Datalog Position	1	
+8079	Write Datalog	1	
+9130	Lossy Enqueue Element	1	
+9140	IrDA Create Listener	1	
+9141	IrDA Discover	1	
+9142	IrDA Open Connection	1	
+9151	Bluetooth Create Listener	1	
+9152	Bluetooth Discover	1	
+9153	Bluetooth Open Connection	1	
+# the TCP primitives under their IrDA and Bluetooth names (same primResID; vi2aixml names them by the
+# connection refnum type, 2026-11-06) - so the composer maps NI's names back to the primitive
+1712	IrDA Wait On Listener	0	
+1712	Bluetooth Wait On Listener	0	
+1713	IrDA Close Connection	0	
+1713	Bluetooth Close Connection	0	
+1714	IrDA Write	0	
+1714	Bluetooth Write	0	
+1716	IrDA Read	0	
+1716	Bluetooth Read	0	

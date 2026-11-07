@@ -131,6 +131,54 @@
       "replace": "            elif (subelem.tag == \"DataFill\"):\r\n                depth = getattr(self.vi, 'nonConsolidatedVariantDepth', 0)\r\n                if not self.useConsolidatedTypes:\r\n                    self.vi.nonConsolidatedVariantDepth = depth + 1\r\n                try:\r\n                    for df_elem in subelem:\r\n                        df = LVdatafill.newDataFillObjectWithTag(self.vi, self.blockref, df_elem.tag, self.po)\r\n                        self.datafill.append(df)\r\n                        df.expectContentKind = self.expectContentKind\r\n                        df.initWithXML(df_elem)\r\n                finally:\r\n                    self.vi.nonConsolidatedVariantDepth = depth\r\n",
       "why": "XML half of variant-consolidation-inherit, so a REBUILD writes the nested variant back in the inline form it was read in. Without it the extract succeeds and the rebuild writes a VCTP index where LabVIEW expects a type list. Measured as the round trip in variant-consolidation-inherit: rebuilt Host and Target re-extract identically.",
       "upstream": "see variant-consolidation-inherit."
+    },
+    {
+      "id": "ref-unknown-content-as-bin",
+      "file": "pylabview/LVdatatype.py",
+      "find": "    def exportXML(self, conn_elem, fname_base):\r\n        self.parseData()\r\n\r\n        conn_elem.set(\"RefType\", stringFromValEnumOrInt(REFNUM_TYPE, self.reftype))\r\n",
+      "replace": "    def exportXML(self, conn_elem, fname_base):\r\n        self.parseData()\r\n        if self.otype != TD_FULL_TYPE.Refnum or self.ref_obj is None:\r\n            return TDObject.exportXML(self, conn_elem, fname_base)\r\n\r\n        conn_elem.set(\"RefType\", stringFromValEnumOrInt(REFNUM_TYPE, self.reftype))\r\n",
+      "why": "A Ref-family type descriptor (main type 7) whose content pylabview does not model was exported INLINE with nothing but its RefType, and the rest of its bytes dropped - although newTDObjectRef's own docstring says such a refnum 'will be stored as BIN file'. Two shapes hit it: full types 0x73 and 0x74 (the Collections' Set/Map types, which are NOT refnums - their first word, a sub-type count, was read as a RefType: 2 = ByteStream for a Map, whose key/value TD indices were then lost, 1 = DataLog for 0x73, which rebuilt as 10 480 bytes of zeros), and a Refnum (0x70) whose RefType upstream has no class for (0x27, the .NET Core object refnum, whose assembly-qualified class name was dropped). LabVIEW then refused the rebuilt VI ('Memory is full', error 2) or broke its owning class. Measured 2026-11-06 over a copy of every example of LabVIEW 2026 (1 941 VI/VIM/CTL files) round-tripped in place: 11 files lost bytes in VCTP this way, and with the class members they block they were 36 of the 42 VIs the round trip broke (LMock, LUnit, Collections, Registration Map, SFTP, .NET Core). With the fix such a TD is written as Format=bin, which TDObjectRef.initWithXML already reads back through TDObject.initWithXML.",
+      "upstream": "not reported yet; TDObjectRef.exportXML ignores newTDObjectRef's 'stored as BIN file' contract."
+    },
+    {
+      "id": "lvsr-keep-bytes-beyond-version",
+      "file": "pylabview/LVblock.py",
+      "find": "            section.field8C = int(data.field8C)\r\n        # Any data added in future versions\r\n        section.field90 = bldata.read()\r\n",
+      "replace": "            section.field8C = int(data.field8C)\r\n        # Any data added in future versions\r\n        section.field90 = b''\r\n        section.field90 = bytes(data)[self.expectedRSRCSize(section_num):dataLen] + bldata.read()\r\n",
+      "why": "readinto() fills the WHOLE LVSRData struct (144 bytes) whatever the file's version, but the fields past the version's own size are only kept from version 15 on, and field90 - 'any data added in future versions' - is read from what is left AFTER the struct. So a file whose version says 14.x while its LVSR is already 144 bytes long lost its last 7 bytes on a round trip (inline padding and field8C, 00 00 00 FF FF FF FF on the one file measured). Measured 2026-11-06 on Wovalab's Asciidoc 'Basic Example.vi' among every example of LabVIEW 2026: LVSR 144 -> 137 bytes, and LabVIEW refused the rebuilt VI with 'Another user tampered with the VI password' (error 0x59) - the password check covers LVSR. With the fix the bytes beyond the version's expected size, read by readinto(), are kept in field90 and written back.",
+      "upstream": "not reported yet; LVSR.parseRSRCSectionData drops struct bytes beyond the version's size."
+    },
+    {
+      "id": "ref-unknown-content-as-bin-write",
+      "file": "pylabview/LVdatatype.py",
+      "find": "    def prepareRSRCData(self, avoid_recompute=False):\r\n        data_buf = b''\r\n        data_buf += int(self.reftype).to_bytes(2, byteorder='big', signed=False)\r\n        if self.ref_obj is not None:\r\n            data_buf += self.ref_obj.prepareRSRCData(avoid_recompute=avoid_recompute)\r\n",
+      "replace": "    def updateData(self, avoid_recompute=False):\r\n        if (self.otype != TD_FULL_TYPE.Refnum or self.ref_obj is None) and self.raw_data:\r\n            return\r\n        super().updateData(avoid_recompute=avoid_recompute)\r\n\r\n    def prepareRSRCData(self, avoid_recompute=False):\r\n        if self.otype != TD_FULL_TYPE.Refnum or self.ref_obj is None:\r\n            return TDObject.prepareRSRCData(self, avoid_recompute=avoid_recompute)\r\n        data_buf = b''\r\n        data_buf += int(self.reftype).to_bytes(2, byteorder='big', signed=False)\r\n        if self.ref_obj is not None:\r\n            data_buf += self.ref_obj.prepareRSRCData(avoid_recompute=avoid_recompute)\r\n",
+      "why": "WRITE half of ref-unknown-content-as-bin. A TD read back from Format=bin holds its raw bytes, but TDObjectRef.prepareRSRCData rebuilt it from the parsed fields - the RefType alone - when the VI was written, so the export fix alone changed the XML and still wrote the truncated TD (measured: the sweep after the export fix showed the same 11 VCTP differences). For the same two shapes - not a Refnum (0x70), or a RefType with no class - it now returns TDObject.prepareRSRCData, the raw content without header and label. AND such a TD's raw bytes are now kept as they are when the VI is written (updateData returns early): rebuilding them from content plus label re-ran the label heuristic, which found a false label INSIDE a .NET Core class name (a character whose code equals the bytes left) and padded it wrong - measured on Calling a .NET Core Assembly.vi, the 'reference' refnum's TD 108 -> 109 bytes.",
+      "upstream": "see ref-unknown-content-as-bin."
+    },
+    {
+      "id": "ref-family-non-refnum-raw",
+      "file": "pylabview/LVdatatype.py",
+      "find": "            TD_MAIN_TYPE.Ref: TDObjectRef,\r\n            TD_MAIN_TYPE.NumberPointer: TDObject,\r\n",
+      "replace": "            TD_MAIN_TYPE.Ref: TDObjectRef if obj_type == TD_FULL_TYPE.Refnum else TDObject,\r\n            TD_MAIN_TYPE.NumberPointer: TDObject,\r\n",
+      "why": "The type factory gave EVERY full type of main type 7 a TDObjectRef, though only 0x70 is a Refnum. 0x73 and 0x74 (the Collections' types) were then parsed as refnums, their first word taken for a RefType - for 0x73 a DataLog, whose parser read on into the label, so the label was not found and the rebuilt TD had none (measured on Set Collection - Word Counting.vi after ref-unknown-content-as-bin: 'symmetric difference' gone, 28 -> 8 bytes). They are now plain TDObjects, which keep their content raw and find the label as for any other unmodelled type. 0x70 keeps TDObjectRef.",
+      "upstream": "not reported yet; newTDObject maps the whole main type 7 to TDObjectRef."
+    },
+    {
+      "id": "file-version-from-vers-when-lvsr-raw",
+      "file": "pylabview/LVrsrcontainer.py",
+      "find": "        vers = self.get_one_of('LVSR', 'vers') # TODO add LVIN when its supported\r\n        if vers is not None:\r\n            ver = vers.getVersion()\r\n        else:\r\n",
+      "replace": "        vers = self.get_one_of('LVSR', 'vers') # TODO add LVIN when its supported\r\n        if vers is not None:\r\n            ver = vers.getVersion()\r\n            if (not isinstance(ver, dict) or ver.get('major', 0) == 0) and self.get_one_of('vers') is not None:\r\n                ver = self.get_one_of('vers').getVersion()\r\n        else:\r\n",
+      "why": "getFileVersion() asks LVSR first and nothing else when LVSR exists. An LVSR pylabview cannot parse is kept raw, its version then reads as 0.0, and every version-dependent writer takes the oldest branch - BDPW.hasHash2() among them, so the rebuilt password block lost hash_2 (48 -> 32 bytes). Measured 2026-11-06 on JKI VI Tester's ExampleTestSuite (setUp.vi, tearDown.vi, New.vi: LabVIEW 8.2 files whose LVSR switches to raw) among every example of LabVIEW 2026. When LVSR yields no major version, the 'vers' block - which says 8.2 there - answers instead.",
+      "upstream": "not reported yet; getFileVersion has no fallback when LVSR is unparsed."
+    },
+    {
+      "id": "datatype-import-os",
+      "file": "pylabview/LVdatatype.py",
+      "find": "import enum\r\nimport struct\r\n",
+      "replace": "import enum\r\nimport os\r\nimport struct\r\n",
+      "why": "TDObject.exportXML writes an unmodelled type descriptor as a .bin file and names it with os.path.basename, but LVdatatype.py never imports os - upstream never reached that branch, because every type it met was modelled or exported inline. ref-family-non-refnum-raw and ref-unknown-content-as-bin send real TDs there, and without this the whole VCTP block hit 'name 'os' is not defined' and fell back to raw: the round trip stayed exact, but the reader saw no types at all for such a VI. Found through pylv_extract on Map Collection - Word Counting.vi, 2026-11-06.",
+      "upstream": "not reported yet; LVdatatype.py uses os without importing it."
     }
   ]
 }

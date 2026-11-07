@@ -983,6 +983,8 @@ class VI():
         vers = self.get_one_of('LVSR', 'vers') # TODO add LVIN when its supported
         if vers is not None:
             ver = vers.getVersion()
+            if (not isinstance(ver, dict) or ver.get('major', 0) == 0) and self.get_one_of('vers') is not None:
+                ver = self.get_one_of('vers').getVersion()
         else:
             # No version found - return all fields zeroed out
             ver = decodeVersion(0x0)

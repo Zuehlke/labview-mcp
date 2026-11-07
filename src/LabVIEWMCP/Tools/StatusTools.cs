@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Grpc.Core;
 using LabVIEWMcp.Grpc;
 using LabVIEWMcp.GrpcReflection;
 using LabVIEWMcp.Infra;
@@ -16,17 +17,17 @@ internal sealed class StatusTools(LvaiConnection connection)
 {
     private static readonly JsonSerializerOptions Indented = Json.Answer;
 
-    [McpServerTool(Name = "lvai_status", ReadOnly = true, Title = "LabVIEW gRPC connection status")]
+    [McpServerTool(Name = "lvai_status", ReadOnly = true, Title = "NI's gRPC service status")]
     [Description("""
-        Status: is LabVIEW's embedded AI gRPC server reachable - the discovered port (ephemeral,
-        re-discovered on every LabVIEW restart), how it was found, and the reflected service list.
-        Start here; every gRPC-backed lvai_* tool depends on it. Also reports scriptsDirectory (the
-        absolute path of the shipped helper scripts - use it instead of a relative path),
-        `serverVersion`, and `labviewUpSeconds`.
-        `labviewHealth` counts DWarn EVENTS in NI's own crash log for this LabVIEW instance
-        (`dwarnCountedBy` names the rule). Use it AFTER a failure, NEVER as a gate before work - it
-        has been wrong in both directions. An `Unavailable` gRPC status is explained in the Nigel
-        service log under %ProgramData%\National Instruments\AIAssistants\Logs.
+        Status of NI's AI gRPC service inside LabVIEW: the discovered port (re-discovered on every
+        LabVIEW restart), how it was found, the reflected service list. On the pylabview backend
+        (the default) START WITH pylv_status instead - it answers without NI's service and says
+        whether the service is up (`grpcService`). With the service down this answers `ok: false`
+        and STILL carries the fields that need no service: `scriptsDirectory`, `serverVersion`,
+        `labviewHealth`. `labviewHealth` counts DWarn EVENTS in NI's crash log for this LabVIEW
+        (`dwarnCountedBy` names the rule) - read it AFTER a failure, never as a gate. An
+        `Unavailable` status is explained in the Nigel service log under
+        %ProgramData%\National Instruments\AIAssistants\Logs.
         """)]
     public async Task<string> StatusAsync(CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
@@ -37,9 +38,29 @@ internal sealed class StatusTools(LvaiConnection connection)
             // after a LabVIEW restart returned "Unavailable: Error connecting to subchannel"
             // and kept doing so - the one tool that claimed to heal itself was the one that
             // could not, and a unary tool had to be called first to unstick it.
-            var config = await connection.InvokeAsync((c, t) =>
-                c.GetApplicationConfigurationAsync(new GetApplicationConfigurationRequest(),
-                    deadline: Rpc.Deadline(15), cancellationToken: t).ResponseAsync, ct);
+            GetApplicationConfigurationResponse? config = null;
+            var failure = await Rpc.GuardAsync(async () =>
+            {
+                config = await connection.InvokeAsync((c, t) =>
+                    c.GetApplicationConfigurationAsync(new GetApplicationConfigurationRequest(),
+                        deadline: Rpc.Deadline(15), cancellationToken: t).ResponseAsync, ct);
+                return "";
+            });
+            // THE SERVICE IS DOWN, AND THE ANSWER STILL CARRIES WHAT NEEDS NO SERVICE. Until
+            // 2026-11-06 a failed probe was the whole answer, so a station without NI's service
+            // lost scriptsDirectory - the doc agent's path to lvdoc_print.xml - and the crash-log
+            // count, neither of which has anything to do with gRPC.
+            if (failure.Length > 0)
+            {
+                var down = JsonNode.Parse(failure)!.AsObject();
+                foreach (var (key, value) in ServiceIndependent()) down[key] = value?.DeepClone();
+                down["labviewHealth"] = Health(target: NewestRunning());
+                down["note"] = "NI's gRPC service did not answer. The fields beside this need no " +
+                               "service. On the pylabview backend this is not a blocker: " +
+                               "pylv_status is the start-up check, lvai_ensure_labview the " +
+                               "readiness check (LabVIEW answering over ActiveX).";
+                return down.ToJsonString(Indented);
+            }
 
             var services = new JsonArray();
             string? reflectionError = null;
@@ -52,30 +73,98 @@ internal sealed class StatusTools(LvaiConnection connection)
                 reflectionError = $"{e.GetType().Name}: {e.Message}";
             }
 
-            return new JsonObject
+            var answer = new JsonObject
             {
                 ["ok"] = true,
                 ["address"] = connection.Address,
                 ["port"] = connection.Port,
                 ["discoveredVia"] = connection.DiscoveredVia,
-                ["applicationLanguage"] = config.Language,
-                // Which build of THIS server is answering. A `-dev` suffix means the exe did not
-                // come from the release workflow; `serverCommit` pins it exactly either way.
-                ["serverVersion"] = ServerVersion.Current.Display,
-                ["serverCommit"] = ServerVersion.Current.Commit,
-                ["scriptsDirectory"] = ScriptsDirectory(),
-                ["claudeAssetsDirectory"] = ClaudeAssetsDirectory(),
-                // The add-on build the export cache is keyed to. Reported because a dropped cache
-                // is otherwise invisible: the first read after an upgrade just takes longer, which
-                // looks like a slow VI rather than an invalidation that was supposed to happen.
-                ["aiAddonFingerprint"] = LvaiVersion.Compute(),
-                ["aiAddonRecorded"] = LvaiVersion.Recorded(),
-                ["services"] = services,
-                ["reflectionError"] = reflectionError,
-                // A LabVIEW that is running and answering can still be too sick to work.
-                ["labviewHealth"] = Health(connection.Port),
-            }.ToJsonString(Indented);
+                ["applicationLanguage"] = config!.Language,
+            };
+            foreach (var (key, value) in ServiceIndependent()) answer[key] = value?.DeepClone();
+            answer["services"] = services;
+            answer["reflectionError"] = reflectionError;
+            // A LabVIEW that is running and answering can still be too sick to work.
+            answer["labviewHealth"] = Health(connection.Port);
+            return answer.ToJsonString(Indented);
         });
+
+    /// <summary>
+    /// What a status answer reports that needs neither NI's service nor a running LabVIEW - shared
+    /// by lvai_status and pylv_status, so the two cannot drift apart on it.
+    /// </summary>
+    internal static JsonObject ServiceIndependent() => new()
+    {
+        // Which build of THIS server is answering. A `-dev` suffix means the exe did not
+        // come from the release workflow; `serverCommit` pins it exactly either way.
+        ["serverVersion"] = ServerVersion.Current.Display,
+        ["serverCommit"] = ServerVersion.Current.Commit,
+        ["scriptsDirectory"] = ScriptsDirectory(),
+        ["claudeAssetsDirectory"] = ClaudeAssetsDirectory(),
+        // The add-on build the export cache is keyed to. Reported because a dropped cache
+        // is otherwise invisible: the first read after an upgrade just takes longer, which
+        // looks like a slow VI rather than an invalidation that was supposed to happen.
+        ["aiAddonFingerprint"] = LvaiVersion.Compute(),
+        ["aiAddonRecorded"] = LvaiVersion.Recorded(),
+    };
+
+    /// <summary>
+    /// The LabVIEW the pylabview backend talks to when no gRPC port names one: the NEWEST running
+    /// release, which is the one ActiveX attaches to (LabViewCom picks its bitness the same way).
+    /// Null when no running LabVIEW names its release.
+    /// </summary>
+    internal static (int Pid, int Release)? NewestRunning()
+    {
+        var running = LabViewVersionStamp.RunningReleases();
+        return running.Count == 0 ? null
+            : running.OrderByDescending(r => r.Release).Select(r => (r.Pid, r.Release)).First();
+    }
+
+    /// <summary>
+    /// Whether NI's service answers, within <paramref name="budget"/> - for pylv_status, where the
+    /// service is a SIDE fact (may a composerRefused call be repeated on grpc?) and its absence
+    /// must never fail the answer. Only the first line and the per-port lines of a discovery
+    /// failure are kept: the status codes there are what tells "not started yet" (Unavailable)
+    /// from "busy or hung" (DeadlineExceeded).
+    /// </summary>
+    internal static async Task<JsonObject> ProbeServiceAsync(LvaiConnection connection, TimeSpan budget,
+                                                             CancellationToken ct)
+    {
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(budget);
+        try
+        {
+            var config = await connection.InvokeAsync((c, t) =>
+                c.GetApplicationConfigurationAsync(new GetApplicationConfigurationRequest(),
+                    deadline: DateTime.UtcNow.Add(budget), cancellationToken: t).ResponseAsync, limit.Token);
+            return new JsonObject
+            {
+                ["reachable"] = true,
+                ["port"] = connection.Port,
+                ["discoveredVia"] = connection.DiscoveredVia,
+                ["applicationLanguage"] = config.Language,
+            };
+        }
+        catch (Exception e) when (!ct.IsCancellationRequested)
+        {
+            var why = e switch
+            {
+                OperationCanceledException => $"no answer within {budget.TotalSeconds:0.#} s",
+                RpcException r => $"{r.StatusCode}: {r.Status.Detail}",
+                _ => string.Join(" ", e.Message.Split(Environment.NewLine)
+                        .Where((line, i) => i == 0 || line.StartsWith("  - ", StringComparison.Ordinal))
+                        .Select(line => line.Trim())),
+            };
+            return new JsonObject
+            {
+                ["reachable"] = false,
+                ["why"] = why,
+                ["note"] = "Not a blocker on the pylabview backend. Repeat a composerRefused call " +
+                           "with backend grpc only while this reads reachable: true. NI's service " +
+                           "comes up about 45 s after a cold LabVIEW start.",
+            };
+        }
+    }
 
     /// <summary>
     /// What NI's own crash log says about this LabVIEW instance, counted rather than parsed.
@@ -104,14 +193,21 @@ internal sealed class StatusTools(LvaiConnection connection)
     /// like evidence of appending and is not - the second reading is a different, fast-growing
     /// file. Count the `#Date:` headers instead. An agent drew exactly that wrong conclusion here.
     /// </summary>
-    internal static JsonObject Health(int? connectedPort = null)
+    internal static JsonObject Health(int? connectedPort = null, (int Pid, int Release)? target = null)
     {
         var temp = Path.GetTempPath();
         // THE LabVIEW BEING TALKED TO, not the newest log. Measured 2026-10-14 with LabVIEW 2020 and
         // 2026 running together: the 2020 log was written last, so this reported 2020's log and
         // 2020's age beside a gRPC service that belonged to 2026. The owner of the connected port
-        // is the instance this answer is about - the rule LabViewVersionStamp already uses.
-        var (pid, release) = ConnectedLabView(connectedPort);
+        // is the instance this answer is about - the rule LabViewVersionStamp already uses. With
+        // no port (pylabview, or the service down) the caller names the instance: the newest
+        // running one, which ActiveX attaches to.
+        var (pid, release) = target is { } named
+            ? ((int?)named.Pid, (int?)(named.Release > 0 ? named.Release : null))
+            : ConnectedLabView(connectedPort);
+        var matchedTo = release is null ? null
+            : target is null ? $"LabVIEW {release} serving port {connectedPort} (pid {pid})"
+            : $"LabVIEW {release} (pid {pid}), the newest running - the one ActiveX attaches to";
         string? log = null;
         try
         {
@@ -192,7 +288,7 @@ internal sealed class StatusTools(LvaiConnection connection)
             ["logPath"] = log,
             // Which LabVIEW the log and the age were matched to; null when the port's owner could
             // not be read, and then the newest log and the youngest LabVIEW stand in, as before.
-            ["matchedTo"] = release is null ? null : $"LabVIEW {release} serving port {connectedPort} (pid {pid})",
+            ["matchedTo"] = matchedTo,
             ["logWrittenUtc"] = File.GetLastWriteTimeUtc(log).ToString("O"),
             // The OS's own answer, not an inference from the log: a log can be appended to across
             // restarts, so its age is not the instance's age.

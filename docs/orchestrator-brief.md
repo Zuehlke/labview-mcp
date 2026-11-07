@@ -53,6 +53,12 @@ agent that has to rediscover them reads long documents at runtime.
 Two agents writing into one folder overwrite each other's files. Give each agent its own folder,
 for example `<project>\Tests\<ClassName>\`, and say so in its prompt.
 
+## Check the station with `pylv_status`
+
+`pylv_status` is the start-up check: it needs no LabVIEW and no NI service, and names the backend
+in force, the running LabVIEWs and whether NI's service answers (`grpcService`). Readiness is
+`lvai_ensure_labview`. `lvai_status` reports NI's service; it matters only on the `grpc` backend.
+
 ## Only you open and close projects
 
 Parallel agents share ONE LabVIEW instance. A project is global to it, and closing a project SAVES

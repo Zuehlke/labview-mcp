@@ -169,13 +169,16 @@ specification, not a suggestion:
 
 ### Phase 0 — LabVIEW, and the project you are writing into
 
-1. `lvai_status`. If it answers `Unavailable` on LabVIEW.exe listeners, the IDE is up but the
-   service is not YET — it comes up with LabVIEW itself, about 45 s after a cold start, no Nigel
-   chat needed (measured 2026-10-17); carry on with step 2 and call `lvai_status` again. Only if it
-   is still `Unavailable` after about two minutes ask the user to open Nigel. If it answers `DeadlineExceeded`, LabVIEW is
-   **hung**: confirm with `(Get-Process LabVIEW).Responding` and kill it.
-2. `lvai_ensure_labview` until `state: ready`. The first call after a start often returns
-   `starting`; calling again is normal and is not an error.
+1. `pylv_status` - the start-up check, which needs no NI service: `aixmlBackend.serverDefault`
+   is the backend in force. Only when it is `grpc`, `lvai_status` as well: `Unavailable` on
+   LabVIEW.exe listeners means the IDE is up and NI's service is not YET - it comes up with LabVIEW
+   itself, about 45 s after a cold start, no Nigel chat needed (measured 2026-10-17); carry on with
+   step 2 and call it again, and only if it is still `Unavailable` after about two minutes ask the
+   user to open Nigel. `DeadlineExceeded` means LabVIEW is **hung**: confirm with
+   `(Get-Process LabVIEW).Responding` and kill it. On `pylabview` NI's service is NOT needed -
+   `grpcService.reachable: false` is no blocker.
+2. `lvai_ensure_labview` until `state: ready` (on `pylabview`: LabVIEW answers over ActiveX). The
+   first call after a start often returns `starting`; calling again is normal and is not an error.
 3. Settle the project. If the user named a `.lvproj`, use it. Otherwise write a minimal one next to
    the classes (§2 of `lvai_lvproj_reference`) with `Dependencies` and `Build Specifications` and
    nothing else. **Write it with a UTF-8 BOM and CRLF**, the way LabVIEW does.
@@ -1040,7 +1043,7 @@ report, and if the VI does not load there while NI's service is up, compose it a
    `errorCode 0` means the composer CAN build the document; executability and a run stay the
    verdict, as always.
 4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
-   with an `UNSUPPORTED: ...` line. Quote it. If `lvai_status` shows NI's service up, repeat that
+   with an `UNSUPPORTED: ...` line. Quote it. If `pylv_status` shows `grpcService.reachable: true`, repeat that
    one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
    the line verbatim.
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be

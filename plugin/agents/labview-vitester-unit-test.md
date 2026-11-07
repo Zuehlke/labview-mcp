@@ -30,7 +30,8 @@ tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labvie
 Do this before writing a single line of AIXML. It is cheap and it is the whole reason this file
 exists as a scaffold rather than a recipe.
 
-1. `lvai_status`, then confirm the framework's files are present:
+1. `pylv_status`, then `lvai_ensure_labview` until `state: ready` (`lvai_status` only when the
+   backend in force is `grpc`). Then confirm the framework's files are present:
    `vi.lib\addons\_JKI Toolkits\VI Tester`.
 2. **Presence is not availability.** Establish that a VI in it can actually be *called* — one
    throwaway `lvai_validate_aixml` with a `Call` to a VI Tester target. An unresolvable target is
@@ -207,7 +208,7 @@ report, and if the VI does not load there while NI's service is up, compose it a
    `errorCode 0` means the composer CAN build the document; executability and a run stay the
    verdict, as always.
 4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
-   with an `UNSUPPORTED: ...` line. Quote it. If `lvai_status` shows NI's service up, repeat that
+   with an `UNSUPPORTED: ...` line. Quote it. If `pylv_status` shows `grpcService.reachable: true`, repeat that
    one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
    the line verbatim.
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be

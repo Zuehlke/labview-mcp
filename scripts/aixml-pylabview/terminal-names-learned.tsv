@@ -526,3 +526,311 @@ primResID	node	parmIndex	terminal
 8073	Set File Position	6	offset (in bytes) (0)
 8073	Set File Position	7	refnum
 8073	Set File Position	out	error out
+1184	Decimal String To Number	2	default (0L)
+# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
+# (2026-11-06): an unwired slot, named by elimination against NI's own listing
+1084	DataSocket Open	9	ms timeout (10000)
+1085	DataSocket Close	1	timed out
+1085	DataSocket Close	9	ms timeout (0)
+1115	Less Or Equal To 0?	1	x
+1146	?	1	number
+1146	?	out	single precision float
+1165	Unflatten From String	3	rest of the binary string
+1165	Unflatten From String	8	error in (no error)
+1171	?	out	(hi.lo)
+1180	Number To Decimal String	1	width (-)
+1184	Decimal String To Number	1	offset past number
+1184	Decimal String To Number	3	offset
+1227	Sinc	out	sin(x)/x
+1228	?	out	atan2(y\2Cx)
+1327	Wait Until Next ms Multiple	out	millisecond timer value
+1505	?	out	E-format string
+1600	Get Date/Time String	4	date format (0)
+1710	IP To String	1	dot notation? (F)
+1712	TCP Wait On Listener	9	timeout ms (wait forever\3A -1)
+1713	TCP Close Connection	10	abort (F)
+1713	TCP Close Connection	3	connection ID out
+1714	TCP Write	2	bytes written
+1714	TCP Write	9	timeout ms (25000)
+1731	Start TLS	2	server certificate chain
+1732	Accept TLS	2	client certificate chain
+1732	Accept TLS	7	timeout ms (300000)
+1733	Load Private Key Into Memory	9	password
+1734	Load Certificates Into Memory	8	error in (no error)
+1736	Add Trusted Certificate To TLS Configuration	8	error in (no error)
+1909	Threshold 1D Array	1	start index (0)
+1940	VISA Disable Event	9	mechanism (1\3A  VI_QUEUE)
+1941	VISA Discard Events	9	mechanism  (1\3A  VI_QUEUE)
+1943	VISA Wait on Event	2	event type
+1950	GPIB Write	5	status
+1951	GPIB Read	2	mode (0)
+1951	GPIB Read	6	status
+2010	TDMS Write	1	data layout (0\3Adecimated)
+2010	TDMS Write	8	channel name(s) out
+2011	TDMS Read	14	end of file?
+2021	TDMS Advanced Open	2	sector size
+2021	TDMS Advanced Open	8	error in (no error)
+2024	TDMS Configure Asynchronous Writes	4	timeout (5 s)
+2025	TDMS Set Next Write Position	9	from (0\3Astart)
+2027	TDMS Configure Asynchronous Reads	4	timeout (5 s)
+2029	TDMS Advanced Synchronous Read	4	read process finished?
+2033	TDMS Set Next Read Position	9	from (0\3A start)
+2034	TDMS Get Asynchronous Read Status	1	all buffers full?
+2074	Generate User Event	4	priority (normal)
+2158	TDMS In Memory Read Bytes	7	offset (0)
+23060	Re/Im To Polar	out	theta
+23783	?	out	error out
+2401	Swap Values	3	 x'  
+24206	Open Python Session	1	python path
+24208	Open MATLAB Session	out	release name
+2452	Insert Into Set	2	already included?
+2454	?	3	found?
+2456	Insert Into Map	11	map in
+2458	Look In Map	2	key not found?
+2458	Look In Map	9	default value
+3913	Replace Substring	out	replaced substring
+8010	Open VI Reference	6	password ("")
+8015	New VI Object	5	auto wire? (F)
+8050	Open/Create/Replace File	1	cancelled
+8051	Read from Binary File	1	cancelled
+8051	Read from Binary File	7	prompt (Open existing file)
+8055	Create Folder	1	cancelled
+8055	Create Folder	7	prompt (Create Folder)
+8056	Delete	1	cancelled
+8058	File Dialog	1	cancelled
+8070	Read from Text File	1	cancelled
+8070	Read from Text File	7	prompt (Open existing file)
+8078	Write to Binary File	1	cancelled
+8080	Write to Text File	1	cancelled
+8080	Write to Text File	7	prompt (Choose or enter file path)
+8101	Scan String For Tokens	3	string out
+8204	Set Variant Attribute	2	replaced
+8206	Delete Variant Attribute	2	found
+8207	Set Waveform Attribute	2	replaced
+9003	Insert Menu Items	4	after item
+9006	Set Menu Item Info	10	item name
+9109	Release Queue	8	queue name
+9110	Get Queue Status	1	return elements? (F)
+9111	Enqueue Element	10	timed out?
+9114	Flush Queue	9	remaining elements
+9129	Enqueue Element At Opposite End	10	timed out?
+9129	Enqueue Element At Opposite End	2	timeout in ms (-1)
+9141	?	8	error in (no error)
+# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
+# (2026-11-06): an unwired slot, named by elimination against NI's own listing
+1086	DataSocket Read	9	ms timeout (10000)
+1087	?	10	data
+1087	?	11	connection in
+1087	?	8	error in (no error)
+1171	?	1	lo
+1171	?	2	hi
+1185	?	2	default (0uL)
+1185	?	4	string
+1228	?	1	x
+1228	?	2	y
+1505	?	3	width (-)
+1512	?	2	format string
+1512	?	3	string ("")
+1607	?	3	carry
+1716	TCP Read	7	mode (standard)
+1716	TCP Read	9	timeout ms (25000)
+1717	TCP Create Listener	11	service name
+1723	?	10	service name
+1723	?	11	port
+1723	?	7	net address
+1724	?	11	connection ID
+1724	?	8	error in (no error)
+1724	?	9	timeout ms (25000)
+1725	?	10	data in
+1725	?	11	connection ID
+1725	?	5	port or service name
+1725	?	7	address
+1725	?	8	error in (no error)
+1726	?	11	connection ID
+1726	?	8	error in (no error)
+1942	VISA Enable Event	11	VISA resource name
+23783	?	11	shared variable refnum in
+23783	?	8	error in (no error)
+2401	Swap Values	13	?(T)
+24201	Flatten To JSON	3	error in (no error)
+2453	?	10	element
+2453	?	11	set in
+2454	?	11	set
+8054	?	10	operation (0\3Aopen)
+8054	?	11	datalog path (use dialog)
+8054	?	5	record type
+8054	?	9	access (0\3Aread/write)
+8068	?	9	overwrite (F)
+8072	?	6	offset (in records) (0)
+8078	Write to Binary File	9	byte order (0\3Abig-endian\2C network order)
+8079	?	6	record(s)
+9130	?	1	element
+9130	?	3	error in (no error)
+9130	?	out	queue
+9140	?	10	service name
+9142	?	10	remote device id
+9142	?	11	service name
+9142	?	8	error in (no error)
+9151	?	10	uuid
+9151	?	6	service description
+9151	?	8	error in (no error)
+9152	?	10	time limit ms (10000)
+9153	?	10	channel (0)
+9153	?	11	address
+# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
+# (2026-11-06): an unwired slot, named by elimination against NI's own listing
+1086	DataSocket Read	6	wait for updated value (T)
+1087	?	9	ms timeout (0)
+1185	?	3	offset
+1607	?	2	value
+1717	TCP Create Listener	9	timeout ms (25000)
+1724	?	10	max size (548)
+1725	?	9	timeout ms (25000)
+1942	VISA Enable Event	9	mechanism (1\3A  VI_QUEUE)
+24201	Flatten To JSON	6	enable LabVIEW extensions? (T)
+2454	?	10	element
+8068	?	7	prompt (Choose or enter target path for move)
+8078	Write to Binary File	7	prompt (Choose or enter file path)
+9140	?	8	error in (no error)
+9142	?	9	timeout ms (60000)
+9151	?	7	address
+9152	?	8	error in (no error)
+# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
+# (2026-11-06): an unwired slot, named by elimination against NI's own listing
+1087	?	1	connection out
+1087	?	3	timed out
+1087	?	out	error out
+1170	Split Number	1	hi(x)
+1170	Split Number	2	lo(x)
+1185	?	1	offset past number
+1185	?	out	number
+1187	Fract/Exp String To Number	3	default (0 dbl)
+1187	Fract/Exp String To Number	4	offset
+1328	Wait For Front Panel Activity	1	timeout ms (-1 never timeout)
+1328	Wait For Front Panel Activity	2	front panel (this VI's panel)
+1328	Wait For Front Panel Activity	3	do not wait! (False)
+1505	?	1	use system decimal point (T)
+1505	?	2	precision (6)
+1607	?	1	lsb carry out
+1607	?	out	value
+1701	Wait on Occurrence	1	ignore previous (T)
+1701	Wait on Occurrence	3	ms timeout (-1)
+1715	TCP Open Connection	6	local port
+1715	TCP Open Connection	9	timeout ms (60000)
+1723	?	2	connection ID
+1723	?	3	port
+1723	?	8	error in (no error)
+1723	?	9	timeout ms (25000)
+1723	?	out	error out
+1724	?	2	address
+1724	?	3	port
+1724	?	4	connection ID out
+1724	?	6	data out
+1724	?	out	error out
+1725	?	3	connection ID out
+1725	?	out	error out
+1726	?	3	connection ID out
+1726	?	out	error out
+1731	Start TLS	6	server certificate validation
+1731	Start TLS	7	timeout ms
+2032	TDMS Advanced Close	10	truncate file? (F)
+2032	TDMS Advanced Close	6	timeout (10 s)
+2311	VISA Map Trigger	10	trigger source
+2311	VISA Map Trigger	7	mode
+2311	VISA Map Trigger	9	trigger destination
+2312	VISA Unmap Trigger	10	trigger source
+2312	VISA Unmap Trigger	9	trigger destination (all)
+23781	?	1	timestamp
+23781	?	11	shared variable refnum in
+23781	?	2	shared variable refnum out
+23781	?	3	data out
+23781	?	8	error in (no error)
+23781	?	out	error out
+24206	Open Python Session	11	error out
+24206	Open Python Session	8	session out
+24207	Close Python Session	3	error in
+24207	Close Python Session	out	session in
+24208	Open MATLAB Session	11	error out
+24208	Open MATLAB Session	8	session out
+2453	?	2	set out
+2453	?	3	not included?
+2456	Insert Into Map	1	map out
+2456	Insert Into Map	2	key already included?
+2456	Insert Into Map	3	value unchanged?
+3914	Search and Replace String	10	offset past replacement
+3914	Search and Replace String	15	error out
+3914	Search and Replace String	8	number of replacements
+8000	Automation Open	10	machine name
+8000	Automation Open	8	error in (no error)
+8000	Automation Open	9	open new instance
+8014	New VI	11	application refnum
+8014	New VI	5	password
+8014	New VI	6	type specifier VI Refnum (for type only)
+8014	New VI	7	not connected
+8050	Open/Create/Replace File	6	disable buffering (F)
+8050	Open/Create/Replace File	7	prompt
+8054	?	1	refnum out
+8054	?	3	cancelled
+8054	?	7	prompt
+8054	?	8	error in
+8054	?	out	error out
+8056	Delete	7	prompt (Delete)
+8056	Delete	9	confirm (F)
+8068	?	1	new path
+8068	?	3	cancelled
+8069	?	2	refnum out
+8069	?	3	record(s)
+8069	?	4	error in
+8069	?	6	count (1)
+8069	?	7	refnum
+8069	?	out	error out
+8072	?	3	refnum out
+8072	?	4	error in
+8072	?	5	from (0\3Astart)
+8072	?	7	refnum
+8072	?	out	error out
+8079	?	3	refnum out
+8079	?	4	error in
+8079	?	7	refnum
+8079	?	out	error out
+8101	Scan String For Tokens	5	allow empty tokens? (F)
+8101	Scan String For Tokens	6	delimiters (\5Cs\2C\5Ct\2C\5Cr\2C\5Cn)
+9106	Wait on Notification from Multiple	1	error in (no error)
+9106	Wait on Notification from Multiple	10	timed out?
+9106	Wait on Notification from Multiple	2	timeout in ms (-1)
+9106	Wait on Notification from Multiple	3	ignore previous (F)
+9106	Wait on Notification from Multiple	8	notifier out
+9110	Get Queue Status	10	# pending insert
+9110	Get Queue Status	4	max queue size
+9110	Get Queue Status	5	queue name
+9110	Get Queue Status	6	elements
+9110	Get Queue Status	9	# pending remove
+9130	?	10	overflow?
+9130	?	11	error out
+9130	?	8	queue out
+9130	?	9	overflow element
+9140	?	3	listener ID
+9140	?	out	error out
+9141	?	2	number of devices
+9141	?	3	device list
+9141	?	out	error out
+9142	?	3	connection ID
+9142	?	out	error out
+9151	?	2	listener ID
+9151	?	3	channel
+9151	?	out	error out
+9152	?	2	number of devices
+9152	?	3	device list
+9152	?	out	error out
+9153	?	3	connection ID
+9153	?	6	uuid
+9153	?	8	error in (no error)
+9153	?	9	timeout ms (60000)
+9153	?	out	error out
+# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
+# (2026-11-06): an unwired slot, named by elimination against NI's own listing
+2012	TDMS Open	9	byte order (2\3Alittle-endian)
+8058	File Dialog	8	error in
+# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
+# (2026-11-06): an unwired slot, named by elimination against NI's own listing
+2012	TDMS Open	5	create index file? (T)

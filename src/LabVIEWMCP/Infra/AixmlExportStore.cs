@@ -30,7 +30,9 @@ namespace LabVIEWMcp.Infra;
 /// WHY NOT PRE-WARM THE WHOLE CORPUS. 52 minutes of LabVIEW time, and the sweep that measured it
 /// had to recycle LabVIEW along the way - about 130 handles leaked per VI, 116 000 handles and
 /// 1.3 GB after 900 of them, and one VI killed the process outright. An agent reads a handful of
-/// examples per session. So entries are written as they are asked for, never in advance.
+/// examples per session. So NI's entries are written as they are asked for, never in advance. The
+/// READER's are another matter - it needs no LabVIEW - and <see cref="ReaderPrewarm"/> reads the
+/// examples into the cache in the background on the pylabview backend.
 ///
 /// ONLY INSTALLATION VIs ARE CACHED, and that boundary is the whole safety argument. An export
 /// depends not just on the VI but on its subVIs, and the key below cannot see them: a subVI edited
@@ -328,6 +330,46 @@ internal static class AixmlExportStore
 
                 if (!remove) continue;
                 try { File.Delete(file); removed++; }
+                catch { /* one stuck file must not abort the sweep */ }
+            }
+            return removed;
+        }
+        catch { return 0; }
+    }
+
+    /// <summary>
+    /// Remove the READER's entries made by other reader code than <paramref name="currentStamp"/>.
+    /// Such an entry can never be a hit again - its key carries the old code's hash - so before
+    /// this it stayed on disk for good: the cache of 2026-11-07 held 95 reader entries under 11
+    /// different hashes, of which at most one could still be served. NI's entries are not touched.
+    /// Returns how many entries (pairs) went.
+    /// </summary>
+    /// <param name="directory">As for <see cref="Reap"/>: a test passes its own.</param>
+    public static int ReapStaleReader(string currentStamp, string? directory = null)
+    {
+        try
+        {
+            var target = directory ?? Directory;
+            if (!System.IO.Directory.Exists(target)) return 0;
+
+            var current = $"pylabview@{currentStamp}|";
+            var removed = 0;
+            foreach (var record in System.IO.Directory.EnumerateFiles(target, "*.json").ToList())
+            {
+                Sidecar? sidecar;
+                try { sidecar = JsonSerializer.Deserialize<Sidecar>(File.ReadAllText(record), Options); }
+                catch { continue; }
+                if (sidecar?.Key is not { } key
+                    || !key.StartsWith("pylabview@", StringComparison.OrdinalIgnoreCase)
+                    || key.StartsWith(current, StringComparison.OrdinalIgnoreCase)) continue;
+                try
+                {
+                    // the payload first: a sidecar left alone reads as a miss, a payload alone is
+                    // what Reap clears
+                    File.Delete(Path.ChangeExtension(record, ".xml"));
+                    File.Delete(record);
+                    removed++;
+                }
                 catch { /* one stuck file must not abort the sweep */ }
             }
             return removed;

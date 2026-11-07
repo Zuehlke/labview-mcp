@@ -138,7 +138,7 @@ def rebuild(main_xml, vi_path):
 class Bundle:
     """Read-only view of an extracted bundle: main tree, both heaps, the type chain."""
 
-    def __init__(self, main_xml):
+    def __init__(self, main_xml, collections=False):
         self.main_xml = main_xml
         self.dir = os.path.dirname(main_xml)
         self.main = ET.parse(main_xml).getroot()
@@ -146,10 +146,45 @@ class Bundle:
         self.bd = self._heap("BDHb")
         vctp = self.main.find("VCTP/Section")
         self.flat = [td for td in vctp if td.tag == "TypeDesc"]
+        if collections:
+            # the READER's view only: the composer copies a callee's types as they stand, and a
+            # rewritten set would no longer serialize
+            self._collections()
         self.toplevel = {int(t.get("Index")): int(t.get("FlatTypeID"))
                          for t in vctp.find("TopLevel")}
         dthp = self.main.find("DTHP/Section/TypeDescSlice")
         self.index_shift = int(dthp.get("IndexShift")) if dthp is not None else 0
+
+    def _collections(self):
+        """SET and MAP types (0x73, 0x74), which pylabview keeps raw (patch ref-family-non-refnum-raw):
+        their bytes are the element's index into this flat list - a map a count and then the key's
+        and the value's - and a Pascal label. Rewritten here as Type="Set"/"Map" with TypeID
+        children, so tree() inlines them like any other container; measured on NI's Set and Map
+        Collection examples, whose export writes set{string} and map{string.word,uint64.count}
+        where the reader said ?115 and ?116 (2026-11-06)."""
+        for td in self.flat:
+            kind = {"115": "Set", "116": "Map"}.get(td.get("Type"))
+            if kind is None or not td.get("File"):
+                continue
+            try:
+                b = open(os.path.join(self.dir, td.get("File")), "rb").read()
+            except OSError:
+                continue
+            if kind == "Set" and len(b) >= 2:
+                idx, pos = [int.from_bytes(b[0:2], "big")], 2
+            elif kind == "Map" and len(b) >= 6:
+                idx, pos = [int.from_bytes(b[2:4], "big"), int.from_bytes(b[4:6], "big")], 6
+            else:
+                continue
+            if any(i >= len(self.flat) for i in idx):
+                continue
+            td.set("Type", kind)
+            td.set("Format", "inline")
+            if td.get("HasLabel") == "1" and pos < len(b):
+                n = b[pos]
+                td.set("Label", b[pos + 1:pos + 1 + n].decode("cp1252", "replace"))
+            for i in idx:
+                ET.SubElement(td, "TypeDesc", {"TypeID": str(i)})
 
     def _heap(self, block):
         sec = self.main.find(block + "/Section")

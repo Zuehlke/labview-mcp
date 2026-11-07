@@ -33,56 +33,99 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
 
     [McpServerTool(Name = "pylv_status", ReadOnly = true, Title = "pylabview bundle status")]
     [Description("""
-        Status: whether the bundled pylabview is present and usable - directory, Python version,
-        pinned commit, name tables, the server version and the AIXML backend default. Start here:
-        every other pylv_* tool needs the bundle. A source checkout has none until
-        tools\pylabview\provision.ps1 has run; a binary install carries it (if missing, update the
-        plugin). Needs NO running LabVIEW and no Python installation.
+        Status, START HERE - the first call of every LabVIEW task on the pylabview backend (the
+        default). Needs NO running LabVIEW, no NI service and no Python installation. Reports the
+        bundled pylabview (directory, Python, pinned commit, name tables), the AIXML backend
+        default (`aixmlBackend`), `scriptsDirectory` (absolute path of the shipped helper scripts),
+        `serverVersion`, the running LabVIEWs and whether ActiveX may attach (`labview`),
+        `labviewHealth` (DWarn events in NI's crash log of the LabVIEW ActiveX reaches - read it
+        AFTER a failure, never as a gate), and `grpcService`: whether NI's service answers, as a
+        side fact (a composerRefused call may be repeated on grpc only while it reads reachable).
+        `readerPrewarm`: the background read of the examples into the export cache;
+        `exportCache`: how many of those examples the cache covers NOW (`state` warm, partial, cold,
+        or unknown while the example index is still being built).
+        Readiness to work is lvai_ensure_labview. A source checkout has no bundle until
+        tools\pylabview\provision.ps1 has run; a binary install carries it.
         """)]
     public Task<string> StatusAsync(CancellationToken ct = default) =>
-        Rpc.GuardAsync(() =>
+        Rpc.GuardAsync(async () =>
         {
             var bundle = PyLabview.Locate();
             if (bundle is null)
-                return Task.FromResult(Json.Error("notProvisioned", NotProvisioned, new
+            {
+                var refused = JsonNode.Parse(Json.Error("notProvisioned", NotProvisioned, new
                 {
-                    // On the failure path especially: "the bundle is missing" is usually "this
-                    // install is older than v0.9.2", and the version is what settles that without
-                    // a second install to compare against.
-                    serverVersion = ServerVersion.Current.Display,
-                    serverCommit = ServerVersion.Current.Commit,
                     searched = new[]
                     {
                         PyLabview.DirectoryVariable + " (environment)",
                         Path.Combine(AppContext.BaseDirectory, "pylabview"),
                         "tools\\pylabview\\runtime, walking up from the exe",
                     },
-                }));
+                }))!.AsObject();
+                // On the failure path especially: "the bundle is missing" is usually "this
+                // install is older than v0.9.2", and the version is what settles that without
+                // a second install to compare against.
+                foreach (var (key, value) in StatusTools.ServiceIndependent()) refused[key] = value?.DeepClone();
+                return refused.ToJsonString(Indented);
+            }
 
-            return Task.FromResult(new JsonObject
+            var answer = new JsonObject
             {
                 ["ok"] = true,
-                // Which build of the SERVER is answering, not of the bundle. Reported here as
-                // well as in lvai_status because this tool needs no running LabVIEW, and a stale
-                // or half-extracted install is suspected exactly when LabVIEW is not up.
-                ["serverVersion"] = ServerVersion.Current.Display,
-                ["serverCommit"] = ServerVersion.Current.Commit,
-                ["directory"] = bundle.Directory,
-                ["pythonVersion"] = bundle.PythonVersion,
-                ["pythonArch"] = bundle.PythonArch,
-                ["pylabviewCommit"] = bundle.PylabviewCommit,
-                ["provisionedUtc"] = bundle.ProvisionedUtc,
-                // Without these two the annotation is a no-op and the XML stays numeric, which is
-                // the difference between a readable diagram and a heap of integers.
-                ["primitiveNamesTable"] = bundle.PrimitiveNamesTsv,
-                ["terminalNamesTable"] = bundle.TerminalNamesTsv,
-                ["canAnnotate"] = bundle.AnnotatePy is not null &&
-                                  bundle.PrimitiveNamesTsv is not null,
-                // Which converter the AIXML tools use when a call names none, and whether the
-                // pylabview one can run here. docs/aixml-backends.md.
-                ["aixmlBackend"] = AixmlComposer.Describe(),
-            }.ToJsonString(Indented));
+            };
+            // Which build of the SERVER is answering, the scripts folder, the add-on fingerprint -
+            // the same block lvai_status carries, because this is the start-up check now.
+            foreach (var (key, value) in StatusTools.ServiceIndependent()) answer[key] = value?.DeepClone();
+            answer["directory"] = bundle.Directory;
+            answer["pythonVersion"] = bundle.PythonVersion;
+            answer["pythonArch"] = bundle.PythonArch;
+            answer["pylabviewCommit"] = bundle.PylabviewCommit;
+            answer["provisionedUtc"] = bundle.ProvisionedUtc;
+            // Without these two the annotation is a no-op and the XML stays numeric, which is
+            // the difference between a readable diagram and a heap of integers.
+            answer["primitiveNamesTable"] = bundle.PrimitiveNamesTsv;
+            answer["terminalNamesTable"] = bundle.TerminalNamesTsv;
+            answer["canAnnotate"] = bundle.AnnotatePy is not null && bundle.PrimitiveNamesTsv is not null;
+            // Which converter the AIXML tools use when a call names none, and whether the
+            // pylabview one can run here. docs/aixml-backends.md.
+            answer["aixmlBackend"] = AixmlComposer.Describe();
+            // The background read of the examples into the export cache (ReaderPrewarm).
+            var camel = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+            answer["readerPrewarm"] = ReaderPrewarm.Current is { } p
+                ? JsonSerializer.SerializeToNode(p, camel)
+                : new JsonObject { ["state"] = "not started" };
+            // How much of what it reads is covered right now, from the files - warm or not is
+            // visible at once after a start, not only when a run has finished.
+            var coverage = JsonSerializer.SerializeToNode(ReaderPrewarm.MeasureInstalled(), camel)!.AsObject();
+            coverage["directory"] = AixmlExportStore.Directory;
+            answer["exportCache"] = coverage;
+            answer["labview"] = LabViewPicture();
+            // The crash log of the LabVIEW ActiveX attaches to - lvai_status matches it by the gRPC
+            // port, which this backend does not have.
+            answer["labviewHealth"] = StatusTools.Health(target: StatusTools.NewestRunning());
+            // NI's service as a SIDE fact, with a short budget: its absence never fails this answer.
+            answer["grpcService"] = await StatusTools.ProbeServiceAsync(connection, TimeSpan.FromSeconds(3), ct);
+            return answer.ToJsonString(Indented);
         });
+
+    /// <summary>
+    /// The running LabVIEWs from the process table, and whether the ActiveX route may attach now -
+    /// read WITHOUT a COM call, so this tool keeps its promise of needing no LabVIEW.
+    /// </summary>
+    private static JsonObject LabViewPicture()
+    {
+        var running = new JsonArray();
+        foreach (var (release, pid) in LabViewVersionStamp.RunningReleases())
+            running.Add(new JsonObject { ["release"] = release, ["pid"] = pid });
+        var notReady = LabViewCom.NotReady();
+        return new JsonObject
+        {
+            ["running"] = running,
+            ["activeXCanAttach"] = notReady is null,
+            ["activeXNote"] = notReady ?? "A LabVIEW with a window is running; the ActiveX route " +
+                              "attaches to the newest. lvai_ensure_labview confirms it answers.",
+        };
+    }
 
     // ---------------------------------------------------------------- extract
 

@@ -63,10 +63,17 @@ specification, not a suggestion:
 
 ## Phase 0 — establish the ground
 
-1. `lvai_status`. If the service is unreachable, `lvai_ensure_labview` and call `lvai_status` again
-   — the service comes up with LabVIEW itself, about 45 s after a cold start, no Nigel chat needed
-   (measured 2026-10-17). Only if it is still unreachable after about two minutes, say so plainly:
-   a human then needs to open Nigel.
+1. `pylv_status` - the start-up check, which needs no NI service: `aixmlBackend.serverDefault`
+   is the backend in force, `scriptsDirectory` the shipped scripts. Then `lvai_ensure_labview`
+   until `state: ready` (on `pylabview`: LabVIEW answers over ActiveX); the first call after a
+   start often returns `starting`, and calling again is normal. Still not ready -> stop and report. Only when
+   the backend in force is `grpc` (`aixmlBackend.serverDefault`), `lvai_status` as well:
+   `Unavailable` on LabVIEW.exe listeners means the IDE is up and NI's service is not YET - it
+   comes up with LabVIEW itself, about 45 s after a cold start, no Nigel chat needed (measured
+   2026-10-17); call it again, and only if it is still `Unavailable` after about two minutes ask
+   the user to open Nigel. `DeadlineExceeded` means LabVIEW is **hung**: confirm with
+   `(Get-Process LabVIEW).Responding` and kill it. On `pylabview` NI's service is NOT needed -
+   `grpcService.reachable: false` is no blocker.
 2. Every DQMH tool answers `dqmhMissing` naming the path it looked for when Delacor DQMH is not
    installed. Then return `CANNOT PROCEED` with that path; do not work around a missing framework.
 
@@ -320,7 +327,7 @@ report, and if the VI does not load there while NI's service is up, compose it a
    `errorCode 0` means the composer CAN build the document; executability and a run stay the
    verdict, as always.
 4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
-   with an `UNSUPPORTED: ...` line. Quote it. If `lvai_status` shows NI's service up, repeat that
+   with an `UNSUPPORTED: ...` line. Quote it. If `pylv_status` shows `grpcService.reachable: true`, repeat that
    one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
    the line verbatim.
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be

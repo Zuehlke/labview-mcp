@@ -96,9 +96,18 @@ def main(argv):
     for c, cnt in list(split.items())[:10]:
         print("  disputed", c, cnt)
     if "--write" in argv:
+        # MERGED with what the table held: the cache is not the corpus the old entries came from
+        # (it was emptied on 2026-10-26); a code path seen now wins (2026-11-07)
+        try:
+            names = json.load(open(OUT, encoding="utf-8")).get("names", {})
+        except (OSError, ValueError):
+            names = {}
+        before = len(names)
+        names.update(agreed)
+        print("table: %d entries before, %d after" % (before, len(names)))
         json.dump({"_doc": "property code path -> the name NI's exporter writes for it, learned by "
                            "learn_prop_names.py off its exports of whole VIs; only code paths every "
-                           "pair agreed on", "names": dict(sorted(agreed.items()))},
+                           "pair agreed on", "names": dict(sorted(names.items()))},
                   open(OUT, "w", encoding="utf-8", newline="\n"), indent=1, ensure_ascii=False)
         print("wrote", OUT)
 
