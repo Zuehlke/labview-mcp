@@ -2667,7 +2667,8 @@ follows: it ignores unwired terminals and descriptions.
 |---|---|---|---|---|---|
 | before | 250 of 1 767 | 99.58 % | 97.05 % | 88.27 % | 96.82 % |
 | first round | 1 163 of 1 767 | 99.67 % | 99.33 % | 98.99 % | 98.25 % |
-| second round | **1 402 of 1 767** | 99.73 % | 99.54 % | 99.45 % | 99.16 % |
+| second round | 1 402 of 1 767 | 99.73 % | 99.54 % | 99.45 % | 99.16 % |
+| third round | **1 476 of 1 767** | 99.75 % | 99.59 % | 99.58 % | 99.27 % |
 
 What changed, each family measured on that corpus:
 
@@ -2737,6 +2738,16 @@ What changed, each family measured on that corpus:
   `<Pnl Actor.Actor.Stopped>`; an unlabelled source is `<#1>`.
 - **A reference to a subpanel** is `type="{LV.SubPanel}"` with no element.
 
+**The third round**: Shared Variable nodes (the value terminal named after the variable, `name4`),
+.NET constructors (`target` the type, `{DotNet}` or `{DotNetCore}`, the constructor's own item
+pair left out, each parameter on both sides), Register Event Callback (roles by DCO flags, the
+user parameter by its label), a Call Library Function Node's unwired parameter (the first
+argument is the return value, every other one has an input side - SINK is set only when wired),
+and two more slots learned by LOCAL alignment (an unknown whose known neighbours sit where NI lists
+them; the next pass names the rest by elimination). compare_corpus.py itself had a defect: it
+looked a selector's net up UNESCAPED, so a source like `ExecutionAState` read as `?` on the
+reader's side.
+
 The composer learned one thing for it: `string{utf8}` (a String TypeDesc with Bit3), so the
 Multilingual examples compose as before rather than being refused.
 
@@ -2755,9 +2766,8 @@ that ran before broken; of the 22 composed for the first time, 18 run (notifier 
 types the reader now names) and 4 are DQMH library members calling private members - composed
 outside their library, as every census composes them.
 
-**Still different from NI, largest first**: constructs the reader does not read (Shared Variable
-nodes, the Timed Loop, .NET constructors, Register Event Callback, the DVR In Place pair), about 600
-terminal and wire facts in all; Set and Map TYPES (`set{string}`, `map{k,v}`, pylabview's raw
+**Still different from NI, largest first**: the Timed Loop (NI's own export of it drops the left
+data node and points the inner case's `selectin` at the case itself) and the DVR In Place pair; Set and Map TYPES (`set{string}`, `map{k,v}`, pylabview's raw
 0x73/0x74 descriptors); 11 Event Data Nodes NI writes with no `outputs` at all, for a reason not
 found; a handful of primitive slots no observation names. **Kept different on purpose**: a
 one-frame Event Structure, where NI writes no CaseFrame and loses the event, and a complex constant,

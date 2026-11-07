@@ -56,9 +56,10 @@ def facts(root):
         for a, v in el.attrib.items():
             if a in SKIP:
                 continue
-            v = aixml2vi.unescape(v)
             if a in NETS:
+                # a net name is looked up as WRITTEN (escaped), as the outputs that define it
                 v = ",".join("%s.%s" % src_of[n] if n in src_of else "?" for n in v.split(",") if n)
+            v = aixml2vi.unescape(v)
             attrs.add((uid, el.tag, a, v))
         for side in ("inputs", "outputs"):
             for term, net in aixml2vi.pairs(el.get(side)):

@@ -92,6 +92,13 @@ public sealed class ReaderNiParityTests : IDisposable
     [InlineData(@"Channels\Replacing The Function At The Heart Of An Algorithm At Run Time\Comparison By Year Born.vi", "88", "value", "[0,Doe,John,]", false)]
     // a CLUSTER of event registrations names each event after its registration
     [InlineData(@"MGI\Panel Manager\Basic Panel Actors\Helper Methods\Helper Methods\Actor Core.vi", "417", "selector", "<Pnl Actor.Actor.Stopped>", true)]
+    // third round: shared variables, .NET constructors, event callbacks, an unwired CLFN parameter
+    [InlineData(@"Data Communication\Shared Variable\Shared Variable Client - Data Item Binding.vi", "37", "outputs", "Bound Monitor Value 2:", true)]
+    [InlineData(@"Connectivity\Dot NET\Task Monitor Using .NET Objects.vi", "1065", "outputs", "categoryName:", true)]
+    [InlineData(@"Connectivity\Dot NET Core\Calling a .NET Core Assembly.vi", "43", "type", "{DotNetCore}", false)]
+    [InlineData(@"Connectivity\Dot NET Core\Passing Data to a .NET Core Event Callback.vi", "243", "inputs", "VI Ref:", true)]
+    // a slot named by local alignment, then elimination
+    [InlineData(@"File IO\TDMS\Advanced Read and Write\Align File with Disk Sector\Align TDMS File with Hard Disk Sector.vi", "626", "inputs", "create index file? (T):", true)]
     // a reference to a subpanel is typed, with no element
     [InlineData(@"MGI\Panel Manager\Basic Panel Actors\Composite User Interface\Composite User Interface\Actor Core.vi", "1336", "type", "{LV.SubPanel}", false)]
     public async Task The_reader_writes_what_NIs_export_writes(string example, string uid, string attribute, string expected, bool contains)

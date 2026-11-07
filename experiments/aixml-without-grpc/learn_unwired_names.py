@@ -87,6 +87,16 @@ def observe(vi, ref_path):
                         if a.startswith("?parm"):
                             out.append((str(rid), a[len("?parm"):], attr, b))
                     continue
+                # LOCAL alignment: an unknown whose known neighbours on both sides sit where NI
+                # lists them (TDMS Open's byte order, between `operation` and `error in`); the
+                # next pass names the rest by elimination
+                for i, a in enumerate(names_in_order):
+                    if not a.startswith("?parm") or ni_names[i] in known:
+                        continue
+                    nb = [j for j in (i - 1, i + 1) if 0 <= j < len(names_in_order)]
+                    if nb and all(not names_in_order[j].startswith("?") and names_in_order[j] == ni_names[j] for j in nb):
+                        out.append((str(rid), a[len("?parm"):], attr, ni_names[i]))
+                continue
             if not sink:
                 continue
             # several unknown INPUTS: a wired one pairs with the NI input fed by the same source

@@ -827,3 +827,10 @@ primResID	node	parmIndex	terminal
 9153	?	8	error in (no error)
 9153	?	9	timeout ms (60000)
 9153	?	out	error out
+# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
+# (2026-11-06): an unwired slot, named by elimination against NI's own listing
+2012	TDMS Open	9	byte order (2\3Alittle-endian)
+8058	File Dialog	8	error in
+# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
+# (2026-11-06): an unwired slot, named by elimination against NI's own listing
+2012	TDMS Open	5	create index file? (T)

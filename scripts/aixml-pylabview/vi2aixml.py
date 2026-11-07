@@ -794,7 +794,9 @@ NODE_READERS = {"nMux": "nmux", "mux": "mux", "demux": "demux", "aIndx": "aindx"
                 "exprNode": "expr", "fBox": "fbox",
                 "callByRefNode": "callbyref", "scriptNode": "scriptnode",
                 "decimate": "decimate", "xNode": "xnode", "extFunc": "extfunc", "Class0183": "pythonnode",
-                "Class0193": "matlabnode", "mergeSignal": "mergesignals"}
+                "Class0193": "matlabnode", "mergeSignal": "mergesignals",
+                "sharedVariable": "sharedvariable", "constructorNode": "constructornode",
+                "eventRegCallback": "eventregcallback"}
 CA_OPS ={0: "Add", 1: "Multiply", 2: "AND", 3: "OR", 4: "XOR"}
 # a bDFixed constant's `cnst` code -> its AIXML FixedConst name (the composer's own table, reversed)
 FIXED_BY_CODE = {v.upper(): k for k, v in aixml2vi.Composer.FIXED.items()}
@@ -1679,6 +1681,93 @@ class Reader:
         until 2026-11-06."""
         return self._session_call_node(node, parent_uid, "Python Node", ("module path", "function name"))
 
+    def eventregcallback(self, node, parent_uid):
+        """REGISTER EVENT CALLBACK, as NI's export writes it: `event callback refnum`, `error in
+        (no error)`, `event source`, `VI Ref` and the user parameter (by its label, else `User
+        Parameter`) in; `event callback refnum` and `error out` out - roles by DCO flags (3 nodes
+        over NI's .NET and ActiveX examples, not read until 2026-11-06)."""
+        el = self._node_el(node, parent_uid, "Register Event Callback")
+        roles = {65536: ("event callback refnum", True), 262145: ("event callback refnum", False),
+                 131072: ("error in (no error)", True), 524289: ("error out", False)}
+        item_roles = {131072: "event source", 524288: "VI Ref"}
+        for t in node.find("termList"):
+            d = t.find("dco")
+            if d is None:
+                continue
+            f = int(d.findtext("objFlags") or 0)
+            if d.get("class") == "hGrowCItem":
+                role = roles.get(f)
+                self.term_owner[t.get("uid")] = (el, role[0], role[1]) if role else IGNORED
+            elif d.get("class") == "eventRegCBItem":
+                tree = self.tid_tree(t)
+                nm = item_roles.get(f) or (tree.get("Label") if tree is not None else None) or "User Parameter"
+                self.term_owner[t.get("uid")] = (el, nm, True)
+        return el
+
+    def constructornode(self, node, parent_uid):
+        """A .NET CONSTRUCTOR NODE, as NI's export writes it: target the constructed type
+        (methName), type {DotNet} - {DotNetCore} for a .NET Core refnum, which pylabview keeps raw -
+        `error in (no error)` in, `new reference` and `error out` out, and each constructor parameter
+        by its label on both sides. The method's own Void item and the unused reference input are not
+        listed (6 nodes over NI's examples, not read until 2026-11-06)."""
+        el = self._node_el(node, parent_uid, "Constructor Node", target=unquote(node.findtext("methName") or ""))
+        fixed = {262145: ("new reference", False), 131072: ("error in (no error)", True),
+                 524289: ("error out", False)}
+        dotnet = None
+        last = None
+        for t in node.find("termList"):
+            d = t.find("dco")
+            if d is None or d.get("class") is None:
+                if last is not None:
+                    self.term_owner[t.get("uid")] = (el, last, False)
+                else:
+                    self.term_owner[t.get("uid")] = IGNORED
+                last = None
+                continue
+            tree = self.tid_tree(t)
+            if d.get("class") == "hGrowCItem":
+                last = None
+                role = fixed.get(int(d.findtext("objFlags") or 0))
+                if role and role[0] == "new reference" and tree is not None:
+                    dotnet = "DotNet" if tree.get("RefType") == "DotNet" else "DotNetCore"
+                self.term_owner[t.get("uid")] = (el, role[0], role[1]) if role else IGNORED
+                continue
+            if int(d.findtext("objFlags") or 0) in (196616, 196617):
+                # the constructor's own item pair (its Void in, its class out): not a parameter
+                last = None
+                self.term_owner[t.get("uid")] = IGNORED
+                continue
+            # a parameter: an input item, then its output item (Void, labelled alike), both listed
+            out = self._is_out(t)
+            name = (tree.get("Label") if tree is not None else None) or (last if out else None) or "?"
+            last = name
+            self.term_owner[t.get("uid")] = (el, name, not out)
+        el.set("type", "{%s}" % (dotnet or "DotNet"))
+        return el
+
+    def sharedvariable(self, node, parent_uid):
+        """A SHARED VARIABLE node, as NI's export writes it: the value terminal named after the
+        variable (`name4`, hex), `error in (no error)` and `error out` - which variable of which
+        library it binds is not in AIXML (8 nodes over NI's examples, not read until 2026-11-06)."""
+        el = self._node_el(node, parent_uid, "Shared Variable")
+        try:
+            var = bytes.fromhex(node.findtext("name4") or "").decode("cp1252")
+        except ValueError:
+            var = "?"
+        first = True
+        for t in node.find("termList"):
+            out = self._is_out(t)
+            tree = self.tid_tree(t)
+            if first:
+                nm = var or "?"
+                first = False
+            elif tree is not None and tree.get("Type") == "Cluster":
+                nm = "error out" if out else "error in (no error)"
+            else:
+                nm = "?"
+            self.term_owner[t.get("uid")] = (el, nm, not out)
+        return el
+
     def mergesignals(self, node, parent_uid):
         """MERGE SIGNALS (mergeSignal): one output, `combined signal` (DCO bit 0), and an `input
         signal` per input, as NI's export writes it (11 nodes over its Express VI examples were
@@ -1750,16 +1839,23 @@ class Reader:
                 continue
             tree = self.tid_tree(t)
             label = (tree.get("Label") if tree is not None else None) or "?"
+            if d.get("class") == "extFuncArg":
+                # count every argument, a VOID return included: the first is the return value
+                self._clfn_args = getattr(self, "_clfn_args", {})
+                self._clfn_args[node.get("uid")] = self._clfn_args.get(node.get("uid"), 0) + 1
             if tree is not None and tree.get("Type") == "Void":
                 last = None
                 self.term_owner[t.get("uid")] = IGNORED
                 continue
             if d.get("class") == "extFuncArg":
                 last = label
-                if int(t.findtext("objFlags") or 0) & SINK:
+                if self._clfn_args[node.get("uid")] > 1:
+                    # a PARAMETER: its input side even unwired (SINK is set only on a wired one -
+                    # 38 `output` inputs missing over NI's DLL examples, 2026-11-06)
                     self._extfunc_term(el, t, label, True, seen)
                 else:
-                    # the RETURN value: an output, listed once with the output side after it
+                    # the FIRST argument is the RETURN value: an output, listed once with the
+                    # output side after it
                     self._extfunc_term(el, t, label, False, seen)
             else:
                 last = None
