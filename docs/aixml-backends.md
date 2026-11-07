@@ -1503,6 +1503,8 @@ the reader's code hash, so EVERY reader update made every example cold again for
     large and serves nothing - exactly the state of the morning of 2026-11-07 - and a size
     threshold would depend on the installation's add-ons. On grpc only NI's entries count, because
     grpc never serves a reader entry.
+  - Measured 2026-11-07 after a client restart (commit 7d700680): `warm`, 939 of 939 cached, all
+    `fromReader`, **`checkedMs` 231** - cheap enough to compute on every call.
 
 Measured on this station, first start: 95 stale entries removed, of 939 example VIs 570 already
 had NI's entry, **369 read in 111 s (20 s of it the delay), 0 failed**. Second start: 0 read, 939
