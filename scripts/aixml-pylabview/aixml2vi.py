@@ -1618,6 +1618,20 @@ def class_private_data(tree, search_dirs, resolver=None):
                 if t is not None and t.get("Label") == "Cluster of class private data":
                     found = t
                     break
+            if found is None and b.fp is not None:
+                # a private data cluster that is itself a TYPEDEF carries that typedef's label,
+                # listed after the typedefs inside it (Channels Messenger's Gesture.lvclass: 1 an
+                # enum, 2 Point32, 3 `gesture`) - the panel's control, the FP heap's first
+                # typeDesc, is the private data (2026-11-07)
+                td = b.fp.find(".//typeDesc")
+                mt = re.fullmatch(r"TypeID\((\d+)\)", (td.text or "").strip()) if td is not None else None
+                if mt:
+                    try:
+                        t = typedef_inner(b.heap_type_tree(int(mt.group(1))))
+                        if t is not None and t.get("Type") == "Cluster":
+                            found = t
+                    except (IndexError, KeyError, ValueError, TypeError):
+                        pass
             _CLASS_DATA[key] = found if found is not None else typedef_inner(b.tree(b.flat_of_consolidated(1)))
         except (SystemExit, Exception) as ex:   # noqa: BLE001 - named in the refusal
             raise Unsupported("class %s: its private data could not be read (%s)" % (":".join(qual), ex))
@@ -4570,7 +4584,7 @@ class Composer:
             agg, tpl = terms[0], terms[1]
             cin = [n for t, n in ins if t in ("input cluster", "cluster")]
             ctype = wired_type(cin[0] if cin else None, "the cluster")
-            inner = self._class_data(typedef_inner(ctype)) if name == "Unbundle By Name" else typedef_inner(ctype)
+            inner = self._class_data(typedef_inner(ctype))
             if inner.get("Type") != "Cluster":
                 raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), inner.get("Type")))
             # a TYPEDEF'd cluster (a subVI's pane hands one out) keeps the typedef on the
@@ -4641,7 +4655,7 @@ class Composer:
                 raise Unsupported("%s %s: a cluster input must be wired" % (name, el.get("uid")))
             else:
                 ctype = wired_type(cin[0], "the cluster")
-            cdata = self._class_data(typedef_inner(ctype)) if name == "Bundle By Name" else typedef_inner(ctype)
+            cdata = self._class_data(typedef_inner(ctype))
             if cdata.get("Type") != "Cluster":
                 raise Unsupported("%s %s: input is %s, not a cluster" % (name, el.get("uid"), typedef_inner(ctype).get("Type")))
             fs = fields(cdata)
@@ -8909,7 +8923,9 @@ class Composer:
             kids = list(wrap)
             left, right, poser, outers = kids[0], kids[1], kids[2], kids[3:]
             self._claim_into(left, el.get("uid"), poser.find("multiSegPipeFlange1Depth"))
-            inner = typedef_inner(tree)
+            # a class wire's In Place pair works on its private data, as By Name does (Blob's
+            # Drag.vi, 27 Design Patterns / Channels members, 2026-11-07)
+            inner = self._class_data(typedef_inner(tree)) if cls == "clusterPoserInterface" else typedef_inner(tree)
             int32 = type_tree("int32")
             if cls == "arrayPoserInterface":
                 dims = len(inner.findall("Dimension")) if inner.get("Type") == "Array" else 0
@@ -9048,7 +9064,7 @@ class Composer:
         else:
             keys = {("output cluster" if is_right else "input cluster"): (outer_of(roles[(is_right, "cluster")]), parent)}
             out_types = {"output cluster": info["tree"]}
-            paths = dict(field_paths(typedef_inner(info["tree"])))
+            paths = dict(field_paths(self._class_data(typedef_inner(info["tree"]))))
             for f in info["fields"]:
                 keys[f] = (roles[(is_right, "field:" + f)], d)
                 out_types[f] = unlabel(paths[f])

@@ -172,6 +172,45 @@ public sealed class ComposerSingleCaseTests : IDisposable
     }
 
     /// <summary>
+    /// A class member's Bundle / Unbundle on its own class wire works on the class's PRIVATE DATA -
+    /// the plain nodes and the In Place pair as Bundle By Name already did. NI's members were
+    /// refused "input is Refnum, not a cluster" (62 of 226 refused members, 2026-11-07). The class
+    /// folder is copied and the member read and composed over its copy, as it lives.
+    /// </summary>
+    [Theory]
+    // the In Place Element Structure's Unbundle / Bundle Elements pair
+    [InlineData(@"Channels\Messenger", @"Blob\Drag.vi")]
+    // private data that is itself a typedef'd cluster, without NI's "Cluster of class private data"
+    [InlineData(@"Channels\Messenger", @"Gesture\Create Stop Gesture.vi")]
+    // plain Unbundle and Bundle
+    [InlineData(@"Design Patterns\Actor Framework\Classes", @"Coffee Shop Messages\Remove Barista Msg\Do.vi")]
+    [InlineData(@"Design Patterns\Actor Framework\Classes", @"Coffee Shop Messages\Remove Barista Msg\Send Remove Barista.vi")]
+    public async Task A_bundle_on_a_class_wire_works_on_its_private_data(string folder, string member)
+    {
+        var setup = AixmlComposer.Locate(out _);
+        var source = Directory.Exists(@"C:\Program Files (x86)\National Instruments")
+            ? Directory.EnumerateDirectories(@"C:\Program Files (x86)\National Instruments", "LabVIEW 20*")
+                .Select(d => Path.Combine(d, "examples", folder))
+                .FirstOrDefault(Directory.Exists)
+            : null;
+        if (setup is null || PyLabview.Locate() is null || source is null) return;
+        var copy = Path.Combine(_dir, "copy");
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var to = Path.Combine(copy, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Copy(file, to);
+        }
+        var vi = Path.Combine(copy, member);
+        var xml = Path.Combine(_dir, "member.xml");
+        var read = await AixmlComposer.ReadAsync(setup, vi, xml, 300, default);
+        Assert.True(read.Written, read.Message);
+
+        var composed = await AixmlComposer.ComposeAsync(setup, xml, vi, [], 300, default);
+        Assert.True(composed.Written, composed.Message);
+    }
+
+    /// <summary>
     /// Every VISA class composes - `ref{Visa.USB Raw}` as `ref{Visa.Instr}` did, its class in the
     /// refnum's Ident, so the reader reads it back the same (NI's Instrument IO examples were refused
     /// "type 'ref{Visa.USB Raw}' is not composable yet" until 2026-11-07).

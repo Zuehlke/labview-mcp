@@ -2864,6 +2864,7 @@ Of the 677 free VIs composed, 673 run (99 %); the members needed a fair test.
 | inplace1 | - | 302 of 458 |
 | inplace2 | a LIBRARY member is written with its library (`LIBN`), as a class member already was | 418 of 458 |
 | inplace4 | execution settings carried through `<?lvmcp exec?>`; library only where its file is | 428 of 458 |
+| inplace5 | plain and In Place Bundle / Unbundle on a class wire work on its private data | 477 of 519 |
 
 - **Library membership.** Written loose, a library member that calls a PRIVATE sibling was "cannot
   access the referenced item in private scope" (81 of 156 broken). The composer now writes `LIBN`
@@ -2888,6 +2889,23 @@ class conflict 8, an override's pane differing from its parent's 6, a private si
 outside its owner 6, bad linkage 4, mismatched wire types 3, and single cases. `ComposerSingleCaseTests` pins library membership (beside
 its library and away from it), the execution trailer and the VISA classes; each fails on the code
 before.
+
+**Bundle / Unbundle on a class wire** (inplace5). Only Bundle and Unbundle BY NAME read a class
+wire's private data; plain `Bundle` / `Unbundle` and the In Place `Unbundle / Bundle Elements`
+pair were refused "input is Refnum, not a cluster" - 62 of the 226 refused members, mostly the
+Actor Framework's message classes and Channels Messenger. All three now go through
+`class_private_data`. One more case was found on the way: a class whose private data is ITSELF a
+typedef'd cluster has no "Cluster of class private data" label and lists the typedefs inside it
+first (Messenger's `Gesture.lvclass`: an enum, `Point32`, then the `gesture` cluster), so the
+lookup took the enum. Without that label, the private data is now the type of the control on the
+private data control's panel (the FP heap's first `typeDesc`). In place, 61 more members compose
+and 49 more run (428 -> 477). Out of place the same 61 compose and are broken, as a member away
+from its class must be; nothing that ran broke (full20: 1 199 composed, 744 executable).
+
+The remaining 42 members: an override whose pane differs from its parent method's 21 (raised from
+6 by the members that now compose), class conflict 8, a private sibling called from outside its
+owner 6, bad linkage 4, single cases. `A_bundle_on_a_class_wire_works_on_its_private_data` composes
+four NI members over a copy of their folder; each case fails on the code before.
 
 ## Not covered, and not measured
 
