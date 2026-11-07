@@ -2834,7 +2834,7 @@ With the reader at NI's level the composer was taken on next, by the census's fi
 - **CHANNEL CALLS compose.** NI's export and the reader name the template (`Stream.lvlib:Write.vi`),
   which the composer refused; the reader's `<?lvmcp calllink?>` names the INSTANCE the original
   linked - `<extravilib>\ChannelInstances\Stream-i32\Write.vi`, which LabVIEW generated per wire
-  type into `Documents\LabVIEW Data6(32-bit)\ExtraVILib` (57 of them on this station, made
+  type into `Documents\LabVIEW Data\2026(32-bit)\ExtraVILib` (57 of them on this station, made
   when NI's service exported the examples). `resolve.py` knows the `<extravilib>` anchor now, and
   the composer calls the linked instance where it exists. A channel ENDPOINT ON THE PANEL is refused
   by name: it is the instance's `)Channel.ctl` typedef around a queue refnum, which AIXML writes as
