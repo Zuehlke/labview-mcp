@@ -71,6 +71,29 @@ public sealed class ReaderNiParityTests : IDisposable
     // a 2D Delete From Array: row/col indices and dimensions
     [InlineData(@"File IO\Spreadsheet\Tab-Delimited Data\Read Tab-Delimited File.vi", "269", "inputs", "disabled index (row):", true)]
     [InlineData(@"File IO\Spreadsheet\Tab-Delimited Data\Read Tab-Delimited File.vi", "269", "dimensions", "2", false)]
+    // nodes of their own heap classes, read since the second round
+    [InlineData(@"Connectivity\Python\PythonNode_AddTwoDoubles.vi", "246", "outputs", "return value:246.return value", true)]
+    [InlineData(@"MATLAB Node\Cell Phone Towers\MATLAB - Cell Phone Towers.vi", "3694", "_name", "Call MATLAB Function", false)]
+    [InlineData(@"Express VIs\Express VI - Append Signals.vi", "1533", "outputs", "combined signal:", true)]
+    [InlineData(@"Performance\Variant Attribute Lookup Table\Lookup Or Add Variant Attribute.vi", "85", "outputs", "found?:", true)]
+    [InlineData(@"Collections\Map Collection - Word Counting.vi", "14", "_name", "Map Get / Replace Value", false)]
+    [InlineData(@"File IO\Spreadsheet\Tab-Delimited Data\Buffered Stream to Tab-Delimited Text File.vi", "540", "_name", "Array Split / Replace Subarrays", false)]
+    // an XNode's terminals by their types' labels, not the xTunnel ids
+    [InlineData(@"File IO\DataPlugins\TDM\TDM Channel Groups\Write TDM Channel Groups.vi", "1032", "inputs", "file path:", true)]
+    // a terminal name that starts with '#' is a name
+    [InlineData(@"Application Control\VI Server\To More Specific Class\To More Specific Class.vi", "971", "outputs", "# of Refs:", true)]
+    // a nested library of the caller's chain
+    [InlineData(@"DQMH Consortium\DQMH Fundamentals - Thermal Chamber\Libraries\Device Under Test_Cloneable_DQMH\Close Module.vi", "1905", "target",
+                "Device Under Test_Cloneable_DQMH.lvlib:Clone Registration.lvlib:Obtain Last Clone Instance Notifier.vi", false)]
+    // a unit, a UTF-8 string, a VISA name, a timestamp inside a cluster
+    [InlineData(@"Malleable VIs\Class Adaptation\Thermal Test\Initialize.vi", "6", "type", "double{Cdeg}", false)]
+    [InlineData(@"UTF-8\Multilingual User Interface\Multilingual Temperature Monitor.vi", "5977", "type", "string{utf8}", false)]
+    [InlineData(@"Instrument IO\GPIB\GPIB with VISA functions.vi", "555", "value", "GPIB0::2::INSTR", false)]
+    [InlineData(@"Channels\Replacing The Function At The Heart Of An Algorithm At Run Time\Comparison By Year Born.vi", "88", "value", "[0,Doe,John,]", false)]
+    // a CLUSTER of event registrations names each event after its registration
+    [InlineData(@"MGI\Panel Manager\Basic Panel Actors\Helper Methods\Helper Methods\Actor Core.vi", "417", "selector", "<Pnl Actor.Actor.Stopped>", true)]
+    // a reference to a subpanel is typed, with no element
+    [InlineData(@"MGI\Panel Manager\Basic Panel Actors\Composite User Interface\Composite User Interface\Actor Core.vi", "1336", "type", "{LV.SubPanel}", false)]
     public async Task The_reader_writes_what_NIs_export_writes(string example, string uid, string attribute, string expected, bool contains)
     {
         if (await ReadAsync(example) is not { } text) return;
@@ -82,6 +105,22 @@ public sealed class ReaderNiParityTests : IDisposable
             Assert.Contains(expected, value!);
         else
             Assert.Equal(expected, value);
+    }
+
+    /// <summary>
+    /// Attributes NI's export does NOT write where the reader used to: adapt on a polymorphic call
+    /// whose instance the author fixed (preferredInstIndex not FF), concat on a Build Array that is
+    /// `array, element`.
+    /// </summary>
+    [Theory]
+    [InlineData(@"Astemes\LMock\Serial Driver\Logging Decorator Test\Test 1 Serial Write Data is Written to Log.vi", "440", "adapt")]
+    [InlineData(@"Astemes\LMock\Serial Driver\Log Mock\When Write to Log.vi", "515", "concat")]
+    public async Task The_reader_leaves_out_what_NIs_export_leaves_out(string example, string uid, string attribute)
+    {
+        if (await ReadAsync(example) is not { } text) return;
+        var element = XDocument.Parse(text).Descendants().FirstOrDefault(e => (string?)e.Attribute("uid") == uid);
+        Assert.NotNull(element);
+        Assert.Null(element!.Attribute(attribute));
     }
 
     /// <summary>A primitive the tables did not name, named from NI's exports (primitive-names-extra.tsv).</summary>

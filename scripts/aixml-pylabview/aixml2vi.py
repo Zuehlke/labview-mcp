@@ -397,6 +397,10 @@ def type_tree(aixml_type, label=None, constant=False, _top=True):
         el = ET.Element("TypeDesc", {"Type": "Picture", "Prop1": "0xFFFFFFFF", "Format": "inline"})
     elif aixml_type == "dynamicdata":
         el = ET.Element("TypeDesc", {"Type": "MeasureData", "Flavor": "Dynamicdata", "Format": "inline"})
+    elif aixml_type == "string{utf8}":
+        # a UTF-8 string: the string type with Bit3 set, as VCTP holds it and NI's export spells
+        # it (Multilingual Temperature Monitor.vi, 2026-11-06)
+        el = ET.Element("TypeDesc", {"Type": "String", "Prop1": "0xFFFFFFFF", "Format": "inline", "Bit3": "1"})
     elif aixml_type in SCALARS:
         t, _ = SCALARS[aixml_type]
         if t.startswith("MeasureData."):

@@ -2666,7 +2666,8 @@ follows: it ignores unwired terminals and descriptions.
 | | VIs identical in every fact | elements | attributes | terminals | wires |
 |---|---|---|---|---|---|
 | before | 250 of 1 767 | 99.58 % | 97.05 % | 88.27 % | 96.82 % |
-| after | **1 163 of 1 767** | 99.67 % | 99.33 % | 98.99 % | 98.25 % |
+| first round | 1 163 of 1 767 | 99.67 % | 99.33 % | 98.99 % | 98.25 % |
+| second round | **1 402 of 1 767** | 99.73 % | 99.54 % | 99.45 % | 99.16 % |
 
 What changed, each family measured on that corpus:
 
@@ -2709,6 +2710,36 @@ What changed, each family measured on that corpus:
   labels, both sides, Void terminals left out - and NOTED as lossy, since AIXML does not carry its
   library and function: the composer still refuses it.
 
+**The second round, the same night**, each measured the same way:
+
+- **Nodes of their own heap classes, read now**: the Python Node (Class0183) and Call MATLAB
+  Function (Class0193) - fixed hGrowCItems for session, path, name and error, then argument pairs,
+  the first `return type`/`return value`, the rest `input parameter`/`value`; Merge Signals
+  (mergeSignal); and four more In Place pairs, named by POSITION in each half's termList (Array
+  Split / Replace Subarrays, Variant Attribute Get / Replace, Map Get / Replace Value) or by type
+  (Variant To / From Element).
+- **An XNode's terminals** by their types' labels, as a subVI call's: `file path` where the
+  xTunnel's id says `10`.
+- **A terminal name starting with `#`** (`# of Refs`) is a name; only the reader's own internal
+  names (`#count`, `#selectin` ...) are left out.
+- **Calls**: a nested library of the caller's chain is qualified (`Device Under
+  Test_Cloneable_DQMH.lvlib:Clone Registration.lvlib:...`, link flag 2 on a two-part name); a class
+  inside a channel INSTANCE keeps the instance's name, as NI writes it; `adapt="true"` only where
+  `preferredInstIndex` is FF - a number there is an instance the author fixed (138 of 138), and
+  no field at all is no adapt either (58 of 58).
+- **Build Array** carries `concat="true"` when every input is an array or an input's DCO has
+  0x800000 (69 of 69); the 0x10000 input flag alone set it on 125 nodes NI writes without.
+- **Types and values**: digital data and digital waveforms, `ref{Notifier}{T}` (pylabview names
+  it NotifierRef), `ref{TDMSFile}`, `string{utf8}` (a string type with Bit3), the temperature unit
+  (`double{Cdeg}`, base 6); a VISA resource name as a control's value; a timestamp inside a cluster
+  (written empty, as NI writes one alone).
+- **A cluster of event registrations** names each user event after its registration,
+  `<Pnl Actor.Actor.Stopped>`; an unlabelled source is `<#1>`.
+- **A reference to a subpanel** is `type="{LV.SubPanel}"` with no element.
+
+The composer learned one thing for it: `string{utf8}` (a String TypeDesc with Bit3), so the
+Multilingual examples compose as before rather than being refused.
+
 **What the composer makes of it** (`run_census.sh`, the census of the section above, against the
 run before these changes): 1 088 composed instead of 1 090, **696 executable instead of 698, 0
 crashes, no VI that composed and ran before broken now.** The two fewer are six that ran AS A
@@ -2719,13 +2750,19 @@ pair, and a 2D Delete From Array that deletes COLUMNS (Read Tab-Delimited File: 
 deletes rows, so it composed as a different VI). Composed as before: Build Matrix (the Build Array
 part with the node flag set) and a 2D Delete From Array that deletes rows. Channel calls are refused
 with the template named, where 29 channel examples composed against the template's own VI and
-loaded broken.
+loaded broken. After the second round: **1 110 composed, 717 executable, 0 crashes**, again no VI
+that ran before broken; of the 22 composed for the first time, 18 run (notifier and digital data
+types the reader now names) and 4 are DQMH library members calling private members - composed
+outside their library, as every census composes them.
 
-**Still different from NI, largest first**: constructs the reader does not read (Python Node,
-MATLAB, Merge Signals, Shared Variable nodes, Timed Loop, Variant and Map In Place pairs, .NET
-constructors, Register Event Callback), about 900 terminal and wire facts in all; 11 Event Data
-Nodes NI writes with no `outputs` at all, for a reason not found; a handful of primitive slots no
-observation names.
+**Still different from NI, largest first**: constructs the reader does not read (Shared Variable
+nodes, the Timed Loop, .NET constructors, Register Event Callback, the DVR In Place pair), about 600
+terminal and wire facts in all; Set and Map TYPES (`set{string}`, `map{k,v}`, pylabview's raw
+0x73/0x74 descriptors); 11 Event Data Nodes NI writes with no `outputs` at all, for a reason not
+found; a handful of primitive slots no observation names. **Kept different on purpose**: a
+one-frame Event Structure, where NI writes no CaseFrame and loses the event, and a complex constant,
+where NI drops the imaginary part - the reader keeps both. NI escapes `:` in a call target as
+`A`; the reader writes it raw, the same name to every consumer.
 
 ## Not covered, and not measured
 
