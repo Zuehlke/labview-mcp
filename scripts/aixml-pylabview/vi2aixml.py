@@ -173,6 +173,8 @@ def aixml_type(tree):
             return "ref{%s}" % cls
         if rt == "UDClassInst":
             return "ref{UDClassInst}"
+        if rt == "DotNet":
+            return "ref{DotNet}"    # NI's spelling, a .NET refnum control (EventHappened.vi)
         if rt == "VisaRef":
             return "ref{Visa.%s}" % (tree.get("Ident") or "Instr")
         if rt == "IVIRef" and tree.get("Ident"):
@@ -270,7 +272,9 @@ def string_block_text(el):
     def one(c):
         if c.get("Storage") == "hex":
             return bytes.fromhex(c.text or "").decode("mac_roman")
-        return c.text or ""
+        # a byte pylabview could not print is the literal text `&#xNN;` - a CR in DW Test
+        # Copy.vi's description, which NI writes as a CR (2026-11-06)
+        return re.sub(r"&#x([0-9A-Fa-f]{2});", lambda m: chr(int(m.group(1), 16)), c.text or "")
     chunks = el.findall("Chunk")
     if not chunks:
         return one(el)
@@ -1583,6 +1587,10 @@ class Reader:
         buf = next((p.findtext("buf") for p in ring.iter("SL__arrayElement")
                     if p.get("class") == "multiLabel" and p.find("buf") is not None), None)
         labels = re.findall(r'"([^"]*)"', buf or "")
+        if not labels:
+            # a ring with NO items is written as its plain number (Simple Polar Plot.vi, Change
+            # Cursor Icon.vi, 2026-11-06)
+            return
         el.set("items", ",".join(escape(x).replace(",", "\\2C") for x in labels))
         el.set("style", "Ring")
         sparse = ring.find("ringSparseValues")
@@ -3676,7 +3684,9 @@ class Reader:
             return {"0": "required"}
         for i, c in enumerate([c for c in func if c.tag == "TypeDesc"]):
             f = int(c.get("Flags"), 16)
-            if c.get("TypeID") is not None and f:
+            # an assigned slot is one with a TypeID; its flags 0 is OPTIONAL, which NI writes too
+            # (DQMH's Start Module.vi conIdx 6 `optional`, 2026-11-06) - skipped until then
+            if c.get("TypeID") is not None:
                 out[str(i)] = ("dynamic" if f & 0x8000 else "required" if f & 0x1000
                                else "recommended" if f & 0x0800 else "optional")
         return out

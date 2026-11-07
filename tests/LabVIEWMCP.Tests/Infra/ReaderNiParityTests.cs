@@ -104,6 +104,9 @@ public sealed class ReaderNiParityTests : IDisposable
     [InlineData(@"OpenG\picture\examples\Write GIF File Example.vi", "343", "inputs", "index (page):", true)]
     [InlineData(@"Collections\Set Collection - Word Counting.vi", "1839", "type", "set{string}", false)]
     [InlineData(@"Collections\Map Collection - Word Counting.vi", "196", "type", "map{string.word,uint64.count}", false)]
+    // an OPTIONAL pane slot (flags 0) and a .NET refnum control
+    [InlineData(@"DQMH Consortium\DQMH Fundamentals - Thermal Chamber\Libraries\Thermal Chamber Controller_DQMH\Start Module.vi", "1817", "connection", "optional", false)]
+    [InlineData(@"Connectivity\Dot NET\support\Callback - EventHappened.vi", "87", "type", "ref{DotNet}", false)]
     // a reference to a subpanel is typed, with no element
     [InlineData(@"MGI\Panel Manager\Basic Panel Actors\Composite User Interface\Composite User Interface\Actor Core.vi", "1336", "type", "{LV.SubPanel}", false)]
     public async Task The_reader_writes_what_NIs_export_writes(string example, string uid, string attribute, string expected, bool contains)
@@ -127,6 +130,7 @@ public sealed class ReaderNiParityTests : IDisposable
     [Theory]
     [InlineData(@"Astemes\LMock\Serial Driver\Logging Decorator Test\Test 1 Serial Write Data is Written to Log.vi", "440", "adapt")]
     [InlineData(@"Astemes\LMock\Serial Driver\Log Mock\When Write to Log.vi", "515", "concat")]
+    [InlineData(@"Dialog and User Interface\Cursor\Change Cursor Icon.vi", "614", "style")]
     public async Task The_reader_leaves_out_what_NIs_export_leaves_out(string example, string uid, string attribute)
     {
         if (await ReadAsync(example) is not { } text) return;

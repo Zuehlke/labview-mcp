@@ -2669,7 +2669,8 @@ follows: it ignores unwired terminals and descriptions.
 | first round | 1 163 of 1 767 | 99.67 % | 99.33 % | 98.99 % | 98.25 % |
 | second round | 1 402 of 1 767 | 99.73 % | 99.54 % | 99.45 % | 99.16 % |
 | third round | 1 476 of 1 767 | 99.75 % | 99.59 % | 99.58 % | 99.27 % |
-| fourth round | **1 479 of 1 767** | 99.75 % | 99.61 % | 99.60 % | 99.31 % |
+| fourth round | 1 479 of 1 767 | 99.75 % | 99.61 % | 99.60 % | 99.31 % |
+| fifth round | **1 499 of 1 767** | 99.75 % | 99.63 % | 99.60 % | 99.31 % |
 
 What changed, each family measured on that corpus:
 
@@ -2758,6 +2759,13 @@ collections=True)` rewrites them as `Set`/`Map` with TypeID children, so they in
 container: `set{string}`, `map{string.word,uint64.count}`. Only the READER asks for that - the
 composer copies a callee's types as they stand, and a rewritten set would not serialize.
 
+**The fifth round**: an OPTIONAL connector-pane slot - flags 0, which the reader skipped as
+unassigned; a slot is assigned when it has a TypeID - so a control there now carries its conIdx
+and `connection="optional"` (DQMH's Start Module.vi); a ring with no items is its plain number;
+`ref{DotNet}`; a byte pylabview could not print in a description chunk (`&#x0D;`) decoded. The
+census after it: 1 112 composed, **719 executable**, 0 crashes, no regression - two VIs the
+composer stopped on with an error compose and run now.
+
 The 12 VIs the reader cannot read at all are JKI VI Tester tests saved by a LabVIEW 8.x: their
 types are not in a VCTP block (`TM80`, `FPTD` instead), which pylabview does not decode. NI's
 converter reads them because LabVIEW upconverts on load.
@@ -2784,8 +2792,10 @@ outside their library, as every census composes them.
 data node and points the inner case's `selectin` at the case itself) and the DVR In Place pair; Set and Map TYPES (`set{string}`, `map{k,v}`, pylabview's raw
 0x73/0x74 descriptors); 11 Event Data Nodes NI writes with no `outputs` at all, for a reason not
 found; a handful of primitive slots no observation names. **Kept different on purpose**: a
-one-frame Event Structure, where NI writes no CaseFrame and loses the event, and a complex constant,
-where NI drops the imaginary part - the reader keeps both. NI escapes `:` in a call target as
+one-frame Event Structure, where NI writes no CaseFrame and loses the event; a complex constant,
+where NI drops the imaginary part; a Formula Node's `text`, which NI's export leaves out; and the
+items of a typedef'd ring control, which the composer needs for a `Strings []` property node -
+the reader keeps all four. NI escapes `:` in a call target as
 `A`; the reader writes it raw, the same name to every consumer.
 
 ## Not covered, and not measured
