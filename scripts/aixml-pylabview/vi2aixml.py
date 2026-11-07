@@ -705,6 +705,19 @@ def unquote(t):
     return t or ""
 
 
+def heap_text(t):
+    """A heap string as LabVIEW wrote it: unquoted, a byte pylabview could not print (`&#xNN;`, a
+    CR or NUL) decoded, and the MacRoman pylabview rendered turned back into the CP1252 LabVIEW on
+    Windows wrote (the rule the diagram comments established, 2026-10-21). "" for none."""
+    if t in (None, "[NULL]"):
+        return ""
+    text = re.sub(r"&#x([0-9A-Fa-f]{2});", lambda m: chr(int(m.group(1), 16)), unquote(t))
+    try:
+        return text.encode("mac_roman").decode("cp1252")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return text
+
+
 def esc_attr_items(items):
     """Case selector items as NI writes them: joined by ', ' with the comma escaped."""
     return "\\2C ".join(items)
@@ -755,7 +768,7 @@ NODE_READERS = {"nMux": "nmux", "mux": "mux", "demux": "demux", "aIndx": "aindx"
                 "eventRegNode": "eventreg",
                 "exprNode": "expr", "fBox": "fbox",
                 "callByRefNode": "callbyref", "scriptNode": "scriptnode",
-                "decimate": "decimate", "xNode": "xnode"}
+                "decimate": "decimate", "xNode": "xnode", "extFunc": "extfunc"}
 CA_OPS ={0: "Add", 1: "Multiply", 2: "AND", 3: "OR", 4: "XOR"}
 # a bDFixed constant's `cnst` code -> its AIXML FixedConst name (the composer's own table, reversed)
 FIXED_BY_CODE = {v.upper(): k for k, v in aixml2vi.Composer.FIXED.items()}
@@ -774,8 +787,27 @@ def template_names(cls):
                 node = ET.parse(f).getroot().find("heap")[0]
             except Exception:
                 continue
-            _TEMPLATES.setdefault(node.get("class"), []).append([t.get("aixml") or "?" for t in node.find("termList")])
-    return _TEMPLATES.get(cls, [])
+            _TEMPLATES.setdefault(node.get("class"), []).append(
+                [(t.get("aixml") or "?", bool(int(t.findtext("objFlags") or 0) & SINK)) for t in node.find("termList")])
+    return [[nm for nm, _ in t] for t in _TEMPLATES.get(cls, [])]
+
+
+def sinks_for(cls, n):
+    """Which of a template node's `n` terminals are INPUTS, chosen as names_for chooses its names.
+    The parts are wired, so every input there carries SINK; an unwired input of the VI being read
+    carries nothing, and Scan From String's outputs do not set bit 0 on their DCO either - so the
+    template is the only place that says which way an unwired terminal points (2026-11-06)."""
+    template_names(cls)
+    ts = _TEMPLATES.get(cls, [])
+    exact = [t for t in ts if len(t) == n]
+    if exact:
+        return [s for _, s in exact[0]]
+    if not ts:
+        return None
+    t = [s for _, s in max(ts, key=len)]
+    while len(t) < n:
+        t.append(t[-1])
+    return t[:n]
 
 
 def names_for(cls, n):
@@ -871,7 +903,7 @@ class Reader:
                 out.setdefault(str(off), {})[tag] = name
                 if path and (tag == "IUVI" or str(off) not in self.call_paths):
                     self.call_paths[str(off)] = path
-            return out
+            return self._channel_templates(out)
         bdhp = self.b.main.find("LIbd/Section/BDHP")
         for rec in (bdhp if bdhp is not None else []):
             # a DyOM's method name is a NESTED qualified name, which pylabview writes as literal
@@ -898,6 +930,22 @@ class Reader:
                 out.setdefault(k, {})[rec.tag] = name
                 if path and (rec.tag == "IUVI" or k not in self.call_paths):
                     self.call_paths[k] = path
+        return self._channel_templates(out)
+
+    def _channel_templates(self, out):
+        r"""A CHANNEL wire's call runs a generated instance library - `<extravilib>\ChannelInstances
+        \Stream-i32\Read.vi`, `Messenger-class'MyMessage'.lvlib` - and NI's export names the
+        TEMPLATE it was made from, `Stream.lvlib:Read.vi`: about 400 calls over NI's shipping
+        examples (2026-11-06). The template's name is the instance's up to its first `-`."""
+        for k, recs in out.items():
+            path = self.call_paths.get(k)
+            if not path or "ChannelInstances" not in path[1]:
+                continue
+            for tag, name in recs.items():
+                parts = name.split(":")
+                if parts and parts[0].lower().endswith(".lvlib") and "-" in parts[0]:
+                    parts[0] = parts[0].split("-", 1)[0] + ".lvlib"
+                    recs[tag] = ":".join(parts)
         return out
 
     def _relative_to_caller(self, qual, flag):
@@ -1156,6 +1204,21 @@ class Reader:
             else:
                 el.set("type", t)
                 self._note_classes(el, tree)
+            # the control's own DESCRIPTION, as NI's export writes it on Control and Indicator -
+            # 1 994 of them over NI's 1 784 shipping examples, the reader none until 2026-11-06.
+            # It sits on the ddo as a cLStrObj (`<description><strings><SL__arrayElement>"..."`),
+            # escaped like the VI's own
+            raw = ddo.findtext("description/strings/SL__arrayElement")
+            if raw is None and ddo.get("class") == "typeDef":
+                # a TYPEDEF'd control keeps it on the control inside (DQMH's semaphore refnum)
+                raw = next((p.findtext("description/strings/SL__arrayElement")
+                            for p in (ddo.find("partsList") if ddo.find("partsList") is not None else [])
+                            if p.find("description") is not None), None)
+            # NI's export drops the TRAILING blanks and line breaks LabVIEW keeps (551 of 551
+            # differences over NI's shipping examples were only that)
+            text = heap_text(raw).rstrip(" \t\r\n")
+            if text:
+                el.set("description", escape_description(text))
             # style, as NI's exports write it: latched (a boolean's mechanical action, ddo
             # objFlags 0x20000 - NI's Stop buttons carry 0x60000), Ring (a stdRing on a plain
             # number, items from its multiLabel buf) and Table (a tableControl)
@@ -1171,11 +1234,7 @@ class Reader:
             if cls == "stdBool" and not ind and int(ddo.findtext("objFlags") or 0) & 0x20000:
                 el.set("style", "latched")
             elif cls == "stdRing" and t is not None and "{" not in t:
-                buf = next((p.findtext("buf") for p in ring.iter("SL__arrayElement")
-                            if p.get("class") == "multiLabel" and p.find("buf") is not None), None)
-                labels = re.findall(r'"([^"]*)"', buf or "")
-                el.set("items", ",".join(escape(x).replace(",", "\\2C") for x in labels))
-                el.set("style", "Ring")
+                self._ring(el, ring, t)
             elif cls == "tableControl":
                 el.set("style", "Table")
             elif cls == "xControl":
@@ -1258,11 +1317,32 @@ class Reader:
             # unwired OUTPUT is how the code declares a variable it assigns: NI's export of Cut
             # Length.vi writes `outputs="m:..,n:..,a:,b:,d:.."`; dropped, the composed node's
             # `a=...` was `Undefined variable` (3 broken examples, 2026-11-06).
-            every = el.tag == "Call" or (el.tag == "Node" and el.get("_name") == "Formula Node")
+            # Every PRIMITIVE terminal too, since 2026-11-06: NI lists them all, an unwired one as
+            # `name:` (Wait (ms)'s timer output on 309 nodes, Format Into String's error in on 162).
+            # A node BOUND to a control by link= has no reference terminals in NI's export (418 of
+            # 418), so an unwired reference/reference out stays out there.
+            every = el.tag in ("Call", "Node")
+            linked = el.get("link") is not None
+            twins = getattr(self, "clfn_twins", set())
+            if twins and any(tu in twins for tu, _, _ in terms):
+                # a CLFN return value has two terms of one name: list it once, the wired one if any
+                keep = {}
+                for tu, nm, sink in terms:
+                    k = (nm, sink)
+                    if k not in keep or (tu in self.term_net and keep[k] not in self.term_net):
+                        keep[k] = tu
+                terms = [x for x in terms if keep[(x[1], x[2])] == x[0]]
+
+            def listed(tu, nm):
+                if tu in self.term_net:
+                    return True
+                if not every or nm.startswith("?"):
+                    return False
+                return not (linked and nm in ("reference", "reference out"))
             ins = ["%s:%s" % (escape(nm), self.term_net.get(tu, "")) for tu, nm, sink in terms
-                   if sink and (tu in self.term_net or (every and not nm.startswith("?")))]
+                   if sink and listed(tu, nm)]
             outs = ["%s:%s" % (escape(nm), self.term_net.get(tu, "")) for tu, nm, sink in terms
-                    if not sink and (tu in self.term_net or (every and not nm.startswith("?")))]
+                    if not sink and listed(tu, nm)]
             for attr, items in (("inputs", ins), ("outputs", outs)):
                 if items:
                     el.set(attr, ",".join(items))
@@ -1282,6 +1362,22 @@ class Reader:
             attr = "inputs" if el.tag == "Indicator" else "outputs"
             if not el.get(attr):
                 el.set(attr, "value:")
+        # ...and so does every side a TUNNEL, shift register, Condition or diagram constant HAS:
+        # NI writes an unwired one as `value:` - a case frame's In half `outputs="value:"` (2 522
+        # times over NI's 1 784 shipping examples), its Out half `inputs="value:"` (1 433), a loop
+        # tunnel's unused inner side, a Right whose value nobody reads. Wired-only, the reader lost
+        # 4 281 tunnel terminals and 507 more on shift registers, constants and conditions
+        # (compare_corpus.py, 2026-11-06). A side the element does not have - a case frame half's
+        # outer one - was never registered, so it stays absent as in NI's export.
+        for tu in self.term_owner.order:
+            owner = self.term_owner.get(tu)
+            if owner is None or owner is IGNORED:
+                continue
+            el, nm, sink = owner
+            if el.tag in ("Tunnel", "Left", "Right", "Constant", "Condition") and nm == "value":
+                attr = "inputs" if sink else "outputs"
+                if not el.get(attr):
+                    el.set(attr, "value:")
         if self.anchored:
             by_uid = {}
             for e in self.out.iter():
@@ -1433,6 +1529,29 @@ class Reader:
                 i += 1
         return decode_value(tree, out.hex()) or ""
 
+    @staticmethod
+    def _ring(el, ring, t):
+        """A RING's items and, where they are not 0..n-1, its values, as NI's export writes them on
+        a control, an indicator and a diagram constant alike: `style="Ring" items="a,b"
+        values="[2125,3441]"`. The items are the multiLabel buf's quoted strings, the values the
+        ddo's ringSparseValues (hex). Until 2026-11-06 a diagram RING CONSTANT was read as its
+        plain number (83 over NI's shipping examples) and no ring carried its values (42)."""
+        buf = next((p.findtext("buf") for p in ring.iter("SL__arrayElement")
+                    if p.get("class") == "multiLabel" and p.find("buf") is not None), None)
+        labels = re.findall(r'"([^"]*)"', buf or "")
+        el.set("items", ",".join(escape(x).replace(",", "\\2C") for x in labels))
+        el.set("style", "Ring")
+        sparse = ring.find("ringSparseValues")
+        if sparse is not None and len(sparse):
+            bits = {"int8": 8, "int16": 16, "int32": 32, "int64": 64}.get(t)
+            vals = []
+            for x in sparse:
+                v = int((x.text or "0").strip() or "0", 16)
+                if bits and v >= 1 << (bits - 1):
+                    v -= 1 << bits
+                vals.append(str(v))
+            el.set("values", "[%s]" % ",".join(vals))
+
     def constant(self, term, parent_uid):
         dco = term.find("dco")
         ddo = dco.find("ddo")
@@ -1447,6 +1566,10 @@ class Reader:
             self._note_classes(el, tree)
         el.set("uid", ddo.get("uid"))
         el.set("uid_parent", parent_uid)
+        # a plain ring constant only: a TYPEDEF'd one is written as its number in NI's export (59
+        # of 59 over the shipping examples), unlike a typedef'd ring CONTROL
+        if ddo.get("class") == "stdRing" and t is not None and "{" not in t:
+            self._ring(el, ring=ddo, t=t)
         if dco.find("ConstValue") is None:
             # NOT a default: measured 2026-10-15 over the cache, every constant of a file saved by
             # LabVIEW 11 or later carries ConstValue (5 803 of 5 803), and only the LabVIEW 9.0
@@ -1496,11 +1619,69 @@ class Reader:
             if compact is not None:
                 tname = compact.get(int(dco.findtext("parmIndex") or 0), tname)
             sink = bool(int(term.findtext("objFlags") or 0) & SINK)
+            if not sink and not self._is_out(term) and not (int(term.findtext("objFlags") or 0) & SOFT_SINK):
+                # an UNWIRED input carries no SINK flag on its term - only its DCO says it is no
+                # output. Wired-only that never mattered; listed unwired, Format Into String's
+                # `error in` and `initial string` went out as OUTPUTS (162 each over NI's
+                # examples, 2026-11-06)
+                sink = True
             self.term_owner[term.get("uid")] = (el, tname, sink)
             if int(term.findtext("objFlags") or 0) & SOFT_SINK:
                 self.soft_sinks = getattr(self, "soft_sinks", set())
                 self.soft_sinks.add(term.get("uid"))
         return el
+
+    def extfunc(self, node, parent_uid):
+        """A CALL LIBRARY FUNCTION NODE, as NI's export writes it: its terminals and nothing of its
+        configuration - `inputs="error in (no error):,input:..,output:"` and the same names out.
+        Each terminal is named by its TYPE's label (the parameter's name); a parameter is an
+        extFuncArg term (its input side, SINK) and the dco-less term after it (its output side); the
+        return value's extFuncArg carries no SINK and is an output only. A Void terminal - an
+        unconfigured path in/out, a void return - is not listed (59 nodes over NI's shipping
+        examples, 2026-11-06). The library and function are not in AIXML, so the note keeps the
+        composer from building a node that calls nothing."""
+        el = self._node_el(node, parent_uid, "Call Library Function Node")
+        terms = list(node.find("termList"))
+        last = None
+        seen = set()
+        for t in terms:
+            d = t.find("dco")
+            if d is None or d.get("class") is None:
+                # the output side of the parameter before it: a bare reference to its DCO
+                if last is not None:
+                    self._extfunc_term(el, t, last, False, seen)
+                else:
+                    self.term_owner[t.get("uid")] = IGNORED
+                continue
+            tree = self.tid_tree(t)
+            label = (tree.get("Label") if tree is not None else None) or "?"
+            if tree is not None and tree.get("Type") == "Void":
+                last = None
+                self.term_owner[t.get("uid")] = IGNORED
+                continue
+            if d.get("class") == "extFuncArg":
+                last = label
+                if int(t.findtext("objFlags") or 0) & SINK:
+                    self._extfunc_term(el, t, label, True, seen)
+                else:
+                    # the RETURN value: an output, listed once with the output side after it
+                    self._extfunc_term(el, t, label, False, seen)
+            else:
+                last = None
+                self._extfunc_term(el, t, label, not self._is_out(t), seen)
+        self.notes.append("Call Library Function Node %s: its library and function are not carried "
+                          "by AIXML" % node.get("uid"))
+        return el
+
+    def _extfunc_term(self, el, t, name, sink, seen):
+        """Register one CLFN terminal; a name already registered on that side (the return value's
+        two terms) is registered again only for the wire, not listed twice."""
+        key = (name, sink)
+        self.term_owner[t.get("uid")] = (el, name, sink)
+        if key in seen:
+            self.clfn_twins = getattr(self, "clfn_twins", set())
+            self.clfn_twins.add(t.get("uid"))
+        seen.add(key)
 
     def xnode(self, node, parent_uid):
         """An XNODE (xNode): NI's export writes it as a Call whose target is the .xnode - `Error
@@ -1839,7 +2020,23 @@ class Reader:
             if d is not None and d.get("class") == "eventDynDCO":
                 tree = self.tid_tree(t)
                 if tree is not None and tree.get("RefType") == "EventReg":
-                    dyn = [c.get("Label") or "" for c in aixml2vi.fields(tree)]
+                    # dynIndex counts the registration in PREORDER: a CLUSTER of event refnums
+                    # (a typedef'd one too) is one index and each of its children the next, named
+                    # by their path - `<Wait User Events.Stop>`, `<Actor.Stopped>`, DQMH's
+                    # `<... Broadcast Events.X>`; read flat, 63 frames over NI's shipping examples
+                    # said only ` User Event ` (2026-11-06)
+                    def flat(children, prefix):
+                        out = []
+                        for c in children:
+                            inner = c
+                            while inner.get("Type") == "TypeDef" and inner.find("TypeDesc") is not None:
+                                inner = inner.find("TypeDesc")
+                            label = c.get("Label") or inner.get("Label") or ""
+                            out.append(prefix + label)
+                            if inner.get("Type") == "Cluster":
+                                out += flat([x for x in inner if x.tag == "TypeDesc"], prefix + label + ".")
+                        return out
+                    dyn = flat(aixml2vi.fields(tree), "")
                     break
         if node.find("EventNodeEvents") is None:
             # a file from before LabVIEW 2009 SP1 or so keeps the registrations out of the heap,
@@ -1997,6 +2194,12 @@ class Reader:
                     return str(v)
                 if stt == 0 and ett == 0:
                     txt = val(s)
+                elif stt != 3 and ett != 3 and e == s + 1:
+                    # a closed range of exactly TWO values is two items in NI's export - `"Bad",
+                    # "Idle"`, `-2, -1` (15 frames over NI's shipping examples) - while three or
+                    # more stay a range, `"Option 2".."Option 4"`, `4..9` (2026-11-06)
+                    items.setdefault(di, []).append(val(s))
+                    txt = val(e)
                 else:
                     txt = "%s..%s" % (val(s) if stt != 3 else "", val(e) if ett != 3 else "")
             items.setdefault(di, []).append(txt)
@@ -2139,9 +2342,17 @@ class Reader:
         the dcoAgg is the cluster, reaching outside through the structure's term (0x800000 in,
         0x800001 out); each field is a decomposeClusterDCO whose <index> counts like a Bundle By
         Name's <i> (field_paths), absent for 0."""
-        left = ET.SubElement(el, "Node", {"_name": "Unbundle / Bundle Elements", "uid": l.get("uid"),
+        # a WAVEFORM's pair is Waveform Unbundle / Bundle Elements in NI's export: the same heap
+        # class, the aggregate a MeasureData type (4 of 4 over NI's examples, 2026-11-06)
+        agg0 = l.find("dcoAgg")
+        t0 = next((t for t in l.find("termList") if agg0 is not None and t.find("dco") is not None
+                   and t.find("dco").get("uid") == agg0.get("uid")), None)
+        ct0 = self.tid_tree(t0.find("dco")) if t0 is not None else None
+        pname = ("Waveform Unbundle / Bundle Elements" if ct0 is not None and ct0.get("Type") == "MeasureData"
+                 else "Unbundle / Bundle Elements")
+        left = ET.SubElement(el, "Node", {"_name": pname, "uid": l.get("uid"),
                                           "uid_parent": node.get("uid")})
-        right = ET.Element("Node", {"_id": l.get("uid"), "_name": "Unbundle / Bundle Elements",
+        right = ET.Element("Node", {"_id": l.get("uid"), "_name": pname,
                                     "uid": r.get("uid"), "uid_parent": node.get("uid")})
         fields = []
         for half, sink_outer in ((l, True), (r, False)):
@@ -2151,6 +2362,7 @@ class Reader:
             agg_term = next((t for t in half.find("termList") if t.find("dco") is not None
                              and t.find("dco").get("uid") == agg), None)
             ct = self.tid_tree(agg_term.find("dco")) if agg_term is not None else None
+            ct = self._class_data_or_self(ct)
             labels = [p for p, _ in aixml2vi.field_paths(ct)] if ct is not None else []
             for t in half.find("termList"):
                 d = t.find("dco")
@@ -2298,6 +2510,10 @@ class Reader:
                 n_in += 1
             tid = ("Out%d" % rank.get(term.get("uid"), n_out)) if out else ("In%d" % rank.get(term.get("uid"), n_in))
             tun = ET.Element("Tunnel", {"_id": tid, "uid": term.get("uid"), "uid_parent": node.get("uid")})
+            if int(d.findtext("objFlags") or 0) & 0x200000:
+                # cond="true", the same 0x200000 bit as on a case structure's tunnel: 87 of the 91
+                # Disable-structure tunnels over NI's shipping examples carry it (2026-11-06)
+                tun.set("cond", "true")
             self.term_owner[term.get("uid")] = (tun, "value", not out)
             el.append(tun)
             for i, ts in enumerate(frame_terms):
@@ -2313,6 +2529,42 @@ class Reader:
     def _is_out(term):
         d = term.find("dco")
         return bool(int(d.findtext("objFlags") or 0) & 1) if d is not None else False
+
+    def _class_data_or_self(self, tree):
+        """A CLASS wire's private data cluster (its fields are what an Unbundle / Bundle Elements
+        pair or a Bundle on it names - `Entity Table`, `Cashier Index` in NI's Coffee Shop, read
+        as `?` until 2026-11-06), any other type as it is."""
+        if tree is None:
+            return None
+        inner = aixml2vi.typedef_inner(tree)
+        if inner.get("Type") != "Refnum" or inner.get("RefType") != "UDClassInst":
+            return tree
+        try:
+            return aixml2vi.class_private_data(inner, [os.path.dirname(self.vi_path)] if self.vi_path else [])
+        except aixml2vi.Unsupported:
+            return tree
+
+    def _is_build_cluster_array(self, terms):
+        """A cABuild node is BUILD CLUSTER ARRAY when its output's clusters have ONE field while
+        it has several inputs, or - with one input - when that field is the input's own type
+        rather than its element's."""
+        if len(terms) < 2:
+            return False
+        out = self.tid_tree(terms[0])
+        if out is None or out.get("Type") != "Array" or out.find("TypeDesc") is None:
+            return False
+        clu = out.find("TypeDesc")
+        while clu is not None and clu.get("Type") == "TypeDef" and clu.find("TypeDesc") is not None:
+            clu = clu.find("TypeDesc")
+        if clu is None or clu.get("Type") != "Cluster":
+            return False
+        fields = [c for c in clu if c.tag == "TypeDesc"]
+        if len(fields) != 1:
+            return False
+        if len(terms) > 2:
+            return True
+        src = self.tid_tree(terms[1])
+        return src is not None and src.get("Type") != "Array"
 
     def _node_el(self, node, parent_uid, name, **attrs):
         el = ET.Element("Node", {"_name": name, "uid": node.get("uid"), "uid_parent": parent_uid})
@@ -2352,15 +2604,70 @@ class Reader:
             # loaded `arrays of different dimensions` (2026-11-06)
             self.ordered_inputs[id(el)] = (el, [(t.get("uid"), nm) for t, nm in zip(terms, names)
                                                if not self._is_out(t)])
+        if cls == "aDelete":
+            # DELETE FROM ARRAY by its DCO flags, as Replace Array Subset: 0x20000 the array,
+            # 0x40000 the length (an output with it is the deleted portion), the index bits and
+            # 0x10000 disabled. NI names a 2D node's indices `index (row)` / `disabled index
+            # (col)` and writes dimensions="2" (Read Tab-Delimited File.vi); the 1D template's
+            # names called both `index` (2026-11-06)
+            names = []
+            for t in terms:
+                f = int(t.findtext("dco/objFlags") or 0)
+                if self._is_out(t):
+                    nm = "deleted portion" if f & 0x40000 else "array w/ subset deleted"
+                elif f & 0x20000:
+                    nm = "array"
+                elif f & 0x40000:
+                    nm = "length"
+                elif f & 0x600000 == 0x600000 or not f & 0x600000:
+                    nm = "index"
+                else:
+                    nm = "index (row)" if f & 0x200000 else "index (col)"
+                names.append(("disabled " if f & 0x10000 and nm.startswith("index") else "") + nm)
+            idx = sum(1 for nm in names if "index" in nm)
+            if idx > 1:
+                el.set("dimensions", str(idx))
+        if cls == "cABuild" and self._is_build_cluster_array(terms):
+            # ONE heap class, two nodes: Index & Bundle Cluster Array bundles N ARRAYS into an
+            # array of N-field clusters, Build Cluster Array N ELEMENTS into an array of one-field
+            # clusters. NI's Smith Multi Plot with Styles.vi has the second, and read as the
+            # first, its composed copy carried a type no rule explained (2026-11-06)
+            el.set("_name", "Build Cluster Array")
+            names = ["array of clusters"] + ["component element"] * (len(terms) - 1)
+        dirs = None
+        if cls in ("aReplace", "aDelete"):
+            # named by their own flags above, so their direction is the DCO's too - the template's
+            # positions do not line up with these names (an unwired `disabled index (col)` went
+            # out as an OUTPUT, and the composer found no template, 2026-11-06)
+            dirs = [not self._is_out(t) for t in terms]
+        if cls in ("printf", "scanf") and len(terms) > 4:
+            src = self.tid_tree(terms[1])
+            if src is not None and src.get("Type") in ("Path", "Refnum"):
+                # the FILE variants share the class: Format Into File / Scan From File take a
+                # path or a file refnum where the string ones take a string (NI's Format Into File
+                # and Scan From File.vi, 2026-11-06)
+                fixed = ["format string", "input file", "output file refnum", "error in", "error out"]
+                fdirs = [True, True, False, True, False]
+                rest = len(terms) - len(fixed)
+                if cls == "printf":
+                    el.set("_name", "Format Into File")
+                    names = fixed + ["input %d" % (i + 1) for i in range(rest)]
+                    dirs = fdirs + [True] * rest
+                else:
+                    el.set("_name", "Scan From File")
+                    names = fixed + [("default value %d" if i % 2 == 0 else "output %d") % (i // 2 + 1) for i in range(rest)]
+                    dirs = fdirs + [i % 2 == 0 for i in range(rest)]
         if names is None:
             self.notes.append("node %s: no template names its terminals" % TEMPLATE_CLASSES[cls])
             names = ["?"] * len(terms)
-        for t, nm in zip(terms, names):
+        dirs = dirs or sinks_for(cls, len(terms)) or [False] * len(terms)
+        for t, nm, tsink in zip(terms, names, dirs):
             # a template names a repeated terminal value, value#1 ... - the #n is the composer's
             # own key, AIXML repeats the plain name
             # direction from the TERMINAL's sink bit (0x8000), which every WIRED input carries:
-            # Scan From String's outputs do not set bit 0 on their DCO
-            sink = bool(int(t.findtext("objFlags") or 0) & SINK)
+            # Scan From String's outputs do not set bit 0 on their DCO. An UNWIRED input carries
+            # no bit at all, and the template says which way it points (sinks_for)
+            sink = bool(int(t.findtext("objFlags") or 0) & SINK) or (tsink and not (int(t.findtext("objFlags") or 0) & SOFT_SINK))
             self.term_owner[t.get("uid")] = (el, nm.split("#")[0], sink)
             if int(t.findtext("objFlags") or 0) & SOFT_SINK:
                 self.soft_sinks = getattr(self, "soft_sinks", set())
@@ -2438,7 +2745,8 @@ class Reader:
         el = self._node_el(node, parent_uid, "Bundle")
         terms = list(node.find("termList"))
         agg, cref = terms[0], terms[1]
-        ct = self.tid_tree(agg)
+        # a CLASS wire's fields are its private data (`Cashier Index` in NI's Coffee Shop messages)
+        ct = self._class_data_or_self(self.tid_tree(agg))
         # a typedef'd field is labelled on the type it wraps (Control Ref Queue in the Math Plots)
         labels = [self._field_name(c) or "element" for c in (aixml2vi.fields(aixml2vi.typedef_inner(ct)) if ct is not None else [])]
         self.term_owner[agg.get("uid")] = (el, "output cluster", False)
@@ -2460,7 +2768,7 @@ class Reader:
         el = self._node_el(node, parent_uid, "Unbundle")
         terms = list(node.find("termList"))
         agg = terms[0]
-        ct = self.tid_tree(agg)
+        ct = self._class_data_or_self(self.tid_tree(agg))
         # a typedef'd field is labelled on the type it wraps (Control Ref Queue in the Math Plots)
         labels = [self._field_name(c) or "element" for c in (aixml2vi.fields(aixml2vi.typedef_inner(ct)) if ct is not None else [])]
         self.term_owner[agg.get("uid")] = (el, "cluster", True)
@@ -2506,7 +2814,9 @@ class Reader:
         return el
 
     def abuild(self, node, parent_uid):
-        el = self._node_el(node, parent_uid, "Build Array")
+        # BUILD MATRIX is the same class with node objFlags 0x200000 and a matrix typedef out -
+        # 9 of 9 over NI's shipping examples (Linear Algebra Calculator.vi, 2026-11-06)
+        el = self._node_el(node, parent_uid, "Build Matrix" if int(node.findtext("objFlags") or 0) & 0x200000 else "Build Array")
         terms = list(node.find("termList"))
         out = next((t for t in terms if self._is_out(t)), None)
         ot = self.tid_tree(out) if out is not None else None
@@ -2675,6 +2985,10 @@ class Reader:
                     name = learned
                 else:
                     name = self.catalogue_name(cls, name, int(code) if code and code.lstrip("-").isdigit() else 0)
+                if cls == "UDClassInst":
+                    # a CLASS property is named without its folder in NI's export: `Module ID` for
+                    # DQMH's `Accessors:Module ID`, `Name` for SFTP's `Properties:Name` (2026-11-06)
+                    name = name.split(":")[-1]
                 out = bool(int(d.findtext("objFlags") or 0) & 1)
                 fields.append(("read+" if out else "write+") + escape(name))
                 self.term_owner[t.get("uid")] = (el, name, not out)
@@ -2886,7 +3200,11 @@ class Reader:
         own literal, from which the composer builds the node and the strict VI refnum feeding it."""
         m = lvheap.TYPEID_RE.fullmatch((node.findtext("connectorTM") or "").strip())
         pane = self.b.heap_type_tree(int(m.group(1))) if m else None
-        el = self._node_el(node, parent_uid, "Call By Reference", type=aixml_type(pane) or "")
+        # CBRSaveStyle names the node: 01 Start Asynchronous Call, 02 Wait On Asynchronous Call -
+        # 17 of 17 over NI's shipping examples were read as plain Call By Reference (2026-11-06)
+        style = (node.findtext("CBRSaveStyle") or "").strip()
+        name = {"01": "Start Asynchronous Call", "02": "Wait On Asynchronous Call"}.get(style, "Call By Reference")
+        el = self._node_el(node, parent_uid, name, type=aixml_type(pane) or "")
         slots = [c for c in pane if c.tag == "TypeDesc"] if pane is not None else []
         for t in node.find("termList"):
             d = t.find("dco")

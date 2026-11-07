@@ -612,6 +612,15 @@ class Resolver:
             candidates = self._owner_files(owners[-1], caller_dirs)
             if not candidates:
                 return {"error": "no %s in the installation or near the caller" % owners[-1]}
+            if all("\\resource\\channels\\" in os.path.normcase(c).replace("/", "\\") for c in candidates):
+                # a CHANNEL wire's endpoint, named by its TEMPLATE as NI's export names it
+                # (`Stream.lvlib:Read.vi`). LabVIEW generates a typed instance library per wire
+                # (ChannelInstances\Stream-i32.lvlib); the template's own VI called in its place
+                # composed 29 channel examples broken (2026-11-06). Refused until the composer
+                # makes the instance.
+                return {"error": "%s is a CHANNEL template (%s): a channel wire's call needs the typed "
+                                 "instance LabVIEW generates for it, which the composer does not make"
+                                 % (owners[-1], candidates[0])}
             for owner in candidates:
                 path = self.member(owner, vi_name,
                                    XCTL_VI_TYPES if owner.lower().endswith(".xctl") else ("VI",))

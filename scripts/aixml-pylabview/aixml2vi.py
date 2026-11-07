@@ -114,6 +114,7 @@ _LOSSY_READER_NOTE = re.compile(
     r"|signal \S+ touches an unread terminal"
     r"|In Place pair \S+ not read"
     r"|Conditional Disable \S+ frame \d+: condition not read"
+    r"|Call Library Function Node \S+: its library and function are not carried by AIXML"
     r"|\S+ '.*': its terminal was not found on a walked diagram)$")
 
 
@@ -4343,7 +4344,10 @@ class Composer:
     # ---- cluster and array nodes: classes of their own, not prims -------------------------
     AGG_NODES = {"Bundle": "node/mux", "Unbundle": "node/demux",
                  "Bundle By Name": "node/nMux/bundle", "Unbundle By Name": "node/nMux/unbundle",
-                 "Index Array": "node/aIndx", "Build Array": "node/aBuild"}
+                 "Index Array": "node/aIndx", "Build Array": "node/aBuild",
+                 # BUILD MATRIX is the Build Array node with node objFlags 0x200000 (vi2aixml reads
+                 # the flag; NI's export names it, Linear Algebra Calculator.vi, 2026-11-06)
+                 "Build Matrix": "node/aBuild"}
 
     def _term_from(self, tpl, tree, flags=None, dco_flags=None, index=None):
         """A fresh copy of a template terminal, typed `tree`; `index` is the field number a
@@ -4498,12 +4502,20 @@ class Composer:
         The terminal list is rebuilt from the WIRED types; dcoList names the per-field DCOs."""
         name = unescape(el.get("_name"))
         self.check_attrs(el, {"Unbundle By Name": ("fields",), "Bundle By Name": ("fields",),
-                              "Build Array": ("concat",), "Index Array": ("dimensions",)}.get(name, ()))
+                              "Build Array": ("concat",), "Build Matrix": ("concat",),
+                              "Index Array": ("dimensions",)}.get(name, ()))
         diag = self.diag_of(el)
         got = self.instantiate(self.AGG_NODES[name], own_uid=el.get("uid"))
         if got is None:
             raise Unsupported("no part harvested for %r" % name)
         node, _, src = got
+        if name == "Build Matrix":
+            f = node.find("objFlags")
+            if f is None:
+                f = ET.SubElement(node, "objFlags")
+                node.remove(f)
+                node.insert(0, f)
+            f.text = str(int(f.text or 0) | 0x200000)
         for d in node.iter("dco"):
             for e in d.findall("inplace"):
                 d.remove(e)
@@ -5174,11 +5186,38 @@ class Composer:
         b = lvheap.parse_bounds(node.find("bounds").text)
         node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + bottom, b[3]))
 
+    def _delete_from_array_rows(self, el):
+        """A 2D Delete From Array as NI's export writes it - dimensions="2", `index (row)` and
+        `disabled index (col)` - on the one 1D template there is: deleting ROWS is what that
+        template does on a 2D array (it composed and loaded executable), so the row index becomes
+        `index` and the disabled column index goes. Deleting COLUMNS (`disabled index (row)`,
+        `index (col)`, NI's Read Tab-Delimited File.vi) has no template, and composed as rows it
+        was a different VI - refused (2026-11-06)."""
+        ins = pairs(el.get("inputs"))
+        names = [unescape(t) for t, _ in ins]
+        if el.get("dimensions") != "2" or "index (row)" not in names or "index (col)" in names:
+            raise Unsupported("Delete From Array %s: only a 2D node that deletes ROWS has a template "
+                              "(its indices: %s)" % (el.get("uid"), ", ".join(n for n in names if "index" in n)))
+        # changed IN PLACE: diag_of() finds the element's diagram by identity
+        kept = []
+        for t, net in ins:
+            n = unescape(t)
+            if n == "disabled index (col)":
+                if net:
+                    raise Unsupported("Delete From Array %s: a wire into its disabled column index" % el.get("uid"))
+                continue
+            kept.append("%s:%s" % ("index" if n == "index (row)" else t, net or ""))
+        el.set("inputs", ",".join(kept))
+        del el.attrib["dimensions"]
+        return el
+
     def add_template_node(self, el):
         """A node rebuilt from a harvested template whose terminals carry their AIXML names.
         The template must have the element's terminals; a growable node (Merge Errors,
         Concatenate Strings, Compound Arithmetic) gets more inputs by cloning one."""
         name = unescape(el.get("_name"))
+        if name == "Delete From Array" and el.get("dimensions"):
+            el = self._delete_from_array_rows(el)
         dims_node = name in ("Array Subset", "Replace Array Subset")
         self.check_attrs(el, ("operation", "inversions") if name == "Compound Arithmetic" else
                          ("dimensions",) if dims_node else ())

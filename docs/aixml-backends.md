@@ -2556,11 +2556,12 @@ was empty, `lvai_exec_state` and a pylabview diff against NI's original):
 - **A static reference wired into a Property Node** is of the class the control is composed as -
   Nonlinear Spring Constant fit reads {LV.Slide} `Scale.Range` of a slide the reader exports as a
   plain double. Refused by name now, like a node bound by `link=`.
-- Smith Multi Plot with Styles: `Index & Bundle Cluster Array` keeps its donor's output type
-  (cluster{Color, String}). NI's own output there is array{cluster{array{Smith Pt}}} - ONE field
-  for TWO 1D inputs, which matches neither the documented rule (one field per input, each the
-  input's element) nor the two donors (Sphere Fit: three double arrays -> cluster of three doubles).
-  Not understood; open.
+- Smith Multi Plot with Styles: the node is not an `Index & Bundle Cluster Array` at all but a
+  **Build Cluster Array** - the same heap class (`cABuild`), N elements into an array of ONE-field
+  clusters, which is exactly the array{cluster{array{Smith Pt}}} that looked unexplained. The
+  reader named every cABuild node Index & Bundle; it tells them apart by the output's field count
+  since the next section, and the composer, which has no Build Cluster Array part, now refuses the
+  VI by name. This bullet called the type "not understood" until then.
 - Still open as well: Malleable Buffer Example Plots (a `.vim` with `Bad linkage`), Calling VI -
   Friend of Class A (community scope), Preserve Run-Time Class (class wires, `Class conflict`).
 
@@ -2645,6 +2646,86 @@ place (`pylv_apply`) - but its XML is LabVIEW's object heap, not a graph of node
 logic cannot be authored in it. AIXML is the AUTHORING language: a new VI, or new logic, is
 written as AIXML and composed. Regenerating an EXISTING VI through reader -> AIXML -> composer is
 needed only for a change of logic, and loses what the heap route keeps.
+
+## The reader at NI's level (measured 2026-11-06)
+
+**The goal: vi2aixml.py writes what NI's ConvertVIToAIXML writes, fact for fact.** The reference is
+a fresh NI export of every example VI of LabVIEW 2026 - `LabVIEWMCP.exe --corpus <examples> --out
+<dir>` over NI's service, 1 784 exported, 8 skipped (RT and Localhost project targets), 1 h 15 min
+with LabVIEW restarted every 40 projects. Examples whose subVIs LabVIEW cannot find raise a modal
+`Find the VI Named ...` that stops the service; `lv-dialog-cancel.ps1` answers each with Cancel
+(the least-change button) for the whole run - 70 times. NI's export of such a VI is made with the
+subVI missing, so it can differ there.
+
+`compare_corpus.py <dir>` reads every VI with the reader (8 shards) and compares it with NI's
+export on EVERY attribute NI writes - only uid bookkeeping is left out, nets compared by source -
+and counts each difference by (tag, attribute); `corpus_gap.py` drills into one bucket.
+compare_full.py, which compares a chosen subset over the export cache, could not see most of what
+follows: it ignores unwired terminals and descriptions.
+
+| | VIs identical in every fact | elements | attributes | terminals | wires |
+|---|---|---|---|---|---|
+| before | 250 of 1 767 | 99.58 % | 97.05 % | 88.27 % | 96.82 % |
+| after | **1 163 of 1 767** | 99.67 % | 99.33 % | 98.99 % | 98.25 % |
+
+What changed, each family measured on that corpus:
+
+- **Unwired sides of tunnels, shift registers, constants and conditions** are written as `value:`,
+  as NI writes them - a case frame's In half `outputs="value:"` (2 522), its Out half
+  `inputs="value:"` (1 433). Lost before: 4 281 tunnel terminals and 507 others.
+- **Every terminal of a primitive**, an unwired one as `name:` (`Wait (ms)`'s timer output on 309
+  nodes). An unwired input carries no SINK flag; a primitive takes its direction from its DCO, a
+  template node from its template part (whose inputs are wired, `sinks_for`), Replace Array Subset
+  and Delete From Array from their own DCO flags. A node bound by `link=` lists no reference
+  terminals (418 of 418).
+- **Primitive names and slot names learned from the corpus**: 23 primResIDs the tables lacked
+  (`learn_prim_names.py` -> `primitive-names-extra.tsv`: Join Numbers, UDP, Datalog, Bluetooth,
+  IrDA ...) and some 250 slots (`learn_unwired_names.py` -> `terminal-names-learned.tsv`): by
+  ELIMINATION on a node where one name is left on each side, by the WIRE's source where several are,
+  and by ORDER - NI lists inputs in descending and outputs in ascending slot order on most nodes
+  (`check_term_order.py`: 314 and 86 of the fully named ones, not all) - trusted only on a node whose
+  every known name sits where that order puts it. Learned only when every observation agrees.
+- **Control and indicator descriptions**, read off the ddo's `description` (a typedef'd control:
+  off its inner part), trailing blanks and line breaks dropped as NI drops them: 1 994 that were
+  never written.
+- **One heap class, two nodes**, named as NI names them: Build Cluster Array / Index & Bundle
+  Cluster Array (`cABuild`, by the output's field count), Build Matrix (`aBuild`, node flag
+  0x200000), Format Into File / Scan From File (`printf`/`scanf` on a path or file refnum), Start /
+  Wait On Asynchronous Call (`callByRefNode`, `CBRSaveStyle` 01/02), Waveform Unbundle / Bundle
+  Elements (an In Place pair on a MeasureData).
+- **Channel calls** name the TEMPLATE library, `Stream.lvlib:Read.vi`, where the heap links the
+  instance LabVIEW generated, `ChannelInstances\Stream-i32.lvlib` (about 400 calls).
+- **Ring constants** carry `style="Ring" items=... values=[...]` (values from `ringSparseValues`)
+  on the diagram as on the panel; a TYPEDEF'd ring constant does not, as in NI's export (59 of 59).
+- **User events in a cluster of events** are named by their path, `<Wait User Events.Stop>`:
+  `dynIndex` counts the registration in preorder, a cluster one index and each child the next.
+- **Case selectors**: a closed range of exactly two values is a list (`-2, -1`, `"Bad", "Idle"`),
+  three or more stay a range.
+- **Class wires**: a property node on a class is named without its folder (`Module ID`, not
+  `Accessors:Module ID`); Bundle, Unbundle and In Place pairs on a class name its private data
+  fields (`Entity Table`).
+- **`cond="true"`** on a Diagram/Conditional Disable structure's tunnels (the 0x200000 bit, 87 of 91).
+- **The Call Library Function Node** is read as NI writes it - its parameters by their types'
+  labels, both sides, Void terminals left out - and NOTED as lossy, since AIXML does not carry its
+  library and function: the composer still refuses it.
+
+**What the composer makes of it** (`run_census.sh`, the census of the section above, against the
+run before these changes): 1 088 composed instead of 1 090, **696 executable instead of 698, 0
+crashes, no VI that composed and ran before broken now.** The two fewer are six that ran AS A
+DIFFERENT VI, refused now, against four gained. Refused now, by name: the four asynchronous-call
+examples (composed before as SYNCHRONOUS Call By Reference - they ran, and did something else),
+Smith (Build Cluster Array, no part), Format Into File and Scan From File, the waveform In Place
+pair, and a 2D Delete From Array that deletes COLUMNS (Read Tab-Delimited File: the only template
+deletes rows, so it composed as a different VI). Composed as before: Build Matrix (the Build Array
+part with the node flag set) and a 2D Delete From Array that deletes rows. Channel calls are refused
+with the template named, where 29 channel examples composed against the template's own VI and
+loaded broken.
+
+**Still different from NI, largest first**: constructs the reader does not read (Python Node,
+MATLAB, Merge Signals, Shared Variable nodes, Timed Loop, Variant and Map In Place pairs, .NET
+constructors, Register Event Callback), about 900 terminal and wire facts in all; 11 Event Data
+Nodes NI writes with no `outputs` at all, for a reason not found; a handful of primitive slots no
+observation names.
 
 ## Not covered, and not measured
 
