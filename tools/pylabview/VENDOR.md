@@ -99,17 +99,19 @@ for byte.
 
 Remove an entry once the fix lands upstream - the `upstream` field says where each one stands.
 
-## What is NOT committed
+## The runtime IS committed
 
-The Python runtime. `provision.ps1` assembles it into `runtime\`, about **32 MB**. Two reasons it
-stays out of git: 32 MB of binaries do not belong in version control, and a runtime assembled from
-whatever CPython the machine has is more honest than a pinned copy that silently rots.
+`provision.ps1` assembles the Python runtime into `runtime\`, about **32 MB**, and it is committed
+(636 files): a fresh clone's build then carries `pylabview\` beside the exe with no provisioning
+step - the user's decision of 2026-11-08. It was in `.gitignore` from #24 on, yet tracked since #37
+past that rule; an untracking on 2026-11-08 was reverted the same day for exactly this reason.
 
-`runtime\` is in `.gitignore`. **But 659 of its files ARE tracked** (measured 2026-10-21 with
-`git ls-files tools/pylabview/runtime`) - added past the ignore rule at some point - so a
-re-provisioning shows up as a diff: the patched `app\pylabview\*.py`, `bundle.json`, and deleted
-stdlib `__pycache__` files. Commit the first two with the patch that changed them; restore the
-`.pyc` files (`git ls-files -d tools/pylabview/runtime | xargs git checkout --`).
+Only its bytecode cache stays out (`/tools/pylabview/runtime/**/__pycache__/`): Python rewrites it
+and provisioning deletes it. A re-provisioning still shows up as a diff - the patched
+`app\pylabview\*.py` and `bundle.json`: commit them with the patch that changed them.
+
+The release does not use this copy: `release.yml` provisions its own bundle from a pinned
+Python 3.12 and smoke-tests it.
 
 ## Why a real CPython has to travel with us
 

@@ -117,11 +117,13 @@ jobs:
 
       # 3b. Assemble the pylabview bundle.
       #
-      #     WHY THIS EXISTS. tools/pylabview/runtime/ is gitignored - 38 MB of interpreter,
-      #     trimmed stdlib and Pillow - and nothing in the build assembles it: the .csproj only
-      #     COPIES the folder if it happens to be there, and no MSBuild target runs provision.ps1.
-      #     So on a clean CI checkout the condition was false and the release shipped without the
-      #     bundle entirely. Up to and including v0.9.0 that meant pylv_status, pylv_extract,
+      #     WHY THIS EXISTS. Nothing in the build assembles tools/pylabview/runtime/ - 38 MB of
+      #     interpreter, trimmed stdlib and Pillow: the .csproj only COPIES the folder if it happens
+      #     to be there, and no MSBuild target runs provision.ps1. The repository carries a copy
+      #     (committed for fresh clones, 2026-11-08), but it is whatever Python the last developer
+      #     provisioned from; this step REPLACES it with the pinned 3.12 below, so what ships is
+      #     known. When the folder was still gitignored, a clean CI checkout had no bundle at all
+      #     and the release shipped without it. Up to and including v0.9.0 that meant pylv_status, pylv_extract,
       #     pylv_rebuild, pylv_route and pylv_apply all answered `notProvisioned` on a plugin
       #     install, pointing the reader at tools\pylabview\provision.ps1 - a path that does not
       #     exist in a binary install. README framed the gap as a fresh-checkout concern only.

@@ -17,10 +17,11 @@
     Measured on this station: 32 MB assembled, and a scrubbed-environment extract plus rebuild of a
     VI came out byte-identical to the original.
 
-    The Python runtime is deliberately NOT committed. 32 MB of binaries do not belong in git, and a
-    runtime assembled from whatever CPython the build machine has is more honest than a pinned copy
-    that silently rots. What IS committed is the pylabview source under vendor\ - 1.4 MB, pinned,
-    offline, with its licence.
+    The runtime this assembles IS committed (tools\pylabview\runtime, without its __pycache__), so a
+    fresh clone's build carries pylabview with no provisioning step - the user's decision of
+    2026-11-08. Re-run this after a patch or a re-vendor and commit the changed files; the release
+    workflow runs it again from a pinned Python 3.12, and the destination is cleared first. The
+    pylabview source itself lives under vendor\ - 1.4 MB, pinned, offline, with its licence.
 
 .PARAMETER Source
     A CPython installation directory to assemble from. Defaults to discovery: py -0p, then PATH.

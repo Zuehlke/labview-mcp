@@ -288,10 +288,9 @@ resources travel inside `LabVIEWMCP.dll` and `build.ps1` proves it byte for byte
 `lvai_aixml_reference`, `lvai_vi_server_reference` and the rest answer identically with no
 repository present.
 
-The `pylabview\` folder beside the exe travels with that copy — **if the source machine had it**.
-`tools\pylabview\runtime\` is gitignored, so the build stages it only where `provision.ps1` has
-run, and a copy from a machine without it silently yields an install where every `pylv_*` tool
-answers `notProvisioned`. Check rather than assume: `LabVIEWMCP.exe --pylv-status`. The release
+The `pylabview\` folder beside the exe travels with that copy. `tools\pylabview\runtime\` is
+committed, so every checkout's build stages it; a checkout where it was deleted yields an install
+where every `pylv_*` tool answers `notProvisioned` (`provision.ps1` rebuilds it). Check rather than assume: `LabVIEWMCP.exe --pylv-status`. The release
 zip always carries it, but only since **v0.9.2** — see the [troubleshooting table](troubleshooting.md).
 
 Two things are not reachable through a tool and need one command:
