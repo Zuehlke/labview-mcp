@@ -147,7 +147,8 @@ def aixml_type(tree):
         return {"TimeStamp": "timestamp", "Float64Waveform": "doublewaveform",
                 "Complex128Waveform": "complexdoublewaveform",
                 "Dynamicdata": "dynamicdata", "Digitaldata": "digitaltable",
-                "DigitalWaveform": "digitalwaveform"}.get(tree.get("Flavor"))
+                "DigitalWaveform": "digitalwaveform"}.get(tree.get("Flavor")) or \
+            TYPE_TO_AIXML.get("MeasureData." + (tree.get("Flavor") or ""))   # int8waveform ... (2026-11-08)
     if t == "Picture":
         return "picture"
     if t in ("Set", "Map") and kids:
@@ -190,11 +191,21 @@ def aixml_type(tree):
             rt = "Notifier"     # pylabview's name for it; NI writes ref{Notifier}{T} (14, 2026-11-06)
         if rt == "TDMSFile":
             return "ref{TDMSFile}"
+        if rt == "DataValueRef":
+            # a DATA VALUE REFERENCE, as NI's export writes one: ref{DataValue}{T} (VI Analyzer's
+            # Session Handle.ctl typedef, read `?TypeDef` in 51 VIs of the vi.lib sweep, 2026-11-08)
+            inner = _sub(kids[0]) if kids else None
+            return "ref{DataValue}{%s}" % inner if inner else None
         if rt in ("DataLog", "Notifier", "Queue", "UserEvent", "EventReg", "Occurrence"):
             inner = _sub(kids[0]) if kids else None
             return "ref{%s}" % rt + ("{%s}" % inner if inner else "")
         if rt == "UsrDefndTag":
             return "ref{GenClassTag.%s.%s}" % (tree.get("Ident") or "", tree.get("TypeName") or "")
+        if rt == "UsrDefined" and tree.get("Ident") and tree.get("TypeName"):
+            # a USER-DEFINED refnum, as NI's export writes one: ref{GenClass.<Ident>.<TypeName>}
+            # (XML DOM, TDM storage, security ... - `type Refnum.UsrDefined not mapped` in 115 VIs
+            # of the vi.lib sweep, 2026-11-08)
+            return "ref{GenClass.%s.%s}" % (tree.get("Ident"), tree.get("TypeName"))
         return None
     if t == "String" and tree.get("Bit3") == "1":
         # a UTF-8 string (Bit3 on its type): NI's export writes string{utf8} (7 over its
@@ -323,6 +334,10 @@ def _unquad(b):
     sign, exp = hi >> 15, hi & 0x7FFF
     frac = int.from_bytes(b[2:16], "big")
     if exp == 0x7FFF:
+        # a fraction makes it a NaN, not an infinity (Mean (CDB).vi-style NaN defaults, sweep of
+        # vi.lib 2026-11-08); the sign is kept like fmt_float keeps it
+        if frac:
+            return math.copysign(float("nan"), -1.0 if sign else 1.0)
         return float("-inf") if sign else float("inf")
     v = (1 + frac / float(1 << 112)) * 2.0 ** (exp - 16383)
     return -v if sign else v
@@ -331,7 +346,10 @@ def _unquad(b):
 def _fmt_complex(re_, im):
     if im == 0:
         return fmt_float(re_)
-    return "%s%s%si" % (fmt_float(re_), "+" if im >= 0 else "", fmt_float(im))
+    # the imaginary part always carries its sign: a NaN one was written `nannani` until
+    # 2026-11-08 (`nan` is not >= 0 and has no `-`), which no reader of the value could split
+    t = fmt_float(im)
+    return "%s%s%si" % (fmt_float(re_), "" if t.startswith("-") else "+", t)
 
 
 def _flat_decode(tree, b, pos):
@@ -381,6 +399,9 @@ def _flat_decode(tree, b, pos):
         f = ">d" if n == 8 else ">f"
         re_, im = struct.unpack(f, b[pos:pos + n])[0], struct.unpack(f, b[pos + n:pos + 2 * n])[0]
         return _fmt_complex(re_, im), pos + 2 * n
+    if t == "NumComplexExt":
+        # two binary128 halves, real first - the composer's _quad twice
+        return _fmt_complex(_unquad(b[pos:pos + 16]), _unquad(b[pos + 16:pos + 32])), pos + 32
     if t in INT_FMT:
         n = struct.calcsize(INT_FMT[t])
         return str(struct.unpack(INT_FMT[t], b[pos:pos + n])[0]), pos + n
@@ -420,8 +441,17 @@ EMPTY_VARIANT_TAIL = bytes.fromhex("00000001000400000001000000000000")
 def _decode_value(tree, hexstr):
     if tree.get("Type") == "TypeDef" and tree.find("TypeDesc") is not None:
         return _decode_value(tree.find("TypeDesc"), hexstr)
-    if tree.get("Type") in ("Array", "Cluster", "NumFloatExt", "NumComplex128", "NumComplex64", "Picture"):
+    if tree.get("Type") in ("Array", "Cluster", "NumFloatExt", "NumComplex128", "NumComplex64", "NumComplexExt",
+                            "Picture", "LVVariant"):
+        # LVVariant on its own: an EMPTY variant, as inside a cluster - 21 of 21 sampled in the
+        # 139 VIs of the vi.lib sweep that noted one (2026-11-08); one holding data still raises
         return _flat_decode(tree, bytes.fromhex(hexstr) if hexstr else b"", 0)[0]
+    if tree.get("Type") == "MeasureData" and lvheap.type_key(tree) == "MeasureData.TimeStamp":
+        # a TIMESTAMP constant: AIXML carries none and NI writes it empty. The ZERO time is that
+        # empty value, so it is no loss (11 of 12 sampled, vi.lib sweep 2026-11-08); any other
+        # stays undecoded and noted - the composer would write zero
+        b = bytes.fromhex(hexstr) if hexstr else b""
+        return "" if not any(b[:16]) else None
     t = tree.get("Type")
     if t and t.startswith("Unit"):
         t = "Num" + t[4:]   # a ring or enum holds its base number
@@ -3121,7 +3151,9 @@ class Reader:
                 self.term_owner[t.get("uid")] = (el, "waveform" if wave else "input cluster", True)
                 continue
             i = int(d.findtext("i") or 0) if d is not None else 0
-            nm = labels[i] if i < len(labels) else None
+            # a NEGATIVE <i> occurs too (ErrorRing\GenerateCode.vi, vi.lib sweep 2026-11-08, read
+            # as an IndexError): no field index, so the terminal's own type names it as below
+            nm = labels[i] if 0 <= i < len(labels) else None
             if nm is None:
                 # a CLASS's private data: the wire is a class refnum with no fields to read, but each
                 # element terminal carries the field's own labelled type (`Levels to Spawn`)

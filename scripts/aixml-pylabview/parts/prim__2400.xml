@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/2400" source="&lt;labview&gt;\vi.lib\Waveform\WDTOps.llb\WDT Number of Waveform Samples EXT.vi"><types><TypeDesc Type="MeasureData" Flavor="FloatExtWaveform" Format="inline" /><TypeDesc Type="MeasureData" Flavor="FloatExtWaveform" Format="inline" Label="Waveform ERROR" /></types><heap><SL__arrayElement class="prim" uid="492">
+                <objFlags>512</objFlags>
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="514">
+                    <objFlags>1</objFlags>
+                    <dco class="parm" uid="512">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(65)</typeDesc>
+                      <termBounds>(0, 6, 13, 13)</termBounds>
+                      <primIndex>333</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="520">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="517">
+                      <typeDesc>TypeID(66)</typeDesc>
+                      <termBounds>(0, 0, 13, 6)</termBounds>
+                      <primIndex>333</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(5, 84, 37, 116)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>262147</clumpNum>
+                <primResID>2400</primResID>
+                <primIndex>333</primIndex>
+                </SL__arrayElement>
+              </heap></part>

@@ -2979,6 +2979,116 @@ executable 2, single cases. `An_override_marks_its_pane_controls_as_its_parent_d
 the dispatch input and a dispatch output; the first fails on the code before, the last on the
 dispatch-output mistake.
 
+## The reader and composer over vi.lib and the LVAddons (measured 2026-11-08)
+
+**The question: where do the reader and the composer still have gaps, measured on code neither
+was tuned on - vi.lib and the add-ons?** Property, invoke and class nodes were left out on
+purpose (the user's scope). `experiments/aixml-without-grpc/census_vilib.py` reads every third VI
+of vi.lib and of the 18 add-ons a 32-bit LabVIEW 2026 loads (`resolve.select_addons`, 30 721 VIs
+and 47 `.llb` container files) with `vi2aixml.py` and composes the reader's AIXML with
+`aixml2vi.py`, as the examples census does; 14 shards, about 65 min. `census_vilib_report.py`
+groups the first composer blocker per VI and EVERY reader note. No LabVIEW, no NI service.
+
+| | before | after |
+|---|---|---|
+| VIs | 10 878 | 10 878 |
+| composed | 7 388 (67.9 %) | **7 837 (72.0 %)** |
+| refused by name | 3 477 | 3 041 |
+| composer or pylabview error | 11 | 0 |
+| read failed | 2 | 0 (now refused by name) |
+
+**The 449 newly composed VIs, loaded in LabVIEW 2026 over ActiveX (`cov_load.py`): 356
+executable, 0 crashes.** Split by owner as in the examples census:
+
+| newly composed | composed | executable |
+|---|---|---|
+| free VI | 422 | **352 (83 %)** |
+| library member | 19 | 4 |
+| class member | 8 | 0 |
+
+A member composed out of its owner is no member (the examples census, above), so the members say
+nothing about the route. The 70 broken free VIs are not analysed yet.
+
+**Nothing regressed: all 7 388 VIs that composed before compose after.** The "after" run started
+before the last four fixes below (variant and timestamp values, the integer waveforms, the
+user-defined refnum control); 25 more of the 119 VIs that stopped at that control compose with
+them.
+
+### What was wrong, and what fixed it
+
+- **Numbers.** `int(float(v))` rounded uint64's maximum past its range (`'Q' format requires ...`);
+  a NaN imaginary part was written `nannani` (no sign, unreadable); `1e-05+2i` was split at the
+  exponent's sign; a NaN extended could not be packed (frexp) and read back as `inf`;
+  `complexextended` was neither composed nor decoded. `_int_literal`, `_complex`, `_quad`,
+  `_unquad`, `_fmt_complex`.
+- **pylabview's rebuild.** A Formula Node's `errOfst` was written `%X` - `D` for 13 characters,
+  which pylabview refuses as odd-length hex (`heap_uint`). An int16 text ring kept the int32
+  part's `StdNumMin` -2147483648 (`int too big to convert`; `_set_ring` clamps to the type). A
+  character MacRoman lacks (a soft hyphen, `×`) in any heap string refused the whole VI
+  (`fit_heap_text`). And **pylabview cannot read back its own export of an empty string list**
+  (`(0)`, a text ring with no items) - patch `empty-string-list` in
+  `tools/pylabview/patches/patches.json`. `lvheap` now names pylabview's real error instead of
+  the SyntaxWarning that filled the message tail in 6 of the 11.
+- **Primitives.** 61 primResIDs had no name. Each was joined on uid with NI's own export of up to
+  two donor VIs (86 exports over gRPC): **43 named** (`primitive-names-extra.tsv`), 68 new parts
+  harvested from the same donors, and `compare_with_nigel.py --learn` added 332 terminal names.
+  Of the 339 VIs that carried an unnamed primitive, none composed before and 143 did after the
+  names alone. The script skipped every VI in a vi.lib folder named `*.llb` and read the reader's
+  OWN cache entries as NI's; both fixed. Ten ids stay unnamed because NI's export DROPS the node
+  (1814 in 13 VIs, 23070, 1606, 1996 ...).
+- **Seven learned terminal names were wrong** - the learner had swapped them. Checked by the
+  TYPE KIND of each slot in the prim's part (a `refnum out` must be a Refnum, `error in` a
+  Cluster): Open/Create/Replace Datalog's slots 1/3 (`cancelled`/`refnum out`), Read Datalog's
+  2/3, VISA Open's 3 (`VISA resource name out`, written `error out`), Wait on Notification from
+  Multiple's 1/3. Corrected in `terminal-names-learned.tsv`, which takes precedence over
+  `-extra`.
+- **Typedefs.** A Case Structure on a TYPEDEF enum or string wire was refused ("string selectors
+  on a TypeDef wire", **140 VIs**, the largest typedef gap): every test now runs on
+  `typedef_inner`, the selector keeps the typedef type. And the reader's `?TypeDef` was in fact a
+  data value reference inside the typedef (the VI Analyzer's `Session Handle.ctl`).
+- **Types.** NI spells them `ref{DataValue}{T}`, `ref{DataLog}{T}`,
+  `ref{GenClass.<Ident>.<TypeName>}` (`ref{GenClass.XML_Element.DOMUserDefRef}`) and
+  `<scalar>waveform` (`int8waveform`, `extendedwaveform`); the reader writes them and the composer
+  builds them (`REFNUM_CONTAINERS`, `refnum_type`, `SCALARS`). An empty variant constant on its
+  own and a ZERO timestamp constant are no longer noted as lost; a non-zero timestamp still is
+  (AIXML carries none, NI's export writes it empty, the composer writes zero).
+- **The container match.** Obtain-style primitives type their refnum output from the wired
+  element; the match compared the donor bytes with labels and indentation, so Open/Create/
+  Replace Datalog's `refnum out` stayed untyped. `type_sig` on both sides.
+
+### Wire types measured in LabVIEW and opened (`unverified_wire_type`)
+
+| type | test | what ran |
+|---|---|---|
+| `ref{DataValue}{T}` | t203 | New Data Value Reference -> Delete Data Value Reference, a double through and back |
+| `ref{DataLog}{T}` | t204 | Open/Create/Replace Datalog -> Write -> Set Position -> Read -> Close File, the record read back |
+| `ref{GenClass.*.DOMUserDefRef}` | t205 | NI_XML New.vi -> Close Reference(Node).vi; a control and indicator of XML_Element |
+| `ref{GenClass.*.Storage}` | t206 | _openDataStorage.vi -> CloseDataStorageRefnum.vi, a .tdm created twice over |
+| `int8waveform`, `extendedwaveform` | t207 | a control into WDT Number of Waveform Samples I8/EXT.vi and its output into a second call |
+
+Each with no insanity in LabVIEW's log. **A bare DataLog or DVR refnum (no element type) stays
+refused**: the FATAL "Insane Wire" this list cited for DataLog came from one. Every other
+user-defined refnum family (Security, AdaptiveFilters, nisysapi ...) and the other waveform
+flavors are TYPED now but stay refused on a wire until a test measures them. The whole selftest
+suite passed afterwards (t133, t136 and t138, the live-event tests, failed once under the
+sweep's full CPU load and passed alone).
+
+### What is left, after (first blocker per VI)
+
+| blocker | VIs | note |
+|---|---|---|
+| reader LOST STRUCTURE | 1 108 | mostly Call Library Function Nodes (926 VIs carry one): AIXML carries no library and function |
+| Stacked Sequence | 196 (≈150 first) | the reader writes its frames as one, as NI's export does |
+| `ref{DataLog}`/`ref{ActiveX}`/... untyped `ref` | 150 | bare refnums with no element type, ActiveX as a data type |
+| XNode calls | 93 | Error Ring 57 of them |
+| Picture constants | 80 | no constant encoding (FPGA host interface) |
+| `?Refnum.LVObjCtl` | 51 | a VI Server class the reader cannot name |
+| fixed point | 77 | `fixed` and `FixedConst`: NI's export drops the word lengths, so AIXML cannot carry them |
+| unnamed primResIDs | 42 refusals | NI's export drops the node too |
+
+Counts are refusals that NAME the construct, a VI counted once per construct; "first" is the
+first blocker only.
+
 ## Not covered, and not measured
 
 - **A DAQmx call has still not been RUN through a COMPOSED VI** - the probes above stop at the

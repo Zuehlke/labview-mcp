@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/24130" source="&lt;labview&gt;\vi.lib\gmath\GlobalOptimization.llb\DE_Eval Objective and Constraint.vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="# of logical processors" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="# of packages" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="# of cores per package" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="# of logical processors per core" /></types><heap><SL__arrayElement class="prim" uid="1629">
+                        <termList elements="4">
+                          <SL__arrayElement class="term" uid="1635">
+                            <dco class="parm" uid="1636">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(128)</typeDesc>
+                              <termBounds>(0, 16, 8, 32)</termBounds>
+                              <primIndex>551</primIndex>
+                              <parmIndex>4</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1638">
+                            <dco class="parm" uid="1639">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(129)</typeDesc>
+                              <termBounds>(8, 16, 16, 32)</termBounds>
+                              <primIndex>551</primIndex>
+                              <parmIndex>5</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1641">
+                            <dco class="parm" uid="1642">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(130)</typeDesc>
+                              <termBounds>(16, 16, 24, 32)</termBounds>
+                              <primIndex>551</primIndex>
+                              <parmIndex>6</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="1644">
+                            <dco class="parm" uid="1645">
+                              <objFlags>1</objFlags>
+                              <typeDesc>TypeID(131)</typeDesc>
+                              <termBounds>(24, 16, 32, 32)</termBounds>
+                              <primIndex>551</primIndex>
+                              <parmIndex>7</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(52, 93, 84, 125)</bounds>
+                        <shortCount>4</shortCount>
+                        <clumpNum>262147</clumpNum>
+                        <primResID>24130</primResID>
+                        <primIndex>551</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

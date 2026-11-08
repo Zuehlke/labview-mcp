@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fixed" key="fixed/07" source="&lt;labview&gt;\vi.lib\picture\smith.llb\Get Smith Line Angles.vi"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="term" uid="336">
+            <objFlags>131136</objFlags>
+            <dco class="bDConstDCO" uid="296">
+              <typeDesc>TypeID(142)</typeDesc>
+              <dsw>4096</dsw>
+              <ddo class="bDFixed" uid="337">
+                <objFlags>32</objFlags>
+                <bounds>(514, 614, 530, 636)</bounds>
+                <partsList elements="2">
+                  <SL__arrayElement class="cosm" uid="338">
+                    <objFlags>2355</objFlags>
+                    <partID>9</partID>
+                    <howGrow>240</howGrow>
+                    <bounds>(-8, -5, 24, 27)</bounds>
+                    <image class="Image">
+                      <ImageResID>-8007</ImageResID>
+                      </image>
+                    <fgColor>00FF7F00</fgColor>
+                    <bgColor>00FFFFFF</bgColor>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="annex" uid="1068">
+                    <partID>66</partID>
+                    </SL__arrayElement>
+                  </partsList>
+                <typeDesc>TypeID(143)</typeDesc>
+                <MouseWheelSupport>0</MouseWheelSupport>
+                <cnst>07</cnst>
+                </ddo>
+              <ConstValue>3FD45F306DC9C883</ConstValue>
+              </dco>
+            </SL__arrayElement>
+          </heap></part>

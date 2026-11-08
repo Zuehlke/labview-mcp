@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1606" source="nirviSatArithAddEmu(signed).vi"><types><TypeDesc Type="NumInt16" Prop1="0" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="msb carry out" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="carry" /></types><heap><SL__arrayElement class="prim" uid="152">
+        <termList elements="4">
+          <SL__arrayElement class="term" uid="298">
+            <dco class="parm" uid="300">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(29)</typeDesc>
+              <termBounds>(8, 12, 17, 25)</termBounds>
+              <primIndex>144</primIndex>
+              <inplace>3</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="303">
+            <objFlags>4096</objFlags>
+            <dco class="parm" uid="304">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(30)</typeDesc>
+              <termBounds>(0, 12, 8, 25)</termBounds>
+              <primIndex>144</primIndex>
+              <parmIndex>1</parmIndex>
+              <inplace>4</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="486">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="487">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(31)</typeDesc>
+              <termBounds>(8, 0, 17, 12)</termBounds>
+              <primIndex>144</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="489">
+            <objFlags>36864</objFlags>
+            <dco class="parm" uid="490">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(32)</typeDesc>
+              <termBounds>(0, 0, 8, 12)</termBounds>
+              <primIndex>144</primIndex>
+              <parmIndex>3</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(173, 278, 205, 310)</bounds>
+        <shortCount>14</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1606</primResID>
+        <primIndex>144</primIndex>
+        </SL__arrayElement>
+      </heap></part>

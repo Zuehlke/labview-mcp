@@ -1,0 +1,42 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/3136" source="StockFPGA_Read32PlusUnflatten.vi"><types><TypeDesc Type="Array" Format="inline" Label="data for unflatten - adapt to type"><Dimension Flags="0x0080" FixedSize="0x0002" />
+        <TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="data for unflatten - adapt to type"><Dimension Flags="0x0080" FixedSize="0x0002" />
+        <TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="bparray"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumUInt32" Prop1="0" Format="inline" /></TypeDesc></types><heap><SL__arrayElement class="prim" uid="593">
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="619">
+            <objFlags>4096</objFlags>
+            <dco class="parm" uid="622">
+              <objFlags>65537</objFlags>
+              <typeDesc>TypeID(26)</typeDesc>
+              <termBounds>(0, 16, 32, 32)</termBounds>
+              <primIndex>537</primIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="625">
+            <objFlags>36864</objFlags>
+            <dco class="parm" uid="633">
+              <typeDesc>TypeID(27)</typeDesc>
+              <termBounds>(16, 0, 32, 16)</termBounds>
+              <primIndex>537</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="637">
+            <objFlags>36864</objFlags>
+            <dco class="parm" uid="640">
+              <typeDesc>TypeID(28)</typeDesc>
+              <termBounds>(0, 0, 16, 16)</termBounds>
+              <primIndex>537</primIndex>
+              <parmIndex>2</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(256, 353, 288, 385)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>3136</primResID>
+        <primIndex>537</primIndex>
+        </SL__arrayElement>
+      </heap></part>

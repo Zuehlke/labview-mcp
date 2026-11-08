@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/23061" source="&lt;labview&gt;\vi.lib\Math Plots\3D Math Plots\3D Pie\3D Pie Datatype\Protected\Create Plot Object\Calculate Vertex Array.vi"><types><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat32" Prop1="0" Format="inline" Label="The circle radius is 4" /></types><heap><SL__arrayElement class="prim" uid="3085">
+                <objFlags>65536</objFlags>
+                <termList elements="4">
+                  <SL__arrayElement class="term" uid="3087">
+                    <objFlags>1</objFlags>
+                    <dco class="parm" uid="3088">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(196)</typeDesc>
+                      <termBounds>(11, 11, 22, 22)</termBounds>
+                      <primIndex>519</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3090">
+                    <objFlags>1</objFlags>
+                    <dco class="parm" uid="3091">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(197)</typeDesc>
+                      <dcoFiller>3</dcoFiller>
+                      <termBounds>(0, 11, 11, 22)</termBounds>
+                      <primIndex>519</primIndex>
+                      <parmIndex>1</parmIndex>
+                      <inplace>3</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3093">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="3094">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(198)</typeDesc>
+                      <termBounds>(11, 0, 22, 11)</termBounds>
+                      <primIndex>519</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3096">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="3097">
+                      <typeDesc>TypeID(199)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(0, 0, 11, 11)</termBounds>
+                      <primIndex>519</primIndex>
+                      <parmIndex>3</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(100, 523, 132, 555)</bounds>
+                <shortCount>4</shortCount>
+                <clumpNum>589827</clumpNum>
+                <primResID>23061</primResID>
+                <primIndex>519</primIndex>
+                </SL__arrayElement>
+              </heap></part>

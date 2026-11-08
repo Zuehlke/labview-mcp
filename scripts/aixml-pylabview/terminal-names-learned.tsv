@@ -2,206 +2,357 @@
 # a wire end vi2aixml could only call ?parmN, named by LabVIEW's own export of the
 # same VI. Ambiguous ones (two names for one slot) are left out.
 primResID	node	parmIndex	terminal
+1063	Exclusive Or	1	y
+1063	Exclusive Or	out	x .xor. y?
+1072	Not Or	1	y
+1072	Not Or	2	x
+1072	Not Or	out	.not. (x .or. y)?
+1073	Not Exclusive Or	1	y
+1073	Not Exclusive Or	2	x
+1073	Not Exclusive Or	out	.not. (x .xor. y)?
+1074	Scale By Power Of 2	1	x
+1074	Scale By Power Of 2	2	n
+1074	Scale By Power Of 2	out	x*2^n
+1076	Round Toward +Infinity	1	x
+1076	Round Toward +Infinity	out	ceil(x): smallest int >= x
+1079	Cast Unit Bases	1	unit (none)
+1079	Cast Unit Bases	2	x
+1081	Logical Shift	1	x
+1081	Logical Shift	2	y
+1081	Logical Shift	out	x << y
+1082	Rotate	1	x
+1082	Rotate	2	y
+1082	Rotate	out	x rotated left by y
 1084	DataSocket Open	10	mode
+1084	DataSocket Open	3	connection id
+1084	DataSocket Open	8	error in (no error)
+1084	DataSocket Open	9	ms timeout (10000)
+1084	DataSocket Open	out	error out
+1085	DataSocket Close	1	timed out
+1085	DataSocket Close	11	connection id
+1085	DataSocket Close	8	error in (no error)
+1085	DataSocket Close	9	ms timeout (0)
 1086	DataSocket Read	10	type (Variant)
-1103		1	y
-1103		out	x >= y?
-1110		1	y
-1114		1	x
-1114		out	x >= 0?
+1086	DataSocket Read	3	connection out
+1086	DataSocket Read	6	wait for updated value (T)
+1086	DataSocket Read	8	error in (no error)
+1086	DataSocket Read	9	ms timeout (10000)
+1087	DataSocket Write	1	connection out
+1087	DataSocket Write	10	data
+1087	DataSocket Write	11	connection in
+1087	DataSocket Write	3	timed out
+1087	DataSocket Write	8	error in (no error)
+1087	DataSocket Write	9	ms timeout (0)
+1087	DataSocket Write	out	error out
+1103	Greater Or Equal?	1	y
+1103	Greater Or Equal?	out	x >= y?
+1110	Greater?	1	y
+1114	Greater Or Equal To 0?	1	x
+1114	Greater Or Equal To 0?	out	x >= 0?
+1115	Less Or Equal To 0?	1	x
+1140	To Byte Integer	1	number
+1140	To Byte Integer	out	8bit integer
+1141	To Word Integer	1	number
+1141	To Word Integer	out	16bit integer
+1146	To Single Precision Float	1	number
+1146	To Single Precision Float	out	single precision float
+1155	To Quad Integer	1	number
+1155	To Quad Integer	out	64bit integer
+1162	Swap Bytes	out	byte swapped
+1163	Swap Words	1	anything
+1164	Flatten To String	11	anything
+1164	Flatten To String	3	data string
 1165	Unflatten From String	10	data includes array or string size? (T)
+1165	Unflatten From String	3	rest of the binary string
 1165	Unflatten From String	7	type
+1165	Unflatten From String	8	error in (no error)
 1165	Unflatten From String	9	byte order (0:big-endian, network order)
 1166	Type Cast	1	type
+1170	Split Number	1	hi(x)
+1170	Split Number	2	lo(x)
+1171	Join Numbers	1	lo
+1171	Join Numbers	2	hi
+1171	Join Numbers	out	(hi.lo)
+1180	Number To Decimal String	1	width (-)
+1181	Number To Hexadecimal String	2	number
+1181	Number To Hexadecimal String	out	hex integer string
+1184	Decimal String To Number	1	offset past number
+1184	Decimal String To Number	2	default (0L)
+1184	Decimal String To Number	3	offset
+1185	Hexadecimal String To Number	1	offset past number
+1185	Hexadecimal String To Number	2	default (0uL)
+1185	Hexadecimal String To Number	3	offset
+1185	Hexadecimal String To Number	4	string
+1185	Hexadecimal String To Number	out	number
+1187	Fract/Exp String To Number	1	offset past number
+1187	Fract/Exp String To Number	2	use system decimal point (T)
+1187	Fract/Exp String To Number	3	default (0 dbl)
+1187	Fract/Exp String To Number	4	offset
+1202	Tangent	1	x
+1202	Tangent	out	tan(x)
+1206	Inverse Sine	1	x
+1206	Inverse Sine	out	arcsin(x)
+1207	Inverse Cosine	1	x
+1207	Inverse Cosine	out	arccos(x)
+1208	Inverse Tangent	1	x
+1208	Inverse Tangent	out	arctan(x)
+1212	Power Of 10	1	x
+1213	Power Of X	2	y
+1215	Hyperbolic Cosine	1	x
+1215	Hyperbolic Cosine	out	cosh(x)
+1218	Inverse Hyperbolic Cosine	1	x
+1218	Inverse Hyperbolic Cosine	out	argcosh(x)
+1225	Logarithm Base 2	1	x
+1225	Logarithm Base 2	out	log2(x)
+1227	Sinc	out	sin(x)/x
+1228	Inverse Tangent (2 Input)	1	x
+1228	Inverse Tangent (2 Input)	2	y
+1228	Inverse Tangent (2 Input)	out	atan2(y\2Cx)
+1302	Wait (ms)	out	millisecond timer value
+1308	Date/Time To Seconds	1	is UTC (F)
+1308	Date/Time To Seconds	2	date time rec
+1308	Date/Time To Seconds	out	time stamp
+1309	Seconds To Date/Time	1	to UTC (F)
+1309	Seconds To Date/Time	2	time stamp (now)
+1309	Seconds To Date/Time	out	date time rec
+1327	Wait Until Next ms Multiple	out	millisecond timer value
+1328	Wait For Front Panel Activity	1	timeout ms (-1 never timeout)
+1328	Wait For Front Panel Activity	2	front panel (this VI's panel)
+1328	Wait For Front Panel Activity	3	do not wait! (False)
+1328	Wait For Front Panel Activity	out	millisecond timer value
+1340	One Button Dialog	1	button name ("OK")
+1340	One Button Dialog	out	true
+1350	Stop	out	stop? (T)
+1352	Quit LabVIEW	out	quit? (T)
+1353	Control Help Window	1	Show
+1354	Get Help Window Status	1	Show
+1421	Path Type	1	path
+1422	Array of Strings to Path	1	relative
+1422	Array of Strings to Path	2	path
+1422	Array of Strings to Path	out	array of strings
 1503	String Subset	2	offset (0)
+1505	Number To Exponential String	1	use system decimal point (T)
+1505	Number To Exponential String	2	precision (6)
+1505	Number To Exponential String	3	width (-)
+1505	Number To Exponential String	out	E-format string
+1510	Pick Line	1	line index
+1510	Pick Line	2	multi-line string
+1510	Pick Line	out	output string
+1512	Format Value	1	value (0)
+1512	Format Value	2	format string
+1512	Format Value	3	string ("")
+1512	Format Value	out	output string
+1532	Match First String	2	string array
+1532	Match First String	3	string
+1532	Match First String	out	index
+1538	Search/Split String	out	offset of match
 1539	Spreadsheet String To Array	1	delimiter (Tab)
 1539	Spreadsheet String To Array	4	format string
 1600	Get Date/Time String	2	want seconds? (F)
-1712	TCP Wait On Listener	10	resolve remote address (T)
-1713	TCP Close Connection	11	connection ID
-1713	TCP Close Connection	out	error out
-1714	TCP Write	3	connection ID out
-1716	TCP Read	3	connection ID out
-1716	TCP Read	out	error out
+1600	Get Date/Time String	4	date format (0)
+1606		1	msb carry out
+1606		2	value
+1606		3	carry
+1607	Rotate Right With Carry	1	lsb carry out
+1607	Rotate Right With Carry	2	value
+1607	Rotate Right With Carry	3	carry
+1607	Rotate Right With Carry	out	value
+1608	String To Byte Array	1	string
+1608	String To Byte Array	out	unsigned byte array
+1610	Request Deallocation	out	flag
+1700	Generate Occurrence	out	occurrence
+1701	Wait on Occurrence	1	ignore previous (T)
+1701	Wait on Occurrence	2	occurrence
+1701	Wait on Occurrence	3	ms timeout (-1)
+1701	Wait on Occurrence	out	timed out
+1702	Set Occurrence	out	occurrence
+1710	IP To String	1	dot notation? (F)
+1712	Bluetooth Wait On Listener	10	resolve remote address (T)
+1712	Bluetooth Wait On Listener	11	listener ID in
+1712	Bluetooth Wait On Listener	3	listener ID out
+1712	Bluetooth Wait On Listener	4	connection ID
+1712	Bluetooth Wait On Listener	9	timeout ms (wait forever\3A -1)
+1712	Bluetooth Wait On Listener	out	error out
+1713	Bluetooth Close Connection	10	abort (F)
+1713	Bluetooth Close Connection	11	connection ID
+1713	Bluetooth Close Connection	3	connection ID out
+1713	Bluetooth Close Connection	out	error out
+1714	Bluetooth Write	11	connection ID
+1714	Bluetooth Write	2	bytes written
+1714	Bluetooth Write	3	connection ID out
+1714	Bluetooth Write	8	error in (no error)
+1714	Bluetooth Write	9	timeout ms (25000)
+1715	TCP Open Connection	3	connection ID
+1715	TCP Open Connection	6	local port
+1715	TCP Open Connection	9	timeout ms (60000)
+1715	TCP Open Connection	out	error out
+1716	Bluetooth Read	11	connection ID
+1716	Bluetooth Read	3	connection ID out
+1716	Bluetooth Read	7	mode (standard)
+1716	Bluetooth Read	8	error in (no error)
+1716	Bluetooth Read	9	timeout ms (25000)
+1716	Bluetooth Read	out	error out
+1717	TCP Create Listener	11	service name
+1717	TCP Create Listener	3	listener ID
+1717	TCP Create Listener	8	error in (no error)
+1717	TCP Create Listener	9	timeout ms (25000)
+1723	UDP Open	10	service name
+1723	UDP Open	11	port
+1723	UDP Open	2	connection ID
+1723	UDP Open	3	port
+1723	UDP Open	7	net address
+1723	UDP Open	8	error in (no error)
+1723	UDP Open	9	timeout ms (25000)
+1723	UDP Open	out	error out
+1724	UDP Read	10	max size (548)
+1724	UDP Read	11	connection ID
+1724	UDP Read	2	address
+1724	UDP Read	3	port
+1724	UDP Read	4	connection ID out
+1724	UDP Read	6	data out
+1724	UDP Read	8	error in (no error)
+1724	UDP Read	9	timeout ms (25000)
+1724	UDP Read	out	error out
+1725	UDP Write	10	data in
+1725	UDP Write	11	connection ID
+1725	UDP Write	3	connection ID out
+1725	UDP Write	5	port or service name
+1725	UDP Write	7	address
+1725	UDP Write	8	error in (no error)
+1725	UDP Write	9	timeout ms (25000)
+1725	UDP Write	out	error out
+1726	UDP Close	11	connection ID
+1726	UDP Close	3	connection ID out
+1726	UDP Close	8	error in (no error)
+1726	UDP Close	out	error out
+1727	UDP Multicast Open	11	port
+1727	UDP Multicast Open	7	net address
+1727	UDP Multicast Open	8	error in (no error)
+1727	UDP Multicast Open	9	time-to-live
+1730	New TLS Configuration	10	load OS trusted CAs?
+1730	New TLS Configuration	3	TLS configuration out
+1730	New TLS Configuration	out	error out
 1731	Start TLS	10	immutable TLS configuration
+1731	Start TLS	11	TCP connection
+1731	Start TLS	2	server certificate chain
+1731	Start TLS	6	server certificate validation
+1731	Start TLS	7	timeout ms
+1731	Start TLS	8	error in (no error)
 1731	Start TLS	9	server hostname
+1731	Start TLS	out	error out
+1732	Accept TLS	10	immutable TLS configuration
+1732	Accept TLS	11	TCP connection
+1732	Accept TLS	2	client certificate chain
+1732	Accept TLS	3	TLS connection
+1732	Accept TLS	7	timeout ms (300000)
+1732	Accept TLS	8	error in (no error)
+1732	Accept TLS	out	error out
+1733	Load Private Key Into Memory	10	format
+1733	Load Private Key Into Memory	9	password
+1734	Load Certificates Into Memory	10	format
+1734	Load Certificates Into Memory	8	error in (no error)
+1735	Add Private Key To TLS Configuration	11	TLS configuration
+1735	Add Private Key To TLS Configuration	3	TLS configuration out
+1735	Add Private Key To TLS Configuration	8	error in (no error)
+1735	Add Private Key To TLS Configuration	out	error out
+1736	Add Trusted Certificate To TLS Configuration	11	TLS configuration
+1736	Add Trusted Certificate To TLS Configuration	3	TLS configuration out
+1736	Add Trusted Certificate To TLS Configuration	8	error in (no error)
+1736	Add Trusted Certificate To TLS Configuration	out	error out
+1737	Make TLS Configuration Immutable	11	TLS configuration
+1737	Make TLS Configuration Immutable	8	error in (no error)
 1741	Close TLS Configuration	11	TLS configuration
 1741	Close TLS Configuration	8	error in (no error)
 1741	Close TLS Configuration	out	error out
 1815	Boolean Array To Number	out	number
-1950	GPIB Write	1	data
-1950	GPIB Write	4	timeout ms (488.2 global)
-1950	GPIB Write	6	error out
-1951	GPIB Read	1	byte count
-1951	GPIB Read	3	error in
-1951	GPIB Read	4	timeout ms (488.2 global)
-2010	TDMS Write	4	tdms file out
-2010	TDMS Write	7	channel name(s) in (Untitled)
-2011	TDMS Read	12	data type
-2011	TDMS Read	13	return channels in file order? (F)
-2011	TDMS Read	4	tdms file out
-2011	TDMS Read	7	channel name(s) in
-2012	TDMS Open	10	operation (0:open)
-2012	TDMS Open	6	disable buffering (T)
-2012	TDMS Open	7	file format version (2.0)
-2013	TDMS Close	8	error in (no error)
-2014	TDMS Set Properties	10	group name
-2014	TDMS Set Properties	7	property names
-2014	TDMS Set Properties	9	channel name
-2015	TDMS Get Properties	3	tdms file out
-2015	TDMS Get Properties	5	data type
-2015	TDMS Get Properties	7	property name
-2021	TDMS Advanced Open	10	operation (0:open)
-2021	TDMS Advanced Open	4	enable asynchronous? (T)
-2021	TDMS Advanced Open	6	disable buffering? (T)
-2022	TDMS Set Channel Information	7	data layout (0:non-interleaved)
-2023	TDMS Reserve File Size	7	append? (T)
-2024	TDMS Configure Asynchronous Writes	10	max asynchronous writes (4)
-2024	TDMS Configure Asynchronous Writes	7	pre-allocate? (F)
-2025	TDMS Set Next Write Position	10	offset (0)
-2025	TDMS Set Next Write Position	3	tdms file out
-2025	TDMS Set Next Write Position	5	channel name in
-2025	TDMS Set Next Write Position	7	group name in
-2027	TDMS Configure Asynchronous Reads	10	number of buffers (4)
-2028	TDMS Start Asynchronous Reads	10	total count (-1)
-2029	TDMS Advanced Synchronous Read	11	tdms file
-2029	TDMS Advanced Synchronous Read	6	data type
-2032	TDMS Advanced Close	3	file path out
-2033	TDMS Set Next Read Position	10	offset (0)
-2033	TDMS Set Next Read Position	5	channel name in
-2033	TDMS Set Next Read Position	7	group name in
-2157	TDMS In Memory Close	5	overwrite (F)
-2158	TDMS In Memory Read Bytes	5	byte count (-1: all)
-2308	VISA Open	10	duplicate session (F)
-2308	VISA Open	3	error out
-2308	VISA Open	7	timeout (0)
-2308	VISA Open	out	error out
-24201	Flatten To JSON	11	error out
-24202	Unflatten From JSON	1	type and defaults
-24202	Unflatten From JSON	3	error in (no error)
-24202	Unflatten From JSON	4	path
-24206	Open Python Session	3	error in (no error)
-2458	Look In Map	1	value
-8000	Automation Open	11	Automation Refnum
-8010	Open VI Reference	7	type specifier VI Refnum (for type only)
-8012	Open Application Reference	10	port number or service name (3363)
-8013	Open VI Object Reference	7	vi object class
-8013	Open VI Object Reference	8	error in (no error)
-8015	New VI Object	10	style
-8015	New VI Object	4	bounds
-8015	New VI Object	6	path
-8015	New VI Object	7	vi object class
-8016	To More Specific Class	2	target class
-8017		1	target class
-8017		2	generic class reference
-8050	Open/Create/Replace File	10	operation (0:open)
-8050	Open/Create/Replace File	3	refnum out
-8050	Open/Create/Replace File	8	error in
-8051	Read from Binary File	3	refnum out
-8051	Read from Binary File	5	data type
-8051	Read from Binary File	9	byte order (0:big-endian, network order)
-8052	Close File	4	error in
-8056	Delete	10	entire hierarchy (F)
-8058	File Dialog	3	selected path
-8063	Get File Size	4	error in
-8207	Set Waveform Attribute	4	error in
-8207	Set Waveform Attribute	6	name
-9003	Insert Menu Items	6	error in (no error)
-9003	Insert Menu Items	7	item tags
-9104	Send Notification	8	notifier out
-9108	Obtain Queue	4	max queue size (-1, unlimited)
-9111	Enqueue Element	out	queue
-1302	Wait (ms)	out	millisecond timer value
-1328	Wait For Front Panel Activity	out	millisecond timer value
-1063	Exclusive Or	1	y
-1063	Exclusive Or	out	x .xor. y?
-1079	Cast Unit Bases	1	unit (none)
-1079	Cast Unit Bases	2	x
-1084	DataSocket Open	3	connection id
-1084	DataSocket Open	8	error in (no error)
-1084	DataSocket Open	out	error out
-1085	DataSocket Close	11	connection id
-1085	DataSocket Close	8	error in (no error)
-1086	DataSocket Read	3	connection out
-1086	DataSocket Read	8	error in (no error)
-1187	Fract/Exp String To Number	2	use system decimal point (T)
-1213	Power Of X	2	y
-1340	One Button Dialog	1	button name ("OK")
-1340	One Button Dialog	out	true
-1352	Quit LabVIEW	out	quit? (T)
-1538	Search/Split String	out	offset of match
-1608	String To Byte Array	1	string
-1610	?	out	flag
-1701	Wait on Occurrence	2	occurrence
-1701	Wait on Occurrence	out	timed out
-1702	Set Occurrence	out	occurrence
-1712	TCP Wait On Listener	3	listener ID out
-1712	TCP Wait On Listener	4	connection ID
-1712	TCP Wait On Listener	out	error out
-1714	TCP Write	11	connection ID
-1714	TCP Write	8	error in (no error)
-1715	TCP Open Connection	3	connection ID
-1715	TCP Open Connection	out	error out
-1716	TCP Read	11	connection ID
-1716	TCP Read	8	error in (no error)
-1717	TCP Create Listener	3	listener ID
-1717	TCP Create Listener	8	error in (no error)
-1730	New TLS Configuration	10	load OS trusted CAs?
-1730	New TLS Configuration	3	TLS configuration out
-1731	Start TLS	11	TCP connection
-1731	Start TLS	8	error in (no error)
-1731	Start TLS	out	error out
-1732	Accept TLS	10	immutable TLS configuration
-1732	Accept TLS	11	TCP connection
-1732	Accept TLS	3	TLS connection
-1732	Accept TLS	8	error in (no error)
-1732	Accept TLS	out	error out
-1733	Load Private Key Into Memory	10	format
-1734	Load Certificates Into Memory	10	format
-1736	Add Trusted Certificate To TLS Configuration	11	TLS configuration
-1736	Add Trusted Certificate To TLS Configuration	3	TLS configuration out
-1736	Add Trusted Certificate To TLS Configuration	out	error out
-1737	Make TLS Configuration Immutable	11	TLS configuration
-1737	Make TLS Configuration Immutable	8	error in (no error)
 1901	Search 1D Array	1	start index (0)
 1905	Interpolate 1D Array	2	array of numbers or points
+1908	Split 1D Array	1	first subarray
+1908	Split 1D Array	2	index
+1908	Split 1D Array	3	array
+1908	Split 1D Array	out	second subarray
+1909	Threshold 1D Array	1	start index (0)
 1929	VISA Assert Trigger	10	protocol (default:  0)
 1929	VISA Assert Trigger	11	VISA resource name
 1929	VISA Assert Trigger	3	VISA resource name out
 1929	VISA Assert Trigger	8	error in (no error)
 1929	VISA Assert Trigger	out	error out
+1931	VISA Out 16	10	offset (0)
+1931	VISA Out 16	11	VISA resource name
+1931	VISA Out 16	7	address space (A16:  1)
+1931	VISA Out 16	8	error in (no error)
+1931	VISA Out 16	9	value (0)
+1931	VISA Out 16	out	error out
 1940	VISA Disable Event	11	VISA resource name
 1940	VISA Disable Event	3	VISA resource name out
 1940	VISA Disable Event	8	error in (no error)
+1940	VISA Disable Event	9	mechanism (1\3A  VI_QUEUE)
 1940	VISA Disable Event	out	error out
 1941	VISA Discard Events	10	event type (all enabled)
+1941	VISA Discard Events	11	VISA resource name
 1941	VISA Discard Events	3	VISA resource name out
+1941	VISA Discard Events	8	error in (no error)
+1941	VISA Discard Events	9	mechanism  (1\3A  VI_QUEUE)
 1941	VISA Discard Events	out	error out
+1942	VISA Enable Event	11	VISA resource name
 1942	VISA Enable Event	3	VISA resource name out
 1942	VISA Enable Event	8	error in (no error)
+1942	VISA Enable Event	9	mechanism (1\3A  VI_QUEUE)
 1942	VISA Enable Event	out	error out
 1943	VISA Wait on Event	1	event  resource name
 1943	VISA Wait on Event	10	event type (all enabled)
+1943	VISA Wait on Event	2	event type
 1943	VISA Wait on Event	3	VISA resource name out
 1943	VISA Wait on Event	8	error in (no error)
 1943	VISA Wait on Event	9	event  resource name (for class)
+1950	GPIB Write	1	data
+1950	GPIB Write	4	timeout ms (488.2 global)
+1950	GPIB Write	5	status
+1950	GPIB Write	6	error out
+1951	GPIB Read	1	byte count
+1951	GPIB Read	2	mode (0)
+1951	GPIB Read	3	error in
+1951	GPIB Read	4	timeout ms (488.2 global)
+1951	GPIB Read	6	status
 1994	VISA Unlock	11	VISA resource name
 1994	VISA Unlock	3	VISA resource name out
 1994	VISA Unlock	8	error in (no error)
 1994	VISA Unlock	out	error out
+2010	TDMS Write	1	data layout (0\3Adecimated)
+2010	TDMS Write	4	tdms file out
 2010	TDMS Write	6	group name out
+2010	TDMS Write	7	channel name(s) in (Untitled)
+2010	TDMS Write	8	channel name(s) out
 2011	TDMS Read	1	offset (0)
+2011	TDMS Read	12	data type
+2011	TDMS Read	13	return channels in file order? (F)
+2011	TDMS Read	14	end of file?
 2011	TDMS Read	2	count (-1: all)
+2011	TDMS Read	4	tdms file out
 2011	TDMS Read	6	group name out
+2011	TDMS Read	7	channel name(s) in
+2011	TDMS Read	8	channel name(s) out
+2012	TDMS Open	10	operation (0:open)
+2012	TDMS Open	5	create index file? (T)
+2012	TDMS Open	6	disable buffering (T)
+2012	TDMS Open	7	file format version (2.0)
+2012	TDMS Open	9	byte order (2\3Alittle-endian)
+2013	TDMS Close	8	error in (no error)
 2014	TDMS Set Properties	1	channel name out
+2014	TDMS Set Properties	10	group name
 2014	TDMS Set Properties	11	tdms file
 2014	TDMS Set Properties	2	group name out
 2014	TDMS Set Properties	3	tdms file out
+2014	TDMS Set Properties	7	property names
 2014	TDMS Set Properties	8	error in (no error)
+2014	TDMS Set Properties	9	channel name
 2014	TDMS Set Properties	out	error out
 2015	TDMS Get Properties	1	channel name out
 2015	TDMS Get Properties	10	group name
 2015	TDMS Get Properties	2	group name out
+2015	TDMS Get Properties	3	tdms file out
+2015	TDMS Get Properties	5	data type
+2015	TDMS Get Properties	7	property name
 2015	TDMS Get Properties	9	channel name
 2016	TDMS List Contents	4	error in (no error)
 2016	TDMS List Contents	6	group name
@@ -210,36 +361,73 @@ primResID	node	parmIndex	terminal
 2017	TDMS Flush	4	error in (no error)
 2017	TDMS Flush	7	tdms file
 2017	TDMS Flush	out	error out
+2021	TDMS Advanced Open	10	operation (0:open)
+2021	TDMS Advanced Open	2	sector size
+2021	TDMS Advanced Open	4	enable asynchronous? (T)
+2021	TDMS Advanced Open	6	disable buffering? (T)
+2021	TDMS Advanced Open	8	error in (no error)
 2022	TDMS Set Channel Information	11	tdms file
 2022	TDMS Set Channel Information	3	tdms file out
+2022	TDMS Set Channel Information	7	data layout (0:non-interleaved)
 2022	TDMS Set Channel Information	8	error in (no error)
 2022	TDMS Set Channel Information	out	error out
 2023	TDMS Reserve File Size	11	tdms file
+2023	TDMS Reserve File Size	3	tdms file out
+2023	TDMS Reserve File Size	7	append? (T)
 2023	TDMS Reserve File Size	8	error in (no error)
+2023	TDMS Reserve File Size	out	error out
+2024	TDMS Configure Asynchronous Writes	10	max asynchronous writes (4)
 2024	TDMS Configure Asynchronous Writes	11	tdms file
 2024	TDMS Configure Asynchronous Writes	3	tdms file out
+2024	TDMS Configure Asynchronous Writes	4	timeout (5 s)
+2024	TDMS Configure Asynchronous Writes	7	pre-allocate? (F)
 2024	TDMS Configure Asynchronous Writes	8	error in (no error)
 2024	TDMS Configure Asynchronous Writes	out	error out
+2025	TDMS Set Next Write Position	10	offset (0)
 2025	TDMS Set Next Write Position	11	tdms file
+2025	TDMS Set Next Write Position	3	tdms file out
+2025	TDMS Set Next Write Position	5	channel name in
+2025	TDMS Set Next Write Position	7	group name in
 2025	TDMS Set Next Write Position	8	error in (no error)
+2025	TDMS Set Next Write Position	9	from (0\3Astart)
 2026	TDMS Advanced Synchronous Write	3	tdms file out
 2026	TDMS Advanced Synchronous Write	out	error out
+2027	TDMS Configure Asynchronous Reads	10	number of buffers (4)
 2027	TDMS Configure Asynchronous Reads	11	tdms file
+2027	TDMS Configure Asynchronous Reads	3	tdms file out
+2027	TDMS Configure Asynchronous Reads	4	timeout (5 s)
 2027	TDMS Configure Asynchronous Reads	8	error in (no error)
+2027	TDMS Configure Asynchronous Reads	out	error out
+2028	TDMS Start Asynchronous Reads	10	total count (-1)
+2028	TDMS Start Asynchronous Reads	11	tdms file
 2028	TDMS Start Asynchronous Reads	3	tdms file out
+2028	TDMS Start Asynchronous Reads	8	error in (no error)
 2028	TDMS Start Asynchronous Reads	out	error out
+2029	TDMS Advanced Synchronous Read	11	tdms file
 2029	TDMS Advanced Synchronous Read	3	tdms file out
+2029	TDMS Advanced Synchronous Read	4	read process finished?
+2029	TDMS Advanced Synchronous Read	6	data type
 2029	TDMS Advanced Synchronous Read	7	count (-1)
 2029	TDMS Advanced Synchronous Read	out	error out
 2030	TDMS Stop Asynchronous Reads	11	tdms file
 2030	TDMS Stop Asynchronous Reads	3	tdms file out
 2030	TDMS Stop Asynchronous Reads	8	error in (no error)
 2030	TDMS Stop Asynchronous Reads	out	error out
+2031	TDMS Get Asynchronous Write Status	11	tdms file
 2031	TDMS Get Asynchronous Write Status	3	tdms file out
+2031	TDMS Get Asynchronous Write Status	8	error in (no error)
+2032	TDMS Advanced Close	10	truncate file? (F)
+2032	TDMS Advanced Close	3	file path out
+2032	TDMS Advanced Close	6	timeout (10 s)
+2033	TDMS Set Next Read Position	10	offset (0)
 2033	TDMS Set Next Read Position	11	tdms file
 2033	TDMS Set Next Read Position	3	tdms file out
+2033	TDMS Set Next Read Position	5	channel name in
+2033	TDMS Set Next Read Position	7	group name in
 2033	TDMS Set Next Read Position	8	error in (no error)
+2033	TDMS Set Next Read Position	9	from (0\3A start)
 2033	TDMS Set Next Read Position	out	error out
+2034	TDMS Get Asynchronous Read Status	1	all buffers full?
 2034	TDMS Get Asynchronous Read Status	2	number of buffers available
 2034	TDMS Get Asynchronous Read Status	3	tdms file out
 2034	TDMS Get Asynchronous Read Status	out	error out
@@ -250,6 +438,7 @@ primResID	node	parmIndex	terminal
 2036	TDMS Advanced Asynchronous Read	4	read process finished?
 2036	TDMS Advanced Asynchronous Read	6	data type
 2036	TDMS Advanced Asynchronous Read	out	error out
+2074	Generate User Event	4	priority (normal)
 2086	VISA USB Control In	11	error in (no error)
 2086	VISA USB Control In	15	error out
 2086	VISA USB Control In	4	VISA resource name out
@@ -261,9 +450,14 @@ primResID	node	parmIndex	terminal
 2156	TDMS In Memory Open	3	tdms file out
 2156	TDMS In Memory Open	out	error out
 2157	TDMS In Memory Close	11	tdms file
+2157	TDMS In Memory Close	5	overwrite (F)
 2157	TDMS In Memory Close	8	error in (no error)
 2158	TDMS In Memory Read Bytes	11	tdms file
+2158	TDMS In Memory Read Bytes	3	tdms file out
+2158	TDMS In Memory Read Bytes	5	byte count (-1: all)
+2158	TDMS In Memory Read Bytes	7	offset (0)
 2158	TDMS In Memory Read Bytes	8	error in (no error)
+2158	TDMS In Memory Read Bytes	out	error out
 2159	TDMS Delete Data	10	group name in
 2159	TDMS Delete Data	11	file path
 2159	TDMS Delete Data	3	file path out
@@ -273,198 +467,43 @@ primResID	node	parmIndex	terminal
 2159	TDMS Delete Data	8	error in (no error)
 2159	TDMS Delete Data	9	channel name(s) in
 2159	TDMS Delete Data	out	error out
+2306	Refnum to Session	4	error in(no error)
+2306	Refnum to Session	7	Refnum
 23060	Re/Im To Polar	2	y
+23060	Re/Im To Polar	out	theta
+23066	Text to UTF-8	11	text
+23066	Text to UTF-8	3	utf-8 text
+23067	UTF-8 to Text	11	utf-8 text
+23067	UTF-8 to Text	3	text
+2308	VISA Open	10	duplicate session (F)
+2308	VISA Open	3	VISA resource name out
+2308	VISA Open	7	timeout (0)
+2308	VISA Open	out	error out
+2311	VISA Map Trigger	10	trigger source
 2311	VISA Map Trigger	11	VISA resource name
 2311	VISA Map Trigger	3	VISA resource name out
+2311	VISA Map Trigger	7	mode
 2311	VISA Map Trigger	8	error in (no error)
+2311	VISA Map Trigger	9	trigger destination
 2311	VISA Map Trigger	out	error out
+2312	VISA Unmap Trigger	10	trigger source
 2312	VISA Unmap Trigger	11	VISA resource name
 2312	VISA Unmap Trigger	3	VISA resource name out
 2312	VISA Unmap Trigger	8	error in (no error)
+2312	VISA Unmap Trigger	9	trigger destination (all)
 2312	VISA Unmap Trigger	out	error out
-2456	Insert Into Map	10	key
-2456	Insert Into Map	9	value
-2457	Remove From Map	10	key
-2457	Remove From Map	3	map out
-3913	Replace Substring	1	result string
-3913	Replace Substring	2	length
-3913	Replace Substring	3	offset
-3914	Search and Replace String	2	case sensitive?
-3915	Add with Error Terminals	4	error in (no error)
-5566	Fixed-Point to Integer Cast	1	fixed-point
-5567	Integer to Fixed-Point Cast	1	fixed-point type
-5567	Integer to Fixed-Point Cast	3	fixed-point
-8000	Automation Open	out	error out
-8014	New VI	3	vi refnum
-8014	New VI	out	error out
-8051	Read from Binary File	11	file (use dialog)
-8051	Read from Binary File	8	error in
-8052	Close File	3	path
-8053	?	out	error out
-8055	Create Folder	8	error in
-8058	File Dialog	2	exists
-8068	?	10	target path (use dialog)
-8068	?	11	source path
-8068	?	8	error in
-8068	?	out	error out
-8070	Read from Text File	3	refnum out
-8078	Write to Binary File	8	error in
-8078	Write to Binary File	out	error out
-8080	Write to Text File	3	refnum out
-8080	Write to Text File	8	error in
-8083	?	2	filenames
-8083	?	6	pattern
-8100	Format Date/Time String	1	UTC format
-8100	Format Date/Time String	3	time format string (%c)
-8101	Scan String For Tokens	7	operators (none)
-8101	Scan String For Tokens	9	input string
-8204	Set Variant Attribute	3	Variant out
-8204	Set Variant Attribute	7	Variant
-8205	Get Variant Attribute	3	duplicate Variant
-8205	Get Variant Attribute	5	default value (empty Variant)
-8205	Get Variant Attribute	6	name
-8206	Delete Variant Attribute	4	error in
-8206	Delete Variant Attribute	6	name (all attributes)
-8206	Delete Variant Attribute	7	Variant
-9003	Insert Menu Items	8	item names
-9004	Delete Menu Items	3	menu reference out
-9004	Delete Menu Items	7	items
-9004	Delete Menu Items	8	menu tag
-9004	Delete Menu Items	out	error out
-9006	Set Menu Item Info	11	menu reference
-9006	Set Menu Item Info	3	menu reference out
-9006	Set Menu Item Info	4	short cut
-9006	Set Menu Item Info	7	item tag
-9006	Set Menu Item Info	8	error in (no error)
-9006	Set Menu Item Info	out	error out
-9106	Wait on Notification from Multiple	11	error out
-9106	Wait on Notification from Multiple	out	notifiers
-9108	Obtain Queue	out	name (unnamed)
-9110	Get Queue Status	3	error in (no error)
-9110	Get Queue Status	8	queue out
-9110	Get Queue Status	out	queue
-9111	Enqueue Element	8	queue out
-9113	Dequeue Element	8	queue out
-9114	Flush Queue	11	error out
-9114	Flush Queue	3	error in (no error)
-9114	Flush Queue	out	queue
-9129	Enqueue Element At Opposite End	11	error out
-9129	Enqueue Element At Opposite End	out	queue
-9154	Get Drag Drop Data	8	type
-9154	Get Drag Drop Data	9	data name
-1187	Fract/Exp String To Number	1	offset past number
-3914	Search and Replace String	1	replace all?
-8014	New VI	9	vi type (standard vi)
-8401	Unflatten From XML	4	error in (no error)
-8401	Unflatten From XML	6	xml string
-8401	Unflatten From XML	out	error out
-8402	Flatten To XML	6	anything
-1076	?	1	x
-1076	?	out	ceil(x): smallest int >= x
-1081	?	1	x
-1081	?	2	y
-1081	?	out	x << y
-1140	?	out	8bit integer
-1155	?	1	number
-1155	?	out	64bit integer
-1162	?	out	byte swapped
-1163	?	1	anything
-1164	?	11	anything
-1164	?	3	data string
-1181	?	out	hex integer string
-1308	?	1	is UTC (F)
-1308	?	2	date time rec
-1308	?	out	time stamp
-1309	?	1	to UTC (F)
-1309	?	2	time stamp (now)
-1309	?	out	date time rec
-1350	?	out	stop? (T)
-1353	?	1	Show
-1354	?	1	Show
-1421	?	1	path
-1422	?	1	relative
-1422	?	2	path
-1422	?	out	array of strings
-1608	String To Byte Array	out	unsigned byte array
-1700	Generate Occurrence	out	occurrence
-1712	TCP Wait On Listener	11	listener ID in
-1730	New TLS Configuration	out	error out
-1735	Add Private Key To TLS Configuration	11	TLS configuration
-1735	Add Private Key To TLS Configuration	3	TLS configuration out
-1735	Add Private Key To TLS Configuration	out	error out
-1908	?	1	first subarray
-1908	?	2	index
-1908	?	3	array
-1941	VISA Discard Events	11	VISA resource name
-1941	VISA Discard Events	8	error in (no error)
-2011	TDMS Read	8	channel name(s) out
-2023	TDMS Reserve File Size	3	tdms file out
-2023	TDMS Reserve File Size	out	error out
-2027	TDMS Configure Asynchronous Reads	3	tdms file out
-2027	TDMS Configure Asynchronous Reads	out	error out
-2028	TDMS Start Asynchronous Reads	11	tdms file
-2028	TDMS Start Asynchronous Reads	8	error in (no error)
-2031	TDMS Get Asynchronous Write Status	11	tdms file
-2031	TDMS Get Asynchronous Write Status	8	error in (no error)
-2158	TDMS In Memory Read Bytes	3	tdms file out
-2158	TDMS In Memory Read Bytes	out	error out
-23066	?	11	text
-23066	?	3	utf-8 text
-23067	?	11	utf-8 text
-23067	?	3	text
-2402	?	1	type
-2408	New Data Value Reference	3	data value reference
-2408	New Data Value Reference	7	data value
-2408	New Data Value Reference	out	error out
-2409	?	3	data value
-2409	?	7	data value reference
-2409	?	out	error out
-24135	?	3	refnum out
-24135	?	4	error in
-24135	?	5	byte order (0:big-endian, network order)
-24135	?	6	data in
-24135	?	7	refnum in
-24135	?	out	error out
-2452	Insert Into Set	3	set out
-8018	?	1	error out
-8018	?	2	target object
-8018	?	3	object in
-8018	?	4	error in
-8018	?	out	object out
-8053	?	8	error in
-8053	?	9	overwrite (F)
-8066	?	2	type
-8066	?	3	path out
-8066	?	7	path
-8074	?	3	refnum out
-8074	?	4	error in
-8074	?	6	size (in bytes)
-8074	?	7	file
-8074	?	out	error out
-8076	?	11	path
-8076	?	3	path out
-8076	?	7	permissions
-8078	Write to Binary File	3	refnum out
-8078	Write to Binary File	5	prepend array or string size? (T)
-8082	File/Directory Info	1	last mod
-8082	File/Directory Info	2	size
-8082	File/Directory Info	3	path out
-8082	File/Directory Info	5	directory
-8082	File/Directory Info	out	error out
-8205	Get Variant Attribute	4	error in
-9002	?	2	error in (no error)
-9002	?	3	enable (T)
-9002	?	4	menu reference
-9002	?	out	error out
-9006	Set Menu Item Info	6	checked
-9006	Set Menu Item Info	9	enabled
-9112	?	8	queue out
-9112	?	9	element
-9112	?	out	queue
-9114	Flush Queue	8	queue out
-9129	Enqueue Element At Opposite End	3	error in (no error)
-9129	Enqueue Element At Opposite End	8	queue out
-9154	Get Drag Drop Data	6	error in (no error)
+2319	Register Session	11	refnum
+2319	Register Session	8	error in (no error)
+2319	Register Session	9	session
+23781	Read Variable	1	timestamp
+23781	Read Variable	11	shared variable refnum in
+23781	Read Variable	2	shared variable refnum out
+23781	Read Variable	3	data out
+23781	Read Variable	8	error in (no error)
+23781	Read Variable	out	error out
+23783	Close Variable Connection	11	shared variable refnum in
+23783	Close Variable Connection	8	error in (no error)
+23783	Close Variable Connection	out	error out
 23794	Destroy Stream Endpoint	11	endpoint in
 23794	Destroy Stream Endpoint	8	error in (no error)
 23794	Destroy Stream Endpoint	out	error out
@@ -478,9 +517,11 @@ primResID	node	parmIndex	terminal
 23798	Write Single Element to Stream	10	data in
 23798	Write Single Element to Stream	11	endpoint in
 23798	Write Single Element to Stream	3	endpoint out
+23798	Write Single Element to Stream	4	timed out?
 23798	Write Single Element to Stream	8	error in (no error)
 23798	Write Single Element to Stream	9	timeout ms (-1)
 23798	Write Single Element to Stream	out	error out
+23808	Flush Stream	1	timed out?
 23808	Flush Stream	11	endpoint in
 23808	Flush Stream	3	endpoint out
 23808	Flush Stream	8	error in (no error)
@@ -498,339 +539,356 @@ primResID	node	parmIndex	terminal
 23811	Create Network Stream Reader Endpoint	7	reader buffer size
 23811	Create Network Stream Reader Endpoint	9	data type
 23811	Create Network Stream Reader Endpoint	out	error out
-23798	Write Single Element to Stream	4	timed out?
-23808	Flush Stream	1	timed out?
-1141	?	1	number
-1141	?	out	16bit integer
-1181	?	2	number
-1908	?	out	second subarray
-9109	Release Queue	9	remaining elements
-9111	Enqueue Element	2	timeout in ms (-1)
-9112	?	11	error out
-9112	?	3	error in (no error)
-1140	?	1	number
-1207	?	1	x
-1207	?	out	arccos(x)
-1212	?	1	x
-1512	?	1	value (0)
-1512	?	out	output string
-1735	Add Private Key To TLS Configuration	8	error in (no error)
+2401	Swap Values	13	?(T)
+2401	Swap Values	3	 x'  
+2402	Coerce To Type	1	type
+2408	New Data Value Reference	3	data value reference
 2408	New Data Value Reference	4	error in
-2409	?	4	error in
-8204	Set Variant Attribute	4	error in
-8204	Set Variant Attribute	out	error out
-8206	Delete Variant Attribute	out	error out
+2408	New Data Value Reference	7	data value
+2408	New Data Value Reference	out	error out
+2409	Delete Data Value Reference	3	data value
+2409	Delete Data Value Reference	4	error in
+2409	Delete Data Value Reference	7	data value reference
+2409	Delete Data Value Reference	out	error out
+2413	To Probe String	3	probe string
+2413	To Probe String	7	data value
+24135	Preallocated Read from Binary File	3	refnum out
+24135	Preallocated Read from Binary File	4	error in
+24135	Preallocated Read from Binary File	5	byte order (0:big-endian, network order)
+24135	Preallocated Read from Binary File	6	data in
+24135	Preallocated Read from Binary File	7	refnum in
+24135	Preallocated Read from Binary File	out	error out
+24201	Flatten To JSON	11	error out
+24201	Flatten To JSON	3	error in (no error)
+24201	Flatten To JSON	6	enable LabVIEW extensions? (T)
+24202	Unflatten From JSON	1	type and defaults
+24202	Unflatten From JSON	3	error in (no error)
+24202	Unflatten From JSON	4	path
+24206	Open Python Session	1	python path
+24206	Open Python Session	11	error out
+24206	Open Python Session	3	error in (no error)
+24206	Open Python Session	8	session out
+24207	Close Python Session	3	error in
+24207	Close Python Session	out	session in
+24208	Open MATLAB Session	11	error out
+24208	Open MATLAB Session	8	session out
+24208	Open MATLAB Session	out	release name
+2452	Insert Into Set	2	already included?
+2452	Insert Into Set	3	set out
+2453	Remove From Set	10	element
+2453	Remove From Set	11	set in
+2453	Remove From Set	2	set out
+2453	Remove From Set	3	not included?
+2454	Element of Set?	10	element
+2454	Element of Set?	11	set
+2454	Element of Set?	3	found?
+2456	Insert Into Map	1	map out
+2456	Insert Into Map	10	key
+2456	Insert Into Map	11	map in
+2456	Insert Into Map	2	key already included?
+2456	Insert Into Map	3	value unchanged?
+2456	Insert Into Map	9	value
+2457	Remove From Map	10	key
+2457	Remove From Map	3	map out
+2458	Look In Map	1	value
+2458	Look In Map	2	key not found?
+2458	Look In Map	9	default value
+3135	Bitpack to Array	1	data
+3135	Bitpack to Array	out	bparray
+3136	Unbitpack from Array	1	type
+3136	Unbitpack from Array	2	bparray
+3136	Unbitpack from Array	out	data
+3913	Replace Substring	1	result string
+3913	Replace Substring	2	length
+3913	Replace Substring	3	offset
+3913	Replace Substring	out	replaced substring
+3914	Search and Replace String	1	replace all?
+3914	Search and Replace String	10	offset past replacement
+3914	Search and Replace String	15	error out
+3914	Search and Replace String	2	case sensitive?
+3914	Search and Replace String	8	number of replacements
+3915	Add with Error Terminals	4	error in (no error)
+5561	To Fixed-Point	1	fixed-point type
+5561	To Fixed-Point	2	fixed-point
+5561	To Fixed-Point	out	number
+5566	Fixed-Point to Integer Cast	1	fixed-point
+5567	Integer to Fixed-Point Cast	1	fixed-point type
+5567	Integer to Fixed-Point Cast	3	fixed-point
+8000	Automation Open	10	machine name
+8000	Automation Open	11	Automation Refnum
+8000	Automation Open	8	error in (no error)
+8000	Automation Open	9	open new instance
+8000	Automation Open	out	error out
+8010	Open VI Reference	6	password ("")
+8010	Open VI Reference	7	type specifier VI Refnum (for type only)
+8012	Open Application Reference	10	port number or service name (3363)
+8013	Open VI Object Reference	7	vi object class
+8013	Open VI Object Reference	8	error in (no error)
+8014	New VI	11	application refnum
+8014	New VI	3	vi refnum
+8014	New VI	5	password
+8014	New VI	6	type specifier VI Refnum (for type only)
+8014	New VI	7	not connected
+8014	New VI	9	vi type (standard vi)
+8014	New VI	out	error out
+8015	New VI Object	10	style
+8015	New VI Object	4	bounds
+8015	New VI Object	5	auto wire? (F)
+8015	New VI Object	6	path
+8015	New VI Object	7	vi object class
+8016	To More Specific Class	2	target class
+8017	To More Generic Class	1	target class
+8017	To More Generic Class	2	generic class reference
+8018	Preserve Run-Time Class	1	error out
+8018	Preserve Run-Time Class	2	target object
+8018	Preserve Run-Time Class	3	object in
+8018	Preserve Run-Time Class	4	error in
+8018	Preserve Run-Time Class	out	object out
+8050	Open/Create/Replace File	1	cancelled
+8050	Open/Create/Replace File	10	operation (0:open)
+8050	Open/Create/Replace File	3	refnum out
+8050	Open/Create/Replace File	6	disable buffering (F)
+8050	Open/Create/Replace File	7	prompt
+8050	Open/Create/Replace File	8	error in
+8051	Read from Binary File	1	cancelled
+8051	Read from Binary File	11	file (use dialog)
+8051	Read from Binary File	3	refnum out
+8051	Read from Binary File	5	data type
+8051	Read from Binary File	7	prompt (Open existing file)
+8051	Read from Binary File	8	error in
+8051	Read from Binary File	9	byte order (0:big-endian, network order)
+8052	Close File	3	path
+8052	Close File	4	error in
+8053	Copy	8	error in
+8053	Copy	9	overwrite (F)
+8053	Copy	out	error out
+8054	Open/Create/Replace Datalog	1	cancelled
+8054	Open/Create/Replace Datalog	10	operation (0\3Aopen)
+8054	Open/Create/Replace Datalog	11	datalog path (use dialog)
+8054	Open/Create/Replace Datalog	3	refnum out
+8054	Open/Create/Replace Datalog	5	record type
+8054	Open/Create/Replace Datalog	7	prompt
+8054	Open/Create/Replace Datalog	8	error in
+8054	Open/Create/Replace Datalog	9	access (0\3Aread/write)
+8054	Open/Create/Replace Datalog	out	error out
+8055	Create Folder	1	cancelled
+8055	Create Folder	7	prompt (Create Folder)
+8055	Create Folder	8	error in
+8056	Delete	1	cancelled
+8056	Delete	10	entire hierarchy (F)
+8056	Delete	7	prompt (Delete)
+8056	Delete	9	confirm (F)
+8058	File Dialog	1	cancelled
+8058	File Dialog	2	exists
+8058	File Dialog	3	selected path
+8058	File Dialog	8	error in
+8059	Flush File	4	error in
+8059	Flush File	7	refnum
+8059	Flush File	out	error out
+8063	Get File Size	4	error in
+8066	Get Type and Creator	2	type
+8066	Get Type and Creator	3	path out
+8066	Get Type and Creator	7	path
+8067	Get Volume Info	11	path
+8067	Get Volume Info	8	error in
+8068	Move	1	new path
+8068	Move	10	target path (use dialog)
+8068	Move	11	source path
+8068	Move	3	cancelled
+8068	Move	7	prompt (Choose or enter target path for move)
+8068	Move	8	error in
+8068	Move	9	overwrite (F)
+8068	Move	out	error out
+8069	Read Datalog	2	record(s)
+8069	Read Datalog	3	refnum out
+8069	Read Datalog	4	error in
+8069	Read Datalog	6	count (1)
+8069	Read Datalog	7	refnum
+8069	Read Datalog	out	error out
+8070	Read from Text File	1	cancelled
+8070	Read from Text File	3	refnum out
+8070	Read from Text File	7	prompt (Open existing file)
+8072	Set Datalog Position	3	refnum out
+8072	Set Datalog Position	4	error in
+8072	Set Datalog Position	5	from (0\3Astart)
+8072	Set Datalog Position	6	offset (in records) (0)
+8072	Set Datalog Position	7	refnum
+8072	Set Datalog Position	out	error out
 8073	Set File Position	3	refnum out
 8073	Set File Position	4	error in
 8073	Set File Position	5	from (0:start)
 8073	Set File Position	6	offset (in bytes) (0)
 8073	Set File Position	7	refnum
 8073	Set File Position	out	error out
-1184	Decimal String To Number	2	default (0L)
-# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
-# (2026-11-06): an unwired slot, named by elimination against NI's own listing
-1084	DataSocket Open	9	ms timeout (10000)
-1085	DataSocket Close	1	timed out
-1085	DataSocket Close	9	ms timeout (0)
-1115	Less Or Equal To 0?	1	x
-1146	?	1	number
-1146	?	out	single precision float
-1165	Unflatten From String	3	rest of the binary string
-1165	Unflatten From String	8	error in (no error)
-1171	?	out	(hi.lo)
-1180	Number To Decimal String	1	width (-)
-1184	Decimal String To Number	1	offset past number
-1184	Decimal String To Number	3	offset
-1227	Sinc	out	sin(x)/x
-1228	?	out	atan2(y\2Cx)
-1327	Wait Until Next ms Multiple	out	millisecond timer value
-1505	?	out	E-format string
-1600	Get Date/Time String	4	date format (0)
-1710	IP To String	1	dot notation? (F)
-1712	TCP Wait On Listener	9	timeout ms (wait forever\3A -1)
-1713	TCP Close Connection	10	abort (F)
-1713	TCP Close Connection	3	connection ID out
-1714	TCP Write	2	bytes written
-1714	TCP Write	9	timeout ms (25000)
-1731	Start TLS	2	server certificate chain
-1732	Accept TLS	2	client certificate chain
-1732	Accept TLS	7	timeout ms (300000)
-1733	Load Private Key Into Memory	9	password
-1734	Load Certificates Into Memory	8	error in (no error)
-1736	Add Trusted Certificate To TLS Configuration	8	error in (no error)
-1909	Threshold 1D Array	1	start index (0)
-1940	VISA Disable Event	9	mechanism (1\3A  VI_QUEUE)
-1941	VISA Discard Events	9	mechanism  (1\3A  VI_QUEUE)
-1943	VISA Wait on Event	2	event type
-1950	GPIB Write	5	status
-1951	GPIB Read	2	mode (0)
-1951	GPIB Read	6	status
-2010	TDMS Write	1	data layout (0\3Adecimated)
-2010	TDMS Write	8	channel name(s) out
-2011	TDMS Read	14	end of file?
-2021	TDMS Advanced Open	2	sector size
-2021	TDMS Advanced Open	8	error in (no error)
-2024	TDMS Configure Asynchronous Writes	4	timeout (5 s)
-2025	TDMS Set Next Write Position	9	from (0\3Astart)
-2027	TDMS Configure Asynchronous Reads	4	timeout (5 s)
-2029	TDMS Advanced Synchronous Read	4	read process finished?
-2033	TDMS Set Next Read Position	9	from (0\3A start)
-2034	TDMS Get Asynchronous Read Status	1	all buffers full?
-2074	Generate User Event	4	priority (normal)
-2158	TDMS In Memory Read Bytes	7	offset (0)
-23060	Re/Im To Polar	out	theta
-23783	?	out	error out
-2401	Swap Values	3	 x'  
-24206	Open Python Session	1	python path
-24208	Open MATLAB Session	out	release name
-2452	Insert Into Set	2	already included?
-2454	?	3	found?
-2456	Insert Into Map	11	map in
-2458	Look In Map	2	key not found?
-2458	Look In Map	9	default value
-3913	Replace Substring	out	replaced substring
-8010	Open VI Reference	6	password ("")
-8015	New VI Object	5	auto wire? (F)
-8050	Open/Create/Replace File	1	cancelled
-8051	Read from Binary File	1	cancelled
-8051	Read from Binary File	7	prompt (Open existing file)
-8055	Create Folder	1	cancelled
-8055	Create Folder	7	prompt (Create Folder)
-8056	Delete	1	cancelled
-8058	File Dialog	1	cancelled
-8070	Read from Text File	1	cancelled
-8070	Read from Text File	7	prompt (Open existing file)
+8074	Set File Size	3	refnum out
+8074	Set File Size	4	error in
+8074	Set File Size	6	size (in bytes)
+8074	Set File Size	7	file
+8074	Set File Size	out	error out
+8076	Set Permissions	11	path
+8076	Set Permissions	3	path out
+8076	Set Permissions	7	permissions
 8078	Write to Binary File	1	cancelled
-8080	Write to Text File	1	cancelled
-8080	Write to Text File	7	prompt (Choose or enter file path)
-8101	Scan String For Tokens	3	string out
-8204	Set Variant Attribute	2	replaced
-8206	Delete Variant Attribute	2	found
-8207	Set Waveform Attribute	2	replaced
-9003	Insert Menu Items	4	after item
-9006	Set Menu Item Info	10	item name
-9109	Release Queue	8	queue name
-9110	Get Queue Status	1	return elements? (F)
-9111	Enqueue Element	10	timed out?
-9114	Flush Queue	9	remaining elements
-9129	Enqueue Element At Opposite End	10	timed out?
-9129	Enqueue Element At Opposite End	2	timeout in ms (-1)
-9141	?	8	error in (no error)
-# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
-# (2026-11-06): an unwired slot, named by elimination against NI's own listing
-1086	DataSocket Read	9	ms timeout (10000)
-1087	?	10	data
-1087	?	11	connection in
-1087	?	8	error in (no error)
-1171	?	1	lo
-1171	?	2	hi
-1185	?	2	default (0uL)
-1185	?	4	string
-1228	?	1	x
-1228	?	2	y
-1505	?	3	width (-)
-1512	?	2	format string
-1512	?	3	string ("")
-1607	?	3	carry
-1716	TCP Read	7	mode (standard)
-1716	TCP Read	9	timeout ms (25000)
-1717	TCP Create Listener	11	service name
-1723	?	10	service name
-1723	?	11	port
-1723	?	7	net address
-1724	?	11	connection ID
-1724	?	8	error in (no error)
-1724	?	9	timeout ms (25000)
-1725	?	10	data in
-1725	?	11	connection ID
-1725	?	5	port or service name
-1725	?	7	address
-1725	?	8	error in (no error)
-1726	?	11	connection ID
-1726	?	8	error in (no error)
-1942	VISA Enable Event	11	VISA resource name
-23783	?	11	shared variable refnum in
-23783	?	8	error in (no error)
-2401	Swap Values	13	?(T)
-24201	Flatten To JSON	3	error in (no error)
-2453	?	10	element
-2453	?	11	set in
-2454	?	11	set
-8054	?	10	operation (0\3Aopen)
-8054	?	11	datalog path (use dialog)
-8054	?	5	record type
-8054	?	9	access (0\3Aread/write)
-8068	?	9	overwrite (F)
-8072	?	6	offset (in records) (0)
-8078	Write to Binary File	9	byte order (0\3Abig-endian\2C network order)
-8079	?	6	record(s)
-9130	?	1	element
-9130	?	3	error in (no error)
-9130	?	out	queue
-9140	?	10	service name
-9142	?	10	remote device id
-9142	?	11	service name
-9142	?	8	error in (no error)
-9151	?	10	uuid
-9151	?	6	service description
-9151	?	8	error in (no error)
-9152	?	10	time limit ms (10000)
-9153	?	10	channel (0)
-9153	?	11	address
-# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
-# (2026-11-06): an unwired slot, named by elimination against NI's own listing
-1086	DataSocket Read	6	wait for updated value (T)
-1087	?	9	ms timeout (0)
-1185	?	3	offset
-1607	?	2	value
-1717	TCP Create Listener	9	timeout ms (25000)
-1724	?	10	max size (548)
-1725	?	9	timeout ms (25000)
-1942	VISA Enable Event	9	mechanism (1\3A  VI_QUEUE)
-24201	Flatten To JSON	6	enable LabVIEW extensions? (T)
-2454	?	10	element
-8068	?	7	prompt (Choose or enter target path for move)
+8078	Write to Binary File	3	refnum out
+8078	Write to Binary File	5	prepend array or string size? (T)
 8078	Write to Binary File	7	prompt (Choose or enter file path)
-9140	?	8	error in (no error)
-9142	?	9	timeout ms (60000)
-9151	?	7	address
-9152	?	8	error in (no error)
-# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
-# (2026-11-06): an unwired slot, named by elimination against NI's own listing
-1087	?	1	connection out
-1087	?	3	timed out
-1087	?	out	error out
-1170	Split Number	1	hi(x)
-1170	Split Number	2	lo(x)
-1185	?	1	offset past number
-1185	?	out	number
-1187	Fract/Exp String To Number	3	default (0 dbl)
-1187	Fract/Exp String To Number	4	offset
-1328	Wait For Front Panel Activity	1	timeout ms (-1 never timeout)
-1328	Wait For Front Panel Activity	2	front panel (this VI's panel)
-1328	Wait For Front Panel Activity	3	do not wait! (False)
-1505	?	1	use system decimal point (T)
-1505	?	2	precision (6)
-1607	?	1	lsb carry out
-1607	?	out	value
-1701	Wait on Occurrence	1	ignore previous (T)
-1701	Wait on Occurrence	3	ms timeout (-1)
-1715	TCP Open Connection	6	local port
-1715	TCP Open Connection	9	timeout ms (60000)
-1723	?	2	connection ID
-1723	?	3	port
-1723	?	8	error in (no error)
-1723	?	9	timeout ms (25000)
-1723	?	out	error out
-1724	?	2	address
-1724	?	3	port
-1724	?	4	connection ID out
-1724	?	6	data out
-1724	?	out	error out
-1725	?	3	connection ID out
-1725	?	out	error out
-1726	?	3	connection ID out
-1726	?	out	error out
-1731	Start TLS	6	server certificate validation
-1731	Start TLS	7	timeout ms
-2032	TDMS Advanced Close	10	truncate file? (F)
-2032	TDMS Advanced Close	6	timeout (10 s)
-2311	VISA Map Trigger	10	trigger source
-2311	VISA Map Trigger	7	mode
-2311	VISA Map Trigger	9	trigger destination
-2312	VISA Unmap Trigger	10	trigger source
-2312	VISA Unmap Trigger	9	trigger destination (all)
-23781	?	1	timestamp
-23781	?	11	shared variable refnum in
-23781	?	2	shared variable refnum out
-23781	?	3	data out
-23781	?	8	error in (no error)
-23781	?	out	error out
-24206	Open Python Session	11	error out
-24206	Open Python Session	8	session out
-24207	Close Python Session	3	error in
-24207	Close Python Session	out	session in
-24208	Open MATLAB Session	11	error out
-24208	Open MATLAB Session	8	session out
-2453	?	2	set out
-2453	?	3	not included?
-2456	Insert Into Map	1	map out
-2456	Insert Into Map	2	key already included?
-2456	Insert Into Map	3	value unchanged?
-3914	Search and Replace String	10	offset past replacement
-3914	Search and Replace String	15	error out
-3914	Search and Replace String	8	number of replacements
-8000	Automation Open	10	machine name
-8000	Automation Open	8	error in (no error)
-8000	Automation Open	9	open new instance
-8014	New VI	11	application refnum
-8014	New VI	5	password
-8014	New VI	6	type specifier VI Refnum (for type only)
-8014	New VI	7	not connected
-8050	Open/Create/Replace File	6	disable buffering (F)
-8050	Open/Create/Replace File	7	prompt
-8054	?	1	refnum out
-8054	?	3	cancelled
-8054	?	7	prompt
-8054	?	8	error in
-8054	?	out	error out
-8056	Delete	7	prompt (Delete)
-8056	Delete	9	confirm (F)
-8068	?	1	new path
-8068	?	3	cancelled
-8069	?	2	refnum out
-8069	?	3	record(s)
-8069	?	4	error in
-8069	?	6	count (1)
-8069	?	7	refnum
-8069	?	out	error out
-8072	?	3	refnum out
-8072	?	4	error in
-8072	?	5	from (0\3Astart)
-8072	?	7	refnum
-8072	?	out	error out
-8079	?	3	refnum out
-8079	?	4	error in
-8079	?	7	refnum
-8079	?	out	error out
+8078	Write to Binary File	8	error in
+8078	Write to Binary File	9	byte order (0\3Abig-endian\2C network order)
+8078	Write to Binary File	out	error out
+8079	Write Datalog	3	refnum out
+8079	Write Datalog	4	error in
+8079	Write Datalog	6	record(s)
+8079	Write Datalog	7	refnum
+8079	Write Datalog	out	error out
+8080	Write to Text File	1	cancelled
+8080	Write to Text File	3	refnum out
+8080	Write to Text File	7	prompt (Choose or enter file path)
+8080	Write to Text File	8	error in
+8082	File/Directory Info	1	last mod
+8082	File/Directory Info	2	size
+8082	File/Directory Info	3	path out
+8082	File/Directory Info	5	directory
+8082	File/Directory Info	out	error out
+8083	List Folder	2	filenames
+8083	List Folder	6	pattern
+8100	Format Date/Time String	1	UTC format
+8100	Format Date/Time String	3	time format string (%c)
+8101	Scan String For Tokens	3	string out
 8101	Scan String For Tokens	5	allow empty tokens? (F)
 8101	Scan String For Tokens	6	delimiters (\5Cs\2C\5Ct\2C\5Cr\2C\5Cn)
-9106	Wait on Notification from Multiple	1	error in (no error)
+8101	Scan String For Tokens	7	operators (none)
+8101	Scan String For Tokens	9	input string
+8204	Set Variant Attribute	2	replaced
+8204	Set Variant Attribute	3	Variant out
+8204	Set Variant Attribute	4	error in
+8204	Set Variant Attribute	7	Variant
+8204	Set Variant Attribute	out	error out
+8205	Get Variant Attribute	3	duplicate Variant
+8205	Get Variant Attribute	4	error in
+8205	Get Variant Attribute	5	default value (empty Variant)
+8205	Get Variant Attribute	6	name
+8206	Delete Variant Attribute	2	found
+8206	Delete Variant Attribute	4	error in
+8206	Delete Variant Attribute	6	name (all attributes)
+8206	Delete Variant Attribute	7	Variant
+8206	Delete Variant Attribute	out	error out
+8207	Set Waveform Attribute	2	replaced
+8207	Set Waveform Attribute	4	error in
+8207	Set Waveform Attribute	6	name
+8401	Unflatten From XML	4	error in (no error)
+8401	Unflatten From XML	6	xml string
+8401	Unflatten From XML	out	error out
+8402	Flatten To XML	6	anything
+9001	Get Menu Selection	1	ms timeout (200)
+9001	Get Menu Selection	2	block menu (F)
+9001	Get Menu Selection	6	item tag
+9001	Get Menu Selection	out	menu reference
+9002	Enable Menu Tracking	2	error in (no error)
+9002	Enable Menu Tracking	3	enable (T)
+9002	Enable Menu Tracking	4	menu reference
+9002	Enable Menu Tracking	out	error out
+9003	Insert Menu Items	4	after item
+9003	Insert Menu Items	6	error in (no error)
+9003	Insert Menu Items	7	item tags
+9003	Insert Menu Items	8	item names
+9004	Delete Menu Items	3	menu reference out
+9004	Delete Menu Items	7	items
+9004	Delete Menu Items	8	menu tag
+9004	Delete Menu Items	out	error out
+9006	Set Menu Item Info	10	item name
+9006	Set Menu Item Info	11	menu reference
+9006	Set Menu Item Info	3	menu reference out
+9006	Set Menu Item Info	4	short cut
+9006	Set Menu Item Info	6	checked
+9006	Set Menu Item Info	7	item tag
+9006	Set Menu Item Info	8	error in (no error)
+9006	Set Menu Item Info	9	enabled
+9006	Set Menu Item Info	out	error out
+9103	Get Notifier Status	11	error out
+9103	Get Notifier Status	3	error in (no error)
+9103	Get Notifier Status	out	notifier
+9104	Send Notification	8	notifier out
+9106	Wait on Notification from Multiple	1	ignore previous (F)
 9106	Wait on Notification from Multiple	10	timed out?
+9106	Wait on Notification from Multiple	11	error out
 9106	Wait on Notification from Multiple	2	timeout in ms (-1)
-9106	Wait on Notification from Multiple	3	ignore previous (F)
+9106	Wait on Notification from Multiple	3	error in (no error)
 9106	Wait on Notification from Multiple	8	notifier out
+9106	Wait on Notification from Multiple	out	notifiers
+9108	Obtain Queue	4	max queue size (-1, unlimited)
+9108	Obtain Queue	out	name (unnamed)
+9109	Release Queue	8	queue name
+9109	Release Queue	9	remaining elements
+9110	Get Queue Status	1	return elements? (F)
 9110	Get Queue Status	10	# pending insert
+9110	Get Queue Status	3	error in (no error)
 9110	Get Queue Status	4	max queue size
 9110	Get Queue Status	5	queue name
 9110	Get Queue Status	6	elements
+9110	Get Queue Status	8	queue out
 9110	Get Queue Status	9	# pending remove
-9130	?	10	overflow?
-9130	?	11	error out
-9130	?	8	queue out
-9130	?	9	overflow element
-9140	?	3	listener ID
-9140	?	out	error out
-9141	?	2	number of devices
-9141	?	3	device list
-9141	?	out	error out
-9142	?	3	connection ID
-9142	?	out	error out
-9151	?	2	listener ID
-9151	?	3	channel
-9151	?	out	error out
-9152	?	2	number of devices
-9152	?	3	device list
-9152	?	out	error out
-9153	?	3	connection ID
-9153	?	6	uuid
-9153	?	8	error in (no error)
-9153	?	9	timeout ms (60000)
-9153	?	out	error out
-# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
-# (2026-11-06): an unwired slot, named by elimination against NI's own listing
-2012	TDMS Open	9	byte order (2\3Alittle-endian)
-8058	File Dialog	8	error in
-# learned by learn_unwired_names.py over NI's exports of the 1 784 shipping examples
-# (2026-11-06): an unwired slot, named by elimination against NI's own listing
-2012	TDMS Open	5	create index file? (T)
+9110	Get Queue Status	out	queue
+9111	Enqueue Element	10	timed out?
+9111	Enqueue Element	2	timeout in ms (-1)
+9111	Enqueue Element	8	queue out
+9111	Enqueue Element	out	queue
+9112	Preview Queue Element	11	error out
+9112	Preview Queue Element	3	error in (no error)
+9112	Preview Queue Element	8	queue out
+9112	Preview Queue Element	9	element
+9112	Preview Queue Element	out	queue
+9113	Dequeue Element	8	queue out
+9114	Flush Queue	11	error out
+9114	Flush Queue	3	error in (no error)
+9114	Flush Queue	8	queue out
+9114	Flush Queue	9	remaining elements
+9114	Flush Queue	out	queue
+9129	Enqueue Element At Opposite End	10	timed out?
+9129	Enqueue Element At Opposite End	11	error out
+9129	Enqueue Element At Opposite End	2	timeout in ms (-1)
+9129	Enqueue Element At Opposite End	3	error in (no error)
+9129	Enqueue Element At Opposite End	8	queue out
+9129	Enqueue Element At Opposite End	out	queue
+9130	Lossy Enqueue Element	1	element
+9130	Lossy Enqueue Element	10	overflow?
+9130	Lossy Enqueue Element	11	error out
+9130	Lossy Enqueue Element	3	error in (no error)
+9130	Lossy Enqueue Element	8	queue out
+9130	Lossy Enqueue Element	9	overflow element
+9130	Lossy Enqueue Element	out	queue
+9140	IrDA Create Listener	10	service name
+9140	IrDA Create Listener	3	listener ID
+9140	IrDA Create Listener	8	error in (no error)
+9140	IrDA Create Listener	out	error out
+9141	IrDA Discover	2	number of devices
+9141	IrDA Discover	3	device list
+9141	IrDA Discover	8	error in (no error)
+9141	IrDA Discover	out	error out
+9142	IrDA Open Connection	10	remote device id
+9142	IrDA Open Connection	11	service name
+9142	IrDA Open Connection	3	connection ID
+9142	IrDA Open Connection	8	error in (no error)
+9142	IrDA Open Connection	9	timeout ms (60000)
+9142	IrDA Open Connection	out	error out
+9151	Bluetooth Create Listener	10	uuid
+9151	Bluetooth Create Listener	2	listener ID
+9151	Bluetooth Create Listener	3	channel
+9151	Bluetooth Create Listener	6	service description
+9151	Bluetooth Create Listener	7	address
+9151	Bluetooth Create Listener	8	error in (no error)
+9151	Bluetooth Create Listener	out	error out
+9152	Bluetooth Discover	10	time limit ms (10000)
+9152	Bluetooth Discover	2	number of devices
+9152	Bluetooth Discover	3	device list
+9152	Bluetooth Discover	8	error in (no error)
+9152	Bluetooth Discover	out	error out
+9153	Bluetooth Open Connection	10	channel (0)
+9153	Bluetooth Open Connection	11	address
+9153	Bluetooth Open Connection	3	connection ID
+9153	Bluetooth Open Connection	6	uuid
+9153	Bluetooth Open Connection	8	error in (no error)
+9153	Bluetooth Open Connection	9	timeout ms (60000)
+9153	Bluetooth Open Connection	out	error out
+9154	Get Drag Drop Data	6	error in (no error)
+9154	Get Drag Drop Data	8	type
+9154	Get Drag Drop Data	9	data name

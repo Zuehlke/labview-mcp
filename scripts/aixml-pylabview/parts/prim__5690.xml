@@ -1,0 +1,234 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/5690" source="Open Session.vi"><types><TypeDesc Type="Refnum" RefType="UsrDefined" Ident="" FirstClient="0" TypeName="FPGA Interface Dynamic" Format="inline" Label="fpga ref"><LVVariant Index="0" HasVarItem2="1" VarType2="3" Version="auto">
+          <DataType Index="0" Type="Cluster" Format="inline" Label="Registers" />
+          <DataType Index="1" Type="Cluster" Format="inline" Label="DMA Channels" />
+          <DataType Index="2" Type="Cluster" Format="inline" Label="Target Methods" />
+          <DataType Index="3" Type="Cluster" Format="inline" Label="Interface Description">
+            <TypeDesc TypeID="0" />
+            <TypeDesc TypeID="1" />
+            <TypeDesc TypeID="2" />
+            </DataType>
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Refnum" Nested="True" RefType="UsrDefined" Ident="" FirstClient="0" TypeName="FPGA Interface Dynamic" Format="inline" Label="FPGA reference"><LVVariant Index="0" HasVarItem2="1" VarType2="21" Version="auto">
+            <DataType Index="0" Type="Cluster" Format="inline" Label="Registers" />
+            <DataType Index="1" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 0</EnumLabel>
+              </DataType>
+            <DataType Index="2" Type="FixedPoint" DataVersion="1" RangeFormat="1" DataEncoding="1" DataEndianness="0" DataUnit="3" AllocOv="0" LeftovFlags="2" Field1E="48" Field20="18" Format="inline">
+              <Range Prop1="1" Prop2="1" Prop3="18">nan (0xFFFFFFFFFFFFFFFF)</Range>
+              <Range Prop1="0" Prop2="47" Prop3="17">6.9533558078349549e-310 (0x00007FFFFFFFFFFF)</Range>
+              <Range Prop1="0" Prop2="1" Prop3="-29">4.9406564584124654e-324 (0x0000000000000001)</Range>
+              </DataType>
+            <DataType Index="3" Type="UnitUInt16" Prop1="0" Format="inline" Label="Implementation">
+              <EnumLabel>niFpgaTargetToHost</EnumLabel>
+              </DataType>
+            <DataType Index="4" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="1" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="5" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 1</EnumLabel>
+              </DataType>
+            <DataType Index="6" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="5" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="7" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 2</EnumLabel>
+              </DataType>
+            <DataType Index="8" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="7" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="9" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 3</EnumLabel>
+              </DataType>
+            <DataType Index="10" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="9" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="11" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 4</EnumLabel>
+              </DataType>
+            <DataType Index="12" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="11" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="13" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 5</EnumLabel>
+              </DataType>
+            <DataType Index="14" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="13" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="15" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 6</EnumLabel>
+              </DataType>
+            <DataType Index="16" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="15" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="17" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 7</EnumLabel>
+              </DataType>
+            <DataType Index="18" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="17" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="19" Type="Cluster" Format="inline" Label="DMA Channels">
+              <TypeDesc TypeID="4" />
+              <TypeDesc TypeID="6" />
+              <TypeDesc TypeID="8" />
+              <TypeDesc TypeID="10" />
+              <TypeDesc TypeID="12" />
+              <TypeDesc TypeID="14" />
+              <TypeDesc TypeID="16" />
+              <TypeDesc TypeID="18" />
+              </DataType>
+            <DataType Index="20" Type="Cluster" Format="inline" Label="Target Methods" />
+            <DataType Index="21" Type="Cluster" Format="inline" Label="Interface Description">
+              <TypeDesc TypeID="0" />
+              <TypeDesc TypeID="19" />
+              <TypeDesc TypeID="20" />
+              </DataType>
+            </LVVariant>
+          </TypeDesc><Label Text="niVST Group A Self Cal v1 Host Interface.lvclass" />
+        <Label Text="FPGA Reference.ctl" />
+        </TypeDesc><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="Refnum" Nested="True" RefType="UsrDefined" Ident="" FirstClient="0" TypeName="FPGA Interface Dynamic" Format="inline" Label="FPGA reference"><LVVariant Index="0" HasVarItem2="1" VarType2="21" Version="auto">
+            <DataType Index="0" Type="Cluster" Format="inline" Label="Registers" />
+            <DataType Index="1" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 0</EnumLabel>
+              </DataType>
+            <DataType Index="2" Type="FixedPoint" DataVersion="1" RangeFormat="1" DataEncoding="1" DataEndianness="0" DataUnit="3" AllocOv="0" LeftovFlags="2" Field1E="48" Field20="18" Format="inline">
+              <Range Prop1="1" Prop2="1" Prop3="18">nan (0xFFFFFFFFFFFFFFFF)</Range>
+              <Range Prop1="0" Prop2="47" Prop3="17">6.9533558078349549e-310 (0x00007FFFFFFFFFFF)</Range>
+              <Range Prop1="0" Prop2="1" Prop3="-29">4.9406564584124654e-324 (0x0000000000000001)</Range>
+              </DataType>
+            <DataType Index="3" Type="UnitUInt16" Prop1="0" Format="inline" Label="Implementation">
+              <EnumLabel>niFpgaTargetToHost</EnumLabel>
+              </DataType>
+            <DataType Index="4" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="1" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="5" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 1</EnumLabel>
+              </DataType>
+            <DataType Index="6" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="5" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="7" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 2</EnumLabel>
+              </DataType>
+            <DataType Index="8" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="7" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="9" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 3</EnumLabel>
+              </DataType>
+            <DataType Index="10" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="9" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="11" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 4</EnumLabel>
+              </DataType>
+            <DataType Index="12" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="11" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="13" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 5</EnumLabel>
+              </DataType>
+            <DataType Index="14" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="13" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="15" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 6</EnumLabel>
+              </DataType>
+            <DataType Index="16" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="15" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="17" Type="UnitUInt16" Prop1="0" Format="inline" Label="Name">
+              <EnumLabel>cal.measurement fifo 7</EnumLabel>
+              </DataType>
+            <DataType Index="18" Type="Cluster" Format="inline" Label="DMA">
+              <TypeDesc TypeID="17" />
+              <TypeDesc TypeID="2" />
+              <TypeDesc TypeID="3" />
+              </DataType>
+            <DataType Index="19" Type="Cluster" Format="inline" Label="DMA Channels">
+              <TypeDesc TypeID="4" />
+              <TypeDesc TypeID="6" />
+              <TypeDesc TypeID="8" />
+              <TypeDesc TypeID="10" />
+              <TypeDesc TypeID="12" />
+              <TypeDesc TypeID="14" />
+              <TypeDesc TypeID="16" />
+              <TypeDesc TypeID="18" />
+              </DataType>
+            <DataType Index="20" Type="Cluster" Format="inline" Label="Target Methods" />
+            <DataType Index="21" Type="Cluster" Format="inline" Label="Interface Description">
+              <TypeDesc TypeID="0" />
+              <TypeDesc TypeID="19" />
+              <TypeDesc TypeID="20" />
+              </DataType>
+            </LVVariant>
+          </TypeDesc><Label Text="niVST Group A Self Cal v1 Host Interface.lvclass" />
+        <Label Text="FPGA Reference.ctl" />
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="1038">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="1044">
+                    <objFlags>36864</objFlags>
+                    <dco class="parm" uid="1045">
+                      <typeDesc>TypeID(218)</typeDesc>
+                      <termBounds>(0, 0, 32, 11)</termBounds>
+                      <primIndex>562</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1047">
+                    <objFlags>36864</objFlags>
+                    <dco class="parm" uid="1048">
+                      <typeDesc>TypeID(219)</typeDesc>
+                      <termBounds>(0, 11, 32, 21)</termBounds>
+                      <primIndex>562</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1050">
+                    <objFlags>4096</objFlags>
+                    <dco class="parm" uid="1051">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(220)</typeDesc>
+                      <termBounds>(0, 21, 32, 32)</termBounds>
+                      <primIndex>562</primIndex>
+                      <parmIndex>2</parmIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(354, 234, 386, 266)</bounds>
+                <shortCount>4</shortCount>
+                <primResID>5690</primResID>
+                <primIndex>562</primIndex>
+                </SL__arrayElement>
+              </heap></part>

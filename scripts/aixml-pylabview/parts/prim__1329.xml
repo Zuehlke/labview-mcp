@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1329" source="&lt;labview&gt;\vi.lib\ErrorRing\Utility\Do Explain Error.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0002" HasItem="0" Format="inline" Label="ExplErr ref" /></types><heap><SL__arrayElement class="prim" uid="1476">
+                            <objFlags>512</objFlags>
+                            <termList elements="1">
+                              <SL__arrayElement class="term" uid="1482">
+                                <objFlags>32768</objFlags>
+                                <dco class="parm" uid="1483">
+                                  <typeDesc>TypeID(28)</typeDesc>
+                                  <termBounds>(0, 0, 32, 32)</termBounds>
+                                  <primIndex>168</primIndex>
+                                  </dco>
+                                </SL__arrayElement>
+                              </termList>
+                            <bounds>(18, 21, 50, 53)</bounds>
+                            <shortCount>2</shortCount>
+                            <clumpNum>720899</clumpNum>
+                            <primResID>1329</primResID>
+                            <primIndex>168</primIndex>
+                            </SL__arrayElement>
+                          </heap></part>

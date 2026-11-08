@@ -179,6 +179,14 @@
       "replace": "import enum\r\nimport os\r\nimport struct\r\n",
       "why": "TDObject.exportXML writes an unmodelled type descriptor as a .bin file and names it with os.path.basename, but LVdatatype.py never imports os - upstream never reached that branch, because every type it met was modelled or exported inline. ref-family-non-refnum-raw and ref-unknown-content-as-bin send real TDs there, and without this the whole VCTP block hit 'name 'os' is not defined' and fell back to raw: the round trip stayed exact, but the reader saw no types at all for such a VI. Found through pylv_extract on Map Collection - Word Counting.vi, 2026-11-06.",
       "upstream": "not reported yet; LVdatatype.py uses os without importing it."
+    },
+    {
+      "id": "empty-string-list",
+      "file": "pylabview/LVheap.py",
+      "find": "        tagParse = re.match(r\"^[(]([0-9A-Fx]+)[)](\\\".*\\\")$\", tagText, re.MULTILINE|re.DOTALL)\n        if tagParse is not None:\n            count = int(tagParse.group(1), 0)\n        if count is None:\n            raise AttributeError(\"Tag '{}' of Class '{}' has content with no string list length\"\\\n",
+      "replace": "        tagParse = re.match(r\"^[(]([0-9A-Fx]+)[)](\\\".*\\\")?$\", tagText, re.MULTILINE|re.DOTALL)\n        if tagParse is not None:\n            count = int(tagParse.group(1), 0)\n        if count is None:\n            raise AttributeError(\"Tag '{}' of Class '{}' has content with no string list length\"\\\n",
+      "why": "HeapNodeStringList.prepareContentXML writes an EMPTY list as `(0)` - no quoted string after the count - and initContentWithXML then refuses exactly that text ('has content with no string list length'), because its first pattern demands at least one quoted string. So pylabview cannot read back its own export of a text ring with no items, and a VI holding one fails every extract/rebuild round trip. The second pattern already matches `(0)` with zero groups and updateContent writes empty content for it. Measured 2026-11-08 in a reader+composer sweep of vi.lib: Test Fuzzy Control.vi (fuzzy logic.llb), whose `error ring` has items filled at run time by a Property Node; patched, it rebuilds.",
+      "upstream": "not reported yet; the reader of a string list does not accept the writer's own empty form."
     }
   ]
 }

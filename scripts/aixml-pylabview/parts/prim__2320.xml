@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/2320" source="&lt;labview&gt;\vi.lib\xml\Close Reference(NdList).vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="UsrDefined" Ident="XML_NodeList" FirstClient="0" TypeName="DOMUserDefRef" Format="inline" Label="node list"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="124">
+        <objFlags>512</objFlags>
+        <termList elements="3">
+          <SL__arrayElement class="term" uid="119">
+            <dco class="parm" uid="121">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(16)</typeDesc>
+              <termBounds>(24, 24, 32, 32)</termBounds>
+              <primIndex>492</primIndex>
+              <inplace>2</inplace>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="122">
+            <objFlags>16384</objFlags>
+            <dco class="parm" uid="127">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(17)</typeDesc>
+              <termBounds>(24, 0, 32, 8)</termBounds>
+              <primIndex>492</primIndex>
+              <parmIndex>8</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="125">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="126">
+              <typeDesc>TypeID(18)</typeDesc>
+              <termBounds>(0, 0, 8, 8)</termBounds>
+              <primIndex>492</primIndex>
+              <parmIndex>11</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(126, 282, 158, 314)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>2320</primResID>
+        <primIndex>492</primIndex>
+        </SL__arrayElement>
+      </heap></part>

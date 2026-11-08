@@ -95,3 +95,48 @@ primResID	name	seen	primIndex
 1714	Bluetooth Write	0	
 1716	IrDA Read	0	
 1716	Bluetooth Read	0	
+# Added 2026-11-08 from a reader sweep of vi.lib and the LVAddons (docs/aixml-backends.md): each id
+# joined on uid with NI's own gRPC export of up to two donor VIs; ids NI's export dropped stay out.
+1074	Scale By Power Of 2	4	
+1225	Logarithm Base 2	1	
+1072	Not Or	2	
+5561	To Fixed-Point	4	
+1152	To Double Precision Complex	4	
+1510	Pick Line	3	
+8001	Automation Close	8	
+2306	Refnum to Session	1	
+1149	To Extended Precision Float	2	
+8062	Get File Position	2	
+2319	Register Session	1	
+1532	Match First String	2	
+2400	Always Copy	2	
+1073	Not Exclusive Or	2	
+1355	Control Online Help	1	
+1080	Implies	3	
+2413	To Probe String	2	
+1202	Tangent	2	
+1082	Rotate	5	
+1534	Scan Value	2	
+9103	Get Notifier Status	2	
+8064	Get Number of Records	2	
+5563	Remove Fixed-Point Overflow Status	2	
+1208	Inverse Tangent	2	
+1206	Inverse Sine	4	
+9001	Get Menu Selection	2	
+8061	Get Datalog Position	2	
+3136	Unbitpack from Array	1	
+3135	Bitpack to Array	1	
+23061	Polar To Re/Im	3	
+1183	Number To Engineering String	2	
+1182	Number To Octal String	4	
+8067	Get Volume Info	1	
+8059	Flush File	1	
+2459	Read Map Max & Min Keys	1	
+2451	Empty Collection?	1	
+24130	CPU Information	1	
+2250	Generate User-Defined Trace Event	4	
+1931	VISA Out 16	1	
+1727	UDP Multicast Open	1	
+1329	Generate Front Panel Activity	1	
+1218	Inverse Hyperbolic Cosine	1	
+1215	Hyperbolic Cosine	1	

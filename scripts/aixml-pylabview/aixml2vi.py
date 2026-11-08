@@ -73,6 +73,14 @@ SCALARS = {
     # the IQ data of an niRFSA read, as NI's export of niRFSA Fetch IQ (Complex WDT 1Rec 1Chan).vi
     # names its `data` indicator (2026-10-30)
     "complexdoublewaveform": ("MeasureData.Complex128Waveform", "stdMeasureData"),
+    # every other waveform the same way: NI's export spells it <scalar>waveform - int8waveform,
+    # extendedwaveform (WDT Number of Waveform Samples I8/EXT.vi, 2026-11-08) - the Flavor
+    # pylabview's MEASURE_DATA_FLAVOR names
+    **{s + "waveform": ("MeasureData.%sWaveform" % f, "stdMeasureData") for s, f in (
+        ("int8", "Int8"), ("int16", "Int16"), ("int32", "Int32"), ("int64", "Int64"),
+        ("uint8", "UInt8"), ("uint16", "UInt16"), ("uint32", "UInt32"), ("uint64", "UInt64"),
+        ("single", "Float32"), ("extended", "FloatExt"),
+        ("complexsingle", "Complex64"), ("complexextended", "ComplexExt"))},
 }
 # type key (lvheap.type_key) -> the front-panel class of its object
 DDO_OF_KEY = {v[0]: v[1] for v in SCALARS.values()}
@@ -82,6 +90,9 @@ DDO_OF_KEY.update({"Refnum.LVObjCtl": "stdRefNum", "Refnum.VisaRef": "stdRefNum"
                    # a MENU refnum in a cluster (MGI's Event Cluster) and an event registration
                    # or user event refnum on a pane: the same refnum object, retyped
                    "Refnum.Menu": "stdRefNum", "Refnum.EventReg": "stdRefNum", "Refnum.UserEvent": "stdRefNum",
+                   # a USER-DEFINED refnum control (XML DOM, TDM storage ...): the harvested
+                   # Refnum.UsrDefined refnum object, retyped (2026-11-08)
+                   "Refnum.UsrDefined": "stdRefNum",
                    # a CLASS control or a class in a cluster (the 3D Math Plots' Display State):
                    # parts cut from NI's own udClassDDO objects (the XControl sweep, 2026-10-22)
                    "Refnum.UDClassInst": "udClassDDO",
@@ -226,7 +237,15 @@ ENUM_BASE = {"uint8": "UnitUInt8", "uint16": "UnitUInt16", "uint32": "UnitUInt32
 
 
 # AIXML's refnum kind -> VCTP's RefType, for the refnums that hold a data type
-REFNUM_CONTAINERS = {"Queue": "Queue", "UserEvent": "UserEvent", "Notifier": "NotifierRef"}
+REFNUM_CONTAINERS = {"Queue": "Queue", "UserEvent": "UserEvent", "Notifier": "NotifierRef",
+                     # a DATALOG file refnum and a DATA VALUE REFERENCE hold their record / value
+                     # type the same way - ref{DataLog}{T}, ref{DataValue}{T} as NI's export
+                     # writes them; VCTP Refnum DataLog, Refnum DataValueRef IsExternal 0x00
+                     # (Close WDT Array Dlog File+.vi, the VI Analyzer's Session Handle.ctl; the
+                     # vi.lib sweep refused 181 VIs on DataLog and 51 on a DVR typedef, 2026-11-08)
+                     "DataLog": "DataLog", "DataValue": "DataValueRef"}
+# VCTP attributes a container refnum carries between RefType and Format
+REFNUM_EXTRA_ATTRS = {"DataValueRef": (("IsExternal", "0x00"),)}
 
 
 # the classes of the element whose type is being read, in the order its ref{UDClassInst}s appear -
@@ -307,7 +326,7 @@ def type_tree(aixml_type, label=None, constant=False, _top=True):
         if label:
             el.set("Label", label)
         return el
-    mq = re.fullmatch(r"ref\{(Queue|UserEvent|Notifier)\}\{(.*)\}", aixml_type, re.S)
+    mq = re.fullmatch(r"ref\{(Queue|UserEvent|Notifier|DataLog|DataValue)\}\{(.*)\}", aixml_type, re.S)
     if mq:
         # a QUEUE refnum, as NI's exporter writes one - ref{Queue}{<element type>.<label>} - and
         # VCTP holds it: Refnum Queue around the element's type (the ATM build's producer and
@@ -316,7 +335,9 @@ def type_tree(aixml_type, label=None, constant=False, _top=True):
         # NotifierRef around their data type - as a subVI's CONTROL they were refused here, and the
         # two LayoutCheck subVIs that take them went to NI's service (2026-10-16)
         t, lab = split_field(mq.group(2))
-        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": REFNUM_CONTAINERS[mq.group(1)], "Format": "inline"})
+        rt = REFNUM_CONTAINERS[mq.group(1)]
+        el = ET.Element("TypeDesc", dict([("Type", "Refnum"), ("RefType", rt)] +
+                                         list(REFNUM_EXTRA_ATTRS.get(rt, ())) + [("Format", "inline")]))
         el.append(type_tree(t, lab, _top=False))
         if label:
             el.set("Label", label)
@@ -535,6 +556,17 @@ def refnum_type(inner, plain_class=False):
         tag.append(_void_variant())
         el.append(_void_variant())
         return el
+    mg = re.fullmatch(r"GenClass\.([^{}]+)\.([^.{}]+)", inner)
+    if mg:
+        # a USER-DEFINED refnum (XML DOM, TDM storage, security, adaptive filters, System
+        # Configuration ...): NI's export writes ref{GenClass.<Ident>.<TypeName>} -
+        # ref{GenClass.XML_Element.DOMUserDefRef} - and VCTP holds the VISA shape with RefType
+        # UsrDefined and the TypeName beside the Ident (Get Array of Elements.vi, 2026-11-08)
+        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "UsrDefined", "Ident": mg.group(1),
+                                     "FirstClient": "0", "TypeName": mg.group(2), "Format": "inline"})
+        v = ET.SubElement(el, "LVVariant", {"Index": "0", "HasVarItem2": "1", "VarType2": "0", "Version": "auto"})
+        ET.SubElement(v, "DataType", {"Index": "0", "Type": "Void", "Format": "inline"})
+        return el
     mv = re.fullmatch(r"Visa\.([^{}]+)", inner)
     if mv:
         # every VISA class has this shape, its class in Ident as the reader writes it back:
@@ -732,7 +764,11 @@ def unverified_wire_type(tree):
     if t == "MeasureData":
         # Complex128Waveform: t196, Build Waveform -> Get Waveform Components carried a complex Y
         # and dt through, no insanity (2026-10-30) - the wire of every niRFSA IQ read
-        return None if tree.get("Flavor") in ("Float64Waveform", "TimeStamp", "Dynamicdata", "Complex128Waveform") \
+        # Int8Waveform, FloatExtWaveform: a control into WDT Number of Waveform Samples I8/EXT.vi
+        # and its waveform out into a second call, no insanity (t207, 2026-11-08). The other
+        # integer, single and complex flavors are typed since the same day and not measured
+        return None if tree.get("Flavor") in ("Float64Waveform", "TimeStamp", "Dynamicdata", "Complex128Waveform",
+                                              "Int8Waveform", "FloatExtWaveform") \
             else "MeasureData." + (tree.get("Flavor") or "")
     if t == "Refnum":
         # TDMSFile: t109, TDMS Open -> TDMS Close, file written and path back (2026-10-10)
@@ -755,13 +791,29 @@ def unverified_wire_type(tree):
         # the notification, `timed out?` and the last notification read back (t154, 2026-10-12)
         # IVIRef: niRFSA Initialize -> niRFSA Close on the instrument handle, composed, loaded
         # executable, no insanity (t194, 2026-10-30)
+        # DataValueRef: New Data Value Reference -> Delete Data Value Reference carried a double
+        # through and back, no insanity (t203, 2026-11-08)
+        # DataLog: Open/Create/Replace Datalog (record type double) -> Write Datalog -> Set Datalog
+        # Position -> Read Datalog -> Close File read the record back (t204, 2026-11-08). The
+        # FATAL "Insane Wire" this list cites for DataLog came from a refnum whose RECORD TYPE was
+        # missing; type_tree writes ref{DataLog}{T} with its record type since the same day
+        if tree.get("RefType") in ("DataValueRef", "DataLog") and not fields(tree):
+            # only the CONTAINER form is measured; a bare one stays refused
+            return "Refnum.%s (no element type)" % tree.get("RefType")
         if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "IVIRef", "UsrDefndTag", "TDMSFile", "UDClassInst",
-                                       "UserEvent", "EventReg", "Menu", "Queue", "ByteStream", "NotifierRef"):
+                                       "UserEvent", "EventReg", "Menu", "Queue", "ByteStream", "NotifierRef",
+                                       "DataValueRef", "DataLog"):
             # UsrDefined is a family of unrelated classes; only NI-TClk's session reference is
             # measured - niRFSA Get Session Reference -> Build Array -> niTClk Configure For
             # Homogeneous Triggers -> niTClk Synchronize answered NI's own build's error, no
             # insanity (t197, 2026-10-30)
-            if not (tree.get("RefType") == "UsrDefined" and tree.get("Ident") == "sessionReferenceClass"):
+            # DOMUserDefRef (the XML parser's family): NI_XML New.vi -> Close Reference(Node).vi
+            # carried an XML_Document into a node input and closed it with no error and no
+            # insanity (t205, 2026-11-08)
+            # Storage (TDM/DIAdem): _openDataStorage.vi -> CloseDataStorageRefnum.vi created and
+            # closed a .tdm file, twice over the same file, no insanity (t206, 2026-11-08)
+            if not (tree.get("RefType") == "UsrDefined" and (tree.get("Ident") == "sessionReferenceClass"
+                                                            or tree.get("TypeName") in ("DOMUserDefRef", "Storage"))):
                 return "Refnum." + (tree.get("RefType") or "?")
         if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
             # a strictly typed VI reference: its pane is the callee's own (t103)
@@ -1344,13 +1396,71 @@ def _flat(tree, value):
     return _const_value(tree, value)
 
 
+def mac_roman_text(s):
+    """`s` with every character MacRoman lacks replaced - the skeleton's heap is MacRoman, and
+    pylabview refuses the whole VI on one such character (`'charmap' codec can't encode '\\xad'`:
+    a soft hyphen in a comment of WA Denoise (Manual Threshold).vi, `\\xd7` in a JKI picture VI,
+    vi.lib sweep 2026-11-08). A character with a compatibility form keeps it (NFKD), a soft
+    hyphen is dropped, anything else becomes `?`."""
+    try:
+        s.encode("mac_roman")
+        return s
+    except UnicodeEncodeError:
+        pass
+    import unicodedata
+    out = []
+    for ch in s:
+        try:
+            ch.encode("mac_roman")
+            out.append(ch)
+            continue
+        except UnicodeEncodeError:
+            pass
+        if ch == "\xad":
+            continue
+        alt = {"\xd7": "x", "−": "-"}.get(ch) or unicodedata.normalize("NFKD", ch)
+        try:
+            alt.encode("mac_roman")
+            out.append(alt)
+        except UnicodeEncodeError:
+            out.append("?")
+    return "".join(out)
+
+
+def fit_heap_text(root):
+    """Every quoted string of a heap tree (pylabview writes string content as `"..."`) made
+    MacRoman-safe in place."""
+    for e in root.iter():
+        t = e.text
+        if t and len(t) >= 2 and t[0] == '"' and t[-1] == '"':
+            fixed = mac_roman_text(t)
+            if fixed is not t:
+                e.text = fixed
+
+
+def heap_uint(n):
+    """An unsigned count as raw heap content: whole bytes, big-endian, as few as hold it. `%X`
+    wrote a formula of 13 characters as `D`, which pylabview cannot read back (`fromhex() arg must
+    contain an even number of hexadecimal digits` - Formula Template.vi, vi.lib sweep 2026-11-08).
+    NI's parts carry one byte (09, 5F); the two- and four-byte forms follow the same rule and are
+    not measured."""
+    for width in (1, 2, 4):
+        if n < 1 << (8 * width):
+            return "%0*X" % (2 * width, n)
+    raise Unsupported("count %d does not fit a heap integer" % n)
+
+
 def _quad(x):
     """A float as LabVIEW flattens an extended: IEEE 754 binary128, big-endian - measured,
     100 is 4005 9000 0000 0000 0000 0000 0000 0000."""
     import math
     if x == 0:
         return "00" * 16
-    sign = 1 if x < 0 else 0
+    sign = 1 if math.copysign(1.0, x) < 0 else 0
+    if math.isnan(x):
+        # a quiet NaN: all-ones exponent, the fraction's top bit set (frexp of a NaN cannot be
+        # packed - `Mean (CDB).vi`, vi.lib sweep 2026-11-08)
+        return ("%04X" % ((sign << 15) | 0x7FFF)) + "8000" + "00" * 12
     if math.isinf(x):
         return ("%04X" % ((sign << 15) | 0x7FFF)) + "00" * 14
     m, e = math.frexp(abs(x))                   # x = m * 2^e, 0.5 <= m < 1
@@ -1358,13 +1468,30 @@ def _quad(x):
     return ("%04X" % ((sign << 15) | (e - 1 + 16383))) + ("%028X" % frac)
 
 
+_REAL = r"(?:nan|inf(?:inity)?|(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)"
+
+
 def _complex(value):
-    """'3', '1.5+2i', '-1-0.5i' -> (re, im)."""
-    v = unescape(value or "0").replace(" ", "")
-    m = re.fullmatch(r"([+-]?[^+-]+?)(?:([+-][^+-]*)i)?", v)
+    """'3', '1.5+2i', '-1-0.5i', '1e-05+2e+03i', 'nan+nani' -> (re, im). An exponent's sign is no
+    split point (`1e-05+2i` was refused until 2026-11-08), and `nannani` - what the reader wrote
+    for a NaN imaginary part until then - is read as NaN + NaN i."""
+    v = unescape(value or "0").replace(" ", "").lower()
+    m = (re.fullmatch(r"([+-]?%s)(?:([+-]?%s)i)?" % (_REAL, _REAL), v)
+         or re.fullmatch(r"()([+-]?%s)i" % _REAL, v))
     if not m:
         raise Unsupported("complex literal %r is not readable" % value)
-    return float(m.group(1) or 0), float(m.group(2) or 0) if m.group(2) else 0.0
+    return float(m.group(1) or 0), float(m.group(2)) if m.group(2) else 0.0
+
+
+def _int_literal(value):
+    """An integer literal EXACTLY: int(float(...)) rounds 18446744073709551615 up past uint64's
+    range (dfd_DFXP negate (vv).vi, vi.lib sweep 2026-11-08). A float literal is truncated as
+    before."""
+    v = (value or "0").strip()
+    try:
+        return int(v, 0) if v.lower().startswith(("0x", "-0x")) else int(v)
+    except ValueError:
+        return int(float(v or 0))
 
 
 def _const_value(tree, value):
@@ -1378,7 +1505,7 @@ def _const_value(tree, value):
     if t == "NumFloat32":
         return struct.pack(">f", float(value or 0)).hex().upper()
     if t in INT_FMT:
-        return struct.pack(INT_FMT[t], int(float(value or 0))).hex().upper()
+        return struct.pack(INT_FMT[t], _int_literal(value)).hex().upper()
     if t == "Boolean":
         # true/false (NI's exports), 1/0; anything else - T, yes, a stray list - was false in
         # silence until 2026-11-05
@@ -1401,6 +1528,9 @@ def _const_value(tree, value):
         re_, im = _complex(value)
         f = ">d" if t == "NumComplex128" else ">f"
         return (struct.pack(f, re_) + struct.pack(f, im)).hex().upper()
+    if t == "NumComplexExt":
+        re_, im = _complex(value)
+        return _quad(re_) + _quad(im)
     if t == "MeasureData" and tree.get("Flavor") == "TimeStamp":
         # AIXML cannot carry a timestamp literal (LabVIEW's own converter discards it): zero
         return "00" * 16
@@ -2270,6 +2400,23 @@ class Composer:
         for part in ddo.iter("SL__arrayElement"):
             if part.get("class") == "multiLabel" and part.find("buf") is not None:
                 part.find("buf").text = "(%d)%s" % (len(labels), "".join('"%s"' % x for x in labels))
+        # the limits are data of the RING'S type: an int16 ring kept the int32 part's
+        # -2147483648 and pylabview refused the VI (`int too big to convert`,
+        # niFpgaCommUtilsConvertDataTypeRingToEnum.vi, vi.lib sweep 2026-11-08) - clamped into
+        # the type's range
+        t = (tree.get("Type") or "") if tree is not None else ""
+        rng = INT_RANGE.get("Num" + t[4:] if t.startswith("Unit") else t)
+        if rng:
+            for tag, fallback in (("StdNumMin", rng[0]), ("StdNumMax", rng[1]), ("StdNumInc", 1)):
+                e = ddo.find(tag)
+                if e is None or not e.text:
+                    continue
+                try:
+                    v = int(e.text.split()[0], 0)
+                except ValueError:
+                    continue
+                if not rng[0] <= v <= rng[1]:
+                    e.text = str(fallback)
 
     # ---- elements ------------------------------------------------------------------------
     def _set_description(self, ddo, text):
@@ -3225,13 +3372,17 @@ class Composer:
         # Queue's `element data type`) makes that refnum one of the wired type - t176's cluster
         # queue left Obtain Queue's `queue out` typed by its donor's {Message, Message Data}
         for i, net in list(wired_in.items()):
-            di = ET.tostring(donor[i])
+            # compared as type_sig - no labels, no indentation: Open/Create/Replace Datalog's
+            # donor labels the `record type` input and the refnum's record alike (`datalog
+            # record`) and indents the two differently, so a byte compare never matched -
+            # `refnum out` stayed untyped and Write Datalog's refnum was refused (t204, 2026-11-08)
+            di = type_sig(donor[i])
             for j in range(len(terms)):
                 d = donor[j]
                 if (j == i or j in wired_in or canon[i].startswith(b"error terminal") or d.get("Type") != "Refnum"
                         or d.get("RefType") not in REFNUM_CONTAINERS.values() or not fields(d)):
                     continue
-                if ET.tostring(plain(lvheap.strip_label(fields(d)[0]))) == di:
+                if type_sig(fields(d)[0]) == di:
                     r = copy.deepcopy(d)
                     r.remove(fields(r)[0])
                     r.insert(0, copy.deepcopy(unlabel(self.net_type[net])))
@@ -6179,7 +6330,7 @@ class Composer:
         tout.find("dco/termBounds").text = lvheap.fmt_bounds((0, 8 + tw, 17, 16 + tw))
         b = lvheap.parse_bounds(node.find("bounds").text)
         node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + 17, b[1] + 16 + tw))
-        node.find("errOfst").text = "%02X" % len(text.encode("mac_roman", "replace"))
+        node.find("errOfst").text = heap_uint(len(text.encode("mac_roman", "replace")))
         self.ends[(el.get("uid"), "input")] = (tin.get("uid"), diag)
         self.ends[(el.get("uid"), "output")] = (tout.get("uid"), diag)
         if outs.get("output"):
@@ -6302,7 +6453,7 @@ class Composer:
         tl.set("elements", str(len(tl)))
         node.find("formula/text").text = '"%s"' % code
         if node.find("errOfst") is not None:
-            node.find("errOfst").text = "%X" % len(code.encode("mac_roman", "replace"))
+            node.find("errOfst").text = heap_uint(len(code.encode("mac_roman", "replace")))
         b = lvheap.parse_bounds(node.find("bounds").text)
         node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + height, b[1] + width))
         node.find("contRect").text = lvheap.fmt_bounds((b[0] + 8, b[1] + 8, b[0] + height - 8, b[1] + width - 8))
@@ -7310,8 +7461,12 @@ class Composer:
                 if f.get("selectout"):
                     self.net_type[f.get("selectout")] = unlabel(st)
             ranges, strings, default = [], [], 0xFF
+            # every test below is on the type a TYPEDEF wraps: a typedef enum or string wire was
+            # refused as "string selectors on a TypeDef wire" - 140 VIs of a vi.lib sweep, the
+            # largest typedef gap (2026-11-08). The caseSel itself keeps the typedef type.
+            it = typedef_inner(st)
             if kind == "error":
-                if st.get("Type") != "Cluster":
+                if it.get("Type") != "Cluster":
                     raise Unsupported("Case Structure %s: 'No Error'/'Error' frames need an error cluster" % el.get("uid"))
                 # the donor's own two ranges, matched to the frames by name: the donor was
                 # authored [No Error, Error], and LabVIEW kept that order
@@ -7327,35 +7482,35 @@ class Composer:
                                 r.find("diagramIdx").text = str(i)
                                 ranges.append((int(r.findtext("start")), r))
             else:
-                if kind == "string" and is_enum(st):
+                if kind == "string" and is_enum(it):
                     # NI's export QUOTES an enum case's items ("Off", "Auto".."Manual") - the
                     # wire, not the quotes, says it is an enum (11 NI VIs refused as a string case)
                     kind = "enum"
                     items = [[x.replace('"', "") for x in its] for its in items]
                 if kind == "string":
-                    if st.get("Type") != "String":
-                        raise Unsupported("Case Structure %s: string selectors on a %s wire" % (el.get("uid"), st.get("Type")))
+                    if it.get("Type") != "String":
+                        raise Unsupported("Case Structure %s: string selectors on a %s wire" % (el.get("uid"), it.get("Type")))
                     strs = sorted({x[1:-1] for its in items for x in its if x.startswith('"') and ".." not in x},
                                   key=lvheap.value_bytes)
                     strings = strs
                     value = lambda x: strs.index(x[1:-1])
                 elif kind == "enum":
-                    labels = [e.text for e in st.findall("EnumLabel")]
+                    labels = [e.text for e in it.findall("EnumLabel")]
                     if not labels:
-                        raise Unsupported("Case Structure %s: enum selectors on a %s wire" % (el.get("uid"), st.get("Type")))
+                        raise Unsupported("Case Structure %s: enum selectors on a %s wire" % (el.get("uid"), it.get("Type")))
                     def value(x, labels=labels):
                         if x not in labels:
                             raise Unsupported("Case Structure %s: %r is not an item of the enum" % (el.get("uid"), x))
                         return labels.index(x)
                 else:
-                    if st.get("Type") not in INT_RANGE and st.get("Type") not in ENUM_BASE.values():
+                    if it.get("Type") not in INT_RANGE and it.get("Type") not in ENUM_BASE.values():
                         if all(not (f.get("selector") or "").strip() for f in frames_el
                                if (f.get("selector") or "").strip() != "Default"):
                             # every frame but Default without a label: a LabVIEW 9.0 file keeps a
                             # string case's labels out of the heap (MGI's Handle Data Change.vi)
                             raise Unsupported("Case Structure %s: its frames carry no case labels (an old "
                                               "file keeps them in compiled code)" % el.get("uid"))
-                        raise Unsupported("Case Structure %s: an integer case on a %s wire" % (el.get("uid"), st.get("Type")))
+                        raise Unsupported("Case Structure %s: an integer case on a %s wire" % (el.get("uid"), it.get("Type")))
                     value = lambda x: int(x, 0)
                 # AN OPEN END IS THE SELECTOR TYPE'S OWN LIMIT, not int32's. NI's Real Root
                 # Finding.vi, a uint16 ring: `..0` is (0, 0, 3, 1), `1..` is (1, 65535, 1, 3).
@@ -7364,14 +7519,14 @@ class Composer:
                 # to this Case Structure). Types wider than int32 keep INT_MIN/INT_MAX: not measured.
                 lo, hi = INT_MIN, INT_MAX
                 num = {"UnitUInt8": "NumUInt8", "UnitUInt16": "NumUInt16",
-                       "UnitUInt32": "NumUInt32"}.get(st.get("Type"), st.get("Type"))
+                       "UnitUInt32": "NumUInt32"}.get(it.get("Type"), it.get("Type"))
                 if num in INT_RANGE and INT_MIN <= INT_RANGE[num][0] and INT_RANGE[num][1] <= INT_MAX:
                     lo, hi = INT_RANGE[num]
                 if kind == "enum":
                     # an ENUM's open end is its LAST ITEM, not the type's maximum: NI's Interpolation
                     # Solver.vi, `"Rational"..` on a 4-item uint16 enum is (3, 3, 1, 3), IIR Filter
                     # Design.vi's `"Bessel"..` on 5 items (4, 4, 1, 3) - both crashed composed with 65535
-                    lo, hi = 0, len([e for e in st.findall("EnumLabel")]) - 1
+                    lo, hi = 0, len([e for e in it.findall("EnumLabel")]) - 1
                 for i, its in enumerate(items):
                     for x in its:
                         if x == "Default":
@@ -10830,6 +10985,8 @@ class Composer:
             of = pane.find("objFlags")
             if of is not None:
                 of.text = str(int(of.text) & ~0x4)
+        fit_heap_text(self.fp)
+        fit_heap_text(self.bd)
         ET.ElementTree(self.fp).write(os.path.join(out_dir, base + "_FPHb.xml"),
                                       encoding="utf-8", xml_declaration=True)
         ET.ElementTree(self.bd).write(os.path.join(out_dir, base + "_BDHb.xml"),

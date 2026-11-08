@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8064" source="&lt;labview&gt;\vi.lib\Waveform\WDTFileIO.llb\Close WDT Array Dlog File+.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="NumInt64" Prop1="0" Format="inline" Label="# of records" /><TypeDesc Type="Refnum" RefType="DataLog" Format="inline" Label="refnum"><TypeDesc Type="Array" Format="inline" Label="datalog record"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Refnum" RefType="DataLog" Format="inline" Label="refnum"><TypeDesc Type="Array" Format="inline" Label="datalog record"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="MeasureData" Flavor="Float64Waveform" Format="inline" /></TypeDesc></TypeDesc></types><heap><SL__arrayElement class="prim" uid="486">
+                <objFlags>640</objFlags>
+                <termList elements="5">
+                  <SL__arrayElement class="term" uid="899">
+                    <dco class="parm" uid="896">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(61)</typeDesc>
+                      <termBounds>(24, 16, 32, 32)</termBounds>
+                      <primIndex>398</primIndex>
+                      <inplace>4</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="902">
+                    <dco class="parm" uid="900">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(62)</typeDesc>
+                      <termBounds>(8, 16, 16, 32)</termBounds>
+                      <primIndex>398</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="905">
+                    <dco class="parm" uid="903">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(63)</typeDesc>
+                      <termBounds>(0, 16, 8, 32)</termBounds>
+                      <primIndex>398</primIndex>
+                      <parmIndex>3</parmIndex>
+                      <inplace>5</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="908">
+                    <dco class="parm" uid="906">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(64)</typeDesc>
+                      <termBounds>(24, 0, 32, 16)</termBounds>
+                      <primIndex>398</primIndex>
+                      <parmIndex>4</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="911">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="909">
+                      <typeDesc>TypeID(65)</typeDesc>
+                      <termBounds>(0, 0, 8, 16)</termBounds>
+                      <primIndex>398</primIndex>
+                      <parmIndex>7</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(40, 17, 72, 49)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>262147</clumpNum>
+                <primResID>8064</primResID>
+                <primIndex>398</primIndex>
+                </SL__arrayElement>
+              </heap></part>

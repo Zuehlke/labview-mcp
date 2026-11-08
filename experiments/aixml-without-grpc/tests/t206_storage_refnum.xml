@@ -1,0 +1,7 @@
+<VI _name="T206 Storage Refnum.vi" description="A user-defined refnum of the TDM storage family on a wire: _openDataStorage.vi opens a TDM file (ref{GenClass.Data Storage.Storage}) and CloseDataStorageRefnum.vi closes it.">
+  <Control _name="file" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Constant _name="Overwrite options" outputs="value:4201.value" type="uint16{create,open,open read only}" uid="4201" uid_parent="root" value="create"/>
+  <Call target="_openDataStorage.vi" inputs="Storage location:4200.value,Overwrite options:4201.value" outputs="storage refnum:4210.storage refnum,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Call target="CloseDataStorageRefnum.vi" inputs="error in (no error):4210.error out,reference:4210.storage refnum" outputs="error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4220.error out" type="cluster{bool.status,int32.code,string.source}" uid="4350" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -10257,6 +10257,10 @@
     "code": 901068842,
     "source": "<labview>\\resource\\Framework\\Providers\\ProjectFindDlg\\subWrapGetFindResults.vi"
    },
+   "GetVariableURLs": {
+    "code": 901068852,
+    "source": "utf_set_shared_variable_value.vi"
+   },
    "Make Item Visible in Tree": {
     "code": 901068817,
     "source": "<labview>\\vi.lib\\functionblocks\\FB Support\\FB Add FB To Project After Undo.vi"
@@ -17682,6 +17686,14 @@
     "label": "App.TargetCPU",
     "source": "<labview>\\resource\\Framework\\Providers\\Builds\\AppBuilder\\AB_Get_Target_OS_CPU.vi",
     "type": "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\"><EnumLabel>invalid CPU target</EnumLabel>\n        <EnumLabel>Motorola 68K</EnumLabel>\n        <EnumLabel>PowerPC</EnumLabel>\n        <EnumLabel>Intel x86</EnumLabel>\n        <EnumLabel>SPARC</EnumLabel>\n        <EnumLabel>PA-RISC</EnumLabel>\n        <EnumLabel>MIPS</EnumLabel>\n        <EnumLabel>Alpha</EnumLabel>\n        <EnumLabel>ARM</EnumLabel>\n        <EnumLabel>AMD/Intel x64</EnumLabel>\n        <EnumLabel>ARM64</EnumLabel>\n        </TypeDesc>"
+   },
+   "App.TargetClassName": {
+    "access": "r",
+    "code": 139,
+    "declaredBy": "LV.Application",
+    "label": "App.TargetClassName",
+    "source": "utf_set_value_set_single_control.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
    },
    "App.TargetOS": {
     "access": "r",
@@ -53901,7 +53913,7 @@
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
    "DeferPanUpdts": {
-    "access": "w",
+    "access": "rw",
     "code": 104105989,
     "declaredBy": "LV.Panel",
     "label": "DeferPanUpdts",
@@ -71645,6 +71657,14 @@
     "declaredBy": "LV.VI",
     "label": "CtrlVIType",
     "source": "P3 ni lvai_resave_ctl.vi",
+    "type": "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\"><EnumLabel>not a control VI</EnumLabel>\n        <EnumLabel>control</EnumLabel>\n        <EnumLabel>typedef</EnumLabel>\n        <EnumLabel>strict typedef</EnumLabel>\n        </TypeDesc>"
+   },
+   "CtrlVIType": {
+    "access": "w",
+    "code": 598,
+    "declaredBy": "LV.VI",
+    "label": "CtrlVIType",
+    "source": "nirviBindTypedefDialog.vi",
     "type": "<TypeDesc Type=\"UnitUInt32\" Prop1=\"0\" Format=\"inline\"><EnumLabel>not a control VI</EnumLabel>\n        <EnumLabel>control</EnumLabel>\n        <EnumLabel>typedef</EnumLabel>\n        <EnumLabel>strict typedef</EnumLabel>\n        </TypeDesc>"
    },
    "Def Err Handling": {

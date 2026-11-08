@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1505" source="&lt;labview&gt;\vi.lib\Utility\config.llb\Write Key (Double).vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="Boolean" Format="inline" Label="use system decimal point (T)" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" Label="precision (6)" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="670">
+                <termList elements="5">
+                  <SL__arrayElement class="term" uid="672">
+                    <objFlags>1</objFlags>
+                    <dco class="parm" uid="673">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(65)</typeDesc>
+                      <termBounds>(0, 21, 32, 32)</termBounds>
+                      <primIndex>17</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="680">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="684">
+                      <typeDesc>TypeID(66)</typeDesc>
+                      <termBounds>(0, 11, 32, 21)</termBounds>
+                      <primIndex>17</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="686">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="689">
+                      <typeDesc>TypeID(67)</typeDesc>
+                      <termBounds>(21, 0, 32, 11)</termBounds>
+                      <primIndex>17</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="691">
+                    <objFlags>1</objFlags>
+                    <dco class="parm" uid="692">
+                      <typeDesc>TypeID(68)</typeDesc>
+                      <termBounds>(11, 0, 21, 11)</termBounds>
+                      <primIndex>17</primIndex>
+                      <parmIndex>3</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="694">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="695">
+                      <typeDesc>TypeID(69)</typeDesc>
+                      <termBounds>(0, 0, 11, 11)</termBounds>
+                      <primIndex>17</primIndex>
+                      <parmIndex>4</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(45, 47, 77, 79)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>327683</clumpNum>
+                <primResID>1505</primResID>
+                <primIndex>17</primIndex>
+                </SL__arrayElement>
+              </heap></part>
