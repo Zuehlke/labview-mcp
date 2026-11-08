@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/2451" source="&lt;labview&gt;\vi.lib\net\SFTP\Low Level Connection\Read Packet.vi"><types><TypeDesc Type="Boolean" Format="inline" Label="empty?" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="116" Nested="True" Format="bin" File="Read Packet_VCTP_td0010_cli00.bin" HasLabel="1" /><Label Text="NI_SFTP.lvlib" />
+        <Label Text="Low Level Connection.lvclass" />
+        <Label Text="Receive Map.ctl" />
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="1900">
+                                        <termList elements="2">
+                                          <SL__arrayElement class="term" uid="1919">
+                                            <dco class="parm" uid="1920">
+                                              <objFlags>1</objFlags>
+                                              <typeDesc>TypeID(64)</typeDesc>
+                                              <termBounds>(0, 16, 17, 32)</termBounds>
+                                              <primIndex>580</primIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          <SL__arrayElement class="term" uid="1922">
+                                            <objFlags>32768</objFlags>
+                                            <dco class="parm" uid="1923">
+                                              <typeDesc>TypeID(65)</typeDesc>
+                                              <termBounds>(0, 0, 17, 16)</termBounds>
+                                              <primIndex>580</primIndex>
+                                              <parmIndex>1</parmIndex>
+                                              </dco>
+                                            </SL__arrayElement>
+                                          </termList>
+                                        <bounds>(86, 24, 118, 56)</bounds>
+                                        <shortCount>2</shortCount>
+                                        <clumpNum>524291</clumpNum>
+                                        <primResID>2451</primResID>
+                                        <primIndex>580</primIndex>
+                                        </SL__arrayElement>
+                                      </heap></part>

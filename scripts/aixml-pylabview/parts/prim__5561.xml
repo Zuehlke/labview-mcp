@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/5561" source="FXP LMS.vi"><types><TypeDesc Type="FixedPoint" DataVersion="1" RangeFormat="1" DataEncoding="1" DataEndianness="0" DataUnit="3" AllocOv="0" LeftovFlags="2" Field1E="64" Field20="44" Format="inline" Label="cast1"><Range Prop1="1" Prop2="1" Prop3="44">nan (0xFFFFFFFFFFFFFFFF)</Range>
+        <Range Prop1="0" Prop2="63" Prop3="43">nan (0x7FFFFFFFFFFFFFFF)</Range>
+        <Range Prop1="0" Prop2="1" Prop3="-19">4.9406564584124654e-324 (0x0000000000000001)</Range>
+        </TypeDesc><TypeDesc Type="FixedPoint" DataVersion="1" RangeFormat="1" DataEncoding="1" DataEndianness="0" DataUnit="3" AllocOv="0" LeftovFlags="2" Field1E="32" Field20="12" Format="inline" Label="cast2"><Range Prop1="1" Prop2="1" Prop3="12">nan (0xFFFFFFFFFFFFFFFF)</Range>
+        <Range Prop1="0" Prop2="31" Prop3="11">1.0609978949885705e-314 (0x000000007FFFFFFF)</Range>
+        <Range Prop1="0" Prop2="1" Prop3="-19">4.9406564584124654e-324 (0x0000000000000001)</Range>
+        </TypeDesc><TypeDesc Type="FixedPoint" DataVersion="1" RangeFormat="1" DataEncoding="1" DataEndianness="0" DataUnit="3" AllocOv="0" LeftovFlags="2" Field1E="32" Field20="12" Format="inline" Label="cast2"><Range Prop1="1" Prop2="1" Prop3="12">nan (0xFFFFFFFFFFFFFFFF)</Range>
+        <Range Prop1="0" Prop2="31" Prop3="11">1.0609978949885705e-314 (0x000000007FFFFFFF)</Range>
+        <Range Prop1="0" Prop2="1" Prop3="-19">4.9406564584124654e-324 (0x0000000000000001)</Range>
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="28750">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="28834">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="28835">
+                      <typeDesc>TypeID(355)</typeDesc>
+                      <termBounds>(0, 0, 11, 8)</termBounds>
+                      <primIndex>494</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="28839">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="28840">
+                      <typeDesc>TypeID(356)</typeDesc>
+                      <dsw>4096</dsw>
+                      <termBounds>(0, 8, 11, 18)</termBounds>
+                      <primIndex>494</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="28845">
+                    <dco class="overridableParm" uid="28848">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(357)</typeDesc>
+                      <termBounds>(0, 18, 11, 26)</termBounds>
+                      <primIndex>494</primIndex>
+                      <parmIndex>2</parmIndex>
+                      <maxWordLength>64</maxWordLength>
+                      <overflow>-126</overflow>
+                      <quantize>1</quantize>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <label class="label" uid="28832">
+                  <objFlags>1511754</objFlags>
+                  <partID>16</partID>
+                  <howGrow>4096</howGrow>
+                  <bounds>(-17, 0, 0, 9)</bounds>
+                  <image class="Image">
+                    <ImageResID>-619</ImageResID>
+                    </image>
+                  <fgColor>01000000</fgColor>
+                  <bgColor>01000000</bgColor>
+                  <textRec class="textHair">
+                    <flags>1536</flags>
+                    <mode>82948</mode>
+                    <text>"&amp;#x00;"</text>
+                    <bgColor>01000000</bgColor>
+                    <fr elements="1">
+                      <SL__arrayElement class="fontRun">
+                        <fontid>1</fontid>
+                        </SL__arrayElement>
+                      </fr>
+                    </textRec>
+                  </label>
+                <bounds>(271, 993, 303, 1025)</bounds>
+                <shortCount>70</shortCount>
+                <clumpNum>5242885</clumpNum>
+                <primResID>5561</primResID>
+                <primIndex>494</primIndex>
+                </SL__arrayElement>
+              </heap></part>

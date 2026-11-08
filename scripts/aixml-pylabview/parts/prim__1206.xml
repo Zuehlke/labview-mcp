@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1206" source="&lt;labview&gt;\vi.lib\picture\smith.llb\Generate X-Curves.VI"><types><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="294">
+                <termList elements="2">
+                  <SL__arrayElement class="term" uid="298">
+                    <dco class="parm" uid="296">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(63)</typeDesc>
+                      <termBounds>(0, 16, 32, 32)</termBounds>
+                      <primIndex>78</primIndex>
+                      <inplace>2</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="301">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="299">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(64)</typeDesc>
+                      <termBounds>(0, 0, 32, 16)</termBounds>
+                      <primIndex>78</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(51, 136, 83, 168)</bounds>
+                <shortCount>12</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>1206</primResID>
+                <primIndex>78</primIndex>
+                </SL__arrayElement>
+              </heap></part>

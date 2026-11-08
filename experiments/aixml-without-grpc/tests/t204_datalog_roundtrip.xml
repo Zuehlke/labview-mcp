@@ -1,0 +1,13 @@
+<VI _name="T204 Datalog Roundtrip.vi" description="A datalog file of doubles: Open/Create/Replace Datalog (replace or create), Write Datalog one record, Set Datalog Position back to the start, Read Datalog it, Close File - the refnum wire is a ref{DataLog}{double}.">
+  <Control _name="file" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="record" outputs="value:4205.value" type="double" uid="4205" uid_parent="root" value="0"/>
+  <Constant _name="record type" outputs="value:4201.value" type="double" uid="4201" uid_parent="root" value="0"/>
+  <Constant _name="operation" outputs="value:4202.value" type="uint16{open,replace,create,open or create,replace or create,replace or create with confirmation}" uid="4202" uid_parent="root" value="replace or create"/>
+  <Node _name="Open/Create/Replace Datalog" inputs="datalog path (use dialog):4200.value,record type:4201.value,operation (0\3Aopen):4202.value" outputs="refnum out:4210.refnum out,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Write Datalog" inputs="refnum:4210.refnum out,record(s):4205.value,error in:4210.error out" outputs="refnum out:4220.refnum out,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Node _name="Set Datalog Position" inputs="refnum:4220.refnum out,error in:4220.error out" outputs="refnum out:4230.refnum out,error out:4230.error out" uid="4230" uid_parent="root"/>
+  <Node _name="Read Datalog" inputs="refnum:4230.refnum out,error in:4230.error out" outputs="refnum out:4240.refnum out,record(s):4240.record(s),error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Node _name="Close File" inputs="refnum:4240.refnum out,error in:4240.error out" outputs="error out:4250.error out" uid="4250" uid_parent="root"/>
+  <Indicator _name="read back" inputs="value:4240.record(s)" type="double" uid="4300" uid_parent="root" value="0"/>
+  <Indicator _name="error out" inputs="value:4250.error out" type="cluster{bool.status,int32.code,string.source}" uid="4350" uid_parent="root" value="[false,0,]"/>
+</VI>

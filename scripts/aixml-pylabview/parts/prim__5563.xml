@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/5563" source="FXP LMS.vi"><types><TypeDesc Type="Boolean" Format="inline" Label="overflow?" /><TypeDesc Type="FixedPoint" DataVersion="1" RangeFormat="1" DataEncoding="1" DataEndianness="0" DataUnit="3" AllocOv="0" LeftovFlags="2" Field1E="24" Field20="4" Format="inline"><Range Prop1="1" Prop2="1" Prop3="4">nan (0xFFFFFFFFFFFFFFFF)</Range>
+        <Range Prop1="0" Prop2="23" Prop3="3">4.1445225351634016e-317 (0x00000000007FFFFF)</Range>
+        <Range Prop1="0" Prop2="1" Prop3="-19">4.9406564584124654e-324 (0x0000000000000001)</Range>
+        </TypeDesc><TypeDesc Type="FixedPoint" DataVersion="1" RangeFormat="1" DataEncoding="1" DataEndianness="0" DataUnit="3" AllocOv="1" LeftovFlags="2" Field1E="24" Field20="4" Format="inline"><Range Prop1="1" Prop2="1" Prop3="4">nan (0xFFFFFFFFFFFFFFFF)</Range>
+        <Range Prop1="0" Prop2="23" Prop3="3">4.1445225351634016e-317 (0x00000000007FFFFF)</Range>
+        <Range Prop1="0" Prop2="1" Prop3="-19">4.9406564584124654e-324 (0x0000000000000001)</Range>
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="9636">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="9664">
+                    <objFlags>4096</objFlags>
+                    <dco class="parm" uid="9672">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(364)</typeDesc>
+                      <termBounds>(12, 16, 24, 32)</termBounds>
+                      <primIndex>543</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="9688">
+                    <objFlags>4096</objFlags>
+                    <dco class="parm" uid="9692">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(365)</typeDesc>
+                      <termBounds>(0, 16, 12, 32)</termBounds>
+                      <primIndex>543</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="9708">
+                    <objFlags>36864</objFlags>
+                    <dco class="parm" uid="9715">
+                      <typeDesc>TypeID(366)</typeDesc>
+                      <termBounds>(0, 0, 12, 16)</termBounds>
+                      <primIndex>543</primIndex>
+                      <parmIndex>3</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(286, 1547, 318, 1579)</bounds>
+                <shortCount>52</shortCount>
+                <clumpNum>5242885</clumpNum>
+                <primResID>5563</primResID>
+                <primIndex>543</primIndex>
+                </SL__arrayElement>
+              </heap></part>

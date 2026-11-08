@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/23782" source="utf_set_shared_variable_value.vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="Refnum" RefType="UsrDefndTag" Ident="Variable" FirstClient="1" TypeName="Variable" Format="inline"><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="UserDefined" Format="inline"><Ident>Variable</Ident>
+        <LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          <Attributes>
+            <LVVariant Name="NI_VAR_DATATYPE" HasVarItem2="1" VarType2="0" Version="auto">
+              <DataType Index="0" Type="LVVariant" Format="inline" Label="shared variable value" />
+              <DataFill>
+                <LVVariant HasVarItem2="1" VarType2="0" Version="auto">
+                  <DataType Index="0" Type="Void" Format="inline" />
+                  <DataFill>
+                    <Void />
+                    </DataFill>
+                  </LVVariant>
+                </DataFill>
+              </LVVariant>
+            </Attributes>
+          </LVVariant>
+        </TypeDesc><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error IO"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="LVVariant" Format="inline" Label="shared variable value" /></types><heap><SL__arrayElement class="sharedVariableDynamicWrite" uid="2050">
+                        <objFlags>512</objFlags>
+                        <termList elements="5">
+                          <SL__arrayElement class="term" uid="2058">
+                            <objFlags>36864</objFlags>
+                            <dco class="sharedVariableDynamicDCO" uid="2056">
+                              <objFlags>128</objFlags>
+                              <typeDesc>TypeID(322)</typeDesc>
+                              <termBounds>(0, 0, 8, 8)</termBounds>
+                              <terminal_ID>0B</terminal_ID>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2061">
+                            <objFlags>4096</objFlags>
+                            <dco class="sharedVariableDynamicDCO" uid="2059">
+                              <objFlags>513</objFlags>
+                              <typeDesc>TypeID(323)</typeDesc>
+                              <termBounds>(0, 24, 8, 32)</termBounds>
+                              <terminal_ID>03</terminal_ID>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2064">
+                            <objFlags>36864</objFlags>
+                            <dco class="sharedVariableDynamicDCO" uid="2062">
+                              <objFlags>512</objFlags>
+                              <typeDesc>TypeID(324)</typeDesc>
+                              <termBounds>(24, 0, 32, 8)</termBounds>
+                              <terminal_ID>08</terminal_ID>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2067">
+                            <objFlags>4096</objFlags>
+                            <dco class="sharedVariableDynamicDCO" uid="2065">
+                              <objFlags>513</objFlags>
+                              <typeDesc>TypeID(325)</typeDesc>
+                              <termBounds>(24, 24, 32, 32)</termBounds>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2070">
+                            <objFlags>36864</objFlags>
+                            <dco class="sharedVariableDynamicDCO" uid="2068">
+                              <objFlags>128</objFlags>
+                              <typeDesc>TypeID(326)</typeDesc>
+                              <termBounds>(8, 0, 16, 8)</termBounds>
+                              <terminal_ID>0A</terminal_ID>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(115, 1671, 147, 1703)</bounds>
+                        <shortCount>8</shortCount>
+                        <clumpNum>983043</clumpNum>
+                        <SharedVariableDynamicResID>5CE6</SharedVariableDynamicResID>
+                        </SL__arrayElement>
+                      </heap></part>

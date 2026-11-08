@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/2250" source="Desktop Execution - Generate Trace Events.vi"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="2409">
+                        <objFlags>512</objFlags>
+                        <termList elements="2">
+                          <SL__arrayElement class="term" uid="2415">
+                            <objFlags>4097</objFlags>
+                            <dco class="parm" uid="2416">
+                              <typeDesc>TypeID(82)</typeDesc>
+                              <termBounds>(16, 0, 32, 16)</termBounds>
+                              <primIndex>541</primIndex>
+                              <parmIndex>1</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="2421">
+                            <objFlags>36864</objFlags>
+                            <dco class="parm" uid="2422">
+                              <typeDesc>TypeID(83)</typeDesc>
+                              <termBounds>(0, 0, 16, 16)</termBounds>
+                              <primIndex>541</primIndex>
+                              <parmIndex>2</parmIndex>
+                              </dco>
+                            </SL__arrayElement>
+                          </termList>
+                        <bounds>(26, 15, 58, 47)</bounds>
+                        <shortCount>2</shortCount>
+                        <clumpNum>2359299</clumpNum>
+                        <primResID>2250</primResID>
+                        <primIndex>541</primIndex>
+                        </SL__arrayElement>
+                      </heap></part>

@@ -1,0 +1,11 @@
+<VI _name="T207 Integer Waveform Wires.vi" description="Waveforms of int8 and extended on wires: a control into WDT Number of Waveform Samples I8.vi, its waveform out into a second call; the same for EXT. An empty waveform has no samples.">
+  <Control _name="waveform i8" outputs="value:4200.value" type="int8waveform" uid="4200" uid_parent="root" value=""/>
+  <Call target="WDT Number of Waveform Samples I8.vi" inputs="waveform in:4200.value" outputs="number of samples:,waveform out:4210.waveform out,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Call target="WDT Number of Waveform Samples I8.vi" inputs="waveform in:4210.waveform out,error in (no error):4210.error out" outputs="number of samples:4220.number of samples,waveform out:,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Control _name="waveform ext" outputs="value:4300.value" type="extendedwaveform" uid="4300" uid_parent="root" value=""/>
+  <Call target="WDT Number of Waveform Samples EXT.vi" inputs="waveform in:4300.value,error in (no error):4220.error out" outputs="number of samples:,waveform out:4310.waveform out,error out:4310.error out" uid="4310" uid_parent="root"/>
+  <Call target="WDT Number of Waveform Samples EXT.vi" inputs="waveform in:4310.waveform out,error in (no error):4310.error out" outputs="number of samples:4320.number of samples,waveform out:,error out:4320.error out" uid="4320" uid_parent="root"/>
+  <Indicator _name="samples i8" inputs="value:4220.number of samples" type="int32" uid="4400" uid_parent="root" value="0"/>
+  <Indicator _name="samples ext" inputs="value:4320.number of samples" type="int32" uid="4410" uid_parent="root" value="0"/>
+  <Indicator _name="error out" inputs="value:4320.error out" type="cluster{bool.status,int32.code,string.source}" uid="4450" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -1,0 +1,171 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/8069" source="Misc.llb\ReadDlogFile.vi"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Cluster" Format="inline" Label="Analysis Filter"><TypeDesc Type="Array" Format="inline" Label="Lowpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Highpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Synthesis Filter"><TypeDesc Type="Array" Format="inline" Label="Lowpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Highpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Remaining Data (%) and Bit Allocation"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline" Label="Wavelet"><EnumLabel>db02</EnumLabel>
+        <EnumLabel>db03</EnumLabel>
+        <EnumLabel>db04</EnumLabel>
+        <EnumLabel>db05</EnumLabel>
+        <EnumLabel>db06</EnumLabel>
+        <EnumLabel>db07</EnumLabel>
+        <EnumLabel>db08</EnumLabel>
+        <EnumLabel>db09</EnumLabel>
+        <EnumLabel>db10</EnumLabel>
+        <EnumLabel>db11</EnumLabel>
+        <EnumLabel>db12</EnumLabel>
+        <EnumLabel>db13</EnumLabel>
+        <EnumLabel>db14</EnumLabel>
+        <EnumLabel>Haar</EnumLabel>
+        <EnumLabel>bior1_3</EnumLabel>
+        <EnumLabel>bior1_5</EnumLabel>
+        <EnumLabel>bior2_2</EnumLabel>
+        <EnumLabel>bior2_4</EnumLabel>
+        <EnumLabel>bior2_6</EnumLabel>
+        <EnumLabel>bior2_8</EnumLabel>
+        <EnumLabel>bior3_1</EnumLabel>
+        <EnumLabel>bior3_3</EnumLabel>
+        <EnumLabel>bior3_5</EnumLabel>
+        <EnumLabel>bior3_7</EnumLabel>
+        <EnumLabel>bior3_9</EnumLabel>
+        <EnumLabel>coif1</EnumLabel>
+        <EnumLabel>coif2</EnumLabel>
+        <EnumLabel>coif3</EnumLabel>
+        <EnumLabel>coif4</EnumLabel>
+        <EnumLabel>coif5</EnumLabel>
+        </TypeDesc></TypeDesc><TypeDesc Type="Refnum" RefType="DataLog" Format="inline" Label="refnum"><TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Cluster" Format="inline" Label="Analysis Filter"><TypeDesc Type="Array" Format="inline" Label="Lowpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Highpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Synthesis Filter"><TypeDesc Type="Array" Format="inline" Label="Lowpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Highpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Remaining Data (%) and Bit Allocation"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline" Label="Wavelet"><EnumLabel>db02</EnumLabel>
+        <EnumLabel>db03</EnumLabel>
+        <EnumLabel>db04</EnumLabel>
+        <EnumLabel>db05</EnumLabel>
+        <EnumLabel>db06</EnumLabel>
+        <EnumLabel>db07</EnumLabel>
+        <EnumLabel>db08</EnumLabel>
+        <EnumLabel>db09</EnumLabel>
+        <EnumLabel>db10</EnumLabel>
+        <EnumLabel>db11</EnumLabel>
+        <EnumLabel>db12</EnumLabel>
+        <EnumLabel>db13</EnumLabel>
+        <EnumLabel>db14</EnumLabel>
+        <EnumLabel>Haar</EnumLabel>
+        <EnumLabel>bior1_3</EnumLabel>
+        <EnumLabel>bior1_5</EnumLabel>
+        <EnumLabel>bior2_2</EnumLabel>
+        <EnumLabel>bior2_4</EnumLabel>
+        <EnumLabel>bior2_6</EnumLabel>
+        <EnumLabel>bior2_8</EnumLabel>
+        <EnumLabel>bior3_1</EnumLabel>
+        <EnumLabel>bior3_3</EnumLabel>
+        <EnumLabel>bior3_5</EnumLabel>
+        <EnumLabel>bior3_7</EnumLabel>
+        <EnumLabel>bior3_9</EnumLabel>
+        <EnumLabel>coif1</EnumLabel>
+        <EnumLabel>coif2</EnumLabel>
+        <EnumLabel>coif3</EnumLabel>
+        <EnumLabel>coif4</EnumLabel>
+        <EnumLabel>coif5</EnumLabel>
+        </TypeDesc></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="Refnum" RefType="DataLog" Format="inline" Label="refnum"><TypeDesc Type="Cluster" Format="inline"><TypeDesc Type="Cluster" Format="inline" Label="Analysis Filter"><TypeDesc Type="Array" Format="inline" Label="Lowpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Highpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Synthesis Filter"><TypeDesc Type="Array" Format="inline" Label="Lowpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="Array" Format="inline" Label="Highpass"><Dimension Flags="0x00FF" FixedSize="0xFFFFFF" />
+        <TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /></TypeDesc></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="Remaining Data (%) and Bit Allocation"><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /><TypeDesc Type="NumFloat64" Prop1="0" Format="inline" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" /></TypeDesc><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline" Label="Wavelet"><EnumLabel>db02</EnumLabel>
+        <EnumLabel>db03</EnumLabel>
+        <EnumLabel>db04</EnumLabel>
+        <EnumLabel>db05</EnumLabel>
+        <EnumLabel>db06</EnumLabel>
+        <EnumLabel>db07</EnumLabel>
+        <EnumLabel>db08</EnumLabel>
+        <EnumLabel>db09</EnumLabel>
+        <EnumLabel>db10</EnumLabel>
+        <EnumLabel>db11</EnumLabel>
+        <EnumLabel>db12</EnumLabel>
+        <EnumLabel>db13</EnumLabel>
+        <EnumLabel>db14</EnumLabel>
+        <EnumLabel>Haar</EnumLabel>
+        <EnumLabel>bior1_3</EnumLabel>
+        <EnumLabel>bior1_5</EnumLabel>
+        <EnumLabel>bior2_2</EnumLabel>
+        <EnumLabel>bior2_4</EnumLabel>
+        <EnumLabel>bior2_6</EnumLabel>
+        <EnumLabel>bior2_8</EnumLabel>
+        <EnumLabel>bior3_1</EnumLabel>
+        <EnumLabel>bior3_3</EnumLabel>
+        <EnumLabel>bior3_5</EnumLabel>
+        <EnumLabel>bior3_7</EnumLabel>
+        <EnumLabel>bior3_9</EnumLabel>
+        <EnumLabel>coif1</EnumLabel>
+        <EnumLabel>coif2</EnumLabel>
+        <EnumLabel>coif3</EnumLabel>
+        <EnumLabel>coif4</EnumLabel>
+        <EnumLabel>coif5</EnumLabel>
+        </TypeDesc></TypeDesc></TypeDesc></types><heap><SL__arrayElement class="prim" uid="1816">
+                <objFlags>640</objFlags>
+                <termList elements="6">
+                  <SL__arrayElement class="term" uid="1820">
+                    <dco class="parm" uid="1818">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(140)</typeDesc>
+                      <termBounds>(24, 16, 32, 32)</termBounds>
+                      <primIndex>403</primIndex>
+                      <inplace>4</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1823">
+                    <objFlags>1</objFlags>
+                    <dco class="parm" uid="1821">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(141)</typeDesc>
+                      <termBounds>(8, 16, 16, 32)</termBounds>
+                      <primIndex>403</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1826">
+                    <dco class="parm" uid="1824">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(142)</typeDesc>
+                      <termBounds>(0, 16, 8, 32)</termBounds>
+                      <primIndex>403</primIndex>
+                      <parmIndex>3</parmIndex>
+                      <inplace>6</inplace>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1829">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="1827">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(143)</typeDesc>
+                      <termBounds>(24, 0, 32, 16)</termBounds>
+                      <primIndex>403</primIndex>
+                      <parmIndex>4</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1832">
+                    <objFlags>1</objFlags>
+                    <dco class="parm" uid="1830">
+                      <typeDesc>TypeID(144)</typeDesc>
+                      <termBounds>(8, 0, 16, 16)</termBounds>
+                      <primIndex>403</primIndex>
+                      <parmIndex>6</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1835">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="1833">
+                      <typeDesc>TypeID(145)</typeDesc>
+                      <termBounds>(0, 0, 8, 16)</termBounds>
+                      <primIndex>403</primIndex>
+                      <parmIndex>7</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(47, 108, 79, 140)</bounds>
+                <shortCount>4</shortCount>
+                <clumpNum>196611</clumpNum>
+                <primResID>8069</primResID>
+                <primIndex>403</primIndex>
+                </SL__arrayElement>
+              </heap></part>

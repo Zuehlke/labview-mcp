@@ -1,0 +1,425 @@
+<VI _name="t209_stacked_sequence_locals.vi" description="&lt;p&gt;Works on the assumption that &lt;strong&gt;ordered x array&lt;/strong&gt; is in monotonically increasing or decreasing order and can therefore efficiently search for the relative index of the location of &lt;strong&gt;x value&lt;/strong&gt; within the &lt;strong&gt;x array&lt;/strong&gt;. The VI starts the search at the &lt;strong&gt;starting index&lt;/strong&gt; and begins by using a fast hunting phase to roughly bracket the location and then narrows to the final bracket using a bisection search. The VI computes the &lt;strong&gt;fractional index&lt;/strong&gt; location by using linear interpolation.&lt;/p&gt;">
+  <Control _name="ordered x array" type="array{double.Numeric}" description="&lt;strong&gt;ordered x array&lt;/strong&gt; is the array of tabulated values of the dependent variable and must be monotonically increasing or decreasing." uid="1942" uid_parent="root" value="[]" conIdx="11" connection="recommended" outputs="value:1942.value" />
+  <Control _name="starting index" type="int32" description="&lt;strong&gt;starting index&lt;/strong&gt; is the assumed initial search location. This value is usually set to the index of a previous search when the values to locate tend to be near each other in subsequent searches. The closer the starting index is to the true location of &lt;strong&gt;x value&lt;/strong&gt;\2C the faster the search." uid="46" uid_parent="root" value="0" conIdx="9" connection="recommended" outputs="value:46.value" />
+  <Control _name="x value" type="double" description="&lt;strong&gt;x value&lt;/strong&gt; is the value whose relative location the VI needs to find within the &lt;strong&gt;x array&lt;/strong&gt;." uid="38" uid_parent="root" value="0" conIdx="10" connection="recommended" outputs="value:38.value" />
+  <Constant _name="index" type="int32" uid="135" uid_parent="root" value="0" outputs="value:135.value" />
+  <Constant _name="index" type="int32" uid="202" uid_parent="root" value="0" outputs="value:202.value" />
+  <Constant _name="References" type="array{string}" uid="1969" uid_parent="root" value="[Interp:NR]" outputs="value:" />
+  <Indicator _name="fractional index" type="double" description="&lt;strong&gt;fractional index&lt;/strong&gt; is the relative index value of location of &lt;strong&gt;x value&lt;/strong&gt; within the &lt;strong&gt;x array&lt;/strong&gt;." uid="54" uid_parent="root" value="0" conIdx="3" connection="recommended" inputs="value:2125.value" />
+  <Node _name="Array Size" uid="114" uid_parent="root" inputs="array:1942.value" outputs="size(s):114.size(s)" />
+  <Node _name="Decrement" uid="112" uid_parent="root" inputs="x:114.size(s)" outputs="x-1:112.x-1" />
+  <Node _name="Index Array" uid="137" uid_parent="root" inputs="array:1942.value,index:135.value,index:112.x-1" outputs="element:137.element,element:137.element2" />
+  <Node _name="Less Or Equal?" uid="1895" uid_parent="root" outputs="x &lt;= y?:1895.x &lt;= y?" inputs="y:137.element2,x:137.element" />
+  <Node _name="In Range and Coerce" uid="155" uid_parent="root" includeLow="true" includeHigh="true" outputs="In Range?:,coerced(x):155.coerced(x)" inputs="lower limit:202.value,x:46.value,upper limit:112.x-1" />
+  <Structure _name="Case Structure" uid="2095" uid_parent="root" selectin="1895.x &lt;= y?">
+    <Tunnel _id="In1" uid="2137" uid_parent="2095" inputs="value:137.element2" />
+    <Tunnel _id="In2" uid="2152" uid_parent="2095" inputs="value:38.value" />
+    <Tunnel _id="In3" uid="2176" uid_parent="2095" inputs="value:137.element" />
+    <CaseFrame selector="True" uid="2109" uid_parent="2095" selectout="">
+      <Tunnel _id="In1" uid="2136" uid_parent="2109" outputs="value:2136.value" />
+      <Tunnel _id="In2" uid="2151" uid_parent="2109" outputs="value:2151.value" />
+      <Tunnel _id="Out1" uid="2163" uid_parent="2109" inputs="value:2780.In Range?" />
+      <Tunnel _id="In3" uid="2175" uid_parent="2109" outputs="value:2175.value" />
+      <Node _name="In Range and Coerce" uid="2780" uid_parent="2109" inputs="lower limit:2175.value,x:2151.value,upper limit:2136.value" outputs="In Range?:2780.In Range?,coerced(x):" />
+    </CaseFrame>
+    <CaseFrame selector="False" uid="2072" uid_parent="2095" selectout="">
+      <Tunnel _id="In1" uid="2081" uid_parent="2072" outputs="value:2081.value" />
+      <Tunnel _id="In2" uid="2088" uid_parent="2072" outputs="value:2088.value" />
+      <Tunnel _id="Out1" uid="2262" uid_parent="2072" inputs="value:2272.In Range?" />
+      <Tunnel _id="In3" uid="2265" uid_parent="2072" outputs="value:2265.value" />
+      <Node _name="In Range and Coerce" uid="2272" uid_parent="2072" inputs="lower limit:2081.value,x:2088.value,upper limit:2265.value" outputs="In Range?:2272.In Range?,coerced(x):" />
+    </CaseFrame>
+    <Tunnel _id="Out1" uid="2164" uid_parent="2095" outputs="value:2164.value" />
+  </Structure>
+  <Structure _name="Case Structure" uid="1831" uid_parent="root" selectin="2164.value">
+    <Tunnel _id="In1" uid="2708" uid_parent="1831" inputs="value:38.value" />
+    <Tunnel _id="In2" uid="2720" uid_parent="1831" inputs="value:1942.value" />
+    <Tunnel _id="In3" uid="2732" uid_parent="1831" inputs="value:155.coerced(x)" />
+    <Tunnel _id="In4" uid="2744" uid_parent="1831" inputs="value:1895.x &lt;= y?" />
+    <Tunnel _id="In5" uid="2756" uid_parent="1831" inputs="value:112.x-1" />
+    <Tunnel _id="In6" uid="2768" uid_parent="1831" inputs="value:114.size(s)" />
+    <Tunnel _id="In7" uid="2070" uid_parent="1831" inputs="value:137.element" />
+    <CaseFrame selector="False" uid="2669" uid_parent="1831" selectout="">
+      <Tunnel _id="In1" uid="2706" uid_parent="2669" outputs="value:2706.value" />
+      <Tunnel _id="In2" uid="2718" uid_parent="2669" outputs="value:" />
+      <Tunnel _id="In3" uid="2730" uid_parent="2669" outputs="value:" />
+      <Tunnel _id="In4" uid="2742" uid_parent="2669" outputs="value:2742.value" />
+      <Tunnel _id="In5" uid="2754" uid_parent="2669" outputs="value:2754.value" />
+      <Tunnel _id="In6" uid="2766" uid_parent="2669" outputs="value:" />
+      <Tunnel _id="In7" uid="2044" uid_parent="2669" outputs="value:2044.value" />
+      <Tunnel _id="Out1" uid="2117" uid_parent="2669" inputs="value:2053.double precision float" />
+      <Structure _name="Case Structure" uid="2048" uid_parent="2669" selectin="2742.value">
+        <Tunnel _id="In1" uid="2303" uid_parent="2048" inputs="value:2706.value" />
+        <Tunnel _id="In2" uid="2325" uid_parent="2048" inputs="value:2044.value" />
+        <Tunnel _id="In3" uid="2340" uid_parent="2048" inputs="value:2754.value" />
+        <CaseFrame selector="True" uid="2236" uid_parent="2048" selectout="">
+          <Tunnel _id="In1" uid="2301" uid_parent="2236" outputs="value:2301.value" />
+          <Tunnel _id="In2" uid="2324" uid_parent="2236" outputs="value:2324.value" />
+          <Tunnel _id="In3" uid="2339" uid_parent="2236" outputs="value:2339.value" />
+          <Tunnel _id="Out1" uid="2351" uid_parent="2236" inputs="value:2006.s? t\3Af" />
+          <Constant _name="index" type="int32" uid="1988" uid_parent="2236" value="0" outputs="value:1988.value" />
+          <Node _name="Select" uid="2006" uid_parent="2236" outputs="s? t\3Af:2006.s? t\3Af" inputs="f:2339.value,s:2071.x &lt;= y?,t:1988.value" />
+          <Node _name="Less Or Equal?" uid="2071" uid_parent="2236" outputs="x &lt;= y?:2071.x &lt;= y?" inputs="y:2324.value,x:2301.value" />
+        </CaseFrame>
+        <CaseFrame selector="False" uid="2162" uid_parent="2048" selectout="">
+          <Tunnel _id="In1" uid="2182" uid_parent="2162" outputs="value:2182.value" />
+          <Tunnel _id="In2" uid="2185" uid_parent="2162" outputs="value:2185.value" />
+          <Tunnel _id="In3" uid="2188" uid_parent="2162" outputs="value:2188.value" />
+          <Tunnel _id="Out1" uid="2191" uid_parent="2162" inputs="value:2201.s? t\3Af" />
+          <Constant _name="index" type="int32" uid="2365" uid_parent="2162" value="0" outputs="value:2365.value" />
+          <Node _name="Select" uid="2201" uid_parent="2162" inputs="f:2188.value,s:1769.x &gt;= y?,t:2365.value" outputs="s? t\3Af:2201.s? t\3Af" />
+          <Node _name="Greater Or Equal?" uid="1769" uid_parent="2162" outputs="x &gt;= y?:1769.x &gt;= y?" inputs="y:2185.value,x:2182.value" />
+        </CaseFrame>
+        <Tunnel _id="Out1" uid="2352" uid_parent="2048" outputs="value:2352.value" />
+      </Structure>
+      <Node _name="To Double Precision Float" uid="2053" uid_parent="2669" outputs="double precision float:2053.double precision float" inputs="number:2352.value" />
+      <FreeLabel comment="if x value is at the limits or beyond\2C return nearest index" uid="1935" uid_parent="2669" />
+    </CaseFrame>
+    <CaseFrame selector="True" uid="2675" uid_parent="1831" selectout="">
+      <Tunnel _id="In1" uid="2707" uid_parent="2675" outputs="value:2707.value" />
+      <Tunnel _id="In2" uid="2719" uid_parent="2675" outputs="value:2719.value" />
+      <Tunnel _id="In3" uid="2731" uid_parent="2675" outputs="value:2731.value" />
+      <Tunnel _id="In4" uid="2743" uid_parent="2675" outputs="value:2743.value" />
+      <Tunnel _id="In5" uid="2755" uid_parent="2675" outputs="value:2755.value" />
+      <Tunnel _id="In6" uid="2767" uid_parent="2675" outputs="value:2767.value" />
+      <Tunnel _id="In7" uid="2066" uid_parent="2675" outputs="value:" />
+      <Tunnel _id="Out1" uid="2121" uid_parent="2675" inputs="value:2147.value" />
+      <Structure _name="Stacked Sequence Structure" uid="186" uid_parent="2675">
+        <Diagram uid="218" uid_parent="186">
+          <Node _name="Index Array" uid="211" uid_parent="218" outputs="element:211.element" inputs="array:273.value,index:192.value" />
+          <Node _name="Greater Or Equal?" uid="998" uid_parent="218" outputs="x &gt;= y?:998.x &gt;= y?" inputs="y:211.element,x:252.value" />
+          <Node _name="Equal?" uid="299" uid_parent="218" outputs="x = y?:299.x = y?" inputs="y:318.value,x:998.x &gt;= y?" />
+          <Structure _name="Case Structure" uid="336" uid_parent="218" selectin="299.x = y?">
+            <Tunnel _id="In1" uid="372" uid_parent="336" inputs="value:382.value" />
+            <Tunnel _id="In2" uid="412" uid_parent="336" inputs="value:192.value" />
+            <Tunnel _id="In3" uid="492" uid_parent="336" inputs="value:252.value" />
+            <Tunnel _id="In4" uid="522" uid_parent="336" inputs="value:273.value" />
+            <Tunnel _id="In5" uid="525" uid_parent="336" inputs="value:318.value" />
+            <CaseFrame selector="False" uid="572" uid_parent="336" selectout="">
+              <Tunnel _id="In1" uid="575" uid_parent="572" outputs="value:575.value" />
+              <Tunnel _id="In2" uid="600" uid_parent="572" outputs="value:600.value" />
+              <Tunnel _id="In3" uid="615" uid_parent="572" outputs="value:615.value" />
+              <Tunnel _id="In4" uid="616" uid_parent="572" outputs="value:616.value" />
+              <Tunnel _id="In5" uid="617" uid_parent="572" outputs="value:617.value" />
+              <Tunnel _id="Out1" uid="889" uid_parent="572" inputs="value:1177.value" />
+              <Tunnel _id="Out2" uid="898" uid_parent="572" inputs="value:1150.value" />
+              <Tunnel _id="Out3" uid="1347" uid_parent="572" inputs="value:1264.value" />
+              <Node _name="Equal To 0?" uid="599" uid_parent="572" outputs="x = 0?:599.x = 0?" inputs="x:600.value" />
+              <Structure _name="Case Structure" uid="962" uid_parent="572" selectin="599.x = 0?">
+                <Tunnel _id="In1" uid="1152" uid_parent="962" inputs="value:615.value" />
+                <Tunnel _id="In2" uid="1161" uid_parent="962" inputs="value:616.value" />
+                <Tunnel _id="In3" uid="1169" uid_parent="962" inputs="value:617.value" />
+                <Tunnel _id="In4" uid="1197" uid_parent="962" inputs="value:575.value" />
+                <Tunnel _id="In5" uid="1193" uid_parent="962" inputs="value:600.value" />
+                <CaseFrame selector="False" uid="1141" uid_parent="962" selectout="">
+                  <Tunnel _id="In1" uid="1159" uid_parent="1141" outputs="value:1159.value" />
+                  <Tunnel _id="In2" uid="1157" uid_parent="1141" outputs="value:1157.value" />
+                  <Tunnel _id="In3" uid="1168" uid_parent="1141" outputs="value:1168.value" />
+                  <Tunnel _id="Out1" uid="1176" uid_parent="1141" inputs="value:957.value" />
+                  <Tunnel _id="Out2" uid="1181" uid_parent="1141" inputs="value:960.value" />
+                  <Tunnel _id="In4" uid="1188" uid_parent="1141" outputs="value:1188.value" />
+                  <Tunnel _id="In5" uid="1191" uid_parent="1141" outputs="value:1191.value" />
+                  <Tunnel _id="Out3" uid="876" uid_parent="1141" inputs="value:1247.value" />
+                  <Constant _name="index" type="int32" uid="792" uid_parent="1141" value="1" outputs="value:792.value" />
+                  <Constant type="bool" uid="618" uid_parent="1141" value="false" outputs="value:618.value" />
+                  <Constant type="bool" uid="1247" uid_parent="1141" value="true" outputs="value:1247.value" />
+                  <Node _name="Decrement" uid="577" uid_parent="1141" inputs="x:1191.value" outputs="x-1:577.x-1" />
+                  <Structure _name="While Loop" uid="623" uid_parent="1141" count="">
+                    <Node _name="Index Array" uid="677" uid_parent="623" inputs="array:654.value,index:653.value" outputs="element:677.element" />
+                    <Node _name="Less?" uid="305" uid_parent="623" outputs="x &lt; y?:305.x &lt; y?" inputs="y:677.element,x:649.value" />
+                    <Node _name="Equal?" uid="689" uid_parent="623" outputs="x = y?:689.x = y?" inputs="y:658.value,x:305.x &lt; y?" />
+                    <Node _name="Compound Arithmetic" uid="719" uid_parent="623" operation="AND" inversions=" , ,i" inputs="value:689.x = y?,value:981.value" outputs="result:719.result" />
+                    <Node _name="Add" uid="700" uid_parent="623" outputs="x+y:700.x+y" inputs="y:628.value,x:628.value" />
+                    <Node _name="Subtract" uid="854" uid_parent="623" outputs="x-y:854.x-y" inputs="y:700.x+y,x:645.value" />
+                    <Node _name="Less Than 0?" uid="363" uid_parent="623" inputs="x:854.x-y" outputs="x &lt; 0?:363.x &lt; 0?" />
+                    <Structure _name="Case Structure" uid="744" uid_parent="623" selectin="363.x &lt; 0?">
+                      <Tunnel _id="In1" uid="868" uid_parent="744" inputs="value:653.value" />
+                      <CaseFrame selector="False" uid="738" uid_parent="744" selectout="">
+                        <Tunnel _id="Out1" uid="825" uid_parent="738" inputs="value:740.value" />
+                        <Tunnel _id="In1" uid="740" uid_parent="738" outputs="value:740.value" />
+                      </CaseFrame>
+                      <CaseFrame selector="True" uid="741" uid_parent="744" selectout="">
+                        <Tunnel _id="Out1" uid="837" uid_parent="741" inputs="value:843.value" />
+                        <Tunnel _id="In1" uid="869" uid_parent="741" outputs="value:" />
+                        <Constant type="int32" uid="843" uid_parent="741" value="0" outputs="value:843.value" />
+                      </CaseFrame>
+                      <Tunnel _id="Out1" uid="849" uid_parent="744" outputs="value:849.value" />
+                    </Structure>
+                    <Tunnel _id="In1" uid="649" uid_parent="623" inputs="value:1159.value" outputs="value:649.value" />
+                    <Tunnel _id="In2" uid="654" uid_parent="623" inputs="value:1157.value" outputs="value:654.value" />
+                    <Tunnel _id="In3" uid="658" uid_parent="623" inputs="value:1168.value" outputs="value:658.value" />
+                    <Tunnel _id="In4" uid="662" uid_parent="623" inputs="value:1188.value" outputs="value:" />
+                    <Tunnel _id="Out1" uid="957" uid_parent="623" outputs="value:957.value" inputs="value:849.value" />
+                    <Tunnel _id="Out2" uid="960" uid_parent="623" outputs="value:960.value" inputs="value:645.value" />
+                    <ShiftReg uid="625" uid_parent="623">
+                      <Left uid="628" uid_parent="625" inputs="value:792.value" outputs="value:628.value" />
+                      <Right uid="626" uid_parent="625" inputs="value:700.x+y" outputs="value:" />
+                    </ShiftReg>
+                    <ShiftReg uid="633" uid_parent="623">
+                      <Left uid="653" uid_parent="633" inputs="value:577.x-1" outputs="value:653.value" />
+                      <Right uid="635" uid_parent="633" inputs="value:854.x-y" outputs="value:" />
+                    </ShiftReg>
+                    <ShiftReg uid="641" uid_parent="623">
+                      <Left uid="645" uid_parent="641" inputs="value:1191.value" outputs="value:645.value" />
+                      <Right uid="643" uid_parent="641" inputs="value:653.value" outputs="value:" />
+                    </ShiftReg>
+                    <ShiftReg uid="976" uid_parent="623">
+                      <Left uid="981" uid_parent="976" inputs="value:618.value" outputs="value:981.value" />
+                      <Right uid="979" uid_parent="976" inputs="value:363.x &lt; 0?" outputs="value:" />
+                    </ShiftReg>
+                    <Condition uid="674" uid_parent="623" inputs="value:719.result" />
+                  </Structure>
+                  <FreeLabel comment="Hunt Down" uid="553" uid_parent="1141" />
+                </CaseFrame>
+                <CaseFrame selector="True" uid="1139" uid_parent="962" selectout="">
+                  <Tunnel _id="In1" uid="1158" uid_parent="1139" outputs="value:" />
+                  <Tunnel _id="In2" uid="1156" uid_parent="1139" outputs="value:" />
+                  <Tunnel _id="In3" uid="1165" uid_parent="1139" outputs="value:" />
+                  <Tunnel _id="Out1" uid="1175" uid_parent="1139" inputs="value:764.value" />
+                  <Tunnel _id="Out2" uid="1180" uid_parent="1139" inputs="value:764.value" />
+                  <Tunnel _id="In4" uid="1173" uid_parent="1139" outputs="value:" />
+                  <Tunnel _id="In5" uid="1190" uid_parent="1139" outputs="value:" />
+                  <Tunnel _id="Out3" uid="914" uid_parent="1139" inputs="value:1286.value" />
+                  <Constant type="int32" uid="764" uid_parent="1139" value="-1" outputs="value:764.value" />
+                  <Constant type="bool" uid="1286" uid_parent="1139" value="false" outputs="value:1286.value" />
+                </CaseFrame>
+                <Tunnel _id="Out1" uid="1177" uid_parent="962" outputs="value:1177.value" />
+                <Tunnel _id="Out2" uid="1150" uid_parent="962" outputs="value:1150.value" />
+                <Tunnel _id="Out3" uid="1264" uid_parent="962" outputs="value:1264.value" />
+              </Structure>
+            </CaseFrame>
+            <CaseFrame selector="True" uid="343" uid_parent="336" selectout="">
+              <Tunnel _id="In1" uid="371" uid_parent="343" outputs="value:371.value" />
+              <Tunnel _id="In2" uid="411" uid_parent="343" outputs="value:411.value" />
+              <Tunnel _id="In3" uid="489" uid_parent="343" outputs="value:489.value" />
+              <Tunnel _id="In4" uid="519" uid_parent="343" outputs="value:519.value" />
+              <Tunnel _id="In5" uid="502" uid_parent="343" outputs="value:502.value" />
+              <Tunnel _id="Out1" uid="890" uid_parent="343" inputs="value:1120.value" />
+              <Tunnel _id="Out2" uid="899" uid_parent="343" inputs="value:1127.value" />
+              <Tunnel _id="Out3" uid="1348" uid_parent="343" inputs="value:786.value" />
+              <Node _name="Equal?" uid="391" uid_parent="343" inputs="y:411.value,x:371.value" outputs="x = y?:391.x = y?" />
+              <Structure _name="Case Structure" uid="872" uid_parent="343" selectin="391.x = y?">
+                <Tunnel _id="In1" uid="1085" uid_parent="872" inputs="value:411.value" />
+                <Tunnel _id="In2" uid="1101" uid_parent="872" inputs="value:489.value" />
+                <Tunnel _id="In3" uid="1100" uid_parent="872" inputs="value:519.value" />
+                <Tunnel _id="In4" uid="1108" uid_parent="872" inputs="value:502.value" />
+                <Tunnel _id="In5" uid="1079" uid_parent="872" inputs="value:371.value" />
+                <Tunnel _id="In6" uid="1040" uid_parent="872" inputs="value:371.value" />
+                <CaseFrame selector="False" uid="1070" uid_parent="872" selectout="">
+                  <Tunnel _id="In1" uid="1083" uid_parent="1070" outputs="value:1083.value" />
+                  <Tunnel _id="In2" uid="1090" uid_parent="1070" outputs="value:1090.value" />
+                  <Tunnel _id="In3" uid="1096" uid_parent="1070" outputs="value:1096.value" />
+                  <Tunnel _id="In4" uid="1105" uid_parent="1070" outputs="value:1105.value" />
+                  <Tunnel _id="In5" uid="1113" uid_parent="1070" outputs="value:1113.value" />
+                  <Tunnel _id="Out1" uid="1117" uid_parent="1070" inputs="value:323.value" />
+                  <Tunnel _id="Out2" uid="1099" uid_parent="1070" inputs="value:943.value" />
+                  <Tunnel _id="In6" uid="1015" uid_parent="1070" outputs="value:" />
+                  <Tunnel _id="Out3" uid="773" uid_parent="1070" inputs="value:1356.value" />
+                  <Constant _name="index" type="int32" uid="463" uid_parent="1070" value="1" outputs="value:463.value" />
+                  <Constant type="bool" uid="965" uid_parent="1070" value="false" outputs="value:965.value" />
+                  <Constant type="bool" uid="1356" uid_parent="1070" value="true" outputs="value:1356.value" />
+                  <Node _name="Increment" uid="337" uid_parent="1070" inputs="x:1083.value" outputs="x+1:337.x+1" />
+                  <Structure _name="While Loop" uid="360" uid_parent="1070" count="">
+                    <Node _name="Index Array" uid="417" uid_parent="360" inputs="array:515.value,index:487.value" outputs="element:417.element" />
+                    <Node _name="Greater Or Equal?" uid="1014" uid_parent="360" outputs="x &gt;= y?:1014.x &gt;= y?" inputs="y:417.element,x:431.value" />
+                    <Node _name="Equal?" uid="476" uid_parent="360" outputs="x = y?:476.x = y?" inputs="y:479.value,x:1014.x &gt;= y?" />
+                    <Node _name="Compound Arithmetic" uid="559" uid_parent="360" operation="AND" inversions=" , ,i" inputs="value:476.x = y?,value:878.value" outputs="result:559.result" />
+                    <Node _name="Add" uid="265" uid_parent="360" outputs="x+y:265.x+y" inputs="y:329.value,x:329.value" />
+                    <Node _name="Add" uid="455" uid_parent="360" inputs="y:265.x+y,x:487.value" outputs="x+y:455.x+y" />
+                    <Node _name="Greater?" uid="507" uid_parent="360" inputs="y:560.value,x:455.x+y" outputs="x &gt; y?:507.x &gt; y?" />
+                    <Structure _name="Case Structure" uid="477" uid_parent="360" selectin="507.x &gt; y?">
+                      <Tunnel _id="In1" uid="586" uid_parent="477" inputs="value:560.value" />
+                      <Tunnel _id="In2" uid="1045" uid_parent="477" inputs="value:487.value" />
+                      <CaseFrame selector="False" uid="580" uid_parent="477" selectout="">
+                        <Tunnel _id="In1" uid="556" uid_parent="580" outputs="value:" />
+                        <Tunnel _id="In2" uid="1041" uid_parent="580" outputs="value:1041.value" />
+                        <Tunnel _id="Out1" uid="1047" uid_parent="580" inputs="value:1041.value" />
+                      </CaseFrame>
+                      <CaseFrame selector="True" uid="581" uid_parent="477" selectout="">
+                        <Tunnel _id="In1" uid="601" uid_parent="581" outputs="value:601.value" />
+                        <Tunnel _id="In2" uid="1044" uid_parent="581" outputs="value:" />
+                        <Tunnel _id="Out1" uid="1050" uid_parent="581" inputs="value:605.x+1" />
+                        <Node _name="Increment" uid="605" uid_parent="581" outputs="x+1:605.x+1" inputs="x:601.value" />
+                      </CaseFrame>
+                      <Tunnel _id="Out1" uid="1055" uid_parent="477" outputs="value:1055.value" />
+                    </Structure>
+                    <Tunnel _id="In1" uid="431" uid_parent="360" inputs="value:1090.value" outputs="value:431.value" />
+                    <Tunnel _id="In2" uid="515" uid_parent="360" inputs="value:1096.value" outputs="value:515.value" />
+                    <Tunnel _id="In3" uid="479" uid_parent="360" inputs="value:1105.value" outputs="value:479.value" />
+                    <Tunnel _id="In4" uid="560" uid_parent="360" inputs="value:1113.value" outputs="value:560.value" />
+                    <Tunnel _id="Out1" uid="323" uid_parent="360" outputs="value:323.value" inputs="value:436.value" />
+                    <Tunnel _id="Out2" uid="943" uid_parent="360" outputs="value:943.value" inputs="value:1055.value" />
+                    <ShiftReg uid="237" uid_parent="360">
+                      <Left uid="329" uid_parent="237" inputs="value:463.value" outputs="value:329.value" />
+                      <Right uid="331" uid_parent="237" inputs="value:265.x+y" outputs="value:" />
+                    </ShiftReg>
+                    <ShiftReg uid="408" uid_parent="360">
+                      <Left uid="436" uid_parent="408" inputs="value:1083.value" outputs="value:436.value" />
+                      <Right uid="409" uid_parent="408" inputs="value:487.value" outputs="value:" />
+                    </ShiftReg>
+                    <ShiftReg uid="482" uid_parent="360">
+                      <Left uid="487" uid_parent="482" inputs="value:337.x+1" outputs="value:487.value" />
+                      <Right uid="485" uid_parent="482" inputs="value:455.x+y" outputs="value:" />
+                    </ShiftReg>
+                    <ShiftReg uid="219" uid_parent="360">
+                      <Left uid="878" uid_parent="219" inputs="value:965.value" outputs="value:878.value" />
+                      <Right uid="275" uid_parent="219" inputs="value:507.x &gt; y?" outputs="value:" />
+                    </ShiftReg>
+                    <Condition uid="441" uid_parent="360" inputs="value:559.result" />
+                  </Structure>
+                  <FreeLabel comment="Hunt Up" uid="573" uid_parent="1070" />
+                </CaseFrame>
+                <CaseFrame selector="True" uid="874" uid_parent="872" selectout="">
+                  <Tunnel _id="In1" uid="1081" uid_parent="874" outputs="value:" />
+                  <Tunnel _id="In2" uid="1089" uid_parent="874" outputs="value:" />
+                  <Tunnel _id="In3" uid="1095" uid_parent="874" outputs="value:" />
+                  <Tunnel _id="In4" uid="1104" uid_parent="874" outputs="value:" />
+                  <Tunnel _id="In5" uid="1112" uid_parent="874" outputs="value:" />
+                  <Tunnel _id="Out1" uid="1116" uid_parent="874" inputs="value:1016.value" />
+                  <Tunnel _id="Out2" uid="1124" uid_parent="874" inputs="value:1016.value" />
+                  <Tunnel _id="In6" uid="1016" uid_parent="874" outputs="value:1016.value" />
+                  <Tunnel _id="Out3" uid="784" uid_parent="874" inputs="value:1341.value" />
+                  <Constant type="bool" uid="1341" uid_parent="874" value="false" outputs="value:1341.value" />
+                </CaseFrame>
+                <Tunnel _id="Out1" uid="1120" uid_parent="872" outputs="value:1120.value" />
+                <Tunnel _id="Out2" uid="1127" uid_parent="872" outputs="value:1127.value" />
+                <Tunnel _id="Out3" uid="786" uid_parent="872" outputs="value:786.value" />
+              </Structure>
+            </CaseFrame>
+            <Tunnel _id="Out1" uid="892" uid_parent="336" outputs="value:892.value" />
+            <Tunnel _id="Out2" uid="900" uid_parent="336" outputs="value:900.value" />
+            <Tunnel _id="Out3" uid="1350" uid_parent="336" outputs="value:1350.value" />
+          </Structure>
+          <FreeLabel comment="Hunt up if x &gt;= x[low]\0Aand ascending" uid="141" uid_parent="218" />
+          <FreeLabel comment="Hunting Phase" uid="183" uid_parent="218" />
+          <Tunnel _id="In1" uid="252" uid_parent="218" outputs="value:252.value" />
+          <Tunnel _id="In2" uid="273" uid_parent="218" outputs="value:273.value" />
+          <Tunnel _id="In3" uid="192" uid_parent="218" outputs="value:192.value" />
+          <Tunnel _id="In4" uid="318" uid_parent="218" outputs="value:318.value" />
+          <Tunnel _id="In5" uid="382" uid_parent="218" outputs="value:382.value" />
+          <Tunnel _id="In6" uid="925" uid_parent="218" outputs="value:" />
+          <Tunnel _id="Out1" uid="2135" uid_parent="218" inputs="value:" />
+          <Tunnel _id="Local1" uid="1256" uid_parent="218" inputs="value:892.value" />
+          <Tunnel _id="Local2" uid="1262" uid_parent="218" inputs="value:900.value" />
+          <Tunnel _id="Local3" uid="1376" uid_parent="218" inputs="value:1350.value" />
+          <Tunnel _id="Local4" uid="1720" uid_parent="218" outputs="value:" />
+        </Diagram>
+        <Diagram uid="1233" uid_parent="186">
+          <Structure _name="Case Structure" uid="1408" uid_parent="1233" selectin="1381.value">
+            <Tunnel _id="In1" uid="1061" uid_parent="1408" inputs="value:1258.value" />
+            <Tunnel _id="In2" uid="1224" uid_parent="1408" inputs="value:1263.value" />
+            <Tunnel _id="In3" uid="1564" uid_parent="1408" inputs="value:1242.value" />
+            <Tunnel _id="In4" uid="1583" uid_parent="1408" inputs="value:1237.value" />
+            <Tunnel _id="In5" uid="1559" uid_parent="1408" inputs="value:1243.value" />
+            <CaseFrame selector="False" uid="1412" uid_parent="1408" selectout="">
+              <Tunnel _id="In1" uid="774" uid_parent="1412" outputs="value:774.value" />
+              <Tunnel _id="In2" uid="781" uid_parent="1412" outputs="value:" />
+              <Tunnel _id="Out1" uid="1368" uid_parent="1412" inputs="value:774.value" />
+              <Tunnel _id="In3" uid="1537" uid_parent="1412" outputs="value:" />
+              <Tunnel _id="In4" uid="1536" uid_parent="1412" outputs="value:" />
+              <Tunnel _id="In5" uid="1541" uid_parent="1412" outputs="value:" />
+            </CaseFrame>
+            <CaseFrame selector="True" uid="1413" uid_parent="1408" selectout="">
+              <Tunnel _id="In1" uid="987" uid_parent="1413" outputs="value:987.value" />
+              <Tunnel _id="In2" uid="1219" uid_parent="1413" outputs="value:1219.value" />
+              <Tunnel _id="Out1" uid="1438" uid_parent="1413" inputs="value:1447.value" />
+              <Tunnel _id="In3" uid="1556" uid_parent="1413" outputs="value:1556.value" />
+              <Tunnel _id="In4" uid="1580" uid_parent="1413" outputs="value:1580.value" />
+              <Tunnel _id="In5" uid="1546" uid_parent="1413" outputs="value:1546.value" />
+              <Structure _name="While Loop" uid="1038" uid_parent="1413" count="">
+                <Constant _name="y" type="int32" uid="759" uid_parent="1038" value="1" outputs="value:759.value" />
+                <Constant _name="n" type="int32" uid="1526" uid_parent="1038" value="-1" outputs="value:1526.value" />
+                <Node _name="Subtract" uid="1372" uid_parent="1038" inputs="y:1484.value,x:1504.value" outputs="x-y:1372.x-y" />
+                <Node _name="Greater?" uid="1911" uid_parent="1038" outputs="x &gt; y?:1911.x &gt; y?" inputs="y:759.value,x:1372.x-y" />
+                <Node _name="Add" uid="1279" uid_parent="1038" inputs="y:1484.value,x:1504.value" outputs="x+y:1279.x+y" />
+                <Node _name="Scale By Power Of 2" uid="1427" uid_parent="1038" outputs="x*2^n:1427.x*2^n" inputs="x:1279.x+y,n:1526.value" />
+                <Node _name="Index Array" uid="1494" uid_parent="1038" inputs="array:1471.value,index:1427.x*2^n" outputs="element:1494.element" />
+                <Node _name="Greater Or Equal?" uid="1663" uid_parent="1038" outputs="x &gt;= y?:1663.x &gt;= y?" inputs="y:1494.element,x:1586.value" />
+                <Node _name="Equal?" uid="1432" uid_parent="1038" outputs="x = y?:1432.x = y?" inputs="y:1528.value,x:1663.x &gt;= y?" />
+                <Structure _name="Case Structure" uid="1459" uid_parent="1038" selectin="1432.x = y?">
+                  <Tunnel _id="In1" uid="1608" uid_parent="1459" inputs="value:1427.x*2^n" />
+                  <Tunnel _id="In2" uid="1557" uid_parent="1459" inputs="value:1504.value" />
+                  <Tunnel _id="In3" uid="1569" uid_parent="1459" inputs="value:1484.value" />
+                  <CaseFrame selector="False" uid="1442" uid_parent="1459" selectout="">
+                    <Tunnel _id="In1" uid="1600" uid_parent="1442" outputs="value:1600.value" />
+                    <Tunnel _id="Out1" uid="1512" uid_parent="1442" inputs="value:1477.value" />
+                    <Tunnel _id="Out2" uid="1445" uid_parent="1442" inputs="value:1600.value" />
+                    <Tunnel _id="In2" uid="1457" uid_parent="1442" outputs="value:" />
+                    <Tunnel _id="In3" uid="1477" uid_parent="1442" outputs="value:1477.value" />
+                  </CaseFrame>
+                  <CaseFrame selector="True" uid="1540" uid_parent="1459" selectout="">
+                    <Tunnel _id="In1" uid="1601" uid_parent="1540" outputs="value:1601.value" />
+                    <Tunnel _id="Out1" uid="1562" uid_parent="1540" inputs="value:1601.value" />
+                    <Tunnel _id="Out2" uid="1510" uid_parent="1540" inputs="value:1539.value" />
+                    <Tunnel _id="In2" uid="1539" uid_parent="1540" outputs="value:1539.value" />
+                    <Tunnel _id="In3" uid="1499" uid_parent="1540" outputs="value:" />
+                  </CaseFrame>
+                  <Tunnel _id="Out1" uid="1609" uid_parent="1459" outputs="value:1609.value" />
+                  <Tunnel _id="Out2" uid="1538" uid_parent="1459" outputs="value:1538.value" />
+                </Structure>
+                <Tunnel _id="Out1" uid="1447" uid_parent="1038" outputs="value:1447.value" inputs="value:1484.value" />
+                <Tunnel _id="In1" uid="1471" uid_parent="1038" inputs="value:1556.value" outputs="value:1471.value" />
+                <Tunnel _id="In2" uid="1586" uid_parent="1038" inputs="value:1580.value" outputs="value:1586.value" />
+                <Tunnel _id="In3" uid="1528" uid_parent="1038" inputs="value:1546.value" outputs="value:1528.value" />
+                <ShiftReg uid="1208" uid_parent="1038">
+                  <Left uid="1484" uid_parent="1208" inputs="value:987.value" outputs="value:1484.value" />
+                  <Right uid="1390" uid_parent="1208" inputs="value:1609.value" outputs="value:" />
+                </ShiftReg>
+                <ShiftReg uid="1498" uid_parent="1038">
+                  <Left uid="1504" uid_parent="1498" inputs="value:1219.value" outputs="value:1504.value" />
+                  <Right uid="1502" uid_parent="1498" inputs="value:1538.value" outputs="value:" />
+                </ShiftReg>
+                <Condition uid="1063" uid_parent="1038" inputs="value:1911.x &gt; y?" />
+              </Structure>
+            </CaseFrame>
+            <Tunnel _id="Out1" uid="1437" uid_parent="1408" outputs="value:1437.value" />
+          </Structure>
+          <FreeLabel comment="Bisection Phase" uid="1206" uid_parent="1233" />
+          <Tunnel _id="In1" uid="1237" uid_parent="1233" outputs="value:1237.value" />
+          <Tunnel _id="In2" uid="1242" uid_parent="1233" outputs="value:1242.value" />
+          <Tunnel _id="In3" uid="1241" uid_parent="1233" outputs="value:" />
+          <Tunnel _id="In4" uid="1243" uid_parent="1233" outputs="value:1243.value" />
+          <Tunnel _id="In5" uid="1244" uid_parent="1233" outputs="value:" />
+          <Tunnel _id="In6" uid="1245" uid_parent="1233" outputs="value:" />
+          <Tunnel _id="Out1" uid="2139" uid_parent="1233" inputs="value:" />
+          <Tunnel _id="Local1" uid="1258" uid_parent="1233" outputs="value:1258.value" />
+          <Tunnel _id="Local2" uid="1263" uid_parent="1233" outputs="value:1263.value" />
+          <Tunnel _id="Local3" uid="1381" uid_parent="1233" outputs="value:1381.value" />
+          <Tunnel _id="Local4" uid="1722" uid_parent="1233" inputs="value:1437.value" />
+        </Diagram>
+        <Diagram uid="871" uid_parent="186">
+          <Node _name="Index Array" uid="1210" uid_parent="871" inputs="array:1704.value,index:1723.value,index:" outputs="element:1210.element,element:1210.element2" />
+          <Node _name="Subtract" uid="1614" uid_parent="871" outputs="x-y:1614.x-y" inputs="y:1210.element,x:1210.element2" />
+          <Node _name="Subtract" uid="1270" uid_parent="871" outputs="x-y:1270.x-y" inputs="y:1210.element,x:1680.value" />
+          <Node _name="Divide" uid="1626" uid_parent="871" outputs="x/y:1626.x/y" inputs="y:1614.x-y,x:1270.x-y" />
+          <Node _name="Add" uid="1653" uid_parent="871" outputs="x+y:1653.x+y" inputs="y:1723.value,x:1626.x/y" />
+          <FreeLabel comment="Linear interpolation to index coordinates" uid="184" uid_parent="871" />
+          <Tunnel _id="In1" uid="1680" uid_parent="871" outputs="value:1680.value" />
+          <Tunnel _id="In2" uid="1704" uid_parent="871" outputs="value:1704.value" />
+          <Tunnel _id="In3" uid="1702" uid_parent="871" outputs="value:" />
+          <Tunnel _id="In4" uid="1271" uid_parent="871" outputs="value:" />
+          <Tunnel _id="In5" uid="1706" uid_parent="871" outputs="value:" />
+          <Tunnel _id="In6" uid="1708" uid_parent="871" outputs="value:" />
+          <Tunnel _id="Out1" uid="2143" uid_parent="871" inputs="value:1653.x+y" />
+          <Tunnel _id="Local1" uid="1711" uid_parent="871" outputs="value:" />
+          <Tunnel _id="Local2" uid="1712" uid_parent="871" outputs="value:" />
+          <Tunnel _id="Local3" uid="1715" uid_parent="871" outputs="value:" />
+          <Tunnel _id="Local4" uid="1723" uid_parent="871" outputs="value:1723.value" />
+        </Diagram>
+        <Tunnel _id="In1" uid="255" uid_parent="186" inputs="value:2707.value" />
+        <Tunnel _id="In2" uid="280" uid_parent="186" inputs="value:2719.value" />
+        <Tunnel _id="In3" uid="286" uid_parent="186" inputs="value:2731.value" />
+        <Tunnel _id="In4" uid="328" uid_parent="186" inputs="value:2743.value" />
+        <Tunnel _id="In5" uid="384" uid_parent="186" inputs="value:2755.value" />
+        <Tunnel _id="In6" uid="927" uid_parent="186" inputs="value:2767.value" />
+        <Tunnel _id="Out1" uid="2147" uid_parent="186" outputs="value:2147.value" />
+      </Structure>
+    </CaseFrame>
+    <Tunnel _id="Out1" uid="2125" uid_parent="1831" outputs="value:2125.value" />
+  </Structure>
+  <FreeLabel comment="starting index = nearest valid index" uid="285" uid_parent="root" />
+  <FreeLabel comment="true if ascending" uid="176" uid_parent="root" />
+</VI>
+<?lvmcp pane="4815"?>
+<?lvmcp paneflags="3:0D0A,9:0800,10:0A00,11:20800"?>
+<?lvmcp exec IsReentrant="0" PooledReentrancy="0" IsSubroutine="0" Priority="1" PrefExecSyst="-1" SaveParallel="1" InStBit4="1"?>

@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="fpdco" key="fpdco/stdRefNum/ind/Refnum.UDPNetConn" source="&lt;labview&gt;\vi.lib\Utility\tcp.llb\UDP Multicast Write-Only Open.vi"><types><TypeDesc Type="Refnum" RefType="UDPNetConn" Format="inline" Label="connection ID" /><TypeDesc Type="Refnum" RefType="UDPNetConn" Format="inline" Label="connection ID" /></types><heap><SL__arrayElement class="fPDCO" uid="14">
+          <objFlags>66049</objFlags>
+          <typeDesc>TypeID(17)</typeDesc>
+          <ddo class="stdRefNum" uid="7">
+            <objFlags>1</objFlags>
+            <bounds>(140, 188, 184, 266)</bounds>
+            <partsList elements="4">
+              <SL__arrayElement class="label" uid="10">
+                <objFlags>1507654</objFlags>
+                <partID>16</partID>
+                <masterPart>9</masterPart>
+                <howGrow>4096</howGrow>
+                <bounds>(0, 1, 17, 78)</bounds>
+                <image class="Image">
+                  <ImageResID>-9</ImageResID>
+                  </image>
+                <fgColor>01000000</fgColor>
+                <bgColor>01000000</bgColor>
+                <textRec class="textHair">
+                  <mode>17412</mode>
+                  <text>"connection ID"</text>
+                  <bgColor>01000000</bgColor>
+                  </textRec>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="12">
+                <objFlags>2101</objFlags>
+                <partID>1</partID>
+                <masterPart>9</masterPart>
+                <bounds>(15, -5, 47, 27)</bounds>
+                <image class="Image">
+                  <ImageResID>-7095</ImageResID>
+                  </image>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="cosm" uid="13">
+                <objFlags>2359</objFlags>
+                <partID>9</partID>
+                <bounds>(17, 0, 44, 21)</bounds>
+                <image class="Image">
+                  <ImageResID>-276</ImageResID>
+                  </image>
+                <fgColor>00B3B3B3</fgColor>
+                <bgColor>00B3B3B3</bgColor>
+                </SL__arrayElement>
+              <SL__arrayElement class="annex" uid="200">
+                <partID>66</partID>
+                <rsrcID>3418</rsrcID>
+                </SL__arrayElement>
+              </partsList>
+            <description class="cLStrObj" uid="108">
+              <strings elements="1">
+                <SL__arrayElement>"&lt;strong&gt;connection ID&lt;/strong&gt; is a network connection refnum that uniquely identifies the UDP socket. Use this value to refer to this socket in subsequent VI calls."</SL__arrayElement>
+                </strings>
+              </description>
+            <typeDesc>TypeID(18)</typeDesc>
+            <MouseWheelSupport>0</MouseWheelSupport>
+            </ddo>
+          <conNum>3</conNum>
+          <termListLength>1</termListLength>
+          </SL__arrayElement>
+        </heap></part>

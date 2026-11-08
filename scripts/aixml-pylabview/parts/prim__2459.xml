@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/2459" source="&lt;labview&gt;\vi.lib\net\SFTP\Low Level Connection\Read Packet.vi"><types><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="id" /><TypeDesc Type="NumUInt32" Prop1="0" Format="inline" Label="id" /><TypeDesc Type="TypeDef" Flag1="0x0" Format="inline"><TypeDesc Type="116" Nested="True" Format="bin" File="Read Packet_VCTP_td0010_cli00.bin" HasLabel="1" /><Label Text="NI_SFTP.lvlib" />
+        <Label Text="Low Level Connection.lvclass" />
+        <Label Text="Receive Map.ctl" />
+        </TypeDesc></types><heap><SL__arrayElement class="prim" uid="4003">
+                                                <termList elements="3">
+                                                  <SL__arrayElement class="term" uid="4026">
+                                                    <dco class="parm" uid="4027">
+                                                      <objFlags>1</objFlags>
+                                                      <typeDesc>TypeID(76)</typeDesc>
+                                                      <termBounds>(16, 24, 24, 32)</termBounds>
+                                                      <primIndex>588</primIndex>
+                                                      <parmIndex>1</parmIndex>
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="4029">
+                                                    <dco class="parm" uid="4030">
+                                                      <objFlags>1</objFlags>
+                                                      <typeDesc>TypeID(77)</typeDesc>
+                                                      <termBounds>(0, 24, 8, 32)</termBounds>
+                                                      <primIndex>588</primIndex>
+                                                      <parmIndex>3</parmIndex>
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  <SL__arrayElement class="term" uid="4032">
+                                                    <objFlags>32768</objFlags>
+                                                    <dco class="parm" uid="4033">
+                                                      <typeDesc>TypeID(78)</typeDesc>
+                                                      <termBounds>(0, 0, 8, 8)</termBounds>
+                                                      <primIndex>588</primIndex>
+                                                      <parmIndex>11</parmIndex>
+                                                      </dco>
+                                                    </SL__arrayElement>
+                                                  </termList>
+                                                <bounds>(30, 24, 62, 56)</bounds>
+                                                <shortCount>2</shortCount>
+                                                <clumpNum>589827</clumpNum>
+                                                <primResID>2459</primResID>
+                                                <primIndex>588</primIndex>
+                                                </SL__arrayElement>
+                                              </heap></part>

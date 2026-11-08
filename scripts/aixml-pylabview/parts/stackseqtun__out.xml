@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="stackseqtun" key="stackseqtun/out" source="Serial Port Break.xml"><types><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /></types><heap><wrap><SL__arrayElement class="term" uid="229">
+                    <objFlags>4194368</objFlags>
+                    <dco class="seqTun" uid="90">
+                      <objFlags>2049</objFlags>
+                      <termList elements="4">
+                        <SL__arrayElement uid="80" />
+                        <SL__arrayElement uid="84" />
+                        <SL__arrayElement uid="219" />
+                        <SL__arrayElement uid="229" />
+                        </termList>
+                      <typeDesc>TypeID(17)</typeDesc>
+                      <termBounds>(107, 219, 116, 228)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="80">
+                            <objFlags>4325376</objFlags>
+                            <dco uid="90" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="84">
+                            <objFlags>4325376</objFlags>
+                            <dco uid="90" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="219">
+                            <objFlags>4358144</objFlags>
+                            <dco uid="90" />
+                            </SL__arrayElement>
+                          </wrap></heap></part>

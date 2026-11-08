@@ -2278,5 +2278,116 @@
     }
    }
   ]
+ },
+ "t203_dvr_roundtrip": {
+  "cases": [
+   {
+    "inputs": "value=3.25",
+    "outputs": {
+     "value out": 3.25,
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "value=-17",
+    "outputs": {
+     "value out": -17
+    }
+   }
+  ]
+ },
+ "t204_datalog_roundtrip": {
+  "cases": [
+   {
+    "inputs": "file=C:\\temp\\aixml-no-grpc\\out\\t204_records.dat;record=2.5",
+    "outputs": {
+     "read back": 2.5,
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "file=C:\\temp\\aixml-no-grpc\\out\\t204_records.dat;record=-8",
+    "outputs": {
+     "read back": -8,
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t205_xml_dom_refnum": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t206_storage_refnum": {
+  "cases": [
+   {
+    "inputs": "file=C:\\temp\\aixml-no-grpc\\out\\t206_storage.tdm",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t207_integer_waveform_wires": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "samples i8": 0,
+     "samples ext": 0,
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t208_clfn_dawson": {
+  "cases": [
+   {
+    "inputs": "x=1.25",
+    "outputs": {
+     "daw(x)": 0.4958270739643261
+    }
+   },
+   {
+    "inputs": "x=-2",
+    "outputs": {
+     "daw(x)": -0.30134038892379195
+    }
+   }
+  ]
+ },
+ "t209_stacked_sequence_locals": {
+  "cases": [
+   {
+    "inputs": "ordered x array=[0,1,2.5,4,7,11];starting index=0;x value=5.2",
+    "outputs": {
+     "fractional index": 3.4
+    }
+   },
+   {
+    "inputs": "ordered x array=[0,1,2.5,4,7,11];starting index=0;x value=-1",
+    "outputs": {
+     "fractional index": 0
+    }
+   },
+   {
+    "inputs": "ordered x array=[0,1,2.5,4,7,11];starting index=0;x value=11",
+    "outputs": {
+     "fractional index": 5
+    }
+   },
+   {
+    "inputs": "ordered x array=[0,1,2.5,4,7,11];starting index=0;x value=0.5",
+    "outputs": {
+     "fractional index": 0.5
+    }
+   }
+  ]
  }
 }

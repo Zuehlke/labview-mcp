@@ -105,8 +105,14 @@ def main(argv):
         if not any(supported(e, prims) for e in ref):
             continue
         meta = json.load(open(xml_path[:-4] + ".json", encoding="utf-8"))
+        if meta.get("Backend", "grpc") != "grpc":
+            # the cache holds the READER's exports too since the pylabview default (2026-11-05):
+            # comparing the reader with itself proves nothing and would learn `?parmN` as names
+            continue
         vi = meta.get("ViPath") or ""
-        if ".llb" + os.sep in vi.lower() or not os.path.exists(vi):
+        # a VI inside an .llb FILE has no path of its own; a vi.lib folder named *.llb (most of
+        # them since LabVIEW 2024) is an ordinary folder and was skipped here until 2026-11-08
+        if not os.path.isfile(vi):
             continue
         _, ticks, size = meta["Key"].rsplit("|", 2)
         now_ticks = int(os.path.getmtime(vi) * 10 ** 7) + 621355968000000000

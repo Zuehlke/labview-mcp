@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1534" source="&lt;labview&gt;\vi.lib\Utility\SMTP\smtpeml.llb\SMTP Email Send Message (Small).vi"><types><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline"><EnumLabel>ok</EnumLabel>
+        <EnumLabel>error</EnumLabel>
+        </TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="UnitUInt16" Prop1="0" Format="inline"><EnumLabel>ok</EnumLabel>
+        <EnumLabel>error</EnumLabel>
+        </TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="2360">
+                                <termList elements="5">
+                                  <SL__arrayElement class="term" uid="2361">
+                                    <dco class="parm" uid="2394">
+                                      <objFlags>1</objFlags>
+                                      <typeDesc>TypeID(281)</typeDesc>
+                                      <termBounds>(16, 16, 32, 32)</termBounds>
+                                      <primIndex>127</primIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="2363">
+                                    <dco class="parm" uid="2362">
+                                      <objFlags>1</objFlags>
+                                      <typeDesc>TypeID(282)</typeDesc>
+                                      <termBounds>(0, 16, 16, 32)</termBounds>
+                                      <primIndex>127</primIndex>
+                                      <parmIndex>1</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="2366">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="2364">
+                                      <typeDesc>TypeID(283)</typeDesc>
+                                      <dsw>4096</dsw>
+                                      <termBounds>(21, 0, 32, 16)</termBounds>
+                                      <primIndex>127</primIndex>
+                                      <parmIndex>2</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="2369">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="2367">
+                                      <typeDesc>TypeID(284)</typeDesc>
+                                      <dsw>4096</dsw>
+                                      <termBounds>(11, 0, 21, 16)</termBounds>
+                                      <primIndex>127</primIndex>
+                                      <parmIndex>3</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  <SL__arrayElement class="term" uid="2372">
+                                    <objFlags>32768</objFlags>
+                                    <dco class="parm" uid="2370">
+                                      <typeDesc>TypeID(285)</typeDesc>
+                                      <termBounds>(0, 0, 11, 16)</termBounds>
+                                      <primIndex>127</primIndex>
+                                      <parmIndex>4</parmIndex>
+                                      </dco>
+                                    </SL__arrayElement>
+                                  </termList>
+                                <bounds>(106, 22, 138, 54)</bounds>
+                                <shortCount>2</shortCount>
+                                <clumpNum>1638403</clumpNum>
+                                <primResID>1534</primResID>
+                                <primIndex>127</primIndex>
+                                </SL__arrayElement>
+                              </heap></part>

@@ -1,0 +1,36 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1182" source="&lt;labview&gt;\vi.lib\_probes\history\NI.History (I64).vi"><types><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" /><TypeDesc Type="NumInt16" Prop1="0" Format="inline" /><TypeDesc Type="NumInt64" Prop1="0" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="3475">
+                <termList elements="3">
+                  <SL__arrayElement class="term" uid="3479">
+                    <dco class="parm" uid="3477">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(116)</typeDesc>
+                      <termBounds>(0, 16, 32, 32)</termBounds>
+                      <primIndex>16</primIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3482">
+                    <dco class="parm" uid="3480">
+                      <typeDesc>TypeID(117)</typeDesc>
+                      <termBounds>(16, 0, 32, 16)</termBounds>
+                      <primIndex>16</primIndex>
+                      <parmIndex>1</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="3485">
+                    <objFlags>32768</objFlags>
+                    <dco class="parm" uid="3483">
+                      <typeDesc>TypeID(118)</typeDesc>
+                      <termBounds>(0, 0, 16, 16)</termBounds>
+                      <primIndex>16</primIndex>
+                      <parmIndex>2</parmIndex>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(61, 16, 93, 48)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>327683</clumpNum>
+                <primResID>1182</primResID>
+                <primIndex>16</primIndex>
+                </SL__arrayElement>
+              </heap></part>

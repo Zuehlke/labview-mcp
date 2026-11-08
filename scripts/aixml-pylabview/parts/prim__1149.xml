@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="prim" key="prim/1149" source="&lt;labview&gt;\vi.lib\Utility\tdmsutil.llb\TDMS Convert Format.vi"><types><TypeDesc Type="NumFloatExt" Prop1="0" Format="inline" /><TypeDesc Type="MeasureData" Flavor="TimeStamp" Format="inline" /></types><heap><SL__arrayElement class="prim" uid="939">
+        <termList elements="2">
+          <SL__arrayElement class="term" uid="945">
+            <dco class="parm" uid="946">
+              <objFlags>1</objFlags>
+              <typeDesc>TypeID(124)</typeDesc>
+              <termBounds>(0, 13, 11, 26)</termBounds>
+              <primIndex>64</primIndex>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="948">
+            <objFlags>32768</objFlags>
+            <dco class="parm" uid="949">
+              <typeDesc>TypeID(125)</typeDesc>
+              <termBounds>(0, 0, 11, 13)</termBounds>
+              <primIndex>64</primIndex>
+              <parmIndex>1</parmIndex>
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(491, -195, 523, -163)</bounds>
+        <shortCount>6</shortCount>
+        <clumpNum>131075</clumpNum>
+        <primResID>1149</primResID>
+        <primIndex>64</primIndex>
+        </SL__arrayElement>
+      </heap></part>
