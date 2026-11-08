@@ -105,6 +105,19 @@ public sealed class PylabviewSweepGapTests
     }
 
     [Fact]
+    public async Task An_array_of_VISA_sessions_is_refused_rather_than_built()
+    {
+        // composed, it killed LabVIEW on load on every pane pattern (Open Sessions.vi, 2026-11-08);
+        // a scalar VISA session still composes
+        if (!ComposerHere()) return;
+        var (code, message, _) = await RoundTripAsync(WireProbe("array{ref{Visa.Instr}}"));
+        Assert.NotEqual(0, code);
+        Assert.Contains("array of VISA sessions", message);
+        var (scalarCode, scalarMessage, _) = await RoundTripAsync(WireProbe("ref{Visa.Instr}"));
+        Assert.True(scalarCode == 0, scalarMessage);
+    }
+
+    [Fact]
     public async Task A_ring_of_int16_composes_with_limits_of_its_own_type()
     {
         // the ring part's int32 limits (-2147483648) are not int16 data: `int too big to convert`
@@ -185,6 +198,29 @@ public sealed class PylabviewSweepGapTests
         Assert.NotEmpty(names);
         foreach (System.Text.RegularExpressions.Match m in names)
             Assert.Contains("Label=&quot;" + m.Groups[1].Value + "&quot;", again);
+    }
+
+    [Fact]
+    public async Task A_stacked_sequence_is_read_frame_by_frame_and_composes()
+    {
+        // NI's export writes a Stacked Sequence as ONE frame, and 196 vi.lib VIs were refused for
+        // it. The reader now writes one <Diagram> per frame, tunnel halves per frame and the
+        // sequence locals (_id Local<n>); Search Ordered Table.vi has three frames and four locals
+        await using var server = await LvaiTestServer.StartAsync();
+        var xml = await ReadVilibAsync(server, VilibVi("gmath", "interp.llb", "Search Ordered Table.vi"));
+        if (xml is null) return;
+        var doc = XElement.Parse((await File.ReadAllTextAsync(xml)).Split("</VI>")[0] + "</VI>");
+        var seq = doc.Descendants("Structure").First(s => (string?)s.Attribute("_name") == "Stacked Sequence Structure");
+        Assert.Equal(3, seq.Elements("Diagram").Count());
+        Assert.Equal(4, seq.Elements("Diagram").Elements("Tunnel")
+            .Select(t => (string?)t.Attribute("_id")).Where(i => i!.StartsWith("Local", StringComparison.Ordinal))
+            .Distinct().Count());
+        Assert.DoesNotContain("frames are written as one", await File.ReadAllTextAsync(xml));
+
+        var vi = server.TempPath("stacked.vi");
+        var composed = await new AixmlTools(server.Connection).ConvertAixmlToViAsync(
+            xml, vi, checkExecutable: false, backend: "pylabview");
+        Assert.True(Res.Int(composed, "errorCode") == 0, Res.Str(composed, "errorMessage"));
     }
 
     [Fact]

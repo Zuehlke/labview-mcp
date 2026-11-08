@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="seqlocal" key="seqlocal/sloc" source="Serial Port Break.xml"><types><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc></types><heap><wrap><SL__arrayElement class="sLoc" uid="235">
+                    <objFlags>1</objFlags>
+                    <termList elements="3">
+                      <SL__arrayElement uid="222" />
+                      <SL__arrayElement uid="239" />
+                      <SL__arrayElement uid="252" />
+                      </termList>
+                    <typeDesc>TypeID(43)</typeDesc>
+                    <termBounds>(61, 210, 74, 223)</termBounds>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="222">
+                            <objFlags>4358144</objFlags>
+                            <dco uid="235" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="239">
+                            <objFlags>4194304</objFlags>
+                            <dco uid="235" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="252">
+                            <objFlags>4194304</objFlags>
+                            <dco uid="235" />
+                            </SL__arrayElement>
+                          </wrap></heap></part>

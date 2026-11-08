@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="stackseqtun" key="stackseqtun/in" source="Serial Port Break.xml"><types><TypeDesc Type="Refnum" RefType="VisaRef" Ident="Instr" FirstClient="0" Format="inline" Label="input refnum"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc></types><heap><wrap><SL__arrayElement class="term" uid="188">
+                    <objFlags>4227136</objFlags>
+                    <dco class="seqTun" uid="169">
+                      <objFlags>2048</objFlags>
+                      <termList elements="4">
+                        <SL__arrayElement uid="167" />
+                        <SL__arrayElement uid="187" />
+                        <SL__arrayElement uid="248" />
+                        <SL__arrayElement uid="188" />
+                        </termList>
+                      <typeDesc>TypeID(16)</typeDesc>
+                      <termBounds>(54, 0, 63, 9)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="167">
+                            <objFlags>4325376</objFlags>
+                            <dco uid="169" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="187">
+                            <objFlags>4325376</objFlags>
+                            <dco uid="169" />
+                            </SL__arrayElement>
+                          <SL__arrayElement class="term" uid="248">
+                            <objFlags>4325376</objFlags>
+                            <dco uid="169" />
+                            </SL__arrayElement>
+                          </wrap></heap></part>

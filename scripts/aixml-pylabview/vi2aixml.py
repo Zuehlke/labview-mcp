@@ -2053,8 +2053,105 @@ class Reader:
                     name = "?"
             out = bool(int(d.findtext("objFlags") or 0) & 1)
             self.term_owner[t.get("uid")] = (el, name, not out)
-        self.notes.append("XNode %s (%s): read as a Call; its generated code is not read" % (node.get("uid"), target))
+        # the node ITSELF - its generated code, state and links - goes after </VI> (<?lvmcp xnode?>);
+        # its DSIM images are read NOW, while the extracted files still exist (main() removes them
+        # before the payload is written)
+        want = set()
+        im = node.findtext("image")
+        if im and re.fullmatch(r"[0-9A-Fa-f]+", im.strip()):
+            want.add(int(im.strip(), 16))
+        for e in node.iter("ImageResID"):
+            try:
+                if int(e.text) > 0:
+                    want.add(int(e.text))
+            except (TypeError, ValueError):
+                pass
+        self.xnode_images = getattr(self, "xnode_images", {})
+        for sec in self.b.main.findall("DSIM/Section"):
+            if sec.get("Index") is not None and int(sec.get("Index")) in want and sec.get("File"):
+                fn = os.path.join(self.b.dir, sec.get("File"))
+                if os.path.isfile(fn):
+                    with open(fn, "rb") as f:
+                        self.xnode_images.setdefault(node.get("uid"), {})[int(sec.get("Index"))] = f.read().hex().upper()
+        self.xnode_nodes = getattr(self, "xnode_nodes", [])
+        self.xnode_nodes.append((el, node))
         return el
+
+    # heap fields holding a type as a hex heap integer, not TypeID(n)
+    HEX_TYPE_TAGS = ("stateTD", "funcTD")
+
+    def _typed_payload(self, cp):
+        """Every type reference in a copied heap subtree replaced by its type tree."""
+        for e in list(cp.iter()):
+            txt = (e.text or "").strip()
+            tid = None
+            if len(e) == 0 and re.fullmatch(r"TypeID\(\d+\)", txt):
+                tid = int(txt[7:-1])
+            elif e.tag in self.HEX_TYPE_TAGS and re.fullmatch(r"[0-9A-Fa-f]+", txt):
+                tid = int(txt, 16)
+            if tid is not None:
+                e.text = None
+                e.append(self.b.heap_type_tree(tid))
+
+    def xnode_payload(self, el, node):
+        """An XNODE for <?lvmcp xnode?>: the xNode heap object as LabVIEW saved it - its generated
+        diagram, StateData and stateTD (the state type, a hex heap integer), libVersion, icon -
+        with every type as a tree, each xTunnel terminal marked with the name and side the Call
+        lists it under, and the link records naming it or anything inside it: XNXI (the node ->
+        the .xnode library) and IUVI (a call in the generated code) from LIbd, with the IUVI's
+        VIVI from LIvi (its pane type as a tree), and the VI-level VIXN. Composer.add_xnode builds
+        it back; NI's AIXML has only the Call (2026-11-08)."""
+        cp = copy.deepcopy(node)
+        for t in cp.find("termList"):
+            own = self.term_owner.get(t.get("uid"))
+            if isinstance(own, tuple) and own[0] is el:
+                t.set("lvmcp_name", own[1])
+                t.set("lvmcp_dir", "in" if own[2] else "out")
+        self._typed_payload(cp)
+        inside = {e.get("uid") for e in node.iter() if e.get("uid")}
+        # the IMAGES it shows from the VI's DSIM block: the xNode's own `image` (its icon, a hex
+        # section index - 02 in Check Color Table Size.vi) and any positive ImageResID inside.
+        # Without them the composed VI loaded broken, "VI has an error of type 200" (2026-11-08)
+        want = set()
+        im = node.findtext("image")
+        if im and re.fullmatch(r"[0-9A-Fa-f]+", im.strip()):
+            want.add(int(im.strip(), 16))
+        for e in node.iter("ImageResID"):
+            try:
+                if int(e.text) > 0:
+                    want.add(int(e.text))
+            except (TypeError, ValueError):
+                pass
+        got = getattr(self, "xnode_images", {}).get(node.get("uid"), {})
+        if want and got:
+            imgs = ET.SubElement(cp, "lvmcpImages")
+            for idx, hx in sorted(got.items()):
+                if idx in want:
+                    ET.SubElement(imgs, "img", {"index": str(idx)}).text = hx
+        links = ET.SubElement(cp, "lvmcpLinks")
+        bd = ET.SubElement(links, "bd")
+        vi = ET.SubElement(links, "vi")
+        quals = set()
+        for rec in self.b.main.findall("LIbd/Section/BDHP/*"):
+            offs = [o.text for o in rec.findall("LinkOffsetList/Offset")]
+            uids = []
+            for o in offs:
+                try:
+                    uids.append(str(int(o, 16)))
+                except (TypeError, ValueError):
+                    pass
+            if uids and all(u in inside for u in uids):
+                bd.append(copy.deepcopy(rec))
+                quals.add(tuple(x.text for x in rec.findall("LinkSaveQualName/String")))
+        for rec in self.b.main.findall("LIvi/Section/LVIN/*"):
+            q = tuple(x.text for x in rec.findall("LinkSaveQualName/String"))
+            if q in quals and rec.tag in ("VIVI", "VIXN"):
+                r2 = copy.deepcopy(rec)
+                td = r2.find("TypeDesc")
+                if td is not None and td.get("TypeID") not in (None, "0"):
+                    td.append(self.b.tree(self.b.flat_of_consolidated(int(td.get("TypeID")))))
+                vi.append(r2)
+        return ET.tostring(cp, encoding="unicode")
 
     def call(self, node, parent_uid):
         """A subVI call: target from the diagram's link record naming this node, terminal names
@@ -2640,23 +2737,25 @@ class Reader:
         return el
 
     def stackedseq(self, node, parent_uid):
-        """A STACKED SEQUENCE, as NI's export writes it: ONE Structure ("Stacked Sequence
-        Structure") with every frame's content directly in it - no frames - and each seqTun a
-        Tunnel with both sides, its uid the outer terminal (Read RSS Feed.vi, Test - Moving Objects
-        Source.vi). Sequence locals are not read. Not read at all until 2026-11-06; what frame a
-        node ran in is lost here as in NI's export, so the note keeps the composer away."""
+        """A STACKED SEQUENCE, frame by frame - NI's export writes ONE Structure with every
+        frame's content in it and no frames, which loses the order (Read RSS Feed.vi). Ours, as a
+        Case Structure is written: one <Diagram> per frame in order; each seqTun a <Tunnel> on the
+        structure (its uid the OUTER terminal, `_id` In<n>/Out<n>) plus one half per frame inside
+        that frame's <Diagram> (same `_id`, its uid the frame's inner terminal); each SEQUENCE
+        LOCAL (an sLoc in seqLocDCOList) only as halves, `_id` Local<n>, the frame that writes it a
+        sink (term objFlags 0x8000), every other frame a source. aixml2vi.add_stacked builds it
+        back (2026-11-08)."""
         el = ET.Element("Structure", {"_name": "Stacked Sequence Structure", "uid": node.get("uid"),
                                       "uid_parent": parent_uid})
         frames = list(node.find("diagramList")) if node.find("diagramList") is not None else []
-        inner = {}
+        frame_of = {}
         for fr in frames:
             srn = next((n for n in self.node_defs(fr) if n.get("class") == "sRN"), None)
             for t in (srn.find("termList") if srn is not None else []):
-                d = t.find("dco")
-                if d is not None:
-                    inner.setdefault(d.get("uid"), []).append(t)
-        n_in = n_out = 0
+                frame_of[t.get("uid")] = fr.get("uid")
+        halves = {fr.get("uid"): [] for fr in frames}
         tunnels = []
+        n_in = n_out = 0
         for term in (node.find("termList") if node.find("termList") is not None else []):
             d = self.dco_def(term.find("dco"))
             if d is None or d.get("class") != "seqTun":
@@ -2666,19 +2765,42 @@ class Reader:
                 n_out += 1
             else:
                 n_in += 1
-            tun = ET.Element("Tunnel", {"_id": ("Out%d" % n_out) if out else ("In%d" % n_in),
-                                        "uid": term.get("uid"), "uid_parent": node.get("uid")})
+            tid = ("Out%d" % n_out) if out else ("In%d" % n_in)
+            tun = ET.Element("Tunnel", {"_id": tid, "uid": term.get("uid"), "uid_parent": node.get("uid")})
             self.term_owner[term.get("uid")] = (tun, "value", not out)
-            for t in inner.get(d.get("uid"), []):
-                self.term_owner[t.get("uid")] = (tun, "value", bool(out))
             tunnels.append(tun)
+            for x in (d.find("termList") if d.find("termList") is not None else []):
+                fu = frame_of.get(x.get("uid"))
+                if fu is None:
+                    continue
+                half = ET.Element("Tunnel", {"_id": tid, "uid": x.get("uid"), "uid_parent": fu})
+                self.term_owner[x.get("uid")] = (half, "value", bool(out))
+                halves[fu].append(half)
+        locs = node.find("seqLocDCOList")
+        flags = {}
         for fr in frames:
-            self.walk(fr, node.get("uid"), el)
+            srn = next((n for n in self.node_defs(fr) if n.get("class") == "sRN"), None)
+            for t in (srn.find("termList") if srn is not None else []):
+                flags[t.get("uid")] = int(t.findtext("objFlags") or 0)
+        for k, loc in enumerate(locs if locs is not None else []):
+            loc = self.dco_def(loc) if loc.find("termList") is None else loc
+            if loc is None or loc.find("termList") is None:
+                continue
+            for x in loc.find("termList"):
+                fu = frame_of.get(x.get("uid"))
+                if fu is None:
+                    continue
+                half = ET.Element("Tunnel", {"_id": "Local%d" % (k + 1), "uid": x.get("uid"), "uid_parent": fu})
+                self.term_owner[x.get("uid")] = (half, "value", bool(flags.get(x.get("uid"), 0) & 0x8000))
+                halves[fu].append(half)
+        for fr in frames:
+            d_el = ET.SubElement(el, "Diagram", {"uid": fr.get("uid"), "uid_parent": node.get("uid")})
+            set_sublabel(d_el, fr)
+            self.walk(fr, fr.get("uid"), d_el)
+            for h in halves[fr.get("uid")]:
+                d_el.append(h)
         for t in tunnels:
             el.append(t)
-        if len(frames) > 1:
-            self.notes.append("Stacked Sequence %s: its %d frames are written as one, as NI's export "
-                              "writes them" % (node.get("uid"), len(frames)))
         return el
 
     def flatseq(self, node, parent_uid):
@@ -4044,6 +4166,11 @@ def main(argv):
         # the XCONTROL each ref{LV.<Class>} of that element's type is typed to, '' for a plain one
         if el.get("uid"):
             text += '\n<?lvmcp xctlrefs uid="%s" items="%s"?>' % (el.get("uid"), html.escape("|".join(items), quote=True))
+    for el, node in getattr(reader, "xnode_nodes", []):
+        # an XNODE's generated code, state and links (Reader.xnode_payload)
+        if el.get("uid"):
+            text += '\n<?lvmcp xnode uid="%s" node="%s"?>' % (
+                el.get("uid"), html.escape(reader.xnode_payload(el, node), quote=True))
     for el, node, nexf in getattr(reader, "clfn_nodes", []):
         # a CALL LIBRARY FUNCTION NODE's configuration - library, function, signature, calling
         # convention, thread - which AIXML has no attribute for (Reader.clfn_payload)

@@ -688,6 +688,27 @@ class Harvester:
                         wrap.append(copy.deepcopy(inner))
                         d = "out" if int(dco.findtext("objFlags") or 0) & 1 else "in"
                         self.save("seqtun", "seqtun/%s" % d, source, wrap, resolve_types(b, wrap))
+            elif cls == "sequence":
+                # a STACKED Sequence: frames stacked in one diagramList (no selector), seqTun
+                # tunnels shaped like a case's [inner per frame..., outer], and the sequence locals
+                # in seqLocDCOList - an sLoc DCO whose termList names one terminal per frame
+                # (Serial Port Break.vi, 2026-11-08)
+                self.save("struct", "struct/sequence", source, e, resolve_types(b, e))
+                for direction, tun in case_tunnels(e, "seqTun"):
+                    self.save("stackseqtun", "stackseqtun/%s" % direction, source, tun, resolve_types(b, tun))
+                inner = {}
+                for f in e.find("diagramList"):
+                    for t in f.find("nodeList/SL__arrayElement[@class='sRN']/termList"):
+                        inner[t.get("uid")] = t
+                for loc in (e.find("seqLocDCOList") if e.find("seqLocDCOList") is not None else []):
+                    uids = [x.get("uid") for x in loc.find("termList")]
+                    if not uids or not all(u in inner for u in uids):
+                        continue
+                    wrap = ET.Element("wrap")
+                    wrap.append(copy.deepcopy(loc))
+                    for u in uids:
+                        wrap.append(copy.deepcopy(inner[u]))
+                    self.save("seqlocal", "seqlocal/sloc", source, wrap, resolve_types(b, wrap))
             elif cls == "commentNode":
                 # Diagram Disable (commentMode) and Conditional Disable structures
                 kind = "diagram" if e.find("commentMode") is not None else "conditional"

@@ -2361,5 +2361,33 @@
     }
    }
   ]
+ },
+ "t209_stacked_sequence_locals": {
+  "cases": [
+   {
+    "inputs": "ordered x array=[0,1,2.5,4,7,11];starting index=0;x value=5.2",
+    "outputs": {
+     "fractional index": 3.4
+    }
+   },
+   {
+    "inputs": "ordered x array=[0,1,2.5,4,7,11];starting index=0;x value=-1",
+    "outputs": {
+     "fractional index": 0
+    }
+   },
+   {
+    "inputs": "ordered x array=[0,1,2.5,4,7,11];starting index=0;x value=11",
+    "outputs": {
+     "fractional index": 5
+    }
+   },
+   {
+    "inputs": "ordered x array=[0,1,2.5,4,7,11];starting index=0;x value=0.5",
+    "outputs": {
+     "fractional index": 0.5
+    }
+   }
+  ]
  }
 }

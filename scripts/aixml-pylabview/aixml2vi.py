@@ -2141,6 +2141,15 @@ class Composer:
                 donor_dims = len(ai) if ai is not None else 1
                 if not queue and dims != donor_dims:
                     raise Unsupported("no %d-dimensional array part (the donor has %d)" % (dims, donor_dims))
+                if not queue and elem.get("Type") == "Refnum" and elem.get("RefType") == "VisaRef":
+                    # An ARRAY OF VISA SESSIONS killed LabVIEW on load - control or indicator, wired
+                    # or not, on every pane pattern (4802, 4815, 4833, 4835), with the generic
+                    # refnum element and with the donor's own stdRefNum+stdTag element alike; no
+                    # insanity logged. A scalar ref{Visa.Instr} beside an array{double} loads.
+                    # Refused until the difference to LabVIEW's own Open Sessions.vi is found
+                    # (the CLFN sweep, 2026-11-08; docs/aixml-backends.md)
+                    raise Unsupported("an array of VISA sessions is not composable yet - composed, it "
+                                      "killed LabVIEW on load")
                 want_cls = "stdRing" if is_enum(elem) else self.DDO_CLASS.get(elem.get("Type")) or \
                     SCALARS.get(next((k for k, v in SCALARS.items() if v[0] == elem.get("Type")), ""), (None, None))[1]
                 if old is not None and old.get("class") == want_cls and want_cls in ("stdNum", "stdBool", "stdString", "stdPath"):
@@ -5905,6 +5914,13 @@ class Composer:
         # A polymorphic call names its parent in `target` and the member it adapted to in
         # `instance`; calling the instance directly is the same diagram with the choice fixed.
         target = unescape(el.get("instance") or el.get("target") or "")
+        if target.lower().endswith(".xnode") and el.get("uid") in getattr(self, "xnode_given", {}) \
+                and os.environ.get("AIXML2VI_TRY_XNODE") == "1":
+            # NOT ON BY DEFAULT: composed from the carried node, an Error Ring KILLED LabVIEW on
+            # load once its icon (DSIM) came along, and loaded broken ("VI has an error of type
+            # 200") without it - with the node, its links and its image byte-equal to the
+            # original's (2026-11-08, docs/aixml-backends.md). Opened for a measurement only
+            return self.add_xnode(el)
         if target.lower().endswith(".xnode"):
             # an XNODE, as NI's export and our reader write one: its node holds the code the
             # XNode generated, which nothing here composes yet
@@ -6115,6 +6131,137 @@ class Composer:
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
         diag.placed.append((node, el))
         self.report.append("Call %r <- %s (pane %d, %d slots)" % (target, src, con_id, len(slots)))
+
+    # heap fields holding a type as a hex heap integer, not TypeID(n) (vi2aixml.HEX_TYPE_TAGS)
+    HEX_TYPE_TAGS = ("stateTD", "funcTD")
+
+    def _retype_payload(self, node):
+        """A carried heap subtree's type trees (vi2aixml._typed_payload) registered here: each
+        element holding a <TypeDesc> child gets TypeID(n) back, or a hex heap integer."""
+        for e in list(node.iter()):
+            if e.tag == "TypeDesc" or not len(e) or e[0].tag != "TypeDesc":
+                continue
+            tree = e[0]
+            e.remove(tree)
+            for k in [k for k in tree.attrib if k.startswith("ref.")]:
+                del tree.attrib[k]
+            tid = self.heap_tid(tree)
+            e.text = heap_uint(tid) if e.tag in self.HEX_TYPE_TAGS else "TypeID(%d)" % tid
+
+    def add_xnode(self, el):
+        """An XNODE, from vi2aixml's <?lvmcp xnode?>: the xNode object as the original held it -
+        its GENERATED diagram (a call of Error Cluster From Error Code.vi and three constants, for
+        the Error Ring), StateData, stateTD, libVersion and icon - re-typed, renumbered and
+        defined in the parent's z list, named in its nodeList (Reset Cal Data and Settings.vi).
+        Its links: XNXI (the node -> its .xnode) into LIbd, VIXN into LIvi, and each call inside
+        joins self.links like any subVI call, so write_links writes its VIVI/IUVI pair."""
+        uid = el.get("uid")
+        diag = self.diag_of(el)
+        node = ET.fromstring(self.xnode_given[uid])
+        links = node.find("lvmcpLinks")
+        if links is not None:
+            node.remove(links)
+        imgs = node.find("lvmcpImages")
+        if imgs is not None:
+            # its DSIM images (the icon `image` names, positive ImageResIDs) under numbers free
+            # here, as a part's come along (instantiate)
+            node.remove(imgs)
+            self.images = getattr(self, "images", {})
+            mapping = {}
+            for img in imgs:
+                hx = img.text or ""
+                same = next((i for i, h in self.images.items() if h == hx), None)
+                if same is None:
+                    same = max([1] + list(self.images)) + 1
+                    self.images[same] = hx
+                mapping[int(img.get("index"))] = same
+            im = node.find("image")
+            if im is not None and im.text and im.text.strip():
+                old = int(im.text.strip(), 16)
+                if old in mapping:
+                    im.text = heap_uint(mapping[old])
+            for e in node.iter("ImageResID"):
+                try:
+                    v = int(e.text)
+                except (TypeError, ValueError):
+                    continue
+                if v in mapping:
+                    e.text = str(mapping[v])
+        term_type = {}
+        for t in node.find("termList"):
+            td = t.find("dco/typeDesc")
+            if td is not None and len(td):
+                term_type[t.get("uid")] = lvheap.strip_label(copy.deepcopy(td[0]))
+        self._retype_payload(node)
+        old_terms = [t.get("uid") for t in node.find("termList")]
+        mapping = lvheap.renumber(node, self.alloc)
+        side = {"in": {}, "out": {}}
+        for old, t in zip(old_terms, node.find("termList")):
+            name, direction = t.attrib.pop("lvmcp_name", None), t.attrib.pop("lvmcp_dir", None)
+            if name is None or direction not in side:
+                continue
+            n = sum(1 for k in side[direction] if k == name or k.startswith(name + "#"))
+            side[direction][rep_key(name, n)] = (t, term_type.get(old))
+        for direction, attr in (("in", "inputs"), ("out", "outputs")):
+            for tname, net in keyed(pairs(el.get(attr))):
+                if tname not in side[direction]:
+                    raise Unsupported("XNode %s has no %s %r (has: %s)" % (
+                        uid, "input" if direction == "in" else "output", tname, ", ".join(sorted(side[direction]))))
+                if direction == "out" and net and side["out"][tname][1] is not None:
+                    self.net_type[net] = side["out"][tname][1]
+        for tname, (t, _) in side["in"].items():
+            self.ends[(uid, tname)] = (t.get("uid"), diag)
+        for tname, (t, _) in side["out"].items():
+            self.ends[(uid, out_key(el, tname))] = (t.get("uid"), diag)
+        self.xnode_bd = getattr(self, "xnode_bd", [])
+        self.xnode_vi = getattr(self, "xnode_vi", [])
+        vivi = {}
+        for rec in (links.find("vi") if links is not None else []):
+            q = tuple(x.text for x in rec.findall("LinkSaveQualName/String"))
+            if rec.tag == "VIVI":
+                vivi[q] = rec
+            elif rec.tag == "VIXN" and not any(
+                    tuple(x.text for x in r.findall("LinkSaveQualName/String")) == q for r in self.xnode_vi):
+                self.xnode_vi.append(rec)
+        if self.resolver is None:
+            self.resolver = resolve.Resolver()
+        cands = [getattr(self, "caller_file", None)] + [os.path.join(d, "caller.vi") for d in self.search_dirs]
+        for rec in (links.find("bd") if links is not None else []):
+            offs = []
+            for o in rec.findall("LinkOffsetList/Offset"):
+                new = mapping.get(int(o.text, 16))
+                if new is None:
+                    raise Unsupported("XNode %s: a link names uid %s outside the node" % (uid, o.text))
+                offs.append(new)
+            q = tuple(x.text for x in rec.findall("LinkSaveQualName/String"))
+            if rec.tag == "IUVI":
+                # a call IN THE GENERATED CODE: an ordinary subVI link, its pane from the VIVI
+                v = vivi.get(q)
+                td = v.find("TypeDesc") if v is not None else None
+                if td is None or not len(td):
+                    raise Unsupported("XNode %s: the call to %s carries no pane type" % (uid, "|".join(q)))
+                pr = rec.find("LinkSavePathRef")
+                comps = [x.text or "" for x in pr.findall("String")]
+                lib = rec.find("VILSPathRef")
+                lib_ref = None if lib is None or lib.get("ZeroFill") == "True" else \
+                    (lib.get("TpVal"), [x.text or "" for x in lib.findall("String")])
+                real = self.resolver.linked_file(pr.get("TpVal"), comps, cands)
+                key = real or "xnode-call:" + "|".join(comps)
+                link = self.links.setdefault(key, {"qual": list(q), "path_ref": (pr.get("TpVal"), comps),
+                                                   "lib_ref": lib_ref, "pane": copy.deepcopy(td[0]),
+                                                   "offsets": []})
+                link["offsets"].extend(offs)
+            else:
+                ol = rec.find("LinkOffsetList")
+                for o in list(ol):
+                    ol.remove(o)
+                for u in offs:
+                    ET.SubElement(ol, "Offset").text = "0x%04X" % u
+                self.xnode_bd.append(rec)
+        diag.z.insert(0, node)
+        ET.SubElement(diag.nodes, "SL__arrayElement", {"uid": node.get("uid")})
+        diag.placed.append((node, el))
+        self.report.append("XNode %s (%s)" % (uid, el.get("target")))
 
     def add_clfn(self, el):
         """A CALL LIBRARY FUNCTION NODE (extFunc), from the configuration vi2aixml wrote after
@@ -6722,6 +6869,10 @@ class Composer:
         self.write_class_links(lvin, bdhp, path_ref)
         self.write_xctl_links(lvin, path_ref)
         self.write_clfn_links(bdhp, path_ref)
+        for rec in getattr(self, "xnode_vi", []):
+            lvin.append(rec)
+        for rec in getattr(self, "xnode_bd", []):
+            bdhp.append(rec)
         # NOT for an XControl member: with VILB LabVIEW holds it to the XControl's abilities and
         # wants Display State / Data typed by the .xctl's own State and Data typedefs, which AIXML
         # does not carry - t140's facade went "Ability State is missing" and "incorrect datatype";
@@ -9015,6 +9166,106 @@ class Composer:
         self.case_tunnel_part[node.get("uid")] = "commenttun"
         self.report.append("Structure %r (%d frames) <- %s" % (el.get("_name"), len(frames_el), src))
 
+    def add_stacked(self, el):
+        """A STACKED Sequence, from vi2aixml's frame-by-frame form (one <Diagram> per frame; a
+        tunnel as an outer <Tunnel> plus a half per frame; a sequence local as halves only, _id
+        Local<n>). LabVIEW's object (Serial Port Break.vi): a `sequence` DEFINED in the parent's
+        z list and named in its nodeList, its frames stacked in one diagramList like a case
+        structure's - so it is kept among self.cases, without a selector, and its seqTun tunnels
+        are composed by add_case_tunnel from stackseqtun/ parts ([inner per frame..., outer]).
+        Its sequence locals are sLoc DCOs in seqLocDCOList, one terminal per frame
+        (add_stacked_local)."""
+        frames_el = [c for c in el if isinstance(c.tag, str) and c.tag == "Diagram"]
+        if not frames_el:
+            raise Unsupported("Stacked Sequence %s: no frames - NI's export writes them as one; only "
+                              "vi2aixml's frame-by-frame form is composable" % el.get("uid"))
+        parent = self.diag_of(el)
+        got = self.instantiate("struct/sequence", own_uid=el.get("uid"))
+        if got is None:
+            raise Unsupported("no stacked sequence part harvested")
+        node, donor_types, src = got
+        dl = node.find("diagramList")
+        proto = copy.deepcopy(dl[0])
+        pd = Diagram(proto)
+        for c in list(pd.srn_terms):
+            pd.srn_terms.remove(c)
+        for c in list(pd.nodes):
+            if c.get("class") != "sRN":
+                pd.nodes.remove(c)
+        for lst in (pd.z, pd.signals):
+            for c in list(lst):
+                lst.remove(c)
+        for c in list(dl):
+            dl.remove(c)
+        for tag in ("termList", "tunnelList", "seqLocDCOList"):
+            lst = node.find(tag)
+            if lst is not None:
+                for c in list(lst):
+                    lst.remove(c)
+        frame_diags = []
+        for f in frames_el:
+            d = copy.deepcopy(proto)
+            lvheap.renumber(d, self.alloc)
+            dl.append(d)
+            fd = Diagram(d, owner=f)
+            self.diagrams[f.get("uid")] = fd
+            frame_diags.append(fd)
+        dl.set("elements", str(len(dl)))
+        for e in node.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        parent.z.insert(0, node)
+        ET.SubElement(parent.nodes, "SL__arrayElement", {"uid": node.get("uid")})
+        parent.placed.append((node, el))
+        self.cases = getattr(self, "cases", [])
+        self.case_by_uid = getattr(self, "case_by_uid", {})
+        self.cases.append((node, frame_diags, parent))
+        self.case_by_uid[el.get("uid")] = self.cases[-1]
+        self.case_tunnel_part = getattr(self, "case_tunnel_part", {})
+        self.case_tunnel_part[node.get("uid")] = "stackseqtun"
+        self.report.append("Structure 'Stacked Sequence' (%d frames) <- %s" % (len(frames_el), src))
+
+    def add_stacked_local(self, syn, halves):
+        """One SEQUENCE LOCAL of a stacked sequence: an sLoc DCO (objFlags 1) in the structure's
+        seqLocDCOList, typed by the value its writing frame wires in, whose termList names one
+        terminal per frame, in the frame's sRN. The writing frame's terminal is a sink (objFlags
+        0x428000), every other frame's a source (0x400000) - as LabVIEW saved Serial Port Break.vi."""
+        node, frame_diags, parent = self.case_by_uid[syn.get("uid_parent")]
+        got = self.instantiate("seqlocal/sloc")
+        if got is None:
+            raise Unsupported("no sequence local part harvested")
+        wrap = got[0]
+        loc, tpl = list(wrap)[0], list(wrap)[1]
+        nets = [n for _, n in pairs(syn.get("inputs")) if n]
+        tree = self.net_type.get(nets[0]) if nets else None
+        if tree is None:
+            raise Unsupported("sequence local %s: no typed wire writes it" % syn.get("_id"))
+        loc.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(tree)
+        loc.find("typeDesc").attrib.pop("_t", None)
+        tl = loc.find("termList")
+        for c in list(tl):
+            tl.remove(c)
+        for fd in frame_diags:
+            h = halves.get(fd.owner.get("uid"))
+            writes = h is not None and any(n for _, n in pairs(h.get("inputs")))
+            t = copy.deepcopy(tpl)
+            t.set("uid", str(self.alloc()))
+            t.find("dco").set("uid", loc.get("uid"))
+            f = t.find("objFlags")
+            if f is None:
+                f = ET.Element("objFlags")
+                t.insert(0, f)
+            f.text = str(0x428000 if writes else 0x400000)
+            fd.srn_terms.append(t)
+            ET.SubElement(tl, "SL__arrayElement", {"uid": t.get("uid")})
+            if h is not None:
+                self.ends[(h.get("uid"), "in" if writes else "out")] = (t.get("uid"), fd)
+                for _, n in pairs(h.get("outputs")):
+                    if n:
+                        self.net_type[n] = tree
+        tl.set("elements", str(len(tl)))
+        node.find("seqLocDCOList").append(loc)
+        self.report.append("Sequence local %s" % syn.get("_id"))
+
     def add_flatseq(self, el):
         """A Flat Sequence: a flatSequence object (defined in the parent's z list) holding one
         sequenceFrame structure per frame, side by side; the PARENT's nodeList names each
@@ -10057,6 +10308,16 @@ class Composer:
                 slot[out] += 1
                 x = (r - l) - (tr - tl) if out else 0
                 tb.text = lvheap.fmt_bounds((y, x, y + (tbb - tt), x + (tr - tl)))
+            # a stacked sequence's LOCALS: down the right border below the output tunnels (LabVIEW's
+            # own sat on a border too, Serial Port Break.vi)
+            for loc in (case.find("seqLocDCOList") if case.find("seqLocDCOList") is not None else []):
+                tb = loc.find("termBounds")
+                if tb is None:
+                    continue
+                tt, tl, tbb, tr = lvheap.parse_bounds(tb.text)
+                y = 30 + lh + 24 * slot[1]
+                slot[1] += 1
+                tb.text = lvheap.fmt_bounds((y, w_ - (tr - tl), y + (tbb - tt), w_))
             # The selector terminal keeps the donor's coordinates otherwise - y 230 in a donor
             # 273 px tall - and outside a smaller case LabVIEW logs it insane ({graphics} 0x80).
             # It goes on the left edge below the input tunnels.
@@ -10261,7 +10522,7 @@ class Composer:
             dims = [self._place(fd, lv, sizes, 30 + lh, 30) for fd in frame_diags]
             w = max(x for x, _ in dims)
             h = max(y for _, y in dims)
-            n = max(1, len(case.find("tunnelList")))
+            n = max(1, len(case.find("tunnelList")) + len(case.find("seqLocDCOList") if case.find("seqLocDCOList") is not None else []))
             # room for every tunnel slot plus the selector terminal below them
             sizes[case.get("uid")] = (max(h + 40, 30 + lh + 24 * (n + 1) + 30, 120), max(w + 40, 200, lw + 12))
         for ip in reversed(getattr(self, "inplaces", [])):
@@ -10561,6 +10822,9 @@ class Composer:
         # a For Loop's iteration parallelism, which NI's AIXML cannot say (its export drops it):
         # after </VI>, so NI's service ignores it rather than refusing the document
         # a Call Library Function Node's configuration, which AIXML has no attribute for
+        self.xnode_given = {}
+        for mc in re.finditer(r'<\?lvmcp\s+xnode\s+uid="([^"]*)"\s+node="([^"]*)"\s*\?>', tail[1] if len(tail) == 2 else ""):
+            self.xnode_given[mc.group(1)] = html.unescape(mc.group(2))
         self.clfn_given = {}
         for mc in re.finditer(r'<\?lvmcp\s+clfn\s+uid="([^"]*)"\s+node="([^"]*)"\s*\?>', tail[1] if len(tail) == 2 else ""):
             self.clfn_given[mc.group(1)] = html.unescape(mc.group(2))
@@ -10634,6 +10898,8 @@ class Composer:
                 self.add_event(el)
             elif el.get("_name") == "Flat Sequence Frame":
                 self.add_flatseq(el)
+            elif el.get("_name") == "Stacked Sequence Structure":
+                self.add_stacked(el)
             elif el.get("_name") == "In Place Element Structure":
                 self.add_inplace(el)
             else:
@@ -10654,7 +10920,8 @@ class Composer:
             if e.tag == "Tunnel":
                 p = by_uid.get(e.get("uid_parent"))
                 gp = by_uid.get(p.get("uid_parent")) if p is not None else None
-                if p is not None and (p.tag == "CaseFrame" or (p.tag == "Diagram" and gp is not None and gp.tag == "Node")):
+                if p is not None and (p.tag == "CaseFrame" or (p.tag == "Diagram" and gp is not None and (
+                        gp.tag == "Node" or gp.get("_name") == "Stacked Sequence Structure"))):
                     case_halves.setdefault((p.get("uid_parent"), e.get("_id")), {})[p.get("uid")] = e
         row = {"Control": 0, "Indicator": 0}
         for el in [e for e in elements if e.tag in ("Control", "Indicator")]:
@@ -10674,13 +10941,26 @@ class Composer:
         def is_case(uid):
             """A case structure, or a disable structure - tunnels with one inner half per frame."""
             p = by_uid.get(uid)
-            return p is not None and ((p.tag == "Structure" and p.get("_name") in ("Case Structure", "Event Structure"))
+            return p is not None and ((p.tag == "Structure" and p.get("_name") in ("Case Structure", "Event Structure",
+                                                                                 "Stacked Sequence Structure"))
                                       or (p.tag == "Node" and unescape(p.get("_name") or "") in self.DISABLES))
         pending = [e for e in elements if (e.tag in ("Node", "ShiftReg", "Call")
                                            and unescape(e.get("_name") or "") not in self.DISABLES)
                    or (e.tag == "Tunnel" and by_uid.get(e.get("uid_parent")) is not None
                        and (by_uid[e.get("uid_parent")].tag == "Structure" or is_case(e.get("uid_parent"))
                             or seq_frame(e.get("uid_parent")) is not None))]
+
+        # a stacked sequence's LOCALS have no outer element: one synthetic item each, scheduled by
+        # the wire its writing frame feeds in
+        local_halves = {}
+        for (st_uid, tid), hs in case_halves.items():
+            if tid and tid.startswith("Local") and by_uid.get(st_uid) is not None \
+                    and by_uid[st_uid].get("_name") == "Stacked Sequence Structure":
+                writer = next((h for h in hs.values() if any(n for _, n in pairs(h.get("inputs")))), None)
+                syn = ET.Element("Tunnel", {"_id": tid, "uid": "_sloc_%s_%s" % (st_uid, tid), "uid_parent": st_uid,
+                                            "_sloc": "1", "inputs": writer.get("inputs") if writer is not None else ""})
+                local_halves[syn.get("uid")] = hs
+                pending.append(syn)
 
         def inputs_of(e):
             if e.tag == "Node" and unescape(e.get("_name") or "") == "Feedback Node":
@@ -10781,6 +11061,8 @@ class Composer:
                     self.add_call(e)
                 elif e.tag == "Tunnel" and seq_frame(e.get("uid_parent")) is not None:
                     self.add_seq_tunnel(e, seq_frame(e.get("uid_parent")))
+                elif e.tag == "Tunnel" and e.get("_sloc"):
+                    self.add_stacked_local(e, local_halves[e.get("uid")])
                 elif e.tag == "Tunnel" and is_case(e.get("uid_parent")):
                     self.add_case_tunnel(e, by_uid[e.get("uid_parent")],
                                          case_halves.get((e.get("uid_parent"), e.get("_id")), {}))
@@ -11050,6 +11332,8 @@ class Composer:
             grown += [loop.find("termList"), loop.find("tunnelList"), loop.find("srDCOList")]
         for case, _, _ in getattr(self, "cases", []):
             grown += [case.find("termList"), case.find("tunnelList")]
+            if case.find("seqLocDCOList") is not None:
+                grown.append(case.find("seqLocDCOList"))
         for seq, frames, _ in getattr(self, "seqs", []):
             grown.append(seq.find("sequenceList"))
             for fr, _, _ in frames:
