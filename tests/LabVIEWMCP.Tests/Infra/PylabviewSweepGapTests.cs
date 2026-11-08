@@ -115,6 +115,92 @@ public sealed class PylabviewSweepGapTests
         Assert.Equal("a,b,c", (string?)control.Attribute("items"));
     }
 
+    private static string VilibVi(params string[] parts)
+    {
+        var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            "National Instruments", "LabVIEW 2026", "vi.lib");
+        return Path.Combine(new[] { root }.Concat(parts).ToArray());
+    }
+
+    private static async Task<string?> ReadVilibAsync(LvaiTestServer server, string vi)
+    {
+        var setup = AixmlComposer.Locate(out _);
+        if (setup is null || !File.Exists(vi.Contains(".llb", StringComparison.OrdinalIgnoreCase)
+                ? vi[..(vi.IndexOf(".llb", StringComparison.OrdinalIgnoreCase) + 4)] : vi))
+            return null;
+        var output = server.TempPath(Path.GetFileNameWithoutExtension(vi) + ".xml");
+        var read = await AixmlComposer.ReadAsync(setup, vi, output, 180, default);
+        Assert.True(read.Written, read.Message);
+        return output;
+    }
+
+    [Fact]
+    public async Task A_call_library_function_node_carries_its_configuration_and_composes()
+    {
+        // AIXML has no attribute for a CLFN's library, function and parameters: the reader noted it
+        // LOST STRUCTURE and the composer refused 926 vi.lib VIs. It now writes them after </VI>
+        // (<?lvmcp clfn?>) and the composer builds the node and its NEXF link from them
+        await using var server = await LvaiTestServer.StartAsync();
+        var xml = await ReadVilibAsync(server, VilibVi("Utility", "VariantDataType", "ContainsTypedef.vi"));
+        if (xml is null) return;
+        var text = await File.ReadAllTextAsync(xml);
+        Assert.Contains("<?lvmcp clfn uid=", text);
+        Assert.Contains("GVariantTDR_ContainsTypeDef", text);
+        Assert.DoesNotContain("its library and function are not carried", text);
+
+        var vi = server.TempPath("clfn.vi");
+        var composed = await new AixmlTools(server.Connection).ConvertAixmlToViAsync(
+            xml, vi, checkExecutable: false, backend: "pylabview");
+        Assert.True(Res.Int(composed, "errorCode") == 0, Res.Str(composed, "errorMessage"));
+
+        var setup = AixmlComposer.Locate(out _)!;
+        var back = server.TempPath("back.xml");
+        var read = await AixmlComposer.ReadAsync(setup, vi, back, 120, default);
+        Assert.True(read.Written, read.Message);
+        var again = await File.ReadAllTextAsync(back);
+        Assert.Contains("GVariantTDR_ContainsTypeDef", again);
+        Assert.Contains("_name=\"Call Library Function Node\"", again);
+    }
+
+    [Fact]
+    public async Task A_CLFN_signature_past_type_127_is_written_in_two_bytes()
+    {
+        // funcTD is a SIGNED heap integer: LabVIEW writes 0xF9 as 00F9. One byte 9D was a negative
+        // type id, and LabVIEW died loading 46 of 655 composed CLFN VIs ({id} insanity in BDHP).
+        // Read back, the signature cluster - labelled after the function - must still be there
+        await using var server = await LvaiTestServer.StartAsync();
+        var xml = await ReadVilibAsync(server, VilibVi("Analysis", "7linalg.llb", "Complex SVD Decomposition.vi"));
+        if (xml is null) return;
+        var vi = server.TempPath("svd.vi");
+        var composed = await new AixmlTools(server.Connection).ConvertAixmlToViAsync(
+            xml, vi, checkExecutable: false, backend: "pylabview");
+        Assert.True(Res.Int(composed, "errorCode") == 0, Res.Str(composed, "errorMessage"));
+        var back = server.TempPath("svd-back.xml");
+        var read = await AixmlComposer.ReadAsync(AixmlComposer.Locate(out _)!, vi, back, 180, default);
+        Assert.True(read.Written, read.Message);
+        var original = await File.ReadAllTextAsync(xml);
+        var again = await File.ReadAllTextAsync(back);
+        var names = System.Text.RegularExpressions.Regex.Matches(
+            original, "&lt;nodeName&gt;&quot;([^&]+)&quot;&lt;/nodeName&gt;");
+        Assert.NotEmpty(names);
+        foreach (System.Text.RegularExpressions.Match m in names)
+            Assert.Contains("Label=&quot;" + m.Groups[1].Value + "&quot;", again);
+    }
+
+    [Fact]
+    public async Task Two_CLFN_parameters_of_one_label_are_listed_twice_as_NI_writes_them()
+    {
+        // FIR Filter (CDB).vi passes two arrays both labelled `type for the shift register`; the
+        // reader listed one, and the second one's wire was lost
+        await using var server = await LvaiTestServer.StartAsync();
+        var xml = await ReadVilibAsync(server, VilibVi("Analysis", "3filter.llb", "FIR Filter (CDB).vi"));
+        if (xml is null) return;
+        var node = XElement.Parse((await File.ReadAllTextAsync(xml)).Split("</VI>")[0] + "</VI>")
+            .Descendants("Node").Single(n => (string?)n.Attribute("_name") == "Call Library Function Node");
+        var inputs = ((string?)node.Attribute("inputs") ?? "").Split(',');
+        Assert.Equal(2, inputs.Count(i => i.StartsWith("type for the shift register:", StringComparison.Ordinal)));
+    }
+
     [Fact]
     public async Task A_character_MacRoman_lacks_is_replaced_not_fatal()
     {

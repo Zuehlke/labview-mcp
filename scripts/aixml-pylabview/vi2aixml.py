@@ -13,6 +13,7 @@ Constant (name, type, value), Node for every primitive the name tables know, and
 between them. What it does not read yet is written as an XML comment naming the heap class,
 so nothing is dropped in silence.
 """
+import copy
 import html
 import json
 import math
@@ -1413,18 +1414,22 @@ class Reader:
             # 418), so an unwired reference/reference out stays out there.
             every = el.tag in ("Call", "Node")
             linked = el.get("link") is not None
-            twins = getattr(self, "clfn_twins", set())
-            if twins and any(tu in twins for tu, _, _ in terms):
-                # a CLFN return value has two terms of one name: list it once, the wired one if any
-                keep = {}
-                for tu, nm, sink in terms:
-                    k = (nm, sink)
-                    if k not in keep or (tu in self.term_net and keep[k] not in self.term_net):
-                        keep[k] = tu
-                terms = [x for x in terms if keep[(x[1], x[2])] == x[0]]
+            drop = self.clfn_dropped()
+            if drop:
+                # a CLFN return value has two terms of one name: list it once, the wired one if any.
+                # Two PARAMETERS of one label stay two entries, as NI writes them (FIR Filter
+                # (CDB).vi's `type for the shift register`, 2026-11-08) - they were collapsed into
+                # one until then, and the second one's wire was lost
+                terms = [x for x in terms if x[0] not in drop]
+
+            clfn = el.get("_name") == "Call Library Function Node"
 
             def listed(tu, nm):
-                if tu in self.term_net:
+                if tu in self.term_net or clfn:
+                    # EVERY terminal of a CLFN, an unlabelled `?` too: the composer pairs a
+                    # repeated name with the n-th terminal of that name, and an unwired `?` left
+                    # out moved the wired one onto the return value (Real Compact Tri-Matrix
+                    # Inverse.vi, 2026-11-08: "input connected to an Indicator")
                     return True
                 if not every or nm.startswith("?"):
                     return False
@@ -1917,13 +1922,14 @@ class Reader:
         el = self._node_el(node, parent_uid, "Call Library Function Node")
         terms = list(node.find("termList"))
         last = None
-        seen = set()
+        seen = {}
         for t in terms:
             d = t.find("dco")
+            argno = getattr(self, "_clfn_args", {}).get(node.get("uid"), 0)
             if d is None or d.get("class") is None:
                 # the output side of the parameter before it: a bare reference to its DCO
                 if last is not None:
-                    self._extfunc_term(el, t, last, False, seen)
+                    self._extfunc_term(el, t, last, False, seen, argno)
                 else:
                     self.term_owner[t.get("uid")] = IGNORED
                 continue
@@ -1942,27 +1948,85 @@ class Reader:
                 if self._clfn_args[node.get("uid")] > 1:
                     # a PARAMETER: its input side even unwired (SINK is set only on a wired one -
                     # 38 `output` inputs missing over NI's DLL examples, 2026-11-06)
-                    self._extfunc_term(el, t, label, True, seen)
+                    self._extfunc_term(el, t, label, True, seen, argno + 1)
                 else:
                     # the FIRST argument is the RETURN value: an output, listed once with the
                     # output side after it
-                    self._extfunc_term(el, t, label, False, seen)
+                    self._extfunc_term(el, t, label, False, seen, argno + 1)
             else:
                 last = None
                 self._extfunc_term(el, t, label, not self._is_out(t), seen)
-        self.notes.append("Call Library Function Node %s: its library and function are not carried "
-                          "by AIXML" % node.get("uid"))
+        off = int(node.get("uid"))
+        nexf = None
+        for r in self.b.main.iter("NEXF"):
+            for o in r.findall("LinkOffsetList/Offset"):
+                try:
+                    if int((o.text or "").strip(), 16) == off:
+                        nexf = r
+                except ValueError:
+                    pass
+        # its configuration goes after </VI> (<?lvmcp clfn?>), where NI's service ignores it. A node
+        # whose library path is WIRED (`Specify path on diagram`, objFlags 0x100000) has no NEXF
+        # record in LabVIEW's own save either - 5 of 40 sampled vi.lib VIs, POSTMultipart.vi among them
+        self.clfn_nodes = getattr(self, "clfn_nodes", [])
+        self.clfn_nodes.append((el, node, nexf))
         return el
 
-    def _extfunc_term(self, el, t, name, sink, seen):
+    def _extfunc_term(self, el, t, name, sink, seen, arg=None):
         """Register one CLFN terminal; a name already registered on that side (the return value's
         two terms) is registered again only for the wire, not listed twice."""
-        key = (name, sink)
+        key = (name, sink, arg)
         self.term_owner[t.get("uid")] = (el, name, sink)
         if key in seen:
-            self.clfn_twins = getattr(self, "clfn_twins", set())
-            self.clfn_twins.add(t.get("uid"))
-        seen.add(key)
+            # the second term of ONE argument on the same side: the return value's pair
+            self.clfn_twins = getattr(self, "clfn_twins", {})
+            self.clfn_twins[t.get("uid")] = seen[key]
+        else:
+            seen[key] = t.get("uid")
+
+    def clfn_dropped(self):
+        """The CLFN return-value terms left out of the listing: of each twin pair the unwired one,
+        the second where neither or both are wired."""
+        drop = set()
+        for b, a in getattr(self, "clfn_twins", {}).items():
+            drop.add(a if b in self.term_net and a not in self.term_net else b)
+        return drop
+
+    def clfn_payload(self, el, node, nexf):
+        """The node's CONFIGURATION for <?lvmcp clfn?> after </VI>: the extFunc heap object itself,
+        each type reference (typeDesc, funcTD - the function's signature cluster, PtrTo where a
+        parameter is passed by pointer) replaced by its type tree, each listed terminal marked with
+        the name and side the AIXML element lists it under, and the NEXF link record that names the
+        library and the function as `lvmcpLink`. The composer builds the node from it
+        (Composer.add_clfn); AIXML itself carries none of this."""
+        cp = copy.deepcopy(node)
+        drop = self.clfn_dropped()
+        for t in cp.find("termList"):
+            own = self.term_owner.get(t.get("uid"))
+            if isinstance(own, tuple) and own[0] is el and t.get("uid") not in drop:
+                t.set("lvmcp_name", own[1])
+                t.set("lvmcp_dir", "in" if own[2] else "out")
+        for e in list(cp.iter()):
+            tid = None
+            if e.tag == "typeDesc" and e.text and e.text.strip().startswith("TypeID("):
+                tid = int(e.text.strip()[7:-1])
+            elif e.tag == "funcTD" and e.text and e.text.strip():
+                tid = int(e.text.strip(), 16)
+            if tid is not None:
+                e.text = None
+                e.append(self.b.heap_type_tree(tid))
+        link = ET.SubElement(cp, "lvmcpLink", dict(nexf.attrib) if nexf is not None else {"none": "1"})
+        if nexf is None:
+            return ET.tostring(cp, encoding="unicode")
+        for q in nexf.findall("LinkSaveQualName/String"):
+            ET.SubElement(link, "Qual").text = q.text or ""
+        pr = nexf.find("LinkSavePathRef")
+        if pr is not None:
+            link.set("tp", pr.get("TpVal") or "0")
+            for c in pr.findall("String"):
+                ET.SubElement(link, "Path").text = c.text or ""
+        link.set("function", nexf.findtext("ExtFuncLinkStr") or "")
+        return ET.tostring(cp, encoding="unicode")
 
     def xnode(self, node, parent_uid):
         """An XNODE (xNode): NI's export writes it as a Call whose target is the .xnode - `Error
@@ -3980,6 +4044,12 @@ def main(argv):
         # the XCONTROL each ref{LV.<Class>} of that element's type is typed to, '' for a plain one
         if el.get("uid"):
             text += '\n<?lvmcp xctlrefs uid="%s" items="%s"?>' % (el.get("uid"), html.escape("|".join(items), quote=True))
+    for el, node, nexf in getattr(reader, "clfn_nodes", []):
+        # a CALL LIBRARY FUNCTION NODE's configuration - library, function, signature, calling
+        # convention, thread - which AIXML has no attribute for (Reader.clfn_payload)
+        if el.get("uid"):
+            text += '\n<?lvmcp clfn uid="%s" node="%s"?>' % (
+                el.get("uid"), html.escape(reader.clfn_payload(el, node, nexf), quote=True))
     if len(argv) > 1:
         open(argv[1], "w", encoding="utf-8").write(text + "\n")
     else:

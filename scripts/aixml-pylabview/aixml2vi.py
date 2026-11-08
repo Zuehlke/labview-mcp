@@ -1195,12 +1195,14 @@ def out_key(el, tname):
     found by the suite's t168 on 2026-10-20."""
     if el.tag == "Call" or (el.tag == "Node" and (el.get("_name") in ("Invoke Node", "Register For Events", "Property Node",
                                                                   "Call Parent Class Method", "Formula Node", "MATLAB script",
-                                                                  "Call By Reference")
+                                                                  "Call By Reference", "Call Library Function Node")
                                                   or unescape(el.get("_name") or "") in _prim_names())):
         # ...and a PRIMITIVE: Rotate Right With Carry's input and output are both `value`, and
         # keyed by name alone the wire in and the wire out met on one terminal - LabVIEW died
-        # loading NI's Lossy Stream.vi composed (2026-11-07)
-        if tname in {t for t, _ in pairs(el.get("inputs"))}:
+        # loading NI's Lossy Stream.vi composed (2026-11-07). A REPEATED name is compared in its
+        # keyed form (`x#1`): a CLFN lists each parameter on both sides, two of one label among them
+        ins = pairs(el.get("inputs"))
+        if tname in {t for t, _ in ins} | {t for t, _ in keyed(ins)}:
             return tname + "\x00out"
     return tname
 
@@ -1442,10 +1444,12 @@ def heap_uint(n):
     """An unsigned count as raw heap content: whole bytes, big-endian, as few as hold it. `%X`
     wrote a formula of 13 characters as `D`, which pylabview cannot read back (`fromhex() arg must
     contain an even number of hexadecimal digits` - Formula Template.vi, vi.lib sweep 2026-11-08).
-    NI's parts carry one byte (09, 5F); the two- and four-byte forms follow the same rule and are
-    not measured."""
+    NI's parts carry one byte (09, 5F). The value is SIGNED: LabVIEW writes 0xF9 as `00F9` (a CLFN's
+    funcTD in Complex SVD Decomposition.vi; `0107`, `011E` beside it), and a one-byte `9D` read as a
+    negative type id killed LabVIEW on load - `Insanity detected in heap BDHP: {id }`, 46 of 655
+    composed CLFN VIs, every one with more than 127 types (2026-11-08)."""
     for width in (1, 2, 4):
-        if n < 1 << (8 * width):
+        if n < 1 << (8 * width - 1):
             return "%0*X" % (2 * width, n)
     raise Unsupported("count %d does not fit a heap integer" % n)
 
@@ -6112,6 +6116,105 @@ class Composer:
         diag.placed.append((node, el))
         self.report.append("Call %r <- %s (pane %d, %d slots)" % (target, src, con_id, len(slots)))
 
+    def add_clfn(self, el):
+        """A CALL LIBRARY FUNCTION NODE (extFunc), from the configuration vi2aixml wrote after
+        </VI> (`<?lvmcp clfn uid=".." node=".."?>`, Reader.clfn_payload): the heap object as the
+        original VI held it - nodeName, funcTD (the signature cluster; a parameter passed by
+        pointer is a PtrTo there), callType, threadInfo, libPath, the callbacks and one paramInfo
+        per parameter - with its types as trees and each listed terminal marked with its AIXML
+        name and side. Its types are registered here, its uids renumbered, and its NEXF link (the
+        library's path and the function) is written by write_links, naming the node's uid as an
+        IUVI does. A terminal is an hGrowCItem (path in/out, error in/out), an extFuncArg (a
+        parameter's input side; the return value's output) or a bare reference to the extFuncArg
+        before it (that parameter's output side). NI's AIXML carries none of the configuration, so
+        a CLFN without the instruction is refused."""
+        uid = el.get("uid")
+        payload = getattr(self, "clfn_given", {}).get(uid)
+        if payload is None:
+            raise Unsupported("Call Library Function Node %s: its library, function and parameters are "
+                              "not in this document - NI's AIXML has no attribute for them; only "
+                              "vi2aixml's <?lvmcp clfn?> after </VI> carries them" % uid)
+        diag = self.diag_of(el)
+        node = ET.fromstring(payload)
+        link = node.find("lvmcpLink")
+        if link is None:
+            raise Unsupported("Call Library Function Node %s: its <?lvmcp clfn?> names no library" % uid)
+        node.remove(link)
+        # each DCO's type, by its ORIGINAL uid: an output side is a bare reference to its DCO
+        dco_type = {}
+        for d in node.iter("dco"):
+            td = d.find("typeDesc")
+            if d.get("class") is not None and td is not None and len(td):
+                dco_type[d.get("uid")] = lvheap.strip_label(copy.deepcopy(td[0]))
+        term_type = {}
+        for t in node.find("termList"):
+            d = t.find("dco")
+            if d is not None:
+                term_type[t.get("uid")] = dco_type.get(d.get("uid"))
+        for e in list(node.iter()):
+            if e.tag in ("typeDesc", "funcTD") and len(e) and e[0].tag == "TypeDesc":
+                tree = e[0]
+                e.remove(tree)
+                for k in [k for k in tree.attrib if k.startswith("ref.")]:
+                    del tree.attrib[k]
+                tid = self.heap_tid(tree)
+                e.text = "TypeID(%d)" % tid if e.tag == "typeDesc" else heap_uint(tid)
+        old_terms = [t.get("uid") for t in node.find("termList")]
+        lvheap.renumber(node, self.alloc)
+        side = {"in": {}, "out": {}}
+        for old, t in zip(old_terms, node.find("termList")):
+            name, direction = t.attrib.pop("lvmcp_name", None), t.attrib.pop("lvmcp_dir", None)
+            if name is None or direction not in side:
+                continue
+            n = sum(1 for k in side[direction] if k == name or k.startswith(name + "#"))
+            side[direction][rep_key(name, n)] = (t, term_type.get(old))
+        for direction, attr in (("in", "inputs"), ("out", "outputs")):
+            for tname, net in keyed(pairs(el.get(attr))):
+                if tname not in side[direction]:
+                    raise Unsupported("Call Library Function Node %s has no %s %r (has: %s)"
+                                      % (uid, "input" if direction == "in" else "output", tname,
+                                         ", ".join(sorted(side[direction]))))
+                if direction == "out" and net and side["out"][tname][1] is not None:
+                    self.net_type[net] = side["out"][tname][1]
+        for tname, (t, _) in side["in"].items():
+            self.ends[(uid, tname)] = (t.get("uid"), diag)
+        for tname, (t, _) in side["out"].items():
+            self.ends[(uid, out_key(el, tname))] = (t.get("uid"), diag)
+        self.clfn_links = getattr(self, "clfn_links", [])
+        self.clfn_links.append((link, int(node.get("uid"))))
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Call Library Function Node %s -> %s in %s" % (
+            uid, link.get("function"), "\\".join(x.text or "" for x in link.findall("Path"))))
+
+    def write_clfn_links(self, bdhp, path_ref):
+        """One NEXF record per Call Library Function Node in LIbd/BDHP, as LabVIEW saves it: the
+        library's name as the user typed it (lvanlys.*), its path (TpVal 0 from <resource>,
+        <vilib> ...; 1 relative to the caller, or a bare name the OS search path finds), the node's
+        uid and the function. A relative path is re-anchored on the composed file when the original
+        caller's library is found, like a subVI's calllink; otherwise it is written as read."""
+        for link, node_uid in getattr(self, "clfn_links", []):
+            if link.get("none") == "1":
+                continue
+            attrs = {k: v for k, v in link.attrib.items() if k not in ("tp", "function")}
+            rec = ET.SubElement(bdhp, "NEXF", attrs)
+            qual = ET.SubElement(rec, "LinkSaveQualName")
+            for q in link.findall("Qual"):
+                ET.SubElement(qual, "String").text = q.text or None
+            tp, comps = link.get("tp") or "0", [c.text or "" for c in link.findall("Path")]
+            if tp == "1" and len(comps) > 1:
+                if self.resolver is None:
+                    self.resolver = resolve.Resolver()
+                cands = [getattr(self, "caller_file", None)] + [os.path.join(d, "caller.vi") for d in self.search_dirs]
+                lp = self.resolver.linked_file(tp, comps, cands)
+                if lp and os.path.isfile(lp):
+                    tp, comps = self.resolver.ref(lp, getattr(self, "caller_file", None))
+            path_ref(rec, "LinkSavePathRef", tp, comps)
+            ol = ET.SubElement(rec, "LinkOffsetList")
+            ET.SubElement(ol, "Offset").text = "0x%04X" % node_uid
+            ET.SubElement(rec, "ExtFuncLinkStr").text = link.get("function") or None
+
     def add_decimate(self, el):
         """DECIMATE 1D ARRAY (decimate): the array input, as tall as the outputs, and one
         decimateDCO output per element of the cycle - `elements at index 0`, ... - 8 px a row on
@@ -6618,6 +6721,7 @@ class Composer:
                     ET.SubElement(rec, "IUseStr")
         self.write_class_links(lvin, bdhp, path_ref)
         self.write_xctl_links(lvin, path_ref)
+        self.write_clfn_links(bdhp, path_ref)
         # NOT for an XControl member: with VILB LabVIEW holds it to the XControl's abilities and
         # wants Display State / Data typed by the .xctl's own State and Data typedefs, which AIXML
         # does not carry - t140's facade went "Ability State is missing" and "incorrect datatype";
@@ -10456,6 +10560,10 @@ class Composer:
             self.xctl_items[mc.group(1)] = html.unescape(mc.group(2)).split("|")
         # a For Loop's iteration parallelism, which NI's AIXML cannot say (its export drops it):
         # after </VI>, so NI's service ignores it rather than refusing the document
+        # a Call Library Function Node's configuration, which AIXML has no attribute for
+        self.clfn_given = {}
+        for mc in re.finditer(r'<\?lvmcp\s+clfn\s+uid="([^"]*)"\s+node="([^"]*)"\s*\?>', tail[1] if len(tail) == 2 else ""):
+            self.clfn_given[mc.group(1)] = html.unescape(mc.group(2))
         self.parallel_loops = {}
         for mc in re.finditer(r'<\?lvmcp\s+parallel\s+uid="([^"]*)"\s+workers="([^"]*)"\s*\?>', tail[1] if len(tail) == 2 else ""):
             self.parallel_loops[mc.group(1)] = mc.group(2)
@@ -10645,6 +10753,8 @@ class Composer:
                     self.add_expr_node(e)
                 elif e.tag == "Node" and nm == "Formula Node":
                     self.add_formula_node(e)
+                elif e.tag == "Node" and nm == "Call Library Function Node":
+                    self.add_clfn(e)
                 elif e.tag == "Node" and nm == "MATLAB script":
                     self.add_script_node(e)
                 elif e.tag == "Node" and nm == "Decimate 1D Array":

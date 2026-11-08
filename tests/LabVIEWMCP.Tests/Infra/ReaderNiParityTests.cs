@@ -159,13 +159,15 @@ public sealed class ReaderNiParityTests : IDisposable
         Assert.Equal("Join Numbers", (string?)node!.Attribute("_name"));
     }
 
-    /// <summary>A Call Library Function Node is read, and SAID to lack its library and function, so
-    /// the composer refuses it rather than build a node that calls nothing.</summary>
+    /// <summary>A Call Library Function Node is read with its configuration - library, function,
+    /// signature - after &lt;/VI&gt; (<c>&lt;?lvmcp clfn?&gt;</c>), which AIXML has no attribute for. Until
+    /// 2026-11-08 it was noted as lossy instead, and the composer refused it.</summary>
     [Fact]
-    public async Task A_call_library_function_node_is_read_and_flagged_as_lossy()
+    public async Task A_call_library_function_node_is_read_with_its_configuration()
     {
         if (await ReadAsync(@"Connectivity\Libraries and Executables\DLL Calling VIs\ANSIchar.vi") is not { } text) return;
         Assert.Contains("_name=\"Call Library Function Node\"", text);
-        Assert.Contains("Call Library Function Node 37: its library and function are not carried by AIXML", text);
+        Assert.Contains("<?lvmcp clfn uid=\"37\"", text);
+        Assert.DoesNotContain("its library and function are not carried by AIXML", text);
     }
 }

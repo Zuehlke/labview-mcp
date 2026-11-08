@@ -3077,7 +3077,7 @@ sweep's full CPU load and passed alone).
 
 | blocker | VIs | note |
 |---|---|---|
-| reader LOST STRUCTURE | 1 108 | mostly Call Library Function Nodes (926 VIs carry one): AIXML carries no library and function |
+| reader LOST STRUCTURE | 1 108 | mostly Call Library Function Nodes (926 VIs carry one): AIXML carries no library and function - carried after `</VI>` since, next section |
 | Stacked Sequence | 196 (≈150 first) | the reader writes its frames as one, as NI's export does |
 | `ref{DataLog}`/`ref{ActiveX}`/... untyped `ref` | 150 | bare refnums with no element type, ActiveX as a data type |
 | XNode calls | 93 | Error Ring 57 of them |
@@ -3088,6 +3088,84 @@ sweep's full CPU load and passed alone).
 
 Counts are refusals that NAME the construct, a VI counted once per construct; "first" is the
 first blocker only.
+
+### The Call Library Function Node, carried after `</VI>` (2026-11-08)
+
+The biggest block above. NI's AIXML lists a CLFN's terminals and nothing else (`<Node
+_name="Call Library Function Node" inputs=... outputs=...>`), so the reader noted it LOST
+STRUCTURE and the composer refused it. **What LabVIEW keeps**, read off 89 nodes in 80 vi.lib and
+add-on VIs:
+
+- the heap object `extFunc`: `nodeName` (the function, quoted), `funcTD` - the type id of the
+  function's SIGNATURE, a cluster with one element per argument (the return value first; a
+  parameter passed by pointer is a `PtrTo` around its type, an adapt-to-type one `Void`),
+  `callType` (`01` in 81 of 89, absent in the rest), `threadInfo` (`01` in 76, absent in 13),
+  `libPath` (an LVPath as the author typed it - often the build machine's, `w:\dev\...`),
+  `reserveCB`/`unreserveCB`/`abortCB` (the callback names, empty in nearly all), and one
+  `paramInfo` entry per parameter (`Tag0000` 00/01/02/0C, `activeDiag`);
+- its terminals: four `hGrowCItem` (path in, path out, error in, error out; a path is `Void`
+  unless the node takes its library on the diagram), then per argument an `extFuncArg` DCO - the
+  parameter's INPUT side, or the return value - followed by a dco-less term that names it, its
+  OUTPUT side;
+- a `NEXF` record in `LIbd/BDHP`: the library's name as typed (`lvanlys.*`), its path
+  (`<resource>/lvanlys.dll`, TpVal 0; or TpVal 1, a bare name like `lvuste.dll` or `LabVIEW`), the
+  node's uid in `LinkOffsetList` (as an IUVI names a call) and the function in `ExtFuncLinkStr`.
+  `ExtFuncProp4` was 1 on 13 of 78 records, every other attribute 0. **A node whose library path
+  is WIRED** (Specify path on diagram, objFlags 0x100000) has NO NEXF record at all - 5 of 40
+  sampled VIs, POSTMultipart.vi among them.
+
+**The route**: the reader writes the `extFunc` object itself after `</VI>`,
+`<?lvmcp clfn uid=".." node=".."?>` - every type reference (`typeDesc`, `funcTD`) replaced by
+its type tree, each listed terminal marked with the AIXML name and side it is listed under
+(`lvmcp_name`, `lvmcp_dir`), the NEXF record as `<lvmcpLink>` (`none="1"` without one). The
+composer (`Composer.add_clfn`) registers the types, renumbers the uids, pairs a repeated name
+with the n-th terminal of that name, and writes the NEXF record naming the new uid
+(`write_clfn_links`); a TpVal 1 path of more than one component is re-anchored on the composed
+file where the original's library is found. Without the instruction - a document from NI's
+export, or hand-written - the CLFN is still refused, now by name. NI's service ignores what
+stands after `</VI>` (`aixml-frontpanel-extension.md`). Writing a NEW CLFN from AIXML is not
+covered: the payload is LabVIEW's own object, not an authoring format.
+
+**Two reader defects it surfaced**:
+
+- two PARAMETERS of one label (FIR Filter (CDB).vi passes two arrays labelled `type for the shift
+  register`) were collapsed into one listing, as the return value's two terms rightly are, and
+  the second one's wire was lost. They are listed twice now, as NI writes them; only the return
+  value's pair is collapsed.
+- an UNWIRED unlabelled terminal (`?`) was left out of the listing, so the composer paired the
+  wired `?` with the wrong terminal - an input wired from an indicator (3 of 28 in the first
+  sample). A CLFN lists every terminal now.
+
+**One composer defect it surfaced, and it killed LabVIEW**: `funcTD` (like every heap integer
+`heap_uint` writes) is SIGNED. LabVIEW writes 0xF9 as `00F9` (Complex SVD Decomposition.vi;
+`0107`, `011E` beside it); the composer wrote one byte `9D`, a negative type id, and LabVIEW died
+loading the VI - `Insanity detected in heap BDHP: {id }`, then `DAbort ... Fatal insanities` - in
+46 of 655 composed CLFN VIs, every one a VI with more than 127 types. Found by A/B on the composed
+heap: the node alone loaded in a small VI and in nested structures, dropping each of its wires
+changed nothing, removing the node did. `heap_uint` now writes one byte below 0x80 only.
+
+**Measured** over every vi.lib/add-on VI of the stride-3 sample whose first blocker was the CLFN
+(872):
+
+| | VIs |
+|---|---|
+| composed | 655 (217 refused by a LATER blocker - Tag fpdco 36, Error Ring XNode 34, Conditional Disable 21, Stacked Sequence 19, ...; none by the CLFN) |
+| loaded executable | **599** |
+| broken | 55: 33 library members composed outside their library, 11 calls into a library's PRIVATE or community VIs from outside it, 5 Case selectors (`No case for some selector values`, `Selector values are not unique`), 2 whose DLL (`<vilib>/rvi/Simulation/lvSimController.dll`) is not on this station - the ORIGINALS are broken too -, 4 whose Error List was not read |
+| crashed LabVIEW | 1, `Open Sessions.vi` - NOT the CLFN: with the node removed from the AIXML it still dies; an indicator of `array{ref{Visa.Instr}}` plus its Local Variable is left |
+
+**Run, not only loaded**: Dawson's Integral.vi (`lvanlys.dll`, by value) answers
+0.4958270739643261 for x = 1.25 and -0.30134038892379195 for x = -2, original and composed alike;
+daqmx compute reverse polynomial coefficients.vi (arrays by pointer) answers the same four
+coefficients to the last digit. Selftest **t208** runs the first. Tests:
+`PylabviewSweepGapTests` - the configuration carried and composed (ContainsTypedef.vi), the
+signature past type 127 (Complex SVD Decomposition.vi), two parameters of one label (FIR Filter
+(CDB).vi).
+
+**Not covered**: a CLFN output into a Case tunnel whose other frames give no type is refused
+(`no typed wire reaches it`, 5 VIs); the node's position comes from the layout, not from the
+original; a `TpVal 1` relative library path is measured only by reasoning (none in the sample was
+relative with more than one component).
 
 ## Not covered, and not measured
 
