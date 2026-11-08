@@ -1,0 +1,258 @@
+# LabVIEW diagram primitives, keyed on primResID as it appears in pylabview's BDHb heap XML.
+# Harvested by joining pylabview's extraction with LabVIEW's AIXML export of the same VI on uid;
+# 817 VIs of the LabVIEW 2026 Q3 installation, 3888 observations. See harvest_prim_names.py.
+# primResID is the identity: measured, changing it alone turns Add into Multiply, while changing
+# primIndex alone leaves the VI adding. primIndex is listed only to document its spread.
+primResID	name	observations	primIndex_seen
+1044	Complex To Re/Im	9	45
+1045	Complex To Polar	6	44
+1046	Re/Im To Complex	6	92
+1047	Polar To Complex	4	91
+1048	Complex Conjugate	1	43
+1049	Sign	1	42
+1050	Add	164	103
+1051	Subtract	103	104
+1052	Multiply	248	105
+1053	Divide	129	106
+1054	Absolute Value	23	37
+1055	Round To Nearest	1	33
+1056	Quotient &amp; Remainder	35	108
+1057	Increment	116	34
+1058	Decrement	39	35
+1059	Reciprocal	24	38
+1060	Square Root	15	40
+1061	And	23	94
+1062	Or	183	96
+1063	Exclusive Or	1	98
+1064	Not	33	29
+1069	Negate	15	39
+1070	Random Number (0-1)	56	135
+1071	Not And	2	95
+1075	Round Toward -Infinity	2	36
+1077	Path To String	1	31
+1079	Cast Unit Bases	1	116
+1083	First Call?	4	380
+1084	DataSocket Open	1	381
+1085	DataSocket Close	1	382
+1086	DataSocket Read	2	380,383
+1102	Equal?	60	109
+1104	Less Or Equal?	8	111
+1105	Not Equal?	21	112
+1108	Max &amp; Min	19	117
+1111	Less?	14	114
+1112	Empty String/Path?	5	6
+1115	Less Or Equal To 0?	1	2
+1116	Not Equal To 0?	14	3
+1118	Less Than 0?	17	5
+1119	Decimal Digit?	1	7
+1120	Sort 1D Array	5	206
+1123	Hex Digit?	1	8
+1124	Printable?	1	10
+1125	White Space?	1	11
+1126	Lexical Class	1	12
+1127	In Range and Coerce	27	118
+1128	Not A Number/Path/Refnum?	54	13
+1129	Octal Digit?	1	9
+1142	To Long Integer	6	56
+1143	To Unsigned Byte Integer	2	58
+1144	To Unsigned Word Integer	2	59
+1145	To Unsigned Long Integer	3	60
+1147	To Double Precision Float	18	63
+1156	To Unsigned Quad Integer	1	61
+1165	Unflatten From String	1	524
+1166	Type Cast	4	160
+1167	Boolean To (0\2C1)	5	69
+1168	Array To Cluster	5	161
+1169	Cluster To Array	2	162
+1170	Split Number	1	30
+1180	Number To Decimal String	4	14
+1184	Decimal String To Number	6	20
+1187	Fract/Exp String To Number	7	23
+1189	To Lower Case	3	25
+1200	Sine	44	72
+1201	Cosine	11	73
+1209	Natural Logarithm	3	47
+1210	Logarithm Base 10	2	51
+1211	Exponential	13	46
+1213	Power Of X	2	89
+1220	Sine &amp; Cosine	8	88
+1223	Power Of 2	5	52
+1227	Sinc	2	87
+1300	Tick Count (ms)	34	131
+1302	Wait (ms)	198	164,165
+1303	Get Date/Time In Seconds	31	132
+1327	Wait Until Next ms Multiple	41	166
+1328	Wait For Front Panel Activity	16	167
+1340	One Button Dialog	12	163
+1341	Two Button Dialog	3	164
+1352	Quit LabVIEW	9	138
+1419	Build Path	137	188,192,193
+1420	Strip Path	9	193,194
+1425	VI Library	3	199
+1426	Current VI's Path	35	200,201
+1427	Default Directory	1	202
+1435	Temporary Directory	2	195,199
+1502	String Length	11	26
+1503	String Subset	5	119
+1506	Number To Fractional String	23	18
+1516	Select	96	136
+1535	Match Pattern	13	128
+1537	Reverse String	3	27
+1538	Search/Split String	1	120
+1539	Spreadsheet String To Array	2	129
+1540	Array To Spreadsheet String	4	130
+1600	Get Date/Time String	1	140
+1608	String To Byte Array	1	148
+1609	Byte Array To String	5	149
+1700	Generate Occurrence	1	217
+1701	Wait on Occurrence	1	218
+1702	Set Occurrence	2	219
+1710	IP To String	1	311
+1711	String To IP	2	312
+1712	TCP Wait On Listener	1	313
+1713	TCP Close Connection	4	314
+1714	TCP Write	1	315
+1715	TCP Open Connection	1	316
+1716	TCP Read	2	317
+1717	TCP Create Listener	2	318
+1730	New TLS Configuration	2	589
+1731	Start TLS	1	590
+1732	Accept TLS	1	591
+1733	Load Private Key Into Memory	1	592
+1734	Load Certificates Into Memory	1	593
+1735	Add Private Key To TLS Configuration	1	594
+1736	Add Trusted Certificate To TLS Configuration	1	595
+1737	Make TLS Configuration Immutable	2	596
+1741	Close TLS Configuration	2	600
+1809	Array Size	57	139
+1815	Boolean Array To Number	1	147
+1900	Reverse 1D Array	6	206,207
+1901	Search 1D Array	19	207,208
+1902	Transpose 2D Array	37	209
+1903	Add Array Elements	21	210
+1904	Multiply Array Elements	2	211
+1905	Interpolate 1D Array	3	205
+1906	Rotate 1D Array	8	214
+1907	Array Max &amp; Min	17	203
+1909	Threshold 1D Array	1	204
+1910	Or Array Elements	2	212
+1911	And Array Elements	2	213
+1922	VISA Close	17	262
+1925	VISA Read	9	265
+1926	VISA Write	10	266
+1929	VISA Assert Trigger	2	269
+1940	VISA Disable Event	2	280
+1941	VISA Discard Events	1	281
+1942	VISA Enable Event	3	282
+1943	VISA Wait on Event	2	283
+1950	GPIB Write	1	220
+1951	GPIB Read	1	221
+1994	VISA Unlock	2	297
+1999	Call Chain	1	305
+2010	TDMS Write	17	414,415
+2011	TDMS Read	8	415
+2012	TDMS Open	18	416,417
+2013	TDMS Close	18	417,418
+2014	TDMS Set Properties	2	418
+2015	TDMS Get Properties	10	419
+2016	TDMS List Contents	4	420
+2017	TDMS Flush	1	421
+2019	TDMS Defragment	1	423
+2021	TDMS Advanced Open	14	425
+2022	TDMS Set Channel Information	6	426
+2023	TDMS Reserve File Size	4	427
+2024	TDMS Configure Asynchronous Writes	5	428
+2025	TDMS Set Next Write Position	2	429
+2026	TDMS Advanced Synchronous Write	2	430
+2027	TDMS Configure Asynchronous Reads	4	432
+2028	TDMS Start Asynchronous Reads	4	433
+2029	TDMS Advanced Synchronous Read	2	434
+2030	TDMS Stop Asynchronous Reads	1	436
+2031	TDMS Get Asynchronous Write Status	1	437
+2032	TDMS Advanced Close	14	438
+2033	TDMS Set Next Read Position	3	439
+2034	TDMS Get Asynchronous Read Status	2	440
+2035	TDMS Advanced Asynchronous Write	5	431
+2036	TDMS Advanced Asynchronous Read	4	435
+2073	Create User Event	105	495
+2074	Generate User Event	112	496
+2075	Destroy User Event	98	497
+2076	Unregister For Events	50	498
+2086	VISA USB Control In	1	503
+2087	VISA USB Control Out	1	504
+2156	TDMS In Memory Open	2	447
+2157	TDMS In Memory Close	2	448
+2158	TDMS In Memory Read Bytes	1	449
+2159	TDMS Delete Data	3	450
+2308	VISA Open	9	458
+2311	VISA Map Trigger	1	461
+2312	VISA Unmap Trigger	1	462
+2401	Swap Values	1	334
+2408	New Data Value Reference	1	338
+2452	Insert Into Set	2	581
+2456	Insert Into Map	1	585
+2457	Remove From Map	2	586
+2458	Look In Map	1	587
+3913	Replace Substring	3	453
+3914	Search and Replace String	4	454
+3915	Add with Error Terminals	10	499
+5560	To Time Stamp	4	493
+5566	Fixed-Point to Integer Cast	2	549
+5567	Integer to Fixed-Point Cast	3	550
+8000	Automation Open	3	345
+8003	Variant To Data	47	345,348,349
+8010	Open VI Reference	39	349,350
+8011	Close Reference	167	350,351
+8012	Open Application Reference	1	351
+8013	Open VI Object Reference	11	368
+8014	New VI	7	369
+8015	New VI Object	19	370
+8016	To More Specific Class	62	455
+8050	Open/Create/Replace File	6	385
+8051	Read from Binary File	4	386
+8052	Close File	6	387
+8055	Create Folder	3	390,391
+8056	Delete	10	388,391,392
+8058	File Dialog	2	390,393
+8063	Get File Size	6	397
+8070	Read from Text File	8	404,405
+8078	Write to Binary File	2	411
+8080	Write to Text File	7	413
+8082	File/Directory Info	2	451
+8100	Format Date/Time String	4	352,353
+8101	Scan String For Tokens	4	353
+8201	To Variant	13	368,371
+8204	Set Variant Attribute	1	374
+8205	Get Variant Attribute	13	375
+8206	Delete Variant Attribute	1	376
+8207	Set Waveform Attribute	3	377
+8208	Get Waveform Attribute	2	378
+8401	Unflatten From XML	3	153,154
+8402	Flatten To XML	4	153
+8507	Matrix Size	6	541
+9000	Current VI's Menubar	1	356
+9003	Insert Menu Items	7	359
+9004	Delete Menu Items	4	360
+9006	Set Menu Item Info	1	362
+9101	Obtain Notifier	16	470
+9102	Release Notifier	18	471
+9104	Send Notification	21	473
+9105	Wait on Notification	18	474
+9106	Wait on Notification from Multiple	1	476
+9108	Obtain Queue	15	479
+9109	Release Queue	17	480
+9110	Get Queue Status	4	481
+9111	Enqueue Element	22	482
+9113	Dequeue Element	16	485
+9114	Flush Queue	1	486
+9129	Enqueue Element At Opposite End	17	487
+9154	Get Drag Drop Data	3	522
+23059	Square	10	517
+23060	Re/Im To Polar	1	518
+23063	Empty Array?	17	521
+24201	Flatten To JSON	3	155
+24202	Unflatten From JSON	6	156
+24206	Open Python Session	6	577
+24207	Close Python Session	10	578
+24208	Open MATLAB Session	2	601
+24209	Close MATLAB Session	1	602
