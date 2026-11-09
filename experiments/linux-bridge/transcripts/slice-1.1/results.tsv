@@ -1,0 +1,13 @@
+row	method	result	evidence	ms	transcript
+LabVIEW version	P0_AppVersion	PASS	26.1f0	3166	transcripts/slice-1.1/11-labview-version.txt
+Open VI Reference	P1_OpenVIReference	PASS	code=0, no error	3012	transcripts/slice-1.1/12-open-vi-reference.txt
+Execution State	P2_ExecutionState	PASS	1	3152	transcripts/slice-1.1/13-execution-state.txt
+Run VI async	P3_RunVIAsync	PASS	2	3212	transcripts/slice-1.1/14-run-vi-async.txt
+control: Spin state after the Run VI async probe returned	P2_ExecutionState	PASS	1	3084	transcripts/slice-1.1/15-control-spin-state-after-the-run-vi-async-probe-returned.txt
+Abort VI	P4_AbortVI	PASS	2,1	3092	transcripts/slice-1.1/16-abort-vi.txt
+control: Abort VI on a VI that is not running	P9_AbortIdle	PASS	error reported: code=1000 0	3178	transcripts/slice-1.1/17-control-abort-vi-on-a-vi-that-is-not-running.txt
+Print VI To HTML	P5_PrintVIToHTML	PASS	/tmp/fx/out.html	3051	transcripts/slice-1.1/18-print-vi-to-html.txt
+SubVI Replace	P6_SubVIReplace	PASS	Callee2.vi	3119	transcripts/slice-1.1/19-subvi-replace.txt
+Remove Bad Wires	P7_RemoveBadWires	PASS	code=0, no error	3215	transcripts/slice-1.1/20-remove-bad-wires.txt
+Clean Up Diagram	P8_CleanUpDiagram	PASS	code=0, no error	3090	transcripts/slice-1.1/21-clean-up-diagram.txt
+control: Open VI Reference on a missing file	P1_OpenVIReference	PASS	error reported: code=7 	3248	transcripts/slice-1.1/22-control-open-vi-reference-on-a-missing-file.txt

@@ -1,0 +1,27 @@
+Can't load library libniDotNETCoreInterop.so
+libniDotNETCoreInterop.so: cannot open shared object file: No such file or directory
+Can't find library libniDotNETCoreInterop.so
+Make sure this library is installed in your LD_LIBRARY_PATH
+search path, or in /usr/lib64
+LabVIEWCLI started logging in file:  /tmp/lvtemporary_429932.log
+Using LabVIEW: "/usr/local/natinst/LabVIEW-2026-64/labview"
+Connection established with LabVIEW at port number 3363.
+
+Operation output: 
+code=0;source=;detail=/tmp/fx/out.html
+RunVI operation succeeded.
+
+--- /tmp/fx/out.html:
+<HTML>
+<HEAD>
+<TITLE>Target.vi</TITLE>
+<META NAME="Author" CONTENT="">
+<META NAME="GENERATOR" CONTENT="G Development Environment">
+</HEAD>
+<BODY BGCOLOR="#FFFFFF">
+<A NAME="Target.vi"></A><H2>Target.vi</H2>
+<P><IMG SRC="outp.png" ALT="Target.vi"></P>
+</BODY>
+</HTML>
+-rw-r--r-- 1 root root  267 Nov  9 13:44 /tmp/fx/out.html
+-rw-rw-rw- 1 root root 1194 Nov  9 13:44 /tmp/fx/outp.png

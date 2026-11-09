@@ -1,0 +1,7 @@
+<VI _name="Callee.vi" description="Probe fixture\3A y is x plus 1.">
+  <FreeLabel comment="Callee adds one" uid="4200" uid_parent="root"/>
+  <Control _name="x" conIdx="0" connection="required" outputs="value:4210.value" type="double" uid="4210" uid_parent="root" value="0"/>
+  <Constant _name="k" outputs="value:4211.value" type="double" uid="4211" uid_parent="root" value="1"/>
+  <Node _name="Add" inputs="x:4210.value,y:4211.value" outputs="x+y:4212.x+y" uid="4212" uid_parent="root"/>
+  <Indicator _name="y" conIdx="1" connection="recommended" inputs="value:4212.x+y" type="double" uid="4213" uid_parent="root" value="0"/>
+</VI>

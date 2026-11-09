@@ -1,0 +1,30 @@
+####
+#Date: Mon, Nov 09, 2026 01:43:58 PM
+#OSName: Linux
+#OSVers: 6.10.14-linuxkit
+#OSBuild: 395790
+#AppName: labview
+#Version: 26.1f0
+#AppKind: FDS
+#AppRunMode: Interactive
+#AppModDate: 
+
+
+InitExecSystem() call to GetCurrProcessNumProcessors() reports: 12 processors
+InitExecSystem() call to GetNumProcessors()            reports: 12 processors
+InitExecSystem()                                      will use: 12 processors
+starting LV_ESys2_Thr0 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr1 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr2 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr3 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr4 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr5 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr6 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr7 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr8 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr9 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr10 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+starting LV_ESys2_Thr11 , capacity: 24 at [3877076639.58486891, (13:43:59.584869000 2026:11:09)]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]

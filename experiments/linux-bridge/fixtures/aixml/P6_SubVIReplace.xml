@@ -1,0 +1,30 @@
+<VI _name="P6_SubVIReplace.vi" description="Slice 1.1 probe\3A Open VI Reference, Block Diagram, SubVIs[], SubVI Replace with the VI in arg, then read VI Name of SubVIs[0] again.">
+  <FreeLabel comment="Replace the SubVI with arg" uid="4200" uid_parent="root"/>
+  <Control _name="Inputs" conIdx="11" connection="recommended" outputs="value:4209.value" type="array{string}" uid="4209" uid_parent="root" value="[]"/>
+  <Constant _name="index 0" outputs="value:4205.value" type="int32" uid="4205" uid_parent="root" value="0"/>
+  <Constant _name="index 1" outputs="value:4206.value" type="int32" uid="4206" uid_parent="root" value="1"/>
+  <Node _name="Index Array" inputs="array:4209.value,index:4205.value" outputs="element:4210.value" uid="4210" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4209.value,index:4206.value" outputs="element:4211.value" uid="4211" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4210.value" outputs="path:4212.path" uid="4212" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4211.value" outputs="path:4213.path" uid="4213" uid_parent="root"/>
+  <Constant _name="empty" outputs="value:4214.value" type="string" uid="4214" uid_parent="root" value=""/>
+  <Node _name="Open VI Reference" inputs="vi path:4212.path" outputs="vi reference:4220.ref,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Block Diagram" type="{LV.VI}" inputs="reference:4220.ref,error in (no error):4220.err" outputs="Block Diagram:4221.bd,reference out:,error out:4221.err" uid="4221" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+SubVIs[]" type="{LV.Diagram}" inputs="reference:4221.bd,error in (no error):4221.err" outputs="SubVIs[]:4222.subvis,reference out:4222.bd,error out:4222.err" uid="4222" uid_parent="root"/>
+  <Constant _name="first" outputs="value:4216.value" type="int32" uid="4216" uid_parent="root" value="0"/>
+  <Node _name="Index Array" inputs="array:4222.subvis,index:4216.value" outputs="element:4223.sub" uid="4223" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Replace" type="{LV.SubVI}" inputs="reference:4223.sub,error in (no error):4222.err,Style:,Path:4213.path,PaletteString:" outputs="reference out:,error out:4224.err,Replace:" uid="4224" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+SubVIs[]" type="{LV.Diagram}" inputs="reference:4222.bd,error in (no error):4224.err" outputs="SubVIs[]:4225.subvis,reference out:,error out:4225.err" uid="4225" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4225.subvis,index:4216.value" outputs="element:4226.sub" uid="4226" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+VI Name" type="{LV.SubVI}" inputs="reference:4226.sub,error in (no error):4225.err" outputs="VI Name:4227.name,reference out:,error out:4227.err" uid="4227" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4220.ref,error in (no error):4227.err" outputs="error out:4240.err" uid="4240" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:4240.err" outputs="code:4290.code,source:4290.source" uid="4290" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4290.code" outputs="decimal integer string:4294.text" uid="4294" uid_parent="root"/>
+  <Constant _name="code label" outputs="value:4295.value" type="string" uid="4295" uid_parent="root" value="code="/>
+  <Constant _name="source label" outputs="value:4296.value" type="string" uid="4296" uid_parent="root" value=";source="/>
+  <Constant _name="detail label" outputs="value:4297.value" type="string" uid="4297" uid_parent="root" value=";detail="/>
+  <Node _name="Concatenate Strings" inputs="string:4295.value,string:4294.text,string:4296.value,string:4290.source,string:4297.value,string:4227.name" outputs="concatenated string:4298.line" uid="4298" uid_parent="root"/>
+  <Indicator _name="Output/Failure" conIdx="2" connection="recommended" inputs="value:4298.line" type="string" uid="4291" uid_parent="root" value=""/>
+  <Indicator _name="CLI Process Return Code" conIdx="3" connection="recommended" inputs="value:4290.code" type="int32" uid="4292" uid_parent="root" value="0"/>
+</VI>
+<?lvmcp pane="4815"?>

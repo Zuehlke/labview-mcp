@@ -1,0 +1,8 @@
+date:          2026-11-09T13:43:52Z
+host:          Darwin arm64, docker 28.0.4
+image tag:     nationalinstruments/labview:2026q1-linux
+image digest:  sha256:597ba99260c0511475e27c04f13dd06f2f57e8ce7d3ee6c1ca289020b1f8c426
+image id:      sha256:597ba99260c0511475e27c04f13dd06f2f57e8ce7d3ee6c1ca289020b1f8c426
+image arch:    amd64
+image size:    1474288358 bytes
+run platform:  linux/amd64

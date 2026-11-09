@@ -1,0 +1,6 @@
+<VI _name="Caller.vi" description="Probe fixture\3A calls Callee.vi once.">
+  <FreeLabel comment="One call to Callee" uid="4200" uid_parent="root"/>
+  <Control _name="x" conIdx="0" connection="required" outputs="value:4210.value" type="double" uid="4210" uid_parent="root" value="0"/>
+  <Call target="Callee.vi" inputs="x:4210.value" outputs="y:4220.y" uid="4220" uid_parent="root"/>
+  <Indicator _name="y" conIdx="1" connection="recommended" inputs="value:4220.y" type="double" uid="4221" uid_parent="root" value="0"/>
+</VI>

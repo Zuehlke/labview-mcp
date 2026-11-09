@@ -1,0 +1,9 @@
+<VI _name="P0_AppVersion.vi" description="Slice 1.1 probe\3A reads Application Version Number of the running LabVIEW.">
+  <FreeLabel comment="Read the version of LabVIEW" uid="4200" uid_parent="root"/>
+  <Control _name="Inputs" conIdx="11" connection="recommended" outputs="value:4209.value" type="array{string}" uid="4209" uid_parent="root" value="[]"/>
+  <Node _name="Property Node" fields="read+Application\3AVersion Number" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Application\3AVersion Number:4220.ver,reference out:,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4220.err" outputs="code:4223.code" uid="4223" uid_parent="root"/>
+  <Indicator _name="Output/Failure" conIdx="2" connection="recommended" inputs="value:4220.ver" type="string" uid="4224" uid_parent="root" value=""/>
+  <Indicator _name="CLI Process Return Code" conIdx="3" connection="recommended" inputs="value:4223.code" type="int32" uid="4225" uid_parent="root" value="0"/>
+</VI>
+<?lvmcp pane="4815"?>
