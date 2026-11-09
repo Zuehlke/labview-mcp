@@ -1,0 +1,19 @@
+file version words in the 2020 file: ['20.0.0', '20.0.0']
+TCP Open Connection          read back x1  ok
+TCP Read                     read back x2  ok
+TCP Write                    read back x1  ok
+TCP Close Connection         read back x1  ok
+Open Application Reference   read back x1  ok
+Open VI Reference            read back x1  ok
+Property Node                read back x1  ok
+Invoke Node                  read back x4  ok
+Flatten To XML               read back x2  ok
+Unflatten From XML           read back x1  ok
+Close Reference              read back x2  ok
+While Loop                   read back x1  ok
+Case Structure               read back x1  ok
+Invoke Node Ctrl Val.Get     x2  ok
+Invoke Node Ctrl Val.Set     x1  ok
+Invoke Node Run VI           x1  ok
+IsReentrant=1 read back: True
+RESULT: every bridge primitive read back

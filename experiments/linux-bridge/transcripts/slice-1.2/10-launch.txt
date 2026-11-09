@@ -1,0 +1,30 @@
+route: launch   container: lvc-80947-1794233249-10824   2026-11-09T14:07:30Z
+start: (export DISPLAY=:99; cd /tmp/fxr; nohup /usr/local/natinst/LabVIEW-2026-64/labview /tmp/fxr/skeleton.vi > /tmp/route.out 2>&1 &)
+--- client (inside the container)
+listening 127.0.0.1:41199, rendezvous /tmp/lvmcp-skeleton-port.txt
+skeleton connected from 127.0.0.1:48964 after 4.2 s
+PROBE code=0;state=1;x=<LvVariant>
+<Name>Get Control Value Variant</Name>
+<DBL>
+<Name>x</Name>
+<Val>0.00000000000000</Val>
+</DBL>
+</LvVariant>
+;y=<LvVariant>
+<Name>Get Control Value Variant</Name>
+<DBL>
+<Name>y</Name>
+<Val>42.50000000000000</Val>
+</DBL>
+</LvVariant>
+
+RESULT echoes=100 failures=0 connect_s=4.2 total_ms=10 per_echo_ms min=0.0 median=0.1 p95=0.1 max=1.3
+--- route output
+Can't load library libniDotNETCoreInterop.so
+libniDotNETCoreInterop.so: cannot open shared object file: No such file or directory
+Can't find library libniDotNETCoreInterop.so
+Make sure this library is installed in your LD_LIBRARY_PATH
+search path, or in /usr/lib64
+--- processes
+   44 labview         /usr/local/natinst/LabVIEW-2026-64/labview /tmp/fxr/skeleton.vi
+--- Execution:State of the skeleton after the run (P2 probe): code=0;source=;detail=1

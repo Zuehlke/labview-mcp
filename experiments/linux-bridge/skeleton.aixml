@@ -1,0 +1,116 @@
+<VI _name="skeleton.vi" description="Slice 1.2 bridge skeleton. Connects to 127.0.0.1 on the port named in the rendezvous file (Inputs[0], default /tmp/lvmcp-skeleton-port.txt), then loops\3A read one length-prefixed frame (4-byte big-endian length, then the payload), answer one frame. The payload probe runs the VI Server constructs the bridge needs (Open Application Reference, Open VI Reference in that instance, Property Node, Invoke Node, Ctrl Val.Get and Ctrl Val.Set through Flatten To XML and Unflatten From XML) on the VI at Inputs[1] (default /tmp/fx/Target.vi). Any other payload is echoed. The loop ends on the first TCP error (66 is the peer closing, measured). Reentrant.">
+  <FreeLabel comment="Read a frame, answer a frame, until TCP ends" uid="4200" uid_parent="root"/>
+
+  <Control _name="Inputs" conIdx="11" connection="recommended" outputs="value:4209.value" type="array{string}" uid="4209" uid_parent="root" value="[]"/>
+
+  <Constant _name="default rendezvous path" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value="/tmp/lvmcp-skeleton-port.txt"/>
+  <Constant _name="index 0" outputs="value:4320.value" type="int32" uid="4320" uid_parent="root" value="0"/>
+  <Constant _name="index 1" outputs="value:4321.value" type="int32" uid="4321" uid_parent="root" value="1"/>
+  <Node _name="Index Array" inputs="array:4209.value,index:4320.value" outputs="element:4322.value" uid="4322" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4209.value,index:4321.value" outputs="element:4323.value" uid="4323" uid_parent="root"/>
+  <Node _name="Empty String/Path?" inputs="string/path:4322.value" outputs="empty?:4324.empty" uid="4324" uid_parent="root"/>
+  <Node _name="Select" inputs="s:4324.empty,t:4201.value,f:4322.value" outputs="s? t\3Af:4325.rendezvous" uid="4325" uid_parent="root"/>
+  <Constant _name="target vi path" outputs="value:4326.value" type="string" uid="4326" uid_parent="root" value="/tmp/fx/Target.vi"/>
+  <Node _name="Empty String/Path?" inputs="string/path:4323.value" outputs="empty?:4327.empty" uid="4327" uid_parent="root"/>
+  <Node _name="Select" inputs="s:4327.empty,t:4326.value,f:4323.value" outputs="s? t\3Af:4328.target" uid="4328" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4325.rendezvous" outputs="path:4202.path" uid="4202" uid_parent="root"/>
+  <Constant _name="read whole file" outputs="value:4207.value" type="int32" uid="4207" uid_parent="root" value="-1"/>
+  <Node _name="Read from Text File" inputs="file (use dialog):4202.path,count:4207.value,error in:,prompt (Open existing file):" outputs="refnum out:,text:4203.text,cancelled:,error out:4203.error out" uid="4203" uid_parent="root"/>
+  <Constant _name="loopback address" outputs="value:4204.value" type="string" uid="4204" uid_parent="root" value="127.0.0.1"/>
+  <Constant _name="connect timeout ms" outputs="value:4205.value" type="int32" uid="4205" uid_parent="root" value="5000"/>
+  <Node _name="Decimal String To Number" inputs="string:4203.text" outputs="number:4208.number" uid="4208" uid_parent="root"/>
+  <Node _name="To Unsigned Word Integer" inputs="number:4208.number" outputs="unsigned 16bit integer:4219.port" uid="4219" uid_parent="root"/>
+  <Node _name="TCP Open Connection" inputs="address:4204.value,remote port or service name:4219.port,timeout ms (60000):4205.value,error in (no error):4203.error out" outputs="connection ID:4206.connection ID,error out:4206.error out" uid="4206" uid_parent="root"/>
+
+  <Structure _name="While Loop" count="" label="One iteration per request frame" uid="4210" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4206.connection ID" outputs="value:4211.value" uid="4211" uid_parent="4210"/>
+    <Tunnel _id="In2" inputs="value:4206.error out" outputs="value:4218.value" uid="4218" uid_parent="4210"/>
+    <Tunnel _id="In3" inputs="value:4328.target" outputs="value:4330.value" uid="4330" uid_parent="4210"/>
+    <Constant _name="header bytes" outputs="value:4212.value" type="int32" uid="4212" uid_parent="4210" value="4"/>
+    <Constant _name="read timeout ms" outputs="value:4213.value" type="int32" uid="4213" uid_parent="4210" value="60000"/>
+    <Node _name="TCP Read" inputs="connection ID:4211.value,bytes to read:4212.value,timeout ms (25000):4213.value,error in (no error):4218.value" outputs="connection ID out:,data out:4214.data out,error out:4214.error out" uid="4214" uid_parent="4210"/>
+    <Constant _name="length type" outputs="value:4215.value" type="uint32" uid="4215" uid_parent="4210" value="0"/>
+    <Node _name="Unflatten From String" inputs="type:4215.value,error in (no error):4214.error out,binary string:4214.data out" outputs="value:4216.value,rest of the binary string:,error out:4216.error out" uid="4216" uid_parent="4210"/>
+    <Node _name="TCP Read" inputs="connection ID:4211.value,bytes to read:4216.value,timeout ms (25000):4213.value,error in (no error):4216.error out" outputs="connection ID out:,data out:4217.data out,error out:4217.error out" uid="4217" uid_parent="4210"/>
+
+    <Structure _name="Case Structure" selectin="4217.data out" uid="4220" uid_parent="4210">
+      <Tunnel _id="In1" inputs="value:4217.data out" uid="4221" uid_parent="4220"/>
+      <Tunnel _id="In2" inputs="value:4217.error out" uid="4222" uid_parent="4220"/>
+      <Tunnel _id="In3" inputs="value:4330.value" uid="4331" uid_parent="4220"/>
+      <Tunnel _id="Out1" outputs="value:4223.value" uid="4223" uid_parent="4220"/>
+      <Tunnel _id="Out2" outputs="value:4224.value" uid="4224" uid_parent="4220"/>
+
+      <CaseFrame selector="&quot;probe&quot;" selectout="" uid="4230" uid_parent="4220">
+        <FreeLabel comment="Open app, open VI, get, set, run, get" uid="4231" uid_parent="4230"/>
+        <Tunnel _id="In1" outputs="value:" uid="4232" uid_parent="4230"/>
+        <Tunnel _id="In2" outputs="value:4233.value" uid="4233" uid_parent="4230"/>
+        <Tunnel _id="In3" outputs="value:4243.value" uid="4234" uid_parent="4230"/>
+        <Constant _name="machine name" outputs="value:4240.value" type="string" uid="4240" uid_parent="4230" value="localhost"/>
+        <Constant _name="vi server port" outputs="value:4241.value" type="uint16" uid="4241" uid_parent="4230" value="3363"/>
+        <Node _name="Open Application Reference" inputs="machine name (&quot;&quot;\3A  open local reference):4240.value,port number or service name (3363):4241.value" outputs="application reference:4242.application reference,error out:4242.error out" uid="4242" uid_parent="4230"/>
+        <Node _name="String To Path" inputs="string:4243.value" outputs="path:4244.path" uid="4244" uid_parent="4230"/>
+        <Node _name="Open VI Reference" inputs="application reference (local):4242.application reference,vi path:4244.path,error in (no error):4242.error out" outputs="vi reference:4245.vi reference,error out:4245.error out" uid="4245" uid_parent="4230"/>
+        <Node _name="Property Node" fields="read+Execution\3AState" type="{LV.VI}" inputs="reference:4245.vi reference,error in (no error):4245.error out" outputs="Execution\3AState:4246.state,reference out:4246.ref,error out:4246.error out" uid="4246" uid_parent="4230"/>
+        <Constant _name="x name" outputs="value:4247.value" type="string" uid="4247" uid_parent="4230" value="x"/>
+        <Node _name="Invoke Node" target="Ctrl Val.Get" type="{LV.VI}" inputs="reference:4246.ref,error in (no error):4246.error out,Control Name:4247.value" outputs="reference out:4248.ref,error out:4248.error out,Get Control Value Variant:4248.variant" uid="4248" uid_parent="4230"/>
+        <Node _name="Flatten To XML" inputs="anything:4248.variant" outputs="xml string:4249.xml string" uid="4249" uid_parent="4230"/>
+        <Constant _name="x 41.5 as xml" outputs="value:4270.value" type="string" uid="4270" uid_parent="4230" value="&lt;LvVariant&gt;&#10;&lt;Name&gt;Get Control Value Variant&lt;/Name&gt;&#10;&lt;DBL&gt;&#10;&lt;Name&gt;x&lt;/Name&gt;&#10;&lt;Val&gt;41.5&lt;/Val&gt;&#10;&lt;/DBL&gt;&#10;&lt;/LvVariant&gt;&#10;"/>
+        <Constant _name="variant type" outputs="value:4250.value" type="variant" uid="4250" uid_parent="4230" value=""/>
+        <Node _name="Unflatten From XML" inputs="xml string:4270.value,type:4250.value,error in (no error):4248.error out" outputs="value:4251.value,error out:4251.error out" uid="4251" uid_parent="4230"/>
+        <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:4248.ref,error in (no error):4251.error out,Control Name:4247.value,Value:4251.value" outputs="reference out:4252.ref,error out:4252.error out" uid="4252" uid_parent="4230"/>
+        <Constant _name="wait until done" outputs="value:4253.value" type="bool" uid="4253" uid_parent="4230" value="true"/>
+        <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:4252.ref,error in (no error):4252.error out,Wait until done:4253.value" outputs="reference out:4254.ref,error out:4254.error out" uid="4254" uid_parent="4230"/>
+        <Constant _name="y name" outputs="value:4255.value" type="string" uid="4255" uid_parent="4230" value="y"/>
+        <Node _name="Invoke Node" target="Ctrl Val.Get" type="{LV.VI}" inputs="reference:4254.ref,error in (no error):4254.error out,Control Name:4255.value" outputs="reference out:4256.ref,error out:4256.error out,Get Control Value Variant:4256.variant" uid="4256" uid_parent="4230"/>
+        <Node _name="Flatten To XML" inputs="anything:4256.variant" outputs="xml string:4257.xml string" uid="4257" uid_parent="4230"/>
+        <Node _name="Close Reference" inputs="reference:4256.ref,error in (no error):4256.error out" outputs="error out:4258.error out" uid="4258" uid_parent="4230"/>
+        <Node _name="Close Reference" inputs="reference:4242.application reference,error in (no error):4258.error out" outputs="error out:4259.error out" uid="4259" uid_parent="4230"/>
+        <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4259.error out" outputs="code:4260.code" uid="4260" uid_parent="4230"/>
+        <Node _name="Number To Decimal String" inputs="number:4260.code" outputs="decimal integer string:4261.text" uid="4261" uid_parent="4230"/>
+        <Node _name="Number To Decimal String" inputs="number:4246.state" outputs="decimal integer string:4262.text" uid="4262" uid_parent="4230"/>
+        <Constant _name="code label" outputs="value:4263.value" type="string" uid="4263" uid_parent="4230" value="code="/>
+        <Constant _name="state label" outputs="value:4264.value" type="string" uid="4264" uid_parent="4230" value=";state="/>
+        <Constant _name="x label" outputs="value:4265.value" type="string" uid="4265" uid_parent="4230" value=";x="/>
+        <Constant _name="y label" outputs="value:4266.value" type="string" uid="4266" uid_parent="4230" value=";y="/>
+        <Node _name="Concatenate Strings" inputs="string:4263.value,string:4261.text,string:4264.value,string:4262.text,string:4265.value,string:4249.xml string,string:4266.value,string:4257.xml string" outputs="concatenated string:4267.reply" uid="4267" uid_parent="4230"/>
+        <Tunnel _id="Out1" inputs="value:4267.reply" uid="4268" uid_parent="4230"/>
+        <Tunnel _id="Out2" inputs="value:4233.value" uid="4269" uid_parent="4230"/>
+      </CaseFrame>
+
+      <CaseFrame selector="Default" selectout="" uid="4280" uid_parent="4220">
+        <FreeLabel comment="Echo the payload unchanged" uid="4281" uid_parent="4280"/>
+        <Tunnel _id="In1" outputs="value:4282.value" uid="4282" uid_parent="4280"/>
+        <Tunnel _id="In2" outputs="value:4283.value" uid="4283" uid_parent="4280"/>
+        <Tunnel _id="In3" outputs="value:" uid="4286" uid_parent="4280"/>
+        <Tunnel _id="Out1" inputs="value:4282.value" uid="4284" uid_parent="4280"/>
+        <Tunnel _id="Out2" inputs="value:4283.value" uid="4285" uid_parent="4280"/>
+      </CaseFrame>
+    </Structure>
+
+    <Node _name="String Length" inputs="string:4223.value" outputs="length:4290.length" uid="4290" uid_parent="4210"/>
+    <Node _name="Flatten To String" inputs="anything:4290.length" outputs="data string:4291.data string" uid="4291" uid_parent="4210"/>
+    <Node _name="Concatenate Strings" inputs="string:4291.data string,string:4223.value" outputs="concatenated string:4292.frame" uid="4292" uid_parent="4210"/>
+    <Constant _name="write timeout ms" outputs="value:4293.value" type="int32" uid="4293" uid_parent="4210" value="10000"/>
+    <Node _name="TCP Write" inputs="connection ID:4211.value,data in:4292.frame,timeout ms (25000):4293.value,error in (no error):4224.value" outputs="connection ID out:,bytes written:,error out:4294.error out" uid="4294" uid_parent="4210"/>
+    <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4294.error out" outputs="status:4295.status" uid="4295" uid_parent="4210"/>
+    <Condition inputs="value:4295.status" uid="4296" uid_parent="4210" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4294.error out" outputs="value:4297.value" uid="4297" uid_parent="4210"/>
+  </Structure>
+
+  <FreeLabel comment="Close the connection, report the last error" uid="4300" uid_parent="root"/>
+  <Node _name="TCP Close Connection" inputs="connection ID:4206.connection ID,error in (no error):4297.value" outputs="connection ID out:,error out:4301.error out" uid="4301" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:4301.error out" outputs="code:4302.code,source:4302.source" uid="4302" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4302.code" outputs="decimal integer string:4303.text" uid="4303" uid_parent="root"/>
+  <Constant _name="code label" outputs="value:4304.value" type="string" uid="4304" uid_parent="root" value="code="/>
+  <Constant _name="source label" outputs="value:4305.value" type="string" uid="4305" uid_parent="root" value=";source="/>
+  <Node _name="Concatenate Strings" inputs="string:4304.value,string:4303.text,string:4305.value,string:4302.source" outputs="concatenated string:4306.line" uid="4306" uid_parent="root"/>
+  <Constant _name="peer closed 66" outputs="value:4307.value" type="int32" uid="4307" uid_parent="root" value="66"/>
+  <Constant _name="zero" outputs="value:4308.value" type="int32" uid="4308" uid_parent="root" value="0"/>
+  <Node _name="Equal?" inputs="x:4302.code,y:4307.value" outputs="x = y?:4309.x = y?" uid="4309" uid_parent="root"/>
+  <Node _name="Select" inputs="s:4309.x = y?,t:4308.value,f:4302.code" outputs="s? t\3Af:4310.return" uid="4310" uid_parent="root"/>
+
+  <Indicator _name="Output/Failure" conIdx="2" connection="recommended" inputs="value:4306.line" type="string" uid="4311" uid_parent="root" value=""/>
+  <Indicator _name="CLI Process Return Code" conIdx="3" connection="recommended" inputs="value:4310.return" type="int32" uid="4312" uid_parent="root" value="0"/>
+</VI>
+<?lvmcp pane="4815"?>
+<?lvmcp exec IsReentrant="1"?>

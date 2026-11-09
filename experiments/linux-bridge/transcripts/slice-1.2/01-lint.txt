@@ -1,0 +1,4 @@
+
+/Users/nina/Documents/Projects/labview-mcp/labview-mcp/experiments/linux-bridge/skeleton.aixml  [clean]
+
+1 file(s): 0 error(s), 0 warning(s), 0 info

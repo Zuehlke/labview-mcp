@@ -1,0 +1,2 @@
+UNSUPPORTED: net '4206.connection ID' carries a Refnum.TCPNetConn, which no composed wire has carried yet
+exit code: 2

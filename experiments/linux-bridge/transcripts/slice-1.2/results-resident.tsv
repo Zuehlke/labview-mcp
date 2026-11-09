@@ -1,0 +1,4 @@
+route	result	echoes	failures	connect_s	total_echo_ms	wall_ms	probe_code	probe_y	exec_state_after	labview_procs	transcript
+launch	PASS	100	0	4.2	10	4590	0	42.50000000000000	1	1	transcripts/slice-1.2/10-launch.txt
+runvi	PASS	100	0	9.5	9	9539	0	42.50000000000000	1	1	transcripts/slice-1.2/20-runvi.txt
+launch-plain	CONTROL-OK	0	100	none	none	45478	none	none	1	1	transcripts/slice-1.2/30-launch-plain.txt

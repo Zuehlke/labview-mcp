@@ -1,0 +1,84 @@
+Structure 'While Loop' <- buip.xml
+Structure 'Case Structure' (string, 2 frames) <- AIXML-generated probe: pcase.vi
+Control 'Inputs' <- pclean.xml
+Indicator 'Output/Failure' <- pclean.xml
+Indicator 'CLI Process Return Code' <- pclean.xml
+Constant 'default rendezvous path' <- pclean.xml
+Constant 'index 0' <- pclean.xml
+Constant 'index 1' <- pclean.xml
+Constant 'target vi path' <- pclean.xml
+Constant 'read whole file' <- pclean.xml
+Constant 'loopback address' <- pclean.xml
+Constant 'connect timeout ms' <- pclean.xml
+Constant 'header bytes' <- pclean.xml
+Constant 'read timeout ms' <- pclean.xml
+Constant 'length type' <- pclean.xml
+Constant 'machine name' <- pclean.xml
+Constant 'vi server port' <- pclean.xml
+Constant 'x name' <- pclean.xml
+Constant 'x 41.5 as xml' <- pclean.xml
+Constant 'variant type' <- pclean.xml
+Constant 'wait until done' <- pclean.xml
+Constant 'y name' <- pclean.xml
+Constant 'code label' <- pclean.xml
+Constant 'state label' <- pclean.xml
+Constant 'x label' <- pclean.xml
+Constant 'y label' <- pclean.xml
+Constant 'write timeout ms' <- pclean.xml
+Constant 'code label' <- pclean.xml
+Constant 'source label' <- pclean.xml
+Constant 'peer closed 66' <- pclean.xml
+Constant 'zero' <- pclean.xml
+Node 'Index Array' <- AIXML-generated probe: parr.vi
+Node 'Index Array' <- AIXML-generated probe: parr.vi
+Node 'Open Application Reference' = primResID 8012 <- <labview>\examples\Application Control\VI Server\Exporting VIs\Exporting VIs.vi
+Node 'Empty String/Path?' = primResID 1112 <- <labview>\project\Delacor\DQMH\_DQMH New Module\Check if OK to Proceed.vi
+Node 'Empty String/Path?' = primResID 1112 <- <labview>\project\Delacor\DQMH\_DQMH New Module\Check if OK to Proceed.vi
+Node 'Select' = primResID 1516 <- <labview>\examples\Controls and Indicators\Boolean\System Mixed Checkbox.vi
+Node 'Select' = primResID 1516 <- <labview>\examples\Controls and Indicators\Boolean\System Mixed Checkbox.vi
+Node 'String To Path' = primResID 1078 <- <labview>\examples\Object-Oriented Programming\Basic Interfaces\Lever\Pry.vi
+Tunnel In3 (in)
+Node 'Read from Text File' = primResID 8070 <- <labview>\examples\Data Communication\Protocols\FTP\FTP Put and Get Files.vi
+Case tunnel In3 (in)
+Node 'Decimal String To Number' = primResID 1184 <- <labview>\examples\Controls and Indicators\Web Browser\Simple Canvas Chart Using JavaScript.vi
+Node 'String To Path' = primResID 1078 <- <labview>\examples\Object-Oriented Programming\Basic Interfaces\Lever\Pry.vi
+Node 'To Unsigned Word Integer' = primResID 1144 <- Database Delete.vi
+Node 'Open VI Reference' = primResID 8010 <- <labview>\examples\Application Control\VI Server\Exporting VIs\Exporting VIs.vi
+Node 'TCP Open Connection' = primResID 1715 <- <labview>\examples\Data Communication\Protocols\TLS\Connect to TLS Server.vi
+Property Node LV.VI Execution:State <- ppn.xml
+Tunnel In1 (in)
+Tunnel In2 (in)
+Invoke Node LV.VI.Ctrl Val.Get <- <labview>\vi.lib\Math Plots\3D Math Plots\3D Comet\3D Comet\Public\Property Page\Property Dialog.vi
+Node 'Number To Decimal String' = primResID 1180 <- Self-Test All Devices.vi
+Node 'TCP Read' = primResID 1716 <- <labview>\examples\Data Communication\Protocols\TLS\TLS Client and Server with Self-Signed Server Certificate.vi
+Node 'Flatten To XML' = primResID 8402 <- P3 ni lvai_discuss.vi
+Node 'Unflatten From XML' = primResID 8401 <- P3 ni lvai_run_and_read_typed.vi
+Node 'Unflatten From String' = primResID 1165 <- <labview>\examples\Strings\Unflatten from String with Little-Endian Data.vi
+Invoke Node LV.VI.Ctrl Val.Set <- <labview>\examples\Application Control\VI Server\Asynchronous Call By Reference\Benchmarking Asynchronous Calls.vi
+Node 'TCP Read' = primResID 1716 <- <labview>\examples\Data Communication\Protocols\TLS\TLS Client and Server with Self-Signed Server Certificate.vi
+Invoke Node LV.VI.Run VI <- <labview>\examples\Application Control\VI Scripting\Creating Objects\Script Random Strip Chart with Diagram Cleanup.vi
+Case tunnel In1 (in)
+Case tunnel In2 (in)
+Invoke Node LV.VI.Ctrl Val.Get <- <labview>\vi.lib\Math Plots\3D Math Plots\3D Comet\3D Comet\Public\Property Page\Property Dialog.vi
+Case tunnel Out2 (out)
+Node 'Flatten To XML' = primResID 8402 <- P3 ni lvai_discuss.vi
+Node 'Close Reference' = primResID 8011 <- <labview>\examples\Application Control\VI Scripting\Creating VIs\Creating New VI From Template.vi
+Node 'Close Reference' = primResID 8011 <- <labview>\examples\Application Control\VI Scripting\Creating VIs\Creating New VI From Template.vi
+Node 'Unbundle By Name' <- AIXML-generated probe: pclu2.vi
+Node 'Number To Decimal String' = primResID 1180 <- Self-Test All Devices.vi
+Node 'Concatenate Strings' <- template tnode/Concatenate_Strings/439a1a7d91 (<labview>\examples\Mathematics\Fitting\Predicting Cost.vi)
+Case tunnel Out1 (out)
+Node 'String Length' = primResID 1502 <- <labview>\examples\Data Communication\Protocols\TLS\TLS Client and Server with Self-Signed Server Certificate.vi
+Node 'Flatten To String' = primResID 1164 <- <labview>\resource\Framework\Providers\Builds\Installer\CDK_GlobalData_ProductDiscovery_Products.vi
+Node 'Concatenate Strings' <- template tnode/Concatenate_Strings/9dd786a2ce (AIXML-generated probe: pnodes2.vi)
+Node 'TCP Write' = primResID 1714 <- <labview>\examples\Data Communication\Protocols\TLS\TLS Client and Server with Self-Signed Server Certificate.vi
+Node 'Unbundle By Name' <- AIXML-generated probe: pclu2.vi
+Tunnel Out1 (out)
+Node 'TCP Close Connection' = primResID 1713 <- <labview>\examples\Controls and Indicators\Web Browser\Video Playback Using JavaScript.vi
+Node 'Unbundle By Name' <- AIXML-generated probe: pclu2.vi
+Node 'Number To Decimal String' = primResID 1180 <- Self-Test All Devices.vi
+Node 'Equal?' = primResID 1102 <- <labview>\examples\Comparison\Comparison Functions.vi
+Node 'Concatenate Strings' <- template tnode/Concatenate_Strings/7ae6f455e0 (AIXML-generated probe: pnodes2.vi)
+Node 'Select' = primResID 1516 <- <labview>\examples\Controls and Indicators\Boolean\System Mixed Checkbox.vi
+wires routed: 90, left generic: 6
+wrote /Users/nina/Documents/Projects/labview-mcp/labview-mcp/experiments/linux-bridge/fixtures/vi/offline/skeleton-2020.vi (15076 bytes)
