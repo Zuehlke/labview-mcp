@@ -1,0 +1,12 @@
+route: nodisplay-runvi   container: lvc-7544-1794234953-9b73ded6   display: no   time box: 17 s   2026-11-09T14:35:53Z
+3188432359 15076 /tmp/fx/skeleton.vi
+809270333 15076 /tmp/fxr/skeleton.vi
+start: (unset DISPLAY; cd /usr/local/natinst/nilvcli; nohup ./LabVIEWCLI -LabVIEWPath /usr/local/natinst/LabVIEW-2026-64/labview -OperationName RunVI -VIPath /tmp/fx/skeleton.vi > /tmp/route.out 2>&1 &)
+--- container still running: yes
+--- client (inside the container)
+listening 127.0.0.1:39291, rendezvous /tmp/lvmcp-skeleton-port.txt
+RESULT requested=100 echoes=0 failures=100 connect=timeout after 17 s
+--- route output
+Unable to open X display.
+--- processes
+   39 LabVIEWCLI      ./LabVIEWCLI -LabVIEWPath /usr/local/natinst/LabVIEW-2026-64/labview -OperationName RunVI -VIPath /tmp/fx/skeleton.vi

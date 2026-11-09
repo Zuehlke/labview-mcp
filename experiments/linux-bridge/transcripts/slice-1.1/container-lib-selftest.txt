@@ -1,0 +1,36 @@
+== several containers in one process, unique names, labels, hardening
+ok   two names in one process (lvc-2625-1794234656-19fda720, lvc-2625-1794234656-8b0ef950)
+ok   both running
+ok   no published ports (a)
+ok   labels (a)
+ok   cap-drop ALL
+ok   no-new-privileges
+ok   network none
+ok   ro mount refuses a write (a)
+ok   rw mount accepts a write (b)
+ok   write landed on the host (b)
+== argument checks
+ok   mode other than ro|rw refused
+ok   missing directory refused
+ok   operation name with a shell character refused
+ok   non-integer time box refused
+ok   quote survives lvc_q
+== the image pin
+ok   LVC_IMAGE from the environment is ignored
+ok   ...and says so
+ok   lvc_use_image without the flag refused
+== removal
+ok   lvc_stop removes one (a gone)
+ok   ...and leaves the other (b running)
+ok   lvc_cleanup removes the rest (b gone)
+ok   lvc_cleanup leaves another owner's container
+ok   lvc_sweep removes it
+ok   ...and ours
+== removal through the CALLER's traps (EXIT, TERM, INT)
+ok   (exit) container was running before the stop
+ok   (exit) removed
+ok   (TERM) container was running before the stop
+ok   (TERM) removed
+ok   (INT) container was running before the stop
+ok   (INT) removed
+== all checks ok

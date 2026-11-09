@@ -1,0 +1,5 @@
+<VI _name="BrokenWire.vi" description="Probe fixture\3A one broken wire, a string constant wired to the x input of Add.">
+  <FreeLabel comment="One broken wire" uid="4200" uid_parent="root"/>
+  <Constant _name="text" outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value="abc"/>
+  <Node _name="Add" inputs="x:4210.value" outputs="x+y:" uid="4212" uid_parent="root"/>
+</VI>

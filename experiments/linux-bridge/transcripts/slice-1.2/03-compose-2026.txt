@@ -81,4 +81,4 @@ Node 'Equal?' = primResID 1102 <- <labview>\examples\Comparison\Comparison Funct
 Node 'Concatenate Strings' <- template tnode/Concatenate_Strings/7ae6f455e0 (AIXML-generated probe: pnodes2.vi)
 Node 'Select' = primResID 1516 <- <labview>\examples\Controls and Indicators\Boolean\System Mixed Checkbox.vi
 wires routed: 90, left generic: 6
-wrote /Users/nina/Documents/Projects/labview-mcp/labview-mcp/experiments/linux-bridge/fixtures/vi/skeleton.vi (15080 bytes)
+wrote /Users/nina/Documents/Projects/labview-mcp/labview-mcp/experiments/linux-bridge/fixtures/vi/skeleton.vi (15076 bytes)

@@ -24,12 +24,16 @@ REPO="$(cd "$HERE/../.." && pwd)"
 OUT="${1:-$HERE/transcripts/slice-1.2}"
 PY="${PYLV_PYTHON:-python3}"
 SRC="$HERE/skeleton.aixml"
+# The container runs LabVIEW 26.1f0. Without --lv-version the composer stamps its skeleton's 26.3.1 (2026 Q3), newer
+# than the runtime. --lv-version 26 stamps 26.0, which a 26.1 runtime can read.
+LV_MAJOR="${LV_MAJOR:-26}"
 mkdir -p "$OUT" "$HERE/fixtures/vi/run-on-open" "$HERE/fixtures/vi/offline"
 fail=0
 step() { printf '== %s\n' "$*"; }
 
 step "1. lint (no LabVIEW)"
-"$PY" "$REPO/scripts/aixml_lint.py" "$SRC" > "$OUT/01-lint.txt" 2>&1; tail -3 "$OUT/01-lint.txt"
+"$PY" "$REPO/scripts/aixml_lint.py" "$SRC" > "$OUT/01-lint.txt" 2>&1 || { echo "lint failed (exit $?)"; fail=1; }
+tail -3 "$OUT/01-lint.txt"
 
 step "2. composer, default settings: expected refusal of the TCP connection wire"
 TMP="$(mktemp -d)"
@@ -39,14 +43,23 @@ rc=$?
 tail -2 "$OUT/02-compose-strict.txt"
 [ "$rc" -eq 2 ] || { echo "expected exit 2 (UNSUPPORTED)"; fail=1; }
 
-step "3. composer with AIXML2VI_TRY_WIRES=Refnum.TCPNetConn: LabVIEW 2026 file version"
-AIXML2VI_TRY_WIRES=Refnum.TCPNetConn "$PY" "$HERE/compose.py" "$SRC" "$HERE/fixtures/vi/skeleton.vi" > "$OUT/03-compose-2026.txt" 2>&1 \
+step "3. composer with AIXML2VI_TRY_WIRES=Refnum.TCPNetConn, --lv-version $LV_MAJOR (LabVIEW 2026 file version)"
+AIXML2VI_TRY_WIRES=Refnum.TCPNetConn "$PY" "$HERE/compose.py" "$SRC" "$HERE/fixtures/vi/skeleton.vi" --lv-version "$LV_MAJOR" > "$OUT/03-compose-2026.txt" 2>&1 \
   || { echo "compose failed"; fail=1; }
 tail -2 "$OUT/03-compose-2026.txt"
 LVMCP_EXEC_FLAGS=RunOnOpen=1 AIXML2VI_TRY_WIRES=Refnum.TCPNetConn "$PY" "$HERE/compose.py" "$SRC" \
-  "$HERE/fixtures/vi/run-on-open/skeleton.vi" > "$OUT/03-compose-2026-run-on-open.txt" 2>&1 \
+  "$HERE/fixtures/vi/run-on-open/skeleton.vi" --lv-version "$LV_MAJOR" > "$OUT/03-compose-2026-run-on-open.txt" 2>&1 \
   || { echo "compose (run on open) failed"; fail=1; }
 tail -1 "$OUT/03-compose-2026-run-on-open.txt"
+
+version_words() {   # file version words (LVSR, vers) of a VI, from pylabview's extract
+  local x; x="$(mktemp -d)"
+  PYTHONPATH="$REPO/tools/pylabview/vendor" "$PY" "$REPO/tools/pylabview/vendor/pylabview/readRSRC.py" -x -i "$1" -m "$x/m.xml" > "$x/extract.txt" 2>&1
+  "$PY" -c 'import re,sys; print(["%s.%s.%s" % v for v in re.findall(r"<Version Major=\"(\d+)\" Minor=\"(\d+)\" Bugfix=\"(\d+)\"", open(sys.argv[1], encoding="utf-8").read())[:2]])' "$x/m.xml"
+  rm -rf "$x"
+}
+for f in skeleton run-on-open/skeleton; do echo "$f.vi: file version words $(version_words "$HERE/fixtures/vi/$f.vi")"; done | tee "$OUT/03-version-words-2026.txt"
+grep -q "'$LV_MAJOR\.0\.0'.*'$LV_MAJOR\.0\.0'" "$OUT/03-version-words-2026.txt" || { echo "2026 files are not stamped $LV_MAJOR.0.0"; fail=1; }
 
 step "4. composer for LabVIEW 2020 (--lv-version 20), then pylabview reads the file back"
 AIXML2VI_TRY_WIRES=Refnum.TCPNetConn "$PY" "$HERE/compose.py" "$SRC" "$HERE/fixtures/vi/offline/skeleton-2020.vi" \

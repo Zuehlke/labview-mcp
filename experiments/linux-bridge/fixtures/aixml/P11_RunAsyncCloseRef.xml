@@ -1,0 +1,38 @@
+<VI _name="P11_RunAsyncCloseRef.vi" description="Slice 1.1 probe\3A Open VI Reference, Run VI async, read state, Close Reference, Open VI Reference again, read state, close.">
+  <FreeLabel comment="Run, close the ref, reopen, read" uid="4200" uid_parent="root"/>
+  <Control _name="Inputs" conIdx="11" connection="recommended" outputs="value:4209.value" type="array{string}" uid="4209" uid_parent="root" value="[]"/>
+  <Constant _name="index 0" outputs="value:4205.value" type="int32" uid="4205" uid_parent="root" value="0"/>
+  <Constant _name="index 1" outputs="value:4206.value" type="int32" uid="4206" uid_parent="root" value="1"/>
+  <Node _name="Index Array" inputs="array:4209.value,index:4205.value" outputs="element:4210.value" uid="4210" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4209.value,index:4206.value" outputs="element:4211.value" uid="4211" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4210.value" outputs="path:4212.path" uid="4212" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4211.value" outputs="path:4213.path" uid="4213" uid_parent="root"/>
+  <Constant _name="empty" outputs="value:4214.value" type="string" uid="4214" uid_parent="root" value=""/>
+  <Node _name="Open VI Reference" inputs="vi path:4212.path" outputs="vi reference:4220.ref,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Constant _name="do not wait" outputs="value:4215.value" type="bool" uid="4215" uid_parent="root" value="false"/>
+  <Constant _name="comma" outputs="value:4217.value" type="string" uid="4217" uid_parent="root" value=","/>
+  <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:4220.ref,error in (no error):4220.err,Wait until done:4215.value" outputs="reference out:4221.ref,error out:4221.err" uid="4221" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Execution\3AState" type="{LV.VI}" inputs="reference:4221.ref,error in (no error):4221.err" outputs="Execution\3AState:4231.state,reference out:,error out:4231.err" uid="4231" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4231.state" outputs="decimal integer string:4232.text" uid="4232" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4221.ref,error in (no error):4231.err" outputs="error out:4233.err" uid="4233" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4233.err" outputs="status:4270.status" uid="4270" uid_parent="root"/>
+  <Constant _name="settle ms" outputs="value:4272.value" type="uint32" uid="4272" uid_parent="root" value="500"/>
+  <Node _name="Select" inputs="t:4272.value,s:4270.status,f:4272.value" outputs="s? t\3Af:4271.sel" uid="4271" uid_parent="root"/>
+  <Node _name="Wait (ms)" inputs="milliseconds to wait:4271.sel" outputs="millisecond timer value:4273.tick" uid="4273" uid_parent="root"/>
+  <Node _name="Greater Or Equal To 0?" inputs="x:4273.tick" outputs="x &gt;= 0?:4274.ok" uid="4274" uid_parent="root"/>
+  <Node _name="Select" inputs="t:4212.path,s:4274.ok,f:4212.path" outputs="s? t\3Af:4275.sel" uid="4275" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4275.sel,error in (no error):4233.err" outputs="vi reference:4234.ref,error out:4234.err" uid="4234" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Execution\3AState" type="{LV.VI}" inputs="reference:4234.ref,error in (no error):4234.err" outputs="Execution\3AState:4251.state,reference out:,error out:4251.err" uid="4251" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4251.state" outputs="decimal integer string:4252.text" uid="4252" uid_parent="root"/>
+  <Node _name="Concatenate Strings" inputs="string:4232.text,string:4217.value,string:4252.text" outputs="concatenated string:4260.both" uid="4260" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4234.ref,error in (no error):4251.err" outputs="error out:4240.err" uid="4240" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:4240.err" outputs="code:4290.code,source:4290.source" uid="4290" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4290.code" outputs="decimal integer string:4294.text" uid="4294" uid_parent="root"/>
+  <Constant _name="code label" outputs="value:4295.value" type="string" uid="4295" uid_parent="root" value="code="/>
+  <Constant _name="source label" outputs="value:4296.value" type="string" uid="4296" uid_parent="root" value=";source="/>
+  <Constant _name="detail label" outputs="value:4297.value" type="string" uid="4297" uid_parent="root" value=";detail="/>
+  <Node _name="Concatenate Strings" inputs="string:4295.value,string:4294.text,string:4296.value,string:4290.source,string:4297.value,string:4260.both" outputs="concatenated string:4298.line" uid="4298" uid_parent="root"/>
+  <Indicator _name="Output/Failure" conIdx="2" connection="recommended" inputs="value:4298.line" type="string" uid="4291" uid_parent="root" value=""/>
+  <Indicator _name="CLI Process Return Code" conIdx="3" connection="recommended" inputs="value:4290.code" type="int32" uid="4292" uid_parent="root" value="0"/>
+</VI>
+<?lvmcp pane="4815"?>

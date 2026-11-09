@@ -14,7 +14,7 @@
   <Node _name="Property Node" fields="read+Execution\3AState" type="{LV.VI}" inputs="reference:4221.ref,error in (no error):4221.err" outputs="Execution\3AState:4231.state,reference out:,error out:4231.err" uid="4231" uid_parent="root"/>
   <Node _name="Number To Decimal String" inputs="number:4231.state" outputs="decimal integer string:4232.text" uid="4232" uid_parent="root"/>
   <Node _name="Invoke Node" target="Abort VI" type="{LV.VI}" inputs="reference:4221.ref,error in (no error):4231.err" outputs="reference out:4222.ref,error out:4222.err" uid="4222" uid_parent="root"/>
-  <Node _name="Property Node" fields="read+Execution\3AState" type="{LV.VI}" inputs="reference:4222.ref,error in (no error):4231.err" outputs="Execution\3AState:4251.state,reference out:,error out:4251.err" uid="4251" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Execution\3AState" type="{LV.VI}" inputs="reference:4222.ref,error in (no error):4222.err" outputs="Execution\3AState:4251.state,reference out:,error out:4251.err" uid="4251" uid_parent="root"/>
   <Node _name="Number To Decimal String" inputs="number:4251.state" outputs="decimal integer string:4252.text" uid="4252" uid_parent="root"/>
   <Constant _name="comma" outputs="value:4217.value" type="string" uid="4217" uid_parent="root" value=","/>
   <Node _name="Concatenate Strings" inputs="string:4232.text,string:4217.value,string:4252.text" outputs="concatenated string:4218.both" uid="4218" uid_parent="root"/>

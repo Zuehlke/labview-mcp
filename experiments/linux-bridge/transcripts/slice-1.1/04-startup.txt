@@ -1,7 +1,7 @@
-container up (docker run to first exec): 268 ms
+container up (docker run to first exec): 247 ms
 Xvfb up:                                 246 ms
-first LabVIEWCLI RunVI (launches LabVIEW), exit code 0: 10499 ms
-second LabVIEWCLI RunVI (LabVIEW resident):               3095 ms
+first LabVIEWCLI RunVI (launches LabVIEW), exit code 0: 10293 ms
+second LabVIEWCLI RunVI (LabVIEW resident):               1800 ms
 5 minute threshold (plan Slice 1): not exceeded
 LabVIEW process after the calls (comm / args):
-  144 labview         /usr/local/natinst/LabVIEW-2026-64/labview
+  141 labview         /usr/local/natinst/LabVIEW-2026-64/labview

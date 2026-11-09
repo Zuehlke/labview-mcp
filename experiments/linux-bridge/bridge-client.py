@@ -6,7 +6,8 @@
 Plays the server's part: listens on 127.0.0.1 with an OS-chosen port, publishes the port in the
 rendezvous file (atomic rename), waits for the skeleton to connect, sends N length-prefixed echo
 frames (4-byte big-endian length, then the payload) and checks each answer, then sends `probe`
-and prints the reply. Exit 0 only when every echo came back byte for byte.
+and prints the reply. The RESULT line says how many echoes were requested and how many came back
+byte for byte (`echoes`); `failures` is every other one. Exit 0 only when all of them came back.
 """
 import argparse
 import os
@@ -54,13 +55,13 @@ def main():
     try:
         conn, peer = srv.accept()
     except socket.timeout:
-        print("RESULT echoes=0 failures=%d connect=timeout after %.0f s" % (a.echoes, a.connect_timeout))
+        print("RESULT requested=%d echoes=0 failures=%d connect=timeout after %.0f s" % (a.echoes, a.echoes, a.connect_timeout))
         return 1
     connect_s = time.monotonic() - t_listen
     print("skeleton connected from %s:%d after %.1f s" % (peer[0], peer[1], connect_s), flush=True)
     conn.settimeout(10)
 
-    failures, lat = 0, []
+    failures, received, lat = 0, 0, []
     t0 = time.monotonic()
     for i in range(1, a.echoes + 1):
         payload = ("echo-%d-" % i).encode() + os.urandom(8).hex().encode()
@@ -71,7 +72,9 @@ def main():
         except Exception as ex:  # a failed echo is a measurement, not a crash
             ok, got = False, repr(ex).encode()
         lat.append((time.monotonic() - t) * 1000)
-        if not ok:
+        if ok:
+            received += 1
+        else:
             failures += 1
             print("FAIL echo %d: sent %r got %r" % (i, payload, got), flush=True)
     total_ms = (time.monotonic() - t0) * 1000
@@ -85,10 +88,10 @@ def main():
     conn.close()
 
     lat.sort()
-    print("RESULT echoes=%d failures=%d connect_s=%.1f total_ms=%.0f per_echo_ms min=%.1f median=%.1f p95=%.1f max=%.1f"
-          % (a.echoes, failures, connect_s, total_ms, lat[0], statistics.median(lat),
+    print("RESULT requested=%d echoes=%d failures=%d connect_s=%.1f total_ms=%.0f per_echo_ms min=%.1f median=%.1f p95=%.1f max=%.1f"
+          % (a.echoes, received, failures, connect_s, total_ms, lat[0], statistics.median(lat),
              lat[int(len(lat) * 0.95) - 1], lat[-1]))
-    return 1 if failures else 0
+    return 0 if received == a.echoes and not failures else 1
 
 
 if __name__ == "__main__":

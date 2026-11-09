@@ -3,11 +3,11 @@ libniDotNETCoreInterop.so: cannot open shared object file: No such file or direc
 Can't find library libniDotNETCoreInterop.so
 Make sure this library is installed in your LD_LIBRARY_PATH
 search path, or in /usr/lib64
-LabVIEWCLI started logging in file:  /tmp/lvtemporary_623247.log
+LabVIEWCLI started logging in file:  /tmp/lvtemporary_852466.log
 Using LabVIEW: "/usr/local/natinst/LabVIEW-2026-64/labview"
 Connection established with LabVIEW at port number 3363.
 
 Operation output: 
-code=0;source=;detail=
+code=0;source=;detail=2000,141
 RunVI operation succeeded.
 

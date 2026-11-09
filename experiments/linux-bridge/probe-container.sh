@@ -36,16 +36,17 @@ printf 'row\tmethod\tresult\tevidence\tms\ttranscript\n' > "$RESULTS"
 } > "$OUT/00-host-and-image.txt"
 
 T0=$(lvc_now_ms)
-lvc_start "$HERE" ro || exit 1
-lvc_exec true
+C=$(lvc_start "$HERE" ro) || exit 1
+trap 'lvc_cleanup' EXIT; trap 'lvc_cleanup; exit 130' INT; trap 'lvc_cleanup; exit 143' TERM
+lvc_exec "$C" true
 T_CONTAINER=$(( $(lvc_now_ms) - T0 ))
 T1=$(lvc_now_ms)
-lvc_xvfb || { echo "Xvfb did not start" >&2; exit 1; }
+lvc_xvfb "$C" || { echo "Xvfb did not start" >&2; exit 1; }
 T_XVFB=$(( $(lvc_now_ms) - T1 ))
 
 {
-  echo "container:     $LVC_NAME (no published ports: $(docker port "$LVC_NAME" | wc -l | tr -d ' ') mappings)"
-  lvc_exec 'echo "uname:         $(uname -m), $(. /etc/os-release; echo $PRETTY_NAME)"
+  echo "container:     $C (no published ports: $(docker port "$C" | wc -l | tr -d ' ') mappings)"
+  lvc_exec "$C" 'echo "uname:         $(uname -m), $(. /etc/os-release; echo $PRETTY_NAME)"
             echo "LabVIEW:       $(readlink -f '"$LVC_LABVIEW"')  (launcher '"$LVC_LABVIEW"')"
             echo "LabVIEWCLI:    $(readlink -f $(command -v LabVIEWCLI))  (and '"$LVC_CLI_DIR"'/LabVIEWCLI)"
             echo "packages:"; dpkg -l | grep -E "^ii  (labview-2026|ni-labview)" | awk "{print \"  \" \$2, \$3}"
@@ -55,16 +56,16 @@ T_XVFB=$(( $(lvc_now_ms) - T1 ))
 } > "$OUT/01-environment.txt" 2>&1
 
 # Stage the fixtures where LabVIEW may write (the mount is read-only; Print to HTML writes beside).
-lvc_exec 'mkdir -p /tmp/fx && cp /work/fixtures/vi/*.vi /tmp/fx/'
+lvc_exec "$C" 'mkdir -p /tmp/fx && cp /work/fixtures/vi/*.vi /tmp/fx/'
 
 # Cold start: the first LabVIEWCLI call launches LabVIEW. NI's own example VI (123 + 456 = 579) first,
 # so a launch problem is not blamed on a composed VI.
 T2=$(lvc_now_ms)
-lvc_cli RunVI -VIPath "$LVC_CLI_DIR/Examples/AddTwoNumbers/AddTwoNumbers.vi" 123 456 > "$OUT/02-cold-start.txt" 2>&1
+lvc_cli "$C" RunVI -VIPath "$LVC_CLI_DIR/Examples/AddTwoNumbers/AddTwoNumbers.vi" 123 456 > "$OUT/02-cold-start.txt" 2>&1
 COLD_RC=$?
 T_COLD=$(( $(lvc_now_ms) - T2 ))
 T3=$(lvc_now_ms)
-lvc_cli RunVI -VIPath "$LVC_CLI_DIR/Examples/AddTwoNumbers/AddTwoNumbers.vi" 123 456 > "$OUT/03-warm-call.txt" 2>&1
+lvc_cli "$C" RunVI -VIPath "$LVC_CLI_DIR/Examples/AddTwoNumbers/AddTwoNumbers.vi" 123 456 > "$OUT/03-warm-call.txt" 2>&1
 T_WARM=$(( $(lvc_now_ms) - T3 ))
 {
   echo "container up (docker run to first exec): ${T_CONTAINER} ms"
@@ -72,13 +73,14 @@ T_WARM=$(( $(lvc_now_ms) - T3 ))
   echo "first LabVIEWCLI RunVI (launches LabVIEW), exit code $COLD_RC: ${T_COLD} ms"
   echo "second LabVIEWCLI RunVI (LabVIEW resident):               ${T_WARM} ms"
   echo "5 minute threshold (plan Slice 1): $([ "$T_COLD" -gt 300000 ] && echo EXCEEDED || echo "not exceeded")"
-  lvc_exec 'echo "LabVIEW process after the calls (comm / args):"; ps -eo pid,comm,args | grep -E " labview( |$)" | grep -v grep'
+  lvc_exec "$C" 'echo "LabVIEW process after the calls (comm / args):"; ps -eo pid,comm,args | grep -E " labview( |$)" | grep -v grep'
 } > "$OUT/04-startup.txt" 2>&1
 
 # ---- the method table ------------------------------------------------------------------------
 # row|probe VI|arg 1 (vi path)|arg 2|check
-# `check` is a bash test over $CODE and $DETAIL; every check also needs CODE=0. The check FAILS
-# marks a negative control: it passes only when the probe reports an error (proves a probe CAN fail).
+# `check` is a bash test over $CODE and $DETAIL; every check also needs CODE=0.
+# `FAILS:<n>` marks a negative control: it passes only when the probe reports EXACTLY error code <n> (a
+# non-zero integer; an empty or missing code is a FAIL), which proves a probe CAN fail and fail the right way.
 # Rows starting with "control:" are not methods of the table; they pin what the probes can tell apart.
 ROWS=(
   "LabVIEW version|P0_AppVersion|||[ -n \"\$DETAIL\" ]"
@@ -87,12 +89,14 @@ ROWS=(
   "Run VI async|P3_RunVIAsync|/tmp/fx/Spin.vi||[ \"\$DETAIL\" = 2 ] || [ \"\$DETAIL\" = 3 ]"
   "control: Spin state after the Run VI async probe returned|P2_ExecutionState|/tmp/fx/Spin.vi||[ \"\$DETAIL\" = 1 ]"
   "Abort VI|P4_AbortVI|/tmp/fx/Spin.vi||echo \"\$DETAIL\" | grep -Eq '^[23],1\$'"
-  "control: Abort VI on a VI that is not running|P9_AbortIdle|/tmp/fx/Spin.vi||FAILS"
-  "Print VI To HTML|P5_PrintVIToHTML|/tmp/fx/Target.vi|/tmp/fx/out.html|docker exec \"\$LVC_NAME\" test -s /tmp/fx/out.html"
+  "control: Abort VI on a VI that is not running|P9_AbortIdle|/tmp/fx/Spin.vi||FAILS:1000"
+  "Print VI To HTML|P5_PrintVIToHTML|/tmp/fx/Target.vi|/tmp/fx/out.html|docker exec \"\$C\" grep -q Target.vi /tmp/fx/out.html"
   "SubVI Replace|P6_SubVIReplace|/tmp/fx/Caller.vi|/tmp/fx/Callee2.vi|[ \"\$DETAIL\" = Callee2.vi ]"
-  "Remove Bad Wires|P7_RemoveBadWires|/tmp/fx/Target.vi||true"
-  "Clean Up Diagram|P8_CleanUpDiagram|/tmp/fx/Target.vi||true"
-  "control: Open VI Reference on a missing file|P1_OpenVIReference|/tmp/fx/Missing.vi||FAILS"
+  "Remove Bad Wires|P7_RemoveBadWires|/tmp/fx/BrokenWire.vi||[ \"\$DETAIL\" = 1,TRUE,0 ]"
+  "Clean Up Diagram|P8_CleanUpDiagram|/tmp/fx/Target.vi||echo \"\$DETAIL\" | awk -F, '\$1 == 2000 && \$2 != 2000 {ok=1} END{exit !ok}'"
+  "control: Open VI Reference on a missing file|P1_OpenVIReference|/tmp/fx/Missing.vi||FAILS:7"
+  "control: Run VI async, Close Reference while the probe runs, reopen|P11_RunAsyncCloseRef|/tmp/fx/Spin2.vi||echo \"\$DETAIL\" | grep -Eq '^[23],[0-9]+\$'"
+  "control: Spin2 state after the reopen probe returned|P2_ExecutionState|/tmp/fx/Spin2.vi||[ \"\$DETAIL\" = 1 ]"
 )
 
 recorded=0
@@ -108,7 +112,7 @@ for spec in "${ROWS[@]}"; do
   fi
   args=(); [ -n "$ARG1" ] && args+=("$ARG1"); [ -n "$ARG2" ] && args+=("$ARG2")
   T=$(lvc_now_ms)
-  lvc_cli RunVI -VIPath "/tmp/fx/$PROBE.vi" ${args[@]+"${args[@]}"} > "$TR" 2>&1
+  lvc_cli "$C" RunVI -VIPath "/tmp/fx/$PROBE.vi" ${args[@]+"${args[@]}"} > "$TR" 2>&1
   MS=$(( $(lvc_now_ms) - T ))
   # the probe's answer: the text between "Operation output:" and the "RunVI operation ..." line
   ANSWER=$(awk '/^Operation output:/{f=1;next} /^RunVI operation (succeeded|failed)/{f=0} f' "$TR" | tr '\n' ' ' | sed 's/ *$//')
@@ -118,11 +122,16 @@ for spec in "${ROWS[@]}"; do
     DETAIL=$(printf '%s' "$ANSWER" | sed -n 's/.*;detail=//p')
   fi
   if [ "$ROW" = "Print VI To HTML" ]; then
-    { echo "--- /tmp/fx/out.html:"; lvc_exec 'cat /tmp/fx/out.html; ls -l /tmp/fx/out*'; } >> "$TR" 2>&1
+    { echo "--- /tmp/fx/out.html:"; lvc_exec "$C" 'cat /tmp/fx/out.html; ls -l /tmp/fx/out*'; } >> "$TR" 2>&1
   fi
   if [ "$PROBE" = P0_AppVersion ] && grep -q '^Error Code' "$TR"; then CODE=error; fi
-  if [ "$CHECK" = FAILS ]; then
-    if [ "$CODE" != 0 ]; then RESULT=PASS; EVID="error reported: code=${CODE:-none} ${DETAIL}"; else RESULT=FAIL; EVID="no error reported"; fi
+  if [ "${CHECK#FAILS:}" != "$CHECK" ]; then
+    EXPECT="${CHECK#FAILS:}"
+    if [[ "$CODE" =~ ^-?[0-9]+$ ]] && [ "$CODE" -ne 0 ] && [ "$CODE" = "$EXPECT" ]; then
+      RESULT=PASS; EVID="error reported as expected: code=$CODE ${DETAIL}"
+    else
+      RESULT=FAIL; EVID="expected error code $EXPECT, got code='${CODE:-none}' ${DETAIL}"
+    fi
   elif [ "$CODE" = 0 ] && eval "$CHECK" >/dev/null 2>&1; then RESULT=PASS; EVID="${DETAIL:-code=0, no error}"
   else
     RESULT=FAIL
@@ -133,7 +142,7 @@ for spec in "${ROWS[@]}"; do
   recorded=$((recorded+1))
 done
 
-lvc_exec 'tail -n 40 /tmp/labview_26.1f0_interactive_root_cur.txt' > "$OUT/90-labview-log-tail.txt" 2>&1
+lvc_exec "$C" 'tail -n 40 /tmp/labview_26.1f0_interactive_root_cur.txt' > "$OUT/90-labview-log-tail.txt" 2>&1
 
 echo "== results ($RESULTS)"
 column -t -s "$(printf '\t')" "$RESULTS"

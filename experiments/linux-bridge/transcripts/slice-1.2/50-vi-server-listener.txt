@@ -1,0 +1,60 @@
+date: 2026-11-09T14:36:12Z   container network mode: none
+--- LabVIEWCLI RunVI (launches LabVIEW)
+Operation output: 
+3
+RunVI operation succeeded.
+
+--- listening TCP sockets
+(no ss in the image; decoded from /proc/net/tcp and /proc/net/tcp6)
+LISTEN    0.0.0.0:53957
+LISTEN    0.0.0.0:49903
+LISTEN    0.0.0.0:57991
+LISTEN    0.0.0.0:33631
+LISTEN    0.0.0.0:45939
+LISTEN    0.0.0.0:41777
+LISTEN    0.0.0.0:41147
+LISTEN    0.0.0.0:37259
+LISTEN    0.0.0.0:46809
+LISTEN    0.0.0.0:59205
+LISTEN    0.0.0.0:58371
+LISTEN    0.0.0.0:46239
+LISTEN    0.0.0.0:50365
+LISTEN    0.0.0.0:42319
+LISTEN    0.0.0.0:50469
+LISTEN    0.0.0.0:60121
+LISTEN    0.0.0.0:47983
+LISTEN    0.0.0.0:52155
+LISTEN    0.0.0.0:39133
+LISTEN    0.0.0.0:43483
+LISTEN    127.0.0.1:59691
+LISTEN    0.0.0.0:59823
+LISTEN    0.0.0.0:56861
+LISTEN    0.0.0.0:36639
+LISTEN    0.0.0.0:53211
+LISTEN    0.0.0.0:35915
+LISTEN    0.0.0.0:60693
+LISTEN    0.0.0.0:3363   <- VI Server
+LISTEN    0.0.0.0:48639
+LISTEN    0.0.0.0:44445
+--- port 3363 as seen by a client inside the container (loopback, then the container own address)
+127.0.0.1:3363 accepts
+--- configuration files
+[/root/natinst/.config/LabVIEW-2026/labview.conf]
+[LabVIEW]
+server.tcp.enabled=True
+unattended=True
+IsFirstLaunch=False
+UDCInstallID="98eccd10-b541-3fe1-80e6-38c4f2df943f"
+NI_GSWContentIndex=1
+
+[/root/natinst/.config/LabVIEW-2026/labview64.conf]
+server.tcp.enabled=True
+unattended=True
+
+[/root/natinst/.config/LabVIEW-2026/labviewprofull.conf]
+server.tcp.enabled=True
+unattended=True
+
+access-list keys (access, allow, deny) in any conf: 0
+all server.* keys:
+server.tcp.enabled=True

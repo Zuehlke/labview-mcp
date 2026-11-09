@@ -1,12 +1,24 @@
 # Slice 1 measurements: the NI image and the composer
 
 Plan: `plans/cross-platform-server.md`, Slice 1. Spec assumptions measured here: 5 and 7 (Step 1.1),
-and 1, 3, 4 on Linux (Step 1.2, section below). The Windows 2026 64-bit row of Step 1.2 is PENDING.
+and 1 and 4 on Linux, 3 only in part (Step 1.2, section below). The Windows 2026 64-bit row of Step 1.2 is PENDING.
+
+Corrected after review, 2026-11-09: the verdict logic of the probe scripts was tightened (negative controls
+must return their expected error code; the resident verdict checks the received echo count and the skeleton's
+state), every probe and skeleton VI was recomposed with `--lv-version 26`, and both scripts were run again.
+**All tables below come from that second run**; the transcripts of the first run are replaced (they are in git
+history, commits 736289c and 168772a).
+
+**Spec assumption 4 (headless) holds only with a virtual display inside the container.** LabVIEW does not start
+without a display: with no Xvfb, `LabVIEWCLI` prints `Unable to open X display.` and the skeleton never connects
+(`transcripts/slice-1.2/40-nodisplay-runvi.txt`, row `nodisplay-runvi` below). Every passing run here has Xvfb
+`:99` in the container. The Gherkin precondition "no display" was replaced by "a virtual display (Xvfb) in the
+container". This is not "headless" in the sense of LabVIEW needing no display.
 
 ## Step 1.1: the NI image on this Mac, and VI Server in it
 
-Measured 2026-11-09. Reproduce with `experiments/linux-bridge/probe-container.sh`; transcripts are
-in `experiments/linux-bridge/transcripts/slice-1.1/`.
+Measured 2026-11-09 (second run, after review). Reproduce with `experiments/linux-bridge/probe-container.sh`;
+transcripts are in `experiments/linux-bridge/transcripts/slice-1.1/`.
 
 ### Environment
 
@@ -19,7 +31,8 @@ in `experiments/linux-bridge/transcripts/slice-1.1/`.
 | LabVIEW | `/usr/local/natinst/LabVIEW-2026-64/labview` (symlink to `labviewprofull`); version string `26.1f0` (`Application:Version Number`), packages `26.1.0.49387` |
 | LabVIEW process name | `labview` |
 | LabVIEWCLI | `/usr/local/bin/LabVIEWCLI`, resolves to `/usr/local/natinst/share/nilvcli/LabVIEWCLI`; package `ni-labview-command-line-interface 26.1.0.49328` |
-| "INI" | Linux has no `labview.ini`. Settings are `~/natinst/.config/LabVIEW-2026/labview.conf` (also `labview64.conf`, `labviewprofull.conf`). Each holds exactly `server.tcp.enabled=True` and `unattended=True` |
+| "INI" | Linux has no `labview.ini`. Settings are `~/natinst/.config/LabVIEW-2026/labview.conf` (also `labview64.conf`, `labviewprofull.conf`). Before the first launch each holds exactly `server.tcp.enabled=True` and `unattended=True` (`01-environment.txt`); after one launch `labview.conf` also carries `IsFirstLaunch`, `UDCInstallID` and `NI_GSWContentIndex` (`50-vi-server-listener.txt`) |
+| Run options | `--cap-drop ALL --security-opt no-new-privileges --network none`, host directory by `--mount` (read-only), no published ports. LabVIEW starts and runs VIs under all of them. **`--network none` is kept**: the container has loopback only and every probe and the skeleton use loopback. No licence error or dialog appeared in any transcript; a licence check itself was not measured |
 | VI Server | TCP, port 3363 (LabVIEWCLI: "Connection established with LabVIEW at port number 3363") |
 | Environment | `LV_YEAR=2026`, `EnableCICDFeaturesForLabVIEW=TRUE` |
 
@@ -29,20 +42,21 @@ Result: **passes**. The 5 minute threshold in the plan is not near.
 
 | Measurement | Time |
 |---|---|
-| `docker run -d` to first `docker exec` | 268 ms |
+| `docker run -d` to first `docker exec` | 247 ms |
 | Xvfb up | 246 ms |
-| First `LabVIEWCLI RunVI` (launches LabVIEW; NI's own AddTwoNumbers, 123 + 456 = 579) | 10.5 s (10.0 s and 9.8 s in two earlier runs) |
-| Second `LabVIEWCLI RunVI` (LabVIEW resident) | 3.1 s |
+| First `LabVIEWCLI RunVI` (launches LabVIEW; NI's own AddTwoNumbers, 123 + 456 = 579) | 10.3 s |
+| Second `LabVIEWCLI RunVI` (LabVIEW resident) | 1.8 s |
 
 Transcripts: `02-cold-start.txt`, `03-warm-call.txt`, `04-startup.txt`, `01-environment.txt`.
 
 What the numbers carry:
 
-- LabVIEW needs a display. Without one, `LabVIEWCLI` stops at `Unable to open X display.` (and hangs
-  with `-h`). The probe starts `Xvfb :99` in the container. That is the "headless" setup here.
+- LabVIEW needs a display. Without one, `LabVIEWCLI` stops at `Unable to open X display.` and its process
+  was still there 17 s later (`40-nodisplay-runvi.txt`). The probe starts `Xvfb :99` in the container.
 - LabVIEW stays running after `LabVIEWCLI` exits (one `labview` process in `ps`, `04-startup.txt`).
-- Every `LabVIEWCLI` call costs about 3 s even with LabVIEW resident. The per-row times below are
-  dominated by that, not by the method.
+- Every `LabVIEWCLI` call costs about 1.8 s even with LabVIEW resident. The per-row times in `results.tsv` are
+  dominated by that, not by the method. The first Step 1.1 run (commit 736289c, container on Docker's default
+  network) measured 3.1 s for the same call; one run each, the cause (`--network none` or noise) is not determined.
 - Harmless noise on every call: `Can't load library libniDotNETCoreInterop.so`. The operation
   still succeeds. An operation error above 255 gets a "process exit code must be in the range 0 to
   255" warning (seen on code 1000).
@@ -52,9 +66,12 @@ What the numbers carry:
 Result: **all eight rows pass**, each with a transcript.
 
 Route for every row: `LabVIEWCLI -OperationName RunVI` runs one composed probe VI in the
-container's LabVIEW. The probe makes the VI Server call (Property Node or Invoke Node, with an
+container's LabVIEW. **The method rows ran as separate probe VIs, not as part of the bridge skeleton**
+(the skeleton of Step 1.2 uses Property Node, Invoke Node, `Run VI` and control get/set, but not these
+scripting methods). The probe makes the VI Server call (Property Node or Invoke Node, with an
 unwired application reference, so the local application instance) and answers
-`code=<n>;source=<text>;detail=<evidence>`. Pass means `code=0` and the evidence column as stated.
+`code=<n>;source=<text>;detail=<evidence>`. Pass means `code=0` and the evidence column as stated, checked by
+`probe-container.sh`, not by eye.
 
 | Row | VI Server call | Result | Evidence | Transcript |
 |---|---|---|---|---|
@@ -62,26 +79,31 @@ unwired application reference, so the local application instance) and answers
 | Execution State | `Execution:State` read | pass | `1` (idle) on Target.vi | `13-execution-state.txt` |
 | Run VI async | `{LV.VI}` `Run VI`, Wait until done FALSE | pass | state read straight after is `2` (running) on Spin.vi, a VI that never ends | `14-run-vi-async.txt` |
 | Abort VI | `{LV.VI}` `Abort VI` | pass | state `2` before, `1` after, in one probe | `16-abort-vi.txt` |
-| Print VI To HTML | `{LV.VI}` `Print VI To HTML` | pass | `out.html` (267 bytes) and `outp.png` (1194 bytes) written; HTML names Target.vi | `18-print-vi-to-html.txt` |
+| Print VI To HTML | `{LV.VI}` `Print VI To HTML` | pass | `out.html` (267 bytes) and `outp.png` (1194 bytes) written; the script asserts `grep -q Target.vi out.html` | `18-print-vi-to-html.txt` |
 | SubVI Replace | `{LV.VI}` `Block Diagram`, `{LV.Diagram}` `SubVIs[]`, `{LV.SubVI}` `Replace` | pass | `VI Name` of the node, read again afterwards, is `Callee2.vi` | `19-subvi-replace.txt` |
-| Remove Bad Wires | `BD.Remove Bad Wires` | pass | code 0. Weak: Target.vi has no bad wire, so this proves the call is accepted, not that it repairs | `20-remove-bad-wires.txt` |
-| Clean Up Diagram | `BD.CleanUp` | pass | code 0. Weak in the same way: it proves the call is accepted | `21-clean-up-diagram.txt` |
+| Remove Bad Wires | `BD.Remove Bad Wires` | pass | on `BrokenWire.vi` (one wire, a string constant into `Add`): `Wires[]` has 1 element, its `Is Broken?` is TRUE, and after the call `Wires[]` has 0 (detail `1,TRUE,0`). The first run of this row was WEAK (a VI with no bad wire proves only that the call is accepted) | `20-remove-bad-wires.txt` |
+| Clean Up Diagram | `BD.CleanUp` | pass | on Target.vi: the first node is moved to Left 2000 and reads back 2000, then after the call its Left is 141 (detail `2000,141`). The first run of this row was WEAK in the same way | `21-clean-up-diagram.txt` |
 | (extra) LabVIEW version | `Application:Version Number` read | pass | `26.1f0` | `11-labview-version.txt` |
 
-Controls, run to show the probes can tell outcomes apart:
+Controls, run to show the probes can tell outcomes apart. A control passes only when the probe reports exactly the expected error code (a non-zero integer); an empty or missing code is a FAIL.
 
 | Control | Result | Evidence | Transcript |
 |---|---|---|---|
 | Open VI Reference on a missing file | error reported, as expected | code 7 | `22-control-open-vi-reference-on-a-missing-file.txt` |
 | Abort VI on a VI that is not running | error reported, as expected | code 1000 (`Method Name: Abort VI`) | `17-control-abort-vi-on-a-vi-that-is-not-running.txt` |
 | Spin.vi state after the Run VI async probe returned | idle | `1` | `15-control-spin-state-after-the-run-vi-async-probe-returned.txt` |
+| Spin2.vi: Run VI async, Close Reference while the probe still runs, wait 500 ms, reopen, read state | state 2 before, 1 after | `2,1` | `23-control-run-vi-async-close-reference-while-the-probe-runs-reopen.txt` |
+| Spin2.vi state after that probe returned | idle | `1` | `24-control-spin2-state-after-the-reopen-probe-returned.txt` |
 
 ### Findings the later slices need
 
-1. **A VI started with `Run VI` (async) does not outlive its reference.** The probe starts Spin.vi
-   (state 2), closes its reference and returns. A second probe reads Spin.vi as idle (`1`). The
-   bridge must keep the VI reference open for as long as it wants the run to continue, or
-   it loses the run. Not measured: whether `Auto Dispose Ref` or an app-level reference changes this.
+1. **`Close Reference` stops a VI started with `Run VI` (async).** A probe starts Spin2.vi (state 2), closes the
+   reference it started it through, waits 500 ms (while the probe VI itself is still running) and reads the state
+   through a second reference: `1`. So the stop comes from `Close Reference`, not from the probe VI ending
+   (row 23). The bridge must keep the VI reference open for as long as it wants the run to continue. The stop is
+   not instant: a first draft that read the state right after `Close Reference` got 2 in one run and 1 in the
+   next (unrecorded observation, which is why the probe waits). Not measured: whether `Auto Dispose Ref` or an
+   app-level reference changes this.
 2. **`Abort VI` on a VI that is not running is error 1000.** Treat that as "already stopped" in
    the abort path, if the plan wants abort to be idempotent.
 3. **`LabVIEWCLI RunVI` accepts only NI's connector pane.** The probe VI must have `Inputs` (array of
@@ -89,10 +111,12 @@ Controls, run to show the probes can tell outcomes apart:
    pattern 4815. Any other pane is error 1031, "VI Reference type does not match VI connector pane".
    So the probes carry no `error in` and `error out`; the repo's rule applies to shipped VIs, not to these
    probes. The 1031 case was seen while building the probes and has no saved transcript.
-4. **A VI composed by `aixml2vi.py` loads in LabVIEW 2026 Q1 Linux (`26.1f0`) with no version retarget.**
-   Every probe and target here is such a VI. The composer's skeleton is stamped `vers` 26.3.1 (LabVIEW
-   2026 Q3), newer than the container, and `--lv-version` was not used. This is evidence for spec
-   assumption 1 on Linux, but not its test. Step 1.2 composes the real bridge skeleton.
+4. **A VI composed by `aixml2vi.py --lv-version 26` loads in LabVIEW 2026 Q1 Linux (`26.1f0`).** Every probe and
+   target here is such a VI. Without `--lv-version` the composer stamps its skeleton's 26.3.1 (LabVIEW 2026 Q3),
+   newer than the 26.1f0 runtime; the first run of Step 1.1 used that stamp and those VIs also loaded, but a
+   runtime is entitled to refuse a newer file, so the fixtures are now stamped for 26 (both version words 26.0.0,
+   `slice-1.2/03-version-words-2026.txt`). Evidence for spec assumption 1 on Linux, not its test. Step 1.2
+   composes the real bridge skeleton.
 5. The composer ran with this Mac's `python3` through `experiments/linux-bridge/compose.py`, which
    replaces `lvheap._pylabview_argv` (no change under `scripts/`). pylabview needs Pillow
    (`import PIL`), so the run used a venv with it. This is the work that Slice 6 turns into
@@ -105,22 +129,25 @@ Controls, run to show the probes can tell outcomes apart:
   skeleton (Step 1.2). Nothing here says whether a TCP loop in a composed VI works.
 - Emulation: Docker Desktop reports `aarch64`. Whether the amd64 image runs under Rosetta or QEMU was not
   determined, and no timing comparison with native amd64 was made.
-- One run of the whole probe (about 54 s) gave the table above. Startup was measured three
-  times (9.8 s, 10.0 s, 10.5 s). There is no sample large enough for a variance claim.
+- One run of the whole probe gave the tables above and one cold start (10.3 s). There is no sample large enough for a
+  variance claim.
 
 ### Files
 
-`experiments/linux-bridge/`: `container-lib.sh` (the helper Slice 2 reuses), `container-lib-selftest.sh`,
-`probe-container.sh`, `make-fixtures.py` (writes `fixtures/aixml/`), `compose.py` and `compose-all.sh`
-(compose into `fixtures/vi/`), `transcripts/slice-1.1/` (including `results.tsv`).
+`experiments/linux-bridge/`: `container-lib.sh` (the helper Slice 2 reuses: one named container per `lvc_start`,
+caller-owned traps, `lvc_cleanup` / `lvc_sweep`, hardened run options), `container-lib-selftest.sh` (its transcript
+is `transcripts/slice-1.1/container-lib-selftest.txt`), `probe-container.sh`, `make-fixtures.py` (writes
+`fixtures/aixml/`), `compose.py` and `compose-all.sh` (compose into `fixtures/vi/`, `--lv-version 26`),
+`transcripts/slice-1.1/` (including `results.tsv`).
 
-## Step 1.2: the bridge skeleton through the composer, and resident in the headless container
+## Step 1.2: the bridge skeleton through the composer, and resident in the container (with a virtual display)
 
-Measured 2026-11-09 on the Mac (composer and container) with the Step 1.1 image and digest. Reproduce
-with `experiments/linux-bridge/compose-skeleton.sh` (composes; needs a python3 with Pillow, set
-`PYLV_PYTHON`) and `experiments/linux-bridge/probe-resident.sh` (runs the container). Transcripts are in
+Measured 2026-11-09 on the Mac (composer and container) with the Step 1.1 image and digest; second run, after
+review. Reproduce with `experiments/linux-bridge/compose-skeleton.sh` (composes; needs a python3 with Pillow, set
+`PYLV_PYTHON`), `experiments/linux-bridge/probe-resident.sh` (runs the container) and
+`experiments/linux-bridge/probe-listener.sh`. Transcripts are in
 `experiments/linux-bridge/transcripts/slice-1.2/`. Source: `skeleton.aixml` (lint clean:
-`01-lint.txt`), client: `bridge-client.py`.
+`01-lint.txt`; the script now fails when lint does), client: `bridge-client.py`.
 
 ### What the skeleton is
 
@@ -138,12 +165,12 @@ The skeleton connects out (the server listens), as the spec's bridge does.
 |---|---|---|
 | TCP loop, length-prefixed frames | `TCP Open Connection`, `TCP Read` x2, `TCP Write`, `TCP Close Connection`, `Unflatten From String` (u32), `Flatten To String`, `String Length`, `While Loop`, `Case Structure` (string selector) | composed. **Refused by default**, see below |
 | Reentrant | `<?lvmcp exec IsReentrant="1"?>` after `</VI>` | composed; read back as `IsReentrant="1"` |
-| Open Application Reference | `Open Application Reference` (localhost, 3363) | composed, ran: code 0 |
+| Open Application Reference | `Open Application Reference` (localhost, 3363) | composed, ran: code 0. This shows only that the VI Server port answers; it does not show a reference to another application context (see gaps) |
 | Open VI Reference through that reference | `Open VI Reference` with `application reference` wired | composed, ran: code 0 |
 | Property Node, Invoke Node | `read+Execution:State`; `Ctrl Val.Get`, `Ctrl Val.Set`, `Run VI` | composed, ran: state `1` |
 | Control get/set as LabVIEW XML | `Flatten To XML` on the `Ctrl Val.Get` variant; `Unflatten From XML` (variant) into `Ctrl Val.Set` | composed, ran: x set from XML 41.5, Target.vi answered y = 42.5 |
 
-**No construct was refused outright.** One wire type is refused by default:
+**One construct is refused by the composer by default, and two things in this step sit outside it.** The refusal:
 
 ```
 UNSUPPORTED: net '4206.connection ID' carries a Refnum.TCPNetConn, which no composed wire has carried yet
@@ -151,68 +178,77 @@ exit code: 2                                          (02-compose-strict.txt)
 ```
 
 The composer keeps a list of wire types a composed wire has carried in a loading test
-(`unverified_wire_type`, `aixml2vi.py`), and `TCPNetConn` is not on it. The composer's own opt-in for one
-measurement, `AIXML2VI_TRY_WIRES=Refnum.TCPNetConn`, lets it through. Every composed file here used it. It
-is not a workaround of the composer: no VI was edited or built by hand. But it means **Slice 6 must add
-`TCPNetConn` to the verified wire types in `scripts/`** (this step may not change `scripts/`), or the
-bridge VI cannot be composed at run time. With the opt-in the VI loaded executable and carried the
-connection wire through a loop tunnel and a case structure with no insanity (LabVIEW log tail in `10-launch-labview-log-tail.txt`).
+(`unverified_wire_type`, `aixml2vi.py`), and `TCPNetConn` is not on it. So **the TCP connection wire is refused by
+default and passed only with `AIXML2VI_TRY_WIRES=Refnum.TCPNetConn`**, the composer's own opt-in for one
+measurement. Every skeleton composed here used it, so **every Step 1.2 result holds only with that opt-in**. With
+it the VI loaded executable and carried the connection wire through a loop tunnel and a case structure with no
+insanity (LabVIEW log tail in `10-launch-labview-log-tail.txt`). **Slice 6 must add `TCPNetConn` to the verified
+wire types in `scripts/`** (this step may not change `scripts/`), or the bridge VI cannot be composed at run time.
+
+Second, **`RunOnOpen` is not set by the composer.** `experiments/linux-bridge/compose.py` patches the heap XML
+(`LVMCP_EXEC_FLAGS=RunOnOpen=1`) just before the rebuild; that is our code outside the composer, used only for the
+`launch` route and the control.
 
 ### Scenario: The bridge skeleton composes and loads (Linux 2026 Q1 row)
 
-Result: **PASS**. `labview` 26.1f0 in the NI image, VI composed on the Mac.
+Result: **PASS**, with the opt-in above. `labview` 26.1f0 in the NI image, VI composed on the Mac.
 
 | Check | Result | Evidence |
 |---|---|---|
-| Composed for LabVIEW 2026 | pass | `03-compose-2026.txt`, 15 080 bytes, file version stamp 26.3.1 (the composer's default, newer than the container's 26.1f0; it loaded) |
-| Executable | pass | `Execution:State` read after the run is `1` (idle, not `0` eBad), both routes |
+| Composed for LabVIEW 2026 | pass | `03-compose-2026.txt`, `--lv-version 26`, 15 076 bytes, both file version words 26.0.0 (`03-version-words-2026.txt`), not newer than the container's 26.1f0 |
+| Executable | pass | `Execution:State` read after the run by a probe is `1` (idle, not `0` eBad), both routes; the script requires it |
 | One loopback round trip | pass | 100 echoes and one `probe` answered, below |
 
-### Scenario: A resident skeleton in the headless container
+### Scenario: A resident skeleton in the container, with a virtual display
 
-Result: **PASS on both routes**: 100 of 100 echoes returned byte for byte, 0 failures
-(`results-resident.tsv`, `10-launch.txt`, `20-runvi.txt`). Xvfb :99, no published ports, a fresh container per route.
-The client (python3 3.10 in the container) plays the server and listens on an OS-chosen port.
+Result: **PASS on both routes**: 100 of 100 echoes received byte for byte (the client counts the received ones;
+`requested=100 echoes=100 failures=0`), 0 failures (`results-resident.tsv`, `10-launch.txt`, `20-runvi.txt`).
+**Xvfb :99 in the container**, no published ports, no network, a fresh container per route. The client (python3
+3.10 in the container) plays the server and listens on an OS-chosen port. The script's verdict also requires probe
+code 0, y = 42.5, and `Execution:State` of the skeleton = 1 read by a probe afterwards.
 
-| Route | Start command | Echoes | Failures | LabVIEW start to connect | 100 echoes, total | Per echo (min / median / p95 / max) | `probe` |
-|---|---|---|---|---|---|---|---|
-| labview launch | `labview /tmp/fxr/skeleton.vi` (VI with "Run when opened") | 100 | 0 | 4.2 s | 10 ms | 0.0 / 0.1 / 0.1 / 1.3 ms | code 0, state 1, y = 42.5 |
-| LabVIEWCLI RunVI | `LabVIEWCLI -OperationName RunVI -VIPath /tmp/fx/skeleton.vi` | 100 | 0 | 9.5 s | 9 ms | 0.0 / 0.1 / 0.1 / 0.9 ms | code 0, state 1, y = 42.5 |
+| Route | Start command | Echoes received | Failures | LabVIEW start to connect | 100 echoes, total | Per echo (min / median / p95 / max) | `probe` | State after |
+|---|---|---|---|---|---|---|---|---|
+| labview launch | `labview /tmp/fxr/skeleton.vi` (VI with "Run when opened") | 100 | 0 | 4.1 s | 9 ms | 0.1 / 0.1 / 0.1 / 1.3 ms | code 0, state 1, y = 42.5 | 1 |
+| LabVIEWCLI RunVI | `LabVIEWCLI -OperationName RunVI -VIPath /tmp/fx/skeleton.vi` | 100 | 0 | 9.5 s | 8 ms | 0.0 / 0.1 / 0.1 / 1.0 ms | code 0, state 1, y = 42.5 | 1 |
 
-(A previous complete run of the same script gave 4.2 s / 100 echoes in 9 ms and 9.4 s / 8 ms.) After each run exactly one
-`labview` process remained and answered a further `LabVIEWCLI RunVI` (`exec_state_after` = 1).
+After each run exactly one `labview` process remained and answered further `LabVIEWCLI RunVI` calls. One run per
+route; no variance claim. After the `runvi` route ended, skeleton.vi was no longer in memory (P10 probe: index -1
+of 31); after the `launch` route it was.
 
-Control, so the echo check can fail: `labview` on the same VI composed **without** "Run when opened"
-(`30-launch-plain.txt`). The client got no connection in 45 s (`echoes=0 failures=100 connect=timeout`),
-LabVIEW was running with the VI open and idle (state 1). The control passes (CONTROL-OK).
+Controls, so the checks can fail:
+
+| Route | What it shows | Result | Evidence |
+|---|---|---|---|
+| `launch-plain`: `labview /tmp/fx/skeleton.vi`, VI composed **without** "Run when opened" | opening a VI with `labview <vi>` loads it and does not run it | CONTROL-OK | no connection within 17 s (4 times the 4.1 s the `launch` route needed to connect, so a run that started late would be missed); P10 probe (reads `Application:All VIs In Memory`, opens nothing by path) found skeleton.vi at index 4 of 32, so `labview <vi>` itself loaded it; state read afterwards `1`; one `labview` process (`30-launch-plain.txt`) |
+| `nodisplay-runvi`: the `runvi` route with no Xvfb, `DISPLAY` unset | LabVIEW needs a display | NODISPLAY-OK | route output `Unable to open X display.`; no connection within 17 s; no `labview` process; the `LabVIEWCLI` process was still there (`40-nodisplay-runvi.txt`) |
 
 ### Scenario: composed for 2020, offline read-back only
 
-Result: **PASS**. `compose.py --lv-version 20` wrote `skeleton-2020.vi` (15 076 bytes; both version words in the file
+Result: **READ-BACK ONLY, not PASS**. `compose.py --lv-version 20` wrote `skeleton-2020.vi` (15 076 bytes; both version words in the file
 read 20.0.0, `06-readback-2020-check.txt`). pylabview (`vi2aixml`, through `compose.py --read`) read it back to AIXML
 with every bridge primitive present: `TCP Open Connection` 1, `TCP Read` 2, `TCP Write` 1, `TCP Close Connection` 1,
 `Open Application Reference` 1, `Open VI Reference` 1, `Property Node` 1, `Invoke Node` 4 (`Ctrl Val.Get` 2,
 `Ctrl Val.Set` 1, `Run VI` 1), `Flatten To XML` 2, `Unflatten From XML` 1, `Close Reference` 2, `While Loop`, `Case Structure`,
-and `IsReentrant="1"`. This checks file structure only. No LabVIEW 2020 loaded it, and the 2020 palette may lack
+and `IsReentrant="1"`. This checks file structure only. No LabVIEW 2020 loaded it, so nothing says it runs there, and the 2020 palette may lack
 or rename these nodes (not checked).
 
 ### Findings the later slices need
 
 1. **Default composition refuses the TCP connection wire** (above). Slice 6 adds `Refnum.TCPNetConn` to the verified set.
-2. **The port terminals are numeric (u16), and a string wired to them is accepted silently.** In the composed parts, `remote port
-   or service name` of `TCP Open Connection` and `port number or service name` of `Open Application Reference` are `NumUInt16`.
-   The first draft wired a port string. The composer did not refuse it, the VI ran, and the call failed with error 63
-   at run time as if the port were 0 (against NI's own VI Server port 3363 as well, so it was not the listener). Wiring
-   `Decimal String To Number` and `To Unsigned Word Integer` (a `uint16` constant for the 3363) fixed it. Why the string wire
-   composed and ran was not determined. The bridge's AIXML must convert, and the AIXML lint does not know.
-3. **`labview <vi>` opens a VI but does not run it.** The VI sat idle and the client waited 60 s, then 45 s in the control.
-   "Run when opened" (`Execution.RunOnOpen`) makes it run, and in the headless container LabVIEW is in unattended mode and
-   answers the run-when-opened prompt itself (`RunWhenOpenedSecurity::PresentRunOrViewDialog: LabVIEW is in unattended mode: returning
-   TRUE (Run the VI)`, `10-launch-labview-log-tail.txt`). **The composer cannot ask for that flag**: its `<?lvmcp exec?>`
-   accepts only `IsReentrant`, `PooledReentrancy`, `IsSubroutine`, `Priority`, `PrefExecSyst` and `SaveParallel`. `compose.py` sets
-   `RunOnOpen` on the heap XML just before the rebuild (`LVMCP_EXEC_FLAGS=RunOnOpen=1`), one flag on a composed VI. Slice 6 or
-   the bridge launcher needs the composer to accept it, or another way to start the VI. On Windows (not unattended) the
-   prompt is unmeasured.
+2. **The port terminals are numeric (u16).** In the composed parts, `remote port or service name` of `TCP Open Connection`
+   and `port number or service name` of `Open Application Reference` are `NumUInt16`. The skeleton converts the text
+   with `Decimal String To Number` and `To Unsigned Word Integer` (a `uint16` constant for the 3363). What the composer
+   or LabVIEW does with a string wired straight to a port was not measured here (an earlier draft that did so is not
+   kept and its failure was not recorded). The AIXML lint does not check port types.
+3. **`labview <vi>` loads a VI but does not run it** (control `launch-plain`: in memory, state 1, no connection within
+   17 s). "Run when opened" (`Execution.RunOnOpen`) makes it run. **The launch route passes only with `unattended=True`**
+   in the container's `labview.conf`: LabVIEW then answers the run-when-opened prompt itself
+   (`RunWhenOpenedSecurity::PresentRunOrViewDialog: LabVIEW is in unattended mode: returning TRUE (Run the VI)`,
+   `10-launch-labview-log-tail.txt`). Without it the prompt is unmeasured, on Windows (not unattended) too.
+   **The composer cannot ask for the flag**: its `<?lvmcp exec?>` accepts only `IsReentrant`, `PooledReentrancy`,
+   `IsSubroutine`, `Priority`, `PrefExecSyst` and `SaveParallel`; `RunOnOpen` is set by `compose.py` patching the heap,
+   outside the composer. Slice 6 or the bridge launcher needs the composer to accept it, or another way to start the VI.
 4. **Peer close ends `TCP Read` with error 66 on Linux**, not 62. The skeleton maps 66 to a CLI return code of 0, and `RunVI`
    then reports success with `Output/Failure` = `code=66;source=TCP Read ...` (`20-runvi.txt`). `LabVIEWCLI RunVI` blocks until
    the VI ends, so it is a long-lived call that the server must not wait on.
@@ -220,67 +256,84 @@ or rename these nodes (not checked).
    `<LvVariant><Name>Get Control Value Variant</Name><DBL><Name>x</Name><Val>0.00000000000000</Val></DBL></LvVariant>`;
    the same text with `41.5`, fed to `Unflatten From XML` (type: empty variant) and `Ctrl Val.Set`, set x so that the run gave y = 42.5.
    Transport cost is negligible: 0.1 ms per echo round trip on loopback under emulation.
-6. **Rendezvous (assumption 3), partly:** the skeleton found its rendezvous file in both routes by a fixed default path, and
-   `RunVI` also passes `Inputs[]`. Launch arguments to `labview <vi>` were not tried.
+6. **Rendezvous (assumption 3) is PARTIAL.** Measured: the skeleton found its rendezvous file in both routes through a
+   fixed default path (`/tmp/lvmcp-skeleton-port.txt`, the default of `Inputs[0]`; neither route passed an argument to
+   the skeleton). Step 1.1 shows `RunVI` delivers `Inputs[]` to a probe VI. **Not tried:** launch arguments to
+   `labview <vi>`, and an atomic claim of the rendezvous by more than one skeleton. Slice 14 measures both.
+7. **The VI Server TCP listener binds `0.0.0.0:3363`** (`50-vi-server-listener.txt`; the image has no `ss`, so the
+   transcript decodes `/proc/net/tcp`), and no conf file carries an access-list key (`access`, `allow`, `deny`: 0 matches;
+   the only server key is `server.tcp.enabled=True`). The container had a loopback interface only (`--network none`), so
+   whether LabVIEW applies a default access list to other clients was not measured. A note for Slice 7 and Step 14.2:
+   never publish 3363 or put the container on a shared network without checking that. About 30 other TCP ports
+   also listen on `0.0.0.0` in that container (not attributed to a process).
 
 ### Rows and gaps
 
 - Linux rows and the 2020 read-back are recorded with transcripts. **The Windows 2026 64-bit row is PENDING**
-  (handoff below). Nothing here says it passes there.
+  (handoff below). Nothing here says it passes there. The 2020 file was never loaded by a LabVIEW.
 - Not measured: a second concurrent clone (one clone per connection); `Open VI Reference` in the `NI.LV.Editor`
   context (spec assumption 8: the skeleton ran in the instance `RunVI`/`labview` gave it, and `localhost:3363` may reach
-  that same instance, so "another application context" is the construct, not yet a different context);
+  that same instance, so "another application context" is the construct, not yet a different context; the skeleton and the
+  control `launch-plain` found their VI in the instance that `labview <vi>` or `RunVI` started, nothing more);
   assumption 2 (a second `labview <vi>` handing to the running instance; each run here launched LabVIEW fresh);
   a modal dialog during the run (assumption 6).
 - `pylabview` prints `Parsing failed for block b'VITS' section 0, switched to raw` when it extracts any composed file here,
   2026 and 2020 alike; both the 2026 files load and run. Not investigated for the 2020 file.
-- One run of each route (the run before the final one repeated the numbers). No variance claim.
+- One run of each route. No variance claim.
 - REFACTOR: nothing was dropped. Each skeleton part is used by both routes.
+- Assumption 3 is only PARTIAL (finding 6). Assumption 4 holds only with Xvfb (top of this file).
 
 ### Step 1.2 Windows row (run on the Windows laptop session)
 
 For a Claude Code session on the Windows laptop with LabVIEW 2026 64-bit. Do not change `skeleton.aixml`, `scripts/` or `src/`. Record
 failures as results. Needs Python 3 with Pillow (`py -3 -m pip install pillow`), the branch `feat/xplat-1`, and LabVIEW with VI Server TCP
-enabled on port 3363 (`server.tcp.enabled=True` in `LabVIEW.ini`; the skeleton opens `localhost:3363`).
+enabled on port 3363 (`server.tcp.enabled=True` in `LabVIEW.ini`; the skeleton opens `localhost:3363`). The skeleton is composed
+for THIS LabVIEW's own major version (read in step 0), never for a newer one. The probe VIs in `fixtures\vi` are stamped 26, so
+the version probe in step 0 loads only in LabVIEW 2026 or later; if it does not load, record that and stop.
 
 ```powershell
 cd <repo root>
 New-Item -ItemType Directory -Force C:\lvmcp-s12, experiments\linux-bridge\transcripts\slice-1.2-windows | Out-Null
 Copy-Item experiments\linux-bridge\fixtures\vi\Target.vi C:\lvmcp-s12\
 $T = "experiments\linux-bridge\transcripts\slice-1.2-windows"
+$LV = "<path of LabVIEW.exe, 2026 64-bit>"
+
+# 0. which LabVIEW is this: its version string (26.x) gives the major version to compose for
+LabVIEWCLI -OperationName RunVI -LabVIEWPath $LV -PortNumber 3363 `
+  -VIPath experiments\linux-bridge\fixtures\vi\P0_AppVersion.vi *> "$T\00-version.txt"
+$major = [int](((Get-Content "$T\00-version.txt" | Select-String '^\d+\.\d+' | Select-Object -First 1).Line) -split '\.')[0]
+"major $major" | Add-Content "$T\00-version.txt"
 
 # 1. control: the composer's default must refuse (expect exit 2 and the Refnum.TCPNetConn text)
 py -3 experiments\linux-bridge\compose.py experiments\linux-bridge\skeleton.aixml C:\lvmcp-s12\strict.vi *> "$T\01-strict.txt"; "exit $LASTEXITCODE" | Add-Content "$T\01-strict.txt"
 
-# 2. compose the skeleton for the LabVIEW 2026 file version (expect exit 0, "wrote ... skeleton.vi")
+# 2. compose the skeleton for this LabVIEW's major version (expect exit 0, "wrote ... skeleton.vi")
 $env:AIXML2VI_TRY_WIRES = 'Refnum.TCPNetConn'
-py -3 experiments\linux-bridge\compose.py experiments\linux-bridge\skeleton.aixml C:\lvmcp-s12\skeleton.vi *> "$T\02-compose.txt"; "exit $LASTEXITCODE" | Add-Content "$T\02-compose.txt"
+py -3 experiments\linux-bridge\compose.py experiments\linux-bridge\skeleton.aixml C:\lvmcp-s12\skeleton.vi --lv-version $major *> "$T\02-compose.txt"; "exit $LASTEXITCODE" | Add-Content "$T\02-compose.txt"
 Remove-Item Env:AIXML2VI_TRY_WIRES
 
 # 3. start the client first (it plays the server and writes the port to C:\lvmcp-s12\port.txt)
 Start-Process py -ArgumentList '-3','experiments\linux-bridge\bridge-client.py','--rendezvous','C:\lvmcp-s12\port.txt','--connect-timeout','120' `
   -RedirectStandardOutput "$T\03-client.txt" -NoNewWindow
 
-# 4. run the skeleton in the running LabVIEW 2026 64-bit with LabVIEWCLI (arguments: rendezvous file, target VI);
-#    use the LabVIEW.exe of the 2026 64-bit install for -LabVIEWPath
-LabVIEWCLI -OperationName RunVI -LabVIEWPath "<path of LabVIEW.exe, 2026 64-bit>" -PortNumber 3363 `
+# 4. run the skeleton in the running LabVIEW with LabVIEWCLI (arguments: rendezvous file, target VI)
+LabVIEWCLI -OperationName RunVI -LabVIEWPath $LV -PortNumber 3363 `
   -VIPath C:\lvmcp-s12\skeleton.vi C:\lvmcp-s12\port.txt C:\lvmcp-s12\Target.vi *> "$T\04-runvi.txt"
 
-# 5. is it executable (state 1, never 0), and which LabVIEW is this
-LabVIEWCLI -OperationName RunVI -LabVIEWPath "<same path>" -PortNumber 3363 `
+# 5. is it executable (state 1, never 0)
+LabVIEWCLI -OperationName RunVI -LabVIEWPath $LV -PortNumber 3363 `
   -VIPath experiments\linux-bridge\fixtures\vi\P2_ExecutionState.vi C:\lvmcp-s12\skeleton.vi *> "$T\05-exec-state.txt"
-LabVIEWCLI -OperationName RunVI -LabVIEWPath "<same path>" -PortNumber 3363 `
-  -VIPath experiments\linux-bridge\fixtures\vi\P0_AppVersion.vi *> "$T\06-version.txt"
 ```
 
 Record, in this section's table below ("Windows 2026 64-bit result"), with the transcript names:
 
+- `00-version.txt`: LabVIEW's version string and the major version used for step 2.
 - `01-strict.txt`: the refusal text and exit code (expected as on the Mac).
 - `02-compose.txt`: exit code and the size of `skeleton.vi`.
-- `03-client.txt`: the `RESULT` line (pass is `echoes=100 failures=0`) and the `PROBE` line (pass is `code=0`, `state=1` and `y` = 42.5).
+- `03-client.txt`: the `RESULT` line (pass is `requested=100 echoes=100 failures=0`) and the `PROBE` line (pass is `code=0`, `state=1` and `y` = 42.5).
 - `04-runvi.txt`: the whole `Operation output` (the skeleton ends when the client hangs up; `code=` 66 or another number is data, record it).
-- `05-exec-state.txt`: `detail=` (1 passes, 0 is a broken VI) and `06-version.txt`: LabVIEW's version string.
-- Anything LabVIEW showed on screen (dialogs, firewall prompts), and `PROBE code=63` or any other code if `Open Application Reference` fails.
+- `05-exec-state.txt`: `detail=` (1 passes, 0 is a broken VI).
+- Anything LabVIEW showed on screen (dialogs, firewall prompts), and any non-zero `PROBE code` (`Open Application Reference` or `Open VI Reference` failed).
 - Do not mark the row PASS unless every item above is as stated; otherwise write FAIL with the exact text. Commit only `experiments/linux-bridge/transcripts/slice-1.2-windows/`
   and this file.
 
