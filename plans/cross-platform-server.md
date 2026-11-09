@@ -69,25 +69,26 @@ fixed host ports, and removes its container on exit, so parallel slices can shar
 ## Acceptance Criteria
 
 - [ ] AC1: On every PR, CI publishes `linux-x64` (self-contained, single file, not trimmed), and the binary answers `--version`.
-- [ ] AC2: On every PR, CI compiles `osx-arm64`. The source scan rejects `!IsWindows()` branches, and OS switches over `Platform.Current` have no default arm (CS8509 is an error).
-- [ ] AC3: Windows bridge answers equal the committed ActiveX goldens after normalisation, with one golden set for Windows LabVIEW 2026 64-bit. Windows 2020 to 2025 and 32-bit ship unmeasured, documented as such.
-- [ ] AC4: The parity suite passes in the NI image, locally and in CI. The headless skip list passes in a recorded run on the Pop!_OS laptop.
+- [ ] AC2: On every PR, CI compiles `osx-arm64`. `PlatformScanTests` fails on any `!OperatingSystem.IsWindows()` and on any `else` after an OS check that has no named allow-list entry. CS8509 is an error in the build, so a switch over `Platform.Current` has no default arm.
+- [ ] AC3: Windows bridge answers equal the committed ActiveX goldens for Windows LabVIEW 2026 64-bit, after the normaliser whose rules are listed in `tests/LabVIEWMCP.Tests/Fixtures/Bridge/README.md`. `DocMarkerTests` fails if `README.md` or the platform support table lacks the unmeasured note for Windows 2020 to 2025 and 32-bit.
+- [ ] AC4: Every operation not in `headless-skip.tsv` passes in the NI image, locally and in CI. Each skip row has a reason. Every skip row passes in a run on the Pop!_OS laptop, recorded in `docs/measurements/slice-9.md`.
 - [ ] AC5: With no LabVIEW running, a bridge-route tool answers `labviewNotRunning`, and the LabVIEW process count is unchanged on both OS.
-- [ ] AC6: Every bridge failure kind behaves as specified within injected deadlines, and the next call recovers.
-- [ ] AC7: Rendezvous files are owner-only from the first byte, in an owner-only directory, one per connection. Bad, replayed, and silent connections are refused and logged. The token never appears in logs or answers. The listener binds loopback only.
-- [ ] AC8: On Linux, every tool marked supported answers without `notSupportedOnPlatform` and without an exception. The others refuse by name, and the drift test covers every tool.
-- [ ] AC9: With no system Python, pylabview runs from `runtime/linux-x64`, and `lvai_generate_vi` writes an executable VI in the NI image.
-- [ ] AC10: One archive with both binaries, both runtimes, the bridge AIXML, and execute bits. One identical `.mcp.json` starts the server on both OS in CI, and the archive stays under the committed size ceiling.
-- [ ] AC11: Linux hooks allow read-only tools and fail closed with a reason. The guard is silent on Linux and warns on macOS with the shared text.
-- [ ] AC12: Settings and cache live under `$HOME/.labviewmcp`. The INI is never written. A missing INI, a `HOME` that is not writable, and a LabVIEW that is too old each answer as specified.
-- [ ] AC13: The `tools/list` snapshot, `WindowsAnswerFieldsTests`, and the Windows gate pass after every slice.
-- [ ] AC14: The Windows default flips only in R2, and ActiveX goes only in R3. The source test and the doc marker then pass.
-- [ ] AC15: Measurements, including failures, are in `docs/measurements/`. `CLAUDE.md` and the orchestrator brief stay in step with each slice.
-- [ ] AC16: One local command runs the Linux suite. CI compares its counts file with the CI counts for the same commit.
-- [ ] AC17: Every new `errorKind` has a `nextStep` and a `retryable` flag. The scan finds every `errorKind` literal in the registry or the legacy allow-list, and the docs table is generated from the registry.
-- [ ] AC18: Two servers on one LabVIEW each get their own bridge connections, also when they start at the same moment, and parallel lanes keep working.
-- [ ] AC19: The short run (10 000 operations, 4 lanes, 0 transport failures) gates R1 on both OS. The 8 h idle check and one opt-in release with no open `bridge-stability` issue gate R2.
-- [ ] AC20: No bridge VI or bridge subVI is in the memory of the main instance or of a project's instance, during a long run and after the session. Running user projects are unaffected.
+- [ ] AC6: Production deadlines are named constants: first connect after launch 15 s, background reconnect probe 500 ms. Tests inject scaled deadlines. Each of `bridgeNotConnected`, `bridgeStopped`, `labviewGone`, `labviewNotAnswering`, and `bridgeFramingError` returns its own `errorKind` with a `nextStep`, and the next call recovers.
+- [ ] AC7: A connection with a bad or replayed token is closed and logged. A silent connection is closed after the handshake timeout and logged. On Linux the rendezvous file and its directory are mode 0600/0700 at creation; on Windows their ACL grants only the current user. One file per connection. The token never appears in logs or answers. The listener binds loopback only.
+- [ ] AC8: On Linux, each tool the platform support table marks supported returns an answer that is not `notSupportedOnPlatform` and raises no exception. Each other tool refuses by name. The test pins the supported count, and the drift test covers every tool.
+- [ ] AC9: With no system Python, pylabview runs from `runtime/linux-x64`. The composed AIXML equals the Windows reader's golden, and `lvai_generate_vi` writes an executable VI in the NI image.
+- [ ] AC10: One archive with both binaries, both runtimes, the bridge AIXML, and execute bits. One identical `.mcp.json` starts the server on both OS in CI. The archive is at most 2.2 times the size in `scripts/archive-baseline.txt`.
+- [ ] AC11: The read-only tool list is generated once into `plugin/hooks/readonly-tools.txt` and used by both hooks. On Linux the hook allows those tools; any missing dependency or malformed stdin answers `ask` with a reason. The guard is silent on Linux and warns on macOS with the text in `plugin/hooks/macos-notice.txt`.
+- [ ] AC12: Settings and cache live under `$HOME/.labviewmcp`. The INI's bytes and mtime are unchanged after every test. A missing INI, a `HOME` that is not writable, and a LabVIEW that is too old each answer as specified.
+- [ ] AC13: From Slice 2 on, the `tools/list` snapshot, `WindowsAnswerFieldsTests`, and the Windows gate pass after every slice.
+- [ ] AC14: At the R2 tag, `Assert-SoakRecord` passes and `auto` resolves to the bridge on Windows. At the R3 tag, `NoActiveXTests` and `DocMarkerTests` pass.
+- [ ] AC15: Each slice PR adds `docs/measurements/slice-N.md` with one row per check, failures included. `Assert-StationRecord` fails on a missing row. That `CLAUDE.md` and the orchestrator brief stay in step is a reviewer check.
+- [ ] AC16: One local command runs the Linux suite and writes the counts file (passed, failed, skipped). CI fails if its counts for the same commit differ.
+- [ ] AC17: Every new `errorKind` has a non-empty `nextStep` (one imperative sentence ending in a period, linted) and a `retryable` flag. The scan finds every `errorKind` literal in the registry or the legacy allow-list, and the docs table is generated from the registry.
+- [ ] AC18: In 20 simultaneous two-server starts on one LabVIEW, each server reaches its own stub, with 0 mismatches, recorded in `docs/measurements/slice-14.md`. With two servers connected, 4 lanes keep working.
+- [ ] AC19: The short run (10 000 consecutive operations in total over 4 parallel lanes, 0 transport failures) gates R1 on both OS. A transport failure is one of the five AC6 kinds. The 8 h idle check and one opt-in release with no open `bridge-stability` issue gate R2.
+- [ ] AC20: During the AC19 run and after the session, `All VIs In Memory` of the main instance and of every open project's instance lists no bridge VI or subVI. A fixture VI running in an open project finishes with no abort and no error.
+- [ ] AC21: `labviewRoute` resolves by `--labview-route`, then `LABVIEWMCP_LABVIEW_ROUTE`, then the settings file. On the bridge, a broken VI answers `viBroken` and is not run; a run past its deadline is aborted. A server stop ends its bridge clone and leaves LabVIEW running. LabVIEW asks to save nothing of ours.
 
 ## Slices
 
@@ -581,7 +582,7 @@ Feature: Tools reach LabVIEW through one route, with the run logic in one place
 Feature: The server talks to its bridge VI over loopback
 
   Background:
-    Given the connect deadline is 500 ms, the operation deadline is 300 ms, and the handshake timeout is 200 ms, scaled by the test time factor
+    Given the reconnect probe deadline is 500 ms, the operation deadline is 300 ms, and the handshake timeout is 200 ms, scaled by the test time factor
 
   Scenario: Rendezvous, connect, and one primitive
     Given the server wrote a rendezvous file for one connection
@@ -1177,7 +1178,7 @@ Feature: One archive starts the server on every supported OS
 #### Step 11.3: Hooks as `sh` on Linux, and the README
 
 **Complexity**: standard
-**IMPLEMENT**: Port the auto-allow hook to `sh` for Linux, fail-closed with a reason, with the read-only list generated once for both hooks. The guard reads the shared macOS text. Add the README Linux section: requirements, install, what the user sees at first run, and `scripts/Test-Linux.ps1`.
+**IMPLEMENT**: Port the auto-allow hook to `sh` for Linux, fail-closed with a reason, with the read-only list generated once into `plugin/hooks/readonly-tools.txt` for both hooks. The build writes `Platform`'s macOS text to `plugin/hooks/macos-notice.txt`, and the guard reads that file. Add the README Linux section: requirements, install, what the user sees at first run, and `scripts/Test-Linux.ps1`.
 **TEST**: The hook and guard scenarios, with tool-call fixtures shared by both hook variants.
 **REFACTOR**: One generator for the read-only list.
 **Files**: `plugin/hooks/**`, `README.md`
@@ -1291,7 +1292,8 @@ Feature: The bridge is the only route
 | AC17 | 3.4, 10.3 | `ErrorKindsTests` (scan, `nextStep` lint), error-table drift test |
 | AC18 | 6.4, 9.2, 14.1, 14.2 | Lane test, two-servers scenarios, simultaneous-start measurement |
 | AC19 | 9.4, 12.1 | `StressTests`, `Assert-SoakRecord` |
-| AC20 | 14.2, 7.1 | `All VIs In Memory` checks during a long run and after the session |
+| AC20 | 14.2, 7.1, 9.4 | `All VIs In Memory` checks during the AC19 run and after the session |
+| AC21 | 5.1, 7.1, 9.1 | `RouteOperationsTests` (abort, `viBroken`), resolver precedence tests, disconnect and nothing-unsaved scenarios |
 
 ## Parallelization
 

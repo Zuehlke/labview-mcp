@@ -94,7 +94,7 @@ If one fails, the plan stops and returns to this spec. No workaround is chosen s
 | AC3 | Bridge parity on Windows | The parity suite passes on Windows. Bridge answers equal the committed ActiveX golden answers after the documented normaliser runs, on Windows LabVIEW 2026 64-bit. Windows 2020 to 2025 and 32-bit are unmeasured, and the README and the platform support table say so. |
 | AC4 | Bridge on Linux | The parity suite passes in the NI image, locally and in CI. Operations in the checked-in headless skip file pass in a recorded run on the Linux desktop (the Pop!_OS laptop, with a display). |
 | AC5 | Attach, never start | On Windows and on Linux, with no LabVIEW running, a bridge-route tool answers `labviewNotRunning` and the LabVIEW process count is unchanged. |
-| AC6 | Bridge failures | LabVIEW gone, bridge VI stopped, not connected, not answering, and a late reply each behave as specified, within injected deadlines. Each failure kind is distinct, and the next call recovers. |
+| AC6 | Bridge failures | LabVIEW gone, bridge VI stopped, not connected, not answering, and a late reply each behave as specified, within injected deadlines. Each failure kind is distinct, and the next call recovers. The production deadlines are 15 s for the first connect after launch and 500 ms for the background reconnect probe. |
 | AC7 | Bridge security | The rendezvous file is owner-only. A connection without the token, a replayed token, or a silent connection is refused or dropped, and the event is logged. The token never appears in logs or answers. The listener binds loopback only. |
 | AC8 | Named refusals | On Linux, a smoke test calls every tool the table marks as supported. None throws a platform exception. Every other tool answers `notSupportedOnPlatform` naming the component. The drift test covers every registered tool. |
 | AC9 | pylabview on Linux | With no Python on `PATH`, the composer and reader run from `runtime/linux-x64`. In the NI image, `lvai_generate_vi` writes a VI that LabVIEW reports as executable. |
@@ -109,6 +109,7 @@ If one fails, the plan stops and returns to this spec. No workaround is chosen s
 | AC19 | Stability | Before R1 ships (Linux has no fallback) and again before the Windows flip: 10 000 consecutive operations plus 4 parallel lanes run with 0 transport failures on Windows and in the NI image. Before the flip only: a connection idle for 8 h still answers, and one release with the bridge opt-in passes with no open issue labelled `bridge-stability`. A transport failure is any `bridgeNotConnected`, `bridgeStopped`, `labviewGone`, `labviewNotAnswering`, or framing error. |
 | AC20 | Application context | During and after a bridge session, `All VIs In Memory` of the main instance and of every open project's instance contains no bridge VI or bridge subVI. A user project that is open and running is unaffected. |
 | AC18 | Several clients | Two server processes on one LabVIEW each get their own bridge connection. Neither breaks the other. Parallel lanes keep working. |
+| AC21 | Route rules kept | `labviewRoute` resolves by `--labview-route`, then `LABVIEWMCP_LABVIEW_ROUTE`, then the settings file. On the bridge, a broken VI answers `viBroken` and is not run, and a run past its deadline is aborted. A server stop leaves LabVIEW running, and LabVIEW asks to save nothing of ours. |
 
 ## Glossary
 
