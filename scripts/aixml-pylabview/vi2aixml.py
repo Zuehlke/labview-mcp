@@ -3066,11 +3066,22 @@ class Reader:
         el = ET.Element("Node", {"_name": "Diagram Disable Structure" if diagram else "Conditional Disable Structure",
                                  "uid": node.get("uid"), "uid_parent": parent_uid})
         frames = list(node.find("diagramList"))
-        active = node.findtext("activeDiag")
+        # A Diagram Disable's ENABLED frame is the node's own activeDiag, HEX like every heap
+        # index ("%02X" in aixml2vi.add_disable). LabVIEW omits it when it holds its default, 0:
+        # measured 2026-11-09 (issue #129) - frame 0 enabled ran frame 0 and was saved with no
+        # node-level activeDiag (and no defaultDiag); frame 1 enabled was saved with activeDiag
+        # 01. Both frames carried objFlags 0x800 either way, and the selector label kept the
+        # template's text, so neither marks the enabled frame. This read a missing activeDiag
+        # as "the last frame" until then and swapped Enabled and Disabled on every structure
+        # whose frame 0 runs (JKI VI Tester's skip template); it read the value as decimal too.
+        # findtext("activeDiag") is the DIRECT child only - commentSelInfoArray holds the
+        # ExpressionInfo activeDiags of the frames' conditions.
+        active = (node.findtext("activeDiag") or "").strip()
         try:
-            active = int(active) if active is not None and active.strip().lstrip("-").isdigit() else None
+            active = int(active, 16) if active else 0
         except ValueError:
-            active = None
+            self.notes.append("Diagram Disable %s: activeDiag %r not read, frame 0 taken as enabled" % (node.get("uid"), active))
+            active = 0
         conds = []
         for info in node.findall("commentSelInfoArray/SL__arrayElement"):
             # SelectorInfoElement > activeDiag (ExpressionInfo) > Tag0000 (the strings) and
@@ -3090,7 +3101,7 @@ class Reader:
         d_els = []
         for i, fr in enumerate(frames):
             if diagram:
-                sel = " Enabled " if (active is not None and i == active) or (active is None and i == len(frames) - 1) else " Disabled "
+                sel = " Enabled " if i == active else " Disabled "
             else:
                 sel = " %s " % (conds[i] if i < len(conds) else "Default")
             d_els.append(ET.SubElement(el, "Diagram", {"selector": sel, "uid": fr.get("uid"), "uid_parent": node.get("uid")}))
