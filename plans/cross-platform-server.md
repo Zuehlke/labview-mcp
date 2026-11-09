@@ -79,7 +79,7 @@ fixed host ports, and removes its container on exit, so parallel slices can shar
 - [ ] AC9: With no system Python, pylabview runs from `runtime/linux-x64`. The composed AIXML equals the Windows reader's golden, and `lvai_generate_vi` writes an executable VI in the NI image.
 - [ ] AC10: One archive with both binaries, both runtimes, the bridge AIXML, and execute bits. One identical `.mcp.json` starts the server on both OS in CI. The archive is at most 2.2 times the size in `scripts/archive-baseline.txt`.
 - [ ] AC11: The read-only tool list is generated once into `plugin/hooks/readonly-tools.txt` and used by both hooks. On Linux the hook allows those tools; any missing dependency or malformed stdin answers `ask` with a reason. The guard is silent on Linux and warns on macOS with the text in `plugin/hooks/macos-notice.txt`.
-- [ ] AC12: Settings and cache live under `$HOME/.labviewmcp`. The INI's bytes and mtime are unchanged after every test. A missing INI, a `HOME` that is not writable, and a LabVIEW that is too old each answer as specified.
+- [ ] AC12: Settings and cache live under `$HOME/.labviewmcp`. LabVIEW's configuration file (`labview.ini` on Windows; `~/natinst/.config/LabVIEW-2026/labview.conf` on Linux, measured in Step 1.1) keeps its bytes and mtime after every test. A missing INI, a `HOME` that is not writable, and a LabVIEW that is too old each answer as specified.
 - [ ] AC13: From Slice 2 on, the `tools/list` snapshot, `WindowsAnswerFieldsTests`, and the Windows gate pass after every slice.
 - [ ] AC14: At the R2 tag, `Assert-SoakRecord` passes and `auto` resolves to the bridge on Windows. At the R3 tag, `NoActiveXTests` and `DocMarkerTests` pass.
 - [ ] AC15: Each slice PR adds `docs/measurements/slice-N.md` with one row per check, failures included. `Assert-StationRecord` fails on a missing row. That `CLAUDE.md` and the orchestrator brief stay in step is a reviewer check.
@@ -1378,6 +1378,7 @@ None.
 - **`NI.LV.Editor` fails on one release.** It is a private context. Decided by the user on 2026-11-09: the plan stops and returns to `/specs`, with no fallback into the main instance. A canary test in Step 7.1 catches a LabVIEW update that breaks the context.
 - **Emulation on this Mac.** Above the Slice 1 threshold, local runs cover unit tests only, and container tests run in CI. An x64 Linux host restores the full local loop.
 - **Hardware.** The Windows station is the user's laptop with LabVIEW 2026 64-bit. The Linux desktop is the user's Pop!_OS laptop with LabVIEW for Linux 64-bit. Slice 14, Slice 7, Steps 9.2 and 9.4, and the deferred slices use them. Slices 1, 2, 3, and 5 do not wait on them.
+- **Step 1.1 findings for later slices.** LabVIEW in the NI image needs an X display; the probe starts Xvfb inside the container, so "headless" means no physical display, not no display. Linux has no `labview.ini`; Slice 4 reads `labview.conf`. A `Run VI` async target goes idle when its reference closes, so the bridge must hold it. `LabVIEWCLI RunVI` accepts only NI's fixed connector pane (error 1031 otherwise).
 - **Where hardware steps run.** Slice 14, the Windows check of Step 1.2, and every other `RequiresLabVIEWStation` step run in a Claude Code session on the laptop concerned, from a clone of this repository on the slice's branch (the user's decision of 2026-11-09). The Mac session builds the container and code slices. The measurement file is the handoff in both directions.
 - **Unmeasured Windows releases.** Windows 2020 to 2025, 32-bit, and side-by-side installs ship unmeasured (the user's decision of 2026-11-09). Only an offline read-back checks the 2020 composition. The R2 default flip should wait for a report from such a user.
 - **Pop!_OS is not an NI-listed distribution** [VERIFY: NI's LabVIEW for Linux system requirements]. A failure there that the NI image does not show is recorded, not treated as a spec failure.
@@ -1391,7 +1392,7 @@ None.
 
 #### Wave 1
 - [ ] Slice 1: Measure the NI image and the composer
-  - [ ] Step 1.1: The NI image on this Mac, and VI Server in it
+  - [x] Step 1.1: The NI image on this Mac, and VI Server in it
   - [ ] Step 1.2: Bridge skeleton through the composer
 - [ ] Slice 14: Measure on the hardware (handoff, context, modal)
   - [ ] Step 14.1: Handoff and rendezvous
