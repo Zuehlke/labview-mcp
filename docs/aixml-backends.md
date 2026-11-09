@@ -3299,3 +3299,35 @@ composer of the commit before - a station state, not these changes.
   likewise - they were measured over raw stdio only; and whether LabVIEW's ActiveX server is on by
   default on every installation — it answered here with no configuration change. (ActiveX on a VI
   calling project-local code IS measured now: the Caraya suites above call the class's own members.)
+
+## The reader swapped Enabled and Disabled on a Diagram Disable (fixed 2026-11-09, issue #129)
+
+**Symptom.** A JKI VI Tester test built from the "enable 'Skip' case" template - test body in
+frame 0 (Enabled), `skip.vi` in frame 1 (Disabled) - was exported with the test body under
+`selector=" Disabled "`, and a session reported a running test as skipped. The VI itself was right.
+
+**Measured** on three VIs composed, laid out and SAVED by LabVIEW 2026, then RUN (each returns the
+index of the frame that executes; fixtures in `tests/LabVIEWMCP.Tests/Fixtures/reader/disable/`):
+
+| enabled frame | ran | node-level `activeDiag` | `defaultDiag` | frame `objFlags` |
+|---|---|---|---|---|
+| 0 of 2 | frame 0 | ABSENT | absent | 0x800, 0x800 |
+| 1 of 2 | frame 1 | `01` | `01` | 0x800, 0x800 |
+| 10 of 12 | frame 10 | `0A` | `0A` | all 0x800 |
+
+So the enabled frame IS the commentNode's own `activeDiag`, hex, and LabVIEW omits it at its
+default 0 - as it does for a Conditional Disable (see `add_disable`). The reader took a missing
+`activeDiag` for "the last frame" and parsed a present one as decimal (`0A` fell back to the last
+frame as well). Neither the frame `objFlags` (the issue suggested 0x80) nor the selector label
+marks the enabled frame: the label kept the part's `" Disabled "` text in all three VIs.
+`defaultDiag` is not it either - the issue's VI carried `01` with frame 0 enabled. Now: missing
+means 0, the value is read as hex, and an unreadable value is a note.
+
+The composer was right throughout: it takes the enabled frame from the `" Enabled "` selector, so
+an export -> regenerate round trip only went wrong because the export did.
+
+**The Conditional Disable twin was checked the same day and is not affected.** The reader takes
+each frame's selector from its own condition (`commentSelInfoArray`), never from `activeDiag`.
+Four VIs composed, saved by LabVIEW and run - the Default frame first, last and in the middle, and
+a `RUN_TIME_ENGINE!=True` frame that holds on the desktop and ran - were exported by the reader and
+by NI's converter with identical selectors frame by frame (fixtures `Cond *.vi` beside the above).
