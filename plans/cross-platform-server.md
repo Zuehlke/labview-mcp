@@ -1379,6 +1379,7 @@ None.
 - **Emulation on this Mac.** Above the Slice 1 threshold, local runs cover unit tests only, and container tests run in CI. An x64 Linux host restores the full local loop.
 - **Hardware.** The Windows station is the user's laptop with LabVIEW 2026 64-bit. The Linux desktop is the user's Pop!_OS laptop with LabVIEW for Linux 64-bit. Slice 14, Slice 7, Steps 9.2 and 9.4, and the deferred slices use them. Slices 1, 2, 3, and 5 do not wait on them.
 - **Step 1.1 findings for later slices.** LabVIEW in the NI image needs an X display; the probe starts Xvfb inside the container, so "headless" means no physical display, not no display. Linux has no `labview.ini`; Slice 4 reads `labview.conf`. A `Run VI` async target goes idle when its reference closes, so the bridge must hold it. `LabVIEWCLI RunVI` accepts only NI's fixed connector pane (error 1031 otherwise).
+- **VI Server TCP listener.** In the NI image it binds `0.0.0.0:3363` with no access list (Step 1.2 transcript). The production bridge must not depend on it, or must restrict it to loopback with an access list. Slice 7 and Step 14.2 decide which.
 - **Where hardware steps run.** Slice 14, the Windows check of Step 1.2, and every other `RequiresLabVIEWStation` step run in a Claude Code session on the laptop concerned, from a clone of this repository on the slice's branch (the user's decision of 2026-11-09). The Mac session builds the container and code slices. The measurement file is the handoff in both directions.
 - **Unmeasured Windows releases.** Windows 2020 to 2025, 32-bit, and side-by-side installs ship unmeasured (the user's decision of 2026-11-09). Only an offline read-back checks the 2020 composition. The R2 default flip should wait for a report from such a user.
 - **Pop!_OS is not an NI-listed distribution** [VERIFY: NI's LabVIEW for Linux system requirements]. A failure there that the NI image does not show is recorded, not treated as a spec failure.
@@ -1393,7 +1394,7 @@ None.
 #### Wave 1
 - [ ] Slice 1: Measure the NI image and the composer
   - [x] Step 1.1: The NI image on this Mac, and VI Server in it
-  - [ ] Step 1.2: Bridge skeleton through the composer
+  - [ ] Step 1.2: Bridge skeleton through the composer (Linux half done 2026-11-09, commit 53d32f3; Windows 2026 64-bit row pending on the Windows laptop session)
 - [ ] Slice 14: Measure on the hardware (handoff, context, modal)
   - [ ] Step 14.1: Handoff and rendezvous
   - [ ] Step 14.2: The `NI.LV.Editor` context
