@@ -51,4 +51,31 @@ public sealed class ReaderDiagramDisableTests
         // the enabled frame holds the constant the VI returned when it was run
         Assert.Equal(itsConstant, (string?)frames[enabled].Element("Constant")!.Attribute("value"));
     }
+
+    /// <summary>
+    /// The Conditional Disable twin, checked 2026-11-09 for the same fault and not found: the
+    /// reader takes each frame's selector from its own condition, never from activeDiag. Four
+    /// VIs composed, saved by LabVIEW and RUN (each frame returns its index; the Default frame
+    /// first, last, in the middle, and a `!=` condition that holds on the desktop), exported by
+    /// the reader and by NI's converter: identical selectors, frame by frame.
+    /// </summary>
+    [Theory]
+    [InlineData("Cond A Default First.vi", " Default | RUN_TIME_ENGINE==True ")]
+    [InlineData("Cond B Cond First.vi", " RUN_TIME_ENGINE==False | Default ")]
+    [InlineData("Cond C Default Middle.vi", " TARGET_TYPE==RT | Default | RUN_TIME_ENGINE!=False ")]
+    [InlineData("Cond D Ne Runs.vi", " TARGET_TYPE==RT | RUN_TIME_ENGINE!=True | Default ")]
+    public async Task Each_conditional_frame_keeps_its_own_condition(string fixture, string niSelectors)
+    {
+        if (await ReadAsync(fixture) is not { } vi) return;
+
+        var frames = vi.Descendants("Node")
+            .Single(n => (string?)n.Attribute("_name") == "Conditional Disable Structure")
+            .Elements("Diagram").ToList();
+
+        Assert.Equal(niSelectors.Split('|').Select(s => " " + s.Trim() + " "),
+                     frames.Select(f => (string?)f.Attribute("selector")));
+        // frame i holds the constant i: the conditions are not shifted against the frames
+        for (var i = 0; i < frames.Count; i++)
+            Assert.Equal(i.ToString(), (string?)frames[i].Element("Constant")!.Attribute("value"));
+    }
 }

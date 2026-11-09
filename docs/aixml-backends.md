@@ -3325,3 +3325,9 @@ means 0, the value is read as hex, and an unreadable value is a note.
 
 The composer was right throughout: it takes the enabled frame from the `" Enabled "` selector, so
 an export -> regenerate round trip only went wrong because the export did.
+
+**The Conditional Disable twin was checked the same day and is not affected.** The reader takes
+each frame's selector from its own condition (`commentSelInfoArray`), never from `activeDiag`.
+Four VIs composed, saved by LabVIEW and run - the Default frame first, last and in the middle, and
+a `RUN_TIME_ENGINE!=True` frame that holds on the desktop and ran - were exported by the reader and
+by NI's converter with identical selectors frame by frame (fixtures `Cond *.vi` beside the above).
