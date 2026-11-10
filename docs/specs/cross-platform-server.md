@@ -1,7 +1,7 @@
 <!-- spec-version: 14.0.1 -->
 # Spec: Cross-platform LabVIEW MCP server (Windows and Linux, Mac-ready)
 
-**Format:** dev-team /specs 14.0.1 · **Date:** 2026-11-09 (revised after plan review) · **Status:** approved by the user (2026-11-09); hardware revision approved by the user (2026-11-09); Step 1.2 notes on assumptions 1 and 4 added 2026-11-10 (assumption 1: the user's decision; assumption 4: measured), awaiting the user's review
+**Format:** dev-team /specs 14.0.1 · **Date:** 2026-11-09 (revised after plan review) · **Status:** approved by the user (2026-11-09); hardware revision approved by the user (2026-11-09); Step 1.2 notes on assumptions 1 and 4 added 2026-11-10 (assumption 1: the user's decision; assumption 4: measured), approved by the user (2026-11-10)
 
 ## Intent Description
 
