@@ -1,0 +1,8 @@
+<VI _name="acbr-probe.vi" description="Step 14.1 round 3 probe\3A does the repo composer author Start Asynchronous Call? Expected to be refused (Step 1.2 census).">
+  <FreeLabel comment="Start an asynchronous call (probe)" uid="4200" uid_parent="root"/>
+  <Constant _name="target path" outputs="value:4201.value" type="path" uid="4201" uid_parent="root" value="/tmp/none.vi"/>
+  <Node _name="Open VI Reference" inputs="vi path:4201.value" outputs="vi reference:4202.ref,error out:4202.err" uid="4202" uid_parent="root"/>
+  <Node _name="Start Asynchronous Call" inputs="reference:4202.ref,error in (no error):4202.err" outputs="reference out:4203.ref,error out:4203.err" uid="4203" uid_parent="root"/>
+  <Indicator _name="Output/Failure" conIdx="2" connection="recommended" inputs="value:4203.err" type="cluster{bool.status,int32.code,string.source}" uid="4204" uid_parent="root" value=""/>
+</VI>
+<?lvmcp pane="4815"?>

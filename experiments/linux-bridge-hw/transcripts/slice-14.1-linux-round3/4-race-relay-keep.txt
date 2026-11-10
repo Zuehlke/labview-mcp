@@ -1,0 +1,23 @@
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True
+launcher: relay-keep   trials: 20   resident pid 91535
+trial 1: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 2: A -> ok; B -> ok; relays; trial checked 4.0 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 3: A -> ok; B -> ok; relays; trial checked 6.7 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 4: A -> ok; B -> ok; relays; trial checked 4.9 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 5: A -> ok; B -> ok; relays; trial checked 6.1 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 6: A -> ok; B -> ok; relays; trial checked 3.6 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 7: A -> ok; B -> ok; relays; trial checked 12.6 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 8: A -> ok; B -> ok; relays; trial checked 3.6 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 9: A -> ok; B -> ok; relays; trial checked 13.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 10: A -> ok; B -> ok; relays; trial checked 3.6 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 11: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 12: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 13: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 14: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 15: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 16: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 17: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 18: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 19: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+trial 20: A -> ok; B -> ok; relays; trial checked 3.3 s after the launches (a check time, not a launcher lifetime); labview processes now 1; conf settings unchanged; dialog up: no
+RESULT trials=20 ok=20 bad=0

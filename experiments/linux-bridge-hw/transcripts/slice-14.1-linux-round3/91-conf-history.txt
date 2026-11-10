@@ -1,0 +1,19 @@
+# labview.conf during round 3 (read only; this session never wrote it)
+# start of the round (baseline 4, the file as the user's own LabVIEW session left it): sha256 2b0d9442e3291705991a7ae0823ffc66185d4d08d697a244167bc81a89e81e80, 1306 B
+# settings lines (server.*, RunWhenOpened.*, DoNotShow*, NewProj.*) identical to baseline 3 (round 2): yes
+# end of the round (after the IDE this session started was ended by SIGTERM and one bare start/stop cleared the log): sha256 e425edaa89228de459a7a9f5c00012145a5b1515ec155e4c9167beb448435bae, 1271 B, mtime 2026-11-10 14:56:04.692316811 +0100
+# settings lines identical to baseline 4: yes
+# diff baseline 4 -> end WITHOUT RecentFiles.pathList (LabVIEW's own state keys):
+6c6
+< NI_GSWContentIndex=4
+---
+> NI_GSWContentIndex=6
+14c14
+< menuLoc.1=334x527+1360+410
+---
+> menuLoc.1=334x527+1408+458
+19c19
+< menuLoc.2=629x993+1+1
+---
+> menuLoc.2=727x1091+1+1
+# labview64.conf: f7b1d106615c7a891ac9b59548357599c93fdd11c668cd31c7bfb1837315090f (unchanged since 2026-11-08)

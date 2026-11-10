@@ -1,0 +1,24 @@
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True
+mode: blocks   LabVIEWCLI RunVI of the echo target (it has NI's fixed pane)   resident pid 91535
+wall time from start to the end of the whole row: 4.4 s
+--- LabVIEWCLI output
+LabVIEWCLI started logging in file:  /tmp/lvtemporary_814750.log
+Using LabVIEW: "/usr/local/natinst/LabVIEW-2026-64/labview"
+Connection established with LabVIEW at port number 3363.
+
+Operation output: 
+hello-60f5ba83dea8a5bc4ac2646f79fef614|ver=26.3.1f1|stat=91535 (labview) R 1251 91534 91531 0 -1 4194304 72604 653 19 0 5564 907 0 1 20 0|path=/tmp/lvmcp-r3.u1WBRj/dd-B-cli-direct-blocks/echo-target-dd-B-cli-direct-blocks.vi|args=/usr/local/natinst/LabVIEW-2026-64/labview
+|tick=8909352|end
+RunVI operation succeeded.
+
+exit code: 0
+--- server status
+0.00 LISTENING 52713
+4.29 HELLO pid=91535 token_ok=True
+4.30 FIRST-ECHO True
+4.30 ECHO-START
+4.31 ECHO-DONE ok=100 failures=0
+4.31 CLOSED
+--- server result
+{"rendezvous": "/tmp/lvmcp-r3.u1WBRj/dd-B-cli-direct-blocks/rendezvous.txt", "port": 52713, "dir_mode": "0o700", "file_mode": "0o600", "token_ok": true, "pid": "91535", "vi_path": "/tmp/lvmcp-r3.u1WBRj/dd-B-cli-direct-blocks/echo-target-dd-B-cli-direct-blocks.vi", "first_echo_ok": true, "echoes_requested": 100, "echoes_ok": 100, "failures": 0, "error": null, "ver": "26.3.1f1", "connect_s": 4.3, "total_s": 4.3}
+--- labview processes now: 1

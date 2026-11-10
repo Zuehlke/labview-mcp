@@ -1,0 +1,95 @@
+<VI _name="relay.vi" description="Step 14.1 relay (G-CLI style). Runs in a second LabVIEW process started with `labview relay.vi -- target rendezvous mode report residentpid host`. Opens an application reference to host (default localhost) on port 3363, opens the target VI in THAT instance, sets the target control rendezvous (unless the argument is a dash), runs the target (mode wait\3A Wait until done TRUE; nowait\3A FALSE and close the reference at once; hold\3A FALSE and keep the reference 4000 ms; dispose\3A FALSE with Auto Dispose Ref TRUE, then close at once), closes its references, writes the error codes of every step and its own pid to the report file, then Quit LabVIEW in ITS OWN process. It never quits when its own pid equals residentpid.">
+  <FreeLabel comment="Relay a target into the IDE, then quit" uid="4200" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Application\3ACommand Line Arguments" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Application\3ACommand Line Arguments:4221.args,reference out:,error out:" uid="4221" uid_parent="root"/>
+  <Constant _name="index 1" outputs="value:4230.value" type="int32" uid="4230" uid_parent="root" value="1"/>
+  <Constant _name="index 2" outputs="value:4231.value" type="int32" uid="4231" uid_parent="root" value="2"/>
+  <Constant _name="index 3" outputs="value:4232.value" type="int32" uid="4232" uid_parent="root" value="3"/>
+  <Constant _name="index 4" outputs="value:4233.value" type="int32" uid="4233" uid_parent="root" value="4"/>
+  <Constant _name="index 5" outputs="value:4234.value" type="int32" uid="4234" uid_parent="root" value="5"/>
+  <Constant _name="index 6" outputs="value:4235.value" type="int32" uid="4235" uid_parent="root" value="6"/>
+  <Node _name="Index Array" inputs="array:4221.args,index:4230.value" outputs="element:4240.target" uid="4240" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4221.args,index:4231.value" outputs="element:4241.rv" uid="4241" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4221.args,index:4232.value" outputs="element:4242.mode" uid="4242" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4221.args,index:4233.value" outputs="element:4243.report" uid="4243" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4221.args,index:4234.value" outputs="element:4244.resident" uid="4244" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4221.args,index:4235.value" outputs="element:4245.host" uid="4245" uid_parent="root"/>
+
+  <Constant _name="default host" outputs="value:4250.value" type="string" uid="4250" uid_parent="root" value="localhost"/>
+  <Node _name="Empty String/Path?" inputs="string/path:4245.host" outputs="empty?:4251.empty" uid="4251" uid_parent="root"/>
+  <Node _name="Select" inputs="s:4251.empty,t:4250.value,f:4245.host" outputs="s? t\3Af:4252.hostsel" uid="4252" uid_parent="root"/>
+  <Constant _name="vi server port" outputs="value:4253.value" type="uint16" uid="4253" uid_parent="root" value="3363"/>
+  <Node _name="Open Application Reference" inputs="machine name (&quot;&quot;\3A  open local reference):4252.hostsel,port number or service name (3363):4253.value" outputs="application reference:4254.app,error out:4254.err" uid="4254" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4240.target" outputs="path:4255.path" uid="4255" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4254.app,vi path:4255.path,error in (no error):4254.err" outputs="vi reference:4256.ref,error out:4256.err" uid="4256" uid_parent="root"/>
+
+  <Constant _name="dash" outputs="value:4260.value" type="string" uid="4260" uid_parent="root" value="-"/>
+  <Constant _name="empty" outputs="value:4261.value" type="string" uid="4261" uid_parent="root" value=""/>
+  <Node _name="Equal?" inputs="x:4241.rv,y:4260.value" outputs="x = y?:4262.isdash" uid="4262" uid_parent="root"/>
+  <Node _name="Select" inputs="s:4262.isdash,t:4261.value,f:4241.rv" outputs="s? t\3Af:4263.rvsel" uid="4263" uid_parent="root"/>
+  <Constant _name="xml head" outputs="value:4264.value" type="string" uid="4264" uid_parent="root" value="&lt;LvVariant&gt;&#10;&lt;Name&gt;Get Control Value Variant&lt;/Name&gt;&#10;&lt;String&gt;&#10;&lt;Name&gt;rendezvous&lt;/Name&gt;&#10;&lt;Val&gt;"/>
+  <Constant _name="xml tail" outputs="value:4265.value" type="string" uid="4265" uid_parent="root" value="&lt;/Val&gt;&#10;&lt;/String&gt;&#10;&lt;/LvVariant&gt;&#10;"/>
+  <Node _name="Concatenate Strings" inputs="string:4264.value,string:4263.rvsel,string:4265.value" outputs="concatenated string:4266.xml" uid="4266" uid_parent="root"/>
+  <Constant _name="variant type" outputs="value:4267.value" type="variant" uid="4267" uid_parent="root" value=""/>
+  <Node _name="Unflatten From XML" inputs="xml string:4266.xml,type:4267.value,error in (no error):4256.err" outputs="value:4268.value,error out:4268.err" uid="4268" uid_parent="root"/>
+  <Constant _name="control name" outputs="value:4269.value" type="string" uid="4269" uid_parent="root" value="rendezvous"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:4256.ref,error in (no error):4268.err,Control Name:4269.value,Value:4268.value" outputs="reference out:4270.ref,error out:4270.err" uid="4270" uid_parent="root"/>
+
+  <Constant _name="wait word" outputs="value:4271.value" type="string" uid="4271" uid_parent="root" value="wait"/>
+  <Constant _name="hold word" outputs="value:4272.value" type="string" uid="4272" uid_parent="root" value="hold"/>
+  <Node _name="Equal?" inputs="x:4242.mode,y:4271.value" outputs="x = y?:4273.waitflag" uid="4273" uid_parent="root"/>
+  <Node _name="Equal?" inputs="x:4242.mode,y:4272.value" outputs="x = y?:4274.holdflag" uid="4274" uid_parent="root"/>
+  <Constant _name="dispose word" outputs="value:4284.value" type="string" uid="4284" uid_parent="root" value="dispose"/>
+  <Node _name="Equal?" inputs="x:4242.mode,y:4284.value" outputs="x = y?:4285.disposeflag" uid="4285" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:4270.ref,error in (no error):4270.err,Wait until done:4273.waitflag,Auto Dispose Ref:4285.disposeflag" outputs="reference out:4275.ref,error out:4275.err" uid="4275" uid_parent="root"/>
+  <Constant _name="hold ms" outputs="value:4276.value" type="uint32" uid="4276" uid_parent="root" value="4000"/>
+  <Constant _name="no hold" outputs="value:4277.value" type="uint32" uid="4277" uid_parent="root" value="0"/>
+  <Node _name="Select" inputs="s:4274.holdflag,t:4276.value,f:4277.value" outputs="s? t\3Af:4278.ms" uid="4278" uid_parent="root"/>
+  <Node _name="Wait (ms)" inputs="milliseconds to wait:4278.ms" outputs="millisecond timer value:4279.tick" uid="4279" uid_parent="root"/>
+  <Node _name="Greater Or Equal To 0?" inputs="x:4279.tick" outputs="x &gt;= 0?:4280.ok" uid="4280" uid_parent="root"/>
+  <Node _name="Select" inputs="s:4280.ok,t:4275.err,f:4275.err" outputs="s? t\3Af:4281.gated" uid="4281" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4275.ref,error in (no error):4281.gated" outputs="error out:4282.err" uid="4282" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4254.app,error in (no error):4282.err" outputs="error out:4283.err" uid="4283" uid_parent="root"/>
+
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4254.err" outputs="code:4290.code" uid="4290" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4256.err" outputs="code:4291.code" uid="4291" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4270.err" outputs="code:4292.code" uid="4292" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4275.err" outputs="code:4293.code" uid="4293" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,status" inputs="input cluster:4283.err" outputs="code:4294.code,status:4294.status" uid="4294" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4290.code" outputs="decimal integer string:4295.t" uid="4295" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4291.code" outputs="decimal integer string:4296.t" uid="4296" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4292.code" outputs="decimal integer string:4297.t" uid="4297" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4293.code" outputs="decimal integer string:4298.t" uid="4298" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4294.code" outputs="decimal integer string:4299.t" uid="4299" uid_parent="root"/>
+
+  <Constant _name="stat path" outputs="value:4300.value" type="string" uid="4300" uid_parent="root" value="/proc/self/stat"/>
+  <Node _name="String To Path" inputs="string:4300.value" outputs="path:4301.path" uid="4301" uid_parent="root"/>
+  <Constant _name="stat bytes" outputs="value:4302.value" type="int32" uid="4302" uid_parent="root" value="80"/>
+  <Node _name="Read from Text File" inputs="file (use dialog):4301.path,count:4302.value,error in:,prompt (Open existing file):" outputs="refnum out:,text:4303.text,cancelled:,error out:" uid="4303" uid_parent="root"/>
+  <Constant _name="space" outputs="value:4304.value" type="string" uid="4304" uid_parent="root" value=" "/>
+  <Node _name="Search/Split String" inputs="string:4303.text,search string/char (-):4304.value" outputs="substring before match:4305.pid,match + rest of string:,offset of match:" uid="4305" uid_parent="root"/>
+  <Node _name="Equal?" inputs="x:4305.pid,y:4244.resident" outputs="x = y?:4306.isres" uid="4306" uid_parent="root"/>
+  <Constant _name="false" outputs="value:4307.value" type="bool" uid="4307" uid_parent="root" value="false"/>
+  <Constant _name="true" outputs="value:4308.value" type="bool" uid="4308" uid_parent="root" value="true"/>
+  <Node _name="Select" inputs="s:4306.isres,t:4307.value,f:4308.value" outputs="s? t\3Af:4309.quit" uid="4309" uid_parent="root"/>
+
+  <Constant _name="l app" outputs="value:4310.value" type="string" uid="4310" uid_parent="root" value="app="/>
+  <Constant _name="l vi" outputs="value:4311.value" type="string" uid="4311" uid_parent="root" value=";vi="/>
+  <Constant _name="l set" outputs="value:4312.value" type="string" uid="4312" uid_parent="root" value=";set="/>
+  <Constant _name="l run" outputs="value:4313.value" type="string" uid="4313" uid_parent="root" value=";run="/>
+  <Constant _name="l close" outputs="value:4314.value" type="string" uid="4314" uid_parent="root" value=";close="/>
+  <Constant _name="l pid" outputs="value:4315.value" type="string" uid="4315" uid_parent="root" value=";pid="/>
+  <Constant _name="l host" outputs="value:4316.value" type="string" uid="4316" uid_parent="root" value=";host="/>
+  <Constant _name="l mode" outputs="value:4317.value" type="string" uid="4317" uid_parent="root" value=";mode="/>
+  <Constant _name="l end" outputs="value:4318.value" type="string" uid="4318" uid_parent="root" value=";end"/>
+  <Node _name="Concatenate Strings" inputs="string:4310.value,string:4295.t,string:4311.value,string:4296.t,string:4312.value,string:4297.t,string:4313.value,string:4298.t,string:4314.value,string:4299.t,string:4315.value,string:4305.pid,string:4316.value,string:4252.hostsel,string:4317.value,string:4242.mode,string:4318.value" outputs="concatenated string:4320.report" uid="4320" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4243.report" outputs="path:4321.path" uid="4321" uid_parent="root"/>
+  <Node _name="Select" inputs="s:4294.status,t:4321.path,f:4321.path" outputs="s? t\3Af:4326.gatedpath" uid="4326" uid_parent="root"/>
+  <Node _name="Write to Text File" inputs="file (use dialog):4326.gatedpath,text:4320.report,error in:,prompt (Choose or enter file path):" outputs="refnum out:,cancelled:,error out:4322.err" uid="4322" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4322.err" outputs="status:4323.status" uid="4323" uid_parent="root"/>
+  <Node _name="Select" inputs="s:4323.status,t:4309.quit,f:4309.quit" outputs="s? t\3Af:4324.quitgated" uid="4324" uid_parent="root"/>
+  <Node _name="Quit LabVIEW" inputs="quit? (T):4324.quitgated" uid="4325" uid_parent="root"/>
+
+  <Indicator _name="Output/Failure" conIdx="2" connection="recommended" inputs="value:4320.report" type="string" uid="4330" uid_parent="root" value=""/>
+</VI>
+<?lvmcp pane="4815"?>

@@ -1,0 +1,21 @@
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True
+launcher: starter-relay   mechanism: arg   target: /tmp/lvmcp-r3.u1WBRj/ll-A3-starter-relay/echo-target-ll-A3-starter-relay.vi   resident pid 91535   launcher pid 114393
+launcher lifetime: 2.2 s (a relay/CLI that is 'alive' after 30 s had to be ended by this script)
+labview processes after the launcher: 1 (resident only = 1)
+target Execution:State read through LabVIEWCLI 48 s after the launcher was gone: 2  (1 idle, 2/3 running, 0 bad)
+echoes sent 60.1 s after the launcher was gone; Execution:State of the same VI 2 s after the server hung up (control, the target has ended): 1
+--- launcher report
+app=0;vi=0;set=0;run=0;close=0;pid=114393;host=localhost;mode=wait;end
+(LabVIEWCLI calls needed for the starter: )
+--- server status
+0.00 LISTENING 37451
+3.21 HELLO pid=91535 token_ok=True
+3.21 FIRST-ECHO True
+62.48 ECHO-START
+62.49 ECHO-DONE ok=100 failures=0
+62.49 CLOSED
+--- server result
+{"rendezvous": "/tmp/lvmcp-r3.u1WBRj/ll-A3-starter-relay/rv.txt", "port": 37451, "dir_mode": "0o700", "file_mode": "0o600", "token_ok": true, "pid": "91535", "vi_path": "/tmp/lvmcp-r3.u1WBRj/ll-A3-starter-relay/echo-target-ll-A3-starter-relay.vi", "first_echo_ok": true, "echoes_requested": 100, "echoes_ok": 100, "failures": 0, "error": null, "ver": "26.3.1f1", "connect_s": 3.21, "total_s": 62.5}
+--- processes now
+  91535 labview         /usr/local/natinst/LabVIEW-2026-64/labview
+--- dialog 'Investigate Previous Internal Error or Warning' up: no

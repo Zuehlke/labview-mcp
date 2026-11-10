@@ -1,0 +1,24 @@
+date: 2026-11-10T13:45:27Z   host: pop-os   Linux 7.2.15-76070215-generic x86_64
+--- dpkg -l (the package the user installed)
+ii  labview-2026-profull-exe                         26.3.1.49165-0+f13                                    amd64        LabVIEW Pro/Full Executable
+ii  ni-labview-command-line-interface                26.3.0.49372-0+f220                                   amd64        NI Command Line Interface Libraries for LabVIEW
+ii  ni-python-interface                              26.3.0.49370-0+f218                                   amd64        LabVIEW Python Interface support
+--- LabVIEWCLI
+/usr/local/bin/LabVIEWCLI
+/usr/local/natinst/share/nilvcli/LabVIEWCLI
+/usr/local/bin/LabVIEWCLI: ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for 
+ldd (any mono/dotnet/LabVIEW runtime?): 0 matches of 8 libraries
+--- resident LabVIEW pids: [91535]
+  pid 91535 /usr/local/natinst/LabVIEW-2026-64/labview  started Tue Nov 10 14:26:06 2026
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True
+--- 3363
+LISTEN 0      5            0.0.0.0:3363       0.0.0.0:*    users:(("labview",pid=91535,fd=19))
+--- LabVIEWCLI -Help (first lines)
+LabVIEWCLI started logging in file:  /tmp/lvtemporary_415309.log
+Usage: 
+ LabVIEWCLI  -OperationName <operation name>  [-PortNumber <port number>]  [-LabVIEWPath <LabVIEW executable path>]  [-LogFilePath <log file path>] [-LogToConsole <TRUE or FALSE>] [Verbosity <verbosity value>] [-AdditionalOperationDirectory <path to directory>] [-Help] [-Headless]
+ 
+ -OperationName		Name of LabVIEWCLI operation (eg: MassCompile, CloseLabVIEW, RunVI, ...).
+ -PortNumber		Port on which the remote LabVIEW application is listening.
+ -LabVIEWPath		Path of the LabVIEW in which the operation will run.
+ -LogFilePath		Path of the LabVIEWCLI log file.

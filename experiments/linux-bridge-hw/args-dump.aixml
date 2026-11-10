@@ -1,0 +1,30 @@
+<VI _name="args-dump.vi" description="Step 14.1 probe\3A writes what this LabVIEW process sees to /tmp/lvmcp-hw-args.txt\3A Application Version Number, own VI path, the first bytes of /proc/self/stat (pid and process name), and Application Command Line Arguments joined with a bar. Needs no server.">
+  <FreeLabel comment="Write what the process sees to one file" uid="4200" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Application\3AVersion Number" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Application\3AVersion Number:4220.ver,reference out:,error out:" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application\3ACommand Line Arguments" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Application\3ACommand Line Arguments:4221.args,reference out:,error out:" uid="4221" uid_parent="root"/>
+  <Node _name="Current VI's Path" outputs="path:4222.path" uid="4222" uid_parent="root"/>
+  <Node _name="Path To String" inputs="path:4222.path" outputs="string:4223.vipath" uid="4223" uid_parent="root"/>
+
+  <Constant _name="stat path" outputs="value:4224.value" type="string" uid="4224" uid_parent="root" value="/proc/self/stat"/>
+  <Node _name="String To Path" inputs="string:4224.value" outputs="path:4225.path" uid="4225" uid_parent="root"/>
+  <Constant _name="stat bytes" outputs="value:4226.value" type="int32" uid="4226" uid_parent="root" value="80"/>
+  <Node _name="Read from Text File" inputs="file (use dialog):4225.path,count:4226.value,error in:,prompt (Open existing file):" outputs="refnum out:,text:4227.text,cancelled:,error out:" uid="4227" uid_parent="root"/>
+
+  <Constant _name="format" outputs="value:4228.value" type="string" uid="4228" uid_parent="root" value="%s"/>
+  <Constant _name="bar" outputs="value:4229.value" type="string" uid="4229" uid_parent="root" value="|"/>
+  <Node _name="Array To Spreadsheet String" inputs="format string:4228.value,array:4221.args,delimiter (Tab):4229.value" outputs="spreadsheet string:4230.argstr" uid="4230" uid_parent="root"/>
+
+  <Constant _name="ver label" outputs="value:4231.value" type="string" uid="4231" uid_parent="root" value="ver="/>
+  <Constant _name="path label" outputs="value:4232.value" type="string" uid="4232" uid_parent="root" value="&#10;path="/>
+  <Constant _name="stat label" outputs="value:4233.value" type="string" uid="4233" uid_parent="root" value="&#10;stat="/>
+  <Constant _name="args label" outputs="value:4234.value" type="string" uid="4234" uid_parent="root" value="&#10;args="/>
+  <Node _name="Concatenate Strings" inputs="string:4231.value,string:4220.ver,string:4232.value,string:4223.vipath,string:4233.value,string:4227.text,string:4234.value,string:4230.argstr" outputs="concatenated string:4235.report" uid="4235" uid_parent="root"/>
+
+  <Constant _name="out path" outputs="value:4236.value" type="string" uid="4236" uid_parent="root" value="/tmp/lvmcp-hw-args.txt"/>
+  <Node _name="String To Path" inputs="string:4236.value" outputs="path:4237.path" uid="4237" uid_parent="root"/>
+  <Node _name="Write to Text File" inputs="file (use dialog):4237.path,text:4235.report,error in:,prompt (Choose or enter file path):" outputs="refnum out:,cancelled:,error out:" uid="4238" uid_parent="root"/>
+
+  <Indicator _name="Output/Failure" conIdx="2" connection="recommended" inputs="value:4235.report" type="string" uid="4240" uid_parent="root" value=""/>
+</VI>
+<?lvmcp pane="4815"?>

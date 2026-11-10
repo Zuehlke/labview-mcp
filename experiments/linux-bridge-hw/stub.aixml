@@ -1,0 +1,54 @@
+<VI _name="stub.vi" description="Step 14.1 rendezvous stub (nonce in the path). Finds its rendezvous file beside itself (Current VI's Path, Strip Path, rendezvous.txt), reads port and token (one line\3A port, a dash, the token), connects to 127.0.0.1 on that port and sends one text message\3A hello, a dash, the token, then bar-separated evidence (Application Version Number, the first bytes of /proc/self/stat, own VI path, command line arguments, tick count). It also writes the same message to the rendezvous path plus .report. Ends after TCP Close.">
+  <FreeLabel comment="Find rendezvous file, report to server" uid="4200" uid_parent="root"/>
+
+  <Node _name="Property Node" fields="read+Application\3AVersion Number" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Application\3AVersion Number:4220.ver,reference out:,error out:" uid="4220" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application\3ACommand Line Arguments" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Application\3ACommand Line Arguments:4221.args,reference out:,error out:" uid="4221" uid_parent="root"/>
+  <Node _name="Current VI's Path" outputs="path:4222.path" uid="4222" uid_parent="root"/>
+  <Node _name="Path To String" inputs="path:4222.path" outputs="string:4223.vipath" uid="4223" uid_parent="root"/>
+
+  <Node _name="Strip Path" inputs="path:4222.path" outputs="stripped path:4300.dir,name:" uid="4300" uid_parent="root"/>
+  <Constant _name="rendezvous file name" outputs="value:4301.value" type="string" uid="4301" uid_parent="root" value="rendezvous.txt"/>
+  <Node _name="Build Path" inputs="base path:4300.dir,name or relative path:4301.value" outputs="appended path:4302.rpath" uid="4302" uid_parent="root"/>
+
+  <Constant _name="read whole file" outputs="value:4310.value" type="int32" uid="4310" uid_parent="root" value="-1"/>
+  <Node _name="Read from Text File" inputs="file (use dialog):4302.rpath,count:4310.value,error in:,prompt (Open existing file):" outputs="refnum out:,text:4311.text,cancelled:,error out:4311.error out" uid="4311" uid_parent="root"/>
+  <Constant _name="dash" outputs="value:4312.value" type="string" uid="4312" uid_parent="root" value="-"/>
+  <Node _name="Search/Split String" inputs="string:4311.text,search string/char (-):4312.value" outputs="substring before match:4313.port text,match + rest of string:4313.rest,offset of match:" uid="4313" uid_parent="root"/>
+  <Node _name="Decimal String To Number" inputs="string:4313.port text" outputs="number:4314.number" uid="4314" uid_parent="root"/>
+  <Node _name="To Unsigned Word Integer" inputs="number:4314.number" outputs="unsigned 16bit integer:4315.port" uid="4315" uid_parent="root"/>
+  <Constant _name="loopback address" outputs="value:4316.value" type="string" uid="4316" uid_parent="root" value="127.0.0.1"/>
+  <Constant _name="connect timeout ms" outputs="value:4317.value" type="int32" uid="4317" uid_parent="root" value="5000"/>
+  <Node _name="TCP Open Connection" inputs="address:4316.value,remote port or service name:4315.port,timeout ms (60000):4317.value,error in (no error):4311.error out" outputs="connection ID:4318.connection ID,error out:4318.error out" uid="4318" uid_parent="root"/>
+
+  <Constant _name="stat path" outputs="value:4320.value" type="string" uid="4320" uid_parent="root" value="/proc/self/stat"/>
+  <Node _name="String To Path" inputs="string:4320.value" outputs="path:4321.path" uid="4321" uid_parent="root"/>
+  <Constant _name="stat bytes" outputs="value:4322.value" type="int32" uid="4322" uid_parent="root" value="80"/>
+  <Node _name="Read from Text File" inputs="file (use dialog):4321.path,count:4322.value,error in:,prompt (Open existing file):" outputs="refnum out:,text:4323.text,cancelled:,error out:" uid="4323" uid_parent="root"/>
+  <Constant _name="tilde" outputs="value:4324.value" type="string" uid="4324" uid_parent="root" value="~"/>
+  <Constant _name="format" outputs="value:4325.value" type="string" uid="4325" uid_parent="root" value="%s"/>
+  <Node _name="Array To Spreadsheet String" inputs="format string:4325.value,array:4221.args,delimiter (Tab):4324.value" outputs="spreadsheet string:4326.argstr" uid="4326" uid_parent="root"/>
+  <Node _name="Tick Count (ms)" outputs="millisecond timer value:4327.tick" uid="4327" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4327.tick" outputs="decimal integer string:4328.tickstr" uid="4328" uid_parent="root"/>
+
+  <Constant _name="hello" outputs="value:4330.value" type="string" uid="4330" uid_parent="root" value="hello"/>
+  <Constant _name="ver label" outputs="value:4331.value" type="string" uid="4331" uid_parent="root" value="|ver="/>
+  <Constant _name="stat label" outputs="value:4332.value" type="string" uid="4332" uid_parent="root" value="|stat="/>
+  <Constant _name="path label" outputs="value:4333.value" type="string" uid="4333" uid_parent="root" value="|path="/>
+  <Constant _name="args label" outputs="value:4334.value" type="string" uid="4334" uid_parent="root" value="|args="/>
+  <Constant _name="tick label" outputs="value:4335.value" type="string" uid="4335" uid_parent="root" value="|tick="/>
+  <Constant _name="end label" outputs="value:4336.value" type="string" uid="4336" uid_parent="root" value="|end"/>
+  <Node _name="Concatenate Strings" inputs="string:4330.value,string:4313.rest,string:4331.value,string:4220.ver,string:4332.value,string:4323.text,string:4333.value,string:4223.vipath,string:4334.value,string:4326.argstr,string:4335.value,string:4328.tickstr,string:4336.value" outputs="concatenated string:4337.message" uid="4337" uid_parent="root"/>
+
+  <Node _name="Path To String" inputs="path:4302.rpath" outputs="string:4340.rstr" uid="4340" uid_parent="root"/>
+  <Constant _name="report suffix" outputs="value:4341.value" type="string" uid="4341" uid_parent="root" value=".report"/>
+  <Node _name="Concatenate Strings" inputs="string:4340.rstr,string:4341.value" outputs="concatenated string:4342.reportpath" uid="4342" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4342.reportpath" outputs="path:4343.path" uid="4343" uid_parent="root"/>
+  <Node _name="Write to Text File" inputs="file (use dialog):4343.path,text:4337.message,error in:,prompt (Choose or enter file path):" outputs="refnum out:,cancelled:,error out:" uid="4344" uid_parent="root"/>
+
+  <Constant _name="write timeout ms" outputs="value:4350.value" type="int32" uid="4350" uid_parent="root" value="5000"/>
+  <Node _name="TCP Write" inputs="connection ID:4318.connection ID,data in:4337.message,timeout ms (25000):4350.value,error in (no error):4318.error out" outputs="connection ID out:4351.cid,bytes written:,error out:4351.error out" uid="4351" uid_parent="root"/>
+  <Node _name="TCP Close Connection" inputs="connection ID:4351.cid,error in (no error):4351.error out" outputs="connection ID out:,error out:" uid="4352" uid_parent="root"/>
+
+  <Indicator _name="Output/Failure" conIdx="2" connection="recommended" inputs="value:4337.message" type="string" uid="4360" uid_parent="root" value=""/>
+</VI>
+<?lvmcp pane="4815"?>

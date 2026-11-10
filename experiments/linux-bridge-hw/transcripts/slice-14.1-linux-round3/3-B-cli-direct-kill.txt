@@ -1,0 +1,18 @@
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True
+mode: kill   LabVIEWCLI RunVI of the echo target (it has NI's fixed pane)   resident pid 91535
+wall time from start to the end of the whole row: 15.5 s
+LabVIEWCLI pid 115125 killed with SIGTERM 9.3 s after the start
+Execution:State of the target 3 s after the CLI was killed: 1
+--- LabVIEWCLI output
+LabVIEWCLI started logging in file:  /tmp/lvtemporary_141874.log
+exit code: 143
+--- server status
+0.00 LISTENING 42517
+4.27 HELLO pid=91535 token_ok=True
+4.27 FIRST-ECHO True
+15.28 ECHO-START
+15.28 ECHO-DONE ok=0 failures=1
+15.28 CLOSED
+--- server result
+{"rendezvous": "/tmp/lvmcp-r3.u1WBRj/dd-B-cli-direct-kill/rendezvous.txt", "port": 42517, "dir_mode": "0o700", "file_mode": "0o600", "token_ok": true, "pid": "91535", "vi_path": "/tmp/lvmcp-r3.u1WBRj/dd-B-cli-direct-kill/echo-target-dd-B-cli-direct-kill.vi", "first_echo_ok": true, "echoes_requested": 100, "echoes_ok": 0, "failures": 1, "error": "ConnectionError('peer closed after 0 of 4 bytes')", "ver": "26.3.1f1", "connect_s": 4.27, "total_s": 15.3}
+--- labview processes now: 1

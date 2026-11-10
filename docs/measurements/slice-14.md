@@ -7,6 +7,12 @@ done. Record date: **2026-11-10**. Only the Linux desktop row is measured here; 
 
 **Update of 2026-11-10 (section "Step 14.1 with VI Server TCP enabled" below): with VI Server TCP enabled, a second `labview <vi>` STILL starts its own process (setting on or off). A relay does reach the resident IDE: a stub in the second process opens an application reference to `localhost:3363`, opens and runs a target VI in the IDE (the target's `/proc/self/stat` shows the resident pid) and quits its own process by itself (3.7 s median). Both rendezvous mechanisms and the two-server race pass in that relay form, 20 of 20 trials each. The handoff the spec states ("the launch itself hands the VI to the running process") is not what happens; what works is a second process as a short-lived VI Server client.** The text below is the first measurement (VI Server TCP off), unchanged.
 
+**Update of 2026-11-10, third round (section "Step 14.1, third round: relay quit and LabVIEWCLI"): two routes get a long-lived target into the resident IDE with no LabVIEW process left behind.**
+(1) `LabVIEWCLI -OperationName RunVI` of a small resident *starter* VI: the CLI is a native program (not a LabVIEW process), returns in about 3 s, and the starter
+starts the target locally with `Run VI` (Wait until done FALSE, Auto Dispose Ref TRUE, nothing closed). The target kept answering 60 s later in the resident pid (Execution:State 2,
+100 of 100 echoes). (2) A relay that does the same remotely and quits after 2 s (a second LabVIEW process for 2 s only). Two-server race 20 of 20 trials on each. A target run by
+`RunVI` directly dies when the CLI is killed, and two overlapping CLI calls fail with -350052.
+
 **A second launch of the LabVIEW binary does not hand the VI to the running LabVIEW. It starts a second LabVIEW process.** With one
 `labview` process running, `labview <vi>` gave two processes, the VI loaded (and, when run-when-opened, ran) in the new one. Measured twice
 (plain VI and run-when-opened VI) by `probe-handoff.sh`, once more by hand before it. The plan says this stops the plan and returns it to
@@ -52,7 +58,18 @@ calls 26.3.1 "2026 Q3". Record date 2026-11-10. Run with `experiments/linux-brid
 | Linux desktop, VI Server on | negative control (crossed rendezvous files) | A | PASS: both flagged | `.../59-control-crossed.txt` |
 | Linux desktop, VI Server on | run-when-opened check for a VI opened through VI Server | A | RECORDED: no check logged, no dialog; default setting not measured | `.../40-prompt.txt` |
 | Linux desktop, VI Server on | modal dialog "Investigate Previous Internal Error or Warning" in a second process | A | **FINDING**: appears after a process that logged a DWarn; needs a human; 16 resets needed in 1 run | `.../80-resets.txt` |
-| Linux desktop | `ni-labview-command-line-interface` in the NI apt feed | n/a | PASS (available, 1.4 MB, NOT installed) | `.../60-labviewcli.txt` || Windows 2026 64-bit | every row above, plus the relay row | | **PENDING** (handoff section below) | |
+| Linux desktop | `ni-labview-command-line-interface` in the NI apt feed | n/a | PASS (available, 1.4 MB, NOT installed) | `.../60-labviewcli.txt` || Linux desktop, VI Server on, `ni-labview-command-line-interface` 26.3.0.49372-0+f220 installed (dpkg) | relay quits early (`Run VI` wait FALSE, Auto Dispose TRUE, nothing closed): relay gone in 2.0 s, target still in resident pid 60 s later, State 2, 100 echoes 0 failures | A | **PASS** | `transcripts/slice-14.1-linux-round3/2-A2-relay-keep.txt` |
+| Linux desktop | `Asynchronous Call By Reference`, option 0x80 | A | **NOT MEASURED**: the repo composer refuses `Start Asynchronous Call` | `.../01-compose.txt` |
+| Linux desktop | resident starter VI started by LabVIEWCLI (CLI 3.1 s), target survives 60 s, no LabVIEW process left | A | **PASS** | `.../2-A3-starter-cli.txt` |
+| Linux desktop | the same starter started by a relay (2.2 s) | A | PASS | `.../2-A3-starter-relay.txt` |
+| Linux desktop | LabVIEWCLI RunVI of a VI: processes before/during/after, duration | A | PASS: native `LabVIEWCLI`, labview count 1/1/1, 3.0 s | `.../10-cli-basics.txt` |
+| Linux desktop | LabVIEWCLI RunVI of the long-lived target itself | A | PASS and **blocks for the target's whole life** (fixed NI pane accepted, no error 1031) | `.../3-B-cli-direct-blocks.txt` |
+| Linux desktop | the same, LabVIEWCLI killed after 5 s | A | **RECORDED: the target ends with the CLI** (State 1 three s later, echoes fail) | `.../3-B-cli-direct-kill.txt` |
+| Linux desktop | two overlapping LabVIEWCLI calls | A | **FINDING**: the second fails with -350052 "You cannot initialize the logger multiple times" | `.../4-race-cli.txt` |
+| Linux desktop | two servers, two LabVIEWCLI starters at the same moment (long-lived targets, retry on -350052) | A | **PASS: 20 of 20**, no LabVIEW process left but the resident | `.../4-race-cli.txt` |
+| Linux desktop | two servers, two early-quit relays at the same moment | A | **PASS: 20 of 20** | `.../4-race-relay-keep.txt` |
+| Linux desktop | negative control (crossed starters) | A | PASS: both flagged | `.../49-control-crossed.txt` |
+| Windows 2026 64-bit | every row above, plus the relay and LabVIEWCLI rows | | **PENDING** (handoff section below) | |
 
 ## Environment (Linux desktop)
 
@@ -145,7 +162,7 @@ directory 0700 (and for the argument mechanism the argument seen is that server'
 
 ## Findings the later slices need
 
-(Items 1, 3 and 5 below are the VI-Server-off measurement; the section "Step 14.1 with VI Server TCP enabled" corrects and extends them: with VI Server
+(Items 1, 3 and 5 below are the VI-Server-off measurement; the sections "Step 14.1 with VI Server TCP enabled" and "Step 14.1, third round" correct and extend them (the latter: a LabVIEWCLI-started starter VI or an early-quit relay keeps a long-lived target in the resident IDE with no LabVIEW process left behind): with VI Server
 on, handoff still fails, a relay through the VI Server port does reach the resident IDE, and the listener is `0.0.0.0:3363`.)
 
 1. **Slice 9 (launcher).** On Linux a second `labview <vi>` is a second process, not a handoff. A launcher that starts the bridge by running the
@@ -174,8 +191,8 @@ on, handoff still fails, a relay through the VI Server port does reach the resid
 ## Not measured, and why
 
 - Handoff into a resident LabVIEW by launching the binary: measured with VI Server off and on, fails both times. Through VI Server: see the relay section.
-- With VI Server on: the default run-when-opened setting; `Asynchronous Call By Reference`; `Auto Dispose Ref` without closing the reference; whether the target outlives the relay;
-  a connection from another machine; whether the relay's own VI Server listener competes for 3363; the dialog's text.
+- With VI Server on: the default run-when-opened setting; `Asynchronous Call By Reference` (the composer refuses `Start Asynchronous Call`); a connection from another machine; whether the
+  relay's own VI Server listener competes for 3363; the dialog's text. (Measured in the third round: `Auto Dispose Ref` with nothing closed does keep the target alive for 60 s; sessions beyond 60 s are not measured.)
 - Run-when-opened under the default setting except run 1 (needs a click; the setting is the user's). Per-path memory for a different path.
 - Two stubs in one instance; same-named stubs in one instance; the stub on a user project; modal behavior (Steps 14.2, 14.3).
 - The prompt's text and button (no screenshot tool).
@@ -294,6 +311,76 @@ runs `LabVIEWCLI` inside a LabVIEW start). The server could also speak the VI Se
    Error or Warning" dialog, which a headless-free IDE cannot avoid on its own.
 5. **Slice 4:** `server.tcp.enabled`, `server.tcp.access`, `DoNotShowCRAWarningEnableTCP` are the conf keys; the port key is absent at the default 3363.
 
+## Step 14.1, third round: relay quit and LabVIEWCLI
+
+Measured 2026-11-10 after the user installed `ni-labview-command-line-interface` themselves. Reproduce with `experiments/linux-bridge-hw/probe-round3.sh`
+(`START_IDE=1` starts a normal, never headless IDE); transcripts in `experiments/linux-bridge-hw/transcripts/slice-14.1-linux-round3/`. The IDE for this
+round was started by the measurement, so it was ended by it (SIGTERM, saving nothing), then one bare start/stop left clean logs (0 DWarn lines), so no "Investigate
+Previous Internal Error or Warning" dialog should wait for the user. Same setting in force as round 2 (`RunWhenOpened.Behavior=2`, `server.tcp.enabled=True`): label **A**.
+The CLI route needs **no** run-when-opened VI at all (starter and target are plain VIs), so it does not depend on that setting; a prompt-free run under the default
+setting is expected, not measured.
+
+### Answer first
+
+| Question | Answer |
+|---|---|
+| A long-lived bridge in the resident IDE with no LabVIEW process left behind? | **Yes, by two routes.** (1) LabVIEWCLI runs a resident *starter* VI; the starter fire-and-forgets the target locally. (2) A relay does it remotely and quits. Both: the target answered 100 echoes with 0 failures **60 s after the launcher was gone**, in the resident pid, `Execution:State` = 2 (a control read of the same VI after the server hung up gave 1). |
+| What makes the target outlive its starter? | `Run VI` with **Wait until done FALSE and Auto Dispose Ref TRUE**, and **no `Close Reference`** (not of the VI, not of the application reference) before the starter ends or the relay quits. The same call with the reference closed at once ended the target (round 2, `dispose` row, and `nowait`). |
+| LabVIEWCLI installed as a package? | `dpkg -l`: `ni-labview-command-line-interface 26.3.0.49372-0+f220 amd64`, with `ni-python-interface 26.3.0.49370-0+f218`; binary `/usr/local/natinst/share/nilvcli/LabVIEWCLI` (symlink `/usr/local/bin/LabVIEWCLI`). |
+| Is LabVIEWCLI a LabVIEW process? | No. A native x86-64 ELF (8 shared libraries, none of mono, dotnet or a LabVIEW runtime); `ps` shows `LabVIEWCLI`. The `labview` process count stayed **1 before, during and after** every call. |
+
+### A. Can the relay quit early?
+
+Long-lived target = `echo-target.vi`: connects back with the hello, answers one echo at once, then answers echo frames (4-byte big-endian length, then the payload) until
+the server hangs up, with no read timeout. `echo-server.py` keeps the connection, waits until the script says go (60 s after the launcher is gone), then sends 100 echoes. The
+`Execution:State` of the target is read 12 s before that through `LabVIEWCLI RunVI` of `P2_ExecutionState.vi` (so the check itself runs in the resident). Pass = launcher gone
+quickly (a relay within 10 s), the target still in the resident pid 60 s later with 100 of 100 echoes, State 2 or 3, and no LabVIEW process but the resident.
+
+| Variant | Launcher | Result (`2-*.txt`) |
+|---|---|---|
+| 1. `Asynchronous Call By Reference`, option 0x80 | n/a | **Not measurable here.** The repo composer refuses the node (`UNSUPPORTED: Node 'Start Asynchronous Call' is not a primitive this prototype knows`, `01-compose.txt`; its census had already refused the four NI asynchronous-call examples). So whether a remote application reference allows 0x80, and any error code, are **not measured**. `Call By Reference` composes but is synchronous. |
+| 2. `Run VI`, Wait until done FALSE, Auto Dispose Ref TRUE, nothing closed (`relay-keep.aixml`, mode `dispose`) | relay in a second LabVIEW process | relay gone after **2.0 s**; hello after about 4 s; target alive **60.1 s** later, State **2**, **100 echoes, 0 failures**, pid = resident, labview processes left: 1; report `app=0;vi=0;set=0;run=0` |
+| 3a. Resident starter (`starter.aixml`) started through **LabVIEWCLI** | `LabVIEWCLI -OperationName RunVI -LabVIEWPath <labview> -PortNumber 3363 -VIPath starter.vi` | CLI returned after **3.1 s**; target alive 60.0 s later, State 2, 100 echoes 0 failures; **no second LabVIEW process at any time** |
+| 3b. The same starter started by a relay (`relay.vi`, mode `wait`) | relay | relay gone after 2.2 s; same result |
+
+How the starter works (`starter.aixml`, composed on NI's fixed pane 4815 so RunVI accepts it): it reads `starter.args` beside itself (line 1 the target VI, line 2 the rendezvous
+file), opens the target with `Open VI Reference` and no application reference (local to the instance it runs in), sets the target's `rendezvous` control through
+`Ctrl Val.Set`, calls `Run VI` (Wait until done FALSE, Auto Dispose Ref TRUE), closes nothing and ends. The state values: 2 while running, 1 once idle (control row). Not measured: lifetimes
+beyond 60 s (each session ran 60 s and one echo burst), what the target does when the user closes the IDE, and whether the VI stays in `All VIs In Memory` after it ended.
+
+### B. LabVIEWCLI as the client
+
+| Fact | Measured (`10-cli-basics.txt`, `3-B-*.txt`) |
+|---|---|
+| Command | `LabVIEWCLI -OperationName RunVI -LabVIEWPath /usr/local/natinst/LabVIEW-2026-64/labview -PortNumber 3363 -VIPath <vi> [args]`. **`-LabVIEWPath` is needed on Linux**: without it the error is `-350004 ... the path to LabVIEW is unknown`. It never started a LabVIEW (one was running). |
+| Process | native ELF `LabVIEWCLI`, no mono, no dotnet; `labview` count 1 / 1 / 1 before, during, after |
+| Call time | 3.0 to 3.8 s for a trivial VI (`P0_AppVersion.vi`, answer `26.3.1f1`); the starter 3.1 s |
+| Blocks until the VI ends? | **Yes.** RunVI of the long-lived target itself (`echo-target.vi`, composed on NI's pane: Inputs[] on 11, Output/Failure on 2, CLI Process Return Code on 3) ran it in the resident pid and the CLI returned only when the server hung up (4.4 s in the immediate-echo case). No error 1031. |
+| Target survives the CLI being killed? | **No.** The CLI of the long-lived target was killed (SIGTERM, 9.6 s in); 3 s later the target's State was 1 (idle) and the echoes failed. This is why the starter exists: it returns at once and the target is already detached. |
+| After the starter returned | the target lives on without the CLI (variant 3a above); the CLI having ended on its own is the normal case |
+| Overlapping calls | **A second `LabVIEWCLI` call that overlaps a running one fails:** `Error code : -350052 ... You cannot initialize the logger multiple times.` (measured with two concurrent `P0_AppVersion.vi` calls). The launcher must serialize CLI calls or retry; the race rows retried the failed one (in every trial exactly one of the two needed a second call: 13 times B, 7 times A). A long-running RunVI (the direct route) therefore **blocks every other CLI call** for its whole life: another reason for the starter. |
+| LabVIEW's own state | every call writes `/tmp/lvtemporary_<n>.log` (removed by the script) |
+| Prompt, dialog | none; the CLI shows no window; no dialog during any CLI call; no activation or licence message |
+
+### Race: two servers at the same moment, by the two working routes
+
+20 trials each (`4-race-cli.txt`, `4-race-relay-keep.txt`), all with long-lived echo targets and 100 echoes each: per trial two servers (own directory, 0700; rendezvous file 0600),
+two launchers started back to back (two LabVIEWCLI starters, retried on -350052; or two early-quit relays), pass = each server got a connection with its own token from the resident pid,
+from the target started for it, 100 echoes back, and the `labview` count back to 1. **CLI: 20 of 20. Early-quit relay: 20 of 20.** The crossed control (`49-control-crossed.txt`) was
+flagged on both sides. `labview.conf` settings lines (server.*, RunWhenOpened.*, DoNotShow*, NewProj.*) identical at the end of every trial; LabVIEW changed only its own state keys
+(`NI_GSWContentIndex`, `menuLoc.*`, `RecentFiles.pathList`; `91-conf-history.txt`). No "Investigate Previous Internal Error or Warning" dialog (0 resets were needed this round).
+
+### Findings (third round)
+
+1. **Slice 9 (launcher):** the route that leaves no extra LabVIEW process is *LabVIEWCLI RunVI of a resident starter VI*. It needs: the NI package `ni-labview-command-line-interface`
+   (apt, 1.4 MB, root, same feed as LabVIEW), VI Server TCP on, `-LabVIEWPath`, and **serialization of CLI calls** (-350052). The starter must detach the target with `Run VI` (Wait until done
+   FALSE, Auto Dispose Ref TRUE) and close nothing. The early-quit relay (a second LabVIEW process for 2 s, run-when-opened) is the fallback when the package is missing; it needs the
+   run-when-opened setting or a click and carries the DWarn dialog hazard. The stub and starter are plain VIs for the CLI route.
+2. **Slice 6:** a bridge started this way keeps its TCP connection for minutes and answers echoes; the server can reach the resident through the same rendezvous (file, token, hello).
+3. **Slice 7:** the starter does not need a project; the target runs in the resident's main application instance (it is reachable through `Open VI Reference` there). The
+   `NI.LV.Editor` context (Step 14.2) is not touched by this round.
+4. **Not measured:** `Asynchronous Call By Reference` 0x80 (composer refuses `Start Asynchronous Call`); beyond 60 s; the default run-when-opened setting for the relay route; Windows.
+
 ## Step 14.1 Windows row (run on the Windows laptop session)
 
 For a Claude Code session on the Windows laptop with LabVIEW 2026 64-bit, from a clone on the branch `feat/xplat-14`. Record failures as
@@ -366,6 +453,13 @@ Windows pass for the handoff row is count 1 -> 1 with the VI having run**), `App
 as the dump shows it (`args=`), per mechanism the connect time and whether the token matched, the race counts (matched and `vi_path_ok`), the
 run-when-opened setting in force and whether a prompt appeared, anything LabVIEW showed on screen, and whether LabVIEW wrote `LabVIEW.ini`. If the
 count goes to 2 on Windows too, say so at the top: that is a spec failure, as on Linux.
+
+**LabVIEWCLI and early-quit rows (third round; measure on Windows after the handoff check).** Windows has `LabVIEWCLI` natively. After the count test, run from the repository root
+`LabVIEWCLI -OperationName RunVI -LabVIEWPath $LV -PortNumber 3363 -VIPath C:\lvmcp-hw\starter-r1.vi` with a starter composed like the Linux one (`starter.aixml`, `echo-target.aixml`, pane 4815
+as RunVI needs; `starter.args` beside the starter holds the target path and the rendezvous path with backslashes), against a running LabVIEW, `rendezvous-server.py` replaced by
+`echo-server.py` (`--trigger` file, `--echoes 100`). Record: whether LabVIEWCLI starts any LabVIEW process (it must not), the process count before/during/after, the CLI duration, whether
+a second overlapping CLI call fails with -350052 as on Linux, whether the target answers 100 echoes 60 s after the CLI ended, and `Execution:State` of the target through
+`P2_ExecutionState.vi` run by the CLI. Repeat with `relay-keep.aixml` only if `LabVIEW.exe <vi>` does not hand off (see the warning below).
 
 **Relay row (add to the Windows session, VI Server TCP must be enabled on port 3363; on Windows it normally is).** The relay is the G-CLI-style route measured on Linux
 (section "with VI Server TCP enabled"). Windows has `LabVIEWCLI`, so measure both: (a) the same relay (`relay.aixml`: second process opens `localhost:3363`, opens and

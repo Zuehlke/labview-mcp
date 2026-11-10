@@ -1,0 +1,49 @@
+<VI _name="starter.vi" description="Step 14.1 round 3 variant 3 starter. Runs INSIDE the resident IDE (started by relay.vi or by LabVIEWCLI RunVI; pane 4815 as RunVI needs). Reads starter.args beside itself (line 1\3A the target VI path, line 2\3A the rendezvous file or a dash), opens the target VI in the instance it runs in (a LOCAL reference), sets the target control rendezvous, runs it with Wait until done FALSE and Auto Dispose Ref TRUE, closes nothing and ends at once. The control rendezvous is a dummy so a relay can run this VI like any target.">
+  <FreeLabel comment="Start the target locally, then end" uid="4200" uid_parent="root"/>
+
+  <Control _name="Inputs" conIdx="11" connection="recommended" outputs="value:4209.value" type="array{string}" uid="4209" uid_parent="root" value="[]"/>
+  <Control _name="rendezvous" outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value=""/>
+
+  <Node _name="Current VI's Path" outputs="path:4220.path" uid="4220" uid_parent="root"/>
+  <Node _name="Strip Path" inputs="path:4220.path" outputs="stripped path:4221.dir,name:" uid="4221" uid_parent="root"/>
+  <Constant _name="args file name" outputs="value:4222.value" type="string" uid="4222" uid_parent="root" value="starter.args"/>
+  <Node _name="Build Path" inputs="base path:4221.dir,name or relative path:4222.value" outputs="appended path:4223.apath" uid="4223" uid_parent="root"/>
+  <Constant _name="read whole file" outputs="value:4224.value" type="int32" uid="4224" uid_parent="root" value="-1"/>
+  <Node _name="Read from Text File" inputs="file (use dialog):4223.apath,count:4224.value,error in:,prompt (Open existing file):" outputs="refnum out:,text:4225.text,cancelled:,error out:4225.error out" uid="4225" uid_parent="root"/>
+  <Constant _name="newline" outputs="value:4226.value" type="string" uid="4226" uid_parent="root" value="&#10;"/>
+  <Node _name="Search/Split String" inputs="string:4225.text,search string/char (-):4226.value" outputs="substring before match:4227.target,match + rest of string:4227.rest,offset of match:" uid="4227" uid_parent="root"/>
+  <Constant _name="skip newline" outputs="value:4228.value" type="int32" uid="4228" uid_parent="root" value="1"/>
+  <Node _name="String Subset" inputs="string:4227.rest,offset (0):4228.value" outputs="substring:4229.rv" uid="4229" uid_parent="root"/>
+
+  <Node _name="String To Path" inputs="string:4227.target" outputs="path:4230.path" uid="4230" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4230.path,error in (no error):4225.error out" outputs="vi reference:4231.ref,error out:4231.err" uid="4231" uid_parent="root"/>
+  <Constant _name="dash" outputs="value:4232.value" type="string" uid="4232" uid_parent="root" value="-"/>
+  <Constant _name="empty" outputs="value:4233.value" type="string" uid="4233" uid_parent="root" value=""/>
+  <Node _name="Equal?" inputs="x:4229.rv,y:4232.value" outputs="x = y?:4234.isdash" uid="4234" uid_parent="root"/>
+  <Node _name="Select" inputs="s:4234.isdash,t:4233.value,f:4229.rv" outputs="s? t\3Af:4235.rvsel" uid="4235" uid_parent="root"/>
+  <Constant _name="xml head" outputs="value:4236.value" type="string" uid="4236" uid_parent="root" value="&lt;LvVariant&gt;&#10;&lt;Name&gt;Get Control Value Variant&lt;/Name&gt;&#10;&lt;String&gt;&#10;&lt;Name&gt;rendezvous&lt;/Name&gt;&#10;&lt;Val&gt;"/>
+  <Constant _name="xml tail" outputs="value:4237.value" type="string" uid="4237" uid_parent="root" value="&lt;/Val&gt;&#10;&lt;/String&gt;&#10;&lt;/LvVariant&gt;&#10;"/>
+  <Node _name="Concatenate Strings" inputs="string:4236.value,string:4235.rvsel,string:4237.value" outputs="concatenated string:4238.xml" uid="4238" uid_parent="root"/>
+  <Constant _name="variant type" outputs="value:4239.value" type="variant" uid="4239" uid_parent="root" value=""/>
+  <Node _name="Unflatten From XML" inputs="xml string:4238.xml,type:4239.value,error in (no error):4231.err" outputs="value:4240.value,error out:4240.err" uid="4240" uid_parent="root"/>
+  <Constant _name="control name" outputs="value:4241.value" type="string" uid="4241" uid_parent="root" value="rendezvous"/>
+  <Node _name="Invoke Node" target="Ctrl Val.Set" type="{LV.VI}" inputs="reference:4231.ref,error in (no error):4240.err,Control Name:4241.value,Value:4240.value" outputs="reference out:4242.ref,error out:4242.err" uid="4242" uid_parent="root"/>
+  <Constant _name="no wait" outputs="value:4243.value" type="bool" uid="4243" uid_parent="root" value="false"/>
+  <Constant _name="auto dispose" outputs="value:4244.value" type="bool" uid="4244" uid_parent="root" value="true"/>
+  <Node _name="Invoke Node" target="Run VI" type="{LV.VI}" inputs="reference:4242.ref,error in (no error):4242.err,Wait until done:4243.value,Auto Dispose Ref:4244.value" outputs="reference out:4245.ref,error out:4245.err" uid="4245" uid_parent="root"/>
+
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4231.err" outputs="code:4250.code" uid="4250" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4242.err" outputs="code:4251.code" uid="4251" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4245.err" outputs="code:4252.code" uid="4252" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4250.code" outputs="decimal integer string:4253.t" uid="4253" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4251.code" outputs="decimal integer string:4254.t" uid="4254" uid_parent="root"/>
+  <Node _name="Number To Decimal String" inputs="number:4252.code" outputs="decimal integer string:4255.t" uid="4255" uid_parent="root"/>
+  <Constant _name="l vi" outputs="value:4256.value" type="string" uid="4256" uid_parent="root" value="vi="/>
+  <Constant _name="l set" outputs="value:4257.value" type="string" uid="4257" uid_parent="root" value=";set="/>
+  <Constant _name="l run" outputs="value:4258.value" type="string" uid="4258" uid_parent="root" value=";run="/>
+  <Node _name="Concatenate Strings" inputs="string:4256.value,string:4253.t,string:4257.value,string:4254.t,string:4258.value,string:4255.t" outputs="concatenated string:4259.report" uid="4259" uid_parent="root"/>
+
+  <Indicator _name="Output/Failure" conIdx="2" connection="recommended" inputs="value:4259.report" type="string" uid="4260" uid_parent="root" value=""/>
+  <Indicator _name="CLI Process Return Code" conIdx="3" connection="recommended" inputs="value:4252.code" type="int32" uid="4261" uid_parent="root" value="0"/>
+</VI>
+<?lvmcp pane="4815"?>

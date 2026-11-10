@@ -1,0 +1,5 @@
+starter A started target A against B's rendezvous file and the reverse
+check on server A: bad vi-path=/tmp/lvmcp-r3.u1WBRj/c-B/echo-target-c-B.vi;
+check on server B: bad vi-path=/tmp/lvmcp-r3.u1WBRj/c-A/echo-target-c-A.vi;
+{"rendezvous": "/tmp/lvmcp-r3.u1WBRj/c-A/rv.txt", "port": 39039, "dir_mode": "0o700", "file_mode": "0o600", "token_ok": true, "pid": "91535", "vi_path": "/tmp/lvmcp-r3.u1WBRj/c-B/echo-target-c-B.vi", "first_echo_ok": true, "echoes_requested": 100, "echoes_ok": 100, "failures": 0, "error": null, "ver": "26.3.1f1", "connect_s": 8.44, "total_s": 8.5}
+{"rendezvous": "/tmp/lvmcp-r3.u1WBRj/c-B/rv.txt", "port": 42107, "dir_mode": "0o700", "file_mode": "0o600", "token_ok": true, "pid": "91535", "vi_path": "/tmp/lvmcp-r3.u1WBRj/c-A/echo-target-c-A.vi", "first_echo_ok": true, "echoes_requested": 100, "echoes_ok": 100, "failures": 0, "error": null, "ver": "26.3.1f1", "connect_s": 4.73, "total_s": 4.7}

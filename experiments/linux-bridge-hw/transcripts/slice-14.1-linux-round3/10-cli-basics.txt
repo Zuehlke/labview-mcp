@@ -1,0 +1,12 @@
+labview processes before: 1; highest count seen while LabVIEWCLI ran: 1; after: 1
+LabVIEWCLI process as ps shows it (comm args): LabVIEWCLI      LabVIEWCLI -OperationName RunVI -LabVIEWPath /usr/local/natinst/LabVIEW-2026-64/labview -PortNumber 3363
+duration: 3.0 s   exit code: 0
+--- output
+LabVIEWCLI started logging in file:  /tmp/lvtemporary_142549.log
+Using LabVIEW: "/usr/local/natinst/LabVIEW-2026-64/labview"
+Connection established with LabVIEW at port number 3363.
+
+Operation output: 
+26.3.1f1
+RunVI operation succeeded.
+
