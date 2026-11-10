@@ -1,0 +1,5 @@
+args-dump (plain): exit 0, 6689 bytes; wrote /tmp/lvmcp-vs.lJMfRW/args-dump-plain.vi (6689 bytes)
+args-dump (run): exit 0, 6689 bytes; wrote /tmp/lvmcp-vs.lJMfRW/args-dump-run.vi (6689 bytes)
+relay (run): exit 0, 13321 bytes; wrote /tmp/lvmcp-vs.lJMfRW/relay-run.vi (13321 bytes)
+target (plain): exit 0, 10322 bytes; wrote /tmp/lvmcp-vs.lJMfRW/target-plain.vi (10322 bytes)
+target (run): exit 0, 10322 bytes; wrote /tmp/lvmcp-vs.lJMfRW/target-run.vi (10322 bytes)

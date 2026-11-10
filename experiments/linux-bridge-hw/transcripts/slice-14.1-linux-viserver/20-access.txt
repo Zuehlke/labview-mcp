@@ -1,0 +1,8 @@
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True
+access list in labview.conf: "+192.168.1.231:+127.0.0.1:+localhost"
+relay.vi in a second process opens an application reference to HOST:3363; app= is the error code (0 = allowed)
+host localhost: report [app=0;vi=7;set=7;run=7;close=7;pid=68704;host=localhost;mode=nowait;end] relay ended after 1.8 s
+host 127.0.0.1: report [app=0;vi=7;set=7;run=7;close=7;pid=69098;host=127.0.0.1;mode=nowait;end] relay ended after 1.8 s
+host 127.0.0.2: report [app=0;vi=7;set=7;run=7;close=7;pid=69374;host=127.0.0.2;mode=nowait;end] relay ended after 1.8 s
+host 192.168.1.231: report [app=0;vi=7;set=7;run=7;close=7;pid=69652;host=192.168.1.231;mode=nowait;end] relay ended after 1.8 s
+host 172.17.0.1: report [app=0;vi=7;set=7;run=7;close=7;pid=69931;host=172.17.0.1;mode=nowait;end] relay ended after 1.8 s

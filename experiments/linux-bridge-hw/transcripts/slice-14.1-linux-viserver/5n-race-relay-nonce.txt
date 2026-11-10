@@ -1,0 +1,23 @@
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True
+mechanism: nonce   trials: 20   resident pid 63600
+trial 1: A -> ok (relay ended after 10.7 s); B -> ok (10.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 2: A -> ok (relay ended after 9.2 s); B -> ok (9.2 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 3: A -> ok (relay ended after 3.5 s); B -> ok (3.5 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 4: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 5: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 6: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 7: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 8: A -> ok (relay ended after 3.5 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 9: A -> ok (relay ended after 3.8 s); B -> ok (3.8 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 10: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 11: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 12: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 13: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 14: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 15: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 16: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 17: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 18: A -> ok (relay ended after 3.7 s); B -> ok (3.7 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 19: A -> ok (relay ended after 3.8 s); B -> ok (3.8 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+trial 20: A -> ok (relay ended after 14.8 s); B -> ok (15.6 s); wrong-token connections 0; dialog up: no; relays still alive:  ; conf unchanged
+RESULT trials=20 ok=20 bad=0

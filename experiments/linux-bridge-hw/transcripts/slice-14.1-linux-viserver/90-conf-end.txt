@@ -1,0 +1,18 @@
+labview.conf SETTINGS lines (server.*, RunWhenOpened.*, DoNotShow*, NewProj.*, ...) hash: start 1c4858b133de2f331a906eaea8c12cfeff55f7c8da0e3eb75f76e69f97405f4e, now 1c4858b133de2f331a906eaea8c12cfeff55f7c8da0e3eb75f76e69f97405f4e
+--- diff start -> now (we never write this file; LabVIEW did)
+6c6
+< NI_GSWContentIndex=1
+---
+> NI_GSWContentIndex=2
+19c19
+< menuLoc.2=525x889+1+1
+---
+> menuLoc.2=629x993+1+1
+28c28
+< RecentFiles.pathList="/tmp/lvmcp-vs.Jttyx0/hp/args-dump.vi:/tmp/lvmcp-vs.DNsrbk/relay-run.vi:/tmp/lvmcp-vs.DNsrbk/hr/args-dump.vi:/tmp/lvmcp-vs.DNsrbk/hp/args-dump.vi:/tmp/lvmcp-vs.4N7G5P/relay-run.
+---
+> RecentFiles.pathList="/tmp/lvmcp-vs.lJMfRW/relay-run.vi:/tmp/lvmcp-vs.lJMfRW/hr/args-dump.vi:/tmp/lvmcp-vs.lJMfRW/hp/args-dump.vi:/tmp/lvmcp-vs.Jttyx0/hp/args-dump.vi:/tmp/lvmcp-vs.DNsrbk/relay-run.
+f7b1d106615c7a891ac9b59548357599c93fdd11c668cd31c7bfb1837315090f  /home/niko/natinst/.config/LabVIEW-2026/labview64.conf
+58b3782fdeb8100f7f7e7c968de9b1bb9bc470815ab597c59ac049c53c8d83d7  /home/niko/natinst/.config/LabVIEW-2026/labview.conf
+/home/niko/natinst/.config/LabVIEW-2026/labview64.conf 661 2026-11-08 13:43:53.071379308 +0100
+/home/niko/natinst/.config/LabVIEW-2026/labview.conf 1306 2026-11-10 14:07:19.549673021 +0100

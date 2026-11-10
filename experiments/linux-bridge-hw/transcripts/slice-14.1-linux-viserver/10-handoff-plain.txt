@@ -1,0 +1,6 @@
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True
+before: count=1 pids=[63600]
+after 12 s: count=2 pids=[63600 68127] launched pid 68127 alive: yes
+  pid 63600 cmdline=/usr/local/natinst/LabVIEW-2026-64/labview 
+  pid 68127 cmdline=/usr/local/natinst/LabVIEW-2026-64/labview /tmp/lvmcp-vs.lJMfRW/hp/args-dump.vi 
+VI ran (dump file written): no

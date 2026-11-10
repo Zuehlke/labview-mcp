@@ -1,0 +1,20 @@
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True
+before: count=1 resident pid 63600
+after: count=2 pids=[63600 68352] launched pid 68352
+--- what the VI wrote
+ver=26.3.1f1
+path=/tmp/lvmcp-vs.lJMfRW/hr/args-dump.vi
+stat=68352 (labview) R 1251 67847 67839 0 -1 4194304 15657 657 1 0 386 73 1 3 20 0 17
+args=/usr/local/natinst/LabVIEW-2026-64/labview|/tmp/lvmcp-hw-arg1|second
+
+--- X window names (count) at that moment
+      1 "args-dump.vi Front Panel"
+      2 "Context Help"
+      2 "Controls"
+      2 "Functions"
+      3 "LabVIEW"
+      1 "Smithay X WM"
+      2 "Tools"
+      2 "Window monitor"
+--- the launched process's LabVIEW log, lines about run-when-opened or dialogs
+(none)

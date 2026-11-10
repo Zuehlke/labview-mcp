@@ -3,7 +3,9 @@
 Plan: `plans/cross-platform-server.md`, Slice 14. This file holds Step 14.1 (handoff and rendezvous). Steps 14.2 and 14.3 are not
 done. Record date: **2026-11-10**. Only the Linux desktop row is measured here; the Windows row is a handoff section at the end.
 
-## Result first: spec assumption 2 FAILS on Linux
+## Result first: spec assumption 2 FAILS on Linux as written, and a VI Server relay reaches the resident IDE
+
+**Update of 2026-11-10 (section "Step 14.1 with VI Server TCP enabled" below): with VI Server TCP enabled, a second `labview <vi>` STILL starts its own process (setting on or off). A relay does reach the resident IDE: a stub in the second process opens an application reference to `localhost:3363`, opens and runs a target VI in the IDE (the target's `/proc/self/stat` shows the resident pid) and quits its own process by itself (3.7 s median). Both rendezvous mechanisms and the two-server race pass in that relay form, 20 of 20 trials each. The handoff the spec states ("the launch itself hands the VI to the running process") is not what happens; what works is a second process as a short-lived VI Server client.** The text below is the first measurement (VI Server TCP off), unchanged.
 
 **A second launch of the LabVIEW binary does not hand the VI to the running LabVIEW. It starts a second LabVIEW process.** With one
 `labview` process running, `labview <vi>` gave two processes, the VI loaded (and, when run-when-opened, ran) in the new one. Measured twice
@@ -36,7 +38,21 @@ calls 26.3.1 "2026 Q3". Record date 2026-11-10. Run with `experiments/linux-brid
 | Linux desktop | negative control: stubs started with each other's rendezvous file | A | PASS: the race check flagged both crossed connections | `40-control-crossed.txt` |
 | Linux desktop | `labview.conf` unchanged by us (identical to the re-baseline except LabVIEW's own `RecentFiles.pathList`) | A | PASS | `90-conf-end.txt`, `91-conf-history.txt` |
 | Linux desktop | run-when-opened prompt remembered per path, or for a different path | P | **NOT MEASURED** under the default setting (see below) | `06-RunWhenOpenedPermissions.json` |
-| Windows 2026 64-bit | every row above | | **PENDING** (handoff section below) | |
+| Linux desktop, VI Server TCP **on** (`server.tcp.enabled=True`) | VI Server listener: bind address and access list | A | **FINDING**: `0.0.0.0:3363`, list `+192.168.1.231:+127.0.0.1:+localhost`, **not enforced** against 127.0.0.2 and docker0 | `transcripts/slice-14.1-linux-viserver/00-env.txt`, `20-access.txt` |
+| Linux desktop, VI Server on | handoff, plain VI | A | **FAIL (NO-HANDOFF): 1 -> 2** | `.../10-handoff-plain.txt` |
+| Linux desktop, VI Server on | handoff, run-when-opened VI | A | **FAIL (NO-HANDOFF)**: ran in the new process | `.../11-handoff-run.txt` |
+| Linux desktop, VI Server on | relay: target opened and run in the IDE, nonce mechanism (wait until done) | A | **PASS**: ran in resident pid 25795, token matched, relay quit itself after 3.4 s | `.../3-relay-nonce-wait.txt` |
+| Linux desktop, VI Server on | relay: argument mechanism, wait until done TRUE | A | **PASS** (3.6 s) | `.../3-relay-arg-wait.txt` |
+| Linux desktop, VI Server on | relay: `Run VI` with Wait until done FALSE, reference held 4 s | A | **PASS** (relay 5.9 s) | `.../3-relay-arg-hold.txt` |
+| Linux desktop, VI Server on | relay: `Run VI` with Wait until done FALSE, reference closed at once | A | **RECORDED: the target never reports** (closing the reference ends it) | `.../3-relay-arg-nowait.txt` |
+| Linux desktop, VI Server on | relay: `Auto Dispose Ref` TRUE, reference closed at once | A | **RECORDED: the target never reports** either | `.../3-relay-arg-dispose.txt` |
+| Linux desktop, VI Server on | relay with a run-when-opened target | A | PASS | `.../3-relay-arg-wait-runopen.txt` |
+| Linux desktop, VI Server on | two servers, two relays, same moment: nonce | A | **PASS: 20 of 20**, 0 wrong-token connections, every target in the resident pid | `.../5n-race-relay-nonce.txt` |
+| Linux desktop, VI Server on | the same, argument | A | **PASS: 20 of 20** | `.../5a-race-relay-arg.txt` |
+| Linux desktop, VI Server on | negative control (crossed rendezvous files) | A | PASS: both flagged | `.../59-control-crossed.txt` |
+| Linux desktop, VI Server on | run-when-opened check for a VI opened through VI Server | A | RECORDED: no check logged, no dialog; default setting not measured | `.../40-prompt.txt` |
+| Linux desktop, VI Server on | modal dialog "Investigate Previous Internal Error or Warning" in a second process | A | **FINDING**: appears after a process that logged a DWarn; needs a human; 16 resets needed in 1 run | `.../80-resets.txt` |
+| Linux desktop | `ni-labview-command-line-interface` in the NI apt feed | n/a | PASS (available, 1.4 MB, NOT installed) | `.../60-labviewcli.txt` || Windows 2026 64-bit | every row above, plus the relay row | | **PENDING** (handoff section below) | |
 
 ## Environment (Linux desktop)
 
@@ -129,6 +145,9 @@ directory 0700 (and for the argument mechanism the argument seen is that server'
 
 ## Findings the later slices need
 
+(Items 1, 3 and 5 below are the VI-Server-off measurement; the section "Step 14.1 with VI Server TCP enabled" corrects and extends them: with VI Server
+on, handoff still fails, a relay through the VI Server port does reach the resident IDE, and the listener is `0.0.0.0:3363`.)
+
 1. **Slice 9 (launcher).** On Linux a second `labview <vi>` is a second process, not a handoff. A launcher that starts the bridge by running the
    binary with a VI path gets its own LabVIEW process each time (about 2 s until the stub runs, a full IDE window set of its own). It cannot
    assume the user's running IDE receives the VI. The spec's "attach to the user's activated IDE" needs another route, to be decided in `/specs`.
@@ -147,18 +166,133 @@ directory 0700 (and for the argument mechanism the argument seen is that server'
    `/tmp/labview_<ver>_interactive_<user>_cur.txt`. The conf carries no `server.tcp.enabled` here, so VI Server TCP is off on a fresh Linux desktop IDE.
    LabVIEW rewrites the conf at start and keeps a `RecentFiles.pathList` there, so a file hash of it is not a stable identity.
 5. **Slice 7 (bridge in the editor).** No Linux IDE listener is on 3363 by default; the `127.0.0.1:41905` listener is unexplained. The bridge cannot count on
-   `Open Application Reference` to `localhost:3363` on a desktop IDE unless the user enables VI Server.
+   `Open Application Reference` to `localhost:3363` on a desktop IDE unless the user enables VI Server. With it enabled, the listener is on `0.0.0.0` and the
+   access list does not refuse local non-listed addresses (section "with VI Server TCP enabled").
 6. **Process hygiene for tests.** `SIGTERM` ends a launched LabVIEW at once and does not rewrite the conf (the conf is written at start). The starts that followed ran
    normally and showed no extra window in `xwininfo` (nobody looked at the screen). Every run here ended its processes that way, the resident IDE included.
 
 ## Not measured, and why
 
-- Handoff into a resident LabVIEW by any route (no route exists on this IDE without VI Server).
+- Handoff into a resident LabVIEW by launching the binary: measured with VI Server off and on, fails both times. Through VI Server: see the relay section.
+- With VI Server on: the default run-when-opened setting; `Asynchronous Call By Reference`; `Auto Dispose Ref` without closing the reference; whether the target outlives the relay;
+  a connection from another machine; whether the relay's own VI Server listener competes for 3363; the dialog's text.
 - Run-when-opened under the default setting except run 1 (needs a click; the setting is the user's). Per-path memory for a different path.
 - Two stubs in one instance; same-named stubs in one instance; the stub on a user project; modal behavior (Steps 14.2, 14.3).
 - The prompt's text and button (no screenshot tool).
 - `labview <vi>` without `--` and other arguments.
 - Windows (below).
+
+## Step 14.1 with VI Server TCP enabled
+
+Measured 2026-11-10, after the user enabled VI Server TCP in the Linux IDE (the user takes "enabled" as given, because Windows needs it
+too). Reproduce with `experiments/linux-bridge-hw/probe-relay.sh` (`START_IDE=1` starts a normal, never headless IDE); transcripts in
+`experiments/linux-bridge-hw/transcripts/slice-14.1-linux-viserver/`. Same LabVIEW 26.3.1f1 64-bit. The IDE for this part was started by the
+measurement, so it was ended by it (SIGTERM, saving nothing). Every run here has the user's `RunWhenOpened.Behavior=2` in force: label **A**; the
+default install was not measured again. The relay VIs are `relay.aixml` (the second process) and `target.aixml` (runs in the IDE).
+
+### Answer first
+
+| Question | Answer |
+|---|---|
+| Does VI Server on make a second `labview <vi>` hand off to the running IDE? | **No.** Plain VI: count 1 -> 2. Run-when-opened VI: ran in the new process. Same as with VI Server off (`10-handoff-plain.txt`, `11-handoff-run.txt`). |
+| Does a relay reach the resident IDE? | **Yes.** A stub in the second process opens `Open Application Reference` to `localhost:3363`, opens the target VI in the IDE and runs it; the target's `/proc/self/stat` shows the resident pid in every trial; the relay then quits its own process by itself. |
+| Does the relay carry both rendezvous mechanisms and the two-server race? | **Yes.** Nonce in the target's path and path passed through `Ctrl Val.Set`: 20 of 20 trials each, 0 wrong-token connections, every target in the resident pid, every relay gone by itself. |
+| What does the relay cost? | A second LabVIEW process of about 3.5 s (median 3.7 s over 80 relays, longest 15.6 s) that shows windows while it lives, and a modal dialog hazard (below). It is not a handoff in the spec's sense. |
+
+### Setting
+
+The user's change, read only (`91-conf-user-change.txt`): `labview.conf` gained `server.tcp.enabled=True`, `DoNotShowCRAWarningEnableTCP=True`
+and `server.tcp.access="+192.168.1.231:+127.0.0.1:+localhost"` (the second is LabVIEW's own flag for the warning shown when TCP is enabled); no
+`server.tcp.port` key, so the default port **3363**. LabVIEW also changed its own state keys in the same session (`NI_GSWContentIndex`,
+`NI_GSWPosition`, `menuLoc.*`, `RecentFiles.pathList`). Baselines: end of the first measurement sha256 `d8eb5772...cc51`; baseline 3 (this
+measurement's start) `d5a475f1...fc96`, 1344 B, mtime 13:20:41; end `98b0cef5...8820`, 1306 B, mtime 14:07:59. Settings lines identical to baseline 3 (checked);
+LabVIEW's own state keys changed (`NI_GSWContentIndex`, `menuLoc.*`, `RecentFiles.pathList`) and it added **`autoerr=3`** (`91-conf-user-change.txt`). `labview64.conf` untouched.
+Bind and list (`00-env.txt`, `ss -ltnp`): **the listener is `0.0.0.0:3363`** (all interfaces; 30 LabVIEW listeners in all, every one on `0.0.0.0`),
+with the access list above. **Security finding for Slice 7 (not changed):** the VI Server port is reachable on every interface. The access list
+names the machine's LAN address, loopback and `localhost`, but it did **not refuse** the addresses not in it: a relay opened an application
+reference to `127.0.0.2` and to the docker bridge address `172.17.0.1` (neither in the list) and each answered `app=0` and then
+`vi=7` (file not found: the remote server answered), the same as `localhost` and `127.0.0.1` (`20-access.txt`). A connection from another machine
+was not tried (one machine). So for a client on this host the list is not an access control; assume the listener is open to the LAN until a remote
+client shows otherwise.
+
+### Handoff again, with VI Server on
+
+Same procedure as the first measurement (`probe-relay.sh`): one IDE process, then `labview <vi>`.
+Plain VI: `count 1 -> 2` (`10-handoff-plain.txt`). Run-when-opened VI: wrote `stat=<new pid>` (`11-handoff-run.txt`). So **spec assumption 2 as
+written still fails**; the setting does not give a handoff through the VI Server port on this build. The script runs the relay rows only after
+this result (a relay quits the process it runs in) and every relay refuses to quit when its own pid equals the resident pid.
+
+### The relay
+
+`labview relay.vi -- <target> <rendezvous or -> <mode> <report> <resident pid> [host]` (relay composed run-when-opened). In the second process:
+`Application:Command Line Arguments` gives the words; `Open Application Reference` (machine `localhost`, port 3363) opens the IDE; `Open VI Reference` there
+opens the target; for the argument mechanism `Ctrl Val.Set` writes the rendezvous path into the target's `rendezvous` control (the value goes in as XML through
+`Unflatten From XML`, as in the Step 1.2 skeleton); `Run VI`; `Close Reference` x2; the error code of every step and the relay's own pid go to a report
+file; `Quit LabVIEW` ends the process. The target is the rendezvous stub with a 1500 ms wait first (so a target ended by a closed reference cannot
+have connected yet).
+
+| Mode | Run VI | Result (`3-relay-*.txt`) |
+|---|---|---|
+| `wait`, nonce | Wait until done TRUE | target ran in the **resident pid**, token matched, relay quit itself after 3.4 s; report `app=0;vi=0;set=0;run=0;close=0` |
+| `wait`, argument | Wait until done TRUE | same, 3.6 s |
+| `wait`, argument, target composed run-when-opened | Wait until done TRUE | same: it runs and reports, with no check logged in the resident's log |
+| `hold`, argument | Wait until done FALSE, relay keeps the reference 4 s | target ran in the resident pid, relay quit after 5.9 s |
+| `nowait`, argument | Wait until done FALSE, reference closed at once | **no connection: the target never reported** (the relay was gone after 2.0 s) |
+| `dispose`, argument | FALSE with Auto Dispose Ref TRUE, then the reference is closed at once | **no connection** either (relay gone after 2.0 s): `Auto Dispose Ref` did not keep the target alive past the close |
+
+So a target started by `Run VI` ends when the relay closes its reference or quits, in the two forms measured with an early close. **For a bridge that runs
+for hours, the relay process must stay alive as long as the bridge**, or a form that survives the reference must be found: `Auto Dispose Ref` with the reference closed at once did not keep it alive (the `dispose` row); `Auto Dispose Ref` with a
+reference that is never closed explicitly, and `Asynchronous Call By Reference`, were **not measured**. Whether the target is gone from the IDE's
+`All VIs In Memory` afterwards was not read (not measured).
+
+What the relay process showed and did (`3-relay-*.txt`):
+- **On screen:** for about 3 s a second set of LabVIEW windows (palette windows Controls, Functions, Tools, Context Help, Window monitor and the Getting
+  Started window) opened and closed; no activation, licence or error window; the relay's LabVIEW log has no licence or activation line (only the DWarn
+  below). No dialog needed a click in any relay row.
+- **Lifetime:** 3.4 to 3.6 s for `wait`, 5.9 s for `hold` (4 s of it the hold), 2.0 s for `nowait` and `dispose`; ended by itself every time ("alive after 45 s" never
+  happened in the final run). Race relays: 80 of them, 3.5 to 15.6 s, median 3.7 s.
+- **Settings:** the `server.*`, `RunWhenOpened.*` and `DoNotShow*` lines of `labview.conf` were identical after every row; LabVIEW rewrote its own state keys
+  (`NI_GSWContentIndex`, `menuLoc.*`, `RecentFiles.pathList`) and added **`autoerr=3`** (a counter LabVIEW keeps for internal errors and warnings; it is the DWarn
+  path below). The second process did not touch the user's settings. No licence or activation check was hit.
+- **Does the second process also serve 3363?** Not measured (port already in use; the conf is the same). The relay only used it as a client.
+
+### The modal dialog hazard (a finding, with the cause not proven)
+
+When a second process loads a VI while the resident IDE runs, LabVIEW often logs `DWarn ... VIObjCache::DoObjCacheInsert: FAILURE; err=0; sql=5` (SQLite
+"busy": the shared `~/natinst/LabVIEW Data/VIObjCache/26.0.0r0/objFileDB.vidb`). **The next LabVIEW process started after one that logged a DWarn showed the
+modal dialog "Investigate Previous Internal Error or Warning" and then did not run its VI until a human answered it**; a relay behind such a dialog hangs for
+ever (seen: relay rows with no report, `alive` after 45 s, in two earlier runs whose transcripts were replaced by the final run). This session never
+clicked it. `probe-relay.sh` therefore checks the previous process's log for a DWarn before each launch and, if there is one, starts a bare LabVIEW (it loads
+no VI, so it logs no DWarn) and ends it, which hands the next real launch a clean log: 16 such resets in the final complete run (`80-resets.txt`). The dialog's text and buttons were not captured (no screenshot tool). The correlation (DWarn in the previous log, dialog in the next process,
+`autoerr` in the conf) is measured; that the DWarn causes the dialog is not proven. **The user may see this dialog the next time they start LabVIEW**:
+this session ended its last process after a bare start (clean log, `0` DWarn lines in both log files) to avoid that.
+
+### Target VI and the run-when-opened prompt
+
+A plain target and a run-when-opened target, opened and run through VI Server in the IDE, logged **no** `RunWhenOpenedSecurity` line in the resident's log
+and raised no dialog (`40-prompt.txt`). With `RunWhenOpened.Behavior=2` a prompt could not appear in any case, so this does not show what the default
+setting does for a VI Server open. Expected: no prompt (the VI is not opened by a file open); not measured under the default.
+
+### An alternative without a second process: LabVIEWCLI (search only, nothing installed)
+
+`ni-labview-command-line-interface` is **available** for this distribution from NI's apt feed (`/etc/apt/sources.list.d/ni-labview-2026-noble-full.list`,
+`https://download.ni.com/ni-linux-desktop/LabVIEW/2026/Q3/f1/full/deb/ni-labview-2026/noble`): candidate `26.3.0.49372-0+f220`, 1.4 MB, depends on
+`labview-2026-rte (>= 26.3.0)` and `ni-python-interface (>= 26.3.0)`, both installed here; `apt-get -s install` plans exactly one new package
+(`60-labviewcli.txt`). It would need root to install and the VI Server TCP setting on (the port and an access list). Not measured: whether its binary is a
+client that needs no LabVIEW process of its own on this platform, and whether it hits the same VI Server listener or LabVIEW's own start (the Step 1.2 container
+runs `LabVIEWCLI` inside a LabVIEW start). The server could also speak the VI Server wire protocol itself; that protocol was not looked at.
+
+### Findings (Step 14.1 with VI Server on)
+
+1. **Assumption 2 is resolved differently, not by the setting:** a second launch is always a second process; the working route is the relay (a second
+   process as a short-lived VI Server client) or LabVIEWCLI, and both need VI Server TCP on. The user's premise that Windows has it on today fits.
+2. **Slice 6:** the rendezvous mechanisms carry over unchanged to a target running in the resident IDE: file `<port>-<token>`, owner-only, argument through
+   `Ctrl Val.Set` or nonce beside the target. 40 of 40 trials correct, plus a control that proves the check can fail.
+3. **Slice 7 (security):** `0.0.0.0:3363`, access list not enforced against local non-listed addresses (above). Decide loopback restriction or accept.
+4. **Slice 9:** a relay launcher needs a second process alive as long as the bridge (unless Auto Dispose/ACBR keeps the target alive, unmeasured), the
+   run-when-opened setting or a click for the relay VI itself (the relay is run-when-opened here), and a defence against the "Investigate Previous Internal
+   Error or Warning" dialog, which a headless-free IDE cannot avoid on its own.
+5. **Slice 4:** `server.tcp.enabled`, `server.tcp.access`, `DoNotShowCRAWarningEnableTCP` are the conf keys; the port key is absent at the default 3363.
 
 ## Step 14.1 Windows row (run on the Windows laptop session)
 
@@ -232,5 +366,19 @@ Windows pass for the handoff row is count 1 -> 1 with the VI having run**), `App
 as the dump shows it (`args=`), per mechanism the connect time and whether the token matched, the race counts (matched and `vi_path_ok`), the
 run-when-opened setting in force and whether a prompt appeared, anything LabVIEW showed on screen, and whether LabVIEW wrote `LabVIEW.ini`. If the
 count goes to 2 on Windows too, say so at the top: that is a spec failure, as on Linux.
+
+**Relay row (add to the Windows session, VI Server TCP must be enabled on port 3363; on Windows it normally is).** The relay is the G-CLI-style route measured on Linux
+(section "with VI Server TCP enabled"). Windows has `LabVIEWCLI`, so measure both: (a) the same relay (`relay.aixml`: second process opens `localhost:3363`, opens and
+runs `target.aixml` in the running LabVIEW, quits its own process), and (b) `LabVIEWCLI -OperationName RunVI` against the running LabVIEW with a target (as the Step 1.2
+Windows row does). On Windows the first thing to find out is whether `LabVIEW.exe <vi>` hands off at all (it normally does; if the count stays 1 the relay is not needed there).
+Evidence of the process the target ran in: the stubs report `stat=` empty on Windows, so use `Application:Version Number` plus the process count before and after plus
+`path=`, and record the LabVIEW process id the relay's quit ended (`(Get-Process LabVIEW).Id` before and after; the resident id must not change). Commands, with `$P` the process
+count: compose `relay.aixml` with `RunOnOpen=1` and `target.aixml` plain (`py -3 experiments\linux-bridge\compose.py ... --lv-version $major`, `AIXML2VI_TRY_WIRES=Refnum.TCPNetConn`),
+start a `rendezvous-server.py --dir C:\lvmcp-hw\r1 --file rv.txt --result C:\lvmcp-hw\r1\result.json`, then
+`& $LV C:\lvmcp-hw\relay-run.vi -- C:\lvmcp-hw\r1\target-r1.vi C:\lvmcp-hw\r1\rv.txt wait C:\lvmcp-hw\r1\relay.report 0 localhost`
+(the `0` is a resident pid that no real process has: the relay's Linux-only safety against quitting the resident compares `/proc/self/stat`, which Windows lacks, so on Windows the
+relay compares nothing and WILL quit the process it runs in. **Only run it if the count test above showed that `LabVIEW.exe <vi>` starts its own process; if it hands off, the
+relay would quit the running LabVIEW. Do not run the relay in that case.**). Record: relay process lifetime, whether the target connected with the right token, the relay report line, any
+prompt or dialog, and the same for 20 two-server trials per mechanism if time allows. Record the result as one row each.
 
 **Windows 2026 64-bit result: PENDING.** (Replace this line with the table.)

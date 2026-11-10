@@ -1,0 +1,43 @@
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True
+mechanism: arg   mode: hold   target: /tmp/lvmcp-vs.lJMfRW/rl-relay-arg-hold/target-rl-relay-arg-hold.vi   rendezvous arg: /tmp/lvmcp-vs.lJMfRW/rl-relay-arg-hold/rv.txt   relay pid 70898   resident pid 63600
+relay lifetime: 5.9 s (it quits its own process; 'alive' = still running after 45 s and had to be SIGTERMed)
+--- relay report (error codes per step, relay's own pid)
+app=0;vi=0;set=0;run=0;close=0;pid=70898;host=localhost;mode=hold;end
+--- server
+PORT 37171
+RENDEZVOUS /tmp/lvmcp-vs.lJMfRW/rl-relay-arg-hold/rv.txt
+RESULT matched=True connections=1 waited_s=12.72
+--- result
+{"dir": "/tmp/lvmcp-vs.lJMfRW/rl-relay-arg-hold", "rendezvous": "/tmp/lvmcp-vs.lJMfRW/rl-relay-arg-hold/rv.txt", "port": 37171, "dir_mode": "0o700", "file_mode": "0o600", "connections": [{"after_s": 12.72, "peer": "127.0.0.1:51074", "token_ok": true, "token_seen": "f25e42ef83708a0835d4f469eb953846", "pid": "63600", "ver": "26.3.1f1", "stat": "63600 (labview) R 1251 63574 63568 0 -1 4194304 36014 653 1 0 775 215 0 0 20 0 1", "vi_path": "/tmp/lvmcp-vs.lJMfRW/rl-relay-arg-hold/target-rl-relay-arg-hold.vi", "args": "/usr/local/natinst/LabVIEW-2026-64/labview\n", "tick": "5969321", "raw_len": 275}], "matched": true, "token": "f25e42ef83708a0835d4f469eb953846", "waited_s": 12.72}
+--- the target's own report file
+hello-f25e42ef83708a0835d4f469eb953846|ver=26.3.1f1|stat=63600 (labview) R 1251 63574 63568 0 -1 4194304 36014 653 1 0 775 215 0 0 20 0 1|path=/tmp/lvmcp-vs.lJMfRW/rl-relay-arg-hold/target-rl-relay-arg-hold.vi|args=/usr/local/natinst/LabVIEW-2026-64/labview
+|tick=5969321|end
+--- processes now
+  63600 /usr/local/natinst/LabVIEW-2026-64/labview
+  69078 /bin/bash -c source /home/niko/.claude/shell-snapshots/snapshot-bash-1794305378544-loevmr.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && { \builtin unalias -- 'which'; \builtin unset -f -- 'which'; } >/dev/null 2>&1 || true && { \builtin unalias -- 'unsetenv'; \builtin unset -f -- 'unsetenv'; } >/dev/null 2>&1 || true && eval 'R=/home/niko/Documents/labview-mcp/experiments/linux-bridge-hw/transcripts/slice-14.1-linux-viserver; timeout 118 bash -c "until grep -q '"'"'race-relay-nonce'"'"' $R/results.tsv 2>/dev/null; do sleep 5; done"; cut -c1-150 $R/results.tsv | tail -n 6' < /dev/null && pwd -P >| /tmp/claude-e3c4-cwd
+  69079 timeout 118 bash -c until grep -q 'race-relay-nonce' /home/niko/Documents/labview-mcp/experiments/linux-bridge-hw/transcripts/slice-14.1-linux-viserver/results.tsv 2>/dev/null; do sleep 5; done
+  69080 bash -c until grep -q 'race-relay-nonce' /home/niko/Documents/labview-mcp/experiments/linux-bridge-hw/transcripts/slice-14.1-linux-viserver/results.tsv 2>/dev/null; do sleep 5; done
+--- modal dialog 'Investigate Previous Internal Error or Warning' up: no
+--- X window names (count) before the relay
+      1 "Context Help"
+      1 "Controls"
+      1 "Functions"
+      2 "LabVIEW"
+      1 "Smithay X WM"
+      1 "Tools"
+      1 "Window monitor"
+--- while the relay ran (1.2 s)
+      2 "Context Help"
+      1 "Controls"
+      1 "Functions"
+      1 "LabVIEW "
+      3 "LabVIEW"
+      1 "Smithay X WM"
+      1 "Tools"
+      2 "Window monitor"
+--- the relay process's LabVIEW log: licence/activation/error lines
+DWarn 0x70C23FBF: VIObjCache::DoObjCacheInsert: FAILURE; err=0; sql=5; path="/tmp/lvmcp-vs.lJMfRW/relay-run.vi"
+/mnt/Work/myagent/_work/_r/1/src/LabVIEW/source/panel/VIObjCache.cpp(3026) : DWarn 0x70C23FBF: VIObjCache::DoObjCacheInsert: FAILURE; err=0; sql=5; path="/tmp/lvmcp-vs.lJMfRW/relay-run.vi"
+DWarn 0x70C23FBF: VIObjCache::DoObjCacheInsert: FAILURE; err=0; sql=5; path="/tmp/lvmcp-vs.lJMfRW/relay-run.vi"
+/mnt/Work/myagent/_work/_r/1/src/LabVIEW/source/panel/VIObjCache.cpp(3026) : DWarn 0x70C23FBF: VIObjCache::DoObjCacheInsert: FAILURE; err=0; sql=5; path="/tmp/lvmcp-vs.lJMfRW/relay-run.vi"
+labview.conf settings lines (server.*, RunWhenOpened.*, ...) unchanged: yes

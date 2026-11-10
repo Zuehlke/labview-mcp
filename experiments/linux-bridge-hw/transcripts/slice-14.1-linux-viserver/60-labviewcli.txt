@@ -1,0 +1,40 @@
+package search only: apt-cache, apt-get -s (simulation); NOTHING installed
+--- apt sources of NI
+ni-labview-2026-noble-full.list
+deb [signed-by=/usr/share/keyrings/ni-labview-2026-noble-full.asc] https://download.ni.com/ni-linux-desktop/LabVIEW/2026/Q3/f1/full/deb/ni-labview-2026/noble noble ni-labview-2026
+--- apt-cache policy ni-labview-command-line-interface
+ni-labview-command-line-interface:
+  Installed: (none)
+  Candidate: 26.3.0.49372-0+f220
+  Version table:
+     26.3.0.49372-0+f220 500
+        500 https://download.ni.com/ni-linux-desktop/LabVIEW/2026/Q3/f1/full/deb/ni-labview-2026/noble noble/ni-labview-2026 amd64 Packages
+--- apt-cache show (fields)
+Package: ni-labview-command-line-interface
+Version: 26.3.0.49372-0+f220
+Architecture: amd64
+Depends: labview-2026-rte (>= 26.3.0), ni-python-interface (>= 26.3.0)
+Filename: pool/ni-labview-2026/n/ni-labview-command-line-interface/ni-labview-command-line-interface_26.3.0.49372-0+f220_amd64.deb
+Size: 1444660
+Description: NI Command Line Interface Libraries for LabVIEW
+--- apt-get -s install (simulation)
+NOTE: This is only a simulation!
+      apt-get needs root privileges for real execution.
+      Keep also in mind that locking is deactivated,
+      so don't depend on the relevance to the real current situation!
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following packages were automatically installed and are no longer required:
+  eog gettext gir1.2-peas-1.0 libexempi8 libpeas-1.0-0 libpeas-common
+  linux-headers-6.18.7-76061807 linux-headers-6.18.7-76061807-generic
+  linux-image-6.18.7-76061807-generic linux-modules-6.18.7-76061807-generic
+  nvidia-firmware-580-580.173.02 nvidia-firmware-595-595.84 webp-pixbuf-loader
+Use 'apt autoremove' to remove them.
+The following NEW packages will be installed:
+  ni-labview-command-line-interface
+0 upgraded, 1 newly installed, 0 to remove and 4 not upgraded.
+Inst ni-labview-command-line-interface (26.3.0.49372-0+f220 download.ni.com [amd64])
+Conf ni-labview-command-line-interface (26.3.0.49372-0+f220 download.ni.com [amd64])
+--- is a LabVIEWCLI binary present now?
+(end)

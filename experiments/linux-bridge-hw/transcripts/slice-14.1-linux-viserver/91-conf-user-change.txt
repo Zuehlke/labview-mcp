@@ -1,0 +1,45 @@
+# The user's change between the end of the first Step 14.1 measurement and this one (read only), and the end state of this one.
+# end of the first measurement: labview.conf sha256 d8eb577218467ad0f0ba7e534caf59f5b59ce2ac50bd8ebb8b465eecc50ecc51, 1231 B (= baseline 2 plus LabVIEW's RecentFiles.pathList)
+# start of this measurement (baseline 3): sha256 d5a475f1af08c87e5ea368484b720a91d0256d9a5a7a8472d19a4352b368fc96, 1344 B, file mtime 2026-11-10 13:20:41 (written by the user's LabVIEW session)
+# diff baseline 2 -> baseline 3 (lines starting '>' are new; the three server/DoNotShow lines are the user's change):
+6c6
+< NI_GSWContentIndex=4
+---
+> NI_GSWContentIndex=6
+11c11
+< NI_GSWPosition="1568,382,2405,904"
+---
+> NI_GSWPosition="2130,466,2967,988"
+14c14
+< menuLoc.1=333x525+1504+266
+---
+> menuLoc.1=335x527+859+152
+19c19
+< menuLoc.2=335x699+1503+266
+---
+> menuLoc.2=337x701+859+152
+28c28
+< RecentFiles.pathList="/tmp/lvmcp-hw-test/args-dump.vi"
+---
+> RecentFiles.pathList="/tmp/lvmcp-hw.AchX8O/c-B/stub-c-B.vi:/tmp/lvmcp-hw.AchX8O/k20-B/stub-k20-B.vi:/tmp/lvmcp-hw.AchX8O/k19-B/stub-k19-B.vi:/tmp/lvmcp-hw.AchX8O/k18-B/
+30a31,33
+> server.tcp.enabled=True
+> DoNotShowCRAWarningEnableTCP=True
+> server.tcp.access="+192.168.1.231:+127.0.0.1:+localhost"
+
+# end of this measurement (the IDE started by the script was ended by SIGTERM, then one bare LabVIEW start/stop cleared the log): sha256 98b0cef566411cde0932d9a4ac4fd72649dcf1b5422fec3a45796fb630c18820, 1306 B, mtime 2026-11-10 14:07:59.647819429 +0100
+# diff baseline 3 -> end WITHOUT RecentFiles.pathList: LabVIEW's own state keys; the settings lines (server.*, RunWhenOpened.*, DoNotShow*, NewProj.*) are identical
+6c6
+< NI_GSWContentIndex=6
+---
+> NI_GSWContentIndex=3
+14c14
+< menuLoc.1=335x527+859+152
+---
+> menuLoc.1=334x527+1360+410
+19c19
+< menuLoc.2=337x701+859+152
+---
+> menuLoc.2=629x993+1+1
+32a33
+> autoerr=3

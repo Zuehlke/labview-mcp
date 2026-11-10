@@ -1,0 +1,6 @@
+setting in force: RunWhenOpened.Behavior=2;server.tcp.enabled=True   (with Behavior=2 a prompt cannot appear, so this row cannot show whether a prompt WOULD appear)
+resident process log: /tmp/labview_26.3.1f1_interactive_niko_log.txt (deleted) (read through /proc/63600/fd, the file was renamed when later processes started)
+--- run-when-opened check lines in the RESIDENT's log (the relay rows above opened plain targets through VI Server in it)
+(none: no run-when-opened check at all for the VI Server opens)
+--- X windows with a dialog-like name in the IDE now
+(none)
