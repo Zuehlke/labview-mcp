@@ -1,0 +1,15 @@
+row	method	result	evidence	ms	transcript
+LabVIEW version	P0_AppVersion	PASS	26.1f0	1728	transcripts/slice-1.2-headless/scripting/11-labview-version.txt
+Open VI Reference	P1_OpenVIReference	PASS	code=0, no error	1773	transcripts/slice-1.2-headless/scripting/12-open-vi-reference.txt
+Execution State	P2_ExecutionState	PASS	1	1781	transcripts/slice-1.2-headless/scripting/13-execution-state.txt
+Run VI async	P3_RunVIAsync	PASS	2	1800	transcripts/slice-1.2-headless/scripting/14-run-vi-async.txt
+control: Spin state after the Run VI async probe returned	P2_ExecutionState	PASS	1	1750	transcripts/slice-1.2-headless/scripting/15-control-spin-state-after-the-run-vi-async-probe-returned.txt
+Abort VI	P4_AbortVI	PASS	2,1	1817	transcripts/slice-1.2-headless/scripting/16-abort-vi.txt
+control: Abort VI on a VI that is not running	P9_AbortIdle	PASS	error reported as expected: code=1000 0	1753	transcripts/slice-1.2-headless/scripting/17-control-abort-vi-on-a-vi-that-is-not-running.txt
+Print VI To HTML	P5_PrintVIToHTML	PASS	/tmp/fx/out.html	2377	transcripts/slice-1.2-headless/scripting/18-print-vi-to-html.txt
+SubVI Replace	P6_SubVIReplace	PASS	Callee2.vi	1863	transcripts/slice-1.2-headless/scripting/19-subvi-replace.txt
+Remove Bad Wires	P7_RemoveBadWires	PASS	1,TRUE,0	1817	transcripts/slice-1.2-headless/scripting/20-remove-bad-wires.txt
+Clean Up Diagram	P8_CleanUpDiagram	PASS	2000,141	1848	transcripts/slice-1.2-headless/scripting/21-clean-up-diagram.txt
+control: Open VI Reference on a missing file	P1_OpenVIReference	PASS	error reported as expected: code=7 	1737	transcripts/slice-1.2-headless/scripting/22-control-open-vi-reference-on-a-missing-file.txt
+control: Run VI async, Close Reference while the probe runs, reopen	P11_RunAsyncCloseRef	PASS	2,1	2392	transcripts/slice-1.2-headless/scripting/23-control-run-vi-async-close-reference-while-the-probe-runs-reopen.txt
+control: Spin2 state after the reopen probe returned	P2_ExecutionState	PASS	1	1823	transcripts/slice-1.2-headless/scripting/24-control-spin2-state-after-the-reopen-probe-returned.txt

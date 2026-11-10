@@ -1,0 +1,60 @@
+mode: headless-nodisplay   CI variable: unset   -Headless: 1   Xvfb: no
+time box: 180 s   2026-11-10T07:38:22Z   container: lvc-19858-1794296301-de6c7d68
+--- environment seen by LabVIEWCLI
+(neither EnableCICDFeaturesForLabVIEW nor LV_RTE_HEADLESS set)
+--- LabVIEWCLI RunVI /usr/local/natinst/nilvcli/Examples/AddTwoNumbers/AddTwoNumbers.vi 123 456
+Can't load library libniDotNETCoreInterop.so
+libniDotNETCoreInterop.so: cannot open shared object file: No such file or directory
+Can't find library libniDotNETCoreInterop.so
+Make sure this library is installed in your LD_LIBRARY_PATH
+search path, or in /usr/lib64
+LabVIEWCLI started logging in file:  /tmp/lvtemporary_929690.log
+Using LabVIEW: "/usr/local/natinst/LabVIEW-2026-64/labview"
+LabVIEW launched successfully.
+Connection established with LabVIEW at port number 3363.
+
+Operation output: 
+579
+RunVI operation succeeded.
+
+--- exit code: 0   wall: 12447 ms
+--- LabVIEW processes
+  104 /usr/local/natinst/LabVIEW-2026-64/labview --headless
+--- the LabVIEW process's own environment (CI, headless, display)
+LV_RTE_HEADLESS=1
+DISPLAY=:99
+--- LabVIEW log files: labview_26.1f0_headless_root_cur.txt 
+--- log lines about licence, activation, headless, CI
+#AppRunMode: Headless
+[HeadlessManager][11/10/26 07:38:27.469 AM] Custom debug setting being applied in Headless Mode.
+[HeadlessManager][11/10/26 07:38:27.470 AM] Debug settings applied for Headless mode.
+[HeadlessManager][11/10/26 07:38:27.470 AM] In Headless mode, no dialogs will be shown and all DWarns and DAborts will be logged to this file.
+[HeadlessManager][11/10/26 07:38:27.470 AM] Initializing headless LabVIEW
+[HeadlessManager][11/10/26 07:38:27.781 AM] Enabled logging of unwired errors in headless mode. Log file: /root/natinst/LabVIEW Data/UnwiredErrors/labview_101126_07-38-27_UnwiredErrors.logInitExecSystem() call to GetCurrProcessNumProcessors() reports: 12 processors
+--- log tails
+== /tmp/labview_26.1f0_headless_root_cur.txt
+
+
+
+[HeadlessManager][11/10/26 07:38:27.469 AM] Custom debug setting being applied in Headless Mode.
+[HeadlessManager][11/10/26 07:38:27.470 AM] Debug settings applied for Headless mode.
+[HeadlessManager][11/10/26 07:38:27.470 AM] In Headless mode, no dialogs will be shown and all DWarns and DAborts will be logged to this file.
+[HeadlessManager][11/10/26 07:38:27.470 AM] Initializing headless LabVIEW
+[HeadlessManager][11/10/26 07:38:27.781 AM] Enabled logging of unwired errors in headless mode. Log file: /root/natinst/LabVIEW Data/UnwiredErrors/labview_101126_07-38-27_UnwiredErrors.logInitExecSystem() call to GetCurrProcessNumProcessors() reports: 12 processors
+InitExecSystem() call to GetNumProcessors()            reports: 12 processors
+InitExecSystem()                                      will use: 12 processors
+starting LV_ESys2_Thr0 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr1 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr2 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr3 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr4 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr5 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr6 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr7 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr8 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr9 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr10 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+starting LV_ESys2_Thr11 , capacity: 24 at [3877141108.82214308, (07:38:28.822143000 2026:11:10)]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]

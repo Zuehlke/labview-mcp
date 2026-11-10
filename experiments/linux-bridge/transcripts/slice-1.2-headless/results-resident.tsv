@@ -1,0 +1,3 @@
+route	result	echoes	failures	connect_s	total_echo_ms	wall_ms	probe_code	probe_y	exec_state_after	in_memory	labview_procs	transcript
+launch-headless	PASS	100	0	4.9	7	5354	0	42.50000000000000	1	yes	1	transcripts/slice-1.2-headless/50-launch-headless.txt
+runvi-headless	PASS	100	0	10.6	8	11093	0	42.50000000000000	1	no	1	transcripts/slice-1.2-headless/60-runvi-headless.txt

@@ -1,0 +1,55 @@
+mode: ui-nocicd   CI variable: unset   -Headless: 0   Xvfb: yes
+time box: 180 s   2026-11-10T07:37:59Z   container: lvc-19858-1794296279-4149eb81
+--- environment seen by LabVIEWCLI
+(neither EnableCICDFeaturesForLabVIEW nor LV_RTE_HEADLESS set)
+--- LabVIEWCLI RunVI /usr/local/natinst/nilvcli/Examples/AddTwoNumbers/AddTwoNumbers.vi 123 456
+Can't load library libniDotNETCoreInterop.so
+libniDotNETCoreInterop.so: cannot open shared object file: No such file or directory
+Can't find library libniDotNETCoreInterop.so
+Make sure this library is installed in your LD_LIBRARY_PATH
+search path, or in /usr/lib64
+LabVIEWCLI started logging in file:  /tmp/lvtemporary_751310.log
+Using LabVIEW: "/usr/local/natinst/LabVIEW-2026-64/labview"
+LabVIEW launched successfully.
+Connection established with LabVIEW at port number 3363.
+
+Operation output: 
+579
+RunVI operation succeeded.
+
+--- exit code: 0   wall: 10362 ms
+--- LabVIEW processes
+  115 /usr/local/natinst/LabVIEW-2026-64/labview
+--- the LabVIEW process's own environment (CI, headless, display)
+DISPLAY=:99
+--- LabVIEW log files: labview_26.1f0_interactive_root_cur.txt 
+--- log lines about licence, activation, headless, CI
+--- log tails
+== /tmp/labview_26.1f0_interactive_root_cur.txt
+#AppName: labview
+#Version: 26.1f0
+#AppKind: FDS
+#AppRunMode: Interactive
+#AppModDate: 
+
+
+InitExecSystem() call to GetCurrProcessNumProcessors() reports: 12 processors
+InitExecSystem() call to GetNumProcessors()            reports: 12 processors
+InitExecSystem()                                      will use: 12 processors
+starting LV_ESys2_Thr0 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr1 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr2 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr3 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr4 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr5 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr6 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr7 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr8 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr9 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr10 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+starting LV_ESys2_Thr11 , capacity: 24 at [3877141085.30382013, (07:38:05.303820000 2026:11:10)]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]
+--- X windows on the virtual display (a hidden dialog would show here)
+xwininfo not in the image

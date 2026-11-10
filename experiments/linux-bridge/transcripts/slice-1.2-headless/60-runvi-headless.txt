@@ -1,0 +1,46 @@
+route: runvi-headless   container: lvc-27600-1794297137-ab489770   display: no   time box: 300 s   2026-11-10T07:52:18Z
+3188432359 15076 /tmp/fx/skeleton.vi
+809270333 15076 /tmp/fxr/skeleton.vi
+start: (unset DISPLAY; cd /usr/local/natinst/nilvcli; nohup ./LabVIEWCLI -LabVIEWPath /usr/local/natinst/LabVIEW-2026-64/labview -OperationName RunVI -VIPath /tmp/fx/skeleton.vi -Headless > /tmp/route.out 2>&1 &)
+--- container still running: yes
+--- client (inside the container)
+listening 127.0.0.1:54139, rendezvous /tmp/lvmcp-skeleton-port.txt
+skeleton connected from 127.0.0.1:36598 after 10.6 s
+PROBE code=0;state=1;x=<LvVariant>
+<Name>Get Control Value Variant</Name>
+<DBL>
+<Name>x</Name>
+<Val>0.00000000000000</Val>
+</DBL>
+</LvVariant>
+;y=<LvVariant>
+<Name>Get Control Value Variant</Name>
+<DBL>
+<Name>y</Name>
+<Val>42.50000000000000</Val>
+</DBL>
+</LvVariant>
+
+RESULT requested=100 echoes=100 failures=0 connect_s=10.6 total_ms=8 per_echo_ms min=0.0 median=0.1 p95=0.1 max=0.8
+--- route output
+Can't load library libniDotNETCoreInterop.so
+libniDotNETCoreInterop.so: cannot open shared object file: No such file or directory
+Can't find library libniDotNETCoreInterop.so
+Make sure this library is installed in your LD_LIBRARY_PATH
+search path, or in /usr/lib64
+LabVIEWCLI started logging in file:  /tmp/lvtemporary_249043.log
+Using LabVIEW: "/usr/local/natinst/LabVIEW-2026-64/labview"
+LabVIEW launched successfully.
+Connection established with LabVIEW at port number 3363.
+
+Operation output: 
+code=66;source=TCP Read in skeleton.vi:4410001->RunVI.lvclass:RunOperation.vi:5910001->CoreOperation.lvclass:CallRunOperation.vi:4230002->ExecuteRunOperation.vi:5250001->ExecuteOperation.vi:6900002->ExecuteOperation.vi.ProxyCaller
+RunVI operation succeeded.
+
+--- processes
+   50     1 Xvfb            Xvfb :99 -screen 0 1024x768x24 -terminate
+  173     1 labview         /usr/local/natinst/LabVIEW-2026-64/labview --headless
+--- LabVIEW log files
+/tmp/labview_26.1f0_headless_root_cur.txt
+--- skeleton.vi in Application:All VIs In Memory (P10 probe, opens nothing by path): code=0;source=;detail=-1,31
+--- Execution:State of the skeleton after the run (P2 probe): code=0;source=;detail=1

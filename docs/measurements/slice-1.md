@@ -9,11 +9,11 @@ state), every probe and skeleton VI was recomposed with `--lv-version 26`, and b
 **All tables below come from that second run**; the transcripts of the first run are replaced (they are in git
 history, commits 736289c and 168772a).
 
-**Spec assumption 4 (headless) holds only with a virtual display inside the container.** LabVIEW does not start
-without a display: with no Xvfb, `LabVIEWCLI` prints `Unable to open X display.` and the skeleton never connects
-(`transcripts/slice-1.2/40-nodisplay-runvi.txt`, row `nodisplay-runvi` below). Every passing run here has Xvfb
-`:99` in the container. The Gherkin precondition "no display" was replaced by "a virtual display (Xvfb) in the
-container". This is not "headless" in the sense of LabVIEW needing no display.
+**Spec assumption 4 (headless) holds in NI's headless mode** (addendum of 2026-11-10, section "Step 1.2 addendum: NI's
+headless mode" below). The text here claimed until then that it held "only with a virtual display inside the
+container": that was measured with plain LabVIEW, never with `-Headless`. Plain LabVIEW with no X server stops at
+`Unable to open X display.` (`transcripts/slice-1.2/40-nodisplay-runvi.txt`). In headless mode LabVIEW starts its own
+`Xvfb :99` and needs no activation, and every Step 1.1 row and both bridge routes pass without an Xvfb of ours.
 
 ## Step 1.1: the NI image on this Mac, and VI Server in it
 
@@ -281,7 +281,57 @@ or rename these nodes (not checked).
   2026 and 2020 alike; both the 2026 files load and run. Not investigated for the 2020 file.
 - One run of each route. No variance claim.
 - REFACTOR: nothing was dropped. Each skeleton part is used by both routes.
-- Assumption 3 is only PARTIAL (finding 6). Assumption 4 holds only with Xvfb (top of this file).
+- Assumption 3 is only PARTIAL (finding 6). Assumption 4 holds in NI's headless mode (addendum below).
+
+### Step 1.2 addendum: NI's headless mode (2026-11-10)
+
+**Question.** Steps 1.1 and 1.2 ran LabVIEW in normal (UI) mode under our Xvfb, with the image's
+`EnableCICDFeaturesForLabVIEW=TRUE`. Does NI's headless mode run the same work, without activation and without an
+Xvfb of ours? The user asked after the Step 1.2 report, pointing out that LabVIEW wants activation outside headless mode.
+
+**NI's documentation** (ni/labview-for-containers, `docs/headless-labview.md` and `docs/faqs.md`, read 2026-11-10):
+- Headless mode exists from LabVIEW 2026 Q1: `LabVIEWCLI ... -Headless`, or `labview --headless`, or `LV_RTE_HEADLESS=1`.
+  It replaces `EnableCICDFeaturesForLabVIEW=TRUE` (2025 Q3 and earlier).
+- No dialogs; DWarns, DAborts and unwired errors go to logs. The main log is `/tmp/labview_<ver>_headless_<user>_cur.txt`.
+- No activation is needed, for CI, automated testing and builds only. NI's licence forbids headless or container use for
+  development.
+- On Linux LabVIEW still needs X11 (FAQ 2). Headless and IDE sessions exclude each other: a headless request is forwarded to
+  a running IDE, and an IDE start is refused while a headless session runs. `CloseLabVIEW` ends a headless session.
+
+**Probes.** `probe-headless.sh` (four modes, NI's `AddTwoNumbers` 123 + 456), `probe-resident.sh` with
+`ROUTES="launch-headless:50 runvi-headless:60"`, and `probe-container.sh` with `LVC_HEADLESS=1 LVC_CICD=0` (Step 1.1
+rows). `LVC_CICD=0` unsets the CI variable in every exec; the LabVIEW process's `/proc/<pid>/environ` confirms it.
+Transcripts: `transcripts/slice-1.2-headless/`.
+
+| Mode | CI variable | Our Xvfb | Result | LabVIEW log | Wall |
+|---|---|---|---|---|---|
+| `ui-cicd` (what Steps 1.1/1.2 did) | set | yes | PASS, 579 | `..._interactive_root_cur.txt` | 9.8 s |
+| `ui-nocicd` | unset | yes | PASS, 579 | `..._interactive_root_cur.txt` | 10.4 s |
+| `headless` | unset | yes | PASS, 579 | `..._headless_root_cur.txt`, `#AppRunMode: Headless` | 9.4 s |
+| `headless-nodisplay` | unset | no | PASS, 579 | `..._headless_root_cur.txt` | 12.4 s |
+
+| Bridge route (CI variable unset, no Xvfb of ours) | Result | Echoes | Connect | Exec state after |
+|---|---|---|---|---|
+| `launch-headless`: `labview --headless skeleton.vi` (Run when opened) | PASS | 100/100, 0 failures | 4.9 s | 1 |
+| `runvi-headless`: `LabVIEWCLI RunVI ... -Headless` | PASS | 100/100, 0 failures | 10.6 s | 1 |
+
+Step 1.1 rows in headless mode (`transcripts/slice-1.2-headless/scripting/`): **all 14 PASS**, the same values as in UI
+mode, including the editing methods `SubVI Replace`, `Remove Bad Wires` and `Clean Up Diagram`. Cold start 12.5 s,
+warm call 1.8 s.
+
+**Findings.**
+1. Headless LabVIEW starts its own X server: `Xvfb :99 -screen 0 1024x768x24 -terminate`. Under `labview --headless` it is a
+   child of the `labview` process (ppid). So the harness starts no Xvfb. Plain LabVIEW without X still fails (row above).
+2. `LabVIEWCLI -Headless` puts `LV_RTE_HEADLESS=1` into LabVIEW's environment.
+3. UI mode with the CI variable unset also ran, and no dialog blocked it. Its licence state was not measured: the image
+   has no `xwininfo`, and the log has no licence line. Not needed: CI uses headless mode.
+4. Under headless mode, VI Scripting (edit methods included) is not blocked. The licence still limits headless use to CI.
+
+**Consequences for the plan** (recorded in its Risks): CI and the container harness use headless mode with no Xvfb of
+their own; the server never starts LabVIEW headless for a user; on the Pop!_OS desktop it attaches to the activated IDE.
+
+**Not measured.** Headless mode on the Pop!_OS laptop (a desktop with an IDE install); a modal dialog in headless mode;
+one run per mode, no variance claim.
 
 ### Step 1.2 Windows row (run on the Windows laptop session)
 

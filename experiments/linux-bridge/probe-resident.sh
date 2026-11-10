@@ -67,7 +67,13 @@ run_route() {
   : > "$tr"
   say() { printf '%s\n' "$*" | tee -a "$tr"; }
   C=$(lvc_start "$HERE" ro) || return 1
-  local display=yes; [ "$route" = nodisplay-runvi ] && display=no
+  # *-headless routes: NI's -Headless / --headless, CI variable unset, and NO Xvfb of ours (LabVIEWCLI -Headless
+  # starts its own Xvfb :99, measured 2026-11-10; whether `labview --headless` needs one is what launch-headless shows)
+  local display=yes probe=yes LVC_HEADLESS=0 LVC_CICD=1
+  case "$route" in
+    nodisplay-runvi) display=no; probe=no ;;
+    *-headless) display=no; LVC_HEADLESS=1; LVC_CICD=0 ;;
+  esac
   if [ "$display" = yes ]; then lvc_xvfb "$C" || { say "Xvfb did not start"; lvc_stop "$C"; return 1; }; fi
   say "route: $route   container: $C   display: $display   time box: ${limit} s   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   lvc_exec "$C" 'mkdir -p /tmp/fx /tmp/fxr && cp /work/fixtures/vi/*.vi /tmp/fx/ && cp /work/fixtures/vi/run-on-open/skeleton.vi /tmp/fxr/' \
@@ -86,34 +92,38 @@ run_route() {
     launch-plain) start_cmd="(export DISPLAY=$LVC_DISPLAY; cd /tmp/fx; nohup $LVC_LABVIEW /tmp/fx/skeleton.vi > /tmp/route.out 2>&1 &)" ;;
     launch) start_cmd="(export DISPLAY=$LVC_DISPLAY; cd /tmp/fxr; nohup $LVC_LABVIEW /tmp/fxr/skeleton.vi > /tmp/route.out 2>&1 &)" ;;
     runvi)  start_cmd="(export DISPLAY=$LVC_DISPLAY; cd $LVC_CLI_DIR; nohup ./LabVIEWCLI -LabVIEWPath $LVC_LABVIEW -OperationName RunVI -VIPath /tmp/fx/skeleton.vi > /tmp/route.out 2>&1 &)" ;;
+    launch-headless) start_cmd="(unset DISPLAY; cd /tmp/fxr; nohup $LVC_LABVIEW --headless /tmp/fxr/skeleton.vi > /tmp/route.out 2>&1 &)" ;;
+    runvi-headless) start_cmd="(unset DISPLAY; cd $LVC_CLI_DIR; nohup ./LabVIEWCLI -LabVIEWPath $LVC_LABVIEW -OperationName RunVI -VIPath /tmp/fx/skeleton.vi -Headless > /tmp/route.out 2>&1 &)" ;;
     nodisplay-runvi) start_cmd="(unset DISPLAY; cd $LVC_CLI_DIR; nohup ./LabVIEWCLI -LabVIEWPath $LVC_LABVIEW -OperationName RunVI -VIPath /tmp/fx/skeleton.vi > /tmp/route.out 2>&1 &)" ;;
   esac
   say "start: $start_cmd"
   lvc_exec "$C" "$start_cmd"
   lvc_poll $((limit + 15)) lvc_exec "$C" 'grep -q "^RESULT" /tmp/client.out' 2>/dev/null
   t1=$(lvc_now_ms)
-  if [ "$route" = runvi ]; then   # the skeleton ends when the client hangs up; give RunVI time to say so
+  if [ "${route%-headless}" = runvi ]; then   # the skeleton ends when the client hangs up; give RunVI time to say so
     lvc_poll 20 lvc_exec "$C" 'grep -q "^RunVI operation" /tmp/route.out' 2>/dev/null
   fi
   local alive=no; lvc_running "$C" && alive=yes
   { echo "--- container still running: $alive"
     echo "--- client (inside the container)"; lvc_exec "$C" 'cat /tmp/client.out'
     echo "--- route output"; lvc_exec "$C" 'cat /tmp/route.out'
-    echo "--- processes"; lvc_exec "$C" 'ps -eo pid,comm,args | grep -E " (labview|LabVIEWCLI)" | grep -v grep'; } >> "$tr" 2>&1
+    echo "--- processes"; lvc_exec "$C" 'ps -eo pid,ppid,comm,args | grep -E " (labview|LabVIEWCLI|Xvfb)" | grep -v grep'
+    echo "--- LabVIEW log files"; lvc_exec "$C" 'ls /tmp/labview_*_cur.txt 2>&1'; } >> "$tr" 2>&1
 
   local procs state="n/a" inmem="n/a" ans idx
   procs=$(lvc_exec "$C" 'ps -eo comm | grep -cx labview')
-  if [ "$display" = yes ]; then
+  local skel=/tmp/fx/skeleton.vi; case "$route" in launch|launch-headless) skel=/tmp/fxr/skeleton.vi ;; esac
+  if [ "$probe" = yes ]; then
     # 1. is the skeleton in memory by NAME? A probe that opens nothing by path, run BEFORE anything opens it
     ans=$(lvc_cli "$C" RunVI -VIPath /tmp/fx/P10_VIsInMemory.vi skeleton.vi 2>&1 | cli_answer)
     idx=$(printf '%s' "$ans" | sed -n 's/.*;detail=\(-\{0,1\}[0-9]*\),.*/\1/p')
     case "$idx" in ''|*[!0-9-]*) inmem="unknown" ;; -1) inmem=no ;; *) inmem=yes ;; esac
     echo "--- skeleton.vi in Application:All VIs In Memory (P10 probe, opens nothing by path): $ans" >> "$tr"
     # 2. its state, read through LabVIEWCLI (LabVIEW must still answer)
-    ans=$(lvc_cli "$C" RunVI -VIPath /tmp/fx/P2_ExecutionState.vi "$([ "$route" = launch ] && echo /tmp/fxr/skeleton.vi || echo /tmp/fx/skeleton.vi)" 2>&1 | cli_answer)
+    ans=$(lvc_cli "$C" RunVI -VIPath /tmp/fx/P2_ExecutionState.vi "$skel" 2>&1 | cli_answer)
     state=$(printf '%s' "$ans" | sed -n 's/.*;detail=//p')
     echo "--- Execution:State of the skeleton after the run (P2 probe): $ans" >> "$tr"
-    lvc_exec "$C" 'tail -n 25 /tmp/labview_26.1f0_interactive_root_cur.txt' > "$OUT/$n-$route-labview-log-tail.txt" 2>&1
+    lvc_log "$C" 25 > "$OUT/$n-$route-labview-log-tail.txt" 2>&1
   fi
 
   local res echoes fails conn tot probe_code probe_y verdict=FAIL
@@ -140,6 +150,13 @@ run_route() {
   lvc_stop "$C"
 }
 
+if [ -n "${ROUTES:-}" ]; then   # e.g. ROUTES="launch-headless:50 runvi-headless:60" (route:number), time box LIMIT
+  want=0; recorded=0
+  for r in $ROUTES; do want=$((want + 1)); run_route "${r%%:*}" "${r##*:}" "$LIMIT" && recorded=$((recorded + 1)); done
+  column -t -s "$(printf '\t')" "$RESULTS"
+  [ "$recorded" -eq "$want" ] || { echo "only $recorded of $want routes recorded" >&2; exit 1; }
+  exit 0
+fi
 recorded=0
 run_route launch 10 "$LIMIT" && recorded=$((recorded + 1))
 run_route runvi 20 "$LIMIT" && recorded=$((recorded + 1))

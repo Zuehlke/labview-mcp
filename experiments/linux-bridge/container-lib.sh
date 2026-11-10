@@ -19,7 +19,8 @@
 #   lvc_xvfb "$c"                      # starts Xvfb :99 in the container (LabVIEW needs a display)
 #   lvc_exec "$c" 'shell command'      # run in the container
 #   lvc_exec_timed "$c" SECONDS 'cmd'  # same, killed inside the container after SECONDS
-#   lvc_cli "$c" OPERATION [args...]   # LabVIEWCLI -OperationName OPERATION ... (DISPLAY set)
+#   lvc_cli "$c" OPERATION [args...]   # LabVIEWCLI -OperationName OPERATION ... (DISPLAY set; -Headless if LVC_HEADLESS=1)
+#   lvc_log "$c" [LINES]               # tail of LabVIEW's own log, interactive or headless (/tmp/labview_*_cur.txt)
 #   lvc_running "$c"                   # exit 0 when the container is running
 #   lvc_poll SECONDS cmd [args...]     # host side: repeat cmd every 0.5 s until it succeeds or the deadline passes
 #   lvc_stop "$c"                      # one container
@@ -37,6 +38,10 @@ LVC_IMAGE="nationalinstruments/labview@${LVC_IMAGE_DIGEST}"
 LVC_PLATFORM="${LVC_PLATFORM:-linux/amd64}"
 # "none": loopback only. Set LVC_NETWORK=bridge (or empty for Docker's default) if a measurement needs more.
 LVC_NETWORK="${LVC_NETWORK-none}"
+# The image sets EnableCICDFeaturesForLabVIEW=TRUE (NI's CI switch up to 2025 Q3). LVC_CICD=0 unsets it in every
+# exec (not set to FALSE: presence may be what counts), so a run shows what LabVIEW does without it. LVC_HEADLESS=1 makes lvc_cli pass -Headless (NI, 2026 Q1+).
+LVC_CICD="${LVC_CICD:-1}"
+LVC_HEADLESS="${LVC_HEADLESS:-0}"
 LVC_LABVIEW_ROOT=/usr/local/natinst/LabVIEW-2026-64
 LVC_LABVIEW="$LVC_LABVIEW_ROOT/labview"
 LVC_CLI_DIR=/usr/local/natinst/nilvcli
@@ -96,14 +101,16 @@ lvc_poll() {
   while :; do "$@" && return 0; [ "$SECONDS" -ge "$end" ] && return 1; sleep 0.5; done
 }
 
-lvc_exec() { docker exec "${1:?container}" bash -c "$2"; }
+lvc_unset() { [ "$LVC_CICD" = 0 ] && printf 'unset EnableCICDFeaturesForLabVIEW; '; return 0; }
+
+lvc_exec() { docker exec "${1:?container}" bash -c "$(lvc_unset)$2"; }
 
 # Time-boxed exec. `timeout -k` runs inside the container, so the process is really killed
 # (killing only the docker client would leave LabVIEW running).
 lvc_exec_timed() {
   local c="${1:?container}" secs="$2"
   case "$secs" in ''|*[!0-9]*) echo "lvc_exec_timed: seconds must be an integer, got '$secs'" >&2; return 1 ;; esac
-  docker exec "$c" timeout -k 5 "$secs" bash -c "$3"
+  docker exec "$c" timeout -k 5 "$secs" bash -c "$(lvc_unset)$3"
 }
 
 # Without a display LabVIEWCLI stops at "Unable to open X display." (measured 2026-11-09).
@@ -112,6 +119,8 @@ lvc_xvfb() {
             for i in \$(seq 1 50); do [ -S /tmp/.X11-unix/X${LVC_DISPLAY#:} ] && exit 0; sleep 0.1; done; exit 1"
 }
 
+lvc_log() { lvc_exec "$1" "for f in /tmp/labview_*_cur.txt; do echo \"== \$f\"; tail -n ${2:-40} \"\$f\"; done"; }
+
 # One LabVIEWCLI operation, launching LabVIEW on first use. Time box: LVC_CLI_TIMEOUT (default 300 s).
 # Every word reaches the container's shell single-quoted, so spaces and quotes survive.
 lvc_cli() {
@@ -119,6 +128,7 @@ lvc_cli() {
   local a q=""
   case "$op" in ''|*[!A-Za-z0-9]*) echo "lvc_cli: operation name must be alphanumeric, got '$op'" >&2; return 1 ;; esac
   for a in "$@"; do q="$q $(lvc_q "$a")"; done
+  [ "$LVC_HEADLESS" = 1 ] && q="$q -Headless"
   lvc_exec_timed "$c" "${LVC_CLI_TIMEOUT:-300}" \
     "export DISPLAY=$LVC_DISPLAY; cd $LVC_CLI_DIR; ./LabVIEWCLI -LabVIEWPath $LVC_LABVIEW -OperationName $(lvc_q "$op")$q 2>&1"
 }

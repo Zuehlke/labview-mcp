@@ -700,7 +700,7 @@ Feature: The server talks to its bridge VI over loopback
 ### Slice 7: Thin bridge VI, composed per release, in `NI.LV.Editor`
 
 **Depends-on:** 4, 6, 8, 14
-**Files:** `scripts/aixml-bridge/**`, `src/LabVIEWMCP/Infra/Bridge/BridgeComposer.cs`, `src/LabVIEWMCP/Infra/BridgePrimitives.cs`, `tests/LabVIEWMCP.Tests/Bridge/BridgeViContractTests.cs`, `tests/LabVIEWMCP.Tests/Fixtures/Bridge/**`, `docs/measurements/slice-7.md`
+**Files:** `scripts/aixml-bridge/**`, `scripts/aixml-pylabview/aixml2vi.py`, `src/LabVIEWMCP/Infra/Bridge/BridgeComposer.cs`, `src/LabVIEWMCP/Infra/BridgePrimitives.cs`, `tests/LabVIEWMCP.Tests/Bridge/BridgeViContractTests.cs`, `tests/LabVIEWMCP.Tests/Fixtures/Bridge/**`, `docs/measurements/slice-7.md`
 
 The AIXML is authored with `labview-vi-generator`, against `docs/bridge-protocol.md`, per `CLAUDE.md`
 "Agents first". Composition reuses the `ComposedHelpers` pattern.
@@ -780,10 +780,10 @@ Feature: The thin bridge VI serves primitives from the editor context
 #### Step 7.1: Bridge AIXML, composition, and the editor-context start
 
 **Complexity**: complex
-**IMPLEMENT**: Author the thin bridge loop and the context stub as AIXML. `BridgeComposer` composes both for the running release and caches them, following `ComposedHelpers`. The stub starts the reentrant bridge in `NI.LV.Editor` by the recipe from Step 14.2, then exits. `BridgePrimitives` implements `ILabViewPrimitives` over `BridgeSession`.
+**IMPLEMENT**: Extend the composer first (the user's decision of 2026-11-10, after Step 1.2): `aixml2vi.py` accepts the `Refnum.TCPNetConn` wire by default (today only behind `AIXML2VI_TRY_WIRES`) and sets the "Run when opened" execution flag from the AIXML (today `experiments/linux-bridge/compose.py` patches it in). Then author the thin bridge loop and the context stub as AIXML. `BridgeComposer` composes both for the running release and caches them, following `ComposedHelpers`. The stub starts the reentrant bridge in `NI.LV.Editor` by the recipe from Step 14.2, then exits. `BridgePrimitives` implements `ILabViewPrimitives` over `BridgeSession`.
 **TEST**: The composition, context, no-rendezvous, disconnect, and nothing-unsaved scenarios, in the NI image (container-tagged) and on the matrix (`RequiresLabVIEWStation`, recorded in `docs/measurements/slice-7.md`).
 **REFACTOR**: One subVI per primitive, so each diagram stays within 1920 x 1080.
-**Files**: `scripts/aixml-bridge/**`, `src/LabVIEWMCP/Infra/Bridge/BridgeComposer.cs`, `src/LabVIEWMCP/Infra/BridgePrimitives.cs`, `tests/LabVIEWMCP.Tests/Bridge/BridgeViContractTests.cs`, `docs/measurements/slice-7.md`
+**Files**: `scripts/aixml-bridge/**`, `scripts/aixml-pylabview/aixml2vi.py`, `src/LabVIEWMCP/Infra/Bridge/BridgeComposer.cs`, `src/LabVIEWMCP/Infra/BridgePrimitives.cs`, `tests/LabVIEWMCP.Tests/Bridge/BridgeViContractTests.cs`, `docs/measurements/slice-7.md`
 **Commit**: `feat(bridge): thin bridge VI composed per release, started in NI.LV.Editor`
 
 #### Step 7.2: Primitives against goldens
@@ -1378,7 +1378,8 @@ None.
 - **`NI.LV.Editor` fails on one release.** It is a private context. Decided by the user on 2026-11-09: the plan stops and returns to `/specs`, with no fallback into the main instance. A canary test in Step 7.1 catches a LabVIEW update that breaks the context.
 - **Emulation on this Mac.** Above the Slice 1 threshold, local runs cover unit tests only, and container tests run in CI. An x64 Linux host restores the full local loop.
 - **Hardware.** The Windows station is the user's laptop with LabVIEW 2026 64-bit. The Linux desktop is the user's Pop!_OS laptop with LabVIEW for Linux 64-bit. Slice 14, Slice 7, Steps 9.2 and 9.4, and the deferred slices use them. Slices 1, 2, 3, and 5 do not wait on them.
-- **Step 1.1 findings for later slices.** LabVIEW in the NI image needs an X display; the probe starts Xvfb inside the container, so "headless" means no physical display, not no display. Linux has no `labview.ini`; Slice 4 reads `labview.conf`. A `Run VI` async target goes idle when its reference closes, so the bridge must hold it. `LabVIEWCLI RunVI` accepts only NI's fixed connector pane (error 1031 otherwise).
+- **Step 1.1 findings for later slices.** LabVIEW in the NI image needs an X display. In NI's headless mode (`LabVIEWCLI -Headless`, `labview --headless`, 2026 Q1+) LabVIEW starts its own `Xvfb :99` and needs no activation; all Step 1.1 rows and both bridge routes pass in it (Step 1.2 addendum, 2026-11-10). CI and the container harness use headless mode and start no Xvfb of their own. Linux has no `labview.ini`; Slice 4 reads `labview.conf`. A `Run VI` async target goes idle when its reference closes, so the bridge must hold it. `LabVIEWCLI RunVI` accepts only NI's fixed connector pane (error 1031 otherwise).
+- **Headless mode is for CI only.** NI's licence allows headless LabVIEW for CI, automated testing and builds, not for development (ni/labview-for-containers `docs/headless-labview.md`). The server must never start LabVIEW headless for a user: on a Linux desktop it attaches to the user's activated IDE, as on Windows. Headless and IDE sessions exclude each other on one machine: a headless request is forwarded to a running IDE, and an IDE start is refused while a headless session runs. Slice 2 closes its headless LabVIEW with `CloseLabVIEW`.
 - **VI Server TCP listener.** In the NI image it binds `0.0.0.0:3363` with no access list (Step 1.2 transcript). The production bridge must not depend on it, or must restrict it to loopback with an access list. Slice 7 and Step 14.2 decide which.
 - **Where hardware steps run.** Slice 14, the Windows check of Step 1.2, and every other `RequiresLabVIEWStation` step run in a Claude Code session on the laptop concerned, from a clone of this repository on the slice's branch (the user's decision of 2026-11-09). The Mac session builds the container and code slices. The measurement file is the handoff in both directions.
 - **Unmeasured Windows releases.** Windows 2020 to 2025, 32-bit, and side-by-side installs ship unmeasured (the user's decision of 2026-11-09). Only an offline read-back checks the 2020 composition. The R2 default flip should wait for a report from such a user.

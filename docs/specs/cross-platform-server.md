@@ -1,7 +1,7 @@
 <!-- spec-version: 14.0.1 -->
 # Spec: Cross-platform LabVIEW MCP server (Windows and Linux, Mac-ready)
 
-**Format:** dev-team /specs 14.0.1 · **Date:** 2026-11-09 (revised after plan review) · **Status:** approved by the user (2026-11-09); hardware revision approved by the user (2026-11-09)
+**Format:** dev-team /specs 14.0.1 · **Date:** 2026-11-09 (revised after plan review) · **Status:** approved by the user (2026-11-09); hardware revision approved by the user (2026-11-09); Step 1.2 notes on assumptions 1 and 4 added 2026-11-10 (assumption 1: the user's decision; assumption 4: measured), awaiting the user's review
 
 ## Intent Description
 
@@ -74,10 +74,10 @@ shipped: NI's license allows LabVIEW in containers for CI/CD and testing only.
 
 ### Unmeasured assumptions (the first plan slice measures these)
 
-1. The pylabview composer can emit the TCP and file primitives the bridge VI needs. The composed VI loads in LabVIEW 2026 64-bit (Windows) and in 2026 Q1 (Linux). A VI composed for 2020 is only read back by pylabview, without LabVIEW.
+1. The pylabview composer can emit the TCP and file primitives the bridge VI needs. (Measured 2026-11-09: holds after two composer extensions, accepting the TCP refnum wire by default and setting "Run when opened"; the user placed them in plan Step 7.1 on 2026-11-10.) The composed VI loads in LabVIEW 2026 64-bit (Windows) and in 2026 Q1 (Linux). A VI composed for 2020 is only read back by pylabview, without LabVIEW.
 2. On Linux and Windows, `labview <vi>` hands the VI to the running instance and does not start a second one. Side-by-side installs on Windows stay unmeasured.
 3. The bridge VI can find its rendezvous file in a handed-off instance: either the launch arguments reach it, or it claims the file by an atomic rename.
-4. The headless container can host a resident bridge VI.
+4. The headless container can host a resident bridge VI. (Measured 2026-11-10: holds in NI's headless mode, `-Headless`/`--headless`, which starts its own virtual display and needs no activation. Headless is for CI only.)
 5. The VI Server operations (open reference, exec state, run async, abort, print to HTML) and the VI Scripting methods the helpers use work on Linux.
 6. The bridge VI still answers while LabVIEW shows a modal dialog, or the failure is recorded.
 7. The NI image starts under `linux/amd64` emulation on this Mac.

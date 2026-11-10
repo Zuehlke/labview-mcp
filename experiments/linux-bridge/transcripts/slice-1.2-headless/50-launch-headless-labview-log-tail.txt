@@ -1,0 +1,26 @@
+== /tmp/labview_26.1f0_headless_root_cur.txt
+
+[HeadlessManager][11/10/26 07:52:06.530 AM] Custom debug setting being applied in Headless Mode.
+[HeadlessManager][11/10/26 07:52:06.530 AM] Debug settings applied for Headless mode.
+[HeadlessManager][11/10/26 07:52:06.530 AM] In Headless mode, no dialogs will be shown and all DWarns and DAborts will be logged to this file.
+[HeadlessManager][11/10/26 07:52:06.530 AM] Initializing headless LabVIEW
+[HeadlessManager][11/10/26 07:52:07.891 AM] Enabled logging of unwired errors in headless mode. Log file: /root/natinst/LabVIEW Data/UnwiredErrors/labview_101126_07-52-07_UnwiredErrors.logInitExecSystem() call to GetCurrProcessNumProcessors() reports: 12 processors
+InitExecSystem() call to GetNumProcessors()            reports: 12 processors
+InitExecSystem()                                      will use: 12 processors
+starting LV_ESys2_Thr0 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr1 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr2 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr3 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr4 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr5 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr6 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr7 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr8 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr9 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr10 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+starting LV_ESys2_Thr11 , capacity: 24 at [3877141928.68094587, (07:52:08.680946000 2026:11:10)]
+RunWhenOpenedSecurity::CheckVIForRunPermission: CHECKING "skeleton.vi"" at: "/tmp/fxr/skeleton.vi"
+RunWhenOpenedSecurity::PresentRunOrViewDialog: LabVIEW is in unattended mode: returning TRUE (Run the VI) for vi="skeleton.vi"; at "/tmp/fxr/skeleton.vi"
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]
+VirtualInstrument::GetNumOfBreaks: negative mNumBreakpoints (4294967295); vi=[LinkIdentity "Logger.lvclass:Initialize.vi" [ Main Application Instance]

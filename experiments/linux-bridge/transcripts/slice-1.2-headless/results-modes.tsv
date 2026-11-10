@@ -1,0 +1,5 @@
+mode	result	exit	wall_ms	log_files	transcript
+ui-cicd	PASS	0	9754	labview_26.1f0_interactive_root_cur.txt 	transcripts/slice-1.2-headless/ui-cicd.txt
+ui-nocicd	PASS	0	10362	labview_26.1f0_interactive_root_cur.txt 	transcripts/slice-1.2-headless/ui-nocicd.txt
+headless	PASS	0	9438	labview_26.1f0_headless_root_cur.txt 	transcripts/slice-1.2-headless/headless.txt
+headless-nodisplay	PASS	0	12447	labview_26.1f0_headless_root_cur.txt 	transcripts/slice-1.2-headless/headless-nodisplay.txt

@@ -41,7 +41,7 @@ trap 'lvc_cleanup' EXIT; trap 'lvc_cleanup; exit 130' INT; trap 'lvc_cleanup; ex
 lvc_exec "$C" true
 T_CONTAINER=$(( $(lvc_now_ms) - T0 ))
 T1=$(lvc_now_ms)
-lvc_xvfb "$C" || { echo "Xvfb did not start" >&2; exit 1; }
+if [ "$LVC_HEADLESS" = 1 ]; then echo "headless: no Xvfb of ours (LabVIEW starts its own)"; else lvc_xvfb "$C" || { echo "Xvfb did not start" >&2; exit 1; }; fi
 T_XVFB=$(( $(lvc_now_ms) - T1 ))
 
 {
@@ -142,7 +142,7 @@ for spec in "${ROWS[@]}"; do
   recorded=$((recorded+1))
 done
 
-lvc_exec "$C" 'tail -n 40 /tmp/labview_26.1f0_interactive_root_cur.txt' > "$OUT/90-labview-log-tail.txt" 2>&1
+lvc_log "$C" 40 > "$OUT/90-labview-log-tail.txt" 2>&1
 
 echo "== results ($RESULTS)"
 column -t -s "$(printf '\t')" "$RESULTS"

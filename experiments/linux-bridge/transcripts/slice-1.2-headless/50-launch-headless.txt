@@ -1,0 +1,37 @@
+route: launch-headless   container: lvc-27600-1794297125-44d63e4c   display: no   time box: 300 s   2026-11-10T07:52:05Z
+3188432359 15076 /tmp/fx/skeleton.vi
+809270333 15076 /tmp/fxr/skeleton.vi
+start: (unset DISPLAY; cd /tmp/fxr; nohup /usr/local/natinst/LabVIEW-2026-64/labview --headless /tmp/fxr/skeleton.vi > /tmp/route.out 2>&1 &)
+--- container still running: yes
+--- client (inside the container)
+listening 127.0.0.1:54885, rendezvous /tmp/lvmcp-skeleton-port.txt
+skeleton connected from 127.0.0.1:47038 after 4.9 s
+PROBE code=0;state=1;x=<LvVariant>
+<Name>Get Control Value Variant</Name>
+<DBL>
+<Name>x</Name>
+<Val>0.00000000000000</Val>
+</DBL>
+</LvVariant>
+;y=<LvVariant>
+<Name>Get Control Value Variant</Name>
+<DBL>
+<Name>y</Name>
+<Val>42.50000000000000</Val>
+</DBL>
+</LvVariant>
+
+RESULT requested=100 echoes=100 failures=0 connect_s=4.9 total_ms=7 per_echo_ms min=0.0 median=0.1 p95=0.1 max=1.2
+--- route output
+Can't load library libniDotNETCoreInterop.so
+libniDotNETCoreInterop.so: cannot open shared object file: No such file or directory
+Can't find library libniDotNETCoreInterop.so
+Make sure this library is installed in your LD_LIBRARY_PATH
+search path, or in /usr/lib64
+--- processes
+   42     1 labview         /usr/local/natinst/LabVIEW-2026-64/labview --headless /tmp/fxr/skeleton.vi
+   49    42 Xvfb            Xvfb :99 -screen 0 1024x768x24 -terminate
+--- LabVIEW log files
+/tmp/labview_26.1f0_headless_root_cur.txt
+--- skeleton.vi in Application:All VIs In Memory (P10 probe, opens nothing by path): code=0;source=;detail=4,32
+--- Execution:State of the skeleton after the run (P2 probe): code=0;source=;detail=1

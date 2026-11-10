@@ -1,5 +1,5 @@
 == several containers in one process, unique names, labels, hardening
-ok   two names in one process (lvc-2625-1794234656-19fda720, lvc-2625-1794234656-8b0ef950)
+ok   two names in one process (lvc-30339-1794297290-0400cda6, lvc-30339-1794297290-c24367c9)
 ok   both running
 ok   no published ports (a)
 ok   labels (a)
