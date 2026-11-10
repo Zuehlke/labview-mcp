@@ -1,0 +1,10 @@
+{
+    "schemaVersion": 1,
+    "allowDenyList": [
+        {
+            "viPath": "/tmp/lvmcp-hw-test/args-dump.vi",
+            "viGuid": "dec4a6b6-d6d8-4086-2451-b6ea2481a0d9",
+            "runAllowed": true
+        }
+    ]
+}

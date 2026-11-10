@@ -1,0 +1,21 @@
+setting in force: RunWhenOpened.*=<key absent: the default>
+control VI (run-when-opened, composed from args-dump.aixml): /tmp/lvmcp-r4.cwRdgd/fresh-6d2a9fb160e8-c/c6d2a9fb160e8.vi, launched by 'labview <vi>' (pid 137727), fresh path
+after 20 s: the VI ran (wrote its dump file): no; labview processes: 1 -> 2; new top-level window ids: 12
+--- window names before vs after
+0a1
+> "c6d2a9fb160e8.vi Front Panel"
+1a3,4
+> "Context Help"
+> "Controls"
+3a7,8
+> "Functions"
+> "LabVIEW "
+5a11,12
+> "LabVIEW"
+> "Security Warning: Run When Opened"
+7a15,16
+> "Tools"
+> "Window monitor"
+--- RunWhenOpened lines in the new process's LabVIEW log (/tmp/labview_*_cur.txt)
+24:RunWhenOpenedSecurity::CheckVIForRunPermission: CHECKING "c6d2a9fb160e8.vi"" at: "/tmp/lvmcp-r4.cwRdgd/fresh-6d2a9fb160e8-c/c6d2a9fb160e8.vi"
+The process was NOT clicked; it is ended by this script now (SIGTERM, pid 137727).

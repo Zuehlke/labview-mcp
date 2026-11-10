@@ -1,0 +1,19 @@
+setting in force: RunWhenOpened.*=<key absent: the default>
+fresh directory: /tmp/lvmcp-r4.4I4eZU/fresh-fde9752d901b-1 (never seen by LabVIEW; names sfde9752d901b1.vi, tfde9752d901b1.vi)
+CLI call: 4.0 s, exit code 0, labview max count while it ran: 1, CLI attempts: 1
+CLI output: LabVIEWCLI started logging in file:  /tmp/lvtemporary_91647.log Using LabVIEW: "/usr/local/natinst/LabVIEW-2026-64/labview" Connection established with LabVIEW at port number 3363.  Operation output:  vi=0;set=0;run=0 RunVI operation succeeded.  
+new windows during the starter CLI call (name size): Closed 0x800009;Context Help 0x800073;LabVIEW 0x800002;lvrt 0x800002;Window monitor 0x800003;
+new windows during the state-probe CLI call: Closed 0x800009;Context Help 0x800073;lvrt 0x800002;Window monitor 0x800003;
+--- window names before vs after (diff)
+(no difference)
+RunWhenOpened lines in the resident's log: before 0, after 0
+target State 48 s after the CLI: 2 (2 running); echoes sent 60.0 s after the CLI ended
+--- server status
+0.00 LISTENING 49853
+5.27 HELLO pid=129911 token_ok=True
+5.27 FIRST-ECHO True
+64.12 ECHO-START
+64.14 ECHO-DONE ok=100 failures=0
+64.14 CLOSED
+--- server result
+{"rendezvous": "/tmp/lvmcp-r4.4I4eZU/fresh-fde9752d901b-1/rv.txt", "port": 49853, "dir_mode": "0o700", "file_mode": "0o600", "token_ok": true, "pid": "129911", "vi_path": "/tmp/lvmcp-r4.4I4eZU/fresh-fde9752d901b-1/tfde9752d901b1.vi", "first_echo_ok": true, "echoes_requested": 100, "echoes_ok": 100, "failures": 0, "error": null, "ver": "26.3.1f1", "connect_s": 5.27, "total_s": 64.1}

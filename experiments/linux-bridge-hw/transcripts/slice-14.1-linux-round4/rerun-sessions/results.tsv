@@ -1,0 +1,8 @@
+row	setting_in_force	verdict	detail	transcript
+setting	RunWhenOpened.*=<key absent: the default>	PASS	RunWhenOpened key absent (the default); permissions file sha256 24b02f9aede7; resident pid 129911	00-setting.txt
+starter-cli-1	RunWhenOpened.*=<key absent: the default>	PASS	CLI returned in 4.0 s with no prompt (no Security Warning window, no RunWhenOpened log line; other new windows: LabVIEW 0x800002;); target alive in resident pid 129911 60.0 s later, State 2, 100 echoes 0 failures, labview count 1	11-starter-cli.txt
+starter-cli-2	RunWhenOpened.*=<key absent: the default>	PASS	CLI returned in 3.2 s with no prompt (no Security Warning window, no RunWhenOpened log line); target alive in resident pid 129911 60.0 s later, State 2, 100 echoes 0 failures, labview count 1	12-starter-cli.txt
+starter-cli-3	RunWhenOpened.*=<key absent: the default>	PASS	CLI returned in 3.2 s with no prompt (no Security Warning window, no RunWhenOpened log line); target alive in resident pid 129911 60.1 s later, State 2, 100 echoes 0 failures, labview count 1	13-starter-cli.txt
+p0-alone	RunWhenOpened.*=<key absent: the default>	PASS	RunVI of P0_AppVersion.vi from a fresh path: answer 26.3.1f1, 2.9 s, no Security Warning window, no RunWhenOpened log line	20-p0-alone.txt
+permissions	RunWhenOpened.*=<key absent: the default>	PASS	RunWhenOpenedPermissions.json unchanged: no entry appeared for any VI the CLI route ran	30-permissions-after.txt
+conf-unchanged	RunWhenOpened.*=<key absent: the default>	PASS	labview.conf settings lines identical at start and end	90-conf-end.txt

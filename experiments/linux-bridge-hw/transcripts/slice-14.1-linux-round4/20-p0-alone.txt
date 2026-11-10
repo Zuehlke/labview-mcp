@@ -1,0 +1,13 @@
+setting in force: RunWhenOpened.*=<key absent: the default>
+VI: /tmp/lvmcp-r4.cwRdgd/fresh-6d2a9fb160e8-9/p0-6d2a9fb160e8-9.vi (fresh path)
+CLI: 3.2 s, exit 0, labview max count 1
+new windows (name size): Closed ;Context Help ;lvrt ;Window monitor ;
+RunWhenOpened log lines before/after: 0/0
+LabVIEWCLI started logging in file:  /tmp/lvtemporary_339468.log
+Using LabVIEW: "/usr/local/natinst/LabVIEW-2026-64/labview"
+Connection established with LabVIEW at port number 3363.
+
+Operation output: 
+26.3.1f1
+RunVI operation succeeded.
+

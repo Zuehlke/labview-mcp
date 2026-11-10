@@ -1,0 +1,25 @@
+date: 2026-11-10T14:18:56Z   resident LabVIEW pids: [129911]
+--- RunWhenOpened lines in labview.conf (read only): NONE (the key is gone: the LabVIEW default, the prompt)
+--- labview.conf: 44f36f884bbfba1ffc05c91b54bac1ea4cbdce274aa6a11d391193bac326c739  1269 B, mtime 2026-11-10 15:18:08.316474480 +0100
+29:NewProj.maxNum=10
+30:server.tcp.enabled=True
+31:DoNotShowCRAWarningEnableTCP=True
+32:server.tcp.access="+192.168.1.231:+127.0.0.1:+localhost"
+33:autoerr=3
+--- RunWhenOpenedPermissions.json (read only)
+-rw-rw-r-- 1 niko niko 227 Nov 10 11:15 /home/niko/natinst/LabVIEW Data/RunWhenOpenedPermissions.json
+24b02f9aede784c7fd7c1fcc9379428d621131f61ccfe6501b89c4ff1589448b  /home/niko/natinst/LabVIEW Data/RunWhenOpenedPermissions.json
+{
+    "schemaVersion": 1,
+    "allowDenyList": [
+        {
+            "viPath": "/tmp/lvmcp-hw-test/args-dump.vi",
+            "viGuid": "dec4a6b6-d6d8-4086-2451-b6ea2481a0d9",
+            "runAllowed": true
+        }
+    ]
+}
+--- 3363
+LISTEN 0      5            0.0.0.0:3363       0.0.0.0:*    users:(("labview",pid=129911,fd=19))
+--- dpkg
+ii  ni-labview-command-line-interface                26.3.0.49372-0+f220                                   amd64        NI Command Line Interface Libraries for LabVIEW

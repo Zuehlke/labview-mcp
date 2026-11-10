@@ -1,0 +1,6 @@
+labview.conf settings lines hash: start 9b15254515a188e658f14a1e659b8b587dcb86d91b722f92653846790fc91575, now 9b15254515a188e658f14a1e659b8b587dcb86d91b722f92653846790fc91575
+28c28
+< RecentFiles.pathList="/tmp/lvmcp-r4.B1f6Vk/fresh-6352bd31b8eb-c/c6352bd31b8eb.vi:/tmp/lvmcp-r3.u1WBRj/relay-keep.vi:/tmp/lvmcp-r3.u1WBRj/relay.vi:/tmp/lvmcp-r3.i0W8NW/relay-keep.vi:/tmp/lvmcp-r3.i0W
+---
+> RecentFiles.pathList="/tmp/lvmcp-r4.cwRdgd/fresh-6d2a9fb160e8-c/c6d2a9fb160e8.vi:/tmp/lvmcp-r4.B1f6Vk/fresh-6352bd31b8eb-c/c6352bd31b8eb.vi:/tmp/lvmcp-r3.u1WBRj/relay-keep.vi:/tmp/lvmcp-r3.u1WBRj/re
+c54a6f8ede96ea122cd09949be98c5ce4cfb4aff6cff510755cdec47479c89da  /home/niko/natinst/.config/LabVIEW-2026/labview.conf

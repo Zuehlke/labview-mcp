@@ -1,0 +1,9 @@
+row	setting_in_force	verdict	detail	transcript
+setting	RunWhenOpened.*=<key absent: the default>	PASS	RunWhenOpened key absent (the default); permissions file sha256 24b02f9aede7; resident pid 129911	00-setting.txt
+starter-cli-1	RunWhenOpened.*=<key absent: the default>	PASS	CLI returned in 3.4 s with no prompt (no window other than LabVIEWCLI's hidden run-time ones, no RunWhenOpened log line); target alive in resident pid 129911 60.0 s later, State 2, 100 echoes 0 failures, labview count 1	11-starter-cli.txt
+starter-cli-2	RunWhenOpened.*=<key absent: the default>	FAIL	 new-top-level-windows=1;	12-starter-cli.txt
+starter-cli-3	RunWhenOpened.*=<key absent: the default>	PASS	CLI returned in 3.2 s with no prompt (no window other than LabVIEWCLI's hidden run-time ones, no RunWhenOpened log line); target alive in resident pid 129911 60.0 s later, State 2, 100 echoes 0 failures, labview count 1	13-starter-cli.txt
+p0-alone	RunWhenOpened.*=<key absent: the default>	PASS	RunVI of P0_AppVersion.vi from a fresh path: answer 26.3.1f1, 3.2 s, no window other than LabVIEWCLI's own hidden ones, no RunWhenOpened log line	20-p0-alone.txt
+permissions	RunWhenOpened.*=<key absent: the default>	PASS	RunWhenOpenedPermissions.json unchanged: no entry appeared for any VI the CLI route ran	30-permissions-after.txt
+control	RunWhenOpened.*=<key absent: the default>	PASS	the run-when-opened VI launched by labview did NOT run within 20 s and the new process logged a RunWhenOpened check: the prompt is up (not clicked), so the default setting IS in force; new windows: 12	40-control.txt
+conf-unchanged	RunWhenOpened.*=<key absent: the default>	PASS	labview.conf settings lines identical at start and end	90-conf-end.txt

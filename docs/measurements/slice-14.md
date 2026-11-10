@@ -69,7 +69,11 @@ calls 26.3.1 "2026 Q3". Record date 2026-11-10. Run with `experiments/linux-brid
 | Linux desktop | two servers, two LabVIEWCLI starters at the same moment (long-lived targets, retry on -350052) | A | **PASS: 20 of 20**, no LabVIEW process left but the resident | `.../4-race-cli.txt` |
 | Linux desktop | two servers, two early-quit relays at the same moment | A | **PASS: 20 of 20** | `.../4-race-relay-keep.txt` |
 | Linux desktop | negative control (crossed starters) | A | PASS: both flagged | `.../49-control-crossed.txt` |
-| Windows 2026 64-bit | every row above, plus the relay and LabVIEWCLI rows | | **PENDING** (handoff section below) | |
+| Linux desktop, **default** run-when-opened (key absent) | control: `labview <run-when-opened VI>` from a fresh path | P | **PASS: prompt "Security Warning: Run When Opened", VI did not run, not clicked** | `transcripts/slice-14.1-linux-round4/40-control.txt` |
+| Linux desktop, default setting | LabVIEWCLI -> starter -> target, 3 fresh directories (and again 3) | P | **PASS 3/3 (and 3/3): no prompt**, target alive 60 s in resident pid, 100 echoes 0 failures | `.../11-13-starter-cli.txt`, `.../rerun-sessions/` |
+| Linux desktop, default setting | LabVIEWCLI P0_AppVersion alone from a fresh path | P | PASS: no prompt | `.../20-p0-alone.txt` |
+| Linux desktop, default setting | `RunWhenOpenedPermissions.json` after the CLI runs | P | PASS: unchanged | `.../30-permissions-after.txt` |
+| Windows 2026 64-bit | every row above, plus the relay, LabVIEWCLI and default-setting rows | | **PENDING** (handoff section below) | |
 
 ## Environment (Linux desktop)
 
@@ -327,7 +331,7 @@ setting is expected, not measured.
 | A long-lived bridge in the resident IDE with no LabVIEW process left behind? | **Yes, by two routes.** (1) LabVIEWCLI runs a resident *starter* VI; the starter fire-and-forgets the target locally. (2) A relay does it remotely and quits. Both: the target answered 100 echoes with 0 failures **60 s after the launcher was gone**, in the resident pid, `Execution:State` = 2 (a control read of the same VI after the server hung up gave 1). |
 | What makes the target outlive its starter? | `Run VI` with **Wait until done FALSE and Auto Dispose Ref TRUE**, and **no `Close Reference`** (not of the VI, not of the application reference) before the starter ends or the relay quits. The same call with the reference closed at once ended the target (round 2, `dispose` row, and `nowait`). |
 | LabVIEWCLI installed as a package? | `dpkg -l`: `ni-labview-command-line-interface 26.3.0.49372-0+f220 amd64`, with `ni-python-interface 26.3.0.49370-0+f218`; binary `/usr/local/natinst/share/nilvcli/LabVIEWCLI` (symlink `/usr/local/bin/LabVIEWCLI`). |
-| Is LabVIEWCLI a LabVIEW process? | No. A native x86-64 ELF (8 shared libraries, none of mono, dotnet or a LabVIEW runtime); `ps` shows `LabVIEWCLI`. The `labview` process count stayed **1 before, during and after** every call. |
+| Is LabVIEWCLI a LabVIEW process? | **Not an IDE process, but a LabVIEW run-time process (corrected in round 4).** A native x86-64 ELF (8 shared libraries by `ldd`, none of mono or dotnet; it loads `nilvcli.so`); `ps` shows `LabVIEWCLI`. The `labview` count stayed **1 before, during and after** every call. Round 4 showed that each call opens the hidden windows of a LabVIEW run-time (`lvrt`, `Window monitor`, `Closed`, `Context Help`, off screen) for about 3 s; the claim here that there was "no LabVIEW runtime" rested on `ldd` alone and was wrong. The package depends on `labview-2026-rte`. |
 
 ### A. Can the relay quit early?
 
@@ -353,7 +357,7 @@ beyond 60 s (each session ran 60 s and one echo burst), what the target does whe
 | Fact | Measured (`10-cli-basics.txt`, `3-B-*.txt`) |
 |---|---|
 | Command | `LabVIEWCLI -OperationName RunVI -LabVIEWPath /usr/local/natinst/LabVIEW-2026-64/labview -PortNumber 3363 -VIPath <vi> [args]`. **`-LabVIEWPath` is needed on Linux**: without it the error is `-350004 ... the path to LabVIEW is unknown`. It never started a LabVIEW (one was running). |
-| Process | native ELF `LabVIEWCLI`, no mono, no dotnet; `labview` count 1 / 1 / 1 before, during, after |
+| Process | native ELF `LabVIEWCLI`, no mono, no dotnet, but a LabVIEW run-time process (round 4: it opens hidden `lvrt` windows); `labview` count 1 / 1 / 1 before, during, after |
 | Call time | 3.0 to 3.8 s for a trivial VI (`P0_AppVersion.vi`, answer `26.3.1f1`); the starter 3.1 s |
 | Blocks until the VI ends? | **Yes.** RunVI of the long-lived target itself (`echo-target.vi`, composed on NI's pane: Inputs[] on 11, Output/Failure on 2, CLI Process Return Code on 3) ran it in the resident pid and the CLI returned only when the server hung up (4.4 s in the immediate-echo case). No error 1031. |
 | Target survives the CLI being killed? | **No.** The CLI of the long-lived target was killed (SIGTERM, 9.6 s in); 3 s later the target's State was 1 (idle) and the echoes failed. This is why the starter exists: it returns at once and the target is already detached. |
@@ -380,6 +384,46 @@ flagged on both sides. `labview.conf` settings lines (server.*, RunWhenOpened.*,
 3. **Slice 7:** the starter does not need a project; the target runs in the resident's main application instance (it is reachable through `Open VI Reference` there). The
    `NI.LV.Editor` context (Step 14.2) is not touched by this round.
 4. **Not measured:** `Asynchronous Call By Reference` 0x80 (composer refuses `Start Asynchronous Call`); beyond 60 s; the default run-when-opened setting for the relay route; Windows.
+
+## Step 14.1, round 4: default run-when-opened setting
+
+Measured 2026-11-10 after the user set "Run when opened" back to the default. Reproduce with `experiments/linux-bridge-hw/probe-round4.sh` (`START_IDE=1`
+starts a normal, never headless IDE; it stops if `labview.conf` still says `Behavior=2`); transcripts in `experiments/linux-bridge-hw/transcripts/slice-14.1-linux-round4/`
+(main run) and `.../rerun-sessions/` (sessions only, with the final window check, see the note below). The IDE was started by the measurement (the user's was not
+running), so it was ended by it (SIGTERM, then one bare start/stop for clean logs, 0 DWarn lines). Nothing was clicked by this session.
+
+### Answer first: click-free: **YES, under the default setting**
+
+| Check | Result |
+|---|---|
+| Default in force | `labview.conf` has **no `RunWhenOpened.*` line** (the `Behavior=2` line is gone; baseline 5 `78489d0a...`, 1247 B). `RunWhenOpenedPermissions.json` unchanged by the whole round: sha256 `24b02f9a...448b`, one entry (the round-1 `args-dump.vi` path). |
+| **Control proves the default is in force** | `labview <run-when-opened VI>` from a fresh path (`c6d2a9fb160e8.vi`): the VI did **not** run in 20 s, the new process had a window titled **"Security Warning: Run When Opened"** (and the VI's front panel) and logged `RunWhenOpenedSecurity::CheckVIForRunPermission: CHECKING "c6d2a9fb160e8.vi"`. Not clicked; the process was ended after 20 s. (`40-control.txt`.) The user also saw the pop-up and reported "the pop up just came up to ask to run this vi"; that was a control process (an earlier, interrupted pass of this same control was ended by me as well). |
+| LabVIEWCLI -> starter -> target, fresh directory, new names, 3 runs | **3 of 3 PASS, and 3 of 3 again in the rerun**: CLI back in 3.2 to 4.0 s (a hang would show at the 60 s limit), exit 0; **no Security Warning window**; **0 RunWhenOpened lines** in the resident's log; target alive in the resident pid 60.0 s later, `Execution:State` 2, 100 echoes 0 failures; `labview` count 1 before, during and after (`11/12/13-starter-cli.txt`). |
+| NI's own CLI path: P0_AppVersion.vi alone from a fresh path | PASS: answer `26.3.1f1`, 3.2 s, no prompt window, no log line (`20-p0-alone.txt`) |
+| New entry in `RunWhenOpenedPermissions.json`? | No: identical before and after (`30-permissions-after.txt`) |
+| `labview.conf` | the settings lines (server.*, DoNotShow*, NewProj.*; no RunWhenOpened key) identical at the end; only LabVIEW's own state keys moved (`NI_GSWContentIndex`); end sha256 `15929bc3...afc`, 1294 B, mtime 15:27:00 (`90-conf-end.txt`) |
+
+**Why it is click-free.** The prompt belongs to VIs that carry the **Run when opened** flag, opened by file (`labview <vi>`). The starter and the target are plain VIs opened and run
+through VI Server by `LabVIEWCLI RunVI` and `Open VI Reference`/`Run VI`; LabVIEW logged no check for them, whatever the setting. So the CLI route does not depend on the setting at all,
+**but the early-quit relay does not have this property**: `relay.vi` is a run-when-opened VI launched with `labview <vi>`, exactly the control, so under the default setting it needs a human
+click (or the user's `Behavior=2`).
+
+**Note on the main run's row `starter-cli-2` (FAIL).** The first window check counted any new window name outside four hidden ones, and in run 2 one of LabVIEWCLI's own windows named
+`LabVIEW` appeared during the state-probe call. Everything else in that run was as in runs 1 and 3 (no Security Warning window, 0 log lines, 3.2 s). The check was narrowed to the
+title measured in the control (Security / Warning / Run When Opened) and unknown other names are listed, not failed; the three sessions were repeated with that check in `rerun-sessions/`
+(3 of 3 PASS, the other new windows are listed per run; the window sizes in that column are unreliable, they carry window ids). The control was not repeated (it would show the pop-up again).
+
+**LabVIEWCLI is a LabVIEW run-time process.** Each call opens off-screen windows named `lvrt`, `Window monitor`, `Closed` and `Context Help` (same class `labview`/`LabVIEW64-2026` as the IDE's
+windows) for its 3 s. This corrects round 3's "no LabVIEW runtime". It is not an IDE (`labview`) process and it never showed a licence, activation or prompt window. Whether it needs an X display
+was not measured.
+
+### Findings (round 4)
+
+1. **Slice 9:** the LabVIEWCLI -> starter -> target route is click-free under the default setting, on this build, **provided the starter and target are not flagged "Run when opened"**; it needs no
+   change of the user's LabVIEW options. The relay route is not click-free under the default (its VI is run-when-opened). Prefer the CLI route; keep the relay as a fallback that needs the click or the setting.
+2. **First run only?** A permission is stored per VI path and GUID after the user's first answer (round 1). The CLI route needs none. Whether a fresh *project* VI flagged run-when-opened that arrives
+   through the CLI (e.g. a user's own VI) would prompt was not measured.
+3. **Slice 4/7:** the prompt window title on this build is "Security Warning: Run When Opened" (the hook for a `modal window` check if the launcher ever has to detect it).
 
 ## Step 14.1 Windows row (run on the Windows laptop session)
 
@@ -460,6 +504,11 @@ as RunVI needs; `starter.args` beside the starter holds the target path and the 
 `echo-server.py` (`--trigger` file, `--echoes 100`). Record: whether LabVIEWCLI starts any LabVIEW process (it must not), the process count before/during/after, the CLI duration, whether
 a second overlapping CLI call fails with -350052 as on Linux, whether the target answers 100 echoes 60 s after the CLI ended, and `Execution:State` of the target through
 `P2_ExecutionState.vi` run by the CLI. Repeat with `relay-keep.aixml` only if `LabVIEW.exe <vi>` does not hand off (see the warning below).
+
+**Default run-when-opened setting (round 4; ask the same question on Windows).** With LabVIEW's default (no `RunWhenOpened`-style prompt answer stored, setting not "always allow"): (1) control: launch a
+run-when-opened VI by `LabVIEW.exe <vi>` from a fresh path, note whether the prompt appears and its title, do not click, end the process you started after 20 s; (2) `LabVIEW.exe <vi>` hand-off of a
+plain VI and of a run-when-opened VI: does the prompt appear in the *running* instance, and does the VI run in it?; (3) the LabVIEWCLI -> starter -> target route in three fresh directories: any prompt, CLI
+back in seconds, target alive 60 s later with 100 echoes. Record the prompt's window title and any stored permission file on Windows. The Linux result: the CLI route is click-free, the run-when-opened relay is not.
 
 **Relay row (add to the Windows session, VI Server TCP must be enabled on port 3363; on Windows it normally is).** The relay is the G-CLI-style route measured on Linux
 (section "with VI Server TCP enabled"). Windows has `LabVIEWCLI`, so measure both: (a) the same relay (`relay.aixml`: second process opens `localhost:3363`, opens and
