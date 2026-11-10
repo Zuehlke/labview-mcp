@@ -1,0 +1,4 @@
+args-dump (plain): exit 0, 6689 bytes; wrote /tmp/lvmcp-hw.AchX8O/args-dump-plain.vi (6689 bytes)
+args-dump (run): exit 0, 6689 bytes; wrote /tmp/lvmcp-hw.AchX8O/args-dump-run.vi (6689 bytes)
+stub (run): exit 0, 9368 bytes; wrote /tmp/lvmcp-hw.AchX8O/stub-run.vi (9368 bytes)
+stub-arg (run): exit 0, 9348 bytes; wrote /tmp/lvmcp-hw.AchX8O/stub-arg-run.vi (9348 bytes)

@@ -1,0 +1,54 @@
+Manual runs before probe-handoff.sh existed (2026-11-10, Linux desktop; hand-typed commands, outputs copied from the
+session). They show the run-when-opened prompt, which the script never waits for.
+
+Resident IDE: pid 13139, started 11:14:14 by `labview` (normal IDE, DISPLAY=:1), labview.conf had no RunWhenOpened.* key.
+VI under test: /tmp/lvmcp-hw-test/args-dump.vi (composed from experiments/linux-bridge-hw/args-dump.aixml with
+LVMCP_EXEC_FLAGS=RunOnOpen=1, i.e. "Run when opened").
+
+--- Run 1: setting in force = NONE (LabVIEW default: prompt). PROMPT SHOWN, MANUALLY ALLOWED BY THE USER.
+command: labview /tmp/lvmcp-hw-test/args-dump.vi -- /tmp/rv-arg1 second     (started 11:14:57)
+before: pgrep -c -x labview -> 1.   While the VI waited, pgrep -c -x labview -> 2.
+LabVIEW log of the new process (/tmp/labview_26.3.1f1_interactive_niko_cur.txt, the resident's log was renamed ..._log.txt):
+  RunWhenOpenedSecurity::CheckVIForRunPermission: CHECKING "args-dump.vi"" at: "/tmp/lvmcp-hw-test/args-dump.vi"
+The VI did not run until a human answered the prompt on screen; the user did (reported by the coordinator; the prompt text and
+the button the user chose were not captured by this session: no screenshot tool works under XWayland here, and the user's
+message did not name the button). After that:
+  ps -eo pid,ppid,etimes,args | grep labview
+  13139  1251 141 /usr/local/natinst/LabVIEW-2026-64/labview
+  13369 13362  97 /usr/local/natinst/LabVIEW-2026-64/labview /tmp/lvmcp-hw-test/args-dump.vi -- /tmp/rv-arg1 second
+What the VI wrote to /tmp/lvmcp-hw-args.txt:
+  ver=26.3.1f1
+  path=/tmp/lvmcp-hw-test/args-dump.vi
+  stat=13369 (labview) R 13362 13369 13362 0 -1 4194304 15728 656 232 0 117 39 0 0 20 0 17 ...
+  args=/usr/local/natinst/LabVIEW-2026-64/labview|/tmp/rv-arg1|second
+=> ran in a NEW process (13369), not in 13139; Command Line Arguments hold the binary, then the words after `--`
+   (the `--` itself and the VI path are not in the array).
+This run is NOT evidence for unattended starts and NOT evidence for a default install beyond "the prompt appears".
+Same time: an "Options" window of the new process was open (see tree-after-second.txt below); labview.conf afterwards
+contained the new keys  RunWhenOpened.Behavior=2  (and RecentFiles.pathList, NewProj.maxNum=10): the coordinator reports
+that the user changed the setting to "always allowed" in that process's Options dialog. labview.conf is 759 bytes before
+the first launch and 857 after; the whole difference is in the diff recorded in docs/measurements/slice-14.md.
+Process 13369 was ended with SIGTERM by this session after the check.
+
+--- Run 3: setting in force = RunWhenOpened.Behavior=2 (user's change). NO PROMPT.
+command: labview /tmp/lvmcp-hw-test/args-dump.vi -- /tmp/rv-arg1 third      (same path as run 1; started 11:17:14)
+the VI ran within 20 s: stat=13890 (labview) ..., args=/usr/local/natinst/LabVIEW-2026-64/labview|/tmp/rv-arg1|third
+=> same path as run 1, so "LabVIEW remembered the choice per path" is NOT distinguishable from "the global setting is on":
+   not measured under the default setting (that needs the user to revert the setting).
+
+--- X windows (xwininfo -root -tree) right after run 1 was allowed, abridged to named windows
+     0x8000ae "Controls": ("labview" "LabVIEW64-2026")  333x525+1409+314  +1409+314
+     0x8000af "Functions": ("labview" "LabVIEW64-2026")  335x699+859+152  +859+152
+        0x8000b0 "args-dump.vi Front Panel": ("labview" "LabVIEW64-2026")  833x578+0+0  +2049+634
+     0x8000ad "Tools": ("labview" "LabVIEW64-2026")  68x123+3572+0  +3572+0
+     0x80008c "Context Help": ("labview" "LabVIEW64-2026")  260x130+3541+50  +3541+50
+     0x800003 "Window monitor": ("labview" "LabVIEW64-2026")  395x100+5+50  +5+50
+     0x800002 "LabVIEW": ("labview" "LabVIEW64-2026")  20x20+10+10  +10+10
+     0x6000d2 "Functions": ("labview" "LabVIEW64-2026")  335x699+1503+266  +1503+266
+     0x6000d1 "Controls": ("labview" "LabVIEW64-2026")  333x525+1504+266  +1504+266
+     0x6000d0 "Tools": ("labview" "LabVIEW64-2026")  68x123+3572+0  +3572+0
+        0x6000c7 "LabVIEW": ("labview" "LabVIEW64-2026")  837x522+0+0  +2130+466
+     0x60008c "Context Help": ("labview" "LabVIEW64-2026")  260x130+3541+50  +3541+50
+     0x600003 "Window monitor": ("labview" "LabVIEW64-2026")  395x100+5+50  +5+50
+     0x600002 "LabVIEW": ("labview" "LabVIEW64-2026")  20x20+10+10  +10+10
+     0x200002 "Smithay X WM": ()  1x1+0+0  +0+0

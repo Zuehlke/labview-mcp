@@ -1,0 +1,14 @@
+setting in force: RunWhenOpened.Behavior=2
+before: count=1 pids=[13139]
+launch: /usr/local/natinst/LabVIEW-2026-64/labview /tmp/lvmcp-hw.AchX8O/hp/args-dump.vi   (the VI is NOT run-when-opened)
+after 15 s: count=2 pids=[13139 17051]   launched pid 17051 alive: yes
+  pid 13139 cmdline=/usr/local/natinst/LabVIEW-2026-64/labview 
+  pid 17051 cmdline=/usr/local/natinst/LabVIEW-2026-64/labview /tmp/lvmcp-hw.AchX8O/hp/args-dump.vi 
+the launcher's own output: 
+VI ran (dump file written by its diagram): no
+X windows named for the VI: 1
+conf after: 
+f7b1d106615c7a891ac9b59548357599c93fdd11c668cd31c7bfb1837315090f  /home/niko/natinst/.config/LabVIEW-2026/labview64.conf
+8d0191a9fea33a2b260ff27bf63155d8e29968741f0b7a7a6f1dbdde8a04f0ee  /home/niko/natinst/.config/LabVIEW-2026/labview.conf
+/home/niko/natinst/.config/LabVIEW-2026/labview64.conf 661 2026-11-08 13:43:53.071379308 +0100
+/home/niko/natinst/.config/LabVIEW-2026/labview.conf 1187 2026-11-10 11:28:00.972761035 +0100

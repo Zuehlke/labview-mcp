@@ -1,0 +1,15 @@
+setting in force: RunWhenOpened.Behavior=2
+mechanism: nonce   stub: /tmp/lvmcp-hw.AchX8O/r-nonce/stub-r-nonce.vi   rendezvous: /tmp/lvmcp-hw.AchX8O/r-nonce/rendezvous.txt   launched pid 17287   resident pid 13139
+--- rendezvous file modes and content
+drwx------ 2 niko niko 4096 Nov 10 11:28 /tmp/lvmcp-hw.AchX8O/r-nonce
+-rw------- 1 niko niko 38 Nov 10 11:28 /tmp/lvmcp-hw.AchX8O/r-nonce/rendezvous.txt
+57243-28bcfbd9a34c4001567d63d1fc1ca76f
+--- server
+PORT 57243
+RENDEZVOUS /tmp/lvmcp-hw.AchX8O/r-nonce/rendezvous.txt
+RESULT matched=True connections=1 waited_s=1.46
+--- result
+{"dir": "/tmp/lvmcp-hw.AchX8O/r-nonce", "rendezvous": "/tmp/lvmcp-hw.AchX8O/r-nonce/rendezvous.txt", "port": 57243, "dir_mode": "0o700", "file_mode": "0o600", "connections": [{"after_s": 1.46, "peer": "127.0.0.1:40276", "token_ok": true, "token_seen": "28bcfbd9a34c4001567d63d1fc1ca76f", "pid": "17287", "ver": "26.3.1f1", "stat": "17287 (labview) S 1251 16939 16937 0 -1 4194304 16413 655 1 0 73 10 0 0 20 0 17 ", "vi_path": "/tmp/lvmcp-hw.AchX8O/r-nonce/stub-r-nonce.vi", "args": "/usr/local/natinst/LabVIEW-2026-64/labview\n", "tick": "2296122", "raw_len": 253}], "matched": true, "token": "28bcfbd9a34c4001567d63d1fc1ca76f", "waited_s": 1.46}
+--- the stub's own report file
+hello-28bcfbd9a34c4001567d63d1fc1ca76f|ver=26.3.1f1|stat=17287 (labview) S 1251 16939 16937 0 -1 4194304 16413 655 1 0 73 10 0 0 20 0 17 |path=/tmp/lvmcp-hw.AchX8O/r-nonce/stub-r-nonce.vi|args=/usr/local/natinst/LabVIEW-2026-64/labview
+|tick=2296122|end

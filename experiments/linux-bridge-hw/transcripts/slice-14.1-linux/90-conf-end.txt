@@ -1,0 +1,11 @@
+labview.conf sha256 at script start: 0bf56d608a4b93b0c95f2d42896740944a07867a56e2515dc41073dda6843602   without RecentFiles.pathList: ee9ffb448cd4104a3087c4febb5cfe13abc989145584ba31b13626f7ee082d3a
+now:                                       d8eb577218467ad0f0ba7e534caf59f5b59ce2ac50bd8ebb8b465eecc50ecc51   without RecentFiles.pathList: ee9ffb448cd4104a3087c4febb5cfe13abc989145584ba31b13626f7ee082d3a
+--- diff start -> now (we never write this file; LabVIEW did)
+28c28
+< RecentFiles.pathList="/tmp/lvmcp-hw.bM7psv/k2-B/stub-k2-B.vi:/tmp/lvmcp-hw.bM7psv/k1-A/stub-k1-A.vi:/tmp/lvmcp-hw.bM7psv/r-arg/stub-r-arg.vi:/tmp/lvmcp-hw.bM7psv/r-nonce/stub-r-nonce.vi:/tmp/lvmcp-hw.bM7psv/hr/args-dump.vi:/tmp/lvmcp-hw.bM7psv/hp/args-dump.vi:/tmp/lvmcp-hw.czaPxV/hp/args-dump.vi:/tmp/lvmcp-a1/stub-a1.vi:/tmp/lvmcp-t1/stub-t1.vi:/tmp/lvmcp-hw-test/args-dump.vi"
+---
+> RecentFiles.pathList="/tmp/lvmcp-hw.AchX8O/c-B/stub-c-B.vi:/tmp/lvmcp-hw.AchX8O/k20-B/stub-k20-B.vi:/tmp/lvmcp-hw.AchX8O/k19-B/stub-k19-B.vi:/tmp/lvmcp-hw.AchX8O/k18-B/stub-k18-B.vi:/tmp/lvmcp-hw.AchX8O/k17-A/stub-k17-A.vi:/tmp/lvmcp-hw.AchX8O/k16-B/stub-k16-B.vi:/tmp/lvmcp-hw.AchX8O/k15-A/stub-k15-A.vi:/tmp/lvmcp-hw.AchX8O/k14-B/stub-k14-B.vi:/tmp/lvmcp-hw.AchX8O/k13-B/stub-k13-B.vi:/tmp/lvmcp-hw.AchX8O/k12-A/stub-k12-A.vi"
+f7b1d106615c7a891ac9b59548357599c93fdd11c668cd31c7bfb1837315090f  /home/niko/natinst/.config/LabVIEW-2026/labview64.conf
+d8eb577218467ad0f0ba7e534caf59f5b59ce2ac50bd8ebb8b465eecc50ecc51  /home/niko/natinst/.config/LabVIEW-2026/labview.conf
+/home/niko/natinst/.config/LabVIEW-2026/labview64.conf 661 2026-11-08 13:43:53.071379308 +0100
+/home/niko/natinst/.config/LabVIEW-2026/labview.conf 1231 2026-11-10 11:32:21.919318659 +0100

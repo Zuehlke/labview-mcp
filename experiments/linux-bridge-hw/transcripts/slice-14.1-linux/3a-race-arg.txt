@@ -1,0 +1,23 @@
+setting in force: RunWhenOpened.Behavior=2
+mechanism: arg   trials: 20   conf sha at start: 0bf56d608a4b93b0c95f2d42896740944a07867a56e2515dc41073dda6843602
+trial 1: A pid 20186 -> ok (connected after 2.35 s); B pid 20189 -> ok (1.75 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 2: A pid 20323 -> ok (connected after 2.37 s); B pid 20326 -> ok (1.73 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 3: A pid 20462 -> ok (connected after 2.36 s); B pid 20465 -> ok (1.8 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 4: A pid 20601 -> ok (connected after 2.52 s); B pid 20604 -> ok (1.61 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 5: A pid 20749 -> ok (connected after 2.5 s); B pid 20752 -> ok (1.59 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 6: A pid 20883 -> ok (connected after 2.48 s); B pid 20886 -> ok (1.57 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 7: A pid 21020 -> ok (connected after 2.3 s); B pid 21023 -> ok (1.71 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 8: A pid 21160 -> ok (connected after 2.46 s); B pid 21163 -> ok (1.63 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 9: A pid 21296 -> ok (connected after 2.33 s); B pid 21299 -> ok (1.76 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 10: A pid 21451 -> ok (connected after 2.36 s); B pid 21454 -> ok (1.75 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 11: A pid 21587 -> ok (connected after 2.31 s); B pid 21590 -> ok (1.78 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 12: A pid 21729 -> ok (connected after 2.47 s); B pid 21732 -> ok (1.58 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 13: A pid 21864 -> ok (connected after 2.37 s); B pid 21867 -> ok (1.76 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 14: A pid 22006 -> ok (connected after 2.27 s); B pid 22009 -> ok (1.75 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 15: A pid 22146 -> ok (connected after 2.5 s); B pid 22149 -> ok (1.58 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 16: A pid 22289 -> ok (connected after 2.29 s); B pid 22292 -> ok (1.8 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 17: A pid 22488 -> ok (connected after 2.47 s); B pid 22491 -> ok (1.63 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 18: A pid 22622 -> ok (connected after 2.37 s); B pid 22625 -> ok (1.76 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 19: A pid 22757 -> ok (connected after 2.32 s); B pid 22760 -> ok (1.77 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+trial 20: A pid 22913 -> ok (connected after 2.37 s); B pid 22916 -> ok (1.81 s); wrong-token connections 0; conf (without RecentFiles.pathList) unchanged
+RESULT trials=20 ok=20 bad=0 wrong_token_connections=0

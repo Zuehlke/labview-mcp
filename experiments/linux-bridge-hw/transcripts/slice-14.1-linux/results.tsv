@@ -1,0 +1,11 @@
+row	setting_in_force	verdict	detail	transcript
+env	RunWhenOpened.Behavior=2	PASS	resident pid 13139, /usr/local/natinst/LabVIEW-2026-64/labviewprofull, labview_26.3.1f1_interactive_niko_cur.txt	00-env.txt
+compose	RunWhenOpened.Behavior=2	PASS	4 VIs composed for --lv-version 26 (args-dump plain and run-on-open, stub, stub-arg)	01-compose.txt
+handoff-plain	RunWhenOpened.Behavior=2	NO-HANDOFF	count 1 -> 2: the launch started its own process 17051, VI loaded there, not run (not run-when-opened)	10-handoff-plain.txt
+handoff-run	RunWhenOpened.Behavior=2	NO-HANDOFF	ran in new process 17213, not in resident 13139; count 2; args seen [/usr/local/natinst/LabVIEW-2026-64/labview|/tmp/lvmcp-hw-arg1|second]	11-handoff-run.txt
+rendezvous-nonce	RunWhenOpened.Behavior=2	PASS	stub in pid 17287 read port+token from its own file (1.46 s to connect, file 0600, dir 0700)	2n-rendezvous-nonce.txt
+rendezvous-arg	RunWhenOpened.Behavior=2	PASS	stub in pid 17356 read port+token from its own file (1.43 s to connect, file 0600, dir 0700)	2a-rendezvous-arg.txt
+race-nonce	RunWhenOpened.Behavior=2	PASS	20 of 20 trials: each connection made by the stub started for that server; 0 wrong-token connections	3n-race-nonce.txt
+race-arg	RunWhenOpened.Behavior=2	PASS	20 of 20 trials: each connection made by the stub started for that server; 0 wrong-token connections	3a-race-arg.txt
+control-crossed	RunWhenOpened.Behavior=2	PASS	the check flagged both crossed connections (A: bad pid-seen=23060 launched=23057; vi-path; | B: bad pid-seen=23057 launched=23060; vi-path;)	40-control-crossed.txt
+conf-unchanged	RunWhenOpened.Behavior=2	PASS	labview.conf identical at start and end except LabVIEW's own RecentFiles.pathList (raw sha256 differs)	90-conf-end.txt

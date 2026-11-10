@@ -1,0 +1,10 @@
+setting in force: RunWhenOpened.Behavior=2 (set by the user; runs here are NOT evidence for a default install)
+before: count=1 pids=[13139] resident pid 13139
+after: count=2 pids=[13139 17213] launched pid 17213
+--- what the VI wrote
+ver=26.3.1f1
+path=/tmp/lvmcp-hw.AchX8O/hr/args-dump.vi
+stat=17213 (labview) R 1251 16939 16937 0 -1 4194304 15613 658 1 0 56 11 0 0 20 0 17 
+args=/usr/local/natinst/LabVIEW-2026-64/labview|/tmp/lvmcp-hw-arg1|second
+
+VI ran in pid: 17213; resident pid: 13139; launched pid: 17213; Command Line Arguments: /usr/local/natinst/LabVIEW-2026-64/labview|/tmp/lvmcp-hw-arg1|second

@@ -1,0 +1,31 @@
+date: 2026-11-10T10:27:57Z   host: pop-os   Linux 7.2.15-76070215-generic x86_64
+PRETTY_NAME="Pop!_OS 24.04 LTS"
+VERSION_ID="24.04"
+session: XDG_SESSION_TYPE=wayland DISPLAY=:1
+install root: /usr/local/natinst/LabVIEW-2026-64
+binary: /usr/local/natinst/LabVIEW-2026-64/labview -> /usr/local/natinst/LabVIEW-2026-64/labviewprofull
+/usr/local/natinst/LabVIEW-2026-64/labview: ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), dynamically linked, interpreter /lib64
+resident LabVIEW pids (comm 'labview'): [13139]
+  pid 13139 comm=labview exe=/usr/local/natinst/LabVIEW-2026-64/labviewprofull cmdline=/usr/local/natinst/LabVIEW-2026-64/labview 
+setting in force: RunWhenOpened.Behavior=2
+--- conf files (read only), before any launch of this script
+f7b1d106615c7a891ac9b59548357599c93fdd11c668cd31c7bfb1837315090f  /home/niko/natinst/.config/LabVIEW-2026/labview64.conf
+0bf56d608a4b93b0c95f2d42896740944a07867a56e2515dc41073dda6843602  /home/niko/natinst/.config/LabVIEW-2026/labview.conf
+/home/niko/natinst/.config/LabVIEW-2026/labview64.conf 661 2026-11-08 13:43:53.071379308 +0100
+/home/niko/natinst/.config/LabVIEW-2026/labview.conf 1182 2026-11-10 11:26:47.580830153 +0100
+--- keys of interest in labview.conf (server.*, RunWhenOpened.*, unattended)
+29:RunWhenOpened.Behavior=2
+--- TCP listeners of the resident LabVIEW (3363 is the VI Server default)
+LISTEN 0      5          127.0.0.1:41905      0.0.0.0:*    users:(("labview",pid=13139,fd=20))
+--- LabVIEW log
+-rw-rw-r-- 1 niko niko 1198 Nov 10 11:26 /tmp/labview_26.3.1f1_interactive_niko_cur.txt
+####
+#Date: Tue, Nov 10, 2026 11:26:46 AM
+#OSName: Linux
+#OSVers: 7.2.15-76070215-generic
+#OSBuild: 459279
+#AppName: labview
+#Version: 26.3.1f1
+#AppKind: FDS
+--- LabVIEWCLI
+(end of find)

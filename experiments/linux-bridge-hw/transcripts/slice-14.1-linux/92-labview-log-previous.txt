@@ -1,0 +1,23 @@
+####
+#Date: Tue, Nov 10, 2026 11:32:15 AM
+#OSName: Linux
+#OSVers: 7.2.15-76070215-generic
+#OSBuild: 459279
+#AppName: labview
+#Version: 26.3.1f1
+#AppKind: FDS
+#AppRunMode: Interactive
+#AppModDate: 
+
+
+InitExecSystem() call to GetCurrProcessNumProcessors() reports: 8 processors
+InitExecSystem() call to GetNumProcessors()            reports: 8 processors
+InitExecSystem()                                      will use: 8 processors
+starting LV_ESys2_Thr0 , capacity: 24 at [3877151535.48475504, (11:32:15.484755000 2026:11:10)]
+starting LV_ESys2_Thr1 , capacity: 24 at [3877151535.48475504, (11:32:15.484755000 2026:11:10)]
+starting LV_ESys2_Thr2 , capacity: 24 at [3877151535.48475504, (11:32:15.484755000 2026:11:10)]
+starting LV_ESys2_Thr3 , capacity: 24 at [3877151535.48475504, (11:32:15.484755000 2026:11:10)]
+starting LV_ESys2_Thr4 , capacity: 24 at [3877151535.48475504, (11:32:15.484755000 2026:11:10)]
+starting LV_ESys2_Thr5 , capacity: 24 at [3877151535.48475504, (11:32:15.484755000 2026:11:10)]
+starting LV_ESys2_Thr6 , capacity: 24 at [3877151535.48475504, (11:32:15.484755000 2026:11:10)]
+starting LV_ESys2_Thr7 , capacity: 24 at [3877151535.48475504, (11:32:15.484755000 2026:11:10)]

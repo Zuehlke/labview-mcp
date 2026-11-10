@@ -1,0 +1,15 @@
+setting in force: RunWhenOpened.Behavior=2
+mechanism: arg   stub: /tmp/lvmcp-hw.AchX8O/r-arg/stub-r-arg.vi   rendezvous: /tmp/lvmcp-hw.AchX8O/r-arg/rv.txt   launched pid 17356   resident pid 13139
+--- rendezvous file modes and content
+drwx------ 2 niko niko 4096 Nov 10 11:28 /tmp/lvmcp-hw.AchX8O/r-arg
+-rw------- 1 niko niko 38 Nov 10 11:28 /tmp/lvmcp-hw.AchX8O/r-arg/rv.txt
+41797-164fc0ef19bdb1e0b271727a4ff9c370
+--- server
+PORT 41797
+RENDEZVOUS /tmp/lvmcp-hw.AchX8O/r-arg/rv.txt
+RESULT matched=True connections=1 waited_s=1.43
+--- result
+{"dir": "/tmp/lvmcp-hw.AchX8O/r-arg", "rendezvous": "/tmp/lvmcp-hw.AchX8O/r-arg/rv.txt", "port": 41797, "dir_mode": "0o700", "file_mode": "0o600", "connections": [{"after_s": 1.43, "peer": "127.0.0.1:33864", "token_ok": true, "token_seen": "164fc0ef19bdb1e0b271727a4ff9c370", "pid": "17356", "ver": "26.3.1f1", "stat": "17356 (labview) R 1251 16939 16937 0 -1 4194304 16830 655 1 0 70 11 0 0 20 0 17 ", "vi_path": "/tmp/lvmcp-hw.AchX8O/r-arg/stub-r-arg.vi", "args": "/usr/local/natinst/LabVIEW-2026-64/labview~/tmp/lvmcp-hw.AchX8O/r-arg/rv.txt\n", "tick": "2300043", "raw_len": 283}], "matched": true, "token": "164fc0ef19bdb1e0b271727a4ff9c370", "waited_s": 1.43}
+--- the stub's own report file
+hello-164fc0ef19bdb1e0b271727a4ff9c370|ver=26.3.1f1|stat=17356 (labview) R 1251 16939 16937 0 -1 4194304 16830 655 1 0 70 11 0 0 20 0 17 |path=/tmp/lvmcp-hw.AchX8O/r-arg/stub-r-arg.vi|args=/usr/local/natinst/LabVIEW-2026-64/labview~/tmp/lvmcp-hw.AchX8O/r-arg/rv.txt
+|tick=2300043|end

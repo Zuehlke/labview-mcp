@@ -1,0 +1,17 @@
+# labview.conf history during Step 14.1 (read only; this session never wrote it). Dir: ~/natinst/.config/LabVIEW-2026/
+# labview64.conf: sha256 f7b1d106615c7a891ac9b59548357599c93fdd11c668cd31c7bfb1837315090f, 661 B, mtime 2026-11-08 13:43:53.071 at start and at end (never touched: labview.conf is the file this LabVIEW uses).
+
+baseline 1 (start of step, before any launch): labview.conf sha256 7683b964f0117c497efb3dbf579017239abb2a75b3a5dc8d3c883aac78b3de00, 759 B, mtime 2026-11-08 13:48:19.246
+after the first IDE start (11:14, LabVIEW's own write):       sha256 dc1ee113ced9f346757d302fb6006a6189b8eaf71af304aba86941bc897f9fa4, 759 B; only change: NI_GSWContentIndex=3 -> 4
+after the user's change (11:16-11:17, in the Options dialog of the second process, via the coordinator): sha256 26c4f0e4b79ae05b9da8604991e53b9ba12f3a7c6f0c0fa7fe861b0e0cdd5d53, 857 B, mtime 2026-11-10 11:17:14.926
+   added keys: RecentFiles.pathList="/tmp/lvmcp-hw-test/args-dump.vi"   RunWhenOpened.Behavior=2   NewProj.maxNum=10
+baseline 2 (re-baselined by the coordinator's instruction after the user's change) = that last file; kept as a copy and compared below.
+
+end of step (after SIGTERM of the last LabVIEW process): d8eb577218467ad0f0ba7e534caf59f5b59ce2ac50bd8ebb8b465eecc50ecc51, 1231 B, mtime 2026-11-10 11:32:21.919318659 +0100
+--- diff baseline 2 -> end (whole file)
+28c28
+< RecentFiles.pathList="/tmp/lvmcp-hw-test/args-dump.vi"
+---
+> RecentFiles.pathList="/tmp/lvmcp-hw.AchX8O/c-B/stub-c-B.vi:/tmp/lvmcp-hw.AchX8O/k20-B/stub-k20-B.vi:/tmp/lvmcp-hw.AchX8O/k19-B/stub-k19-B.vi:/tmp/lvmcp-hw.AchX8O/k18-B/stub-k18-B.vi:/tmp/lvmcp-hw.AchX8O/k17-A/stub-k17-A.vi:/tmp/lvmcp-hw.AchX8O/k16-B/stub-k16
+--- diff baseline 2 -> end WITHOUT the RecentFiles.pathList line
+(no difference)
