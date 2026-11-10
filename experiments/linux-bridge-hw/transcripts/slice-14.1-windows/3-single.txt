@@ -1,0 +1,8 @@
+=== single 2026-11-10T15:50:08 resident=4296
+nonce single C:\lvmcp-hw\s-nonce: matched=True connections=1 vi_path_ok=True count=1 resident_same=True prompts=1 maxcount=2
+  result.json: {"dir": "C:\\lvmcp-hw\\s-nonce", "rendezvous": "C:\\lvmcp-hw\\s-nonce\\rendezvous.txt", "port": 9080, "dir_mode": "0o777", "file_mode": "0o666", "connections": [{"after_s": 1.54, "peer": "127.0.0.1:9082", "token_ok": true, "token_seen": "8c872f642add7967464693dbed86dd01", "pid": "", "ver": "26.3.1f1", "stat": "", "vi_path": "C:\\lvmcp-hw\\s-nonce\\stub-s-nonce.vi", "args": "LabVIEW\r\n", "tick": "951453", "raw_len": 129}], "matched": true, "token": "8c872f642add7967464693dbed86dd01", "waited_s": 1.54}
+
+  icacls: C:\lvmcp-hw\s-nonce\rendezvous.txt BUILTIN\Administrators:(I)(F) |                                    NT AUTHORITY\SYSTEM:(I)(F) |                                    BUILTIN\Users:(I)(RX) |                                    NT AUTHORITY\Authenticated Users:(I)(M) |  | Successfully processed 1 files; Failed processing 0 files
+arg single C:\lvmcp-hw\s-arg: matched=False connections=0 vi_path_ok=False count=1 resident_same=True prompts=1 maxcount=2
+  result.json: {"dir": "C:\\lvmcp-hw\\s-arg", "rendezvous": "C:\\lvmcp-hw\\s-arg\\rv.txt", "port": 9088, "dir_mode": "0o777", "file_mode": "0o666", "connections": [], "matched": false, "token": "351710bd94ca66d38770b8112290a292", "waited_s": 60.01}
+

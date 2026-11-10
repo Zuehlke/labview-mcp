@@ -1,0 +1,8 @@
+﻿LabVIEWCLI started logging in file:  C:\Users\Niko\AppData\Local\Temp\lvtemporary_357254.log
+Using LabVIEW: "C:\Program Files\National Instruments\LabVIEW 2026\LabVIEW.exe"
+Connection established with LabVIEW at port number 3363.
+
+Operation output: 
+code=66;source=TCP Read in skeleton.vi:4410001->RunVI.lvclass:RunOperation.vi:5910001->CoreOperation.lvclass:CallRunOperation.vi:4230002->ExecuteRunOperation.vi:5250001->ExecuteOperation.vi:6900002->ExecuteOperation.vi.ProxyCaller
+RunVI operation succeeded.
+

@@ -1,0 +1,7 @@
+start sha256 F9A87087613F5AFD5985CA2971F46623E9E1CF3CA545510AF3798B2E5236C1A4
+end   sha256 860C06DD0C2836091DCD778E151BD97EC5E994F40ECD1897E41BBC3CA6517FC9
+--- diff (LabVIEW's own state keys only; no settings line changed)
+=> NI_GSWContentIndex=3
+=> RecentFiles.pathList="C:\lvmcp-hw\k20-nonce-B\stub-k20-nonce-B.vi;C:\lvmcp-hw\k20-nonce-A\stub-k20-nonce-A.vi;C:\lvmcp-hw\k19-nonce-A\stub-k19-nonce-A.vi;C:\lvmcp-hw\k19-nonce-B\stub-k19-nonce-B.vi;C:\lvmcp-hw\k18-nonce-A\stub-k18-nonce-A.vi;C:\lvmcp-hw\k18-nonce-B\stub-k18-nonce-B.vi;C:\lvmcp-hw\k17-nonce-A\stub-k17-nonce-A.vi;C:\lvmcp-hw\k17-nonce-B\stub-k17-nonce-B.vi;C:\lvmcp-hw\k16-nonce-A\stub-k16-nonce-A.vi;C:\lvmcp-hw\k16-nonce-B\stub-k16-nonce-B.vi"
+<= NI_GSWContentIndex=2
+<= RecentFiles.pathList="C:\Playground\labview mcp comparison\labview\SubPanel Demo\SubPanel Demo.vi;C:\Program Files\National Instruments\LabVIEW 2026\vi.lib\G CLI Tools\lunit.vi;C:\Playground\toellner_psu\source\Transport\TCP Transport\Close.vi;C:\Playground\toellner_psu\source\Transport\TCP Transport\Describe.vi;C:\Playground\toellner_psu\source\Transport\TCP Transport\Discard Input.vi;C:\Playground\toellner_psu\source\Transport\TCP Transport\Open.vi;C:\Playground\toellner_psu\source\Transport\TCP Transport\Read Line.vi;C:\Playground\toellner_psu\source\Transport\TCP Transport\Write.vi;C:\Playground\toellner_psu\source\Transport\Serial Transport\Close.vi;C:\Playground\toellner_psu\source\Transport\Serial Transport\Describe.vi"

@@ -1,0 +1,8 @@
+﻿python.exe : UNSUPPORTED: net '4206.connection ID' carries a Refnum.TCPNetConn, which no composed wire has carried yet
+At line:4 char:1
++ & $PY experiments\linux-bridge\compose.py experiments\linux-bridge\sk ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (UNSUPPORTED: ne...has carried yet:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+exit 2

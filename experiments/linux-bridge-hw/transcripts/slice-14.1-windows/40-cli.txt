@@ -1,0 +1,27 @@
+=== 2026-11-10T15:59:41 resident=4296 nonce=5f8e7ea3d020 setting: no RunWhenOpened key in LabVIEW.ini (the default)
+--- starter-cli-1 dir=C:\lvmcp-hw\fresh-5f8e7ea3d020-1
+cli: secs=2.3 rc= maxLabVIEW=1 newWindows=[]
+cli output: Operation output:  / RunVI operation succeeded.
+target alive at trigger: 60.2s after CLI end; Execution:State via P2 = 2 (P2 secs=1.6 newWindows=[])
+count after=1 resident_same=True srv exit=
+status: 0.01 LISTENING 27579 / 3.80 HELLO pid= token_ok=True / 3.80 FIRST-ECHO True / 62.78 ECHO-START / 62.82 ECHO-DONE ok=100 failures=0 / 62.82 CLOSED
+result.json: {"rendezvous": "C:\\lvmcp-hw\\fresh-5f8e7ea3d020-1\\rv.txt", "port": 27579, "dir_mode": "0o777", "file_mode": "0o666", "token_ok": true, "pid": "", "vi_path": "C:\\lvmcp-hw\\fresh-5f8e7ea3d020-1\\t5f8e7ea3d0201.vi", "first_echo_ok": true, "echoes_requested": 100, "echoes_ok": 100, "failures": 0, "error": null, "ver": "26.3.1f1", "connect_s": 3.8, "total_s": 62.8}
+
+--- starter-cli-2 dir=C:\lvmcp-hw\fresh-5f8e7ea3d020-2
+cli: secs=1.8 rc= maxLabVIEW=1 newWindows=[]
+cli output: Operation output:  / RunVI operation succeeded.
+target alive at trigger: 59.9s after CLI end; Execution:State via P2 = 2 (P2 secs=1.6 newWindows=[])
+count after=1 resident_same=True srv exit=
+status: 0.00 LISTENING 32854 / 3.11 HELLO pid= token_ok=True / 3.11 FIRST-ECHO True / 61.89 ECHO-START / 61.92 ECHO-DONE ok=100 failures=0 / 61.92 CLOSED
+result.json: {"rendezvous": "C:\\lvmcp-hw\\fresh-5f8e7ea3d020-2\\rv.txt", "port": 32854, "dir_mode": "0o777", "file_mode": "0o666", "token_ok": true, "pid": "", "vi_path": "C:\\lvmcp-hw\\fresh-5f8e7ea3d020-2\\t5f8e7ea3d0202.vi", "first_echo_ok": true, "echoes_requested": 100, "echoes_ok": 100, "failures": 0, "error": null, "ver": "26.3.1f1", "connect_s": 3.11, "total_s": 61.9}
+
+--- starter-cli-3 dir=C:\lvmcp-hw\fresh-5f8e7ea3d020-3
+cli: secs=1.8 rc= maxLabVIEW=1 newWindows=[]
+cli output: Operation output:  / RunVI operation succeeded.
+target alive at trigger: 59.9s after CLI end; Execution:State via P2 = 2 (P2 secs=1.5 newWindows=[])
+count after=1 resident_same=True srv exit=
+status: 0.00 LISTENING 32873 / 3.09 HELLO pid= token_ok=True / 3.09 FIRST-ECHO True / 61.86 ECHO-START / 61.89 ECHO-DONE ok=100 failures=0 / 61.89 CLOSED
+result.json: {"rendezvous": "C:\\lvmcp-hw\\fresh-5f8e7ea3d020-3\\rv.txt", "port": 32873, "dir_mode": "0o777", "file_mode": "0o666", "token_ok": true, "pid": "", "vi_path": "C:\\lvmcp-hw\\fresh-5f8e7ea3d020-3\\t5f8e7ea3d0203.vi", "first_echo_ok": true, "echoes_requested": 100, "echoes_ok": 100, "failures": 0, "error": null, "ver": "26.3.1f1", "connect_s": 3.09, "total_s": 61.9}
+
+--- overlap: first rc=: LabVIEWCLI started logging in file:  C:\Users\Niko\AppData\Local\Temp\lvtemporary_963205.log / Using LabVIEW: "C:\Program Files\National Instruments\LabVIEW 2026\LabVIEW.exe" / Connection established with LabVIEW at port number 3363. /  / Operation output:  / 26.3.1f1 / RunVI operation succeeded. / 
+    second rc=: LabVIEWCLI started logging in file:  C:\Users\Niko\AppData\Local\Temp\lvtemporary_128590.log / Using LabVIEW: "C:\Program Files\National Instruments\LabVIEW 2026\LabVIEW.exe" / Connection established with LabVIEW at port number 3363. /  / Operation output:  / 26.3.1f1 / RunVI operation succeeded. / 

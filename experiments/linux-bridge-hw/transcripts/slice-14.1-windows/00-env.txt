@@ -1,0 +1,9 @@
+
+  Id ProcessName Path                                                          
+  -- ----------- ----                                                          
+4296 LabVIEW     C:\Program Files\National Instruments\LabVIEW 2026\LabVIEW.exe
+
+
+
+python: C:\Users\Niko\Documents\Projects\labview-mcp\tools\pylabview\runtime\python.exe (bundled 3.14.5, Pillow 12.2.0; py -3 has no Pillow)
+ini RunWhenOpened keys: none; server.tcp.enabled=TRUE port 3363; LabVIEWCLI present; ini sha256 F9A87087613F5AFD5985CA2971F46623E9E1CF3CA545510AF3798B2E5236C1A4

@@ -1,0 +1,19 @@
+before=1 ids=4296 after=1 ids=4296
+args.txt exists=False
+--- args.txt
+
+--- windows
+4296: Security Warning: Run When Opened
+4296: args-dump-plain.vi Front Panel
+4296: LabVIEW
+--- after clicking Run once (Remember unticked) at 2026-11-10T15:48:20
+count=1 ids=4296
+args.txt exists=True
+ver=26.3.1f1
+path=C:\lvmcp-hw\args-dump-run.vi
+stat=
+args=LabVIEW
+--- windows
+4296: args-dump-run.vi Front Panel
+4296: args-dump-plain.vi Front Panel
+4296: LabVIEW

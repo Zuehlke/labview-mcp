@@ -1,0 +1,8 @@
+LabVIEWCLI started logging in file:  C:\Users\Niko\AppData\Local\Temp\lvtemporary_727458.log
+Using LabVIEW: "C:\Program Files\National Instruments\LabVIEW 2026\LabVIEW.exe"
+Connection established with LabVIEW at port number 3363.
+
+Operation output: 
+vi=0;set=0;run=0
+RunVI operation succeeded.
+

@@ -1,7 +1,10 @@
 # Slice 14 measurements: the hardware (handoff, context, modal)
 
 Plan: `plans/cross-platform-server.md`, Slice 14. This file holds Step 14.1 (handoff and rendezvous). Steps 14.2 and 14.3 are not
-done. Record date: **2026-11-10**. Only the Linux desktop row is measured here; the Windows row is a handoff section at the end.
+done. Record date: **2026-11-10**. The Linux desktop rows come first; the Windows 2026 64-bit row is at the end ("Step 14.1 Windows row").
+
+**Windows, 2026-11-10:** `LabVIEW.exe <vi>` hands off (steady count 1 -> 1, resident pid unchanged), but under the default setting every new
+run-when-opened path raises "Security Warning: Run When Opened" in the resident, and the `--` arguments do not reach it. The LabVIEWCLI route is click-free there too.
 
 ## Result first: spec assumption 2 FAILS on Linux as written, and a VI Server relay reaches the resident IDE
 
@@ -73,7 +76,7 @@ calls 26.3.1 "2026 Q3". Record date 2026-11-10. Run with `experiments/linux-brid
 | Linux desktop, default setting | LabVIEWCLI -> starter -> target, 3 fresh directories (and again 3) | P | **PASS 3/3 (and 3/3): no prompt**, target alive 60 s in resident pid, 100 echoes 0 failures | `.../11-13-starter-cli.txt`, `.../rerun-sessions/` |
 | Linux desktop, default setting | LabVIEWCLI P0_AppVersion alone from a fresh path | P | PASS: no prompt | `.../20-p0-alone.txt` |
 | Linux desktop, default setting | `RunWhenOpenedPermissions.json` after the CLI runs | P | PASS: unchanged | `.../30-permissions-after.txt` |
-| Windows 2026 64-bit | every row above, plus the relay, LabVIEWCLI and default-setting rows | | **PENDING** (handoff section below) | |
+| Windows 2026 64-bit | handoff, rendezvous, race, LabVIEWCLI and default-setting rows (relay not run: it would quit the resident) | | **Handoff PASS (count 1 -> 1), but every new run-when-opened path PROMPTS in the resident; `--` arguments do not arrive; LabVIEWCLI route click-free 3/3** (section "Step 14.1 Windows row" below) | `transcripts/slice-14.1-windows/` |
 
 ## Environment (Linux desktop)
 
@@ -524,4 +527,37 @@ relay compares nothing and WILL quit the process it runs in. **Only run it if th
 relay would quit the running LabVIEW. Do not run the relay in that case.**). Record: relay process lifetime, whether the target connected with the right token, the relay report line, any
 prompt or dialog, and the same for 20 two-server trials per mechanism if time allows. Record the result as one row each.
 
-**Windows 2026 64-bit result: PENDING.** (Replace this line with the table.)
+**Windows 2026 64-bit result** (2026-11-10, LabVIEW 26.3.1f1 64-bit, `C:\Program Files\National Instruments\LabVIEW 2026\LabVIEW.exe`, one
+resident process pid 4296 throughout; transcripts in `experiments/linux-bridge-hw/transcripts/slice-14.1-windows/`).
+
+**The handoff works on Windows: `LabVIEW.exe <vi>` keeps the steady count at 1 and opens the VI in the resident. But under the DEFAULT
+run-when-opened setting the resident shows "Security Warning: Run When Opened" for every new path, so the handoff route is not click-free.
+And the `--` launch arguments do not reach the resident, so the argument rendezvous fails. The LabVIEWCLI -> starter -> target route is
+click-free.** Taken together: on Windows a click-free route still needs LabVIEWCLI (or the "always allow" setting), as on Linux.
+
+Setting in force for every row: no `RunWhenOpened` key in `LabVIEW.ini` (the default); `server.tcp.enabled=TRUE`, `server.tcp.port=3363`;
+LabVIEWCLI installed (`C:\Program Files (x86)\National Instruments\Shared\LabVIEW CLI\LabVIEWCLI.exe`). Python: `py -3` had no Pillow, so every
+compose ran under the repository's bundled `tools\pylabview\runtime\python.exe` (3.14.5, Pillow 12.2.0). "Manually allowed" below means the prompt
+was answered with **Run** once, "Remember this choice in the permissions list" unticked (by a scripted click on the Run button for rows 3x).
+
+| Row | Result | Transcript |
+|---|---|---|
+| compose `args-dump` plain and with `RunOnOpen=1` (`--lv-version 26`) | PASS: exit 0 each, 6713 bytes each | `01-compose-plain.txt`, `01-compose-run.txt` |
+| handoff, plain VI | **PASS: count 1 -> 1, pid 4296 unchanged**, `args-dump-plain.vi Front Panel` opened in pid 4296; no dump (not run-when-opened, as expected) | `10-handoff-plain.txt` |
+| handoff, run-when-opened VI, `-- C:\lvmcp-hw\arg1 second` | **PROMPT in the resident** (pid 4296): title "Security Warning: Run When Opened", text "args-dump-run.vi is configured to run when opened. Only run VIs from authors you trust. Click View to open the VI without running.", Full VI path `C:\lvmcp-hw\args-dump-run.vi`, checkbox "Remember this choice in the permissions list", buttons Run / View, "Go to Tools>>Options>>Security for configuration options". VI did not run until answered. Manually allowed: then ran in pid 4296, count 1 -> 1 | `11-handoff-run.txt`, `11-prompt.png` |
+| dump of that run | `ver=26.3.1f1`, `path=C:\lvmcp-hw\args-dump-run.vi`, `stat=` empty (expected), **`args=LabVIEW`**: the resident's own command line, the launch's `--` arguments are NOT delivered | `11-handoff-run.txt` |
+| transient process | the launched `LabVIEW.exe` exists briefly: sampled peak count 2 for one launch, 3 for two back-to-back launches, steady count 1 every time; it wrote a LabVIEW session record (`LVInternalReports\...\0fcaf9c2-...run\session.json`, `duration 0`) | `3-single.txt`, `3-race.txt` |
+| stored permission | none: no new file under `%USERPROFILE%\Documents\LabVIEW Data\` but LabVIEW's internal reports (Remember was never ticked) | — |
+| rendezvous, nonce path, single | **PASS, manually allowed** (1 prompt): `matched=True`, `vi_path` = the stub started, connect 1.54 s, count 1, resident unchanged | `3-single.txt` |
+| rendezvous, `--` argument, single | **FAIL**: no connection in 60 s (`matched=False connections=0`), manually allowed (1 prompt). Cause: the stub reads the last element of `Application Command Line Arguments`, which is `LabVIEW` in the resident | `3-single.txt` |
+| race, nonce, 20 trials x 2 servers | **PASS 20 of 20, manually allowed**: 40/40 matched, 40/40 `vi_path_ok`, 0 wrong-token connections, resident unchanged, 2 prompts per trial | `3-race.txt` |
+| race, `--` argument | not run: the single trial fails by construction (the argument never arrives) | — |
+| rendezvous file access | NOT owner-only: `icacls` shows `BUILTIN\Users:(I)(RX)` and `NT AUTHORITY\Authenticated Users:(I)(M)`, inherited from `C:\` (the server's `chmod 0700/0600` does nothing on Windows; `result.json` modes `0o777`/`0o666` are meaningless) | `3-single.txt` |
+| LabVIEWCLI -> starter -> echo target, 3 fresh directories, default setting | **PASS 3/3, no prompt**: no new LabVIEW window, max LabVIEW count 1 during the CLI, CLI back in 2.3 / 1.8 / 1.8 s, `RunVI operation succeeded.`, hello 3.8 / 3.1 / 3.1 s, token ok, target alive 60 s after the CLI ended, `Execution:State` 2 via `P2_ExecutionState.vi` (CLI), 100 echoes 0 failures each, resident unchanged | `40-cli.txt`, `40-cli-1-runvi.txt`, `40-cli-1-state.txt` |
+| two overlapping LabVIEWCLI RunVI calls (second started 0.3 s after the first) | both `RunVI operation succeeded.`; **no -350052** on Windows at that offset (Linux: the second fails). One trial; whether the calls really overlapped inside LabVIEW is not shown | `40-cli.txt` |
+| relay (`relay.aixml`) | **not run**: the handoff works, so the relay would run in the resident and quit it (its pid guard is Linux-only) | — |
+| round-4 control (`LabVIEW.exe <run-when-opened VI>` from a fresh path, end the started process after 20 s) | covered by the handoff row: the started process hands off and is gone in under a second; the prompt shows in the resident | `11-handoff-run.txt` |
+| `LabVIEW.ini` | settings lines unchanged. LabVIEW's own state moved: `RecentFiles.pathList`, `NI_GSWContentIndex` 2 -> 3. sha256 F9A87087... -> 860C06DD... | `90-ini.txt` |
+
+Exit codes of LabVIEWCLI started through `Start-Process` came back empty in `40-cli.txt`; the CLI's own "RunVI operation succeeded." line is the evidence.
+Not measured: the "always allow" setting, a ticked "Remember" checkbox (whether the answer persists per path), and more than one overlap trial.

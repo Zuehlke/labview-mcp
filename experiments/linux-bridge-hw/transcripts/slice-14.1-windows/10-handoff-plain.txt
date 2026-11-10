@@ -1,0 +1,5 @@
+before=1 ids=4296 after=1 ids=4296
+args.txt exists=False (plain VI is not run-when-opened, so no dump expected)
+windows:
+4296: args-dump-plain.vi Front Panel
+4296: LabVIEW

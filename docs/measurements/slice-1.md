@@ -1,7 +1,7 @@
 # Slice 1 measurements: the NI image and the composer
 
 Plan: `plans/cross-platform-server.md`, Slice 1. Spec assumptions measured here: 5 and 7 (Step 1.1),
-and 1 and 4 on Linux, 3 only in part (Step 1.2, section below). The Windows 2026 64-bit row of Step 1.2 is PENDING.
+and 1 and 4 on Linux, 3 only in part (Step 1.2, section below). The Windows 2026 64-bit row of Step 1.2 PASSES (2026-11-10, section below).
 
 Corrected after review, 2026-11-09: the verdict logic of the probe scripts was tightened (negative controls
 must return their expected error code; the resident verdict checks the received echo count and the skeleton's
@@ -269,8 +269,8 @@ or rename these nodes (not checked).
 
 ### Rows and gaps
 
-- Linux rows and the 2020 read-back are recorded with transcripts. **The Windows 2026 64-bit row is PENDING**
-  (handoff below). Nothing here says it passes there. The 2020 file was never loaded by a LabVIEW.
+- Linux rows and the 2020 read-back are recorded with transcripts. **The Windows 2026 64-bit row passes**
+  (2026-11-10, "Step 1.2 Windows row" below). The 2020 file was never loaded by a LabVIEW.
 - Not measured: a second concurrent clone (one clone per connection); `Open VI Reference` in the `NI.LV.Editor`
   context (spec assumption 8: the skeleton ran in the instance `RunVI`/`labview` gave it, and `localhost:3363` may reach
   that same instance, so "another application context" is the construct, not yet a different context; the skeleton and the
@@ -387,4 +387,17 @@ Record, in this section's table below ("Windows 2026 64-bit result"), with the t
 - Do not mark the row PASS unless every item above is as stated; otherwise write FAIL with the exact text. Commit only `experiments/linux-bridge/transcripts/slice-1.2-windows/`
   and this file.
 
-**Windows 2026 64-bit result: PENDING.** (Replace this line with the table: composer exit codes, echoes and failures, probe, state, version, notes.)
+**Windows 2026 64-bit result: PASS** (2026-11-10, LabVIEW 26.3.1f1 64-bit, one resident process pid 4296, `server.tcp.enabled=TRUE`
+port 3363, LabVIEWCLI installed; transcripts in `experiments/linux-bridge/transcripts/slice-1.2-windows/`). Composed with the bundled
+`tools\pylabview\runtime\python.exe` (3.14.5, Pillow 12.2.0), because `py -3` had no Pillow.
+
+| Check | Result | Transcript |
+|---|---|---|
+| version | `26.3.1f1`, major 26, CLI 12.1 s (first call) | `00-version.txt` |
+| strict compose (control) | exit 2, `UNSUPPORTED: net '4206.connection ID' carries a Refnum.TCPNetConn, which no composed wire has carried yet` | `01-strict.txt` |
+| compose `--lv-version 26` | exit 0, `wrote C:\lvmcp-s12\skeleton.vi (15272 bytes)`, wires routed 90, left generic 6 | `02-compose.txt` |
+| client | `RESULT requested=100 echoes=100 failures=0 connect_s=3.8 total_ms=17`, per echo median 0.1 ms, max 0.4 ms | `03-client.txt` |
+| probe | `PROBE code=0;state=1`, `y` = 42.5 | `03-client.txt` |
+| RunVI | `code=66;source=TCP Read in skeleton.vi...` (client hung up), `RunVI operation succeeded.`, 2.3 s | `04-runvi.txt` |
+| execution state | `code=0;source=;detail=1` | `05-exec-state.txt` |
+| on screen | no dialog, no firewall prompt; LabVIEW process count 1 throughout | — |

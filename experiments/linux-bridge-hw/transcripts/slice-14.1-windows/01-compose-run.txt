@@ -1,0 +1,23 @@
+﻿Indicator 'Output/Failure' <- pclean.xml
+Constant 'stat path' <- pclean.xml
+Constant 'stat bytes' <- pclean.xml
+Constant 'format' <- pclean.xml
+Constant 'bar' <- pclean.xml
+Constant 'ver label' <- pclean.xml
+Constant 'path label' <- pclean.xml
+Constant 'stat label' <- pclean.xml
+Constant 'args label' <- pclean.xml
+Constant 'out path' <- pclean.xml
+Property Node LV.Application Application:Version Number <- ppn.xml
+Property Node LV.Application Application:Command Line Arguments <- ppn.xml
+Node "Current VI's Path" = primResID 1426 <- <labview>\examples\Application Control\VI Scripting\Creating VIs\Creating New VI From Template.vi
+Node 'String To Path' = primResID 1078 <- <labview>\examples\Object-Oriented Programming\Basic Interfaces\Lever\Pry.vi
+Node 'String To Path' = primResID 1078 <- <labview>\examples\Object-Oriented Programming\Basic Interfaces\Lever\Pry.vi
+Node 'Path To String' = primResID 1077 <- <labview>\examples\Connectivity\Excel\Excel - Macro.vi
+Node 'Read from Text File' = primResID 8070 <- <labview>\examples\Data Communication\Protocols\FTP\FTP Put and Get Files.vi
+Node 'Array To Spreadsheet String' = primResID 1540 <- <labview>\examples\Arrays\Array to Spreadsheet String.vi
+Node 'Concatenate Strings' <- template tnode/Concatenate_Strings/439a1a7d91 (<labview>\examples\Mathematics\Fitting\Predicting Cost.vi)
+Node 'Write to Text File' = primResID 8080 <- <labview>\examples\File IO\Spreadsheet\Tab-Delimited Data\Buffered Stream to Tab-Delimited Text File.vi
+wires routed: 17, left generic: 1
+wrote C:\lvmcp-hw\args-dump-run.vi (6713 bytes)
+exit 0

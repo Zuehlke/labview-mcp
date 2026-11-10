@@ -1,0 +1,18 @@
+listening 127.0.0.1:65228, rendezvous C:\lvmcp-s12\port.txt
+skeleton connected from 127.0.0.1:65235 after 3.8 s
+PROBE code=0;state=1;x=<LvVariant>
+<Name>Get Control Value Variant</Name>
+<DBL>
+<Name>x</Name>
+<Val>0.00000000000000</Val>
+</DBL>
+</LvVariant>
+;y=<LvVariant>
+<Name>Get Control Value Variant</Name>
+<DBL>
+<Name>y</Name>
+<Val>42.50000000000000</Val>
+</DBL>
+</LvVariant>
+
+RESULT requested=100 echoes=100 failures=0 connect_s=3.8 total_ms=17 per_echo_ms min=0.1 median=0.1 p95=0.3 max=0.4
