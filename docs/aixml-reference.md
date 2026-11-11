@@ -2976,6 +2976,59 @@ happens before any question of compilation. Deleting the call and substituting c
 its wired outputs does avoid the error — but see the silent-degradation row in §11 before
 concluding that the result is what you wanted.
 
+### Match Regular Expression, Lossy Enqueue Element, reentrancy (measured 2026-11-11)
+
+Three gaps reported from the field in one message - "it refused Match Regular Expression, so the
+text helper uses Match Pattern", "it has no Lossy Enqueue part", "the reentrancy setting is out of
+its reach". Each measured on LabVIEW 2026, both backends:
+
+**`Match Regular Expression` is an XNode, not a primitive.** The String palette lists it as
+`Match Regular Expression.xnode` (`vi.lib\regexp`). `<Node _name="Match Regular Expression"/>` is
+`Error 53 "Manager call not supported"` from NI's converter - naming nothing - and "not a primitive"
+from the composer. What works on both backends is a `Call` of the VI that does its work:
+
+```xml
+<Call target="Match Regular Expression_Execute.vi"
+      inputs="input string:…,regular expression:…,offset (0):,ignore case? (F):,multiline? (F):,error in (no error):…"
+      outputs="whole match:…,matched substrings:…,before match:,after match:,whole match offset:,error out:…" …/>
+```
+
+`input string` and `regular expression` are required; `matched substrings` is the array of the
+capture groups (`Temp=([0-9.]+)C Hum=([0-9]+)` on `Temp=23.5C Hum=41%` answered `["23.5","41"]`,
+whole match `Temp=23.5C Hum=41`). It validated on grpc and composed and ran on pylabview.
+`lvai_check_aixml` refuses the Node form as `xnodeWrittenAsNode` and names this Call
+(`AixmlCheck.XNodeCallRoutes`, the composer's `XNODE_CALL_ROUTES` - keep them equal when adding
+the next XNode).
+
+**`Lossy Enqueue Element` composes.** It had a name (primResID 9130) and no harvested part; the
+part comes from NI's own conversion of a wired probe (`experiments\prim-harvest-2026-11-11\`). A
+size-1 queue fed A, then B: `overflow?` true, `overflow element` A, B remaining - the same on NI's
+VI and on the composed one, for string and int32 elements. Terminals: `queue`, `element`,
+`error in (no error)`; `queue out`, `overflow element`, `overflow?`, `error out`. (`Obtain Queue`'s
+`max queue size (-1, unlimited)` carries a comma: in `inputs` it is `max queue size (-1\2C unlimited)`.)
+
+**Execution settings - reentrancy - are written in a trailer AFTER `</VI>`, on pylabview only:**
+
+```xml
+</VI>
+<?lvmcp exec IsReentrant="1" PooledReentrancy="1"?>
+```
+
+| `IsReentrant` | `PooledReentrancy` | LabVIEW reads (COM `IsReentrant`, `ReentrancyType`) |
+|---|---|---|
+| 0 | 0 | not reentrant (the default) |
+| 1 | 0 | reentrant, **preallocated** clones (`ReentrancyType` 1) |
+| 1 | 1 | reentrant, **shared** clones (`ReentrancyType` 0 - what AF's `Actor Core.vi` reads) |
+
+LabVIEW kept both bits when it saved the composed VI. The other keys the composer writes are
+`IsSubroutine`, `Priority`, `PrefExecSyst`, `SaveParallel`, `InStBit4` - the reader emits all of
+them on every export, so a regenerated export keeps its VI's settings. Values are INTEGERS: the
+composer skips anything else without a word, so `lvai_check_aixml` refuses a non-integer value
+(`execTrailerValueNotNumeric`) and an unknown key (`execTrailerUnknownKey`). **NI's converter
+ignores everything after `</VI>`**: on grpc the VI comes out non-reentrant, and `lvai_generate_vi`
+says so (`execTrailerIgnored`). VI Server offers no way round that from a client: `Execution:Is
+Reentrant` and `Execution:Reentrancy Type` are read-only in LabVIEW's COM type library.
+
 ## 10. Workflow
 
 ```

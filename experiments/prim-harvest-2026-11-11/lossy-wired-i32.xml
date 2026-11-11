@@ -1,0 +1,16 @@
+<VI _name="Lossy Enqueue Probe I32.vi" description="Probe: a size-1 queue takes first, then second through Lossy Enqueue Element; the second overflows first out.">
+  <FreeLabel comment="Size-1 queue: the second element overflows" uid="4290" uid_parent="root"/>
+  <Control _name="first" conIdx="0" connection="required" outputs="value:4200.value" type="int32" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="second" conIdx="5" connection="recommended" outputs="value:4201.value" type="int32" uid="4201" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="required" outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="element data type" outputs="value:4203.value" type="int32" uid="4203" uid_parent="root" value="0"/>
+  <Constant _name="max queue size" outputs="value:4204.value" type="int32" uid="4204" uid_parent="root" value="1"/>
+  <Node _name="Obtain Queue" inputs="element data type:4203.value,max queue size (-1\2C unlimited):4204.value,error in (no error):4202.value" outputs="queue out:4210.queue out,error out:4210.error out,created new?:" uid="4210" uid_parent="root"/>
+  <Node _name="Lossy Enqueue Element" inputs="queue:4210.queue out,element:4200.value,error in (no error):4210.error out" outputs="queue out:4211.queue out,overflow element:,overflow?:,error out:4211.error out" uid="4211" uid_parent="root"/>
+  <Node _name="Lossy Enqueue Element" inputs="queue:4211.queue out,element:4201.value,error in (no error):4211.error out" outputs="queue out:4212.queue out,overflow element:4212.overflow element,overflow?:4212.overflow?,error out:4212.error out" uid="4212" uid_parent="root"/>
+  <Node _name="Release Queue" inputs="queue:4212.queue out,error in (no error):4212.error out" outputs="remaining elements:4213.remaining elements,error out:4213.error out" uid="4213" uid_parent="root"/>
+  <Indicator _name="overflow element" conIdx="4" connection="recommended" inputs="value:4212.overflow element" type="int32" uid="4220" uid_parent="root" value="0"/>
+  <Indicator _name="overflow?" conIdx="6" connection="recommended" inputs="value:4212.overflow?" type="bool" uid="4221" uid_parent="root" value="false"/>
+  <Indicator _name="remaining elements" conIdx="8" connection="recommended" inputs="value:4213.remaining elements" type="array{int32.element}" uid="4222" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4213.error out" type="cluster{bool.status,int32.code,string.source}" uid="4223" uid_parent="root" value="[false,0,]"/>
+</VI>

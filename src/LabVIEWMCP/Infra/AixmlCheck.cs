@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -144,6 +145,8 @@ internal static class AixmlCheck
         CheckCommentLength(root, findings);
         CheckControlReadBeforeWait(root, findings);
         CheckWebBrowserReference(root, findings);
+        CheckXNodeWrittenAsNode(root, findings);
+        CheckExecTrailer(xml, findings);
         CheckReservedRange(elements, findings);
         CheckMalleableName(root, findings);
         CheckViServerNames(root, findings);
@@ -964,6 +967,91 @@ internal static class AixmlCheck
                 + "holds the real control (lvai_graft_diagram allowNewControls), then turn the "
                 + "stand-in into a bound reference with lvai_bind_control_references.",
                 (string?)node.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// Palette functions that LOOK like primitives and are XNodes, each with the plain subVI that
+    /// does its work. Measured 2026-11-11 on LabVIEW 2026: <c>&lt;Node _name="Match Regular
+    /// Expression"/&gt;</c> is Error 53 "Manager call not supported" from NI's ConvertAIXMLToVI
+    /// (naming nothing) and "not a primitive this prototype knows" from the pylabview composer -
+    /// the palette lists it as <c>Match Regular Expression.xnode</c> (vi.lib\regexp). A
+    /// <c>Call</c> of its Execute VI validates on grpc, composes on pylabview and RUNS: capture
+    /// groups come back in <c>matched substrings</c>. Reported from the field as "it refused
+    /// Match Regular Expression, so the text helper uses Match Pattern".
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, (string Target, string Terminals)> XNodeCallRoutes =
+        new Dictionary<string, (string, string)>(StringComparer.Ordinal)
+        {
+            ["Match Regular Expression"] = ("Match Regular Expression_Execute.vi",
+                "inputs `input string` and `regular expression` (both required), `offset (0)`, "
+                + "`ignore case? (F)`, `multiline? (F)`, `error in (no error)`; outputs `whole match`, "
+                + "`matched substrings` (array of the capture groups), `before match`, `after match`, "
+                + "`whole match offset`, `error out`"),
+        };
+
+    /// <summary>
+    /// A <c>Node</c> naming a palette function that is an XNode (<see cref="XNodeCallRoutes"/>).
+    /// An ERROR: neither backend converts it, and NI's refusal does not name the node.
+    /// </summary>
+    private static void CheckXNodeWrittenAsNode(XElement root, List<Finding> findings)
+    {
+        foreach (var node in root.Descendants("Node"))
+        {
+            var name = (string?)node.Attribute("_name");
+            if (name is null || !XNodeCallRoutes.TryGetValue(name, out var route)) continue;
+            findings.Add(new Finding(Severity.Error, "xnodeWrittenAsNode",
+                $"`{name}` is an XNode, not a primitive, so no AIXML `Node` can be named after it: "
+                + "NI's converter answers Error 53 \"Manager call not supported\" without naming it, "
+                + "and the pylabview composer refuses it. Call the VI that does its work instead, "
+                + $"`<Call target=\"{route.Target}\" .../>` - {route.Terminals}. Measured on both "
+                + "backends; lvai_vi_terminals gives the ready-to-paste Call.",
+                (string?)node.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// The keys of the execution-settings trailer, <c>&lt;?lvmcp exec ...?&gt;</c> after
+    /// <c>&lt;/VI&gt;</c>, that the pylabview composer writes back (aixml2vi.py; the reader's
+    /// EXEC_KEPT plus the Instrument bit). The composer silently SKIPS any other key and any value
+    /// that is not an integer - <c>IsReentrant="true"</c> would compose a non-reentrant VI with no
+    /// word - so the check refuses both.
+    /// </summary>
+    internal static readonly IReadOnlySet<string> ExecTrailerKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "IsReentrant", "PooledReentrancy", "IsSubroutine", "Priority", "PrefExecSyst", "SaveParallel", "InStBit4",
+    };
+
+    private static readonly Regex ExecTrailer = new(@"<\?lvmcp\s+exec\s+([^?]*)\?>", RegexOptions.Compiled);
+    private static readonly Regex ExecPair = new(@"(\w+)=""([^""]*)""", RegexOptions.Compiled);
+
+    /// <summary>
+    /// The execution-settings trailer is the AUTHORED way to make a VI reentrant on the pylabview
+    /// backend (docs/aixml-reference.md, "Execution settings"). Measured 2026-11-11 over COM
+    /// (<c>IsReentrant</c>, <c>ReentrancyType</c>), and kept by LabVIEW's own save: IsReentrant 0 /
+    /// PooledReentrancy 0 is not reentrant, 1/0 preallocated clones, 1/1 shared clones.
+    /// </summary>
+    private static void CheckExecTrailer(string xml, List<Finding> findings)
+    {
+        var end = xml.LastIndexOf("</VI>", StringComparison.Ordinal);
+        if (end < 0) return;
+        foreach (Match trailer in ExecTrailer.Matches(xml, end))
+        {
+            foreach (Match pair in ExecPair.Matches(trailer.Groups[1].Value))
+            {
+                var (key, value) = (pair.Groups[1].Value, pair.Groups[2].Value);
+                if (!ExecTrailerKeys.Contains(key))
+                    findings.Add(new Finding(Severity.Error, "execTrailerUnknownKey",
+                        $"`{key}` in <?lvmcp exec?> is not an execution setting the composer writes - it is "
+                        + "dropped without a word. Known: " + string.Join(", ", ExecTrailerKeys)
+                        + ". Reentrancy is IsReentrant=\"1\" with PooledReentrancy=\"1\" (shared clones) "
+                        + "or \"0\" (preallocated clones)."));
+                else if (!Regex.IsMatch(value, @"^-?\d+$"))
+                    findings.Add(new Finding(Severity.Error, "execTrailerValueNotNumeric",
+                        $"{key}=\"{value}\" in <?lvmcp exec?> is not an integer, and the composer drops a "
+                        + $"value it cannot read without a word - the VI would keep the default. Write "
+                        + $"{key}=\"1\" or \"0\"."));
+            }
         }
     }
 

@@ -137,7 +137,8 @@ internal sealed class BulkTools(LvaiConnection connection)
         var answer = AixmlTools.WithBackend(await GenerateViCoreAsync(
             aiXmlFilePath, viPath, openVI, measurePane, panePattern, timeoutSeconds, measureDiagram,
             choice, cleanDiagram, cleanUpPanel ?? cleanDiagram, ct), choice);
-        answer = choice.Name == AixmlBackend.PyLabview ? WithUnmeasuredExecutability(answer) : answer;
+        answer = choice.Name == AixmlBackend.PyLabview ? WithUnmeasuredExecutability(answer)
+                                                       : WithExecTrailerIgnored(answer, aiXmlFilePath);
         return await WithIconAsync(answer, viPath, icon, measureDiagram && !openVI, choice.Name,
                                    timeoutSeconds, ct);
     }
@@ -211,6 +212,32 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "the pylabview backend skips NI's validation, and executability was not read - " +
                     unmeasured;
         return o.ToJsonString(Indented);
+    }
+
+    /// <summary>
+    /// NI's converter ignores everything after <c>&lt;/VI&gt;</c>, so on grpc a reentrancy asked for
+    /// in the <c>&lt;?lvmcp exec?&gt;</c> trailer is lost without a word. Said in the note, as
+    /// <c>execTrailerIgnored</c>, where the trailer asks for a reentrant VI.
+    /// </summary>
+    internal static string WithExecTrailerIgnored(string answer, string aiXmlFilePath)
+    {
+        string text;
+        try { text = File.ReadAllText(aiXmlFilePath); }
+        catch (IOException) { return answer; }
+        catch (UnauthorizedAccessException) { return answer; }
+        if (!AsksForReentrancy(text) || Parsed(answer) is not JsonObject o) return answer;
+        o["execTrailerIgnored"] = true;
+        o["note"] = (o["note"]?.GetValue<string>() ?? "") + " The <?lvmcp exec?> trailer asks for a " +
+                    "REENTRANT VI, and NI's converter ignores everything after </VI>: this VI is NOT " +
+                    "reentrant. Generate it on the pylabview backend, which writes the trailer.";
+        return o.ToJsonString(Indented);
+    }
+
+    internal static bool AsksForReentrancy(string aixml)
+    {
+        var end = aixml.LastIndexOf("</VI>", StringComparison.Ordinal);
+        return end >= 0 && System.Text.RegularExpressions.Regex.IsMatch(aixml[end..],
+            @"<\?lvmcp\s+exec\s[^?]*\b(IsReentrant|PooledReentrancy)=""1""");
     }
 
     private async Task<string> GenerateViCoreAsync(

@@ -3144,6 +3144,9 @@ class Composer:
     # computes, and ignoring it composed a VI that loads and computes something else - measured
     # on NI's In Range and Coerce.vi (aggregate=true)
     NODE_ATTRS = {"_name", "inputs", "outputs", "uid", "uid_parent", "_id"}
+    # palette functions that are XNODES, with the subVI that does their work - kept equal to
+    # AixmlCheck.XNodeCallRoutes (Match Regular Expression: measured 2026-11-11, the Call runs)
+    XNODE_CALL_ROUTES = {"Match Regular Expression": "Match Regular Expression_Execute.vi"}
     PRIM_MODES = {"In Range and Coerce": ("includeHigh", "includeLow", "aggregate"),   # name -> mode attributes add_node writes
                   "Read from Text File": ("readLines", "convertEol"),
                   "Array To Cluster": ("elements",)}
@@ -3218,6 +3221,9 @@ class Composer:
         name = unescape(el.get("_name"))
         rid = self.prim_by_name.get(name)
         if rid is None:
+            if name in self.XNODE_CALL_ROUTES:
+                raise Unsupported("Node %r is an XNode, not a primitive - Call %r instead (the VI that "
+                                  "does its work; AixmlCheck.XNodeCallRoutes)" % (name, self.XNODE_CALL_ROUTES[name]))
             raise Unsupported("Node %r is not a primitive this prototype knows" % name)
         self.check_attrs(el, self.PRIM_MODES.get(name, ()))
         diag = self.diag_of(el)
