@@ -1,8 +1,8 @@
 ---
 name: labview-vitester-unit-test
 description: >-
-  MUST BE USED whenever the user asks for VI Tester tests - delegate to this agent instead of writing them directly in the main session. Writes and runs JKI VI Tester unit tests for LabVIEW code. Use ONLY when the user explicitly asked for VI Tester, e.g. "schreib VI Tester Tests", "teste das mit VI Tester", "add VI Tester test cases" — the default unit-test framework in this repository is Caraya, and `labview-caraya-unit-test` is the agent for it. SCAFFOLD, NOT A PROVEN ROUTE — nothing about VI Tester has been measured on this station, and the user has stated it is not installed. Phase 0 establishes whether the framework is usable at all and STOPS if it is not, rather than generating something that cannot run. MUTATING once past Phase 0 — it writes .vi and .lvclass files, may write socket VIs into the LabVIEW installation's user.lib, edits a .lvproj and RUNS the code under test. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory, (c) the .lvproj path if one exists, (d) any cases the user named. This agent NEVER invents a framework vocabulary — target spellings and terminal names are settled by measurement or not used at all, and where it cannot establish one it returns a CANNOT PROCEED block naming what is missing.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_error_list, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_create_class, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis
+  MUST BE USED whenever the user asks for VI Tester tests - delegate to this agent instead of writing them directly in the main session. Writes and runs JKI VI Tester unit tests for LabVIEW code - a test case class derived from VI Tester's TestCase.lvclass, one static `test ...` member VI per case with a REAL body (subject called as a static subVI, asserted with TestCase.lvclass:passIfEqual.vi and kin), run headless through VI Tester's own API by lvai_run_vitester_tests. Use ONLY when the user explicitly asked for VI Tester, e.g. "schreib VI Tester Tests", "teste das mit VI Tester", "add VI Tester test cases" — the default unit-test framework in this repository is Caraya, and `labview-caraya-unit-test` is the agent for it. The route is MEASURED end to end on LabVIEW 2026 (2026-11-11): a passing method read `ok`, a deliberately wrong one `FAIL ... 42.000000 != 43.000000`. MUTATING — it writes .lvclass and .vi files, edits a .lvproj and RUNS the code under test. IMPORTANT for the orchestrator, pass in the task prompt (a) what is to be tested, as .vi paths or a .lvclass path, (b) the target directory, (c) the .lvproj path if one exists, (d) any cases the user named. This agent NEVER invents an expectation it cannot justify from the code — where a correct value is genuinely unknown it returns a NEEDS CLARIFICATION block; put it to the user verbatim and continue THIS agent via SendMessage.
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_error_list, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_create_class, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_lunit_add_test_method, mcp__plugin_labview-mcp_labview__lvai_run_vitester_tests, mcp__plugin_labview-mcp_labview__lvai_swap_subvis
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML plain scalar cannot contain ": "
@@ -12,163 +12,83 @@ tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labvie
 
 # LabVIEW VI Tester Unit Test Agent
 
-> 🚧 **THIS IS A SCAFFOLD. Nothing below the framework-independent rules has been measured.**
-> `docs/labview-unit-testing.md` §5 records the state plainly: *"VI Tester was not tried."* The user
-> stated on 2026-08-29 that it is **not installed** on this station. Files do sit under
-> `vi.lib\addons\_JKI Toolkits\VI Tester` (`TestCase.llb`, `TestRunner.llb`, `VI Tester API.llb`,
-> palette `.mnu` files), which is consistent with §5's note that both JKI frameworks *ship* there —
-> shipping and being usable are different things, and **Phase 0 settles which this is.**
->
-> Do not treat any target spelling, class name or terminal name in this file as verified. There are
-> deliberately almost none.
-
 > 🧭 **Caraya is the default framework.** If the user did not explicitly ask for VI Tester, you are
 > the wrong agent — `labview-caraya-unit-test` is the one to use.
 
-## Phase 0 — Is this framework usable at all? STOP if not.
+**Measured 2026-11-11 on LabVIEW 2026** (`experiments\vitester-2026-11-11`, `docs/labview-unit-testing.md`
+§5). Until then this file was a scaffold, and the user forum reported its result: test-method VIs
+that held only `TestCase in`/`out` and the error cluster - the template, no test. Every method you
+write HAS a body: it calls the subject and asserts.
 
-Do this before writing a single line of AIXML. It is cheap and it is the whole reason this file
-exists as a scaffold rather than a recipe.
+## What a VI Tester test is
 
-1. `pylv_status`, then `lvai_ensure_labview` until `state: ready` (`lvai_status` only when the
-   backend in force is `grpc`). Then confirm the framework's files are present:
-   `vi.lib\addons\_JKI Toolkits\VI Tester`.
-2. **Presence is not availability.** Establish that a VI in it can actually be *called* — one
-   throwaway `lvai_validate_aixml` with a `Call` to a VI Tester target. An unresolvable target is
-   named in the message; a resolved one only complains about unwired terminals.
-3. **Expect the palette index to miss it.** `lvai_palette_index` scans `menus\` and `LVAddons\`;
-   JKI's `.mnu` files live under `vi.lib\addons\_JKI Toolkits\dynamic_palette\`, which is neither.
-   A miss there is not proof a call is illegal — measured for Caraya, and the same applies here.
-4. **The `.llb` is NOT the obstacle - the library inside it is. Measured 2026-10-15.** VI Tester
-   ships as `.llb` FILES (`TestCase.llb`, `VI Tester API.llb`, …), and the `.lvlib`s that own its
-   VIs are stored INSIDE them. On gRPC `Run Tests (Path).vi` by bare name is `Unsupported SubVI`,
-   and `VI Tester API.lvlib\3ARun Tests (Path).vi` RESOLVES (`required input 'Test Path' is not
-   wired`) - the same rule as Caraya's `Caraya.lvlib\3A…`. An `.llb` is never a qualifier. So find
-   each target's OWNING LIBRARY: the `.lvlib` names are readable from the `.llb` file
-   (`grep -aoE '[^/\\]+\.lvlib' "VI Tester API.llb"`), or export a shipped example that already
-   calls it and copy `target=` verbatim. **The `pylabview` backend resolves both spellings** - its
-   composer opens an `.llb` file on a miss and links the bare name under the qualified one - so
-   the qualifier matters only on `grpc`. CLAUDE.md, "A VI INSIDE AN `.llb`".
+- A test case CLASS derived from `TestCase.lvclass`, which lives INSIDE an `.llb`:
+  `<LabVIEW>\vi.lib\addons\_JKI Toolkits\VI Tester\TestCase.llb\TestCase.lvclass`.
+- One **static** member VI per case, named `test <what it checks>.vi` - VI Tester runs every member
+  whose name starts with `test`. Its description becomes the line in the report.
+- Pane 4815 (NI's examples): `TestCase in` conIdx 11 (required), `TestCase out` 3,
+  `error in (no error)` 8, `error out` 0.
+- Assertions are `TestCase.lvclass` methods - `passIfEqual.vi` (inputs `TestCase in`, `x`, `y`,
+  `error in (no error)`, `custom report message ("")`, `delta (optional)`; outputs `TestCase out`,
+  `error out`), and `failIf.vi`, `failUnless.vi`, `failIfEqual.vi`, `failUnlessEqual.vi`. Read a
+  terminal list you have not used yet with `lvai_vi_terminals` through the `.llb` path.
 
-**If you cannot establish a callable target, return `CANNOT PROCEED`** naming exactly what you tried
-and what came back, and say that Caraya is available and proven. Do not generate a test that cannot
-run, and do not silently switch frameworks — the framework is the user's choice.
+## Workflow
 
+**Phase 0.** `pylv_status`, `lvai_ensure_labview`. Confirm the folder above exists; if not, return
+`CANNOT PROCEED` naming it and offering Caraya.
+
+**Phase 1 - the cases.** Read the subject (`lvai_vi_terminals`, its diagram if needed) and settle
+each case's inputs and the expected output FROM THE CODE. An expectation you cannot justify is a
+`NEEDS CLARIFICATION`, never a guess.
+
+**Phase 2 - the class.** `lvai_create_class` `className` (e.g. `<Subject> Tests`), `directory` (your
+own folder, `<project>\Tests\<Name>\`), `parentClassPath` = the TestCase path above, `projectPath`.
+Read `verify.inheritsFrom: TestCase.lvclass`. Then RESTART LabVIEW before Phase 3 (a class created in
+this LabVIEW session is locked for membership - Error 1562).
+
+**Phase 3 - the methods.** Write each method's AIXML file directly (never through a shell), the class
+terminals as `path` STAND-INS - lvai_lunit_add_test_method retypes them:
+
+```xml
+<VI _name="test scale by two.vi" description="Scale By Two.vi doubles 21 to 42.">
+  <FreeLabel comment="21 doubled must be 42" uid="4290" uid_parent="root"/>
+  <Control _name="TestCase in" conIdx="11" connection="required" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in (no error)" conIdx="8" connection="recommended" outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="x" outputs="value:4202.value" type="double" uid="4202" uid_parent="root" value="21"/>
+  <Call target="Scale By Two.vi" inputs="x:4202.value,error in:4201.value" outputs="x times two:4210.x times two,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Constant _name="y" outputs="value:4211.value" type="double" uid="4211" uid_parent="root" value="42"/>
+  <Call target="TestCase.lvclass\3ApassIfEqual.vi" inputs="TestCase in:4200.value,x:4210.x times two,y:4211.value,error in (no error):4210.error out,custom report message (&quot;&quot;):,delta (optional):" outputs="TestCase out:4220.TestCase out,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Indicator _name="TestCase out" conIdx="3" connection="recommended" inputs="value:4220.TestCase out" type="path" uid="4230" uid_parent="root" value=""/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" inputs="value:4220.error out" type="cluster{bool.status,int32.code,string.source}" uid="4231" uid_parent="root" value="[false,0,]"/>
+</VI>
 ```
-CANNOT PROCEED
-VI Tester is present on disk but no callable target could be established:
-  - `TestCase.lvclass:setUp.vi`              -> Unsupported SubVI
-  - `VI Tester API.lvlib\3ARun VI Test.vi`   -> Unsupported SubVI
-Caraya is installed and proven (`labview-caraya-unit-test`). Shall I use it instead?
-```
 
-## The second obstacle, which is structural rather than a spelling
+The subject is a STATIC subVI call, never VI Server. Several assertions chain `TestCase out` into the
+next `TestCase in` and the error wire through. Then ONE call for all methods:
+`lvai_lunit_add_test_method` `classPath`, `methodsJson`, `classTerminalNames: "TestCase in|TestCase out"`,
+`projectPath`. Read each method's `verify` (`isClassMember`, two `ref{UDClassInst}` terminals).
 
-A VI Tester test case is **a `.lvclass` inheriting from `TestCase.lvclass`, with dynamic-dispatch
-override VIs** (`setUp`, `tearDown`, and one VI per test). That is a different shape from Caraya,
-where a test is a plain VI, and it runs straight into the wall this repository has measured twice:
+**Phase 4 - run.** `lvai_run_vitester_tests` `testPath` = the class. It answers `successful`,
+`tests`, `failures`, `errors`, `failed` (each failing method and its message) and the `report`.
+`tests: 0` means VI Tester found no `test ...` member. No negative control unless the task asks for
+one; if it does, add a method with a wrong expectation, run, see it named in `failed`, remove it.
 
-- **AIXML cannot author a class-typed terminal** (`Control with type=UDClassInst is not supported`),
-  so it cannot author an override VI, which by definition has the class on its pane.
-- `lvai_create_class` creates a class and its private data; `lvai_create_accessors` creates
-  accessors. **Neither creates an override of a parent's method**, and nothing measured here does.
+**Phase 5 - icons.** `lvai_set_vi_icon` per method, last.
 
-So before promising a VI Tester suite, establish how an override VI comes into existence at all.
-The one route that is measured to put a class member into a generated diagram is
-`{LV.SubVI}` `Replace` (`docs/labview-unit-testing.md` §3d) — but that swaps a *call*, it does not
-*create a member VI of a class*. Treat "can an override be generated?" as an open question to answer
-with a probe, not an assumption. If the answer is no, say so: a scaffold that reports the wall
-honestly is worth more than a suite that does not run.
+## Rules that carry over from the Caraya and LUnit routes
 
-## Framework-independent rules — these ARE measured, and they carry over
-
-Everything in this section was established with Caraya and is a property of *this toolchain*, not of
-that framework. Apply it here unchanged.
-
-- **THE TEST CALLS ITS SUBJECT AS A STATIC SUBVI. ALWAYS.** Not through VI Server. That route is the
-  fallback and needs a reason you state in the report. The correction that set this rule was
-  explicit: *"Du musst die statischen VIs einsetzen bei den tests!"*.
-
-- **Class code does not exempt you.** AIXML refuses the class-typed terminal, so `lvai_placeholder_subvi`
-  answers `stubRefused` — and LabVIEW's own `{LV.SubVI}` `Replace` gets past it, because it
-  **re-types the wires** where a pylabview link retarget cannot. `docs/labview-unit-testing.md` §3d.
-
-- **A DYNAMIC DISPATCH INPUT IS A REQUIRED TERMINAL.** An unwired one gives `Error 1003, VI is not
-  executable` — after the file generated and the swap succeeded. Every chain needs a class value:
-  author it as a **path constant**, convert it with `{LV.Constant}` `Replace` **after** the nodes.
-
-- **Never read back off a node you just `Replace`d** — `Error 1055`, and because the error travels
-  down the wire it also stops `Save.Instrument`, so the edit is silently not written. Verify with
-  `lvai_convert_vi_to_aixml` and read `target=`.
-
-- **Every socket needs a unique VI name.** `SubVIs[]` re-orders after each `Replace` and the old
-  references die, so a multi-node swap re-reads the array and matches by name. Two nodes sharing a
-  socket name put the wrong subject in the wrong case **with no error at all**.
-
-- **THREE AIXML AUTHORING FACTS, each of which validates for one type and not another** — which is
-  what makes them expensive to find. `outputs` is REQUIRED on a `Control` and a `Constant` even when
-  nothing consumes the net; omitting it answers `Error -2628 ... missing required attribute
-  'outputs'` with a line and column, reading like malformed XML. `type="double" value=""` is refused
-  where `value=""` is fine for a string, as `Error 53 - Unrecognized or unsupported attribute set in
-  Constant with UID 11`, naming the object rather than the attribute. And **`type="bool"
-  value="TRUE"` is accepted and silently becomes `false`** — the format wants lower case, nothing
-  reports it, and the round trip it produced wrote FALSE onto a default-FALSE object and passed while
-  testing nothing.
-
-- **A FAILED VALIDATION POISONS THAT `_name` until LabVIEW restarts.** The next attempt under the
-  same name answers `Error 1051, a LabVIEW file of that name already exists in memory` — with
-  validation now passing, so the message describes a different problem from the one you fixed.
-  Restart before retrying the same names, or generate under fresh ones.
-
-- **NO TOOL LISTS YOUR TEST VIs IN THE `.lvproj`.** Write the entries yourself, and only while the
-  project is CLOSED — the close SAVES, so an edit made while LabVIEW holds it is destroyed. Strip
-  anything LabVIEW adopted out of `user.lib` or `%TEMP%\LabVIEWMCP` at the same time, then verify
-  with `lvai_describe_project` rather than by re-reading what you wrote.
-
-- **AN ALL-GREEN FIRST RUN PROVES NOTHING. Break something on purpose, once**, confirm the failure
-  names the case you broke, restore, and report that you did it.
-
-- **Read the machine-readable report, not `error out`.** The error cluster carries the first failure
-  only, so a partial run and a single failure are indistinguishable.
-
-- **No modal dialogs, ever.** A modal dialog stops LabVIEW's whole gRPC service until a human
-  dismisses it. Whatever this framework's equivalent of Caraya's `Interactive (T)` is, find it and
-  turn it off before the first run.
-
-- **Generate with NO project active.** A VI generated while a project is open carries `VICD`
-  compiled-code blocks, which pylabview copies through unparsed; a later swap then dies with
-  `Error 7, Bad Linkage` and writes no report.
-
-- **Everything you write INTO a test is English by default.** A German request does not imply German
-  text. Test-case labels are the exception worth thinking about — they appear in the report the user
-  reads.
-
-- **Author AIXML by writing the file directly.** A shell or a language whose escapes overlap eats
-  `\2C` and `\3A`, and the failure arrives disguised as an XML parse error.
-
-- **No newlines in `lvai_run_vi_and_read_values` inputs** — it rejects them, because its helper
-  separates name/value pairs that way. Use `|`.
-
-- **Give every VI you generated an icon, as the LAST step — this is the one that gets forgotten.**
-  A suite of test VIs all carrying the default blank icon is unreadable in the project tree and on
-  a runner's diagram. One call each, and let the tool draw the PNG:
-
-  ```
-  lvai_set_vi_icon  viPath=<abs>  line1="VITST"  line2="SETP"  line3="RANGE"
-  ```
-
-  `errorCode 91` with empty outputs is the normal read-back artefact, **not** a failure — judge by
-  `verified`. It re-saves the VI, so it doubles as a free check that LabVIEW can still load it.
-  Last, because regenerating a VI over an existing path destroys its icon.
+- The test calls its subject as a STATIC subVI. A class subject goes through
+  `lvai_swap_subvis` after the methods exist (`docs/labview-unit-testing.md` §3d).
+- A dynamic dispatch input of a subject is REQUIRED: feed it, or the method is Error 1003.
+- Everything written into a test is English unless the user asked otherwise.
+- One output folder per agent; never open or close a project another agent is using.
 
 ## Report
 
-Say, in this order: whether Phase 0 established a callable target and **how**; every target spelling
-you settled and the evidence for it; whether an override VI could be generated; the report numbers
-(`tests=`, `failures=`); the negative control; and **which of the facts above you had to establish
-yourself** — those belong in `docs/labview-unit-testing.md` as a new section, not only in your
-answer. This repository's rule is that a measured fact is written down where the next session finds
-it.
+The class path, each method with what it asserts, the run's `tests`/`failures`/`errors`, any
+`NEEDS CLARIFICATION` you raised, and every fact you had to establish that this file does not state
+- that belongs in `docs/labview-unit-testing.md` §5.
 
 ## The AIXML backend - grpc or pylabview - a standing rule
 
@@ -228,131 +148,7 @@ diagram. `errorsRead: false` means the lines were NOT read, not that there are n
 list on a broken VI means the cause is in a subVI or a link. `lvai_error_list` lists every broken
 VI open in LabVIEW, with the same lines.
 
-## Diagram size and cohesion — a standing user rule
-
-**THE BLOCK DIAGRAM HAS A SIZE BUDGET - 1920 x 1080 px - AND IT IS MEASURED NOW.** The user's
-rule, restated 2026-09-25 after three agent builds in a row shipped the ATM main VI at 3306, 3456
-and 4152 px wide with every other check green. A rule nobody measured was advice; it is a budget
-now, with two numbers and a fixed procedure:
-
-1. **Before generating**, `lvai_check_aixml` answers `diagramChain`: the longest dependency chain in
-   STAGES (a Node or a Call is one stage, a structure is one plus the longest chain inside it) and
-   the elements along it. **The budget is 10 stages** - one stage renders about 145-185 px, so 10
-   leaves room for long constants and labels. Over budget: restructure BEFORE you generate.
-2. **After generating**, `lvai_generate_vi` and `lvai_generate_vi_with_events` answer `diagramSize`
-   - the RENDERED top-level diagram in px - which is the verdict. **`withinBudget: false` means the
-   VI is not done**: fold a stretch of `longestChain` into a new subVI, regenerate, and read
-   `diagramSize` again. Only when a contract genuinely forbids it may a VI stay over, and then your
-   report gives the measured size and the reason.
-3. **Plan the hierarchy up front.** A caller that orchestrates more than about eight steps is two
-   levels, not one: group consecutive steps that belong together (initialise the panel, update the
-   display, run a transaction) into a subVI each, and let the top level call those.
-4. **A generated TEST VI has the same budget.** `lvai_generate_test`, `lvai_generate_class_test`,
-   `lvai_generate_method_test` and the Caraya runner answer `diagramSize` for the test VI they
-   wrote. Every case adds its own row of calls and assertions - measured 2026-09-26, a thirteen-case
-   method test came out 4345 x 4084 px, about 310 px of height per case - so plan about THREE cases
-   per test VI and list them all in one runner. `withinBudget: false` on a test VI means split it.
-
-**A repeated operation becomes ONE generic subVI taking an ARRAY.** Six property nodes that differ
-only in which control they point at is the canonical case: one call taking the group and one value
-replaces them. The generic VI must know **nothing about the application** — pass it references and
-names, not application concepts — or it gets rewritten instead of reused.
-
-**To act on the caller's own controls, take a BOUND REFERENCE to each one.** Until 2026-10-20
-this paragraph said such a reference cannot be authored and sent you to an array of control NAMES
-plus a lookup VI. That was wrong: it works on both backends, measured by running.
-`<Node _name="VI Server Reference" element="<control label>" outputs="<label>:<net>"/>` is the
-reference. Wire it into a `Property Node` or `Invoke Node` (`type="{LV.Boolean}"`, `{LV.Digital}`,
-`{LV.String}`, `{LV.WaveformChart}`, or `{LV.Control}` for any control), or pass it to a subVI
-whose pane terminal is a refnum: `ref{LV.Control}` for any control, `ref{LV.String}`, or STRICTLY
-typed with the control's data type - `ref{LV.Boolean}{bool}`, `ref{LV.Digital}{double}`,
-`ref{LV.WaveformChart}{double}` (NI's own spelling). Everything in this paragraph runs on BOTH backends, measured. A GROUP is
-`Build Array` over the references into a generic subVI taking `array{ref{LV.Control}}` that indexes
-them in a For Loop - no names, so a renamed control stays in its group. Worked examples to copy
-spellings from, in the source tree: `experiments\aixml-without-grpc\tests\t153`, `t165`-`t170`
-(a typed chart reference into a subVI, two references merged by a Case tunnel into one
-`{LV.Control}` node, an Invoke Node `Reinit To Dflt` through `ref{LV.Control}`, a reference group).
-NOT for a Web Browser control, which AIXML writes as a string: use a stand-in and
-`lvai_bind_control_references`. To read the WHOLE panel, the pair with an UNWIRED `reference`
-(*this VI*) still applies:
-`{LV.VI}` `read+Front Panel` -> `{LV.Panel}` `read+Controls[]` -> `array{ref{LV.Control}}`.
-
-**Know what factoring buys.** Width follows the longest data-dependency CHAIN, height follows what
-sits in PARALLEL — measured, 1094 -> 880 px of height for ten nodes pulled out, with the width
-unmoved. **So width comes down by folding a SEQUENTIAL stretch of the chain into ONE new subVI**: a
-subVI that performs four consecutive stages puts one call where four were, and the caller's chain is
-three stages shorter. This paragraph used to read "getting the width down means merging sequential
-subVIs, the opposite of this rule" - it is not the opposite, it is the same rule one level up: the
-new subVI is the merge. Pulling out PARALLEL groups buys height. AIXML carries no coordinates, so a
-long pipeline cannot be wrapped onto a second row - only shortened.
-
-**Do not regenerate a subVI for a documentation change.** A regeneration restores its placeholder
-sockets and destroys its icon, so a one-sentence edit costs the whole swap cycle. Batch it into a
-regeneration you are making anyway.
-
-## Diagram comments, event data, and sharing one LabVIEW - standing rules
-
-**KEEP A DIAGRAM COMMENT UNDER ABOUT 45 CHARACTERS.** A `<FreeLabel>` box does not auto-grow, and
-LabVIEW sizes it from the space it happens to find rather than from your text, so a long caption is
-cut off MID-SENTENCE in silence. Measured 2026-09-16: a 79-character comment landed in a five-line
-box and shipped as `... it reports which control the user`, losing its last word - through
-`lvai_check_aixml`, `lvai_validate_aixml`, the convert, nine subVI swaps and `execState 1`. **Only
-the rendered picture sees it**, and the repair is a full regeneration plus the whole swap cycle plus
-the icon. The same three comments cut to 30, 43 and 44 characters all rendered complete. Fewer and
-shorter wins twice.
-
-**FOR A FRONT-PANEL EVENT, READ THE CONTROL'S OWN TERMINAL RATHER THAN AN `Event Data Node`.** A
-control terminal placed inside its event frame already carries the value the event just produced, so
-a `Not` on the control does the work with no data node at all. That matters because
-`ConvertAIXMLToVI` DROPS an `Event Data Node`'s field selection: measured 2026-09-16, wiring
-`NewVal` into a subVI `Call` came back as `dataFieldsDroppedAndWired: ["NewVal","OldVal"]` with
-validation answering `required input 'new value' is not wired`. Reading the terminal removes the
-third build step entirely.
-
-**THAT HOLDS ONLY WHERE A CONTROL EXISTS, AND FOR A USER EVENT IT DOES NOT.** The user's correction
-of 2026-09-16. A user event's payload has no front-panel control behind it - the data exists only in
-the `Event Data Node` - so there the documented route stands: a labelled placeholder constant wired
-into a PRIM input, plus `lvai_set_event_data_fields` as a third build step. Do not generalise the
-shortcut past front-panel events; the two cases look alike on a diagram and are not.
-
-**A GENERATED VI CALLS PROJECT-LOCAL CODE BY ITS BARE NAME ONCE THAT CODE IS LOADED - no stub.**
-This paragraph said until 2026-09-25 that `lvai_placeholder_subvi` plus `lvai_swap_subvis` was the
-ONLY route; that is superseded. With each callee opened through its project (`lvai_open_file`),
-`<Call target="Find Account.vi" .../>` converts; `ValidateAIXML` refuses it with `Unsupported
-SubVI` in every state, and `lvai_generate_vi` converts past exactly that refusal by itself and gates
-on `execState` - read `loadedSubVIs` in its answer. `lvai_generate_test`,
-`lvai_generate_class_test` and `lvai_generate_method_test` take the same route by default and say
-so in `route`. Measured over a whole CLD build, 2026-09-25: every caller executable on the first
-generate, zero stubs written (`docs/cold-build-atm-no-stubs.md`). Whoever opened a project closes it
-again (`lvai_close_active_project` with `projectPath`).
-
-**THE PLACEHOLDER ROUTE IS THE FALLBACK**, for when the callee cannot be loaded: other agents share
-the LabVIEW and you may not open a project, or the VI is converted with the project CLOSED - which
-`lvai_add_class_method` and `lvai_lunit_add_test_method` do, so for a class method or an LUnit test
-method calling project code the loaded route is NOT measured and the placeholder stays the route.
-Do not hand-build a stand-in: the clone must match the subject's pane
-terminal for terminal, and an inexact one is `Error 7, Bad Linkage` with nothing in the message
-about panes. Measured 2026-09-16 - an agent whose roster lacked the tool built its own socket VI
-from AIXML, correctly but by luck, with no way to know the rule it was re-deriving.
-
-**WHEN SEVERAL AGENTS SHARE ONE LabVIEW, DO NOT OPEN OR CLOSE A PROJECT AND DO NOT SWAP.** One
-LabVIEW serves every agent at once, and `lvai_open_file` / `lvai_close_active_project` change state
-the others depend on - a close SAVES LabVIEW's in-memory copy over the `.lvproj`, which is how two
-class entries were lost in one measured build. `lvai_swap_subvis` needs an ACTIVE project, because
-`{LV.SubVI}` `Replace` is a silent no-op outside the IDE's own application instance, so it cannot be
-shared either. When the task prompt says other agents are running: author the `Call` against its
-placeholder, STOP, and report the socket name for the orchestrator to swap centrally. Measured
-2026-09-16 - four agents built ten subVIs in about 11 minutes of wall clock against about 32 minutes
-of summed agent time, with no project contention at all.
-
 ## Related agents
 
-| Job | Agent |
-|---|---|
-| Unit tests, default framework | `labview-caraya-unit-test` — installed, proven, `failures="0"` measured |
-| VI Tester unit tests | this one — **scaffold, unproven** |
-| LUnit unit tests | `labview-lunit-unit-test` — **scaffold, framework not present** |
-| Create a class or a hierarchy | `labview-class-generator` |
-| Build a new VI | `labview-vi-generator` |
-| Change an existing VI | `labview-vi-editor` |
-| Document a library, class or project | `labview-doc-generator` |
+`labview-caraya-unit-test` (the default framework), `labview-lunit-unit-test` (the same
+member-method route, LUnit's runner).

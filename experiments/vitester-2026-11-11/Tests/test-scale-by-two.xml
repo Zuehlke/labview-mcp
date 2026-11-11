@@ -1,0 +1,11 @@
+<VI _name="test scale by two.vi" description="Scale By Two.vi doubles 21 to 42.">
+  <FreeLabel comment="21 doubled must be 42" uid="4290" uid_parent="root"/>
+  <Control _name="TestCase in" conIdx="11" connection="required" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in (no error)" conIdx="8" connection="recommended" outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="x" outputs="value:4202.value" type="double" uid="4202" uid_parent="root" value="21"/>
+  <Call target="Scale By Two.vi" inputs="x:4202.value,error in:4201.value" outputs="x times two:4210.x times two,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Constant _name="y" outputs="value:4211.value" type="double" uid="4211" uid_parent="root" value="42"/>
+  <Call target="TestCase.lvclass\3ApassIfEqual.vi" inputs="TestCase in:4200.value,x:4210.x times two,y:4211.value,error in (no error):4210.error out,custom report message (&quot;&quot;):,delta (optional):" outputs="TestCase out:4220.TestCase out,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Indicator _name="TestCase out" conIdx="3" connection="recommended" inputs="value:4220.TestCase out" type="path" uid="4230" uid_parent="root" value=""/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" inputs="value:4220.error out" type="cluster{bool.status,int32.code,string.source}" uid="4231" uid_parent="root" value="[false,0,]"/>
+</VI>
