@@ -3076,6 +3076,9 @@ composer skips anything else without a word, so `lvai_check_aixml` refuses a non
 ignores everything after `</VI>`**: on grpc the VI comes out non-reentrant, and `lvai_generate_vi`
 says so (`execTrailerIgnored`). VI Server offers no way round that from a client: `Execution:Is
 Reentrant` and `Execution:Reentrancy Type` are read-only in LabVIEW's COM type library.
+**Check it with `lvai_exec_state`**: it answers `reentrant` and `reentrancyType` ("shared clones",
+"preallocated") as LabVIEW reads them. Two agents of the practice build (2026-11-11) could only read
+the trailer back from the file - their own PowerShell COM bound to nothing.
 
 ### What the user forum saw on generated diagrams, and what answers it (2026-11-11)
 

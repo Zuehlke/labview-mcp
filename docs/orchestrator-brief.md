@@ -87,6 +87,10 @@ LabVIEW's copy over the `.lvproj`. So agents GENERATE files; you alone:
 - swap subVIs (`lvai_swap_subvis`);
 - list VIs in a project (`lvai_add_vis_to_project`, never by editing the `.lvproj` by hand).
 
+The server enforces this. While tool calls overlap, or overlapped in the last 60 s, it refuses a
+project open or close with `projectChangeWhileParallel`. That applies to you too, so open a project
+once a wave has finished and the guard has lifted (the refusal says how many seconds are left).
+
 A test agent in a parallel build passes `leaveProjectOpen: true` to the test generators: they
 then close no project and list nothing, and report the test VIs for you to list.
 

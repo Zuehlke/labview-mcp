@@ -1,0 +1,31 @@
+<VI _name="Exec Write Probe.vi" description="Probe: which VI execution properties VI Server can WRITE. Each write is on its own error chain; the errors come back as an array in the order of the writes.">
+  <FreeLabel comment="Write each execution property" uid="4290" uid_parent="root"/>
+  <Control _name="vi path" type="path" uid="4200" uid_parent="root" value="" outputs="value:4200.value"/>
+  <Node _name="Open VI Reference" inputs="vi path:4200.value" outputs="vi reference:4201.vi,error out:4201.err" uid="4201" uid_parent="root"/>
+  <Constant _name="false" type="bool" uid="4202" uid_parent="root" value="false" outputs="value:4202.value"/>
+  <Constant _name="true" type="bool" uid="4203" uid_parent="root" value="true" outputs="value:4203.value"/>
+  <Constant _name="priority" type="uint16" uid="4204" uid_parent="root" value="3" outputs="value:4204.value"/>
+  <Constant _name="exec system" type="int32" uid="4205" uid_parent="root" value="2" outputs="value:4205.value"/>
+  <Constant _name="preallocated" type="uint32" uid="4206" uid_parent="root" value="1" outputs="value:4206.value"/>
+  <Node _name="Property Node" fields="write+Execution\3AAllow Debugging" type="{LV.VI}" inputs="reference:4201.vi,error in (no error):4201.err,Execution\3AAllow Debugging:4202.value" outputs="reference out:,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Automatic Error Handling" type="{LV.VI}" inputs="reference:4201.vi,error in (no error):4300.clean,Automatic Error Handling:4203.value" outputs="reference out:,error out:4211.err" uid="4211" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Execution\3ARun When Opened" type="{LV.VI}" inputs="reference:4201.vi,error in (no error):4301.clean,Execution\3ARun When Opened:4203.value" outputs="reference out:,error out:4212.err" uid="4212" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Execution\3ASuspend On Call" type="{LV.VI}" inputs="reference:4201.vi,error in (no error):4302.clean,Execution\3ASuspend On Call:4203.value" outputs="reference out:,error out:4213.err" uid="4213" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Execution\3APriority" type="{LV.VI}" inputs="reference:4201.vi,error in (no error):4303.clean,Execution\3APriority:4204.value" outputs="reference out:,error out:4214.err" uid="4214" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Execution\3APreferred Exec System" type="{LV.VI}" inputs="reference:4201.vi,error in (no error):4304.clean,Execution\3APreferred Exec System:4205.value" outputs="reference out:,error out:4215.err" uid="4215" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Execution\3AIs Reentrant" type="{LV.VI}" inputs="reference:4201.vi,error in (no error):4305.clean,Execution\3AIs Reentrant:4203.value" outputs="reference out:,error out:4216.err" uid="4216" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Execution\3AReentrancy Type" type="{LV.VI}" inputs="reference:4201.vi,error in (no error):4306.clean,Execution\3AReentrancy Type:4206.value" outputs="reference out:,error out:4217.err" uid="4217" uid_parent="root"/>
+  <Call target="Clear Errors.vi" inputs="error in (no error):4210.err" outputs="error out:4300.clean" uid="4300" uid_parent="root"/>
+  <Call target="Clear Errors.vi" inputs="error in (no error):4211.err" outputs="error out:4301.clean" uid="4301" uid_parent="root"/>
+  <Call target="Clear Errors.vi" inputs="error in (no error):4212.err" outputs="error out:4302.clean" uid="4302" uid_parent="root"/>
+  <Call target="Clear Errors.vi" inputs="error in (no error):4213.err" outputs="error out:4303.clean" uid="4303" uid_parent="root"/>
+  <Call target="Clear Errors.vi" inputs="error in (no error):4214.err" outputs="error out:4304.clean" uid="4304" uid_parent="root"/>
+  <Call target="Clear Errors.vi" inputs="error in (no error):4215.err" outputs="error out:4305.clean" uid="4305" uid_parent="root"/>
+  <Call target="Clear Errors.vi" inputs="error in (no error):4216.err" outputs="error out:4306.clean" uid="4306" uid_parent="root"/>
+  <Call target="Clear Errors.vi" inputs="error in (no error):4217.err" outputs="error out:4307.clean" uid="4307" uid_parent="root"/>
+  <Node _name="Build Array" inputs="element:4210.err,element:4211.err,element:4212.err,element:4213.err,element:4214.err,element:4215.err,element:4216.err,element:4217.err" outputs="appended array:4220.errs" uid="4220" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4201.vi,error in (no error):4307.clean,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4230.err" uid="4230" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4201.vi,error in (no error):4230.err" outputs="error out:4231.err" uid="4231" uid_parent="root"/>
+  <Indicator _name="write errors" type="array{cluster{bool.status,int32.code,string.source}}" uid="4240" uid_parent="root" value="[]" inputs="value:4220.errs"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="4241" uid_parent="root" value="[false,0,]" inputs="value:4231.err"/>
+</VI>

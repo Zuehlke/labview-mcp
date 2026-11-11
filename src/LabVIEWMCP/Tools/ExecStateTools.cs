@@ -78,6 +78,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         methods the class does not override - a missing override breaks EVERY member of the class.
         `dispatchUnknown` lists members it could not classify; null plus
         `missingInterfaceOverridesReason` when not applicable.
+        `reentrant` and `reentrancyType` ("shared clones", "preallocated", null) are LabVIEW's own
+        reading over ActiveX - the proof that a reentrancy setting reached the VI.
         SEVERAL VIs: viPaths, one per line - answers `brokenVis`, `executableVis`,
         `couldNotOpenVis`, `failed` and each VI's answer under `results` - an executable VI's reduced
         to its path and state, with the notes they share said once under `common`.
@@ -158,6 +160,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                 ["viPath"] = r["viPath"]?.DeepClone(),
                 ["execState"] = r["execState"]?.DeepClone(),
             };
+            foreach (var key in new[] { "reentrant", "reentrancyType" })
+                if (r.ContainsKey(key)) c[key] = r[key]?.DeepClone();
             if (r["linkerErrorsAvailable"] is JsonValue available
                 && available.TryGetValue<bool>(out var read) && !read)
             {
@@ -266,6 +270,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                 await AttachInterfaceOverridesAsync(comAnswer, full,
                     comAnswer["broken"]?.GetValue<bool>() == true,
                     comAnswer["couldNotOpen"]?.GetValue<bool>() == true, timeoutSeconds, ct);
+                await AttachReentrancyAsync(comAnswer, full, comAnswer["couldNotOpen"]?.GetValue<bool>() == true,
+                                            timeoutSeconds, ct);
                 com = Json.Document(comAnswer);
             }
             return AixmlTools.WithBackend(com, choice);
@@ -309,8 +315,35 @@ internal sealed class ExecStateTools(LvaiConnection connection)
 
         await AttachInterfaceOverridesAsync(answer, full, reading.Broken, reading.CouldNotOpen,
                                             timeoutSeconds, ct);
+        await AttachReentrancyAsync(answer, full, reading.CouldNotOpen, timeoutSeconds, ct);
         return Json.Document(answer);
     }
+
+    /// <summary>
+    /// `reentrant` and `reentrancyType` ("shared clones" / "preallocated" / null) as LabVIEW reads
+    /// them over ActiveX, on both backends - the check two agents of the 2026-11-11 practice build
+    /// could not make (their PowerShell COM bound to nothing) and settled from the file instead. A
+    /// read that fails is named in `reentrancyNotReadBecause` and changes nothing else.
+    /// </summary>
+    private static async Task AttachReentrancyAsync(JsonObject answer, string full, bool couldNotOpen,
+                                                    int timeoutSeconds, CancellationToken ct)
+    {
+        if (couldNotOpen) return;
+        try
+        {
+            var (reentrant, type) = await LabViewCom.ReentrancyAsync(full, timeoutSeconds, ct);
+            answer["reentrant"] = reentrant;
+            answer["reentrancyType"] = ReentrancyName(reentrant, type);
+        }
+        catch (LabViewCom.ComException e)
+        {
+            answer["reentrancyNotReadBecause"] = $"{e.Kind}: {e.Message}";
+        }
+    }
+
+    /// <summary>NI's `Execution:Reentrancy Type`: 0 shared clones, 1 preallocated; null when not reentrant.</summary>
+    internal static string? ReentrancyName(bool reentrant, int type) =>
+        !reentrant ? null : type switch { 0 => "shared clones", 1 => "preallocated", _ => $"type {type}" };
 
     /// <summary>
     /// ONLY A BROKEN VI PAYS FOR THE CLASS CHECK. It is file reads plus, for an interface member

@@ -105,7 +105,7 @@ local translator, and the translator talks to LabVIEW.
                │  what it can do.
                ▼
  ┌────────────────────────────┐
- │       LabVIEW MCP          │  LabVIEWMCP.exe, one Windows executable with 119 tools.
+ │       LabVIEW MCP          │  LabVIEWMCP.exe, one Windows executable with 120 tools.
  │                            │  This is where the knowledge lives: the AIXML dialect,
  │      the translator        │  the palette and example indexes, the VI Server catalogue.
  └──────┬──────────────┬──────┘

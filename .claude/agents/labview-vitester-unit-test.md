@@ -31,7 +31,15 @@ write HAS a body: it calls the subject and asserts.
 - Assertions are `TestCase.lvclass` methods - `passIfEqual.vi` (inputs `TestCase in`, `x`, `y`,
   `error in (no error)`, `custom report message ("")`, `delta (optional)`; outputs `TestCase out`,
   `error out`), and `failIf.vi`, `failUnless.vi`, `failIfEqual.vi`, `failUnlessEqual.vi`. Read a
-  terminal list you have not used yet with `lvai_vi_terminals` through the `.llb` path.
+  terminal list you have not used yet with `lvai_vi_terminals` through the `.llb` path. Measured
+  2026-11-11:
+  - `failIf.vi` takes `fail`, `message ("")`, `custom report message ("")`; `failUnless.vi` takes
+    `pass` and `message ("")` and has NO custom message input - the two differ.
+  - `passIfEqual.vi` compares a `double` ARRAY with an array constant exactly (no `delta`).
+  - NaN never equals NaN: check it with `Not A Number/Path/Refnum?` (input `number/path/refnum`,
+    output `NaN/Path/Refnum?`) into `failUnless.vi`.
+  - A library member is called by its qualified name (`Lib.lvlib:Name.vi`) and must be PUBLIC; a
+    library-private subject cannot be tested from a class outside its library.
 
 ## Workflow
 
@@ -44,8 +52,11 @@ each case's inputs and the expected output FROM THE CODE. An expectation you can
 
 **Phase 2 - the class.** `lvai_create_class` `className` (e.g. `<Subject> Tests`), `directory` (your
 own folder, `<project>\Tests\<Name>\`), `parentClassPath` = the TestCase path above, `projectPath`.
-Read `verify.inheritsFrom: TestCase.lvclass`. Then RESTART LabVIEW before Phase 3 (a class created in
-this LabVIEW session is locked for membership - Error 1562).
+Read `verify.inheritsFrom: TestCase.lvclass`. Go straight on to Phase 3 - measured 2026-11-11, the
+methods became members in the same LabVIEW session. **NEVER stop, kill or restart LabVIEW
+yourself** (Stop-Process, taskkill): other agents and the user share it. Only if
+`lvai_lunit_add_test_method` answers Error 1562 (the class is locked), stop and say in your report
+that LabVIEW needs a restart - the orchestrator does it.
 
 **Phase 3 - the methods.** Write each method's AIXML file directly (never through a shell), the class
 terminals as `path` STAND-INS - lvai_lunit_add_test_method retypes them:

@@ -108,6 +108,13 @@ internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerT
         // C# on its way. AixmlBackend has the reason.
         AixmlBackend.ClientTool.Value = name;
 
+        // Every top-level call is counted, so that overlapping calls - several agents on one
+        // LabVIEW - are seen; a project open or close is refused while they are (ParallelCalls).
+        using var counted = ParallelCalls.Shared.Enter(name);
+        if (ParallelCalls.ChangesProject(name, supplied)
+            && ParallelCalls.Shared.ProjectChangeRefusal(name) is { } why)
+            return Failure(ParallelCalls.RefusalJson(name, why));
+
         try
         {
             return await base.InvokeAsync(request, cancellationToken);

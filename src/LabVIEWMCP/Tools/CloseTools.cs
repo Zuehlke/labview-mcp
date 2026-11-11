@@ -123,6 +123,8 @@ internal sealed class CloseTools(LvaiConnection connection)
         adopted strays, each named in `projectSweep`.
         Error 1055 means no project was active - also what a second call answers, which verifies
         the close.
+        Refused (`projectChangeWhileParallel`) while tool calls overlap - several agents on one
+        LabVIEW - or overlapped in the last 60 s: projects are the orchestrator's job then.
         """)]
     public async Task<string> CloseActiveProjectAsync(
         [Description("Where to keep the generated helper VI; defaults to a per-user temp directory.")]

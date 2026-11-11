@@ -1908,7 +1908,7 @@ internal sealed class BulkTools(LvaiConnection connection)
         }
     }
 
-    private static async Task<JsonObject> RunScriptAsync(
+    internal static async Task<JsonObject> RunScriptAsync(
         PyLabview.Bundle bundle, string scriptsDirectory, string script, IEnumerable<string> args,
         string label, int timeoutSeconds, CancellationToken ct)
     {

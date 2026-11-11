@@ -855,6 +855,21 @@ LabVIEW 2026 (`experiments\vitester-2026-11-11`):
 
 The agent `labview-vitester-unit-test` follows this route.
 
+**The practice build of the same day** (`C:\temp\Praxistest_2026_11_11`, a four-VI application with
+a library) added four facts, all from a VI Tester suite of 4 methods that passed (`lvai_run_vitester_tests`:
+`tests 4, failures 0`):
+- **No LabVIEW restart** between `lvai_create_class` and `lvai_lunit_add_test_method` - the four
+  methods became members in the same session, no Error 1562. The agent instruction to restart made
+  the agent try to KILL LabVIEW (auto mode refused); it now continues, and only an actual 1562
+  ends in a report asking the orchestrator for the restart.
+- `failIf.vi`: `fail`, `message ("")`, `custom report message ("")`. `failUnless.vi`: `pass`,
+  `message ("")` - no custom message input.
+- `passIfEqual.vi` compares a `double` array with an array constant exactly.
+- A NaN is checked with `Not A Number/Path/Refnum?` into `failUnless.vi`; an equality against NaN
+  never passes.
+- A method calls a library member by its qualified name (`Sensor Monitor.lvlib:Parse Sensor Line.vi`),
+  so the subject must be PUBLIC - a library-private VI is not testable from a class outside the library.
+
 ## 6. What the spike did not settle
 
 - **Float comparison.** `Assert Equal Value_Variant` is exact equality. The three cases used here

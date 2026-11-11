@@ -269,6 +269,40 @@ internal static class LabViewCom
                          timeoutSeconds, ct);
 
     /// <summary>
+    /// A VI's reentrancy as LabVIEW reads it: `IsReentrant`, and `ReentrancyType` (0 shared
+    /// clones, 1 preallocated - meaningful only when reentrant). Measured 2026-11-11 with VIs whose
+    /// file bits were set on purpose (docs/aixml-reference.md section 9). Two agents could not get
+    /// this from their own PowerShell COM (`New-Object` handed back an object nothing bound to), so
+    /// lvai_exec_state answers it.
+    /// </summary>
+    public static Task<(bool Reentrant, int Type)> ReentrancyAsync(string viPath, int timeoutSeconds,
+                                                                   CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, viPath, vi => (
+            Get(vi, "IsReentrant") is true,
+            Convert.ToInt32(Get(vi, "ReentrancyType"), CultureInfo.InvariantCulture))),
+                         timeoutSeconds, ct);
+
+    /// <summary>What LabVIEW reads of a VI's Execution page over COM - the seven it answers there.</summary>
+    internal sealed record ExecutionReading(bool AllowDebugging, bool Reentrant, int ReentrancyType,
+                                            int Priority, int ExecutionSystem, bool RunOnOpen,
+                                            bool SuspendOnCall);
+
+    /// <summary>
+    /// The Execution page as LabVIEW reads it. COM names, measured 2026-11-11: ExecPriority 1..6
+    /// (background .. subroutine), PreferredExecSystem 1..6 plus 7 for same as caller. Automatic
+    /// error handling, inline, clear indicators and auto handle menus have no COM property.
+    /// </summary>
+    public static Task<ExecutionReading> ExecutionAsync(string viPath, int timeoutSeconds, CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, viPath, vi => new ExecutionReading(
+            Get(vi, "AllowDebugging") is true,
+            Get(vi, "IsReentrant") is true,
+            Convert.ToInt32(Get(vi, "ReentrancyType"), CultureInfo.InvariantCulture),
+            Convert.ToInt32(Get(vi, "ExecPriority"), CultureInfo.InvariantCulture),
+            Convert.ToInt32(Get(vi, "PreferredExecSystem"), CultureInfo.InvariantCulture),
+            Get(vi, "RunOnOpen") is true,
+            Get(vi, "SuspendOnCall") is true)), timeoutSeconds, ct);
+
+    /// <summary>
     /// Print.VI To HTML over ActiveX, so the top-level diagram lands as `&lt;base&gt;d.png` in
     /// <paramref name="imageDirectory"/>. Format 1 is STANDARD - connector pane, front panel, block
     /// diagram and nothing else; image format 0 PNG, depth 24. Measured 2026-10-10: 44 ms on a

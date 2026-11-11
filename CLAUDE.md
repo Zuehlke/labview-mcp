@@ -52,6 +52,9 @@ each its own folder (`<project>\Tests\<ClassName>\`) and say so in its prompt.
 is global to the instance, and a close SAVES LabVIEW's copy over the `.lvproj`. Agents GENERATE; the
 orchestrator opens projects, SWAPS and lists VIs (`lvai_add_vis_to_project`, never by hand).
 Build by DEPENDENCY: leaf VIs in parallel with no project open, then one agent for the callers.
+The server ENFORCES it: `lvai_open_file` with a project and `lvai_close_active_project` are
+refused (`projectChangeWhileParallel`) while top-level tool calls overlap or overlapped in the last
+60 s (`ParallelCalls`; an agent's project open crashed LabVIEW on 2026-11-11).
 Restart LabVIEW between two builds of the same application: a same-named VI of the earlier build,
 still in memory, captures a bare-name `Call` in silence.
 
@@ -325,7 +328,8 @@ VI and nothing reports it (`pylv_route` included) - check with `pylv_extract` fi
 `{LV.Control}` `Replace`:
 - class fields: `lvai_bind_class_fields`, after `lvai_describe_ctl` says the source IS a typedef -
   a bind against an ordinary control succeeds and binds nothing;
-- constants: `lvai_bind_typedef_constants`;
+- constants: `lvai_bind_typedef_constants` for one feeding a subVI call; any other (into
+  `Bundle By Name`, a queue's element type) `lvai_swap_subvis constantsJson` with the `.ctl`;
 - a method's own pane: `lvai_bind_pane_typedef`.
 
 Create a typedef with `lvai_create_typedef` (VI Server; nested typedefs in ONE run). A class field
@@ -471,6 +475,7 @@ document; `experiments/` does not ship.
 | Control references | `docs/control-reference-binding.md` | — |
 | Event structures, user events, `.vit` templates | `docs/labview-vit-templates.md`, `scripts/aixml-skeletons/user-event-two-loops.md` | `lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`, `lvai_set_event_data_fields` |
 | Malleable VIs | `docs/malleable-vis.md` | `lvai_make_malleable` |
+| VI execution settings: reentrancy, inline, priority, ... | `docs/vi-execution-settings.md` | `lvai_set_vi_execution` |
 | Icons of VIs, classes, libraries | `docs/class-icons.md` | `lvai_set_vi_icon`, `lvai_set_owner_icon`, `lvai_read_icons` |
 | Classes and their private data | `docs/lvclass-creation.md` | `lvai_create_class`, `lvai_add_class_field`, `lvai_create_accessors`, `lvai_describe_class` |
 | Class housekeeping: description, folders, members, VI descriptions | `docs/lvclass-creation.md` §10 | `lvai_set_class_description`, `lvai_move_to_folder`, `lvai_add_to_class`, `lvai_set_vi_descriptions` |
