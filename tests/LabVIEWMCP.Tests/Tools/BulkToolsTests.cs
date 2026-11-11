@@ -81,6 +81,7 @@ public class BulkGenerateViTests
             MeasureDiagram = (_, _, _) => Task.FromResult<((int, int)?, string?)>((null, null)),
             CleanUp = NoCleanUp,
             CleanUpPanel = NoCleanUp,
+            TidyConstants = NoCleanUp,
             StripCompiled = (vi, _, _) =>
             {
                 stripped.Add(vi);
@@ -136,7 +137,7 @@ public class BulkGenerateViTests
 
         // a folder that does not exist yet: a save-time Error 7 here would leave an orphan
         var viPath = Path.Combine(Path.GetDirectoryName(server.TempPath("x"))!, "new", "Out.vi");
-        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp }
+        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp, TidyConstants = NoCleanUp }
             .GenerateViAsync(CallerAixml(server), viPath, measurePane: false);
 
         Assert.True(Res.Bool(result, "ok"));
@@ -189,14 +190,14 @@ public class BulkGenerateViTests
         var asked = new List<string>();
         var viPath = server.TempPath("Out.vi");
 
-        var ok = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp }
+        var ok = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp, TidyConstants = NoCleanUp }
             .GenerateViAsync(CallerAixml(server), viPath, measurePane: false);
         Assert.True(Res.Bool(ok, "ok"));
         Assert.Equal([viPath], asked);
         var step = Res.Obj(ok)["steps"]!.AsArray().Single(s => s!["step"]!.GetValue<string>() == "execState");
         Assert.Equal(1, step!["execState"]!.GetValue<int>());
 
-        var broken = await new BulkTools(server.Connection) { ReadExecState = Reads(0), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp }
+        var broken = await new BulkTools(server.Connection) { ReadExecState = Reads(0), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp, TidyConstants = NoCleanUp }
             .GenerateViAsync(CallerAixml(server), viPath, measurePane: false);
         Assert.False(Res.Bool(broken, "ok"));
         Assert.Equal("execState", Res.Str(broken, "failedAtStep"));
@@ -357,7 +358,7 @@ public class BulkGenerateViTests
         server.Service.ViFileContent = "a generated VI";
         var asked = new List<string>();
 
-        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp }
+        var result = await new BulkTools(server.Connection) { ReadExecState = Reads(1, asked), MeasureDiagram = NoRender, CleanUp = NoCleanUp, CleanUpPanel = NoCleanUp, TidyConstants = NoCleanUp }
             .GenerateViAsync(CallerAixml(server), server.TempPath("Out.vi"), measurePane: false);
 
         Assert.True(Res.Bool(result, "ok"));

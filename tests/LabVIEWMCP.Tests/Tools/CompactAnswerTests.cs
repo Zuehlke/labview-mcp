@@ -204,6 +204,7 @@ public sealed class CompactAnswerTests
             MeasureDiagram = (_, _, _) => Task.FromResult<((int, int)?, string?)>((null, null)),
             CleanUp = BulkGenerateViTests.NoCleanUp,
             CleanUpPanel = BulkGenerateViTests.NoCleanUp,
+            TidyConstants = BulkGenerateViTests.NoCleanUp,
         };
 
         var compact = Parse(await Tools().GenerateViToolAsync(aixml, server.TempPath("A.vi"), measurePane: false));

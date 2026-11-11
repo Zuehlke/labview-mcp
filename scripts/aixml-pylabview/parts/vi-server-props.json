@@ -7929,6 +7929,10 @@
     "code": 1292952578,
     "source": "<labview>\\resource\\Framework\\Providers\\InstrumentDriver\\IDVICreator\\GetAllVIsToCopy.vi"
    },
+   "Set Source Scope": {
+    "code": 1292952576,
+    "source": "Scope Probe.vi"
+   },
    "Set Source Scope And Propagate": {
     "code": 1292952609,
     "source": "<labview>\\resource\\Framework\\Providers\\VILibrary\\LIBUIP_Update_Item.vi"

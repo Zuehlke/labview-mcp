@@ -50,6 +50,16 @@ Measured facts that each cost minutes when found at run time. Plan around them f
 
 ## Hard rules
 
+- **WRITE WHAT A LABVIEW DEVELOPER WOULD DRAW** (user-forum feedback, 2026-11-11). `lvai_check_aixml`
+  warns on each; a warning is to be FIXED in the AIXML, not reported:
+  - a compare against a constant 0 is the primitive - `Less Than 0?`, `Equal To 0?`, ... - and an
+    Add / Subtract of 1 is `Increment` / `Decrement` (`primitiveForConstant`);
+  - an error cluster goes STRAIGHT into `Not` / `And` / `Or` and into a loop's `stop` terminal -
+    never `Unbundle By Name` `status` first (`errorStatusUnbundled`; measured: both read status);
+  - no `no error` cluster constant: leave an `error in` unwired instead.
+  Constant LABELS need nothing from you: `lvai_generate_vi` hides them (and shows white-space
+  strings as codes, array constants at full size) - name each constant after the terminal it
+  feeds as before; tools still find it by that hidden label.
 - **A palette hit is the design.** If `lvai_palette_index` returns a VI that does the job, call
   it. Rebuilding the same logic from primitives is the fallback, used only when the index has no
   hit or the target genuinely fails to resolve — and the report must say which of the two it was.
@@ -364,7 +374,16 @@ function for this":
 The third row is the one that gets forgotten. "Is this VI broken", "list a project's items",
 "read a control by name" are not functions and will never appear in a palette.
 
-1. **Palette first**, for anything computation-shaped. Query `lvai_palette_index` with the
+0. **The project's own VIs first** (the user's rule of 2026-11-11, from user-forum feedback: "if I
+   put VIs in the project folder and tell it to look at those, it may reuse them" - it should not
+   need telling). When a `.lvproj` is given or the target folder holds one, list its VIs with
+   `lvai_describe_project` and Glob `*.vi` in the project folder; read the terminals of every
+   name that could do the job (`lvai_vi_terminals`). A fit is CALLED by its bare name - or its
+   `Library.lvlib\3A` qualifier - once it is LOADED through the project (`lvai_open_file`
+   `viPaths`, see "A GENERATED VI CALLS PROJECT-LOCAL CODE" below). Rebuilding what the project
+   already holds is the same failure as rebuilding a palette VI, and the report says which project
+   VIs were looked at.
+1. **Palette next**, for anything computation-shaped. Query `lvai_palette_index` with the
    *operation*, two to four different words (`sort`, `array`, `string`, `file`) — one query is
    not a search. A hit is the design.
 2. **Examples**, when the request is pattern-shaped or the palette gave nothing.

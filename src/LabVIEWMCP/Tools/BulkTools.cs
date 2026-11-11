@@ -690,6 +690,17 @@ internal sealed class BulkTools(LvaiConnection connection)
             // diagramSize measures the diagram the caller gets. The user's recommendation of
             // 2026-10-12, for both backends; a failure leaves the VI as generated and is reported.
             var cleanNote = "";
+            if (measureDiagram && !openVI)
+            {
+                // the CONSTANTS first (labels, white-space strings, array sizes), so the layout
+                // below lays out their final sizes - every deliverable, the user's rule of 2026-11-11
+                var tidied = await (TidyConstants?.Invoke(viPath, choice.Name, timeoutSeconds, ct)
+                    ?? new DiagramCleanup(connection).RunTidyConstantsAsync(viPath, choice.Name, timeoutSeconds, ct));
+                steps.Add(tidied);
+                if (tidied["ok"]?.GetValue<bool>() != true)
+                    cleanNote += " The block diagram constants were NOT tidied - labels may show: " +
+                                 tidied["note"]?.GetValue<string>();
+            }
             if (cleanUpPanel && !openVI)
             {
                 // the FRONT PANEL first, for every VI but the main one (the user's rule of
@@ -844,6 +855,12 @@ internal sealed class BulkTools(LvaiConnection connection)
     /// <summary>Test seam for the `stripCompiled` step (viPath); null in production, where
     /// <see cref="DiagramCleanup.StripCompiledAsync"/> strips the file through pylabview.</summary>
     internal Func<string, int, CancellationToken, Task<JsonObject>>? StripCompiled
+    {
+        get; init;
+    }
+
+    /// <summary>Test seam for the `tidyConstants` step (viPath, backend); null in production.</summary>
+    internal Func<string, string, int, CancellationToken, Task<JsonObject>>? TidyConstants
     {
         get; init;
     }

@@ -3077,6 +3077,26 @@ ignores everything after `</VI>`**: on grpc the VI comes out non-reentrant, and 
 says so (`execTrailerIgnored`). VI Server offers no way round that from a client: `Execution:Is
 Reentrant` and `Execution:Reentrancy Type` are read-only in LabVIEW's COM type library.
 
+### What the user forum saw on generated diagrams, and what answers it (2026-11-11)
+
+Measured on one probe document (`experiments\forum-2026-11-11\display-probe.xml`) generated on
+both backends - both drew the same:
+
+| reported | measured | now |
+|---|---|---|
+| constants carry labels nobody needs | every constant's label shown, its `_name` as text | `lvai_generate_vi` step `tidyConstants` hides each label (helper `lvbd_tidy_constants.xml`, both backends, before the layout); the TEXT stays, so `lvai_swap_subvis` and the typedef binders still find a constant by it |
+| a white-space string constant looks empty | a space and a tab drawn as blank boxes | the same step switches a string that is only white space to `'\' Codes Display` (`\s`, `\t` visible) |
+| an array constant shows one element, no count | one element plus the index display | the same step shows every element, 1 to 20 (`Number of Columns` - the 1D constant is horizontal) |
+| the error constant is PINK, even as an icon | NI's own converter writes it pink too; NI's examples draw it as a brown icon | the composer writes an error-cluster constant as NI does: `objFlags` 0x10000000 (View Cluster as Icon), frame part (partID 9) `fgColor` 007F7F00, 16 x 22. The flags ALONE gave a pink icon. On grpc it stays pink |
+| a GREEN stop terminal | a `stop` Condition draws red on both backends; green is `value="continue"` (continue while true) | nothing to fix; write `stop` and drop the `Not` in front of it |
+| `Less?` against a constant 0 labelled "Zero" | composed as written | `lvai_check_aixml` warns `primitiveForConstant` and names `Less Than 0?` (and kin, and `Increment`/`Decrement` for +1/-1) |
+| status unbundled, then `Not` | composed as written | `lvai_check_aixml` warns `errorStatusUnbundled`. MEASURED: an error cluster wired straight into `Not`, `Or` and a While Loop's `stop` terminal composes and runs, reading `status` (with an error: Not false, Or true; the loop stops at once). A Case Structure with `Error` / `No Error` frames did NOT compose ("Selector values are not unique"), so the rule leaves the Case selector out |
+
+Two traps the tidy helper hit, both in its own description: closing a cast object reference
+inside the loop is harmless, but **Save.Instrument and the VI's Close Reference must wait for the
+loop** - without that data dependency they ran beside it and every later cast was Error 1055,
+on some runs from the first constant on.
+
 ## 10. Workflow
 
 ```

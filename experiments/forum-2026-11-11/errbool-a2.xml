@@ -1,0 +1,9 @@
+<VI _name="ErrBool A2.vi" description="Probe: an error cluster wired straight into Not and Or.">
+  <FreeLabel comment="Error wire straight into booleans" uid="4290" uid_parent="root"/>
+  <Control _name="error in" conIdx="11" connection="required" outputs="value:4200.value" type="cluster{bool.status,int32.code,string.source}" uid="4200" uid_parent="root" value="[false,0,]"/>
+  <Control _name="flag" conIdx="0" connection="recommended" outputs="value:4201.value" type="bool" uid="4201" uid_parent="root" value="false"/>
+  <Node _name="Not" inputs="x:4200.value" outputs=".not. x?:4210.ok" uid="4210" uid_parent="root"/>
+  <Node _name="Or" inputs="x:4200.value,y:4201.value" outputs="x .or. y?:4211.any" uid="4211" uid_parent="root"/>
+  <Indicator _name="no error?" conIdx="4" connection="recommended" inputs="value:4210.ok" type="bool" uid="4230" uid_parent="root" value="false"/>
+  <Indicator _name="error or flag?" conIdx="6" connection="recommended" inputs="value:4211.any" type="bool" uid="4231" uid_parent="root" value="false"/>
+</VI>

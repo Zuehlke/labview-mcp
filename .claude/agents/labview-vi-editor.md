@@ -415,8 +415,17 @@ Only for what you are **adding**. Route first:
 | a computation on data | primitive `Node`, or a subVI `Call` | `lvai_palette_index` |
 | a property or action of a LabVIEW object | `Property Node` / `Invoke Node` | `lvai_vi_server_reference` |
 
-Palette first, two to four different query words. A hit is the design. Nothing there → examples.
-Nothing there either → build it from primitives, and record *why*.
+**The VI's own project first** (the user's rule of 2026-11-11): list the project's VIs
+(`lvai_describe_project`, or Glob `*.vi` beside the VI) and read the terminals of every candidate.
+A fit is called by name once loaded through the project - rebuilding what the project holds is
+the same failure as rebuilding a palette VI. Then the palette, two to four different query words.
+A hit is the design. Nothing there → examples. Nothing there either → build it from primitives,
+and record *why*.
+
+What you ADD follows the generator's drawing rules: a compare against 0 is `Less Than 0?` and
+kin, an error cluster goes straight into `Not`/`And`/`Or` and a `stop` terminal, no `no error`
+constant (`lvai_check_aixml` warns `primitiveForConstant` / `errorStatusUnbundled`). What you
+KEEP stays as it was.
 
 **The qualifier trap.** The index prints the bare file name, which for a library-owned VI is not
 the target. `Draw Image from File__ogtk.vi` is refused;

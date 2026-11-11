@@ -61,3 +61,20 @@ them once they belonged through the library, so `looseEntriesRemoved` was empty 
 composed without complaint on pylabview and was refused by NI's schema on grpc (`attribute '_name'
 is not declared for element 'FreeLabel'`). The composer is more lenient than `ValidateAIXML` about
 undeclared attributes; an AIXML document meant for both backends is only proven by grpc.
+
+## 4. Access scope and virtual folders (2026-11-11)
+
+The user's rule of 2026-11-11: two or more related NEW VIs go into one new library, its VIs in
+virtual folders named for their function, and a subVI that only the library's own VIs call is
+PRIVATE. Existing code is not moved into or out of a library unasked.
+
+- **Scope through NI's API, not the file.** `{LV.Library}` `Set Source Scope` takes the item as
+  `SourceRef` and NI's `LibraryItemScopeEnum` as `Scope` (1 Public, 2 Private) - the spelling NI's
+  own export writes; ValidateAIXML accepted three guessed method names and four guessed parameter
+  names alike, by position, so only the export settles it. `lvai_add_to_library` `scope: "private"`
+  sets it on each new item and verifies `NI.LibItem.Scope` 2 in the saved `.lvlib`
+  (`verify.scopeWrong`). Measured on `experiments\library-2026-11-11`: `Internal Helper.vi` came out
+  with the property, `Public Api.vi` (no scope asked) without.
+- **Folders** come from `lvai_move_to_folder`, which handles a plain `.lvlib` and creates the folder
+  at the root - `lvai_add_to_library`'s `folder` refuses one that does not exist yet.
+- After both, `lvai_exec_state` over the members: membership changes every member's qualified name.

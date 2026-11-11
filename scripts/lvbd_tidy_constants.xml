@@ -1,0 +1,107 @@
+<VI _name="lvbd_tidy_constants.vi" description="Tidies every block diagram constant of one VI the way a LabVIEW developer would place it, then saves the VI in place: the label is hidden (its text stays, so tools that find a constant by label still do), a string constant made only of white space switches to '\5C' Codes Display, and an array constant shows as many elements as it holds (one at least, twenty at most). Each constant is cast to each class on its own error chain, so a cast that does not apply skips that step and nothing else. No object reference is closed inside the loop: the casts are the traversal's own refnums, and closing one made every later cast Error 1055 (measured 2026-11-11); closing the VI reference releases them. The main error chain runs THROUGH the loop in a shift register: without that data dependency Save.Instrument and the VI reference's close ran beside the loop, and the object references died under it - every cast Error 1055, on some runs from the first constant (measured 2026-11-11). User-forum feedback of 2026-11-11.">
+  <FreeLabel comment="Tidy each constant, then save in place" uid="4200" uid_parent="root"/>
+  <Control _name="vi path" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]" outputs="value:4202.value"/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4205.path" uid="4205" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4205.path,error in (no error):4202.value" outputs="vi reference:4210.vi,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Constant _name="Constant Class Name" type="string" uid="4215" uid_parent="root" value="Constant" outputs="value:4215.value"/>
+  <Constant _name="Traverse Target" type="uint16{FP,BD,Other}" uid="4217" uid_parent="root" value="1" outputs="value:4217.value"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:4210.vi,Class Name:4215.value,error in (no error):4210.err,Traverse Target:4217.value,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:,References:4220.refs,# of Refs:4220.n,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Constant _name="constant class" type="ref{LV.Constant}" uid="4221" uid_parent="root" value="" outputs="value:4221.value"/>
+  <Constant _name="string constant class" type="ref{LV.StringConstant}" uid="4222" uid_parent="root" value="" outputs="value:4222.value"/>
+  <Constant _name="array constant class" type="ref{LV.ArrayConstant}" uid="4223" uid_parent="root" value="" outputs="value:4223.value"/>
+  <Constant _name="zero" type="int32" uid="4224" uid_parent="root" value="0" outputs="value:4224.value"/>
+  <Structure _name="For Loop" count="" label="One constant per iteration" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4220.refs" mode="index" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4221.value" outputs="value:4302.value" uid="4302" uid_parent="4300"/>
+    <Tunnel _id="In3" inputs="value:4222.value" outputs="value:4303.value" uid="4303" uid_parent="4300"/>
+    <Tunnel _id="In4" inputs="value:4223.value" outputs="value:4304.value" uid="4304" uid_parent="4300"/>
+    <ShiftReg uid="4305" uid_parent="4300">
+      <Left inputs="value:4224.value" outputs="value:4306.value" uid="4306" uid_parent="4305"/>
+      <Right inputs="value:4395.sum" outputs="value:4307.value" uid="4307" uid_parent="4305"/>
+    </ShiftReg>
+    <ShiftReg uid="4311" uid_parent="4300">
+      <Left inputs="value:4220.err" outputs="value:4312.value" uid="4312" uid_parent="4311"/>
+      <Right inputs="value:4312.value" outputs="value:4313.value" uid="4313" uid_parent="4311"/>
+    </ShiftReg>
+    <ShiftReg uid="4308" uid_parent="4300">
+      <Left inputs="value:4224.value" outputs="value:4309.value" uid="4309" uid_parent="4308"/>
+      <Right inputs="value:4396.sum" outputs="value:4310.value" uid="4310" uid_parent="4308"/>
+    </ShiftReg>
+    <Node _name="To More Specific Class" inputs="reference:4301.value,error in:,target class:4302.value" outputs="specific class reference:4320.ref,error out:4320.err" uid="4320" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Label" type="{LV.Constant}" inputs="reference:4320.ref,error in (no error):4320.err" outputs="Label:4321.label,reference out:,error out:4321.err" uid="4321" uid_parent="4300"/>
+    <Constant _name="Visible" type="bool" uid="4322" uid_parent="4300" value="false" outputs="value:4322.value"/>
+    <Node _name="Property Node" fields="write+Visible" type="{LV.Text}" inputs="reference:4321.label,error in (no error):4321.err,Visible:4322.value" outputs="reference out:,error out:4323.err" uid="4323" uid_parent="4300"/>
+    <Node _name="To More Specific Class" inputs="reference:4301.value,error in:,target class:4303.value" outputs="specific class reference:4330.ref,error out:4330.err" uid="4330" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Value" type="{LV.StringConstant}" inputs="reference:4330.ref,error in (no error):4330.err" outputs="Value:4331.value,reference out:,error out:4331.err" uid="4331" uid_parent="4300"/>
+    <Constant _name="string type" type="string" uid="4332" uid_parent="4300" value="" outputs="value:4332.value"/>
+    <Node _name="Variant To Data" inputs="variant:4331.value,type:4332.value,error in:4331.err" outputs="data:4333.text,error out:4333.err" uid="4333" uid_parent="4300"/>
+    <Constant _name="not white space" type="string" uid="4334" uid_parent="4300" value="[~ \5Ct\5Cr\5Cn]" outputs="value:4334.value"/>
+    <Node _name="Match Pattern" inputs="string:4333.text,regular expression:4334.value,offset (0):" outputs="before substring:,match substring:,after substring:,offset past match:4335.past" uid="4335" uid_parent="4300"/>
+    <Node _name="Less Than 0?" inputs="x:4335.past" outputs="x &lt; 0?:4336.none" uid="4336" uid_parent="4300"/>
+    <Node _name="String Length" inputs="string:4333.text" outputs="length:4337.len" uid="4337" uid_parent="4300"/>
+    <Node _name="Greater Than 0?" inputs="x:4337.len" outputs="x &gt; 0?:4338.some" uid="4338" uid_parent="4300"/>
+    <Node _name="And" inputs="x:4336.none,y:4338.some" outputs="x .and. y?:4339.blank" uid="4339" uid_parent="4300"/>
+    <Structure _name="Case Structure" selectin="4339.blank" uid="4340" uid_parent="4300">
+      <Tunnel _id="In1" inputs="value:4330.ref" uid="4341" uid_parent="4340"/>
+      <Tunnel _id="In2" inputs="value:4333.err" uid="4342" uid_parent="4340"/>
+      <CaseFrame selector="True" selectout="" label="White space only - show it as codes" uid="4350" uid_parent="4340">
+        <Tunnel _id="In1" outputs="value:4351.value" uid="4351" uid_parent="4350"/>
+        <Tunnel _id="In2" outputs="value:4352.value" uid="4352" uid_parent="4350"/>
+        <Constant _name="Codes Display" type="uint32" uid="4353" uid_parent="4350" value="1" outputs="value:4353.value"/>
+        <Node _name="Property Node" fields="write+Display Style" type="{LV.StringConstant}" inputs="reference:4351.value,error in (no error):4352.value,Display Style:4353.value" outputs="reference out:,error out:4354.err" uid="4354" uid_parent="4350"/>
+        <Constant _name="escaped one" type="int32" uid="4355" uid_parent="4350" value="1" outputs="value:4355.value"/>
+        <Tunnel _id="Out1" inputs="value:4355.value" uid="4356" uid_parent="4350"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="4360" uid_parent="4340">
+        <Tunnel _id="In1" outputs="value:4361.value" uid="4361" uid_parent="4360"/>
+        <Tunnel _id="In2" outputs="value:4362.value" uid="4362" uid_parent="4360"/>
+        <Constant _name="escaped none" type="int32" uid="4363" uid_parent="4360" value="0" outputs="value:4363.value"/>
+        <Tunnel _id="Out1" inputs="value:4363.value" uid="4364" uid_parent="4360"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4365.n" uid="4365" uid_parent="4340"/>
+    </Structure>
+    <Node _name="To More Specific Class" inputs="reference:4301.value,error in:,target class:4304.value" outputs="specific class reference:4370.ref,error out:4370.err" uid="4370" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Value" type="{LV.ArrayConstant}" inputs="reference:4370.ref,error in (no error):4370.err" outputs="Value:4371.value,reference out:,error out:4371.err" uid="4371" uid_parent="4300"/>
+    <Node _name="Variant To Flattened String" inputs="variant:4371.value" outputs="data string:4372.data,type string:" uid="4372" uid_parent="4300"/>
+    <Constant _name="size offset" type="int32" uid="4373" uid_parent="4300" value="0" outputs="value:4373.value"/>
+    <Constant _name="size length" type="int32" uid="4374" uid_parent="4300" value="4" outputs="value:4374.value"/>
+    <Node _name="String Subset" inputs="string:4372.data,offset (0):4373.value,length (rest):4374.value" outputs="substring:4375.size" uid="4375" uid_parent="4300"/>
+    <Constant _name="size type" type="int32" uid="4376" uid_parent="4300" value="0" outputs="value:4376.value"/>
+    <Node _name="Type Cast" inputs="x:4375.size,type:4376.value" outputs="*(type *) &amp;x:4377.n" uid="4377" uid_parent="4300"/>
+    <Constant _name="fewest shown" type="int32" uid="4378" uid_parent="4300" value="1" outputs="value:4378.value"/>
+    <Constant _name="most shown" type="int32" uid="4379" uid_parent="4300" value="20" outputs="value:4379.value"/>
+    <Node _name="In Range and Coerce" inputs="upper limit:4379.value,x:4377.n,lower limit:4378.value" outputs="coerced(x):4380.shown,In Range?:" uid="4380" uid_parent="4300"/>
+    <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4371.err" outputs="status:4381.failed" uid="4381" uid_parent="4300"/>
+    <Structure _name="Case Structure" selectin="4381.failed" uid="4382" uid_parent="4300">
+      <Tunnel _id="In1" inputs="value:4370.ref" uid="4383" uid_parent="4382"/>
+      <Tunnel _id="In2" inputs="value:4380.shown" uid="4384" uid_parent="4382"/>
+      <CaseFrame selector="False" selectout="" label="An array constant - show every element" uid="4385" uid_parent="4382">
+        <Tunnel _id="In1" outputs="value:4386.value" uid="4386" uid_parent="4385"/>
+        <Tunnel _id="In2" outputs="value:4387.value" uid="4387" uid_parent="4385"/>
+        <Node _name="Property Node" fields="write+Number of Columns" type="{LV.ArrayConstant}" inputs="reference:4386.value,error in (no error):,Number of Columns:4387.value" outputs="reference out:,error out:" uid="4388" uid_parent="4385"/>
+        <Constant _name="sized one" type="int32" uid="4389" uid_parent="4385" value="1" outputs="value:4389.value"/>
+        <Tunnel _id="Out1" inputs="value:4389.value" uid="4390" uid_parent="4385"/>
+      </CaseFrame>
+      <CaseFrame selector="True" selectout="" uid="4391" uid_parent="4382">
+        <Tunnel _id="In1" outputs="value:4392.value" uid="4392" uid_parent="4391"/>
+        <Tunnel _id="In2" outputs="value:4393.value" uid="4393" uid_parent="4391"/>
+        <Constant _name="sized none" type="int32" uid="4394" uid_parent="4391" value="0" outputs="value:4394.value"/>
+        <Tunnel _id="Out1" inputs="value:4394.value" uid="4397" uid_parent="4391"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4398.n" uid="4398" uid_parent="4382"/>
+    </Structure>
+    <Tunnel _id="Out1" inputs="value:4323.err" mode="index" outputs="value:4401.value" uid="4401" uid_parent="4300"/>
+    <Tunnel _id="Out2" inputs="value:4333.err" mode="index" outputs="value:4402.value" uid="4402" uid_parent="4300"/>
+    <Node _name="Add" inputs="x:4306.value,y:4365.n" outputs="x+y:4395.sum" uid="4395" uid_parent="4300"/>
+    <Node _name="Add" inputs="x:4309.value,y:4398.n" outputs="x+y:4396.sum" uid="4396" uid_parent="4300"/>
+  </Structure>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4210.vi,error in (no error):4313.value,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4410.err" uid="4410" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.vi,error in (no error):4410.err" outputs="error out:4415.err" uid="4415" uid_parent="root"/>
+  <Indicator _name="constants seen" conIdx="4" connection="recommended" type="int32" uid="4420" uid_parent="root" value="0" inputs="value:4220.n"/>
+  <Indicator _name="strings escaped" conIdx="6" connection="recommended" type="int32" uid="4421" uid_parent="root" value="0" inputs="value:4307.value"/>
+  <Indicator _name="arrays sized" conIdx="8" connection="recommended" type="int32" uid="4422" uid_parent="root" value="0" inputs="value:4310.value"/>
+  <Indicator _name="label errors" type="array{cluster{bool.status,int32.code,string.source}}" uid="4423" uid_parent="root" value="[]" inputs="value:4401.value"/>
+  <Indicator _name="string errors" type="array{cluster{bool.status,int32.code,string.source}}" uid="4424" uid_parent="root" value="[]" inputs="value:4402.value"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4430" uid_parent="root" value="[false,0,]" inputs="value:4415.err"/>
+</VI>

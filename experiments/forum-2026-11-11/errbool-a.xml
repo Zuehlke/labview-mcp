@@ -1,0 +1,21 @@
+<VI _name="ErrBool A.vi" description="Probe: an error cluster wired straight into Not, Or and a Case selector.">
+  <FreeLabel comment="Error wire straight into booleans" uid="4290" uid_parent="root"/>
+  <Control _name="error in" conIdx="11" connection="required" outputs="value:4200.value" type="cluster{bool.status,int32.code,string.source}" uid="4200" uid_parent="root" value="[false,0,]"/>
+  <Control _name="flag" conIdx="0" connection="recommended" outputs="value:4201.value" type="bool" uid="4201" uid_parent="root" value="false"/>
+  <Node _name="Not" inputs="x:4200.value" outputs=".not. x?:4210.ok" uid="4210" uid_parent="root"/>
+  <Node _name="Or" inputs="x:4200.value,y:4201.value" outputs="x .or. y?:4211.any" uid="4211" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4200.value" uid="4220" uid_parent="root">
+    <CaseFrame selector="Error" selectout="" uid="4221" uid_parent="4220">
+      <Constant _name="error text" outputs="value:4222.value" type="string" uid="4222" uid_parent="4221" value="error"/>
+      <Tunnel _id="Out1" inputs="value:4222.value" uid="4223" uid_parent="4221"/>
+    </CaseFrame>
+    <CaseFrame selector="No Error" selectout="" uid="4224" uid_parent="4220">
+      <Constant _name="ok text" outputs="value:4225.value" type="string" uid="4225" uid_parent="4224" value="ok"/>
+      <Tunnel _id="Out1" inputs="value:4225.value" uid="4226" uid_parent="4224"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4227.v" uid="4227" uid_parent="4220"/>
+  </Structure>
+  <Indicator _name="no error?" conIdx="4" connection="recommended" inputs="value:4210.ok" type="bool" uid="4230" uid_parent="root" value="false"/>
+  <Indicator _name="error or flag?" conIdx="6" connection="recommended" inputs="value:4211.any" type="bool" uid="4231" uid_parent="root" value="false"/>
+  <Indicator _name="which frame" conIdx="8" connection="recommended" inputs="value:4227.v" type="string" uid="4232" uid_parent="root" value=""/>
+</VI>

@@ -147,6 +147,8 @@ internal static class AixmlCheck
         CheckWebBrowserReference(root, findings);
         CheckXNodeWrittenAsNode(root, findings);
         CheckExecTrailer(xml, findings);
+        CheckPrimitiveForConstant(root, findings);
+        CheckErrorStatusUnbundled(root, findings);
         CheckReservedRange(elements, findings);
         CheckMalleableName(root, findings);
         CheckViServerNames(root, findings);
@@ -1010,6 +1012,106 @@ internal static class AixmlCheck
                 + "the real XNode (no capture groups) - or, for the capture groups, call the VI that does "
                 + $"its work: `<Call target=\"{route.Target}\" .../>` - {route.Terminals}.",
                 (string?)node.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// A comparison against a constant 0 where LabVIEW has the primitive (`Less Than 0?` ...), and
+    /// an Add / Subtract of a constant 1 where it has `Increment` / `Decrement` - user-forum feedback
+    /// of 2026-11-11: "instead of Less Than 0, it uses Less Than, and wires a constant of 0, then
+    /// labels it Zero". Key: (node, the zero/one constant is the y input). The replacement takes the
+    /// OTHER input as its `x`.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<(string Node, bool ConstantIsY), string> ConstantPrimitives =
+        new Dictionary<(string, bool), string>
+        {
+            [("Less?", true)] = "Less Than 0?", [("Less?", false)] = "Greater Than 0?",
+            [("Greater?", true)] = "Greater Than 0?", [("Greater?", false)] = "Less Than 0?",
+            [("Equal?", true)] = "Equal To 0?", [("Equal?", false)] = "Equal To 0?",
+            [("Not Equal?", true)] = "Not Equal To 0?", [("Not Equal?", false)] = "Not Equal To 0?",
+            [("Less Or Equal?", true)] = "Less Or Equal To 0?", [("Less Or Equal?", false)] = "Greater Or Equal To 0?",
+            [("Greater Or Equal?", true)] = "Greater Or Equal To 0?", [("Greater Or Equal?", false)] = "Less Or Equal To 0?",
+            [("Add", true)] = "Increment", [("Add", false)] = "Increment",
+            [("Subtract", true)] = "Decrement",
+        };
+
+    /// <summary>The net a terminal of an `inputs`/`outputs` list is wired to, by terminal name.</summary>
+    private static Dictionary<string, string> Terminals(XElement e, string attribute) =>
+        (((string?)e.Attribute(attribute)) ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => (Name: p[..Math.Max(0, p.IndexOf(':'))], Net: p[(p.IndexOf(':') + 1)..]))
+            .Where(t => t.Name.Length > 0)
+            .GroupBy(t => t.Name).ToDictionary(g => g.Key, g => g.First().Net, StringComparer.Ordinal);
+
+    private static void CheckPrimitiveForConstant(XElement root, List<Finding> findings)
+    {
+        // the value of each numeric scalar constant, by the net it drives
+        var constants = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var c in root.Descendants("Constant"))
+        {
+            var type = ((string?)c.Attribute("type") ?? "").Trim();
+            if (type.Contains('{') || type is "string" or "bool" or "path" or "") continue;
+            if (!double.TryParse((string?)c.Attribute("value"), NumberStyles.Float, CultureInfo.InvariantCulture, out var v)) continue;
+            foreach (var net in Terminals(c, "outputs").Values.Where(n => n.Length > 0)) constants[net] = v;
+        }
+        foreach (var node in root.Descendants("Node"))
+        {
+            var name = (string?)node.Attribute("_name") ?? "";
+            var ins = Terminals(node, "inputs");
+            if (!ins.TryGetValue("x", out var x) || !ins.TryGetValue("y", out var y)) continue;
+            var wanted = name is "Add" or "Subtract" ? 1.0 : 0.0;
+            foreach (var constantIsY in new[] { true, false })
+            {
+                var (mine, other) = constantIsY ? (y, x) : (x, y);
+                if (!constants.TryGetValue(mine, out var value) || value != wanted) continue;
+                if (constants.ContainsKey(other)) continue;            // two constants: nothing to say
+                if (!ConstantPrimitives.TryGetValue((name, constantIsY), out var primitive)) continue;
+                findings.Add(new Finding(Severity.Warning, "primitiveForConstant",
+                    $"`{name}` with a constant {wanted} on its {(constantIsY ? "y" : "x")} input is the primitive " +
+                    $"`{primitive}` on the other input - write `<Node _name=\"{primitive}\" inputs=\"x:{other}\" .../>` " +
+                    "and drop the constant. A LabVIEW developer reads the primitive at a glance; a compare node fed a " +
+                    "labelled constant reads as code written by someone who did not know it (user-forum feedback).",
+                    (string?)node.Attribute("uid")));
+                break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// `Unbundle By Name` of an error cluster's `status` alone, into a boolean function or a stop
+    /// terminal - user-forum feedback of 2026-11-11: "it doesn't run error wires into boolean
+    /// operations; it will unbundle by name, then use the Status, often running it through a NOT".
+    /// Measured the same day on the pylabview backend: an error cluster wired straight into `Not`,
+    /// `Or` and a While Loop's stop terminal composes, runs and reads `status`. A Case selector is
+    /// left out: a Case Structure with `Error` / `No Error` frames did not compose yet.
+    /// </summary>
+    private static readonly HashSet<string> TakesAnErrorCluster =
+        new(StringComparer.Ordinal) { "Not", "And", "Or", "Exclusive Or", "Not And", "Not Or" };
+
+    private static void CheckErrorStatusUnbundled(XElement root, List<Finding> findings)
+    {
+        var consumers = new Dictionary<string, List<XElement>>(StringComparer.Ordinal);
+        foreach (var e in root.Descendants().Where(e => e.Attribute("inputs") is not null))
+            foreach (var net in Terminals(e, "inputs").Values.Where(n => n.Length > 0))
+                (consumers.TryGetValue(net, out var list) ? list : consumers[net] = []).Add(e);
+
+        foreach (var unbundle in root.Descendants("Node")
+                     .Where(n => (string?)n.Attribute("_name") == "Unbundle By Name"
+                                 && ((string?)n.Attribute("fields") ?? "").Trim() == "status"))
+        {
+            if (!Terminals(unbundle, "outputs").TryGetValue("status", out var status) || status.Length == 0) continue;
+            if (!consumers.TryGetValue(status, out var users) || users.Count == 0) continue;
+            if (!users.All(u => u.Name.LocalName == "Condition"
+                                || u.Name.LocalName == "Node" && TakesAnErrorCluster.Contains((string?)u.Attribute("_name") ?? "")))
+                continue;
+            var source = Terminals(unbundle, "inputs").GetValueOrDefault("input cluster") ?? "";
+            findings.Add(new Finding(Severity.Warning, "errorStatusUnbundled",
+                "`Unbundle By Name` reads only `status` and feeds " +
+                string.Join(", ", users.Select(u => u.Name.LocalName == "Condition" ? "a stop terminal" : $"`{u.Attribute("_name")?.Value}`").Distinct()) +
+                $" - if `{source}` is an error cluster, wire it STRAIGHT into them: LabVIEW's boolean functions and " +
+                "the loop's stop terminal take an error cluster and read its status (measured on Not, Or and a stop " +
+                "terminal). Drop the Unbundle; a `Not` behind it usually goes too (stop on error = the error " +
+                "wire on a `stop` terminal).",
+                (string?)unbundle.Attribute("uid")));
         }
     }
 

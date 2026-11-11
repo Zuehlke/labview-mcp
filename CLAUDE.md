@@ -38,6 +38,13 @@ checks it without LabVIEW and answers the build WAVES. Every builder gets the co
 implements against it, the main-VI agent authors its scaffold in parallel with wave 0, and
 `mode=verify` gates each wave before the next is built. `docs/build-contract.md`.
 
+**TWO OR MORE RELATED NEW VIs GO INTO ONE NEW LIBRARY** (the user's rule of 2026-11-11). A single
+standalone VI stays loose; existing code is never moved into or out of a library unasked. The
+orchestrator does it after the last wave: `lvai_create_library` with the API VIs,
+`lvai_add_to_library scope=private` for subVIs only the library calls, `lvai_move_to_folder` per
+function folder (never flat), then `lvai_exec_state` over the members. The VI agents search the
+PROJECT's own VIs before the palette. `docs/orchestrator-brief.md`.
+
 **ONE AGENT, ONE OUTPUT DIRECTORY.** Two agents in one folder overwrite each other's files. Give
 each its own folder (`<project>\Tests\<ClassName>\`) and say so in its prompt.
 
@@ -107,6 +114,13 @@ be closed; "Don't Save - All" at exit is always safe. `docs/scratch-vis-in-memor
 and model latency is several times the time spent in tools. `docs/workflow-economics.md`,
 `docs/token-economy.md`. A step that is cheap for LabVIEW and expensive in turns is a tool waiting
 to be written.
+
+**DRAW WHAT A LABVIEW DEVELOPER WOULD** (user-forum feedback, 2026-11-11): a compare against 0 is
+`Less Than 0?` and kin, +1/-1 is `Increment`/`Decrement` (`primitiveForConstant`); an error cluster
+goes straight into `Not`/`And`/`Or` and a `stop` terminal, never via `Unbundle By Name status`
+(`errorStatusUnbundled`). `lvai_generate_vi` hides every constant's LABEL (`tidyConstants`; the
+text stays, so binding by label works), shows white-space strings as codes and array constants at
+full size; the composer writes an error constant as NI's brown icon. `docs/aixml-reference.md` §9.
 
 **Wire a constant only where the callee marks the input `required`.** Validation enforces
 `required` and says nothing about the rest. **Write `connection=` on every terminal that has a

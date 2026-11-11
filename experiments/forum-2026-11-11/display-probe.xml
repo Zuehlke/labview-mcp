@@ -1,0 +1,19 @@
+<VI _name="Display Probe.vi" description="Probe: constant labels, whitespace string, array constant, error constant, loop stop terminal, comparison with zero.">
+  <FreeLabel comment="Forum display probe" uid="4290" uid_parent="root"/>
+  <Control _name="x" conIdx="0" connection="required" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Constant _name="Zero" outputs="value:4201.value" type="double" uid="4201" uid_parent="root" value="0"/>
+  <Node _name="Less?" inputs="x:4200.value,y:4201.value" outputs="x &lt; y?:4202.x &lt; y?" uid="4202" uid_parent="root"/>
+  <Indicator _name="negative?" conIdx="4" connection="recommended" inputs="value:4202.x &lt; y?" type="bool" uid="4203" uid_parent="root" value="false"/>
+  <Constant _name="separator" outputs="value:4210.value" type="string" uid="4210" uid_parent="root" value=" "/>
+  <Constant _name="tab" outputs="value:4211.value" type="string" uid="4211" uid_parent="root" value="\09"/>
+  <Node _name="Concatenate Strings" inputs="string:4210.value,string:4211.value" outputs="concatenated string:4212.concatenated string" uid="4212" uid_parent="root"/>
+  <Indicator _name="joined" conIdx="6" connection="recommended" inputs="value:4212.concatenated string" type="string" uid="4213" uid_parent="root" value=""/>
+  <Constant _name="values" outputs="value:4220.value" type="array{double}" uid="4220" uid_parent="root" value="[1,2,3]"/>
+  <Indicator _name="array" conIdx="8" connection="recommended" inputs="value:4220.value" type="array{double}" uid="4221" uid_parent="root" value="[]"/>
+  <Constant _name="no error" outputs="value:4230.value" type="cluster{bool.status,int32.code,string.source}" uid="4230" uid_parent="root" value="[false,0,]"/>
+  <Structure _name="While Loop" count="" label="Stops on error" uid="4240" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4230.value" outputs="value:4241.value" uid="4241" uid_parent="4240"/>
+    <Node _name="Unbundle By Name" fields="status" inputs="input cluster:4241.value" outputs="status:4242.status" uid="4242" uid_parent="4240"/>
+    <Condition inputs="value:4242.status" uid="4245" uid_parent="4240" value="stop"/>
+  </Structure>
+</VI>
