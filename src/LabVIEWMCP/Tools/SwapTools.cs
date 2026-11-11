@@ -235,7 +235,7 @@ internal sealed class SwapTools(LvaiConnection connection)
         catch (System.Text.Json.JsonException) { return JsonValue.Create(answer); }
     }
 
-    private async Task<string> OneAsync(string viPath, string? swapsJson, string? constantsJson,
+    internal async Task<string> OneAsync(string viPath, string? swapsJson, string? constantsJson,
                                         bool verify, bool verbose, string? helperViPath,
                                         string? helperAixmlPath, bool regenerateHelper,
                                         int timeoutSeconds, bool removeBadWires,

@@ -3000,6 +3000,33 @@ whole match `Temp=23.5C Hum=41`). It validated on grpc and composed and ran on p
 (`AixmlCheck.XNodeCallRoutes`, the composer's `XNODE_CALL_ROUTES` - keep them equal when adding
 the next XNode).
 
+**The real XNode, as the palette drops it, is generated too** - write it the way NI's export and
+our reader write an XNode, as a `Call` of the `.xnode`:
+
+```xml
+<Call target="Match Regular Expression.xnode"
+      inputs="input string:…,regular expression:…,offset (0):,ignore case? (F):,multiline? (F):,error in:…"
+      outputs="before match:…,whole match:…,after match:…,offset past match:…,error out:…" …/>
+```
+
+Neither backend converts that Call, so `lvai_generate_vi` (and everything built on it) generates
+the VI against `Match Regular Expression_Execute.vi` as a STAND-IN and then lets LabVIEW put the
+XNode in its place with `{LV.SubVI}` `Replace` and the `.xnode`'s path, then reads the execution
+state - step `xnodes` in the answer, `xnodesPlaced`. LabVIEW builds the XNode itself (state, icon,
+generated code), which the composer could not (docs/aixml-backends.md). Measured 2026-11-11: no
+project needs to be open; NI's export of the result is exactly the Call above; the run honoured
+`ignore case?` and answered `offset past match` 18 for `TEMP=23.5C` in `Sensor: TEMP=23.5C ok`.
+
+`Replace` moves wires by connector-pane SLOT, not by name, so the stand-in's terminals are mapped
+(`XNodeCalls.cs`): `error in` -> `error in (no error)`, `offset past match` -> `whole match offset`
+(the same slot), and the stand-in's `matched substrings` stays UNWIRED - wired, it took the slot of
+`offset past match` once and of `error out` the next time, losing the wire it displaced. **No capture
+groups through the XNode:** they are outputs of a GROWN XNode, and nothing visible in VI Server grows
+one (`Bounds` is read-only; the XNode scripting API is hidden behind `SuperSecretPrivateSpecialStuff`
+in LabVIEW.ini, which we do not write). A capture-group terminal on the XNode Call is refused before
+anything is written (`xnodeCallRefused`); for capture groups, call the Execute VI and read
+`matched substrings`.
+
 **`Lossy Enqueue Element` composes.** It had a name (primResID 9130) and no harvested part; the
 part comes from NI's own conversion of a wired probe (`experiments\prim-harvest-2026-11-11\`). A
 size-1 queue fed A, then B: `overflow?` true, `overflow element` A, B remaining - the same on NI's

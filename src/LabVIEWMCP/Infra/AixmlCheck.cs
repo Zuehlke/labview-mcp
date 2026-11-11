@@ -1003,9 +1003,12 @@ internal static class AixmlCheck
             findings.Add(new Finding(Severity.Error, "xnodeWrittenAsNode",
                 $"`{name}` is an XNode, not a primitive, so no AIXML `Node` can be named after it: "
                 + "NI's converter answers Error 53 \"Manager call not supported\" without naming it, "
-                + "and the pylabview composer refuses it. Call the VI that does its work instead, "
-                + $"`<Call target=\"{route.Target}\" .../>` - {route.Terminals}. Measured on both "
-                + "backends; lvai_vi_terminals gives the ready-to-paste Call.",
+                + "and the pylabview composer refuses it. Either CALL THE XNODE - "
+                + $"`<Call target=\"{name}.xnode\" .../>` with inputs `input string`, `regular expression`, "
+                + "`offset (0)`, `ignore case? (F)`, `multiline? (F)`, `error in` and outputs `before match`, "
+                + "`whole match`, `after match`, `offset past match`, `error out`; lvai_generate_vi places "
+                + "the real XNode (no capture groups) - or, for the capture groups, call the VI that does "
+                + $"its work: `<Call target=\"{route.Target}\" .../>` - {route.Terminals}.",
                 (string?)node.Attribute("uid")));
         }
     }

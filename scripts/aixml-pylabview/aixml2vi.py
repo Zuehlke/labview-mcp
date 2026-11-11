@@ -5930,7 +5930,10 @@ class Composer:
         if target.lower().endswith(".xnode"):
             # an XNODE, as NI's export and our reader write one: its node holds the code the
             # XNode generated, which nothing here composes yet
-            raise Unsupported("Call %s: %s is an XNode - not composable yet" % (el.get("uid"), target))
+            raise Unsupported("Call %s: %s is an XNode - not composable yet%s" % (
+                el.get("uid"), target,
+                # lvai_generate_vi places these through a stand-in and LabVIEW's Replace (XNodeCalls.cs)
+                "; lvai_generate_vi places it" if target.lower() in ("match regular expression.xnode",) else ""))
         if self.resolver is None:
             self.resolver = resolve.Resolver()
         res = self.resolver.resolve(target, self.search_dirs, getattr(self, "caller_file", None))
