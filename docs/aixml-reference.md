@@ -3007,6 +3007,27 @@ VI and on the composed one, for string and int32 elements. Terminals: `queue`, `
 `error in (no error)`; `queue out`, `overflow element`, `overflow?`, `error out`. (`Obtain Queue`'s
 `max queue size (-1, unlimited)` carries a comma: in `inputs` it is `max queue size (-1\2C unlimited)`.)
 
+**Four primitives had two terminal names SWAPPED in the composer's tables** - found when a
+demo build of the same day wired `Get Queue Status` `elements` into a double array and LabVIEW
+answered "the type of the source is string": the composer had put the wire on `queue name`. NI's
+converter took the same document and ran it. All four rows came from
+`scripts/aixml-pylabview/terminal-names-learned.tsv` (names learned by comparing wire ends with
+NI's exports), and the harvested parts' own type labels gave each away:
+
+| primResID | node | slot: was -> is |
+|---|---|---|
+| 9110 | `Get Queue Status` | 5: `queue name` -> `elements` (Array); 6: `elements` -> `queue name` (String) |
+| 8068 | `Move` | 1: `new path` -> `cancelled` (Boolean); 3: `cancelled` -> `new path` (Path) |
+| 8014 | `New VI` | 5: `password` -> `type specifier VI Refnum (for type only)` (Refnum); 6: the reverse (String) |
+| 2456 | `Insert Into Map` | 1: `map out` -> `value unchanged?` (Boolean); 3: the reverse (map) |
+
+NI validated a document wiring each pair; on the composer `Move` and `New VI` were broken with the
+old table and executable with the fixed one (`Insert Into Map` cannot be composed: the composer
+has no map type yet). The reader names terminals from the same tables, so its exports of VIs using
+these four were consistently wrong too - a round trip could not show it. `TerminalNameTableTests`
+now fails on any slot whose part type is labelled with another slot's name and a different kind of
+type.
+
 **Execution settings - reentrancy - are written in a trailer AFTER `</VI>`, on pylabview only:**
 
 ```xml

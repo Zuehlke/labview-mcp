@@ -1,0 +1,7 @@
+<VI _name="New VI Swap Probe.vi" description="Probe: New VI takes password as a string.">
+  <FreeLabel comment="New VI terminal check" uid="4290" uid_parent="root"/>
+  <Control _name="password" conIdx="0" connection="required" outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="required" outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <Node _name="New VI" inputs="password:4200.value,error in (no error):4202.value" outputs="vi refnum:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4210.error out" type="cluster{bool.status,int32.code,string.source}" uid="4222" uid_parent="root" value="[false,0,]"/>
+</VI>
