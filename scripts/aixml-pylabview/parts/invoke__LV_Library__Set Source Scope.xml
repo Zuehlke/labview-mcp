@@ -1,0 +1,114 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="invoke" key="invoke/LV.Library/Set Source Scope" source="Scope Probe.vi"><types><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0050" HasItem="0" Format="inline" Label="lib" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x0050" HasItem="0" Format="inline" Label="lib" /><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Void" Format="inline" Label="SetSourceScope" /><TypeDesc Type="Void" Format="inline" Label="SetSourceScope" /><TypeDesc Type="Refnum" RefType="LVObjCtl" CtlFlags="0x004A" HasItem="0" Format="inline" Label="SourceRef" /><TypeDesc Type="Void" Format="inline" Label="SourceRef" /><TypeDesc Type="UnitUInt32" Prop1="0" Format="inline" Label="Scope"><EnumLabel>invalid scope</EnumLabel>
+        <EnumLabel>public</EnumLabel>
+        <EnumLabel>private</EnumLabel>
+        <EnumLabel>protected</EnumLabel>
+        <EnumLabel>community</EnumLabel>
+        </TypeDesc><TypeDesc Type="Void" Format="inline" Label="Scope" /></types><heap><SL__arrayElement class="invokeNode" uid="4213">
+        <objFlags>640</objFlags>
+        <termList elements="10">
+          <SL__arrayElement class="term" uid="4382">
+            <objFlags>32768</objFlags>
+            <dco class="hGrowCItem" uid="4380">
+              <objFlags>65536</objFlags>
+              <typeDesc>TypeID(5)</typeDesc>
+              <termBounds>(0, 0, 9, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4385">
+            <dco class="hGrowCItem" uid="4383">
+              <objFlags>262145</objFlags>
+              <typeDesc>TypeID(6)</typeDesc>
+              <termBounds>(0, 87, 9, 100)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4388">
+            <dco class="hGrowCItem" uid="4386">
+              <objFlags>131072</objFlags>
+              <typeDesc>TypeID(7)</typeDesc>
+              <termBounds>(9, 0, 18, 13)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4391">
+            <dco class="hGrowCItem" uid="4389">
+              <objFlags>524289</objFlags>
+              <typeDesc>TypeID(8)</typeDesc>
+              <termBounds>(9, 87, 18, 100)</termBounds>
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4398">
+            <dco class="invokeItem" uid="4395">
+              <objFlags>196608</objFlags>
+              <typeDesc>TypeID(9)</typeDesc>
+              <termBounds>(18, 0, 34, 50)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4402">
+            <dco class="invokeItem" uid="4399">
+              <objFlags>196609</objFlags>
+              <typeDesc>TypeID(10)</typeDesc>
+              <termBounds>(18, 50, 34, 100)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4406">
+            <objFlags>32768</objFlags>
+            <dco class="invokeItem" uid="4404">
+              <typeDesc>TypeID(11)</typeDesc>
+              <termBounds>(34, 0, 50, 50)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4410">
+            <dco class="invokeItem" uid="4408">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(12)</typeDesc>
+              <termBounds>(34, 50, 50, 100)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4414">
+            <objFlags>294912</objFlags>
+            <dco class="invokeItem" uid="4412">
+              <typeDesc>TypeID(13)</typeDesc>
+              <dsw>2048</dsw>
+              <termBounds>(50, 0, 66, 50)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          <SL__arrayElement class="term" uid="4418">
+            <dco class="invokeItem" uid="4416">
+              <objFlags>131073</objFlags>
+              <typeDesc>TypeID(14)</typeDesc>
+              <termBounds>(50, 50, 66, 100)</termBounds>
+              <privDataList elements="0" />
+              </dco>
+            </SL__arrayElement>
+          </termList>
+        <bounds>(384, 362, 451, 462)</bounds>
+        <shortCount>2</shortCount>
+        <clumpNum>262148</clumpNum>
+        <dcoList elements="6">
+          <SL__arrayElement uid="4395" />
+          <SL__arrayElement uid="4399" />
+          <SL__arrayElement uid="4404" />
+          <SL__arrayElement uid="4408" />
+          <SL__arrayElement uid="4412" />
+          <SL__arrayElement uid="4416" />
+          </dcoList>
+        <permDCOList elements="4">
+          <SL__arrayElement uid="4380" />
+          <SL__arrayElement uid="4383" />
+          <SL__arrayElement uid="4386" />
+          <SL__arrayElement uid="4389" />
+          </permDCOList>
+        <nodeName>"Instr"</nodeName>
+        <oMId>0003</oMId>
+        <methName>"Set Source Scope"</methName>
+        <methCode>1292952576</methCode>
+        <invokeFlags>1008</invokeFlags>
+        <propList elements="0" />
+        <privDataList elements="0" />
+        </SL__arrayElement>
+      </heap></part>

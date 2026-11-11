@@ -45,6 +45,24 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
     private static readonly Kind Panel = new("cleanUpPanel", PanelHelperFileName, "front panel",
         "LabVIEW's Clean Up Panel algorithm (Arrange FP) ran and the VI was saved in place");
 
+    /// <summary>
+    /// The block diagram CONSTANTS the way a LabVIEW developer places them - the user's rule of
+    /// 2026-11-11 after user-forum feedback: no label (hidden, so a tool that finds a constant by
+    /// its label still does), a white-space-only string in '\' Codes Display, an array constant
+    /// showing all its elements (1..20). Both backends write every constant with its label shown,
+    /// a blank string as blank and an array as one element (measured on a probe the same day).
+    /// Runs before the layout, which then lays out the constants' real sizes.
+    /// </summary>
+    internal const string TidyConstantsHelperFileName = "lvbd_tidy_constants.xml";
+
+    private static readonly Kind Constants = new("tidyConstants", TidyConstantsHelperFileName, "block diagram constants",
+        "Every block diagram constant was tidied (label hidden, white-space strings as codes, arrays sized) and the VI saved in place");
+
+    /// <summary>The `tidyConstants` step for one VI (see <see cref="TidyConstantsHelperFileName"/>).</summary>
+    public Task<JsonObject> RunTidyConstantsAsync(string viPath, string backend, int timeoutSeconds,
+                                                  CancellationToken ct) =>
+        RunAsync(Constants, viPath, backend, timeoutSeconds, ct);
+
     /// <summary>LabVIEW's own Clean Up Diagram (<c>{LV.VI}</c> <c>BD.CleanUp</c>, then
     /// <c>Save.Instrument</c>): the fallback <see cref="DiagramLayoutTools.LayoutCoreAsync"/> tries
     /// on a diagram too dense for our engine (<see cref="Layout.DiagramLayout.TooDense"/>).</summary>
@@ -214,6 +232,10 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
                            "arrangement answers with a modal dialog, so it was left as generated.";
             return step;
         }
+        if (kind == Constants && run?["values"] is JsonObject counts)
+            foreach (var (field, key) in new[] { ("constants seen", "constantsSeen"), ("strings escaped", "stringsEscaped"),
+                                                 ("arrays sized", "arraysSized") })
+                if (counts[field] is JsonObject entry) step[key] = (entry["value"] ?? entry["literal"])?.DeepClone();
         if (code is not 0 || !saved)
         {
             step["run"] = run;

@@ -152,7 +152,7 @@ internal sealed class ClassTools(LvaiConnection connection)
                     "No scripts folder next to the exe - lvai_status reports it as " +
                     $"scriptsDirectory. {CreateClassHelperAixmlFileName} lives there.");
 
-            if (parentClassPath is { Length: > 0 } && !File.Exists(parentClassPath))
+            if (parentClassPath is { Length: > 0 } && !ExistsOrInsideLlb(parentClassPath))
                 return Json.Error("badArguments",
                     $"No parent class at '{parentClassPath}'. A parent that cannot be read would " +
                     "be written into the child as an unresolvable link, which LabVIEW reports as a " +
@@ -1222,6 +1222,21 @@ internal sealed class ClassTools(LvaiConnection connection)
         }
 
         return full;
+    }
+
+    /// <summary>
+    /// A file on disk, or an item INSIDE an existing `.llb` - a path LabVIEW opens and the file
+    /// system does not show. JKI VI Tester's `TestCase.lvclass` lives at
+    /// `...\VI Tester\TestCase.llb\TestCase.lvclass`, and every VI Tester test case class derives
+    /// from it (2026-11-11).
+    /// </summary>
+    internal static bool ExistsOrInsideLlb(string path)
+    {
+        if (File.Exists(path)) return true;
+        for (var dir = Path.GetDirectoryName(Path.GetFullPath(path)); dir is { Length: > 0 };
+             dir = Path.GetDirectoryName(dir))
+            if (dir.EndsWith(".llb", StringComparison.OrdinalIgnoreCase)) return File.Exists(dir);
+        return false;
     }
 
     /// <summary>A file under a LabVIEW installation - some folder above it holds LabVIEW.exe:

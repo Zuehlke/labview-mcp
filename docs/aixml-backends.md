@@ -3233,6 +3233,14 @@ under `AIXML2VI_TRY_XNODE=1`; by default an XNode is refused by name as before. 
 transplant the other way round - the composed xNode into the original round trip - to find what
 besides the node and its links an XNode needs in the VI; measured on Check Color Table Size.vi.
 
+**A route round it, measured 2026-11-11:** LabVIEW's own `{LV.SubVI}` `Replace` accepts an `.xnode`
+path, and the XNode it puts in place of a subVI node is complete - LabVIEW builds state, image and
+generated code itself. So `lvai_generate_vi` generates a `<Call target="Match Regular
+Expression.xnode">` against a stand-in subVI and replaces it afterwards (no project needed; the VI
+runs; NI's export of it is the Call again). Wires move by slot, so each XNode needs its measured
+terminal mapping (`XNodeCalls.cs`); only Match Regular Expression has one so far, without its grown
+capture-group outputs. docs/aixml-reference.md section 9.
+
 ### The sweep after the CLFN, the Stacked Sequence and the VISA refusal (2026-11-08)
 
 The same stride-3 sample of 10 878 vi.lib/add-on VIs: **8 635 compose (79.4 %), 2 243 refused** -

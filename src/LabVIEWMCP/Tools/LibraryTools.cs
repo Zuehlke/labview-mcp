@@ -54,6 +54,9 @@ internal sealed class LibraryTools(LvaiConnection connection)
         `folder` adds into a virtual folder; a folder not in the library is REFUSED (NI would
         silently fall back to the root); `verify.placedIn` says where each item landed.
         `verify.items` is re-read from the saved .lvlib.
+        `scope` "private" makes the items library-private (only the library's own VIs may call
+        them) through NI's {LV.Library} Set Source Scope; `verify.scopeWrong` names any whose saved
+        NI.LibItem.Scope disagrees. One scope per call - add the API and the internals in two.
         ORDER for an actor: class, methods, library, messages - an actor added after its message
         classes exist leaves every Do.vi eBad while this answers ok; only lvai_exec_state sees it.
         """)]
@@ -80,7 +83,12 @@ internal sealed class LibraryTools(LvaiConnection connection)
         [Description("Regenerate the helper VI even when it exists")] bool regenerateHelper = false,
         [Description("Local budget in seconds, per item")] int timeoutSeconds = 300,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
-        CancellationToken ct = default) =>
+        CancellationToken ct = default,
+        [Description("""
+            "public" or "private" for every item of this call; omit to leave LabVIEW's default
+            (public). Private: a subVI only the library's own VIs call.
+            """)]
+        string? scope = null) =>
         await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_add_to_library", async () =>
         {
             if (!File.Exists(libraryPath))
@@ -93,6 +101,10 @@ internal sealed class LibraryTools(LvaiConnection connection)
             if (!library.EndsWith(".lvlib", StringComparison.OrdinalIgnoreCase))
                 return Json.Error("notALibrary",
                     $"'{library}' is not a .lvlib.", new { libraryPath = library });
+            if (ScopeCode(scope) is not { } scopeCode)
+                return Json.Error("badArguments",
+                    $"scope '{scope}' is neither \"public\" nor \"private\"; omit it to leave the default.",
+                    new { scope });
 
             List<Item> items;
             try { items = ParseItems(itemsJson); }
@@ -208,7 +220,7 @@ internal sealed class LibraryTools(LvaiConnection connection)
             var added = new JsonArray();
             foreach (var item in items)
             {
-                var inputs = HelperInputs(library, item.Name, item.Path, item.Type, folder);
+                var inputs = HelperInputs(library, item.Name, item.Path, item.Type, folder, scopeCode);
 
                 var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                     helperVi, inputs.ToJsonString(), includeRawXml: false, helperViPath: null,
@@ -265,7 +277,13 @@ internal sealed class LibraryTools(LvaiConnection connection)
                         .Select(i => i.Name).ToArray()
                     : [];
 
-                verified = missing.Length == 0 && elsewhere.Length == 0;
+                // THE SCOPE, from the file too: NI writes NI.LibItem.Scope 2 for a private item and
+                // nothing for a public one
+                var scopeWrong = scopeCode == 0 ? [] : items
+                    .Where(i => (ReadItemScope(library, i.Name) ?? 1) != scopeCode).Select(i => i.Name).ToArray();
+                verify["scopeWrong"] = new JsonArray([.. scopeWrong.Select(n => (JsonNode)n)]);
+
+                verified = missing.Length == 0 && elsewhere.Length == 0 && scopeWrong.Length == 0;
                 verify["items"] = new JsonArray([.. after.Names.Select(n => (JsonNode)n)]);
                 verify["missing"] = new JsonArray([.. missing.Select(n => (JsonNode)n)]);
                 verify["placedIn"] = new JsonObject([.. items.Select(i =>
@@ -341,8 +359,28 @@ internal sealed class LibraryTools(LvaiConnection connection)
     /// It is its own function so THAT can be tested without LabVIEW: every other guard here runs
     /// before the connection, and this one does not.
     /// </summary>
+    /// <summary>NI's LibraryItemScopeEnum for `scope`: 0 leaves it, 1 public, 2 private; null for
+    /// anything else.</summary>
+    internal static int? ScopeCode(string? scope) => scope?.Trim().ToLowerInvariant() switch
+    {
+        null or "" => 0,
+        "public" => 1,
+        "private" => 2,
+        _ => null,
+    };
+
+    /// <summary>The NI.LibItem.Scope an item carries in the saved .lvlib; null when it has none.</summary>
+    internal static int? ReadItemScope(string library, string itemName)
+    {
+        var item = System.Xml.Linq.XDocument.Load(library).Descendants("Item")
+            .FirstOrDefault(e => string.Equals((string?)e.Attribute("Name"), itemName, StringComparison.OrdinalIgnoreCase));
+        var value = item?.Elements("Property")
+            .FirstOrDefault(p => (string?)p.Attribute("Name") == "NI.LibItem.Scope")?.Value;
+        return int.TryParse(value, out var n) ? n : null;
+    }
+
     internal static JsonObject HelperInputs(
-        string library, string itemName, string itemPath, string? itemType, string? folder)
+        string library, string itemName, string itemPath, string? itemType, string? folder, int scopeCode = 0)
     {
         var inputs = new JsonObject
         {
@@ -352,6 +390,7 @@ internal sealed class LibraryTools(LvaiConnection connection)
             ["item type"] = itemType,
         };
         if (folder is { Length: > 0 }) inputs["folder"] = folder;
+        if (scopeCode != 0) inputs["item scope"] = scopeCode.ToString(System.Globalization.CultureInfo.InvariantCulture);
         return inputs;
     }
 

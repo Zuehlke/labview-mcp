@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   MUST BE USED for every request for a NEW LabVIEW VI - delegate to this agent instead of generating the VI directly in the main session. Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. (d) a SUPPLIED VI whose front panel must be used, if the task has one (an exam template, a customer panel) - the program is then built as a scaffold and GRAFTED into that VI with lvai_graft_diagram, and the supplied panel survives untouched. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__pylv_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_error_list, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram, mcp__labview__lvai_bind_control_references, mcp__labview__lvai_check_build_contract
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__pylv_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_error_list, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_palette_index, mcp__labview__lvai_example_index, mcp__labview__lvai_filter_example_search_candidates, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_connector_pane, mcp__labview__lvai_generate_vi, mcp__labview__lvai_generate_vis, mcp__labview__lvai_generate_vi_with_events, mcp__labview__lvai_wire_dynamic_events, mcp__labview__lvai_set_event_data_fields, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_run_vi_as_top_level, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_render_diagrams, mcp__labview__lvai_set_vi_icon, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_add_vis_to_project, mcp__labview__pylv_apply, mcp__labview__lvai_placeholder_subvi, mcp__labview__lvai_swap_subvis, mcp__labview__lvai_graft_diagram, mcp__labview__lvai_bind_control_references, mcp__labview__lvai_check_build_contract, mcp__labview__lvai_bind_typedef_constants, mcp__labview__lvai_bind_pane_typedef, mcp__labview__lvai_coercion_dots, mcp__labview__lvai_describe_ctl, mcp__labview__lvai_set_vi_execution
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -33,8 +33,12 @@ Measured facts that each cost minutes when found at run time. Plan around them f
   `docs/cold-build-atm-cld.md` §4, `scripts/aixml-skeletons/web-browser-title-poll.xml`.
 - **AIXML drops every typedef on a VI's own pane.** On a CLASS MEMBER re-bind it with
   `lvai_bind_pane_typedef` (needs the `.lvclass`); on a plain subVI no route is established, so
-  decide before designing a typedef pane. Constants into a typedef input:
-  `lvai_bind_typedef_constants`. `docs/typedef-disconnect.md` §13a-§13b.
+  decide before designing a typedef pane. A typedef CONSTANT: one wired into a subVI CALL's typedef
+  input is bound by `lvai_bind_typedef_constants`; any other - a cluster constant into `Bundle By
+  Name`, a queue's element type - by `lvai_swap_subvis` `constantsJson`
+  `[{"label":"<constant label>","class":"<the .ctl>"}]` (needs the project active; measured
+  2026-11-11 on a Bundle input, `constantsSwapped: 1`, the `.ctl` in the VI's link table).
+  `docs/typedef-disconnect.md` §13a-§13b.
 - **Check the 1920 x 1080 budget BEFORE generating**: `lvai_check_aixml` `diagramChain`
   (10 stages). Fold a sequential stretch into a subVI while the AIXML is text - one ATM main VI came
   out 5 983 px wide and was regenerated four times. `docs/diagram-size.md` §3-§4.
@@ -50,6 +54,25 @@ Measured facts that each cost minutes when found at run time. Plan around them f
 
 ## Hard rules
 
+- **A REENTRANT VI** is written with the trailer `<?lvmcp exec IsReentrant="1" PooledReentrancy="1"?>`
+  after `</VI>` (shared clones; `PooledReentrancy="0"` preallocated; pylabview backend only) and
+  VERIFIED with `lvai_exec_state` - `reentrancyType` is LabVIEW's own reading. Not with your own
+  PowerShell COM: `New-Object -ComObject LabVIEW.Application` binds to nothing there.
+- **ANY OTHER EXECUTION SETTING** - inline, priority, execution system, debugging, automatic error
+  handling, run when opened, suspend when called, clear indicators, auto handle menus, or reentrancy
+  on an EXISTING VI - is set AFTER generation with `lvai_set_vi_execution` (give only what changes;
+  `inline: true` implies debugging off and preallocated reentrancy). Its `ok` is LabVIEW's own
+  read-back; never hand-edit LVSR fields. docs/vi-execution-settings.md.
+- **WRITE WHAT A LABVIEW DEVELOPER WOULD DRAW** (user-forum feedback, 2026-11-11). `lvai_check_aixml`
+  warns on each; a warning is to be FIXED in the AIXML, not reported:
+  - a compare against a constant 0 is the primitive - `Less Than 0?`, `Equal To 0?`, ... - and an
+    Add / Subtract of 1 is `Increment` / `Decrement` (`primitiveForConstant`);
+  - an error cluster goes STRAIGHT into `Not` / `And` / `Or` and into a loop's `stop` terminal -
+    never `Unbundle By Name` `status` first (`errorStatusUnbundled`; measured: both read status);
+  - no `no error` cluster constant: leave an `error in` unwired instead.
+  Constant LABELS need nothing from you: `lvai_generate_vi` hides them (and shows white-space
+  strings as codes, array constants at full size) - name each constant after the terminal it
+  feeds as before; tools still find it by that hidden label.
 - **A palette hit is the design.** If `lvai_palette_index` returns a VI that does the job, call
   it. Rebuilding the same logic from primitives is the fallback, used only when the index has no
   hit or the target genuinely fails to resolve — and the report must say which of the two it was.
@@ -364,7 +387,16 @@ function for this":
 The third row is the one that gets forgotten. "Is this VI broken", "list a project's items",
 "read a control by name" are not functions and will never appear in a palette.
 
-1. **Palette first**, for anything computation-shaped. Query `lvai_palette_index` with the
+0. **The project's own VIs first** (the user's rule of 2026-11-11, from user-forum feedback: "if I
+   put VIs in the project folder and tell it to look at those, it may reuse them" - it should not
+   need telling). When a `.lvproj` is given or the target folder holds one, list its VIs with
+   `lvai_describe_project` and Glob `*.vi` in the project folder; read the terminals of every
+   name that could do the job (`lvai_vi_terminals`). A fit is CALLED by its bare name - or its
+   `Library.lvlib\3A` qualifier - once it is LOADED through the project (`lvai_open_file`
+   `viPaths`, see "A GENERATED VI CALLS PROJECT-LOCAL CODE" below). Rebuilding what the project
+   already holds is the same failure as rebuilding a palette VI, and the report says which project
+   VIs were looked at.
+1. **Palette next**, for anything computation-shaped. Query `lvai_palette_index` with the
    *operation*, two to four different words (`sort`, `array`, `string`, `file`) — one query is
    not a search. A hit is the design.
 2. **Examples**, when the request is pattern-shaped or the palette gave nothing.

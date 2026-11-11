@@ -169,7 +169,7 @@ public class ViServerKnowledgeTests
     public void EveryRowWithASourceBelongsToTheHandAddedClasses()
     {
         string[] added = ["{LV.Project}", "{LV.ProjectItem}", "{LV.Library}", "{LV.LVClassLibrary}",
-                          "{LV.Application}"];
+                          "{LV.Application}", "{LV.VI}"];   // the last two: harvested, plus single hand-added rows
         foreach (var (resource, width) in new[] { ("vi-server-methods.tsv", 5), ("vi-server-properties.tsv", 4) })
         {
             var lines = KnowledgeTools.Load(resource).Replace("\r\n", "\n").Split('\n');

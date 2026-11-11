@@ -1,10 +1,11 @@
-<VI _name="lvai_add_one_to_library.vi" description="Adds ONE existing file to an existing library through NI's own AddItem - the gesture that relinks\2C which hand-editing NI.Lib.ContainingLib does not. Type is an input\2C so this serves LVClass and VI alike. Given a folder name it adds INTO that virtual folder\2C the way NI's own Message Maker places a message class: AddItem is invoked on the FOLDER's project item rather than on the library. An unknown or empty folder name falls back to the library root\2C which is what NI does too.">
+<VI _name="lvai_add_one_to_library.vi" description="Adds ONE existing file to an existing library through NI's own AddItem - the gesture that relinks\2C which hand-editing NI.Lib.ContainingLib does not. Type is an input\2C so this serves LVClass and VI alike. Given an item scope (1 public, 2 private; 0 leaves it) it then sets the new item's access scope through {LV.Library} Set Source Scope - NI's own export names its inputs SourceRef and Scope (measured 2026-11-11). Given a folder name it adds INTO that virtual folder\2C the way NI's own Message Maker places a message class: AddItem is invoked on the FOLDER's project item rather than on the library. An unknown or empty folder name falls back to the library root\2C which is what NI does too.">
   <FreeLabel comment="Open\2C find the folder\2C add\2C save all" uid="4200" uid_parent="root"/>
   <Control _name="library path" type="path" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
   <Control _name="item name" type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.value"/>
   <Control _name="item path" type="path" uid="4203" uid_parent="root" value="" outputs="value:4203.value"/>
   <Control _name="item type" type="string" uid="4204" uid_parent="root" value="" outputs="value:4204.value"/>
   <Control _name="folder" type="string" uid="4205" uid_parent="root" value="" outputs="value:4205.value"/>
+  <Control _name="item scope" type="int32" uid="4208" uid_parent="root" value="0" outputs="value:4208.value"/>
   <Control _name="error in" conIdx="11" connection="recommended" type="cluster{bool.status,int32.code,string.source}" uid="4206" uid_parent="root" value="[false,0,]" outputs="value:4206.value"/>
   <Constant _name="Folder Type" type="string" uid="4207" uid_parent="root" value="Folder" outputs="value:4207.value"/>
   <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4206.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.err" uid="4210" uid_parent="root"/>
@@ -39,8 +40,30 @@
     <Tunnel _id="Out1" outputs="value:4290.target" uid="4290" uid_parent="4260"/>
     <Tunnel _id="Out2" outputs="value:4291.rest" uid="4291" uid_parent="4260"/>
   </Structure>
-  <Node _name="Invoke Node" target="AddItem" type="{LV.ProjectItem}" inputs="reference:4290.target,error in (no error):4230.err,Name:4202.value,Path:4203.value,Type:4204.value" outputs="reference out:4300.ref,error out:4300.err,AddItem:" uid="4300" uid_parent="root"/>
-  <Node _name="Close Reference" inputs="reference:4291.rest,error in (no error):4300.err" outputs="error out:4310.err" uid="4310" uid_parent="root"/>
+  <Node _name="Invoke Node" target="AddItem" type="{LV.ProjectItem}" inputs="reference:4290.target,error in (no error):4230.err,Name:4202.value,Path:4203.value,Type:4204.value" outputs="reference out:4300.ref,error out:4300.err,AddItem:4300.item" uid="4300" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4208.value" uid="4500" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4220.lib" uid="4501" uid_parent="4500"/>
+    <Tunnel _id="In2" inputs="value:4300.item" uid="4502" uid_parent="4500"/>
+    <Tunnel _id="In3" inputs="value:4300.err" uid="4503" uid_parent="4500"/>
+    <Tunnel _id="In4" inputs="value:4208.value" uid="4504" uid_parent="4500"/>
+    <CaseFrame selector="0" selectout="" label="No scope asked for - leave it" uid="4510" uid_parent="4500">
+      <Tunnel _id="In1" outputs="value:4511.value" uid="4511" uid_parent="4510"/>
+      <Tunnel _id="In2" outputs="value:4512.value" uid="4512" uid_parent="4510"/>
+      <Tunnel _id="In3" outputs="value:4513.value" uid="4513" uid_parent="4510"/>
+      <Tunnel _id="In4" outputs="value:4514.value" uid="4514" uid_parent="4510"/>
+      <Tunnel _id="Out1" inputs="value:4513.value" uid="4515" uid_parent="4510"/>
+    </CaseFrame>
+    <CaseFrame selector="Default" selectout="" label="Set the new item's access scope" uid="4520" uid_parent="4500">
+      <Tunnel _id="In1" outputs="value:4521.value" uid="4521" uid_parent="4520"/>
+      <Tunnel _id="In2" outputs="value:4522.value" uid="4522" uid_parent="4520"/>
+      <Tunnel _id="In3" outputs="value:4523.value" uid="4523" uid_parent="4520"/>
+      <Tunnel _id="In4" outputs="value:4524.value" uid="4524" uid_parent="4520"/>
+      <Node _name="Invoke Node" target="Set Source Scope" type="{LV.Library}" inputs="reference:4521.value,error in (no error):4523.value,SourceRef:4522.value,Scope:4524.value" outputs="reference out:,error out:4525.err" uid="4525" uid_parent="4520"/>
+      <Tunnel _id="Out1" inputs="value:4525.err" uid="4526" uid_parent="4520"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4530.err" uid="4530" uid_parent="4500"/>
+  </Structure>
+  <Node _name="Close Reference" inputs="reference:4291.rest,error in (no error):4530.err" outputs="error out:4310.err" uid="4310" uid_parent="root"/>
   <Call target="Edit LVLibs.lvlib\3ASave All This Library.vi" inputs="Library in:4220.lib,Save Only Modified VIs and Libraries? (F):,error in (no error):4310.err" outputs="Library out:4320.lib,error out:4320.err" uid="4320" uid_parent="root"/>
   <Node _name="Close Reference" inputs="reference:4320.lib,error in (no error):4320.err" outputs="error out:4330.err" uid="4330" uid_parent="root"/>
   <Indicator _name="folder index" type="int32" uid="4340" uid_parent="root" value="0" inputs="value:4250.idx"/>

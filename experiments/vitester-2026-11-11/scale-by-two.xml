@@ -1,0 +1,9 @@
+<VI _name="Scale By Two.vi" description="Returns x multiplied by two.">
+  <FreeLabel comment="Double the input" uid="4290" uid_parent="root"/>
+  <Control _name="x" conIdx="0" connection="required" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="required" outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="y" outputs="value:4202.value" type="double" uid="4202" uid_parent="root" value="2"/>
+  <Node _name="Multiply" inputs="x:4200.value,y:4202.value" outputs="x*y:4203.x*y" uid="4203" uid_parent="root"/>
+  <Indicator _name="x times two" conIdx="4" connection="recommended" inputs="value:4203.x*y" type="double" uid="4204" uid_parent="root" value="0"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4205" uid_parent="root" value="[false,0,]"/>
+</VI>

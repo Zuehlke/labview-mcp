@@ -582,11 +582,11 @@ primResID	node	parmIndex	terminal
 2454	Element of Set?	10	element
 2454	Element of Set?	11	set
 2454	Element of Set?	3	found?
-2456	Insert Into Map	1	map out
+2456	Insert Into Map	1	value unchanged?
 2456	Insert Into Map	10	key
 2456	Insert Into Map	11	map in
 2456	Insert Into Map	2	key already included?
-2456	Insert Into Map	3	value unchanged?
+2456	Insert Into Map	3	map out
 2456	Insert Into Map	9	value
 2457	Remove From Map	10	key
 2457	Remove From Map	3	map out
@@ -626,8 +626,8 @@ primResID	node	parmIndex	terminal
 8013	Open VI Object Reference	8	error in (no error)
 8014	New VI	11	application refnum
 8014	New VI	3	vi refnum
-8014	New VI	5	password
-8014	New VI	6	type specifier VI Refnum (for type only)
+8014	New VI	5	type specifier VI Refnum (for type only)
+8014	New VI	6	password
 8014	New VI	7	not connected
 8014	New VI	9	vi type (standard vi)
 8014	New VI	out	error out
@@ -691,10 +691,10 @@ primResID	node	parmIndex	terminal
 8066	Get Type and Creator	7	path
 8067	Get Volume Info	11	path
 8067	Get Volume Info	8	error in
-8068	Move	1	new path
+8068	Move	1	cancelled
 8068	Move	10	target path (use dialog)
 8068	Move	11	source path
-8068	Move	3	cancelled
+8068	Move	3	new path
 8068	Move	7	prompt (Choose or enter target path for move)
 8068	Move	8	error in
 8068	Move	9	overwrite (F)
@@ -823,8 +823,8 @@ primResID	node	parmIndex	terminal
 9110	Get Queue Status	10	# pending insert
 9110	Get Queue Status	3	error in (no error)
 9110	Get Queue Status	4	max queue size
-9110	Get Queue Status	5	queue name
-9110	Get Queue Status	6	elements
+9110	Get Queue Status	5	elements
+9110	Get Queue Status	6	queue name
 9110	Get Queue Status	8	queue out
 9110	Get Queue Status	9	# pending remove
 9110	Get Queue Status	out	queue

@@ -148,6 +148,7 @@ public sealed class DiagramSizeTests
             MeasureDiagram = (_, _, _) => Task.FromResult<((int, int)?, string?)>(((4152, 1023), @"C:\x\d.png")),
             CleanUp = LabVIEWMcp.Tests.Tools.BulkGenerateViTests.NoCleanUp,
             CleanUpPanel = LabVIEWMcp.Tests.Tools.BulkGenerateViTests.NoCleanUp,
+            TidyConstants = LabVIEWMcp.Tests.Tools.BulkGenerateViTests.NoCleanUp,
         };
 
         var result = await tools.GenerateViAsync(Aixml(server), server.TempPath("Out.vi"), measurePane: false);
@@ -201,8 +202,28 @@ public sealed class DiagramSizeTests
                 panels?.Add(vi);
                 return Task.FromResult(new JsonObject { ["step"] = "cleanUpPanel", ["ok"] = true });
             },
+            TidyConstants = (_, _, _, _) =>
+                Task.FromResult(new JsonObject { ["step"] = "tidyConstants", ["ok"] = true }),
         };
         return (tools, asked);
+    }
+
+    [Fact]
+    public async Task The_constants_are_tidied_before_panel_and_diagram_and_only_on_a_deliverable()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+        server.Service.ViFileContent = "a generated VI";
+        var (tools, _) = Cleaning(server);
+        var result = await tools.GenerateViAsync(Aixml(server), server.TempPath("Sub.vi"), measurePane: false);
+        var names = Res.Obj(result)["steps"]!.AsArray().Select(s => s!["step"]!.GetValue<string>()).ToList();
+        Assert.True(names.IndexOf("tidyConstants") >= 0
+                    && names.IndexOf("tidyConstants") < names.IndexOf("cleanUpPanel")
+                    && names.IndexOf("tidyConstants") < names.IndexOf("cleanUpDiagram"), string.Join(", ", names));
+
+        // a helper or carrier (measureDiagram false) keeps its constants as written
+        var helper = await tools.GenerateViAsync(Aixml(server), server.TempPath("Helper.vi"), measurePane: false,
+                                                 measureDiagram: false);
+        Assert.DoesNotContain("tidyConstants", Res.Obj(helper)["steps"]!.ToJsonString());
     }
 
     [Fact]

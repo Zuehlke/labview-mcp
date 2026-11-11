@@ -1,0 +1,27 @@
+<VI _name="Inline Probe.vi" description="Probe: for every subVI node on a caller's diagram, whether LabVIEW inlined the callee (Compiler:Is Callee Inlined).">
+  <FreeLabel comment="Ask LabVIEW per subVI node" uid="4290" uid_parent="root"/>
+  <Control _name="vi path" type="path" uid="4200" uid_parent="root" value="" outputs="value:4200.value"/>
+  <Node _name="Open VI Reference" inputs="vi path:4200.value" outputs="vi reference:4201.vi,error out:4201.err" uid="4201" uid_parent="root"/>
+  <Constant _name="SubVI Class Name" type="string" uid="4202" uid_parent="root" value="SubVI" outputs="value:4202.value"/>
+  <Constant _name="Traverse Target" type="uint16{FP,BD,Other}" uid="4203" uid_parent="root" value="1" outputs="value:4203.value"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:4201.vi,Class Name:4202.value,error in (no error):4201.err,Traverse Target:4203.value,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:,References:4210.refs,# of Refs:,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Constant _name="subVI class" type="ref{LV.SubVI}" uid="4211" uid_parent="root" value="" outputs="value:4211.value"/>
+  <Structure _name="For Loop" count="" label="One subVI node per iteration" uid="4220" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4210.refs" mode="index" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Tunnel _id="In2" inputs="value:4211.value" outputs="value:4222.value" uid="4222" uid_parent="4220"/>
+    <ShiftReg uid="4223" uid_parent="4220">
+      <Left inputs="value:4210.err" outputs="value:4224.value" uid="4224" uid_parent="4223"/>
+      <Right inputs="value:4224.value" outputs="value:4225.value" uid="4225" uid_parent="4223"/>
+    </ShiftReg>
+    <Node _name="To More Specific Class" inputs="reference:4221.value,error in:,target class:4222.value" outputs="specific class reference:4230.ref,error out:4230.err" uid="4230" uid_parent="4220"/>
+    <Node _name="Property Node" fields="read+VI Name,read+Compiler\3AIs Callee Inlined" type="{LV.SubVI}" inputs="reference:4230.ref,error in (no error):4230.err" outputs="VI Name:4231.name,Compiler\3AIs Callee Inlined:4231.inlined,reference out:,error out:4231.err" uid="4231" uid_parent="4220"/>
+    <Tunnel _id="Out1" inputs="value:4231.name" mode="index" outputs="value:4232.value" uid="4232" uid_parent="4220"/>
+    <Tunnel _id="Out2" inputs="value:4231.inlined" mode="index" outputs="value:4233.value" uid="4233" uid_parent="4220"/>
+    <Tunnel _id="Out3" inputs="value:4231.err" mode="index" outputs="value:4234.value" uid="4234" uid_parent="4220"/>
+  </Structure>
+  <Node _name="Close Reference" inputs="reference:4201.vi,error in (no error):4225.value" outputs="error out:4240.err" uid="4240" uid_parent="root"/>
+  <Indicator _name="callees" type="array{string}" uid="4250" uid_parent="root" value="[]" inputs="value:4232.value"/>
+  <Indicator _name="inlined" type="array{bool}" uid="4251" uid_parent="root" value="[]" inputs="value:4233.value"/>
+  <Indicator _name="node errors" type="array{cluster{bool.status,int32.code,string.source}}" uid="4252" uid_parent="root" value="[]" inputs="value:4234.value"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="4253" uid_parent="root" value="[false,0,]" inputs="value:4240.err"/>
+</VI>

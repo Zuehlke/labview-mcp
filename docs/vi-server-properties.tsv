@@ -6066,6 +6066,7 @@ class	property	access	source
 {LV.VI}	Execution:Allow Debugging	read
 {LV.VI}	Execution:Close After Call	read
 {LV.VI}	Execution:Is Reentrant	read
+{LV.VI}	Execution:Reentrancy Type	read	lvserver.rsc (COM propget only); read over COM 2026-11-11: 0 shared clones, 1 preallocated - docs/aixml-reference.md section 9
 {LV.VI}	Execution:Preferred Exec System	read
 {LV.VI}	Execution:Priority	read
 {LV.VI}	Execution:Run When Opened	read

@@ -64,7 +64,8 @@ internal sealed class LUnitTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_lunit_add_test_method", Destructive = true, OpenWorld = true,
                    Title = "Turn authored AIXML into LUnit test methods of a test case class")]
     [Description("""
-        Test: finish authored AIXML into LUnit test METHODS of a test case class - convert, 4815
+        Test: finish authored AIXML into LUnit - or JKI VI Tester, with classTerminalNames
+        "TestCase in|TestCase out" - test METHODS of a test case class - convert, 4815
         pane, retype the class terminals, class membership, verify - many in one call. MUTATING.
         Use this, not lvai_generate_vi: validation refuses the `path` stand-ins this route needs.
         AUTHOR the method with `path` stand-ins `<TestClassName> In` / `<TestClassName> Out` at

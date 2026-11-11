@@ -1,0 +1,6 @@
+<VI _name="R r0p1s1b1.vi" description="Reentrancy probe.">
+  <FreeLabel comment="Reentrancy probe" uid="4290" uid_parent="root"/>
+  <Control _name="x" conIdx="0" connection="required" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Indicator _name="y" conIdx="4" connection="recommended" inputs="value:4200.value" type="double" uid="4201" uid_parent="root" value="0"/>
+</VI>
+<?lvmcp exec IsReentrant="0" PooledReentrancy="1" IsSubroutine="0" PrefExecSyst="-1" SaveParallel="1" InStBit4="1"?>

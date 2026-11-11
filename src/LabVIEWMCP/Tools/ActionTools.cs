@@ -324,6 +324,8 @@ internal sealed class ActionTools(LvaiConnection connection)
         Read `errorCode` first; the foreground explains only that one failure.
         Open a VI THROUGH its project to make project-local code callable by AIXML; `viPaths`
         loads several callees in one call.
+        A PROJECT open is refused (`projectChangeWhileParallel`) while tool calls overlap - several
+        agents on one LabVIEW - or overlapped in the last 60 s: projects are the orchestrator's job then.
         """)]
     public async Task<string> OpenFileAsync(
         [Description(@"Absolute path to the .vi, or empty")] string? viPath = null,

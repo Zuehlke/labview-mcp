@@ -1555,6 +1555,7 @@ class	method	parameters	returns	source
 {LV.LeftShiftRegister}	SetTagPersistance	TagName; isPersistent	SetTagPersistence
 {LV.LeftShiftRegister}	Traverse	OpName; ContextData; TraverseAll	Traverse; ContextData
 {LV.Library}	AddItem	Name; Path; Type	AddItem	helper scripts/lvai_create_actor_library.xml (+2 more)
+{LV.Library}	Set Source Scope	SourceRef; Scope		NI ConvertVIToAIXML export 2026-11-11; helper scripts/lvai_add_one_to_library.xml (Scope 1 public, 2 private)
 {LV.Library}	ApplyIconToVIs			helper scripts/lvai_icon_apply_and_save_n.xml (+1 more)
 {LV.Library}	Get All Descendents	Type; Exclude Dependencies; ExcludeBuilds; ExcludeTargets	All Descendents	helper scripts/lvai_add_one_to_library.xml (+2 more)
 {LV.Library}	Get Icon		color; monochrome	helper scripts/lvai_icon_get_library_icon.xml

@@ -2976,6 +2976,130 @@ happens before any question of compilation. Deleting the call and substituting c
 its wired outputs does avoid the error — but see the silent-degradation row in §11 before
 concluding that the result is what you wanted.
 
+### Match Regular Expression, Lossy Enqueue Element, reentrancy (measured 2026-11-11)
+
+Three gaps reported from the field in one message - "it refused Match Regular Expression, so the
+text helper uses Match Pattern", "it has no Lossy Enqueue part", "the reentrancy setting is out of
+its reach". Each measured on LabVIEW 2026, both backends:
+
+**`Match Regular Expression` is an XNode, not a primitive.** The String palette lists it as
+`Match Regular Expression.xnode` (`vi.lib\regexp`). `<Node _name="Match Regular Expression"/>` is
+`Error 53 "Manager call not supported"` from NI's converter - naming nothing - and "not a primitive"
+from the composer. What works on both backends is a `Call` of the VI that does its work:
+
+```xml
+<Call target="Match Regular Expression_Execute.vi"
+      inputs="input string:…,regular expression:…,offset (0):,ignore case? (F):,multiline? (F):,error in (no error):…"
+      outputs="whole match:…,matched substrings:…,before match:,after match:,whole match offset:,error out:…" …/>
+```
+
+`input string` and `regular expression` are required; `matched substrings` is the array of the
+capture groups (`Temp=([0-9.]+)C Hum=([0-9]+)` on `Temp=23.5C Hum=41%` answered `["23.5","41"]`,
+whole match `Temp=23.5C Hum=41`). It validated on grpc and composed and ran on pylabview.
+`lvai_check_aixml` refuses the Node form as `xnodeWrittenAsNode` and names this Call
+(`AixmlCheck.XNodeCallRoutes`, the composer's `XNODE_CALL_ROUTES` - keep them equal when adding
+the next XNode).
+
+**The real XNode, as the palette drops it, is generated too** - write it the way NI's export and
+our reader write an XNode, as a `Call` of the `.xnode`:
+
+```xml
+<Call target="Match Regular Expression.xnode"
+      inputs="input string:…,regular expression:…,offset (0):,ignore case? (F):,multiline? (F):,error in:…"
+      outputs="before match:…,whole match:…,after match:…,offset past match:…,error out:…" …/>
+```
+
+Neither backend converts that Call, so `lvai_generate_vi` (and everything built on it) generates
+the VI against `Match Regular Expression_Execute.vi` as a STAND-IN and then lets LabVIEW put the
+XNode in its place with `{LV.SubVI}` `Replace` and the `.xnode`'s path, then reads the execution
+state - step `xnodes` in the answer, `xnodesPlaced`. LabVIEW builds the XNode itself (state, icon,
+generated code), which the composer could not (docs/aixml-backends.md). Measured 2026-11-11: no
+project needs to be open; NI's export of the result is exactly the Call above; the run honoured
+`ignore case?` and answered `offset past match` 18 for `TEMP=23.5C` in `Sensor: TEMP=23.5C ok`.
+
+`Replace` moves wires by connector-pane SLOT, not by name, so the stand-in's terminals are mapped
+(`XNodeCalls.cs`): `error in` -> `error in (no error)`, `offset past match` -> `whole match offset`
+(the same slot), and the stand-in's `matched substrings` stays UNWIRED - wired, it took the slot of
+`offset past match` once and of `error out` the next time, losing the wire it displaced. **No capture
+groups through the XNode:** they are outputs of a GROWN XNode, and nothing visible in VI Server grows
+one (`Bounds` is read-only; the XNode scripting API is hidden behind `SuperSecretPrivateSpecialStuff`
+in LabVIEW.ini, which we do not write). A capture-group terminal on the XNode Call is refused before
+anything is written (`xnodeCallRefused`); for capture groups, call the Execute VI and read
+`matched substrings`.
+
+**`Lossy Enqueue Element` composes.** It had a name (primResID 9130) and no harvested part; the
+part comes from NI's own conversion of a wired probe (`experiments\prim-harvest-2026-11-11\`). A
+size-1 queue fed A, then B: `overflow?` true, `overflow element` A, B remaining - the same on NI's
+VI and on the composed one, for string and int32 elements. Terminals: `queue`, `element`,
+`error in (no error)`; `queue out`, `overflow element`, `overflow?`, `error out`. (`Obtain Queue`'s
+`max queue size (-1, unlimited)` carries a comma: in `inputs` it is `max queue size (-1\2C unlimited)`.)
+
+**Four primitives had two terminal names SWAPPED in the composer's tables** - found when a
+demo build of the same day wired `Get Queue Status` `elements` into a double array and LabVIEW
+answered "the type of the source is string": the composer had put the wire on `queue name`. NI's
+converter took the same document and ran it. All four rows came from
+`scripts/aixml-pylabview/terminal-names-learned.tsv` (names learned by comparing wire ends with
+NI's exports), and the harvested parts' own type labels gave each away:
+
+| primResID | node | slot: was -> is |
+|---|---|---|
+| 9110 | `Get Queue Status` | 5: `queue name` -> `elements` (Array); 6: `elements` -> `queue name` (String) |
+| 8068 | `Move` | 1: `new path` -> `cancelled` (Boolean); 3: `cancelled` -> `new path` (Path) |
+| 8014 | `New VI` | 5: `password` -> `type specifier VI Refnum (for type only)` (Refnum); 6: the reverse (String) |
+| 2456 | `Insert Into Map` | 1: `map out` -> `value unchanged?` (Boolean); 3: the reverse (map) |
+
+NI validated a document wiring each pair; on the composer `Move` and `New VI` were broken with the
+old table and executable with the fixed one (`Insert Into Map` cannot be composed: the composer
+has no map type yet). The reader names terminals from the same tables, so its exports of VIs using
+these four were consistently wrong too - a round trip could not show it. `TerminalNameTableTests`
+now fails on any slot whose part type is labelled with another slot's name and a different kind of
+type.
+
+**Execution settings - reentrancy - are written in a trailer AFTER `</VI>`, on pylabview only:**
+
+```xml
+</VI>
+<?lvmcp exec IsReentrant="1" PooledReentrancy="1"?>
+```
+
+| `IsReentrant` | `PooledReentrancy` | LabVIEW reads (COM `IsReentrant`, `ReentrancyType`) |
+|---|---|---|
+| 0 | 0 | not reentrant (the default) |
+| 1 | 0 | reentrant, **preallocated** clones (`ReentrancyType` 1) |
+| 1 | 1 | reentrant, **shared** clones (`ReentrancyType` 0 - what AF's `Actor Core.vi` reads) |
+
+LabVIEW kept both bits when it saved the composed VI. The other keys the composer writes are
+`IsSubroutine`, `Priority`, `PrefExecSyst`, `SaveParallel`, `InStBit4` - the reader emits all of
+them on every export, so a regenerated export keeps its VI's settings. Values are INTEGERS: the
+composer skips anything else without a word, so `lvai_check_aixml` refuses a non-integer value
+(`execTrailerValueNotNumeric`) and an unknown key (`execTrailerUnknownKey`). **NI's converter
+ignores everything after `</VI>`**: on grpc the VI comes out non-reentrant, and `lvai_generate_vi`
+says so (`execTrailerIgnored`). VI Server offers no way round that from a client: `Execution:Is
+Reentrant` and `Execution:Reentrancy Type` are read-only in LabVIEW's COM type library.
+**Check it with `lvai_exec_state`**: it answers `reentrant` and `reentrancyType` ("shared clones",
+"preallocated") as LabVIEW reads them. Two agents of the practice build (2026-11-11) could only read
+the trailer back from the file - their own PowerShell COM bound to nothing.
+
+### What the user forum saw on generated diagrams, and what answers it (2026-11-11)
+
+Measured on one probe document (`experiments\forum-2026-11-11\display-probe.xml`) generated on
+both backends - both drew the same:
+
+| reported | measured | now |
+|---|---|---|
+| constants carry labels nobody needs | every constant's label shown, its `_name` as text | `lvai_generate_vi` step `tidyConstants` hides each label (helper `lvbd_tidy_constants.xml`, both backends, before the layout); the TEXT stays, so `lvai_swap_subvis` and the typedef binders still find a constant by it |
+| a white-space string constant looks empty | a space and a tab drawn as blank boxes | the same step switches a string that is only white space to `'\' Codes Display` (`\s`, `\t` visible) |
+| an array constant shows one element, no count | one element plus the index display | the same step shows every element, 1 to 20 (`Number of Columns` - the 1D constant is horizontal) |
+| the error constant is PINK, even as an icon | NI's own converter writes it pink too; NI's examples draw it as a brown icon | the composer writes an error-cluster constant as NI does: `objFlags` 0x10000000 (View Cluster as Icon), frame part (partID 9) `fgColor` 007F7F00, 16 x 22. The flags ALONE gave a pink icon. On grpc it stays pink |
+| a GREEN stop terminal | a `stop` Condition draws red on both backends; green is `value="continue"` (continue while true) | nothing to fix; write `stop` and drop the `Not` in front of it |
+| `Less?` against a constant 0 labelled "Zero" | composed as written | `lvai_check_aixml` warns `primitiveForConstant` and names `Less Than 0?` (and kin, and `Increment`/`Decrement` for +1/-1) |
+| status unbundled, then `Not` | composed as written | `lvai_check_aixml` warns `errorStatusUnbundled`. MEASURED: an error cluster wired straight into `Not`, `Or` and a While Loop's `stop` terminal composes and runs, reading `status` (with an error: Not false, Or true; the loop stops at once). A Case Structure with `Error` / `No Error` frames did NOT compose ("Selector values are not unique"), so the rule leaves the Case selector out |
+
+Two traps the tidy helper hit, both in its own description: closing a cast object reference
+inside the loop is harmless, but **Save.Instrument and the VI's Close Reference must wait for the
+loop** - without that data dependency they ran beside it and every later cast was Error 1055,
+on some runs from the first constant on.
+
 ## 10. Workflow
 
 ```

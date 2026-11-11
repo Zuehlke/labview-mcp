@@ -1,0 +1,8 @@
+<VI _name="ErrBool B.vi" description="Probe: an error cluster wired straight into a While Loop's stop terminal.">
+  <FreeLabel comment="Error wire straight into the stop terminal" uid="4290" uid_parent="root"/>
+  <Control _name="error in" conIdx="11" connection="required" outputs="value:4200.value" type="cluster{bool.status,int32.code,string.source}" uid="4200" uid_parent="root" value="[false,0,]"/>
+  <Structure _name="While Loop" count="" label="Runs until an error" uid="4240" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4200.value" outputs="value:4241.value" uid="4241" uid_parent="4240"/>
+    <Condition inputs="value:4241.value" uid="4245" uid_parent="4240" value="stop"/>
+  </Structure>
+</VI>

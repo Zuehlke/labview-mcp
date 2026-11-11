@@ -825,12 +825,50 @@ Two practical consequences:
 Related, same cause, and the reason a green suite should not be tidied afterwards: `lvai_set_vi_icon`
 re-saves every VI it touches, which re-arms this on the next run.
 
-## 5. Why Caraya rather than JKI VI Tester
+## 5. JKI VI Tester - measured 2026-11-11
 
-Both ship in `vi.lib\addons\_JKI Toolkits`. A Caraya test is a plain VI calling library VIs, which
-is exactly what the generator can author. A VI Tester test case is a `.lvclass` inheriting from
-`TestCase.lvclass` with dynamic-dispatch overrides; `lvai_create_class` exists, but generating
-dynamic-dispatch override VIs is unmeasured. VI Tester was not tried.
+Caraya stays the default: a Caraya test is a plain VI. VI Tester was "not tried" until 2026-11-11,
+and this section said a VI Tester test needs "dynamic-dispatch overrides" - **it does not**. A user
+then reported VI Tester test methods that held only `TestCase in`/`out` and the error cluster: the
+template with no body, which is what the unmeasured agent produced. Measured since, end to end on
+LabVIEW 2026 (`experiments\vitester-2026-11-11`):
+
+- **The test case class** derives from `TestCase.lvclass`, which sits INSIDE
+  `vi.lib\addons\_JKI Toolkits\VI Tester\TestCase.llb`. `lvai_create_class` refused that parent
+  ("No parent class at ...", a `File.Exists` guard); it now accepts a path through an existing `.llb`
+  (`ClassTools.ExistsOrInsideLlb`), and NI's provider opened the parent from it (`parent opened`
+  true, `inheritsFrom: TestCase.lvclass` read back from the class file).
+- **A test method** is a STATIC member VI named `test ...` - NI's own `Merge Errors TestCase`
+  example has `NI.ClassItem.IsStaticMethod` true on every one - on pane 4815: `TestCase in` 11
+  (required), `TestCase out` 3, `error in (no error)` 8, `error out` 0. That is LUnit's shape, so
+  `lvai_lunit_add_test_method` with `classTerminalNames: "TestCase in|TestCase out"` makes it a
+  class member with both class terminals retyped (`ref{UDClassInst}`), unchanged.
+- **Assertions** are `TestCase.lvclass` methods; NI's example calls
+  `TestCase.lvclass\3ApassIfEqual.vi` (`TestCase in`, `x`, `y`, `error in (no error)`,
+  `custom report message ("")`, `delta (optional)`).
+- **The run** goes through `VI Tester API.lvlib:Run Tests (Path).vi` (`Test Path` -> `successful?`,
+  `test details`), headless - `lvai_run_vitester_tests` (`scripts/lvvt_run_tests.xml`). Its report
+  is Python unittest's shape: one `name (Class):description ... ok|FAIL` line per test, a
+  `FAIL: name (Class)` block per failure, `Ran N tests`, `OK` / `FAILED (failures=n)`.
+- **Result:** `test scale by two` (21 doubled, expected 42) `ok`; a negative control expecting 43
+  `FAIL ... 42.000000 != 43.000000`, `Ran 2 tests ... FAILED (failures=1)`, `successful?` false.
+
+The agent `labview-vitester-unit-test` follows this route.
+
+**The practice build of the same day** (`C:\temp\Praxistest_2026_11_11`, a four-VI application with
+a library) added four facts, all from a VI Tester suite of 4 methods that passed (`lvai_run_vitester_tests`:
+`tests 4, failures 0`):
+- **No LabVIEW restart** between `lvai_create_class` and `lvai_lunit_add_test_method` - the four
+  methods became members in the same session, no Error 1562. The agent instruction to restart made
+  the agent try to KILL LabVIEW (auto mode refused); it now continues, and only an actual 1562
+  ends in a report asking the orchestrator for the restart.
+- `failIf.vi`: `fail`, `message ("")`, `custom report message ("")`. `failUnless.vi`: `pass`,
+  `message ("")` - no custom message input.
+- `passIfEqual.vi` compares a `double` array with an array constant exactly.
+- A NaN is checked with `Not A Number/Path/Refnum?` into `failUnless.vi`; an equality against NaN
+  never passes.
+- A method calls a library member by its qualified name (`Sensor Monitor.lvlib:Parse Sensor Line.vi`),
+  so the subject must be PUBLIC - a library-private VI is not testable from a class outside the library.
 
 ## 6. What the spike did not settle
 

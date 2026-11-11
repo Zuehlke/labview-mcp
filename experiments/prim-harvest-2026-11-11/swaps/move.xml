@@ -1,0 +1,10 @@
+<VI _name="Move Swap Probe.vi" description="Probe: Move outputs new path (path) and cancelled (boolean).">
+  <FreeLabel comment="Move terminal check" uid="4290" uid_parent="root"/>
+  <Control _name="source path" conIdx="0" connection="required" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="target path" conIdx="5" connection="recommended" outputs="value:4201.value" type="path" uid="4201" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="required" outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Move" inputs="source path:4200.value,target path (use dialog):4201.value,error in:4202.value" outputs="new path:4210.new path,cancelled:4210.cancelled,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Indicator _name="new path" conIdx="4" connection="recommended" inputs="value:4210.new path" type="path" uid="4220" uid_parent="root" value=""/>
+  <Indicator _name="cancelled" conIdx="6" connection="recommended" inputs="value:4210.cancelled" type="bool" uid="4221" uid_parent="root" value="false"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4210.error out" type="cluster{bool.status,int32.code,string.source}" uid="4222" uid_parent="root" value="[false,0,]"/>
+</VI>

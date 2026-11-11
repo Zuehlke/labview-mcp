@@ -204,6 +204,7 @@ public sealed class CompactAnswerTests
             MeasureDiagram = (_, _, _) => Task.FromResult<((int, int)?, string?)>((null, null)),
             CleanUp = BulkGenerateViTests.NoCleanUp,
             CleanUpPanel = BulkGenerateViTests.NoCleanUp,
+            TidyConstants = BulkGenerateViTests.NoCleanUp,
         };
 
         var compact = Parse(await Tools().GenerateViToolAsync(aixml, server.TempPath("A.vi"), measurePane: false));
@@ -384,6 +385,32 @@ public sealed class CompactAnswerTests
             .ExecStateAsync(viPaths: $"{A}\n{C}"));
         Assert.Equal(Parse(State(C, -1, couldNotOpen: true)).ToJsonString(), answer["results"]![1]!.ToJsonString());
     }
+
+    /// <summary>
+    /// The reentrancy LabVIEW read (2026-11-11) survives the batch slimming: it differs per VI, and
+    /// it is what an agent asks lvai_exec_state for after setting it.
+    /// </summary>
+    [Fact]
+    public async Task A_slimmed_executable_VI_keeps_its_reentrancy()
+    {
+        var answer = Parse(await Faked(vi =>
+        {
+            var o = Parse(State(vi, 1));
+            o["reentrant"] = vi == A;
+            o["reentrancyType"] = ExecStateTools.ReentrancyName(vi == A, 0);
+            return o.ToJsonString();
+        }).ExecStateAsync(viPaths: $"{A}\n{B}"));
+        Assert.Equal("shared clones", answer["results"]![0]!["reentrancyType"]!.GetValue<string>());
+        Assert.False(answer["results"]![1]!["reentrant"]!.GetValue<bool>());
+        Assert.Null(answer["results"]![1]!["reentrancyType"]);
+    }
+
+    [Theory]
+    [InlineData(true, 0, "shared clones")]
+    [InlineData(true, 1, "preallocated")]
+    [InlineData(false, 1, null)]
+    public void Reentrancy_type_is_named_as_LabVIEW_measured_it(bool reentrant, int type, string? name) =>
+        Assert.Equal(name, ExecStateTools.ReentrancyName(reentrant, type));
 
     [Fact]
     public async Task Verbose_returns_every_full_answer()

@@ -65,6 +65,8 @@ internal sealed class BulkTools(LvaiConnection connection)
         SubVI` is converted anyway and gated on executability (`loadedSubVIs`); not loaded, the
         convert answers Error 53 naming the targets. A .ctl is not a Call target; a constant
         feeding a typedef input still needs lvai_bind_typedef_constants.
+        A `<Call target="Match Regular Expression.xnode">` places the real XNode (step `xnodes`;
+        no capture groups - aixml-reference section 9).
         docs/aixml-call-loaded-vi.md. On success each step is slimmed to its verdict (`execState`,
         `preCheck` and `repairs` lifted to the top); a failed step keeps its whole answer.
         """)]
@@ -133,11 +135,26 @@ internal sealed class BulkTools(LvaiConnection connection)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_generate_vi", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
+        var (source, xnodes, xnodeRefusal) = XNodeStandIn(aiXmlFilePath);
+        if (xnodeRefusal is not null)
+            return AixmlTools.WithBackend(Json.Error("xnodeCallRefused", xnodeRefusal,
+                new { aiXmlFilePath, nothingWritten = true }), choice);
         var cleanDiagram = cleanUpDiagram ?? measureDiagram;
-        var answer = AixmlTools.WithBackend(await GenerateViCoreAsync(
-            aiXmlFilePath, viPath, openVI, measurePane, panePattern, timeoutSeconds, measureDiagram,
-            choice, cleanDiagram, cleanUpPanel ?? cleanDiagram, ct), choice);
-        answer = choice.Name == AixmlBackend.PyLabview ? WithUnmeasuredExecutability(answer) : answer;
+        string answer;
+        try
+        {
+            answer = AixmlTools.WithBackend(await GenerateViCoreAsync(
+                source, viPath, openVI, measurePane, panePattern, timeoutSeconds, measureDiagram,
+                choice, cleanDiagram, cleanUpPanel ?? cleanDiagram, ct), choice);
+        }
+        finally
+        {
+            if (source != aiXmlFilePath && File.Exists(source)) File.Delete(source);
+        }
+        answer = choice.Name == AixmlBackend.PyLabview ? WithUnmeasuredExecutability(answer)
+                                                       : WithExecTrailerIgnored(answer, aiXmlFilePath);
+        if (xnodes.Count > 0)
+            answer = await WithXNodesPlacedAsync(answer, viPath, xnodes, timeoutSeconds, ct);
         return await WithIconAsync(answer, viPath, icon, measureDiagram && !openVI, choice.Name,
                                    timeoutSeconds, ct);
     }
@@ -211,6 +228,118 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "the pylabview backend skips NI's validation, and executability was not read - " +
                     unmeasured;
         return o.ToJsonString(Indented);
+    }
+
+    /// <summary>
+    /// The document to generate: <paramref name="aiXmlFilePath"/> itself, or - when it calls an
+    /// XNode (<see cref="XNodeCalls"/>) - a copy beside it with each such Call turned into its
+    /// stand-in subVI, which the caller deletes. A Call naming a terminal the route does not carry
+    /// is refused before anything is written.
+    /// </summary>
+    internal static (string Source, IReadOnlyList<(string Uid, XNodeCalls.Route Route)> XNodes, string? Refusal)
+        XNodeStandIn(string aiXmlFilePath)
+    {
+        string text;
+        try { text = File.ReadAllText(aiXmlFilePath); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return (aiXmlFilePath, [], null); }
+        if (!text.Contains(".xnode", StringComparison.OrdinalIgnoreCase)) return (aiXmlFilePath, [], null);
+        var rewritten = XNodeCalls.Rewrite(text);
+        if (rewritten.Calls.Count == 0) return (aiXmlFilePath, [], null);
+        if (rewritten.Refusal is not null) return (aiXmlFilePath, rewritten.Calls, rewritten.Refusal);
+        var copy = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(aiXmlFilePath))!,
+                                Path.GetFileNameWithoutExtension(aiXmlFilePath) + $".xnode-standin-{Guid.NewGuid():N}.xml");
+        File.WriteAllText(copy, rewritten.Aixml);
+        return (copy, rewritten.Calls, null);
+    }
+
+    /// <summary>
+    /// The `xnodes` step: each stand-in Call of a WRITTEN VI replaced by its XNode through LabVIEW's
+    /// own {LV.SubVI} Replace (lvai_swap_subvis's helper, one node per call), then the VI's
+    /// execution state read. Measured 2026-11-11: it needs no active project, and LabVIEW builds the
+    /// XNode with its state and generated code. A failure here sets ok false and
+    /// failedAtStep `xnodes`; the VI then still calls the stand-in.
+    /// </summary>
+    private async Task<string> WithXNodesPlacedAsync(string answer, string viPath,
+        IReadOnlyList<(string Uid, XNodeCalls.Route Route)> xnodes, int timeoutSeconds, CancellationToken ct)
+    {
+        if (Parsed(answer) is not JsonObject o || !File.Exists(viPath)
+            || o["failedAtStep"]?.GetValue<string>() is { } failed && failed != "execState" && failed != "connectorPane")
+            return answer;
+        var step = new JsonObject { ["step"] = "xnodes" };
+        var placed = new JsonArray();
+        string? failure = null;
+        foreach (var (uid, route) in xnodes)
+        {
+            if (XNodeCalls.XNodePath(route) is not { } xnode)
+            {
+                failure = $"{route.XNodeFile} was not found under the LabVIEW in use";
+                break;
+            }
+            var swaps = new JsonArray(new JsonObject { ["socket"] = route.StandIn, ["target"] = xnode }).ToJsonString();
+            var swapped = Parsed(await new SwapTools(connection).OneAsync(
+                viPath, swaps, null, verify: false, verbose: false, helperViPath: null, helperAixmlPath: null,
+                regenerateHelper: false, timeoutSeconds, removeBadWires: false, ct)) as JsonObject;
+            if (swapped?["nodesSwapped"]?.GetValue<int>() != 1)
+            {
+                failure = $"Replace of Call {uid} ({route.StandIn}) by {xnode} did not land: " +
+                          (swapped?["errorMessage"] ?? swapped?["note"] ?? swapped?["errorKind"])?.ToString();
+                break;
+            }
+            placed.Add(new JsonObject { ["uid"] = uid, ["xnode"] = xnode });
+        }
+        step["placed"] = placed;
+        var state = failure is null
+            ? (JsonNode.Parse(await new ExecStateTools(connection).ExecStateAsync(viPath, timeoutSeconds: timeoutSeconds, ct: ct))
+                  as JsonObject)?["execState"]?.GetValue<int>()
+            : null;
+        step["execState"] = state;
+        if (failure is null && state != 1)
+            failure = $"the VI is not executable after the XNode was placed (execState {state?.ToString() ?? "unread"})";
+        step["ok"] = failure is null;
+        if (failure is not null) step["failure"] = failure;
+        (o["steps"] as JsonArray)?.Add(step);
+        o["xnodesPlaced"] = placed.Count;
+        if (failure is null)
+        {
+            o["executable"] = true;
+            o["note"] = (o["note"]?.GetValue<string>() ?? "") + $" {placed.Count} XNode(s) placed by LabVIEW's " +
+                        "Replace in place of their stand-in subVI; the VI is executable with them.";
+        }
+        else
+        {
+            o["ok"] = false;
+            o["executable"] = state == 1;
+            o["failedAtStep"] = "xnodes";
+            o["note"] = (o["note"]?.GetValue<string>() ?? "") + " THE XNODE STEP FAILED: " + failure +
+                        ". The VI was written and may still call the stand-in subVI.";
+        }
+        return o.ToJsonString(Indented);
+    }
+
+    /// <summary>
+    /// NI's converter ignores everything after <c>&lt;/VI&gt;</c>, so on grpc a reentrancy asked for
+    /// in the <c>&lt;?lvmcp exec?&gt;</c> trailer is lost without a word. Said in the note, as
+    /// <c>execTrailerIgnored</c>, where the trailer asks for a reentrant VI.
+    /// </summary>
+    internal static string WithExecTrailerIgnored(string answer, string aiXmlFilePath)
+    {
+        string text;
+        try { text = File.ReadAllText(aiXmlFilePath); }
+        catch (IOException) { return answer; }
+        catch (UnauthorizedAccessException) { return answer; }
+        if (!AsksForReentrancy(text) || Parsed(answer) is not JsonObject o) return answer;
+        o["execTrailerIgnored"] = true;
+        o["note"] = (o["note"]?.GetValue<string>() ?? "") + " The <?lvmcp exec?> trailer asks for a " +
+                    "REENTRANT VI, and NI's converter ignores everything after </VI>: this VI is NOT " +
+                    "reentrant. Generate it on the pylabview backend, which writes the trailer.";
+        return o.ToJsonString(Indented);
+    }
+
+    internal static bool AsksForReentrancy(string aixml)
+    {
+        var end = aixml.LastIndexOf("</VI>", StringComparison.Ordinal);
+        return end >= 0 && System.Text.RegularExpressions.Regex.IsMatch(aixml[end..],
+            @"<\?lvmcp\s+exec\s[^?]*\b(IsReentrant|PooledReentrancy)=""1""");
     }
 
     private async Task<string> GenerateViCoreAsync(
@@ -561,6 +690,17 @@ internal sealed class BulkTools(LvaiConnection connection)
             // diagramSize measures the diagram the caller gets. The user's recommendation of
             // 2026-10-12, for both backends; a failure leaves the VI as generated and is reported.
             var cleanNote = "";
+            if (measureDiagram && !openVI)
+            {
+                // the CONSTANTS first (labels, white-space strings, array sizes), so the layout
+                // below lays out their final sizes - every deliverable, the user's rule of 2026-11-11
+                var tidied = await (TidyConstants?.Invoke(viPath, choice.Name, timeoutSeconds, ct)
+                    ?? new DiagramCleanup(connection).RunTidyConstantsAsync(viPath, choice.Name, timeoutSeconds, ct));
+                steps.Add(tidied);
+                if (tidied["ok"]?.GetValue<bool>() != true)
+                    cleanNote += " The block diagram constants were NOT tidied - labels may show: " +
+                                 tidied["note"]?.GetValue<string>();
+            }
             if (cleanUpPanel && !openVI)
             {
                 // the FRONT PANEL first, for every VI but the main one (the user's rule of
@@ -715,6 +855,12 @@ internal sealed class BulkTools(LvaiConnection connection)
     /// <summary>Test seam for the `stripCompiled` step (viPath); null in production, where
     /// <see cref="DiagramCleanup.StripCompiledAsync"/> strips the file through pylabview.</summary>
     internal Func<string, int, CancellationToken, Task<JsonObject>>? StripCompiled
+    {
+        get; init;
+    }
+
+    /// <summary>Test seam for the `tidyConstants` step (viPath, backend); null in production.</summary>
+    internal Func<string, string, int, CancellationToken, Task<JsonObject>>? TidyConstants
     {
         get; init;
     }
@@ -1762,7 +1908,7 @@ internal sealed class BulkTools(LvaiConnection connection)
         }
     }
 
-    private static async Task<JsonObject> RunScriptAsync(
+    internal static async Task<JsonObject> RunScriptAsync(
         PyLabview.Bundle bundle, string scriptsDirectory, string script, IEnumerable<string> args,
         string label, int timeoutSeconds, CancellationToken ct)
     {

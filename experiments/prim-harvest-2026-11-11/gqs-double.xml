@@ -1,0 +1,13 @@
+<VI _name="GQS Probe.vi" description="Probe: Get Queue Status returns the elements of a double queue.">
+  <FreeLabel comment="Elements of a double queue" uid="4290" uid_parent="root"/>
+  <Control _name="value" conIdx="0" connection="required" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="required" outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="element data type" outputs="value:4203.value" type="double" uid="4203" uid_parent="root" value="0"/>
+  <Constant _name="return elements?" outputs="value:4204.value" type="bool" uid="4204" uid_parent="root" value="true"/>
+  <Node _name="Obtain Queue" inputs="element data type:4203.value,error in (no error):4202.value" outputs="queue out:4210.queue out,error out:4210.error out,created new?:" uid="4210" uid_parent="root"/>
+  <Node _name="Enqueue Element" inputs="queue:4210.queue out,element:4200.value,timeout in ms (-1):,error in (no error):4210.error out" outputs="queue out:4211.queue out,timed out?:,error out:4211.error out" uid="4211" uid_parent="root"/>
+  <Node _name="Get Queue Status" inputs="queue:4211.queue out,return elements? (F):4204.value,error in (no error):4211.error out" outputs="queue out:4212.queue out,elements:4212.elements,# elements in queue:,max queue size:,queue name:,# pending remove:,# pending insert:,error out:4212.error out" uid="4212" uid_parent="root"/>
+  <Node _name="Release Queue" inputs="queue:4212.queue out,error in (no error):4212.error out" outputs="remaining elements:,error out:4213.error out" uid="4213" uid_parent="root"/>
+  <Indicator _name="elements" conIdx="4" connection="recommended" inputs="value:4212.elements" type="array{double.element}" uid="4220" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4213.error out" type="cluster{bool.status,int32.code,string.source}" uid="4223" uid_parent="root" value="[false,0,]"/>
+</VI>

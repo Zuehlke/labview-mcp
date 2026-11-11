@@ -1,0 +1,8 @@
+<VI _name="Caller C2.vi" description="Calls Target C2.vi once, to see whether LabVIEW inlines it.">
+  <FreeLabel comment="Call the inline candidate" uid="4290" uid_parent="root"/>
+  <Control _name="x" conIdx="0" connection="required" outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="required" outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <Call target="Target C2.vi" inputs="x:4200.value,error in:4201.value" outputs="x times two:4210.y,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Indicator _name="y" conIdx="4" connection="recommended" inputs="value:4210.y" type="double" uid="4220" uid_parent="root" value="0"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4210.err" type="cluster{bool.status,int32.code,string.source}" uid="4221" uid_parent="root" value="[false,0,]"/>
+</VI>

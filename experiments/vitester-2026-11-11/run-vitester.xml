@@ -1,0 +1,9 @@
+<VI _name="Run VI Tester.vi" description="Runs every test of a VI Tester test case class or suite through JKI's own programmatic API (Run Tests (Path).vi) - no dialog - and returns whether all passed and the text report.">
+  <FreeLabel comment="Run VI Tester headless" uid="4290" uid_parent="root"/>
+  <Control _name="test path" conIdx="0" connection="required" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="required" outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <Call target="VI Tester API.lvlib\3ARun Tests (Path).vi" inputs="Test Path:4200.value,error in (no error):4201.value,TextTestRunner in:" outputs="successful?:4210.ok,test details:4210.details,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Indicator _name="successful?" conIdx="4" connection="recommended" inputs="value:4210.ok" type="bool" uid="4220" uid_parent="root" value="false"/>
+  <Indicator _name="test details" conIdx="6" connection="recommended" inputs="value:4210.details" type="string" uid="4221" uid_parent="root" value=""/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4210.error out" type="cluster{bool.status,int32.code,string.source}" uid="4222" uid_parent="root" value="[false,0,]"/>
+</VI>

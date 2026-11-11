@@ -2787,6 +2787,8 @@ class Composer:
         if ddo.get("class") == "stdClust":
             vals = parse_literal(el.get("value"))
             self._fit_cluster(ddo, name, tree, vals if isinstance(vals, list) else [])
+            if (aixml_type or "").replace(" ", "") == self.ERROR_CLUSTER_TYPE:
+                self._error_constant_look(ddo)
         else:
             self._fit_const(ddo, name, tree, el.get("value"))
         diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": term.get("uid")}))
@@ -2799,6 +2801,37 @@ class Composer:
         if _CLASS_CTX["names"]:
             self._class_const_links(term, ddo, _CLASS_CTX["names"])
         self.report.append("Constant %r <- %s" % (name, src))
+
+    ERROR_CLUSTER_TYPE = "cluster{bool.status,int32.code,string.source}"
+
+    def _error_constant_look(self, ddo):
+        """An ERROR CLUSTER constant the way NI places one: viewed as an icon, in the error colour.
+        Composed like any cluster it was a full cluster in PINK - and NI's converter writes the same
+        - which the user forum reported (2026-11-11: "viewed as an Icon but the color is pink, not
+        brown"). Measured against NI's Constant-to-Constant Resampling.vi: the ddo's objFlags carry
+        0x10000000 (View Cluster as Icon) with 0x01000000 and 0x20 beside it, the frame part
+        (partID 9) is drawn in 007F7F00 instead of the cluster pink 00FF00FF, and the object is the
+        16 x 22 icon with the inner part at (3, 3, 13, 19). The colour is the part's, not the type's:
+        the flags alone gave a PINK icon. Rendered both ways on LabVIEW 2026."""
+        flags = ddo.find("objFlags")
+        if flags is not None:
+            flags.text = str(int(flags.text or "0") | 0x10000000 | 0x01000000 | 0x20)
+        b = ddo.find("bounds")
+        if b is not None and b.text:
+            t, l = [int(v) for v in b.text.strip("()").split(",")][:2]
+            b.text = "(%d, %d, %d, %d)" % (t, l, t + 16, l + 22)
+        parts = ddo.find("partsList")
+        for part in (list(parts) if parts is not None else []):
+            pid = part.findtext("partID")
+            pb = part.find("bounds")
+            if pid == "28" and pb is not None:
+                pb.text = "(3, 3, 13, 19)"
+            elif pid == "9":
+                if pb is not None:
+                    pb.text = "(0, 0, 16, 22)"
+                fg = part.find("fgColor")
+                if fg is not None:
+                    fg.text = "007F7F00"
 
     def _class_const_links(self, term, ddo, names):
         """A constant HOLDING classes - an array of them, NI's 2D Math Plot facades' `Data` -
@@ -3144,6 +3177,9 @@ class Composer:
     # computes, and ignoring it composed a VI that loads and computes something else - measured
     # on NI's In Range and Coerce.vi (aggregate=true)
     NODE_ATTRS = {"_name", "inputs", "outputs", "uid", "uid_parent", "_id"}
+    # palette functions that are XNODES, with the subVI that does their work - kept equal to
+    # AixmlCheck.XNodeCallRoutes (Match Regular Expression: measured 2026-11-11, the Call runs)
+    XNODE_CALL_ROUTES = {"Match Regular Expression": "Match Regular Expression_Execute.vi"}
     PRIM_MODES = {"In Range and Coerce": ("includeHigh", "includeLow", "aggregate"),   # name -> mode attributes add_node writes
                   "Read from Text File": ("readLines", "convertEol"),
                   "Array To Cluster": ("elements",)}
@@ -3218,6 +3254,9 @@ class Composer:
         name = unescape(el.get("_name"))
         rid = self.prim_by_name.get(name)
         if rid is None:
+            if name in self.XNODE_CALL_ROUTES:
+                raise Unsupported("Node %r is an XNode, not a primitive - Call %r instead (the VI that "
+                                  "does its work; AixmlCheck.XNodeCallRoutes)" % (name, self.XNODE_CALL_ROUTES[name]))
             raise Unsupported("Node %r is not a primitive this prototype knows" % name)
         self.check_attrs(el, self.PRIM_MODES.get(name, ()))
         diag = self.diag_of(el)
@@ -5924,7 +5963,10 @@ class Composer:
         if target.lower().endswith(".xnode"):
             # an XNODE, as NI's export and our reader write one: its node holds the code the
             # XNode generated, which nothing here composes yet
-            raise Unsupported("Call %s: %s is an XNode - not composable yet" % (el.get("uid"), target))
+            raise Unsupported("Call %s: %s is an XNode - not composable yet%s" % (
+                el.get("uid"), target,
+                # lvai_generate_vi places these through a stand-in and LabVIEW's Replace (XNodeCalls.cs)
+                "; lvai_generate_vi places it" if target.lower() in ("match regular expression.xnode",) else ""))
         if self.resolver is None:
             self.resolver = resolve.Resolver()
         res = self.resolver.resolve(target, self.search_dirs, getattr(self, "caller_file", None))

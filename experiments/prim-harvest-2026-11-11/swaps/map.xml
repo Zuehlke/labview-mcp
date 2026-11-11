@@ -1,0 +1,10 @@
+<VI _name="Map Swap Probe.vi" description="Probe: Insert Into Map outputs map out (map) and value unchanged? (boolean).">
+  <FreeLabel comment="Insert Into Map terminal check" uid="4290" uid_parent="root"/>
+  <Control _name="map in" conIdx="0" connection="required" outputs="value:4200.value" type="map{string.key,double.value}" uid="4200" uid_parent="root" value=""/>
+  <Control _name="key" conIdx="5" connection="recommended" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value=""/>
+  <Control _name="value" conIdx="7" connection="recommended" outputs="value:4202.value" type="double" uid="4202" uid_parent="root" value="0"/>
+  <Node _name="Insert Into Map" inputs="map in:4200.value,key:4201.value,value:4202.value" outputs="map out:4210.map out,key already included?:4210.key already included?,value unchanged?:4210.value unchanged?" uid="4210" uid_parent="root"/>
+  <Indicator _name="map out" conIdx="4" connection="recommended" inputs="value:4210.map out" type="map{string.key,double.value}" uid="4220" uid_parent="root" value=""/>
+  <Indicator _name="key already included?" conIdx="6" connection="recommended" inputs="value:4210.key already included?" type="bool" uid="4221" uid_parent="root" value="false"/>
+  <Indicator _name="value unchanged?" conIdx="8" connection="recommended" inputs="value:4210.value unchanged?" type="bool" uid="4222" uid_parent="root" value="false"/>
+</VI>

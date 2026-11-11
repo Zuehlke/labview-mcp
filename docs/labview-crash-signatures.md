@@ -1744,3 +1744,33 @@ the project file changed under it"* - is about OUR writes, and there were none.
 **Recovery cost nothing on disk.** The library had been saved before the exit, every file survived,
 and after a restart all six VIs of the class - three methods, the log VI whose qualified name had
 just changed, and one message's `Do.vi` and `Send` - read `execState 1` cold.
+
+## Two crashes of 2026-11-11 - both Windows fail-fasts on an INVALID HANDLE, read from WER dumps
+
+**Where the evidence is.** LabVIEW's own log (`%TEMP%\LabVIEW_32_<ver>_interactive_<user>_log.txt`)
+held neither crash: its last entries were hours older, DWarns from loading composed helpers.
+**Windows Error Reporting had written a full dump of each** to `%LOCALAPPDATA%\CrashDumps\LabVIEW.exe.<pid>.dmp`.
+Look there first. No debugger was installed, so a small reader of the minidump's exception, module
+and memory streams was used. It gives the exception record and the module+offset of every return
+address on the faulting thread's stack, without symbols. Neither crash is inside LabVIEW's own code.
+
+| dump (local time) | exception | faulting module | parameters | what our session was doing |
+|---|---|---|---|---|
+| 10:25 | `0xE0464645` (CoreMessaging fail-fast) | `CoreMessaging.dll+0x83373`, the UI message pump; `Microsoft.mshtml.dll` and the Intel driver `igd9dxva32.dll` on the stack | `0xD0000008` = invalid handle | ~15 s after `lvai_render_diagrams` returned (Print VI To HTML over ActiveX); no LabVIEW call in flight |
+| 11:18 | `0xC0000409`, `__fastfail(7)` | `Windows.FileExplorer.Common.dll+0x129f5`, the shell's file dialog, reached from `LabVIEW.exe` through `windows.storage.dll` | `0x80070006` = E_HANDLE | a `labview-vi-generator` subagent was inside `lvai_open_file` on the project while three other agents worked on the same LabVIEW; that call came back `0x800706BE` (RPC failed) |
+
+**The second is a breach of a rule this repository already has.** No agent may open or close a project
+while agents share one LabVIEW. The agent had just generated its VI successfully. It then opened the
+project on its own, while the other agents were generating, running and reading exec state on the
+same instance, and LabVIEW died building a shell file dialog. Cause NOT established beyond that: the
+dialog's purpose is not in the dump. But the open was the only state-changing call in flight, and it
+is the call the rule forbids.
+
+**The first is not attributed.** Print To HTML is the only LabVIEW work near it, and `mshtml` is on the
+stack. Over the same day `lvai_render_diagrams` ran many times without a crash, though. Record a
+recurrence here with its dump before drawing a conclusion.
+
+The helper DWarns in the same log ("Wiring insanity found and fixed ... forgot to stretch", while
+loading `lvai_swap_subvis.vi` and `lvbd_layout_apply.vi`) are older than both crashes. They are on
+another thread and are not a cause. They do show that the composer writes wire joints LabVIEW has to
+repair on load.
