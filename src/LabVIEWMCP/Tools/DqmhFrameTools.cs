@@ -38,9 +38,10 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
     /// nothing and said `codeNeededTextsBefore: 0` (found in the DQMH_EscapingTest build of
     /// 2026-10-31). A pattern for the helper's Match Pattern, which is NOT a full regular
     /// expression: it has no groups, so `^#(DQMH_)?CodeNeeded` would match neither spelling.
-    /// A character class with `*` it does have. Whether the 7.x labels are reached at all is not
-    /// measured: the dry run listed no #DQMH_CodeNeeded text in a 7.1 frame, so the deletion may
-    /// need the label's class too.
+    /// A character class with `*` it does have. MEASURED 2026-11-12 on a DQMH 7.x Singleton
+    /// (Branch_Retest): an EVENT's message frame carries no such text at all - the saved Main.vi's
+    /// heap holds exactly three `#DQMH_CodeNeeded` texts, in the Initialize, front-panel and exit
+    /// frames Delacor's template ships - so `codeNeededTextsBefore: 0` is the true count there.
     /// </summary>
     internal const string CodeNeededPattern = "^#[A-Z_]*CodeNeeded";
 
@@ -72,7 +73,9 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         `ok` is false when the handler lands OUTSIDE the frame (`placement` is read back) or its
         error out reaches nothing. An input or field with no partner is reported, never guessed;
         a frame already holding a subVI is refused. The #CodeNeeded text is deleted and Main.vi
-        saved; its exec state before and after is reported. Use `dryRun` first.
+        saved; its exec state before and after is reported. Then the WHOLE Main.vi is laid out
+        with lvai_layout_diagram (`cleanUpDiagram`; put back when it does not finish) and made source
+        only (`sourceOnly`: the project is closed for the strip and opened again). Use `dryRun` first.
         Needs the module's project OPEN and ACTIVE.
         """)]
     public async Task<string> PlaceHandlerAsync(
@@ -80,6 +83,7 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         [Description("Event whose message frame gets the handler, e.g. 'Verify Account'")] string eventName,
         [Description("Absolute path of the handler subVI")] string handlerViPath,
         [Description("Report what would be wired and change nothing")] bool dryRun = false,
+        [Description("Lay out the whole Main.vi after wiring. Default true; false only when asked")] bool cleanUpDiagram = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
@@ -313,6 +317,24 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
                         : "The handler was not placed cleanly, so its module data was not wired.",
                 };
             }
+            // ---- 5. SCRIPTED WIRES ARE ALWAYS FOLLOWED BY A LAYOUT (the user's rule of 2026-11-12):
+            // the handler, its Unbundle/Bundle and every new wire land where the helper dropped
+            // them. The whole Main.vi is laid out; a layout that does not finish puts it back.
+            JsonObject? cleanUp = null;
+            if (cleanUpDiagram && error is null)
+            {
+                cleanUp = await new DiagramCleanup(connection).RunAsync(mainVi, DqmhTools.OnPyLabview
+                    ? AixmlBackend.PyLabview : AixmlBackend.Grpc, timeoutSeconds, ct, includeDqmhMain: true);
+                steps.Add(cleanUp.DeepClone());
+            }
+            // ---- 6. source only: Delacor's Main.vi carries compiled code, and the saves above kept it
+            JsonObject? sourceOnly = null;
+            if (error is null)
+            {
+                sourceOnly = await new DiagramCleanup(connection).SourceOnlyInProjectAsync(mainVi, projectPath, timeoutSeconds, ct);
+                steps.Add(sourceOnly.DeepClone());
+                DiagramCleanup.NoteStripped(cleanUp, sourceOnly);
+            }
             var mainAfter = await headless.ExecStateAsync(mainVi, timeoutSeconds, ct);
             var expected = plan.Arguments.Count + (plan.ErrorIn && !splice ? 1 : 0) + plan.Replies.Count
                            + (mergeErrors ? 1 : 0);
@@ -324,12 +346,15 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
             var answer = new JsonObject
             {
                 ["ok"] = error is null && missing.Count == 0 && connected.Count == expected
-                         && visible && spliced && dataOk,
+                         && visible && spliced && dataOk && cleanUp?["ok"]?.GetValue<bool>() != false
+                         && sourceOnly?["ok"]?.GetValue<bool>() != false,
                 ["placement"] = placement,
                 ["handlerVisible"] = visible,
                 ["errorChain"] = splice ? spliceAnswer
                     : mergeErrors ? "the handler's error out into the reply only; the frame's Merge Errors takes Variant To Data's error" : null,
                 ["moduleData"] = moduleData,
+                ["cleanUpDiagram"] = cleanUp,
+                ["sourceOnly"] = sourceOnly,
                 ["module"] = DqmhHeadless.DelacorModuleName(moduleName ?? ""),
                 ["event"] = eventBare,
                 ["handler"] = handler,

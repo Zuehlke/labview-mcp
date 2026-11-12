@@ -35,9 +35,29 @@ internal sealed class ParallelCalls(Func<DateTime> clock)
     private DateTime? _lastOverlap;
     private string[] _lastOverlapTools = [];
 
+    /// <summary>
+    /// Calls that change nothing in LabVIEW and run no VI in it - status reads and the knowledge
+    /// tools. They neither count as an overlap nor see one: on 2026-11-12 (Branch_Retest) an agent's
+    /// two status calls at the start of its work, run side by side, cost it the 60 s window before
+    /// its own project close, with no other agent anywhere.
+    /// </summary>
+    internal static readonly HashSet<string> NotCounted = new(StringComparer.Ordinal)
+    {
+        "lvai_status", "pylv_status", "lvai_labview_state", "lvai_list_labview_installations",
+        "lvai_aixml_reference", "lvai_vi_server_reference", "lvai_lvproj_reference",
+        "lvai_lvlib_reference", "lvai_dqmh_reference", "lvai_check_aixml", "lvai_check_build_contract",
+    };
+
+    private sealed class Uncounted : IDisposable
+    {
+        internal static readonly Uncounted Instance = new();
+        public void Dispose() { }
+    }
+
     /// <summary>A top-level call starts; dispose the answer when it ends.</summary>
     internal IDisposable Enter(string tool)
     {
+        if (NotCounted.Contains(tool)) return Uncounted.Instance;
         lock (_gate)
         {
             var id = ++_next;

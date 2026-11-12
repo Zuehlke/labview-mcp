@@ -235,6 +235,14 @@ travels WITH the command, read in the producer's event frame - never a control t
 beside a `Dequeue` (`controlReadBeforeWait`). Typing counts as activity where a spec has an
 inactivity timeout (`Value Change` + `Update While Typing?`). `docs/cold-build-atm-agents-7.md`.
 
+**SCRIPTED WIRES ARE ALWAYS FOLLOWED BY A LAYOUT** (the user's rule of 2026-11-12): a tool that
+connects wires by VI Server scripting ends with `lvai_layout_diagram` over the VI it wired
+(`cleanUpDiagram` in its answer) - `lvai_dqmh_place_handler` lays out the WHOLE Main.vi, the one
+exception to the automatic clean-up leaving a DQMH Main.vi alone; the AF hook tools, graft,
+bind-references, swap, dynamic events and class methods likewise. `docs/diagram-layout.md` §6s.
+`place_handler` and the AF hook tools then make the VI SOURCE ONLY (`sourceOnly`: Delacor's and
+NI's providers write compiled code; the project is closed for the pylabview strip and reopened).
+
 **A regeneration costs the whole swap cycle** (sockets back, icon gone), so batch documentation
 changes into a regeneration you make anyway.
 

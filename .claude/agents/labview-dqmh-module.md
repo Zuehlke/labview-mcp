@@ -256,6 +256,11 @@ Request and Wait for Reply frame leaves Main.vi NOT executable until it is fille
 3. It refuses `namesDoNotMatch` (naming the field), `frameNotFound` (listing the frames) and
    `frameAlreadyHasCode` - never wires a guess. Report `connected`, `warnings` and
    `mainViExecState` before and after.
+4. After wiring it lays out the WHOLE Main.vi with our engine (`cleanUpDiagram` in the answer;
+   the user's rule of 2026-11-12: scripted wires are always followed by a layout). Do not run a
+   separate layout afterwards, and pass `cleanUpDiagram: false` only when the user asks.
+   Then Main.vi is made source only (`sourceOnly`): the tool closes the project for the strip and
+   opens it again - read `sourceOnly.projectActive` before the next call.
 
 A Request and Wait for Reply frame leaves Main.vi broken through its unwired `Merge Errors` input until the handler is placed - the tool wires Variant To Data's error there (since 2026-11-12; before, the handler's `error out`, which put the reply's error on the MHL error wire too). A plain Request frame has no reply, so the handler's `error out` stays unwired there - it is
 listed under `warnings`; say so in the report.

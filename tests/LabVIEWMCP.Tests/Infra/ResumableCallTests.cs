@@ -69,6 +69,56 @@ public class ResumableCallTests
     }
 
     /// <summary>
+    /// Branch_Retest, 2026-11-12: a layout batch's refusal named the running call by its whole key,
+    /// 57 paths twice. It names the job's label now, and a long one is cut.
+    /// </summary>
+    [Fact]
+    public async Task A_refusal_names_the_running_call_by_its_label_and_stays_short()
+    {
+        ResumableCall.Reset();
+        var release = new TaskCompletionSource<string>();
+        var longKey = string.Join(";", Enumerable.Range(0, 57).Select(i => $@"C:\TEMP\X\VI {i}.VI"));
+        await ResumableCall.RunAsync("t6", longKey, TimeSpan.FromMilliseconds(20), () => release.Task,
+            "again", CancellationToken.None, label: "lvai_layout_diagrams over 57 VIs: C:\\temp\\X");
+        var other = Parse(await ResumableCall.RunAsync("t6", "b", TimeSpan.FromSeconds(1),
+            () => Task.FromResult("{}"), "again", CancellationToken.None));
+
+        Assert.Equal("anotherCallStillRunning", (string?)other["errorKind"]);
+        Assert.Equal("lvai_layout_diagrams over 57 VIs: C:\\temp\\X", (string?)other["detail"]!["runningCall"]);
+        Assert.DoesNotContain("VI 56", (string)other["error"]!);
+        release.SetResult("{}");
+    }
+
+    [Fact]
+    public void A_long_description_is_cut()
+    {
+        Assert.Equal("short", ResumableCall.Describe("short"));
+        var cut = ResumableCall.Describe(new string('x', 500));
+        Assert.Equal(ResumableCall.MaxDescription, cut.Length);
+        Assert.EndsWith("…", cut);
+    }
+
+    /// <summary>The job's own progress is in every stillRunning answer, an attaching call's too.</summary>
+    [Fact]
+    public async Task A_still_running_answer_carries_the_jobs_progress()
+    {
+        ResumableCall.Reset();
+        var release = new TaskCompletionSource<string>();
+        var done = 1;
+        var first = Parse(await ResumableCall.RunAsync("t5", "a", TimeSpan.FromMilliseconds(20), () => release.Task,
+            "again", CancellationToken.None, () => new JsonObject { ["done"] = done }));
+        Assert.Equal(1, (int)first["progress"]!["done"]!);
+
+        done = 7;
+        // the repeat passes a progress of its own; the RUNNING job's is the one that counts
+        var second = Parse(await ResumableCall.RunAsync("t5", "a", TimeSpan.FromMilliseconds(20), () => release.Task,
+            "again", CancellationToken.None, () => new JsonObject { ["done"] = -1 }));
+        Assert.Equal(7, (int)second["progress"]!["done"]!);
+        Assert.True((bool)second["attachedToEarlierCall"]!);
+        release.SetResult("{\"ok\":true}");
+    }
+
+    /// <summary>
     /// 2026-10-30: a job that failed when LabVIEW was killed was handed to the same call on the
     /// restarted LabVIEW. A finished job is the answer only while LabVIEW is the same instance and
     /// the answer is fresh.

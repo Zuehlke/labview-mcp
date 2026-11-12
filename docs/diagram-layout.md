@@ -1358,3 +1358,85 @@ with Decode Channel open in the IDE, the same VI cleaned up. NI's clean-up now r
 across all workers (`DiagramCleanup.RunNiDiagramAsync`), and Error 2 is tried again up to three
 times (`attempts` in the answer). The dense path of 6p goes through the same call. Each row of
 `lvai_layout_diagrams` now carries `tangledFallback`, which was not visible there before.
+
+### 6r. A batch outlives the client: `lvai_layout_diagrams` answers `stillRunning`, 2026-11-12
+
+**Measured on DQMH_Retest (47 VIs, Main.vi included):** one folder-wide call ran past the
+client's 60 s ceiling. The server went on and saved 40 VIs, but the answer, with the row of every
+VI in it (`layoutEngine`, `landedOff`, `tangledFallback`, `backupPath`), was lost; the rest was
+found by comparing file times and backups, and a second call laid out the remaining 7.
+
+**Now:** the call runs through `ResumableCall`, as `lvai_dqmh_new_module` does. It answers within
+`answerWithinSeconds` (default 45); past that it answers `stillRunning` with `progress`
+(`vis`, `done`, `failedSoFar`, `inWork`), and the SAME call again - same VIs, `parallel`, `verify`,
+`routeFans`, backend - waits for that run and returns its whole answer (`answeredFromEarlierCall`).
+A different layout batch while one runs is refused (`anotherCallStillRunning`). The run is detached
+from the client's cancellation: a VI cut off between apply and save would be left half laid out.
+Paths are still checked before anything starts, so a typo answers at once.
+
+### 6s. Scripted wires are always followed by a layout, 2026-11-12
+
+**The user's rule:** whenever we connect wires by VI Server scripting, the VI is laid out
+afterwards - a scripted `Connect Wire` draws the wire wherever LabVIEW routes it, and the nodes
+land where the helper dropped them. Each such tool ends with `DiagramCleanup.RunAsync` (our
+engine, the VI put back from its backup when the layout does not finish) and reports
+`cleanUpDiagram`:
+
+| tool | laid out | since |
+|---|---|---|
+| `lvai_dqmh_place_handler` | the WHOLE Main.vi, after the handler and module data are wired (`cleanUpDiagram` parameter, default true) | 2026-11-12 |
+| `lvai_af_add_hook`, `lvai_af_remove_hook` | the override, only when it was saved cleanly | 2026-11-12 |
+| `lvai_graft_diagram` | the grafted VI's diagram, before the verdict; the panel is not touched | 2026-11-12 |
+| `lvai_bind_control_references` | the rewired VI, before the verdict | 2026-11-12 |
+| `lvai_swap_subvis`, `lvai_wire_dynamic_events`, `lvai_add_class_method` | as before | earlier |
+
+**A DQMH Main.vi:** the automatic clean-up still skips it everywhere else (the rule of
+2026-10-13: Delacor's layout, which the DQMH tools rely on). `place_handler` passes
+`includeDqmhMain`, the user's decision of 2026-11-12, after the DQMH_Retest showed a fully laid
+out Main.vi stay executable with the Counter round trip unchanged (5 x 3 = 15, 7 x 4 = 28).
+
+**Measured live, 2026-11-12, C:\temp\Branch_Retest (57 VIs: a DQMH Singleton module with four
+events, its handlers, a Flat Sequence VI, a graft, an AF actor with an override):**
+- `lvai_dqmh_place_handler` laid out Main.vi after each of four placements (`cleanUpDiagram.ok`,
+  0 move/size/tunnel errors; Main.vi 1713 x 801 -> 2001 x 963). `lvai_dqmh_new_event` on the
+  laid-out Main.vi then created `Reset` with Main.vi and the tester at execState 1, and
+  `lvai_dqmh_validate_module` answered PASS. The round trip ran 5 x 3 = 15 and 7 x 4 = 28, 0 after
+  Reset, before and after two batch layouts of the whole folder.
+- `lvai_graft_diagram`: `cleanUpDiagram.ok`, `panelIdentical` true, `wiringMatchesScaffold` true.
+- `lvai_af_add_hook` / `lvai_af_remove_hook`: `cleanUpDiagram.ok` on both; the override read
+  execState 1 cold.
+- `lvai_layout_diagrams` over the folder: 57 of 57 in 23 s, under the ceiling. With
+  `answerWithinSeconds: 5` it answered `stillRunning`, `progress` 15 of 57 done and four in work;
+  a different batch meanwhile was refused `anotherCallStillRunning`; the repeat with
+  `answerWithinSeconds: 45` collected all 57 rows (`answeredFromEarlierCall`).
+- Found on the way: the `anotherCallStillRunning` text names the running call by its whole KEY
+  (57 upper-cased paths, twice); a SECOND layout of the same DQMH VIs moved some again (Close
+  Module 1030 x 204 -> 802 x 257, Init Module 1232 x 289 -> 872 x 229, Show Diagram 1096 x 156 ->
+  842 x 188) - the engine is not idempotent on Delacor's VIs; and Main.vi's `tangledFallback.niStep`
+  says the automatic clean-up never touches it although it was just laid out (only NI's fallback
+  was skipped).
+  Fixed the same day: the refusal names the running batch by a label (`runningCall`: the lines
+  given and the VI count, cut at 200 characters), and the skipped NI fallback says our layout
+  ran and is kept. The idempotence is left for the engine.
+
+**Three more fixes from the same retest, 2026-11-12:**
+- **Compiled code.** The saved Main.vi and the AF override carried `VICD` (Delacor's and NI's
+  providers write it; our saves kept it). `lvai_dqmh_place_handler`, `lvai_af_add_hook` and
+  `lvai_af_remove_hook` now end with `sourceOnly` (`DiagramCleanup.SourceOnlyInProjectAsync`):
+  the project is closed (a save), the VI stripped by `pylv-strip-compiled.py` and marked
+  `SourceOnly="1"`, and the project opened and made active again; a VI that is source only
+  already is `skipped`. A strip or reopen that fails makes `ok` false. MEASURED live the same day:
+  Main.vi 110 612 -> 81 824 bytes, 7 VICD blocks -> 0, `SourceOnly="1"`, project active again, the
+  whole place_handler 18 s. But Delacor's next `lvai_dqmh_new_event` saved Main.vi with VICD and
+  `SourceOnly="0"` again, so EVERY placement pays the close and reopen (about 1 s), not once per
+  module as first assumed.
+  The AF hook tools measured the same: NI's member save writes VICD and `SourceOnly="0"` again
+  (2 VICD blocks before `lvai_af_add_hook`, 0 after, and back for `lvai_af_remove_hook` to strip
+  again). The layout step's note no longer says the VI "still" carries compiled code once
+  `sourceOnly` has removed it (`DiagramCleanup.NoteStripped`).
+- **The parallel guard** counted an agent's own status calls run side by side as two agents and
+  refused its project close for 60 s. Calls that change nothing in LabVIEW - status reads and the
+  knowledge tools (`ParallelCalls.NotCounted`) - are no longer counted.
+- **`codeNeededTextsBefore: 0`** was suspected of missing Delacor 7.x's texts. Measured: an event's
+  frame carries none; the module's three `#DQMH_CodeNeeded` texts sit in the template's Initialize,
+  front-panel and exit frames. The count was right; nothing changed but the comment.

@@ -65,7 +65,8 @@ internal sealed class GraftTools(LvaiConnection connection)
         (`noActiveProject` otherwise). USES THE SYSTEM CLIPBOARD: run it from the
         orchestrator, one graft at a time. To graft IN PLACE, copy the supplied VI aside, pass the
         copy as panelViPath and the original as outputViPath with overwrite; do not open the
-        supplied VI first. `switchActions` true means the saved control is NOT latched.
+        supplied VI first. `switchActions` true means the saved control is NOT latched. The
+        rewired diagram is laid out with lvai_layout_diagram (`cleanUpDiagram`); the panel is not touched.
         docs/keep-supplied-front-panel.md.
         """)]
     public async Task<string> GraftDiagramAsync(
@@ -311,6 +312,11 @@ internal sealed class GraftTools(LvaiConnection connection)
                     ["events"] = events,
                 }));
 
+            // ---- 5c. SCRIPTED WIRES ARE ALWAYS FOLLOWED BY A LAYOUT (the user's rule of
+            //      2026-11-12): the rewire leaves every wire where Connect Wire drew it. The panel
+            //      is not touched; the verdict below reads the laid-out file.
+            var cleanUp = await new DiagramCleanup(connection).RunAsync(output, BackendRoute.Current, timeoutSeconds, ct);
+
             // ---- 6. the verdict, from the file
             var exec = JsonNode.Parse(await new ExecStateTools(connection).ExecStateAsync(
                 output, timeoutSeconds: timeoutSeconds, ct: ct));
@@ -337,6 +343,7 @@ internal sealed class GraftTools(LvaiConnection connection)
             {
                 ["ok"] = ok,
                 ["outputViPath"] = output,
+                ["cleanUpDiagram"] = cleanUp,
                 ["panelViPath"] = panel,
                 ["scaffoldViPath"] = scaffold,
                 ["execState"] = execState,
