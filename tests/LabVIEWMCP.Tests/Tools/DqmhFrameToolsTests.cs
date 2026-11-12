@@ -231,4 +231,226 @@ public class DqmhFrameToolsTests
         Assert.Contains("Source Node:4526.value,Sink Node:4526.value", aixml);
         Assert.DoesNotContain("Source Node:4524.value,Sink Node:4526.value", aixml);
     }
+
+    // ------------------------------------------------------------------ module data (2026-11-12)
+
+    private static readonly string[] DataFields = ["Status", "Accounts File", "Last Balance"];
+
+    /// <summary>
+    /// Hampel Soft's DQMH conventions keep module state in the MHL's data cluster, never in an FGV:
+    /// an input `&lt;field&gt; in` reads a field, an output `&lt;field&gt; out` writes it back.
+    /// </summary>
+    [Fact]
+    public void Field_in_and_field_out_terminals_read_and_write_the_module_data()
+    {
+        var plan = DqmhFrameTools.Plan("Configure", ["Accounts File", "Last Balance in", "error in"],
+            ["Accounts File out", "error out"],
+            ["input cluster", "Accounts File", "Wait Notifier", "wait for reply"], [], DataFields);
+
+        Assert.Empty(plan.Problems);
+        Assert.Equal(["Accounts File"], plan.Arguments);
+        Assert.Equal([new DqmhFrameTools.Wire("Last Balance", "Last Balance in")], plan.Reads);
+        Assert.Equal([new DqmhFrameTools.Wire("Accounts File out", "Accounts File")], plan.Writes);
+        Assert.True(plan.UsesModuleData);
+        Assert.DoesNotContain(plan.Warnings, w => w.Contains("stay unwired ("));
+    }
+
+    /// <summary>A name that IS an argument stays the argument, whatever it ends with.</summary>
+    [Fact]
+    public void An_argument_named_like_a_data_read_stays_the_argument()
+    {
+        var plan = DqmhFrameTools.Plan("X", ["Status in", "error in"], ["error out"],
+            ["input cluster", "Status in"], [], DataFields);
+
+        Assert.Equal(["Status in"], plan.Arguments);
+        Assert.Empty(plan.Reads);
+    }
+
+    /// <summary>`&lt;x&gt; in` for a field the cluster does not have is refused, and the fields are named.</summary>
+    [Fact]
+    public void A_read_of_an_unknown_field_is_a_problem_that_names_the_fields()
+    {
+        var plan = DqmhFrameTools.Plan("X", ["Gain in", "error in"], ["error out"],
+            ["input cluster"], [], DataFields);
+
+        Assert.Contains(plan.Problems, p => p.Contains("Gain in") && p.Contains("Accounts File"));
+    }
+
+    /// <summary>Without data fields the plan is what it always was.</summary>
+    [Fact]
+    public void Without_module_data_a_field_in_input_is_still_a_problem()
+    {
+        var plan = DqmhFrameTools.Plan("X", ["Status in", "error in"], ["error out"], ["input cluster"], []);
+
+        Assert.NotEmpty(plan.Problems);
+        Assert.False(plan.UsesModuleData);
+    }
+
+    /// <summary>An output that is neither reply nor `&lt;field&gt; out` is named in the warning.</summary>
+    [Fact]
+    public void An_unused_output_of_a_request_is_named_with_the_data_hint()
+    {
+        var plan = DqmhFrameTools.Plan("X", ["error in"], ["Result", "error out"], ["input cluster"], [], DataFields);
+
+        Assert.Contains(plan.Warnings, w => w.Contains("(Result)") && w.Contains("<field> out"));
+    }
+
+    /// <summary>The data cluster is the constant on the Message Handling Loop's shift register.</summary>
+    [Fact]
+    public void The_module_data_type_is_read_off_the_mhl_shift_register()
+    {
+        const string main = """
+            <VI _name="M.lvlib:Main.vi" description="">
+              <Constant _name="Other" type="cluster{double.x}" uid="1" uid_parent="root" value="[0]" outputs="value:1.value"/>
+              <Constant _name="Data Cluster" type="cluster{string.Status,path.Accounts File}" uid="333" uid_parent="root" value="[,]" outputs="value:333.value"/>
+              <Structure _name="While Loop" uid="369" uid_parent="root" label="Message Handling Loop">
+                <ShiftReg uid="376" uid_parent="369">
+                  <Left uid="380" uid_parent="376" inputs="value:333.value" outputs="value:380.value"/>
+                  <Right uid="378" uid_parent="376" inputs="value:" outputs="value:"/>
+                </ShiftReg>
+              </Structure>
+            </VI>
+            """;
+        Assert.Equal("cluster{string.Status,path.Accounts File}", DqmhFrameTools.ModuleDataType(main));
+    }
+
+    /// <summary>
+    /// The donor carries an Unbundle of exactly the read fields and a Bundle of exactly the
+    /// written ones, each written field fed from a constant of its own type.
+    /// </summary>
+    [Fact]
+    public void The_donor_carries_exactly_the_read_and_written_fields()
+    {
+        var xml = DqmhFrameTools.ModuleDataDonorAixml("D.vi",
+            "cluster{string.Status,path.Accounts File,double.Last Balance}", ["Last Balance"], ["Accounts File"]);
+        var root = System.Xml.Linq.XDocument.Parse(xml).Root!;
+        var nodes = root.Elements("Node").ToList();
+
+        Assert.Equal("Last Balance", nodes.Single(n => (string?)n.Attribute("_name") == "Unbundle By Name").Attribute("fields")!.Value);
+        Assert.Equal("Accounts File", nodes.Single(n => (string?)n.Attribute("_name") == "Bundle By Name").Attribute("fields")!.Value);
+        Assert.Equal("path", root.Elements("Constant").Single().Attribute("type")!.Value);
+    }
+
+    /// <summary>
+    /// Hampel Soft: a reply's error goes to the REQUESTER only. Merge Errors still needs its
+    /// second input, so it takes Variant To Data's error (the error source), not the handler's.
+    /// </summary>
+    [Fact]
+    public void Merge_errors_is_fed_from_the_error_source_not_the_handler()
+    {
+        var aixml = File.ReadAllText(RepoTree.Path("scripts", "lvdqmh_place_frame_handler.xml"));
+        Assert.Contains("Source Node:4555.value,Sink Node:4922.value", aixml);
+        Assert.DoesNotContain("Source Node:4573.handler,Sink Node:4922.value", aixml);
+    }
+
+    /// <summary>The data helper calls its three generic helpers by bare name.</summary>
+    [Fact]
+    public void The_module_data_helper_calls_its_generic_helpers()
+    {
+        var aixml = File.ReadAllText(RepoTree.Path("scripts", "lvdqmh_wire_module_data.xml"));
+        Assert.Contains("target=\"lvbd_connect_by_names.vi\"", aixml);
+        Assert.Contains("target=\"lvbd_terminal_by_name.vi\"", aixml);
+        Assert.Contains("target=\"lvbd_move_to.vi\"", aixml);
+    }
+
+    [Fact]
+    public void Add_module_data_refuses_bad_field_lists_by_name()
+    {
+        Assert.NotNull(DqmhModuleDataTools.ParseFields("[]").Refusal);
+        Assert.NotNull(DqmhModuleDataTools.ParseFields("[{\"name\":\"A\"}]").Refusal);
+        Assert.NotNull(DqmhModuleDataTools.ParseFields("[{\"name\":\"A.B\",\"type\":\"double\"}]").Refusal);
+        Assert.NotNull(DqmhModuleDataTools.ParseFields(
+            "[{\"name\":\"A\",\"type\":\"double\"},{\"name\":\"A\",\"type\":\"int32\"}]").Refusal);
+        var (fields, refusal) = DqmhModuleDataTools.ParseFields(
+            "[{\"name\":\"Accounts File\",\"type\":\"path\"},{\"name\":\"Samples\",\"type\":\"int32\"}]");
+        Assert.Null(refusal);
+        Assert.Equal(["Accounts File", "Samples"], fields.Select(f => f.Name));
+    }
+
+    [Fact]
+    public void The_field_donor_has_one_control_per_field()
+    {
+        var xml = DqmhModuleDataTools.FieldDonorAixml("F.vi",
+            [new("Accounts File", "path"), new("Samples", "int32")]);
+        var controls = System.Xml.Linq.XDocument.Parse(xml).Root!.Elements("Control").ToList();
+
+        Assert.Equal(["Accounts File", "Samples"], controls.Select(c => c.Attribute("_name")!.Value));
+        Assert.Equal(["path", "int32"], controls.Select(c => c.Attribute("type")!.Value));
+    }
+
+    // ------------------------------------------------------------------ retest findings (2026-11-12)
+
+    /// <summary>Delacor's placeholder argument of an event without arguments raises no warning.</summary>
+    [Fact]
+    public void The_boolean_placeholder_of_an_argumentless_event_is_not_warned_about()
+    {
+        var plan = DqmhFrameTools.Plan("Increment", ["Step in", "Count in", "error in"], ["Count out", "error out"],
+            ["input cluster", "Boolean"], [], ["Status", "Step", "Count"]);
+
+        Assert.Empty(plan.Problems);
+        Assert.DoesNotContain(plan.Warnings, w => w.Contains("Boolean"));
+    }
+
+    /// <summary>A REAL argument named Boolean beside others is still reported when unused.</summary>
+    [Fact]
+    public void A_real_boolean_argument_among_others_is_still_warned_about()
+    {
+        var plan = DqmhFrameTools.Plan("X", ["Gain", "error in"], ["error out"],
+            ["input cluster", "Gain", "Boolean"], []);
+
+        Assert.Contains(plan.Warnings, w => w.Contains("'Boolean'"));
+    }
+
+    /// <summary>
+    /// A reply frame wires `error out->error in` twice; the description names both ends of each,
+    /// so the handler's error in and Merge Errors are told apart.
+    /// </summary>
+    [Fact]
+    public void Wires_name_the_nodes_at_both_ends()
+    {
+        var plan = DqmhFrameTools.Plan("Get Count", ["Count in", "error in"], ["Count", "error out"],
+            ["input cluster", "Wait Notifier", "wait for reply"],
+            ["output cluster", "input cluster", "Count", "error"], ["Status", "Count"]);
+        var wires = DqmhFrameTools.DescribeWires(plan, splice: false, mergeErrors: true,
+            ["error out->error in", "Count->Count", "error out->error", "error out->error in"])
+            .Select(w => w!.GetValue<string>()).ToList();
+
+        Assert.Contains("Variant To Data 'error out' -> handler 'error in'", wires);
+        Assert.Contains("Variant To Data 'error out' -> Merge Errors 'error in'", wires);
+        Assert.Contains("handler 'error out' -> reply Bundle By Name 'error'", wires);
+        Assert.DoesNotContain(wires, w => w.Contains("NOT CONNECTED"));
+    }
+
+    /// <summary>A wire the helper did not report is marked, never silently dropped.</summary>
+    [Fact]
+    public void A_wire_the_helper_did_not_make_is_marked()
+    {
+        var plan = DqmhFrameTools.Plan("Get Count", ["error in"], ["Count", "error out"],
+            ["input cluster"], ["output cluster", "input cluster", "Count", "error"]);
+        var wires = DqmhFrameTools.DescribeWires(plan, false, true, ["error out->error in", "Count->Count", "error out->error"])
+            .Select(w => w!.GetValue<string>()).ToList();
+
+        Assert.Contains("Variant To Data 'error out' -> Merge Errors 'error in' - NOT CONNECTED", wires);
+    }
+
+    /// <summary>
+    /// The retest's parallel agent: handler VIs written under SubVIs while an event was scripted
+    /// were listed as the event's files. Only the module folder and the .lvproj stay; the rest is counted.
+    /// </summary>
+    [Fact]
+    public void Event_file_lists_keep_only_the_module_folder_and_the_project()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "dqmh-scope-" + Guid.NewGuid().ToString("N")[..8]);
+        var module = Path.Combine(root, "Libraries", "Counter");
+        var project = Path.Combine(root, "P.lvproj");
+        List<string> created = [Path.Combine(module, "Configure.vi"), Path.Combine(root, "SubVIs", "Handlers", "Get Count Handler.vi")];
+        List<string> modified = [Path.Combine(module, "Main.vi"), project, Path.Combine(root, "SubVIs", "Handlers", "Increment Handler.vi"),
+                                 Path.Combine(root, "Libraries", "Counter Two", "Main.vi")];
+
+        var outside = DqmhHeadless.OutsideModule(ref created, ref modified, module, project);
+
+        Assert.Equal(3, outside);
+        Assert.Equal([Path.Combine(module, "Configure.vi")], created);
+        Assert.Equal([Path.Combine(module, "Main.vi"), project], modified);
+    }
 }

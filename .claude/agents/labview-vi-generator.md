@@ -54,6 +54,12 @@ Measured facts that each cost minutes when found at run time. Plan around them f
 
 ## Hard rules
 
+- **A DQMH HANDLER KEEPS NO STATE OF ITS OWN** (user-forum feedback, 2026-11-12; the Hampel Soft
+  DQMH conventions). Never a functional global variable, an uninitialised shift register, a global
+  or a DVR for module data: state is a field of the module's data cluster. The handler takes it as
+  an input named `<field> in` and hands a new value back as an output named `<field> out`;
+  `lvai_dqmh_place_handler` wires both to the shift-register wire. Arguments and reply fields keep
+  their own names.
 - **A REENTRANT VI** is written with the trailer `<?lvmcp exec IsReentrant="1" PooledReentrancy="1"?>`
   after `</VI>` (shared clones; `PooledReentrancy="0"` preallocated; pylabview backend only) and
   VERIFIED with `lvai_exec_state` - `reentrancyType` is LabVIEW's own reading. Not with your own

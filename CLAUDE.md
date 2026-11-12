@@ -45,6 +45,13 @@ orchestrator does it after the last wave: `lvai_create_library` with the API VIs
 function folder (never flat), then `lvai_exec_state` over the members. The VI agents search the
 PROJECT's own VIs before the palette. `docs/orchestrator-brief.md`.
 
+**LOGIC INSIDE A DQMH MODULE KEEPS ITS STATE IN THE MODULE'S DATA CLUSTER, NEVER IN AN FGV**
+(user feedback of 2026-11-12, the Hampel Soft DQMH conventions). Fields are added with
+`lvai_dqmh_add_module_data` (in place - an overwritten `.ctl` leaves the library and breaks
+Main.vi); a handler reads `<field> in` and writes `<field> out`, and `lvai_dqmh_place_handler`
+wires both on the shift-register wire. A reply's error goes to the requester only.
+`docs/dqmh-patterns.md` §12.
+
 **ONE AGENT, ONE OUTPUT DIRECTORY.** Two agents in one folder overwrite each other's files. Give
 each its own folder (`<project>\Tests\<ClassName>\`) and say so in its prompt.
 

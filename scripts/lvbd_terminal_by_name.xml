@@ -1,0 +1,45 @@
+<VI _name="lvbd_terminal_by_name.vi" description="Finds ONE terminal of a block-diagram node by its NAME - never by index, because Terminals[] order is not portable - and says whether it already carries a wire. Generic\3A it knows nothing about the VI it reads. Found is FALSE when no terminal has that name or the node is not a valid reference\3B Terminal is then not a valid reference either.">
+  <Control _name="Node" conIdx="0" connection="recommended" outputs="value:4200.value" type="ref{LV.Node}" uid="4200" uid_parent="root" value=""/>
+  <Control _name="Name" conIdx="1" connection="recommended" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Property Node" fields="read+Terminals[]" type="{LV.Node}" inputs="reference:4200.value,error in (no error):4202.value" outputs="Terminals[]:4210.terms,reference out:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4210.terms" mode="index" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <ShiftReg uid="4302" uid_parent="4300">
+      <Left inputs="value:4210.error out" outputs="value:4303.value" uid="4303" uid_parent="4302"/>
+      <Right inputs="value:4310.error out" outputs="value:4304.value" uid="4304" uid_parent="4302"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="read+Name" type="{LV.Terminal}" inputs="reference:4301.value,error in (no error):4303.value" outputs="Name:4310.name,reference out:,error out:4310.error out" uid="4310" uid_parent="4300"/>
+    <Tunnel _id="Out1" inputs="value:4310.name" mode="index" outputs="value:4311.value" uid="4311" uid_parent="4300"/>
+  </Structure>
+  <Node _name="Search 1D Array" inputs="1D array:4311.value,element:4201.value,start index (0):" outputs="index of element:4320.i" uid="4320" uid_parent="root"/>
+  <Node _name="Greater Or Equal To 0?" inputs="x:4320.i" outputs="x &gt;= 0?:4321.found" uid="4321" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4210.terms,index:4320.i" outputs="element:4322.term" uid="4322" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4321.found" uid="4400" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4322.term" uid="4401" uid_parent="4400"/>
+    <Tunnel _id="In2" inputs="value:4304.value" uid="4402" uid_parent="4400"/>
+    <CaseFrame selector="True" selectout="" uid="4410" uid_parent="4400">
+      <Tunnel _id="In1" outputs="value:4411.value" uid="4411" uid_parent="4410"/>
+      <Tunnel _id="In2" outputs="value:4412.value" uid="4412" uid_parent="4410"/>
+      <Node _name="Property Node" fields="read+Connected Wire" type="{LV.Terminal}" inputs="reference:4411.value,error in (no error):4412.value" outputs="Connected Wire:4413.wire,reference out:,error out:4413.error out" uid="4413" uid_parent="4410"/>
+      <Node _name="Not A Number/Path/Refnum?" inputs="number/path/refnum:4413.wire" outputs="NaN/Path/Refnum?:4414.free" uid="4414" uid_parent="4410"/>
+      <Node _name="Not" inputs="x:4414.free" outputs=".not. x?:4415.wired" uid="4415" uid_parent="4410"/>
+      <Tunnel _id="Out1" inputs="value:4413.error out" uid="4416" uid_parent="4410"/>
+      <Tunnel _id="Out2" inputs="value:4415.wired" uid="4417" uid_parent="4410"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="4420" uid_parent="4400">
+      <Tunnel _id="In1" outputs="value:" uid="4421" uid_parent="4420"/>
+      <Tunnel _id="In2" outputs="value:4422.value" uid="4422" uid_parent="4420"/>
+      <Constant outputs="value:4423.value" type="bool" uid="4423" uid_parent="4420" value="false"/>
+      <Tunnel _id="Out1" inputs="value:4422.value" uid="4424" uid_parent="4420"/>
+      <Tunnel _id="Out2" inputs="value:4423.value" uid="4425" uid_parent="4420"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4430.value" uid="4430" uid_parent="4400"/>
+    <Tunnel _id="Out2" outputs="value:4431.value" uid="4431" uid_parent="4400"/>
+  </Structure>
+  <Indicator _name="Terminal" conIdx="4" connection="recommended" inputs="value:4322.term" type="ref{LV.Terminal}" uid="4500" uid_parent="root" value=""/>
+  <Indicator _name="Found" conIdx="5" connection="recommended" inputs="value:4321.found" type="bool" uid="4501" uid_parent="root" value="false"/>
+  <Indicator _name="Wired" conIdx="6" connection="recommended" inputs="value:4431.value" type="bool" uid="4502" uid_parent="root" value="false"/>
+  <Indicator _name="Terminal Names" inputs="value:4311.value" type="array{string}" uid="4503" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4430.value" type="cluster{bool.status,int32.code,string.source}" uid="4504" uid_parent="root" value="[false,0,]"/>
+</VI>

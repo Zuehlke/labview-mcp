@@ -1481,6 +1481,73 @@ lists no such text among the frame's decorations, so the cause is not only the p
 was `^#CodeNeeded` and is `^#[A-Z_]*CodeNeeded` now, because `Match Pattern` has no groups and
 `^#(DQMH_)?CodeNeeded` would match neither spelling. Where 7.1 keeps that label is not measured.
 
+### 9h-2. Module data in a message frame, and new data fields - measured 2026-11-12
+
+A user's feedback: logic inside a DQMH module must keep its state in the module's data cluster,
+never in a functional global (`docs/dqmh-patterns.md` section 12). `lvai_dqmh_place_handler` had
+no way to reach the cluster - it wired arguments and reply fields only - so a handler that had to
+remember anything had nowhere to put it but an FGV. Measured on a copy of the ATM's Account
+Manager (DQMH 7.1.2, LabVIEW 2026, pylabview backend):
+
+- **New VI Object cannot create a Bundle or Unbundle By Name.** Class `NamedUnbundler` /
+  `NamedBundler` with a `uint32` style answered Error 1054. `Move` with `duplicate` TRUE CAN copy
+  one from another VI into a diagram - but its `reference out` is the ORIGINAL in the donor, not
+  the copy (wiring through it answered 1062). The copy is found in the target diagram instead: the
+  node of its class whose `input cluster` (Unbundle) or `output cluster` (Bundle) is still
+  unwired. Writing `Element Names[]` on a one-output copy with two names left ONE output, and
+  `Resize` did not compose, so the donor is GENERATED per call with nodes that already carry
+  exactly the field names (`DqmhFrameTools.ModuleDataDonorAixml`).
+- **The data wire** in an MHL frame is the frame's input tunnel whose outside wire's source
+  terminal is owned by a `LeftShiftRegister` (VI Server `Owner` + `Class Name`); the other inputs
+  come from `DynamicDispatchSubVI` (Dequeue) and `SelectorTunnel`. Its one sink inside an
+  untouched frame is a `SelectorTunnel` - the class name ends in `Tunnel`, it is not equal to it.
+  The helper `scripts/lvdqmh_wire_module_data.xml` (with the generic `lvbd_terminal_by_name.xml`
+  and `lvbd_move_to.xml`) deletes the pass-through wire for writes, wires the copied Unbundle to
+  the handler's `<field> in`, the handler's `<field> out` into the copied Bundle and the Bundle to
+  the output tunnel. Read back from the saved Main.vi: `Configure Handler.vi`'s `Accounts File
+  out` into a `Bundle By Name` `Accounts File` on the data wire, its output into the frame's
+  tunnel.
+- **Adding a field.** `lvai_create_typedef overwrite` on `Module Data--cluster.ctl` wrote a valid
+  typedef - and Main.vi went eBad with `Missing typedef Account Manager.lvlib:Module
+  Data--cluster.ctl`: the rewritten file is no longer a member of the library. Editing in place
+  works: open the `.ctl` in the project's application instance, `Move` (duplicate TRUE) each donor
+  control onto the typedef's `{LV.Cluster}` as owner, save it. The fields came back `Status,
+  Accounts File, Last Balance`, Main.vi stayed executable, and saving Main.vi afterwards put the
+  new type into its `Data Cluster` constant on disk (`scripts/lvdqmh_add_module_data_fields.xml`,
+  tool `lvai_dqmh_add_module_data`; a second run added `Last Account` and `Request Count` below
+  the last element).
+- **Reply errors.** The Hampel conventions put a Request and Wait for Reply's error into the reply
+  only. The place helper now feeds Delacor's `Merge Errors` from the frame's error source (Variant
+  To Data) instead of the handler, so the input is still wired (an unwired one keeps Main.vi
+  broken, section 9h) and the handler's error reaches the requester alone.
+
+- **Through the tool, live (after the rebuild).** `lvai_dqmh_place_handler` with
+  `Get Configuration Handler.vi` (input `Accounts File in`, output `Accounts File`) on the empty
+  Request and Wait for Reply frame `Get Configuration`: the dry run answered the five data fields,
+  the read `Accounts File->Accounts File in` and `moduleDataWire: pass-through`; the placement
+  answered `ok: true`, `moduleData.connected: [Accounts File->Accounts File in]`, and Main.vi went
+  `0 -> 1`. Read back: an Unbundle By Name `Accounts File` on the data tunnel feeds the handler,
+  the handler's `error out` feeds only the reply's `error`, Merge Errors takes Variant To Data's
+  error on both inputs. RUN: a test VI (Start Module, Synchronize Module Events, `Configure` with
+  a path, `Get Configuration`, Stop Module) answered the path it had stored, twice with two
+  different paths, `timed out?` false, no error - module state kept on the shift register, no FGV.
+
+- **Retest from scratch through the agents (2026-11-12, `C:\temp\DQMH_Retest`).** A new
+  project; `labview-dqmh-module` built a Singleton `Counter` (no Do Something), the events
+  `Configure` (Request, `Step`), `Increment` (Request, no argument) and `Get Count` (Request and
+  Wait for Reply, reply `Count`), and added `Step` and `Count` with `lvai_dqmh_add_module_data`
+  (fields `Status, Step, Count`). In parallel `labview-vi-generator` built three stateless
+  handlers named `Step`/`Step out`, `Step in`+`Count in`/`Count out` and `Count in`/`Count`. All
+  three placements answered `ok: true`; Main.vi went `0 -> 1` with the Get Count handler. Read
+  back: every frame has its Unbundle/Bundle By Name on the data wire, Get Count's handler error
+  feeds the reply only, Merge Errors takes Variant To Data's error. RUN: Configure Step 5,
+  Increment x3, Get Count answered 15; Step 7, x4 answered 28; no error, no timeout. A second
+  `Count` was refused `fieldExists`. Found on the way, and fixed the same day: an event with no
+  arguments carries Delacor's placeholder field `Boolean`, which the plan reports as "Argument
+  'Boolean' is not taken by the handler"; `connected` lists `error out->error in` twice in a reply
+  frame without naming the nodes; and `lvai_dqmh_new_event`'s `createdFiles`/`modifiedFiles` scan
+  the whole project folder, so files a parallel agent wrote elsewhere showed up as the event's. Now: a lone `Boolean` argument is not warned about; the answer's `wires` names both nodes of every wire (`Variant To Data 'error out' -> Merge Errors 'error in'`) and marks one the helper did not report `NOT CONNECTED`; `lvai_dqmh_new_event` and `lvai_dqmh_duplicate_event` list only files in the module folder and the `.lvproj`, and count the rest under `filesChangedOutsideModule`.
+
 ### 9i. Every DQMH tool on the pylabview backend - no NI service, measured 2026-10-13
 
 The user asked for a DQMH demo with NO gRPC, and every `lvai_dqmh_*` tool but the reference takes

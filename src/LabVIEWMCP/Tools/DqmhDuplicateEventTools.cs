@@ -232,6 +232,7 @@ internal sealed class DqmhDuplicateEventTools(LvaiConnection connection)
         var saved = await DqmhHeadless.SaveNamedAsync(dqmh, scripts, dirtyAfter ?? [], timeoutSeconds, ct);
         List<string> created = [], modified = [];
         if (before is not null) (created, modified) = before.Diff(DqmhHeadless.Snapshot.Take(snapshotRoot!));
+        var elsewhere = DqmhHeadless.OutsideModule(ref created, ref modified, destinationFolder, projectPath);
         var eventVi = Path.Combine(destinationFolder, newName + ".vi");
         var mainExec = File.Exists(mainVi) ? await headless.ExecStateAsync(mainVi, timeoutSeconds, ct) : null;
         var testerExec = File.Exists(tester) ? await headless.ExecStateAsync(tester, timeoutSeconds, ct) : null;
@@ -261,6 +262,7 @@ internal sealed class DqmhDuplicateEventTools(LvaiConnection connection)
             ["completionNeeded"] = completion,
             ["createdFiles"] = await headless.DescribeAsync(created, timeoutSeconds, ct),
             ["modifiedFiles"] = DqmhHeadless.Array(modified),
+            ["filesChangedOutsideModule"] = elsewhere,
             ["mainViExecStateBefore"] = mainExecBefore,
             ["mainViExecState"] = mainExec,
             ["testerExecState"] = testerExec,

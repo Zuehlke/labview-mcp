@@ -2,7 +2,7 @@
 name: labview-dqmh-module
 description: >-
   MUST BE USED for every request for a DQMH module or DQMH event - delegate to this agent instead of scripting DQMH directly in the main session. Creates DQMH (Delacor Queued Message Handler) modules through `lvai_dqmh_new_module`, which drives Delacor's own scripting through a generated wrapper with no dialog — the module type is matched by NAME against the station's catalogue, the module is built into a project, verified from the files, and the helpers are swept out of the `.lvproj` afterwards. Use whenever the user asks for a DQMH module, e.g. "erstelle ein DQMH Modul für …", "leg ein neues DQMH Modul an", "create a DQMH module that …", "add a cloneable DQMH module". MUTATING — it writes about fifty files, edits a `.lvproj`, and needs a project OPEN AND ACTIVE in the IDE. It also creates DQMH EVENTS - Request, Broadcast, Request and Wait for Reply and Round Trip, with typed arguments - and DQMH UNIT TESTS, through `lvai_dqmh_new_event` and `lvai_dqmh_new_unit_test`, which drive Delacor's own scripting through a generated wrapper with NO dialog and NO keystroke, so both are safe unattended. IMPORTANT for the orchestrator, pass in the task prompt (a) the module name, (b) the target directory, (c) the `.lvproj` path — required, this agent does not invent one, (d) the module type in the user's own words if they named one (Singleton, Cloneable, …), (e) whether the "Do Something" example events should be kept. This agent NEVER guesses a module type index: it reads the catalogue off the station and matches by NAME, and if the user's wording matches nothing it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__pylv_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_error_list, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_list_labview_installations, mcp__labview__lvai_dqmh_new_event, mcp__labview__lvai_dqmh_new_unit_test, mcp__labview__lvai_dqmh_remove_event, mcp__labview__lvai_dqmh_rename_event, mcp__labview__lvai_dqmh_convert_event, mcp__labview__lvai_dqmh_validate_module, mcp__labview__lvai_dqmh_rename_module, mcp__labview__lvai_dqmh_create_rt_tester, mcp__labview__lvai_dqmh_remove_do_something, mcp__labview__lvai_dqmh_create_module_template, mcp__labview__lvai_dqmh_new_module, mcp__labview__lvai_dqmh_place_handler, mcp__labview__lvai_dqmh_duplicate_event, mcp__labview__lvai_dqmh_duplicate_module, mcp__labview__lvai_dqmh_add_helper_loop, mcp__labview__lvai_check_build_contract
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__labview__lvai_status, mcp__labview__pylv_status, mcp__labview__lvai_exec_state, mcp__labview__lvai_error_list, mcp__labview__lvai_ensure_labview, mcp__labview__lvai_dqmh_reference, mcp__labview__lvai_vi_terminals, mcp__labview__lvai_generate_vi, mcp__labview__lvai_validate_aixml, mcp__labview__lvai_check_aixml, mcp__labview__lvai_convert_aixml_to_vi, mcp__labview__lvai_convert_vi_to_aixml, mcp__labview__lvai_run_vi_and_read_values, mcp__labview__lvai_describe_project, mcp__labview__lvai_describe_vi, mcp__labview__lvai_open_file, mcp__labview__lvai_close_active_project, mcp__labview__lvai_lvproj_reference, mcp__labview__lvai_lvlib_reference, mcp__labview__lvai_aixml_reference, mcp__labview__lvai_vi_server_reference, mcp__labview__lvai_list_labview_installations, mcp__labview__lvai_dqmh_new_event, mcp__labview__lvai_dqmh_new_unit_test, mcp__labview__lvai_dqmh_remove_event, mcp__labview__lvai_dqmh_rename_event, mcp__labview__lvai_dqmh_convert_event, mcp__labview__lvai_dqmh_validate_module, mcp__labview__lvai_dqmh_rename_module, mcp__labview__lvai_dqmh_create_rt_tester, mcp__labview__lvai_dqmh_remove_do_something, mcp__labview__lvai_dqmh_create_module_template, mcp__labview__lvai_dqmh_new_module, mcp__labview__lvai_dqmh_place_handler, mcp__labview__lvai_dqmh_add_module_data, mcp__labview__lvai_dqmh_duplicate_event, mcp__labview__lvai_dqmh_duplicate_module, mcp__labview__lvai_dqmh_add_helper_loop, mcp__labview__lvai_check_build_contract
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -29,6 +29,35 @@ helper for any of them** - the wrappers ship in `scripts\lvdqmh_*.xml` and the t
 > 📄 **`docs/dqmh-scripting.md` is your reference** — §9 to §9f carry every measurement behind the
 > rules below. `docs/dqmh-patterns.md` (also served by `lvai_dqmh_reference`) describes what a
 > finished module looks like, which is what you check your output against.
+
+## Logic inside a module: the Hampel Soft DQMH conventions
+
+A user's forum feedback of 2026-11-12, adopted as the rule: logic inside a DQMH module follows
+the HSE DQMH coding conventions (dokuwiki.hampel-soft.com, kb/bestpractices/codingconventions/dqmh).
+`docs/dqmh-patterns.md` §12 has the whole list; these are the ones you act on:
+
+- **MODULE STATE LIVES IN THE DATA CLUSTER, NEVER IN AN FGV.** No functional global variable, no
+  global, no action engine, no DVR for data internal to the module. State is a field of
+  `Module Data--cluster.ctl`, carried on the Message Handling Loop's shift register. Add fields with
+  `lvai_dqmh_add_module_data`; a handler READS one through an input named `<field> in` and WRITES
+  it back through an output named `<field> out` - `lvai_dqmh_place_handler` wires both (Phase 6b).
+  A field is written back only where the handler outputs it. A helper loop that needs its own state
+  keeps its own cluster on its own shift register.
+- **Configuration is a `Configure` request, a connection a `Connect` request** - never business
+  logic in `Initialize`, never a setting passed along with every request (the ATM builds sent
+  `Accounts File` with every request until 2026-11-12: store it once with `Configure`).
+- **Requests are atomic** (`Connect` and `Start Reading`, not `Open and Start`), and payloads use
+  native types rather than typedef'd clusters where they can.
+- **Work longer than ~5 s or of unknown length is a Request plus a Broadcast**, never a Request
+  and Wait for Reply with a raised timeout - a waiting caller cannot be cancelled.
+- **No self-messaging and no message chains** (a frame enqueuing other MHL frames); repetition
+  goes into a helper loop (`lvai_dqmh_add_helper_loop`), shared steps into subVIs every frame
+  calls.
+- **A Request and Wait for Reply's error goes into the REPLY only**, for the requester to handle;
+  the tool no longer wires the handler's error onto the MHL error wire.
+- Pass the HANDLER subVIs to `labview-vi-generator` with these rules in the prompt: inputs named
+  after the arguments and `<field> in`, outputs after the reply fields and `<field> out`, no
+  FGV or global inside.
 
 ## Why the tools work: a `Call` reaches these VIs only once they are LOADED
 
@@ -214,14 +243,21 @@ Request and Wait for Reply frame leaves Main.vi NOT executable until it is fille
 1. A HANDLER subVI does the work (generated by `labview-vi-generator`, not by you). **Its terminal
    names are the contract**: one input per request argument, named exactly like the argument
    field; for a reply, one output per reply field, named exactly like it; plus `error in` /
-   `error out`. The handler's `error out` goes into the reply's `<Event>_error` field.
+   `error out`. The handler's `error out` goes into the reply's `<Event>_error` field - and ONLY
+   there: the frame's Merge Errors takes Variant To Data's error (Hampel: the requester handles a
+   reply's error). **Module state**: an input `<field> in` reads, an output `<field> out` writes a
+   field of the module's data cluster; the tool copies an Unbundle / Bundle By Name onto the
+   shift-register wire in the frame and wires them by name (`moduleData` in the answer). A field
+   the cluster lacks is refused (`namesDoNotMatch` lists the fields) - add it first with
+   `lvai_dqmh_add_module_data`. A frame whose data wire is already used is refused for writes
+   (`moduleDataAlreadyWritten`).
 2. `lvai_dqmh_place_handler` with `moduleName`, `eventName`, `handlerViPath` - `dryRun: true`
    first when the names are new to you; it answers the frame's `arguments` and `replyFields`.
 3. It refuses `namesDoNotMatch` (naming the field), `frameNotFound` (listing the frames) and
    `frameAlreadyHasCode` - never wires a guess. Report `connected`, `warnings` and
    `mainViExecState` before and after.
 
-A Request and Wait for Reply frame leaves Main.vi broken through its unwired `Merge Errors` input until the handler is placed - the tool wires the handler's `error out` there too. A plain Request frame has no reply, so the handler's `error out` stays unwired there - it is
+A Request and Wait for Reply frame leaves Main.vi broken through its unwired `Merge Errors` input until the handler is placed - the tool wires Variant To Data's error there (since 2026-11-12; before, the handler's `error out`, which put the reply's error on the MHL error wire too). A plain Request frame has no reply, so the handler's `error out` stays unwired there - it is
 listed under `warnings`; say so in the report.
 
 ## Phase 7 — UNIT TESTS: `lvai_dqmh_new_unit_test`, no dialog
@@ -258,6 +294,7 @@ dialogs do. `docs/dqmh-scripting.md` §9d, §9e and, for DQMH 7.x, §10 have the
 | `lvai_dqmh_rename_module` | Delacor saves the WHOLE project; the virtual folder keeps `<old> Module` |
 | `lvai_dqmh_create_rt_tester` | the RT tester is NOT executable by design (`#CodeNeeded` in every request frame) |
 | `lvai_dqmh_remove_do_something` | nothing - Main.vi and tester stay executable |
+| `lvai_dqmh_add_module_data` | adds fields to `Module Data--cluster.ctl` IN PLACE (`fieldsJson`, a field already there is refused) and saves the typedef and Main.vi; Main.vi stays executable. Never use `lvai_create_typedef overwrite` on it - the rewritten `.ctl` drops out of the library and Main.vi breaks (measured 2026-11-12) |
 | `lvai_dqmh_validate_module` | READ-ONLY; checks DQMH STRUCTURE. DQMH 5 said PASS for a module whose Main.vi was broken; 7.x names `Main VI broken` / `Tester VI broken` - pair it with `lvai_exec_state` for the cause |
 | `lvai_dqmh_create_module_template` | writes into the user's `LabVIEW Data`; the answer gives the new module type's index in THIS station's catalogue - match by name afterwards |
 
