@@ -289,6 +289,9 @@ generation skips it.
 every `.vi` under it. On pylabview it lays out with `parallel` workers (default 4) in the server's
 own process - measured over 76 VIs, 35 s against 78 s one after the other. Read `failed`,
 `landedOff` and each failed row's `errorKind`; render a few representative VIs, not all of them.
+A batch that outlives `answerWithinSeconds` (default 45) answers `stillRunning` with `progress`;
+the layout goes on in the server, so call AGAIN with the SAME arguments to collect the whole
+answer, and start no other LabVIEW work meanwhile.
 
 ### Phase 1 — What exactly changes?
 

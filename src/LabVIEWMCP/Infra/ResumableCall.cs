@@ -18,7 +18,15 @@ namespace LabVIEWMcp.Infra;
 /// </summary>
 internal static class ResumableCall
 {
-    private sealed record Job(string Key, Task<string> Work, Stopwatch Clock, DateTimeOffset Started);
+    private sealed record Job(string Key, Task<string> Work, Stopwatch Clock, DateTimeOffset Started,
+                              Func<JsonObject?>? Progress, string? Label);
+
+    /// <summary>The longest description of a running call a refusal quotes.</summary>
+    internal const int MaxDescription = 200;
+
+    /// <summary>A running call as a refusal names it: cut to <see cref="MaxDescription"/>.</summary>
+    internal static string Describe(string call) =>
+        call.Length <= MaxDescription ? call : call[..(MaxDescription - 1)] + "…";
 
     private static readonly ConcurrentDictionary<string, Job> Jobs = new(StringComparer.OrdinalIgnoreCase);
     private static readonly object Gate = new();
@@ -27,9 +35,14 @@ internal static class ResumableCall
     /// Runs <paramref name="work"/> under <paramref name="key"/> or attaches to the job already
     /// running under it, and answers within <paramref name="answerWithin"/>. <paramref name="family"/>
     /// keeps two DIFFERENT jobs of one tool from running at once: they would script the same LabVIEW.
+    /// <paramref name="progress"/>, when given, is read into every `stillRunning` answer as
+    /// `progress` - the job's own, so a call that attaches sees how far the first call's work got.
+    /// <paramref name="label"/> names the job in another call's `anotherCallStillRunning` refusal
+    /// in place of its key.
     /// </summary>
     public static async Task<string> RunAsync(string family, string key, TimeSpan answerWithin,
-        Func<Task<string>> work, string retryHint, CancellationToken ct)
+        Func<Task<string>> work, string retryHint, CancellationToken ct, Func<JsonObject?>? progress = null,
+        string? label = null)
     {
         var fullKey = family + "|" + key;
         Job job;
@@ -41,11 +54,16 @@ internal static class ResumableCall
                 && !string.Equals(j.Key, fullKey, StringComparison.OrdinalIgnoreCase)
                 && !j.Work.IsCompleted);
             if (other is not null)
+            {
+                // the job's own label, never its whole key: a layout batch's key is every VI path,
+                // and the refusal named 57 of them twice (DQMH_Retest, 2026-11-12)
+                var running = Describe(other.Label ?? other.Key[(family.Length + 1)..]);
                 return Json.Error("anotherCallStillRunning",
-                    $"An earlier call ({other.Key[(family.Length + 1)..]}) is still running in this " +
+                    $"An earlier call ({running}) is still running in this " +
                     $"server since {other.Clock.Elapsed.TotalSeconds:F0} s and scripts the same " +
                     "LabVIEW. Call again with ITS arguments to collect its answer first.",
-                    new { runningKey = other.Key[(family.Length + 1)..] });
+                    new { runningCall = running });
+            }
             attached = Jobs.TryGetValue(fullKey, out var existing);
             // a FINISHED job nobody collected is not this call's answer when LabVIEW restarted after
             // it began, or when it finished long ago. Measured 2026-10-30: a module call whose
@@ -56,7 +74,7 @@ internal static class ResumableCall
                 existing = null;
                 attached = false;
             }
-            job = existing ?? Start(fullKey, work);
+            job = existing ?? Start(fullKey, work, progress, label);
             Jobs[fullKey] = job;
         }
 
@@ -71,7 +89,8 @@ internal static class ResumableCall
         }
 
         if (!job.Work.IsCompleted)
-            return Indent(new JsonObject
+        {
+            var running = new JsonObject
             {
                 ["ok"] = false,
                 ["errorKind"] = "stillRunning",
@@ -79,7 +98,17 @@ internal static class ResumableCall
                 ["runningForSeconds"] = Math.Round(job.Clock.Elapsed.TotalSeconds, 1),
                 ["startedAt"] = job.Started.ToString("HH:mm:ss"),
                 ["attachedToEarlierCall"] = attached,
-            });
+            };
+            try
+            {
+                if (job.Progress?.Invoke() is { } p) running["progress"] = p;
+            }
+            catch (Exception e) when (e is InvalidOperationException or ArgumentException)
+            {
+                // progress is a courtesy; the answer stands without it
+            }
+            return Indent(running);
+        }
 
         Jobs.TryRemove(new KeyValuePair<string, Job>(fullKey, job));
         var answer = job.Work.IsCompletedSuccessfully
@@ -89,12 +118,12 @@ internal static class ResumableCall
     }
 
     // the clock stops when the work does, so it says how long the work RAN
-    private static Job Start(string key, Func<Task<string>> work)
+    private static Job Start(string key, Func<Task<string>> work, Func<JsonObject?>? progress, string? label)
     {
         var clock = Stopwatch.StartNew();
         var task = Task.Run(work);
         _ = task.ContinueWith(_ => clock.Stop(), TaskScheduler.Default);
-        return new Job(key, task, clock, DateTimeOffset.Now);
+        return new Job(key, task, clock, DateTimeOffset.Now, progress, label);
     }
 
     /// <summary>How long a finished, uncollected answer is kept for the call that collects it.</summary>

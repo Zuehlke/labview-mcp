@@ -47,7 +47,7 @@ internal sealed class BindReferenceTools(LvaiConnection connection)
         Needs an ACTIVE project (Error 1055 otherwise); the VI need not be listed in it. The panel
         is opened for the edit and put back. `ok` is decided from the file: execState 1, no
         stand-in left, each reference feeding the stand-in's sinks. The pre-edit copy is named
-        under `backupPath`.
+        under `backupPath`. The rewired diagram is laid out first (`cleanUpDiagram`).
         """)]
     public async Task<string> BindControlReferencesAsync(
         [Description("Absolute path of the VI to edit. Saved in place")] string viPath,
@@ -108,6 +108,9 @@ internal sealed class BindReferenceTools(LvaiConnection connection)
             if (error.Code is not null && error.Code != 0)
                 return Failed(error, vi, backup, bindings, codes);
 
+            // ---- 3b. SCRIPTED WIRES ARE ALWAYS FOLLOWED BY A LAYOUT (the user's rule of 2026-11-12)
+            var cleanUp = await new DiagramCleanup(connection).RunAsync(vi, BackendRoute.Current, timeoutSeconds, ct);
+
             // ---- 4. the verdict, from the file
             var exec = JsonNode.Parse(await new ExecStateTools(connection).ExecStateAsync(
                 vi, timeoutSeconds: timeoutSeconds, ct: ct));
@@ -121,6 +124,7 @@ internal sealed class BindReferenceTools(LvaiConnection connection)
                 ["ok"] = ok,
                 ["viPath"] = vi,
                 ["execState"] = execState,
+                ["cleanUpDiagram"] = cleanUp,
                 ["bindings"] = new JsonArray(bindings.Select((b, i) => (JsonNode)new JsonObject
                 {
                     ["standIn"] = b.StandIn,

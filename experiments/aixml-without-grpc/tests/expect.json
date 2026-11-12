@@ -2389,5 +2389,16 @@
     }
    }
   ]
+ },
+ "t210_flat_sequence_frame_tunnels": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "mid": 5,
+     "result": 9
+    }
+   }
+  ]
  }
 }

@@ -28,6 +28,9 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
     private const string Helper = "lvdqmh_place_frame_handler";
     private const string ConnectHelper = "lvbd_connect_by_names";
     private const string SpliceHelper = "lvbd_splice_by_names";
+    private const string DataHelper = "lvdqmh_wire_module_data";
+    private const string TerminalHelper = "lvbd_terminal_by_name";
+    private const string MoveHelper = "lvbd_move_to";
 
     /// <summary>
     /// Delacor's placeholder text in a message frame: `#CodeNeeded` in DQMH 5 and 6, and
@@ -35,9 +38,10 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
     /// nothing and said `codeNeededTextsBefore: 0` (found in the DQMH_EscapingTest build of
     /// 2026-10-31). A pattern for the helper's Match Pattern, which is NOT a full regular
     /// expression: it has no groups, so `^#(DQMH_)?CodeNeeded` would match neither spelling.
-    /// A character class with `*` it does have. Whether the 7.x labels are reached at all is not
-    /// measured: the dry run listed no #DQMH_CodeNeeded text in a 7.1 frame, so the deletion may
-    /// need the label's class too.
+    /// A character class with `*` it does have. MEASURED 2026-11-12 on a DQMH 7.x Singleton
+    /// (Branch_Retest): an EVENT's message frame carries no such text at all - the saved Main.vi's
+    /// heap holds exactly three `#DQMH_CodeNeeded` texts, in the Initialize, front-panel and exit
+    /// frames Delacor's template ships - so `codeNeededTextsBefore: 0` is the true count there.
     /// </summary>
     internal const string CodeNeededPattern = "^#[A-Z_]*CodeNeeded";
 
@@ -59,13 +63,19 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         frame) and wire it BY NAME. MUTATING. Name the handler's terminals after the event's
         argument and reply fields - that is the whole contract. Arguments go to same-named
         inputs, Variant To Data's error out to `error in`. Request and Wait for Reply: outputs go
-        to same-named reply fields, `error out` to `<Event>_error` AND the frame's Merge Errors
-        (its unwired input otherwise keeps Main.vi broken). Plain Request: the handler goes in
-        series into the frame's error wire.
+        to same-named reply fields, `error out` to the reply's error field ONLY (the requester
+        handles it); the frame's Merge Errors takes Variant To Data's error. Plain Request: the
+        handler goes in series into the frame's error wire.
+        MODULE STATE: an input `<field> in` reads, an output `<field> out` writes a field of the
+        module's data cluster on the MHL shift register (Unbundle/Bundle By Name added in the
+        frame) - never keep state in a functional global. Add fields with
+        lvai_dqmh_add_module_data first.
         `ok` is false when the handler lands OUTSIDE the frame (`placement` is read back) or its
         error out reaches nothing. An input or field with no partner is reported, never guessed;
         a frame already holding a subVI is refused. The #CodeNeeded text is deleted and Main.vi
-        saved; its exec state before and after is reported. Use `dryRun` first.
+        saved; its exec state before and after is reported. Then the WHOLE Main.vi is laid out
+        with lvai_layout_diagram (`cleanUpDiagram`; put back when it does not finish) and made source
+        only (`sourceOnly`: the project is closed for the strip and opened again). Use `dryRun` first.
         Needs the module's project OPEN and ACTIVE.
         """)]
     public async Task<string> PlaceHandlerAsync(
@@ -73,6 +83,7 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         [Description("Event whose message frame gets the handler, e.g. 'Verify Account'")] string eventName,
         [Description("Absolute path of the handler subVI")] string handlerViPath,
         [Description("Report what would be wired and change nothing")] bool dryRun = false,
+        [Description("Lay out the whole Main.vi after wiring. Default true; false only when asked")] bool cleanUpDiagram = true,
         [Description("Local budget in seconds")] int timeoutSeconds = 300,
         [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>
@@ -145,7 +156,18 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
             // handler for it refused every Request and Wait for Reply frame (2026-10-30)
             var (replyTerminals, replyAlreadyFed) = SplitReplySinks(DqmhHeadless.Listed(dry, "Reply Sink Terminals"));
             var texts = DqmhHeadless.Listed(dry, "Decoration Texts");
-            var plan = Plan(eventBare, inputs, outputs, argTerminals, replyTerminals);
+
+            // ---- the module's data cluster, only when the handler names a field ----------------
+            string? dataType = null;
+            var dataFields = new List<string>();
+            if (inputs.Any(i => i != "error in" && i.EndsWith(DataReadSuffix, StringComparison.Ordinal))
+                || outputs.Any(o => o != "error out" && o.EndsWith(DataWriteSuffix, StringComparison.Ordinal)))
+            {
+                var (mainAixml, _, _) = await headless.ExportAsync(mainVi, "dqmh-main", timeoutSeconds, ct);
+                dataType = mainAixml is null ? null : ModuleDataType(mainAixml);
+                dataFields = [.. (dataType is null ? null : TestTools.ClusterMembers(dataType))?.Select(m => m.Name) ?? []];
+            }
+            var plan = Plan(eventBare, inputs, outputs, argTerminals, replyTerminals, dataFields);
             var detail = new JsonObject
             {
                 ["mainVi"] = mainVi,
@@ -156,6 +178,7 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
                 ["replyFieldsAlreadyFed"] = DqmhHeadless.Array(replyAlreadyFed),
                 ["handlerInputs"] = DqmhHeadless.Array(inputs),
                 ["handlerOutputs"] = DqmhHeadless.Array(outputs),
+                ["moduleDataFields"] = DqmhHeadless.Array(dataFields),
                 ["plan"] = plan.ToJson(),
             };
             if (nodeClasses.Contains("SubVI"))
@@ -166,6 +189,32 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
                 return Json.Error("namesDoNotMatch",
                     "The handler's terminals do not match the frame's fields - " +
                     string.Join(" ", plan.Problems), detail);
+            if (plan.UsesModuleData)
+            {
+                if (await headless.EnsureWrapperAsync(scripts, DataHelper, [], projectPath, steps,
+                        timeoutSeconds, ct, [ConnectHelper, TerminalHelper, MoveHelper]) is { } dataWrapperError)
+                    return dataWrapperError;
+                var (dataDry, dataDryError) = await dqmh.RunDetailedAsync(scripts, DataHelper, new()
+                {
+                    ["Main VI Path"] = mainVi,
+                    ["Frame Name"] = frameName,
+                    ["Dry Run"] = "true",
+                }, timeoutSeconds, ct);
+                if (dataDry is null || dataDryError is not null)
+                    return Json.Error("helperFailed", "The frame's module data could not be read.",
+                        DqmhHeadless.Merge(detail, new JsonObject { ["helperError"] = dataDryError }));
+                var dataFound = DqmhHeadless.IsTrue(DqmhTools.Scalar(dataDry, "Data Found"));
+                var passThrough = DqmhHeadless.IsTrue(DqmhTools.Scalar(dataDry, "Pass Through"));
+                detail["moduleDataWire"] = dataFound ? passThrough ? "pass-through" : "already used" : "not found";
+                if (!dataFound)
+                    return Json.Error("moduleDataNotFound",
+                        "No wire from the Message Handling Loop's shift register reaches this frame, so " +
+                        "the handler's '<field> in' / '<field> out' terminals have nothing to connect to.", detail);
+                if (plan.Writes.Count > 0 && !passThrough)
+                    return Json.Error("moduleDataAlreadyWritten",
+                        "The frame does more with the data cluster than pass it through, so a Bundle By Name " +
+                        "is not added on top of it. Write the field in the code that is already there.", detail);
+            }
             if (dryRun)
                 return Json.Document(DqmhHeadless.Merge(new JsonObject
                 {
@@ -189,7 +238,11 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
             // reach nothing - an error from the handler was lost in silence (the user's finding of
             // 2026-10-31). It goes in series into the error source's wire instead, which also
             // feeds its error in: the splice replaces the plain error-in connection.
-            var mergeErrors = nodeClasses.Contains(MergeErrorsClass) && outputs.Contains("error out");
+            // HAMPEL SOFT'S CONVENTION FOR A REPLY: the handler's error goes into the REPLY only, and
+            // the requester handles it - never back onto the MHL's error wire. Delacor's Merge
+            // Errors still needs its second input wired (unwired it keeps Main.vi broken), so it
+            // takes Variant To Data's error out, the frame's own error, in place of the handler's.
+            var mergeErrors = nodeClasses.Contains(MergeErrorsClass);
             var splice = SpliceErrorChain(plan, outputs, mergeErrors);
             AddArray(run, "Arg Names", plan.Arguments);
             AddArray(run, "Error Sources", plan.ErrorIn && !splice ? ["error out"] : []);
@@ -210,6 +263,78 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
             var connected = DqmhHeadless.Listed(placed, "Connected");
             var missing = DqmhHeadless.Listed(placed, "Missing");
             var error = DqmhTools.Failed(placed);
+
+            // ---- 4. the module data: Unbundle / Bundle By Name on the shift-register wire ---------
+            JsonObject? moduleData = null;
+            var dataOk = true;
+            if (plan.UsesModuleData && error is null && dataType is not null)
+            {
+                var work = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", "dqmh-data", Guid.NewGuid().ToString("N")[..12]);
+                Directory.CreateDirectory(work);
+                var donorName = $"LVMCP Module Data Donor {Path.GetFileName(work)}.vi";
+                var donorXml = Path.Combine(work, "donor.xml");
+                var donorVi = Path.Combine(work, donorName);
+                await File.WriteAllTextAsync(donorXml, ModuleDataDonorAixml(donorName, dataType,
+                    [.. plan.Reads.Select(r => r.From)], [.. plan.Writes.Select(w => w.To)]), ct);
+                var donorProblem = await BackendRoute.ConvertAsync(connection, donorXml, donorVi, timeoutSeconds, ct);
+                moduleData = new JsonObject { ["type"] = dataType, ["donor"] = donorProblem is null ? donorVi : null };
+                if (donorProblem is not null)
+                {
+                    dataOk = false;
+                    moduleData["problem"] = $"The donor VI could not be generated: {donorProblem}";
+                }
+                else
+                {
+                    var dataRun = new Dictionary<string, string>
+                    {
+                        ["Main VI Path"] = mainVi,
+                        ["Frame Name"] = frameName,
+                        ["Donor VI Path"] = donorVi,
+                        ["Dry Run"] = "false",
+                    };
+                    AddArray(dataRun, "Read Fields", plan.Reads.Select(r => r.From));
+                    AddArray(dataRun, "Read Terminals", plan.Reads.Select(r => r.To));
+                    AddArray(dataRun, "Write Fields", plan.Writes.Select(w => w.To));
+                    AddArray(dataRun, "Write Terminals", plan.Writes.Select(w => w.From));
+                    var (wiredData, dataError) = await dqmh.RunDetailedAsync(scripts, DataHelper, dataRun, timeoutSeconds, ct);
+                    var dataConnected = wiredData is null ? [] : DqmhHeadless.Listed(wiredData, "Connected");
+                    var dataMissing = wiredData is null ? [] : DqmhHeadless.Listed(wiredData, "Missing");
+                    var dataFailed = wiredData is null ? dataError : DqmhTools.Failed(wiredData);
+                    dataOk = dataFailed is null && dataMissing.Count == 0
+                             && dataConnected.Count == plan.Reads.Count + plan.Writes.Count;
+                    moduleData["connected"] = DqmhHeadless.Array(dataConnected);
+                    moduleData["missing"] = DqmhHeadless.Array(dataMissing);
+                    moduleData["error"] = dataFailed;
+                }
+            }
+            else if (plan.UsesModuleData)
+            {
+                dataOk = false;
+                moduleData = new JsonObject
+                {
+                    ["problem"] = dataType is null
+                        ? "Main.vi's data cluster type could not be read, so its fields were not wired."
+                        : "The handler was not placed cleanly, so its module data was not wired.",
+                };
+            }
+            // ---- 5. SCRIPTED WIRES ARE ALWAYS FOLLOWED BY A LAYOUT (the user's rule of 2026-11-12):
+            // the handler, its Unbundle/Bundle and every new wire land where the helper dropped
+            // them. The whole Main.vi is laid out; a layout that does not finish puts it back.
+            JsonObject? cleanUp = null;
+            if (cleanUpDiagram && error is null)
+            {
+                cleanUp = await new DiagramCleanup(connection).RunAsync(mainVi, DqmhTools.OnPyLabview
+                    ? AixmlBackend.PyLabview : AixmlBackend.Grpc, timeoutSeconds, ct, includeDqmhMain: true);
+                steps.Add(cleanUp.DeepClone());
+            }
+            // ---- 6. source only: Delacor's Main.vi carries compiled code, and the saves above kept it
+            JsonObject? sourceOnly = null;
+            if (error is null)
+            {
+                sourceOnly = await new DiagramCleanup(connection).SourceOnlyInProjectAsync(mainVi, projectPath, timeoutSeconds, ct);
+                steps.Add(sourceOnly.DeepClone());
+                DiagramCleanup.NoteStripped(cleanUp, sourceOnly);
+            }
             var mainAfter = await headless.ExecStateAsync(mainVi, timeoutSeconds, ct);
             var expected = plan.Arguments.Count + (plan.ErrorIn && !splice ? 1 : 0) + plan.Replies.Count
                            + (mergeErrors ? 1 : 0);
@@ -221,14 +346,20 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
             var answer = new JsonObject
             {
                 ["ok"] = error is null && missing.Count == 0 && connected.Count == expected
-                         && visible && spliced,
+                         && visible && spliced && dataOk && cleanUp?["ok"]?.GetValue<bool>() != false
+                         && sourceOnly?["ok"]?.GetValue<bool>() != false,
                 ["placement"] = placement,
                 ["handlerVisible"] = visible,
-                ["errorChain"] = splice ? spliceAnswer : mergeErrors ? "into the frame's Merge Errors" : null,
+                ["errorChain"] = splice ? spliceAnswer
+                    : mergeErrors ? "the handler's error out into the reply only; the frame's Merge Errors takes Variant To Data's error" : null,
+                ["moduleData"] = moduleData,
+                ["cleanUpDiagram"] = cleanUp,
+                ["sourceOnly"] = sourceOnly,
                 ["module"] = DqmhHeadless.DelacorModuleName(moduleName ?? ""),
                 ["event"] = eventBare,
                 ["handler"] = handler,
                 ["connected"] = DqmhHeadless.Array(connected),
+                ["wires"] = DescribeWires(plan, splice, mergeErrors, connected),
                 ["missing"] = DqmhHeadless.Array(missing),
                 ["error"] = error,
                 ["codeNeededTextsBefore"] = texts.Count(IsCodeNeeded),
@@ -259,16 +390,65 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
 
     internal sealed record Wire(string From, string To);
 
+    /// <summary>
+    /// What to wire. <see cref="DataReads"/> run FROM a module-data field TO the handler input
+    /// `&lt;field&gt; in`; <see cref="DataWrites"/> FROM the handler output `&lt;field&gt; out` TO the field.
+    /// </summary>
     internal sealed record WiringPlan(List<string> Arguments, bool ErrorIn, List<Wire> Replies,
-        List<string> Problems, List<string> Warnings)
+        List<string> Problems, List<string> Warnings, List<Wire>? DataReads = null, List<Wire>? DataWrites = null)
     {
+        public List<Wire> Reads => DataReads ?? [];
+        public List<Wire> Writes => DataWrites ?? [];
+        public bool UsesModuleData => Reads.Count + Writes.Count > 0;
+
         public JsonObject ToJson() => new()
         {
             ["arguments"] = DqmhHeadless.Array(Arguments),
             ["errorIn"] = ErrorIn,
             ["replies"] = new JsonArray([.. Replies.Select(r => JsonValue.Create($"{r.From}->{r.To}"))]),
+            ["moduleDataReads"] = new JsonArray([.. Reads.Select(r => JsonValue.Create($"{r.From}->{r.To}"))]),
+            ["moduleDataWrites"] = new JsonArray([.. Writes.Select(r => JsonValue.Create($"{r.From}->{r.To}"))]),
         };
     }
+
+    /// <summary>The single argument Delacor scripts into an event that has none.</summary>
+    internal const string DelacorEmptyArgument = "Boolean";
+
+    /// <summary>
+    /// Every wire the place helper was asked for, with the NODES at both ends and whether the
+    /// helper reported it. The helper answers bare `source->sink` terminal names, so a reply frame
+    /// listed `error out->error in` twice (Variant To Data into the handler and into Merge Errors)
+    /// with nothing saying which was which (the retest of 2026-11-12). The helper wires in this
+    /// order - arguments, error in, replies, Merge Errors - and an entry is matched once.
+    /// </summary>
+    internal static JsonArray DescribeWires(WiringPlan plan, bool splice, bool mergeErrors,
+                                            IEnumerable<string> connected)
+    {
+        var expected = new List<(string Key, string Text)>();
+        foreach (var a in plan.Arguments)
+            expected.Add(($"{a}->{a}", $"argument Unbundle By Name '{a}' -> handler '{a}'"));
+        if (plan.ErrorIn && !splice)
+            expected.Add(("error out->error in", "Variant To Data 'error out' -> handler 'error in'"));
+        foreach (var r in plan.Replies)
+            expected.Add(($"{r.From}->{r.To}", $"handler '{r.From}' -> reply Bundle By Name '{r.To}'"));
+        if (mergeErrors)
+            expected.Add(("error out->error in", "Variant To Data 'error out' -> Merge Errors 'error in'"));
+        var bag = connected.GroupBy(c => c).ToDictionary(g => g.Key, g => g.Count());
+        var wires = new JsonArray();
+        foreach (var (key, text) in expected)
+        {
+            var made = bag.TryGetValue(key, out var n) && n > 0;
+            if (made) bag[key] = n - 1;
+            wires.Add(made ? text : $"{text} - NOT CONNECTED");
+        }
+        return wires;
+    }
+
+    /// <summary>The handler input that READS a module-data field: `&lt;field&gt; in`.</summary>
+    internal const string DataReadSuffix = " in";
+
+    /// <summary>The handler output that WRITES a module-data field back: `&lt;field&gt; out`.</summary>
+    internal const string DataWriteSuffix = " out";
 
     /// <summary>
     /// Which wires to make. Every handler input except `error in` must be a request argument of
@@ -280,18 +460,40 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
     /// </summary>
     internal static WiringPlan Plan(string eventName, IReadOnlyCollection<string> handlerInputs,
         IReadOnlyCollection<string> handlerOutputs, IReadOnlyCollection<string> argTerminals,
-        IReadOnlyCollection<string> replyTerminals)
+        IReadOnlyCollection<string> replyTerminals, IReadOnlyCollection<string>? dataFields = null)
     {
         var args = argTerminals.Except(PlumbingTerminals).ToList();
         var replies = replyTerminals.Except(PlumbingTerminals).ToList();
+        var fields = dataFields ?? [];
         var errorField = $"{eventName}_error";
         var problems = new List<string>();
         var warnings = new List<string>();
 
-        var wired = handlerInputs.Where(i => i != "error in").ToList();
+        // MODULE STATE LIVES IN THE DATA CLUSTER ON THE MHL SHIFT REGISTER (Hampel Soft DQMH
+        // conventions, the user's request of 2026-11-12) - never in a functional global variable.
+        // A handler reaches a field BY NAME: an input `<field> in` reads it, an output
+        // `<field> out` writes it back. A name that IS an argument stays the argument.
+        static string? Field(string terminal, string suffix, IReadOnlyCollection<string> known) =>
+            terminal.EndsWith(suffix, StringComparison.Ordinal)
+            && terminal[..^suffix.Length] is { Length: > 0 } f && known.Contains(f) ? f : null;
+        var reads = handlerInputs
+            .Where(i => i != "error in" && !args.Contains(i) && Field(i, DataReadSuffix, fields) is not null)
+            .Select(i => new Wire(Field(i, DataReadSuffix, fields)!, i)).ToList();
+        var writes = handlerOutputs
+            .Where(o => o != "error out" && !replies.Contains(o) && Field(o, DataWriteSuffix, fields) is not null)
+            .Select(o => new Wire(o, Field(o, DataWriteSuffix, fields)!)).ToList();
+
+        var wired = handlerInputs.Where(i => i != "error in" && reads.All(r => r.To != i)).ToList();
         foreach (var input in wired.Where(i => !args.Contains(i)))
-            problems.Add($"Handler input '{input}' is not an argument of the message ({string.Join(", ", args)}).");
-        foreach (var arg in args.Where(a => !wired.Contains(a)))
+            problems.Add($"Handler input '{input}' is not an argument of the message ({string.Join(", ", args)})" +
+                         (fields.Count > 0
+                             ? $" and not a module-data field read as '<field> in' ({string.Join(", ", fields)})."
+                             : "."));
+        // Delacor gives an event WITHOUT arguments a placeholder field `Boolean` in its argument
+        // cluster; a handler never takes it, and warning about it on every such event (the retest
+        // of 2026-11-12) only taught the reader to skip warnings.
+        var placeholderOnly = args is [DelacorEmptyArgument] && !handlerInputs.Contains(DelacorEmptyArgument);
+        foreach (var arg in args.Where(a => !wired.Contains(a) && !placeholderOnly))
             warnings.Add($"Argument '{arg}' is not taken by the handler and stays unwired.");
 
         var replyWires = new List<Wire>();
@@ -308,14 +510,86 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
             else if (handlerOutputs.Contains(field)) replyWires.Add(new Wire(field, field));
             else problems.Add($"Reply field '{field}' has no handler output of that name.");
         }
-        if (replies.Count == 0 && handlerOutputs.Any(o => o != "error out"))
-            warnings.Add("This frame sends no reply, so the handler's outputs other than error out stay unwired.");
+        var unused = handlerOutputs.Where(o => o != "error out" && writes.All(w => w.From != o)
+                                               && replyWires.All(r => r.From != o)).ToList();
+        if (replies.Count == 0 && unused.Count > 0)
+            warnings.Add("This frame sends no reply, so the handler's outputs other than error out stay unwired" +
+                         $" ({string.Join(", ", unused)}). To keep a value as module state, name the output " +
+                         "'<field> out' after a field of the module's data cluster.");
         if (replies.Count == 0 && handlerOutputs.Contains("error out") && !handlerInputs.Contains("error in"))
             warnings.Add("A Request frame has no reply to carry the handler's error out, and the handler has " +
                          "no error in to put it in series into the frame's error wire; it stays unwired.");
 
         return new WiringPlan([.. wired.Where(args.Contains)], handlerInputs.Contains("error in"),
-            replyWires, problems, warnings);
+            replyWires, problems, warnings, reads, writes);
+    }
+
+    /// <summary>
+    /// The module's DATA CLUSTER type, read off Main.vi's export: the constant that initialises
+    /// the shift register of the loop labelled `Message Handling Loop` (Delacor's
+    /// `Module Data--cluster.ctl` instance, labelled `Data Cluster` in DQMH 7.1). Null when the
+    /// export has no such loop or constant.
+    /// </summary>
+    internal static string? ModuleDataType(string mainViAixml)
+    {
+        var root = XDocument.Parse(mainViAixml).Root!;
+        var constants = root.Descendants("Constant")
+            .Where(c => ((string?)c.Attribute("type") ?? "").StartsWith("cluster{", StringComparison.Ordinal))
+            .ToDictionary(c => (string?)c.Attribute("uid") ?? "", c => (string)c.Attribute("type")!);
+        var mhl = root.Descendants("Structure").FirstOrDefault(s =>
+            (string?)s.Attribute("_name") == "While Loop"
+            && string.Equals((string?)s.Attribute("label"), "Message Handling Loop", StringComparison.OrdinalIgnoreCase));
+        foreach (var left in mhl?.Elements("ShiftReg").Elements("Left") ?? [])
+            foreach (var (_, source) in Pairs((string?)left.Attribute("inputs")))
+                if (source.Split('.')[0] is { } uid && constants.TryGetValue(uid, out var type))
+                    return type;
+        return root.Descendants("Constant")
+            .FirstOrDefault(c => (string?)c.Attribute("_name") == "Data Cluster")?.Attribute("type")?.Value;
+    }
+
+    private static IEnumerable<(string Terminal, string Source)> Pairs(string? list) =>
+        (list ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => p.Split(':', 2))
+            .Where(p => p.Length == 2 && p[1].Length > 0)
+            .Select(p => (p[0], p[1]));
+
+    /// <summary>
+    /// The DONOR VI the module-data helper copies its nodes from - VI Server's New VI Object
+    /// cannot create a Bundle or Unbundle By Name (Error 1054, measured 2026-11-12), Move with
+    /// duplicate can copy one. Its Unbundle carries exactly the read fields, its Bundle exactly the
+    /// written ones, each fed from a constant of the field's type so the donor stays executable.
+    /// </summary>
+    internal static string ModuleDataDonorAixml(string viName, string dataType,
+        IReadOnlyList<string> reads, IReadOnlyList<string> writes)
+    {
+        var members = TestTools.ClusterMembers(dataType) ?? [];
+        string TypeOf(string field) => members.First(m => m.Name == field).Type;
+        static string A(string s) => SecurityElement.Escape(s);
+        var sb = new StringBuilder();
+        sb.Append($"<VI _name=\"{A(viName)}\" description=\"Donor of the Bundle and Unbundle By Name a DQMH message frame needs on its module data.\">\n");
+        sb.Append($"  <Control _name=\"Module Data\" type=\"{A(dataType)}\" value=\"{A(TestTools.DefaultFor(dataType))}\" outputs=\"value:4200.value\" uid=\"4200\" uid_parent=\"root\"/>\n");
+        var feeds = "4200.value";
+        if (reads.Count > 0)
+            sb.Append($"  <Node _name=\"Unbundle By Name\" uid=\"4201\" uid_parent=\"root\" fields=\"{A(string.Join(",", reads))}\" " +
+                      $"inputs=\"input cluster:4200.value\" outputs=\"{A(string.Join(",", reads.Select(r => $"{r}:4201.{r}")))}\"/>\n");
+        if (writes.Count > 0)
+        {
+            var uid = 4210;
+            var inputs = new List<string> { "input cluster:4200.value" };
+            foreach (var field in writes)
+            {
+                var type = TypeOf(field);
+                sb.Append($"  <Constant _name=\"{A(field)}\" type=\"{A(type)}\" value=\"{A(TestTools.DefaultFor(type))}\" outputs=\"value:{uid}.value\" uid=\"{uid}\" uid_parent=\"root\"/>\n");
+                inputs.Add($"{field}:{uid}.value");
+                uid++;
+            }
+            sb.Append($"  <Node _name=\"Bundle By Name\" uid=\"4202\" uid_parent=\"root\" fields=\"{A(string.Join(",", writes))}\" " +
+                      $"inputs=\"{A(string.Join(",", inputs))}\" outputs=\"output cluster:4202.output cluster\"/>\n");
+            feeds = "4202.output cluster";
+        }
+        sb.Append($"  <Indicator _name=\"Module Data out\" type=\"{A(dataType)}\" value=\"{A(TestTools.DefaultFor(dataType))}\" inputs=\"value:{feeds}\" uid=\"4203\" uid_parent=\"root\"/>\n");
+        sb.Append("</VI>\n");
+        return sb.ToString();
     }
 
     /// <summary>

@@ -376,6 +376,9 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         dryRun returns the planned wires and changes nothing. NEEDS THE PROJECT OPEN AND ACTIVE.
         The answer lists every wire and the execution state before and after - read it again COLD
         (lvai_exec_state, project closed) before trusting it. lvai_af_remove_hook undoes one.
+        A saved override is then laid out with lvai_layout_diagram (`cleanUpDiagram`) and made source
+        only (`sourceOnly`; the project is closed for it and opened again). A hook carries the CLASS
+        wire: an error-only VI is refused (`hookTerminalMissing`) - make it a class member.
         """)]
     public async Task<string> AddHookAsync(
         [Description(@"Absolute path to the override .vi (a member of classPath)")] string overridePath,
@@ -523,11 +526,15 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                 save = await SaveAsync(headless, dqmh, scripts, project, steps,
                     [target.OverridePath], target.ClassPath, onlyIfModified: false, timeoutSeconds, ct);
             var saved = save?["ok"]?.GetValue<bool>() == true;
+            // SCRIPTED WIRES ARE ALWAYS FOLLOWED BY A LAYOUT (the user's rule of 2026-11-12), on the
+            // saved override only - a half-wired one stays in memory, untouched
+            var cleanUp = placedOk && saved ? await LayOutAsync(target.OverridePath, steps, timeoutSeconds, ct) : null;
+            var sourceOnly = cleanUp is null ? null : await SourceOnlyAsync(target.OverridePath, project, cleanUp, steps, timeoutSeconds, ct);
             var after = await headless.ExecStateAsync(target.OverridePath, timeoutSeconds, ct);
 
             var answer = new JsonObject
             {
-                ["ok"] = placedOk && saved,
+                ["ok"] = placedOk && saved && sourceOnly?["ok"]?.GetValue<bool>() != false,
                 ["failedAtStep"] = !placedOk ? failed?.Label ?? "wire" : !saved ? "save" : null,
                 ["errorCode"] = failed is null ? null : StageCode(placed, failed.Value.Indicator),
                 ["shape"] = AfOverrides.Name(parsed),
@@ -535,6 +542,8 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                 ["missing"] = DqmhHeadless.Array(missing),
                 ["hookTerminalsSeen"] = DqmhHeadless.Array(DqmhHeadless.Listed(placed, "Hook Terminal Names")),
                 ["save"] = save,
+                ["cleanUpDiagram"] = cleanUp,
+                ["sourceOnly"] = sourceOnly,
                 ["execStateBefore"] = before,
                 ["execStateAfter"] = after,
                 ["projectPath"] = project,
@@ -578,7 +587,9 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         stem (`<C> out` -> `<C> in`, `error out` -> `error in`) and its source is wired to every
         sink (`bypassed`, `sinksReconnected`); an output with no matching input is refused
         (`seriesHookNotRemovable`). A remove that leaves the override broken is NOT saved
-        (`removeBrokeOverride`). NEEDS THE PROJECT OPEN AND ACTIVE.
+        (`removeBrokeOverride`). A saved override is then laid out (`cleanUpDiagram`) and made
+        source only (`sourceOnly`).
+        NEEDS THE PROJECT OPEN AND ACTIVE.
         """)]
     public async Task<string> RemoveHookAsync(
         [Description(@"Absolute path to the override .vi")] string overridePath,
@@ -727,10 +738,13 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
             }
             var saved = save?["ok"]?.GetValue<bool>() == true
                         && (siblingSave is null || siblingSave["ok"]?.GetValue<bool>() == true);
+            // the bypass wires are scripted too: a layout follows (the user's rule of 2026-11-12)
+            var cleanUp = removedOk && saved ? await LayOutAsync(target.OverridePath, steps, timeoutSeconds, ct) : null;
+            var sourceOnly = cleanUp is null ? null : await SourceOnlyAsync(target.OverridePath, project, cleanUp, steps, timeoutSeconds, ct);
 
             return Json.Document(DqmhHeadless.Merge(new JsonObject
             {
-                ["ok"] = removedOk && saved,
+                ["ok"] = removedOk && saved && sourceOnly?["ok"]?.GetValue<bool>() != false,
                 ["failedAtStep"] = bypassIncomplete ? "bypassSeries"
                     : brokeIt ? "overrideBroken" : !removedOk ? failed?.Label : !saved ? "save" : null,
                 ["errorKind"] = bypassIncomplete ? "bypassTerminalMissing" : brokeIt ? "removeBrokeOverride" : null,
@@ -742,6 +756,8 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                 ["execStateAfter"] = stateAfter,
                 ["save"] = save,
                 ["siblingSave"] = siblingSave,
+                ["cleanUpDiagram"] = cleanUp,
+                ["sourceOnly"] = sourceOnly,
                 ["projectPath"] = project,
                 ["steps"] = steps,
                 ["elapsedMs"] = stopwatch.ElapsedMilliseconds,
@@ -1084,6 +1100,27 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         var (aixml, code, message) = await BackendRoute.ExportAsync(connection, vi, "af-hook", timeoutSeconds, ct);
         if (code != 0 || aixml is null) return (null, message);
         return ViTerminals.Parse(aixml) is { } parsed ? (parsed, null) : (null, "the export did not parse");
+    }
+
+    /// <summary>Our layout over an override whose wires this call scripted, saved in place; a layout
+    /// that does not finish puts the saved override back (DiagramCleanup).</summary>
+    private async Task<JsonObject> LayOutAsync(string vi, JsonArray steps, int timeoutSeconds, CancellationToken ct)
+    {
+        var cleaned = await new DiagramCleanup(connection).RunAsync(vi, BackendRoute.Current, timeoutSeconds, ct);
+        steps.Add(cleaned.DeepClone());
+        return cleaned;
+    }
+
+    /// <summary>The saved override made source only - NI's override provider writes compiled code
+    /// into it (Branch_Retest, 2026-11-12); the project is closed for the strip and opened again.</summary>
+    private async Task<JsonObject?> SourceOnlyAsync(string vi, string? project, JsonObject? cleanUp, JsonArray steps,
+                                                    int timeoutSeconds, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(project)) return null;
+        var step = await new DiagramCleanup(connection).SourceOnlyInProjectAsync(vi, project, timeoutSeconds, ct);
+        steps.Add(step.DeepClone());
+        DiagramCleanup.NoteStripped(cleanUp, step);
+        return step;
     }
 
     // ------------------------------------------------------------------ reading helper output

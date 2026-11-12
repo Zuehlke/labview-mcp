@@ -65,7 +65,9 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         viPaths: one absolute path per line; a FOLDER takes every .vi under it, so a whole project
         is one call. `parallel` workers run side by side on pylabview only; on grpc the VIs run one
         after another (`parallel` reported as 1). Answers one compact row per VI plus totals; a
-        failed VI is named with its errorKind and the others go on.
+        failed VI is named with its errorKind and the others go on. Past answerWithinSeconds it
+        answers `stillRunning` with `progress` (VIs done, failed, in work): the layout goes on in the
+        server, and the SAME call again collects the whole answer.
         """)]
     public async Task<string> LayoutDiagramsAsync(
         [Description("The VIs, one absolute path per line; a folder takes every .vi under it")] string viPaths,
@@ -73,27 +75,105 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         [Description("Dump each diagram again afterwards and compare it with the plan")] bool verify = true,
         [Description("Local budget in seconds, per step and VI")] int timeoutSeconds = 240,
         [Description("Give each constant fan wire geometry of our own, as lvai_layout_diagram does")] bool routeFans = true,
+        [Description("Answer within this many seconds; past it the layout goes on in the server and the " +
+                     "SAME call again collects the answer (the client gives up at 60 s). Default 45")]
+        int answerWithinSeconds = 45,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
-        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_layout_diagrams",
-            () => LayoutManyAsync(viPaths, parallel, verify, timeoutSeconds, routeFans, ct)));
+        // the backend is resolved BEFORE the detached run starts, so the run inherits it
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_layout_diagrams", () =>
+        {
+            // every path is checked before anything is detached: a typo answers at once
+            var targets = ResolveTargets(viPaths, out var refusal);
+            if (refusal is not null) return Task.FromResult(refusal);
+            var key = LayoutManyKey(targets!, parallel, verify, routeFans, BackendRoute.Current);
+            var progress = new LayoutProgress(targets!.Count);
+            return ResumableCall.RunAsync("lvai_layout_diagrams", key, TimeSpan.FromSeconds(answerWithinSeconds),
+                // the CLIENT's cancellation must not stop the run: a VI cut off between apply and
+                // save is left half laid out
+                () => LayoutManyAsync(targets, parallel, verify, timeoutSeconds, routeFans, CancellationToken.None, progress),
+                "Call lvai_layout_diagrams again with the SAME arguments: it waits for this run and returns " +
+                "its whole answer. Do not start other LabVIEW work meanwhile; every VI is saved as it is done.",
+                ct, progress.ToJson, LayoutManyLabel(viPaths, targets.Count));
+        }));
 
-    internal async Task<string> LayoutManyAsync(string viPaths, int parallel, bool verify, int timeoutSeconds,
-                                                bool routeFans, CancellationToken ct)
+    /// <summary>How another call's refusal names a running batch: the lines it was given and the
+    /// VI count, never the resolved paths (the key holds those).</summary>
+    internal static string LayoutManyLabel(string? viPaths, int vis)
     {
+        var lines = (viPaths ?? "").Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var first = lines.FirstOrDefault() ?? "";
+        var more = lines.Length > 1 ? $" and {lines.Length - 1} more line{(lines.Length > 2 ? "s" : "")}" : "";
+        return $"lvai_layout_diagrams over {vis} VI{(vis == 1 ? "" : "s")}: {first}{more}";
+    }
+
+    /// <summary>
+    /// The VIs a viPaths argument names - a folder expands to every .vi under it - or a refusal
+    /// naming the first line that is neither a file nor a folder.
+    /// </summary>
+    internal static List<string>? ResolveTargets(string? viPaths, out string? refusal)
+    {
+        refusal = null;
         var targets = new List<string>();
         foreach (var line in (viPaths ?? "").Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             if (Directory.Exists(line))
-                targets.AddRange(Directory.EnumerateFiles(line, "*.vi", SearchOption.AllDirectories).Order(StringComparer.OrdinalIgnoreCase));
+                targets.AddRange(Directory.EnumerateFiles(line, "*.vi", SearchOption.AllDirectories)
+                    .Select(Path.GetFullPath).Order(StringComparer.OrdinalIgnoreCase));
             else if (File.Exists(line)) targets.Add(Path.GetFullPath(line));
-            else return Json.Error("viNotFound", $"No file or folder at '{line}'. Every line is checked before LabVIEW is asked anything.",
-                                   new { line });
+            else
+            {
+                refusal = Json.Error("viNotFound", $"No file or folder at '{line}'. Every line is checked before LabVIEW is asked anything.",
+                                     new { line });
+                return null;
+            }
         }
         targets = targets.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         if (targets.Count == 0)
-            return Json.Error("badArguments", "viPaths named no VI. Pass one absolute .vi path or folder per line.", new { viPaths });
+        {
+            refusal = Json.Error("badArguments", "viPaths named no VI. Pass one absolute .vi path or folder per line.", new { viPaths });
+            return null;
+        }
+        return targets;
+    }
 
+    /// <summary>
+    /// What makes two lvai_layout_diagrams calls the SAME call: the resolved VIs in order and every
+    /// argument that changes the work. The budgets are left out - a repeat with a longer
+    /// answerWithinSeconds still collects the run it repeats.
+    /// </summary>
+    internal static string LayoutManyKey(IEnumerable<string> targets, int parallel, bool verify, bool routeFans, string backend) =>
+        string.Join("|", string.Join(";", targets.Select(t => t.ToUpperInvariant())), parallel, verify, routeFans, backend);
+
+    /// <summary>How far a running lvai_layout_diagrams got - read into its `stillRunning` answer.</summary>
+    internal sealed class LayoutProgress(int total)
+    {
+        private int done;
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> inWork = new(StringComparer.OrdinalIgnoreCase);
+        private readonly System.Collections.Concurrent.ConcurrentQueue<string> failed = new();
+
+        public void Started(string vi) => inWork[vi] = 0;
+
+        public void Finished(string vi, bool ok)
+        {
+            inWork.TryRemove(vi, out _);
+            if (!ok) failed.Enqueue(vi);
+            Interlocked.Increment(ref done);
+        }
+
+        public JsonObject ToJson() => new()
+        {
+            ["vis"] = total,
+            ["done"] = Volatile.Read(ref done),
+            ["failedSoFar"] = new JsonArray(failed.Select(f => (JsonNode)Path.GetFileName(f)).ToArray()),
+            ["inWork"] = new JsonArray(inWork.Keys.Order(StringComparer.OrdinalIgnoreCase)
+                .Select(f => (JsonNode)Path.GetFileName(f)).ToArray()),
+        };
+    }
+
+    internal async Task<string> LayoutManyAsync(List<string> targets, int parallel, bool verify, int timeoutSeconds,
+                                                bool routeFans, CancellationToken ct, LayoutProgress? progress = null)
+    {
         var workers = BackendRoute.OnPyLabview ? Math.Clamp(parallel, 1, 8) : 1;
         workers = Math.Min(workers, targets.Count);
         var queue = new System.Collections.Concurrent.ConcurrentQueue<(int Index, string Vi)>(targets.Select((v, i) => (i, v)));
@@ -107,6 +187,7 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
             while (queue.TryDequeue(out var job))
             {
                 var t = System.Diagnostics.Stopwatch.StartNew();
+                progress?.Started(job.Vi);
                 JsonObject row;
                 try
                 {
@@ -133,6 +214,7 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
                                            ["message"] = e.Message, ["ms"] = t.ElapsedMilliseconds };
                 }
                 rows[job.Index] = row;
+                progress?.Finished(job.Vi, row["ok"]?.GetValue<bool>() == true);
             }
         }
         await Task.WhenAll(Enumerable.Range(0, workers).Select(w => Task.Run(() => Worker(w), ct)));

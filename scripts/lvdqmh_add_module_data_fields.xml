@@ -1,0 +1,76 @@
+<VI _name="lvdqmh_add_module_data_fields.vi" description="Adds fields to a DQMH module's DATA CLUSTER typedef (Module Data--cluster.ctl) IN PLACE and saves it, so the module keeps its state on the Message Handling Loop's shift register instead of in a functional global variable (Hampel Soft DQMH conventions).\0A\0AEvery control on the Donor VI's front panel is copied into the typedef's cluster with Move (duplicate TRUE) - its label becomes the field name, its type the field type - and placed below the cluster's last element. The .ctl is opened in the ACTIVE PROJECT's application instance and saved in place, so it stays a member of the module's library\3A writing a new .ctl over it (lvai_create_typedef overwrite) drops that membership, and Main.vi then reports the typedef missing (measured 2026-11-12). Main.vi, which carries the typedef in its shift register constant, is saved afterwards so the files agree.">
+  <Control _name="Ctl Path" conIdx="0" connection="recommended" outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="Donor VI Path" conIdx="1" connection="recommended" outputs="value:4201.value" type="path" uid="4201" uid_parent="root" value=""/>
+  <Control _name="Main VI Path" conIdx="2" connection="recommended" outputs="value:4202.value" type="path" uid="4202" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4203.value" type="cluster{bool.status,int32.code,string.source}" uid="4203" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4203.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4210.proj,error in (no error):4210.error out" outputs="Application:4211.app,reference out:,error out:4211.error out" uid="4211" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4211.app,vi path:4200.value,error in (no error):4211.error out" outputs="vi reference:4212.ctl,error out:4212.error out" uid="4212" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4211.app,vi path:4201.value,error in (no error):4212.error out" outputs="vi reference:4213.donor,error out:4213.error out" uid="4213" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:4212.ctl,error in (no error):4213.error out" outputs="Front Panel:4214.fp,reference out:,error out:4214.error out" uid="4214" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:4214.fp,error in (no error):4214.error out" outputs="Controls[]:4215.ctls,reference out:,error out:4215.error out" uid="4215" uid_parent="root"/>
+  <Constant _name="first" outputs="value:4216.value" type="int32" uid="4216" uid_parent="root" value="0"/>
+  <Node _name="Index Array" inputs="array:4215.ctls,index:4216.value" outputs="element:4217.c" uid="4217" uid_parent="root"/>
+  <Constant outputs="value:4218.value" type="ref{LV.Cluster}" uid="4218" uid_parent="root" value=""/>
+  <Node _name="To More Specific Class" inputs="reference:4217.c,error in:4215.error out,target class:4218.value" outputs="specific class reference:4219.cl,error out:4219.error out" uid="4219" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Cluster}" inputs="reference:4219.cl,error in (no error):4219.error out" outputs="Controls[]:4220.before,reference out:,error out:4220.error out" uid="4220" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:4220.before" outputs="size(s):4221.n" uid="4221" uid_parent="root"/>
+  <Node _name="Decrement" inputs="x:4221.n" outputs="x-1:4222.last" uid="4222" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4220.before,index:4222.last" outputs="element:4223.lastel" uid="4223" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop,read+Bounds\3AArea Height" type="{LV.GObject}" inputs="reference:4223.lastel,error in (no error):4220.error out" outputs="Position\3ALeft:4224.l,Position\3ATop:4224.t,Bounds\3AArea Height:4224.h,reference out:,error out:4224.error out" uid="4224" uid_parent="root"/>
+  <Node _name="Add" inputs="x:4224.t,y:4224.h" outputs="x+y:4225.bottom" uid="4225" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:4213.donor,error in (no error):4224.error out" outputs="Front Panel:4226.fp,reference out:,error out:4226.error out" uid="4226" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:4226.fp,error in (no error):4226.error out" outputs="Controls[]:4227.donors,reference out:,error out:4227.error out" uid="4227" uid_parent="root"/>
+  <Constant _name="origin" outputs="value:4228.value" type="cluster{int32.Left,int32.Top}" uid="4228" uid_parent="root" value="[0,0]"/>
+  <Constant _name="duplicate" outputs="value:4229.value" type="bool" uid="4229" uid_parent="root" value="true"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root" label="Copy one donor control into the cluster">
+    <Tunnel _id="In1" inputs="value:4227.donors" mode="index" outputs="value:4301.value" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4219.cl" outputs="value:4302.value" uid="4302" uid_parent="4300"/>
+    <Tunnel _id="In3" inputs="value:4228.value" outputs="value:4303.value" uid="4303" uid_parent="4300"/>
+    <Tunnel _id="In4" inputs="value:4229.value" outputs="value:4304.value" uid="4304" uid_parent="4300"/>
+    <ShiftReg uid="4305" uid_parent="4300">
+      <Left inputs="value:4227.error out" outputs="value:4306.value" uid="4306" uid_parent="4305"/>
+      <Right inputs="value:4310.error out" outputs="value:4307.value" uid="4307" uid_parent="4305"/>
+    </ShiftReg>
+    <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4301.value,error in (no error):4306.value,position:4303.value,owner:4302.value,duplicate:4304.value" outputs="reference out:,error out:4310.error out" uid="4310" uid_parent="4300"/>
+  </Structure>
+
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Cluster}" inputs="reference:4219.cl,error in (no error):4307.value" outputs="Controls[]:4320.after,reference out:,error out:4320.error out" uid="4320" uid_parent="root"/>
+  <Node _name="Array Subset" inputs="array:4320.after,index:4221.n,length:" outputs="subarray:4321.added" uid="4321" uid_parent="root"/>
+  <Constant _name="gap" outputs="value:4322.value" type="int32" uid="4322" uid_parent="root" value="4"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4400" uid_parent="root" label="Place one new field below the previous one">
+    <Tunnel _id="In1" inputs="value:4321.added" mode="index" outputs="value:4401.value" uid="4401" uid_parent="4400"/>
+    <Tunnel _id="In2" inputs="value:4224.l" outputs="value:4402.value" uid="4402" uid_parent="4400"/>
+    <Tunnel _id="In3" inputs="value:4322.value" outputs="value:4403.value" uid="4403" uid_parent="4400"/>
+    <ShiftReg uid="4404" uid_parent="4400">
+      <Left inputs="value:4320.error out" outputs="value:4405.value" uid="4405" uid_parent="4404"/>
+      <Right inputs="value:4413.error out" outputs="value:4406.value" uid="4406" uid_parent="4404"/>
+    </ShiftReg>
+    <ShiftReg uid="4407" uid_parent="4400">
+      <Left inputs="value:4225.bottom" outputs="value:4408.value" uid="4408" uid_parent="4407"/>
+      <Right inputs="value:4416.next" outputs="value:4409.value" uid="4409" uid_parent="4407"/>
+    </ShiftReg>
+    <Node _name="Add" inputs="x:4408.value,y:4403.value" outputs="x+y:4410.top" uid="4410" uid_parent="4400"/>
+    <Node _name="Property Node" fields="write+Position\3ALeft,write+Position\3ATop" type="{LV.GObject}" inputs="reference:4401.value,error in (no error):4405.value,Position\3ALeft:4402.value,Position\3ATop:4410.top" outputs="reference out:,error out:4411.error out" uid="4411" uid_parent="4400"/>
+    <Node _name="Property Node" fields="read+Position\3ATop,read+Bounds\3AArea Height" type="{LV.GObject}" inputs="reference:4401.value,error in (no error):4411.error out" outputs="Position\3ATop:4413.t,Bounds\3AArea Height:4413.h,reference out:,error out:4413.error out" uid="4413" uid_parent="4400"/>
+    <Node _name="Add" inputs="x:4413.t,y:4413.h" outputs="x+y:4416.next" uid="4416" uid_parent="4400"/>
+  </Structure>
+
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4212.ctl,error in (no error):4406.value,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4430.error out" uid="4430" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4440" uid_parent="root" label="Read one field's label">
+    <Tunnel _id="In1" inputs="value:4320.after" mode="index" outputs="value:4441.value" uid="4441" uid_parent="4440"/>
+    <Node _name="Property Node" fields="read+Label.Text" type="{LV.Control}" inputs="reference:4441.value,error in (no error):" outputs="Label.Text:4442.t,reference out:,error out:" uid="4442" uid_parent="4440"/>
+    <Tunnel _id="Out1" inputs="value:4442.t" mode="index" outputs="value:4443.value" uid="4443" uid_parent="4440"/>
+  </Structure>
+  <Node _name="Close Reference" inputs="reference:4213.donor,error in (no error):4430.error out" outputs="error out:4450.error out" uid="4450" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4212.ctl,error in (no error):4450.error out" outputs="error out:4451.error out" uid="4451" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4211.app,vi path:4202.value,error in (no error):4451.error out" outputs="vi reference:4452.main,error out:4452.error out" uid="4452" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4452.main,error in (no error):4452.error out,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4453.error out" uid="4453" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4452.main,error in (no error):4453.error out" outputs="error out:4454.error out" uid="4454" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4211.app,error in (no error):4454.error out" outputs="error out:4455.error out" uid="4455" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.proj,error in (no error):4455.error out" outputs="error out:4456.error out" uid="4456" uid_parent="root"/>
+  <Indicator _name="Fields" conIdx="4" connection="recommended" inputs="value:4443.value" type="array{string}" uid="4500" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4456.error out" type="cluster{bool.status,int32.code,string.source}" uid="4501" uid_parent="root" value="[false,0,]"/>
+</VI>

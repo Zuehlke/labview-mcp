@@ -699,6 +699,7 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         List<string> created = [], modified = [];
         if (before is not null)
             (created, modified) = before.Diff(Snapshot.Take(snapshotRoot!));
+        var elsewhere = OutsideModule(ref created, ref modified, folder, projectPath);
         var scripted = created.Where(f => f.EndsWith(".vi", StringComparison.OrdinalIgnoreCase)
                                           || f.EndsWith(".ctl", StringComparison.OrdinalIgnoreCase))
             .Where(f => folder.Length == 0 || f.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
@@ -731,6 +732,7 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
             ["expectedNewModuleFiles"] = expected,
             ["newModuleFiles"] = scripted.Count,
             ["modifiedFiles"] = Array(modified),
+            ["filesChangedOutsideModule"] = elsewhere,
             ["mainViChanged"] = File.Exists(mainVi) && new FileInfo(mainVi).Length != mainBefore,
             ["mainViExecState"] = mainExec,
             ["mainViExecStateBefore"] = mainExecBefore,
@@ -841,6 +843,28 @@ internal sealed class DqmhHeadless(LvaiConnection connection)
         if (!string.IsNullOrEmpty(projectDirectory) && Directory.Exists(projectDirectory))
             return projectDirectory;
         return !string.IsNullOrEmpty(moduleFolder) && Directory.Exists(moduleFolder) ? moduleFolder : null;
+    }
+
+    /// <summary>
+    /// The before/after snapshot covers the whole PROJECT folder (the module folder is only the
+    /// fallback, issue #112), so files ANOTHER agent wrote at the same time showed up as this
+    /// event's - in the retest of 2026-11-12 three handler VIs a parallel agent generated under
+    /// `SubVIs\Handlers` were listed as created and modified by `Configure` and `Increment`. What
+    /// Delacor writes for an event is the module folder plus the saved `.lvproj`; the rest is
+    /// taken out of both lists and only COUNTED, so nothing disappears from view.
+    /// </summary>
+    internal static int OutsideModule(ref List<string> created, ref List<string> modified,
+                                      string? moduleFolder, string? projectPath)
+    {
+        if (string.IsNullOrEmpty(moduleFolder)) return 0;
+        var root = Path.GetFullPath(moduleFolder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var project = string.IsNullOrEmpty(projectPath) ? null : Path.GetFullPath(projectPath);
+        bool Keep(string f) => f.StartsWith(root, StringComparison.OrdinalIgnoreCase)
+                               || string.Equals(Path.GetFullPath(f), project, StringComparison.OrdinalIgnoreCase);
+        var outside = created.Count(f => !Keep(f)) + modified.Count(f => !Keep(f));
+        created = [.. created.Where(Keep)];
+        modified = [.. modified.Where(Keep)];
+        return outside;
     }
 
     /// <summary>Every case name in Main.vi's AIXML export - the input of the frame-name check.</summary>

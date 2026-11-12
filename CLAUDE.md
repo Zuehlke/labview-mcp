@@ -45,6 +45,13 @@ orchestrator does it after the last wave: `lvai_create_library` with the API VIs
 function folder (never flat), then `lvai_exec_state` over the members. The VI agents search the
 PROJECT's own VIs before the palette. `docs/orchestrator-brief.md`.
 
+**LOGIC INSIDE A DQMH MODULE KEEPS ITS STATE IN THE MODULE'S DATA CLUSTER, NEVER IN AN FGV**
+(user feedback of 2026-11-12, the Hampel Soft DQMH conventions). Fields are added with
+`lvai_dqmh_add_module_data` (in place - an overwritten `.ctl` leaves the library and breaks
+Main.vi); a handler reads `<field> in` and writes `<field> out`, and `lvai_dqmh_place_handler`
+wires both on the shift-register wire. A reply's error goes to the requester only.
+`docs/dqmh-patterns.md` §12.
+
 **ONE AGENT, ONE OUTPUT DIRECTORY.** Two agents in one folder overwrite each other's files. Give
 each its own folder (`<project>\Tests\<ClassName>\`) and say so in its prompt.
 
@@ -227,6 +234,14 @@ and an unwired `reference`. `docs/control-reference-binding.md`.
 travels WITH the command, read in the producer's event frame - never a control terminal read
 beside a `Dequeue` (`controlReadBeforeWait`). Typing counts as activity where a spec has an
 inactivity timeout (`Value Change` + `Update While Typing?`). `docs/cold-build-atm-agents-7.md`.
+
+**SCRIPTED WIRES ARE ALWAYS FOLLOWED BY A LAYOUT** (the user's rule of 2026-11-12): a tool that
+connects wires by VI Server scripting ends with `lvai_layout_diagram` over the VI it wired
+(`cleanUpDiagram` in its answer) - `lvai_dqmh_place_handler` lays out the WHOLE Main.vi, the one
+exception to the automatic clean-up leaving a DQMH Main.vi alone; the AF hook tools, graft,
+bind-references, swap, dynamic events and class methods likewise. `docs/diagram-layout.md` §6s.
+`place_handler` and the AF hook tools then make the VI SOURCE ONLY (`sourceOnly`: Delacor's and
+NI's providers write compiled code; the project is closed for the pylabview strip and reopened).
 
 **A regeneration costs the whole swap cycle** (sockets back, icon gone), so batch documentation
 changes into a regeneration you make anyway.

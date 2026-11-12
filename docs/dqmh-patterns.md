@@ -408,3 +408,70 @@ a consumer of other modules. Do not infer the module graph from the top-level VI
 Before concluding how a module works, list the `.lvlib` members and look for a second message
 vocabulary (a separate `*MessageData.ctl` plus `*Cmd.ctl` pair is the tell) and for DVR
 accessor VIs. Both change where state lives and which loop does the actual work.
+
+## 12. Logic inside a module: the Hampel Soft conventions (adopted 2026-11-12)
+
+A user's forum feedback: "when someone asks for logic inside a DQMH module, do not use FGVs
+(functional global variables) - use the DQMH data cluster", pointing at the HSE DQMH coding
+conventions (dokuwiki.hampel-soft.com, kb/bestpractices/codingconventions/dqmh, last modified
+2026-11-03). The agents follow them. The rules, paraphrased:
+
+**Data.** Module data lives in the MHL's data cluster on its shift register - DQMH's default -
+and no FGV is created for data internal to the module. A resource (a VISA or TCP reference that
+does not take parallel access) stays on ONE shift register. A helper loop with data of its own
+keeps a separate cluster on its own shift register. Write data back into the cluster only where
+it changed - for a driver, always bundle it back.
+
+How the tools do it:
+
+- `lvai_dqmh_add_module_data` adds fields to `Module Data--cluster.ctl` IN PLACE (donor controls
+  copied into the typedef's cluster with `Move` duplicate TRUE, the `.ctl` and Main.vi saved).
+  Writing a new `.ctl` over it with `lvai_create_typedef overwrite` is NOT a route: the new file
+  is no member of the module's library, and Main.vi then reported `Missing typedef
+  <Module>.lvlib:Module Data--cluster.ctl` and went eBad (measured on the ATM's Account Manager).
+- A handler subVI names the fields it uses: input `<field> in` reads one, output `<field> out`
+  writes it back. `lvai_dqmh_place_handler` copies an Unbundle By Name (read fields) and a Bundle
+  By Name (written fields) onto the frame's data wire and wires them by name. A name that IS a
+  request argument stays the argument, so `Configure` can take `Accounts File` as its argument and
+  hand it back as `Accounts File out`.
+- In Main.vi the data cluster is the constant (labelled `Data Cluster` on DQMH 7.1) that
+  initialises the shift register of the loop labelled `Message Handling Loop`; in each MHL frame
+  it is the one input tunnel whose wire comes from a `LeftShiftRegister`, passed straight to an
+  output tunnel until a frame uses it.
+
+**API.** Requests are atomic (`Connect` and `Start Reading`, not `Open and Start`). Request,
+reply and broadcast payloads use native types; expose cluster elements rather than a typedef'd
+cluster. A Request and Wait for Reply with module ID -1 on a cloneable module is not used - only
+one clone can reply.
+
+**Timing.** The module timeout is not raised. Work longer than about 5 s, or of unpredictable
+length, is a Request that starts it and a Broadcast that publishes the result - a caller waiting
+on a reply cannot be cancelled.
+
+**Events and sequencing.** The module does not call its own public requests to reach MHL frames;
+it enqueues to the MHL directly. No message chains (a frame enqueuing further frames) and no
+self-messaging for repetition: a helper loop does repeated work in its timeout case, and shared
+steps are subVIs every frame that needs them calls.
+
+**Initialize.** No code before `Synchronize Caller Events.vi`, and no business logic in the
+`Initialize` frame. Configuration is a `Configure` request, a hardware or database connection a
+`Connect` request. A setting is stored once, not sent along with every request - the ATM builds
+up to 2026-11-12 passed `Accounts File` with every Account Manager request, which this rules out.
+
+**Errors.** A module has its own error code range. For a Request and Wait for Reply the error
+goes into the reply payload only, for the requester to handle - not back onto the MHL error wire.
+`lvai_dqmh_place_handler` wires the handler's `error out` into the reply's error field and feeds
+Delacor's `Merge Errors` from Variant To Data instead (until 2026-11-12 it fed the handler's
+error there too). For a request sent with `wait for reply` FALSE the handler's error then reaches
+no one; the conventions suggest wiring it through the `False` case back to the module, which the
+tool does not do.
+
+**Placement and style.** Every VI of a module lives in its `.lvlib`; Main.vi is the only item at
+the library's root, the rest in virtual folders (`Private/SubVIs`, `Public API/Type Defs`).
+Hand-made VIs go into a `SubVIs` folder on disk. Keep `Variant To Data` and `Send Notification`
+on Main.vi's diagram, outside subVIs - which is what the handler-subVI route does. Remove the
+`#DQMH Code Recommended` comments once the code is there.
+
+**Parents and children.** A parent that starts a child stops it, registers for its broadcasts
+and at least handles or forwards `Error Reported`. Modules are started and stopped inside the
+MHL, EHL or a helper loop, never before the loops run.

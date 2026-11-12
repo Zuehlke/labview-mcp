@@ -67,6 +67,51 @@ public sealed class DiagramCleanupDqmhTests : IDisposable
         Assert.Contains("DQMH", step["note"]!.GetValue<string>());
     }
 
+    /// <summary>
+    /// Branch_Retest, 2026-11-12: inside the answer of a layout that had just laid Main.vi out, the
+    /// skipped NI fallback said Main.vi is never touched. It says now that only NI's is not tried.
+    /// </summary>
+    [Fact]
+    public async Task The_NI_fallback_on_a_DQMH_main_says_our_layout_stands()
+    {
+        Touch("Request Events--cluster.ctl");
+        Touch("Broadcast Events--cluster.ctl");
+        var main = Touch("Main.vi");
+
+        var step = await new DiagramCleanup(null!).RunNiDiagramAsync(main, "pylabview", 10, CancellationToken.None);
+
+        Assert.True(step["skipped"]!.GetValue<bool>());
+        var note = step["note"]!.GetValue<string>();
+        Assert.Contains("Our layout ran and is kept", note);
+        Assert.DoesNotContain("never touches", note);
+    }
+
+    /// <summary>
+    /// Branch_Retest, 2026-11-12: the layout's note said the VI "still" carried compiled code, read
+    /// beside a sourceOnly step that had just removed it. The note follows the strip now.
+    /// </summary>
+    [Fact]
+    public void The_layout_note_follows_a_strip_that_ran_after_it()
+    {
+        System.Text.Json.Nodes.JsonObject Layout() => new()
+        {
+            ["note"] = "Our block diagram layout (lvai_layout_diagram) ran and the VI was saved in place (it carried compiled code before, and still does).",
+        };
+
+        var stripped = Layout();
+        DiagramCleanup.NoteStripped(stripped, new() { ["ok"] = true, ["sourceOnly"] = true });
+        Assert.DoesNotContain("still does", stripped["note"]!.GetValue<string>());
+        Assert.Contains("compiled code was removed afterwards", stripped["note"]!.GetValue<string>());
+
+        var skipped = Layout();
+        DiagramCleanup.NoteStripped(skipped, new() { ["ok"] = true, ["skipped"] = "source only already" });
+        Assert.Contains("still does", skipped["note"]!.GetValue<string>());
+
+        var failed = Layout();
+        DiagramCleanup.NoteStripped(failed, new() { ["ok"] = false, ["sourceOnly"] = false });
+        Assert.Contains("still does", failed["note"]!.GetValue<string>());
+    }
+
     /// <summary>Since 2026-10-16 the diagram step is our layout engine, not LabVIEW's BD.CleanUp, and
     /// every answer says which ran - a skip included.</summary>
     [Fact]

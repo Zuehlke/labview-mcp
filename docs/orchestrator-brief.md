@@ -21,6 +21,8 @@ Do not build VIs, classes or tests in your own session. Hand each piece to the m
 **Caraya is the default test framework.** Pick LUnit or VI Tester only when the user asked for it
 by name; LUnit costs far more calls and a LabVIEW restart.
 
+**DQMH: module state is a data-cluster field, never an FGV**: handler `<field> in`/`<field> out`.
+
 Give every agent what its description asks for: the paths, the target folder, the `.lvproj`, and
 the user's own words. When an agent returns `NEEDS CLARIFICATION` or `CANNOT PROCEED`, put the
 block to the user verbatim and continue THAT agent with `SendMessage`. Never answer it yourself

@@ -112,14 +112,17 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
     }
 
     /// <summary>The `cleanUpDiagram` step for one VI: our layout, saved in place. Never throws
-    /// for a LabVIEW refusal: the answer's `ok` says whether the diagram was laid out and saved.</summary>
+    /// for a LabVIEW refusal: the answer's `ok` says whether the diagram was laid out and saved.
+    /// <paramref name="includeDqmhMain"/>: a tool that has just SCRIPTED WIRES into a DQMH Main.vi
+    /// lays it out too (the user's rule of 2026-11-12: scripted connections are always followed by
+    /// a layout); every other caller leaves Main.vi as Delacor drew it.</summary>
     public async Task<JsonObject> RunAsync(string viPath, string backend, int timeoutSeconds,
-                                           CancellationToken ct)
+                                           CancellationToken ct, bool includeDqmhMain = false)
     {
         var full = Path.GetFullPath(viPath);
         var step = new JsonObject { ["step"] = "cleanUpDiagram", ["backend"] = backend, ["engine"] = Engine };
         if (!File.Exists(full)) return Fail(step, "There is no VI at " + full + " to clean up.");
-        if (IsDqmhMain(full)) return DqmhSkipped(step);
+        if (!includeDqmhMain && IsDqmhMain(full)) return DqmhSkipped(step);
 
         var compiledBefore = BulkTools.ContainsCompiledCode(full);
         var answer = JsonNode.Parse(await BackendRoute.WithBackendAsync(backend, "cleanUpDiagram",
@@ -169,6 +172,21 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
         return step;
     }
 
+    /// <summary>
+    /// LabVIEW's Clean Up Diagram as the FALLBACK of our layout, on a DQMH Main.vi: our layout ran
+    /// and stays, only NI's is not tried (it spread a Main.vi from 1344 x 805 to 3805 x 1692 px).
+    /// The note used to be <see cref="DqmhSkipped"/>'s, which said Main.vi is never touched - read
+    /// inside the answer of a layout that had just laid it out (Branch_Retest, 2026-11-12).
+    /// </summary>
+    internal static JsonObject NiSkippedOnDqmhMain(JsonObject step)
+    {
+        step["ok"] = true;
+        step["skipped"] = true;
+        step["note"] = "LabVIEW's Clean Up Diagram is not tried on a DQMH module's Main.vi - it spreads " +
+                       "Delacor's diagram over several screens. Our layout ran and is kept.";
+        return step;
+    }
+
     /// <summary>The `cleanUpPanel` step for one VI; `skipped` when its panel holds a tab control
     /// or a splitter, which the algorithm would answer with a modal dialog.</summary>
     public Task<JsonObject> RunPanelAsync(string viPath, string backend, int timeoutSeconds,
@@ -181,7 +199,7 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
         var full = Path.GetFullPath(viPath);
         var step = new JsonObject { ["step"] = kind.Step, ["backend"] = backend };
         if (!File.Exists(full)) return Fail(step, "There is no VI at " + full + " to clean up.");
-        if (IsDqmhMain(full)) return DqmhSkipped(step);
+        if (IsDqmhMain(full)) return kind == NiDiagram ? NiSkippedOnDqmhMain(step) : DqmhSkipped(step);
 
         var compiledBefore = BulkTools.ContainsCompiledCode(full);
         var writtenBefore = File.GetLastWriteTimeUtc(full);
@@ -334,6 +352,65 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
         {
             try { Directory.Delete(directory, recursive: true); } catch { /* best effort */ }
         }
+    }
+
+    /// <summary>
+    /// A VI this server just saved INSIDE an open project - a DQMH Main.vi after
+    /// lvai_dqmh_place_handler, an override after an AF hook tool - made source only (the user's
+    /// decision of 2026-11-12: Delacor's and NI's providers write compiled code into those VIs, and
+    /// our saves kept it). The strip is a pylabview edit, which needs the project CLOSED (CLAUDE.md),
+    /// so the project is closed (a save), the VI stripped and marked `SourceOnly="1"`, and the
+    /// project opened again and made active, because the next DQMH or AF call needs it. Nothing
+    /// happens to a VI that is source only already. Delacor's next scripting run saves Main.vi with
+    /// compiled code and `SourceOnly="0"` again (measured 2026-11-12), so every placement pays it.
+    /// </summary>
+    internal async Task<JsonObject> SourceOnlyInProjectAsync(string viPath, string projectPath,
+                                                             int timeoutSeconds, CancellationToken ct)
+    {
+        var step = new JsonObject { ["step"] = "sourceOnly", ["vi"] = viPath };
+        if (!BulkTools.ContainsCompiledCode(viPath))
+        {
+            step["ok"] = true;
+            step["skipped"] = "The VI is source only already.";
+            return step;
+        }
+        var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+            projectPath: Path.GetFullPath(projectPath), timeoutSeconds: timeoutSeconds, ct: ct,
+            backend: BackendRoute.Current);
+        step["closeProject"] = SafeParse(closed);
+        step["strip"] = await StripCompiledAsync(viPath, timeoutSeconds, ct);
+        var (opened, openFailure) = await new HousekeepingHelpers(connection).OpenProjectAsync(projectPath, timeoutSeconds, ct);
+        step["reopenProject"] = openFailure is null ? opened?.DeepClone() : SafeParse(openFailure);
+        var stripped = !BulkTools.ContainsCompiledCode(viPath);
+        step["sourceOnly"] = stripped;
+        step["projectActive"] = openFailure is null;
+        step["ok"] = stripped && openFailure is null;
+        step["note"] = !stripped
+            ? "The VI still carries compiled code; read strip."
+            : openFailure is not null
+                ? "The VI is source only now, but the project did not become active again - open it with lvai_open_file before the next call."
+                : "Compiled code removed, the VI marked source only; the project is open and active again.";
+        return step;
+    }
+
+    /// <summary>
+    /// The layout step's note says the VI "carried compiled code before, and still does" - true when
+    /// it was written, and overtaken by a <see cref="SourceOnlyInProjectAsync"/> that stripped it
+    /// right after (Branch_Retest, 2026-11-12). The note is brought up to date.
+    /// </summary>
+    internal static void NoteStripped(JsonObject? cleanUp, JsonObject? sourceOnly)
+    {
+        if (cleanUp?["note"]?.GetValue<string>() is not { } note
+            || sourceOnly?["sourceOnly"]?.GetValue<bool>() != true || sourceOnly["skipped"] is not null) return;
+        const string stale = " (it carried compiled code before, and still does).";
+        if (note.EndsWith(stale, StringComparison.Ordinal))
+            cleanUp["note"] = note[..^stale.Length] + "; its compiled code was removed afterwards (read sourceOnly).";
+    }
+
+    private static JsonNode? SafeParse(string text)
+    {
+        try { return JsonNode.Parse(text); }
+        catch (System.Text.Json.JsonException) { return text; }
     }
 
     internal const string FanRouteScript = "lvbd_fan_route.py";

@@ -1,0 +1,19 @@
+<VI _name="lvbd_move_to.vi" description="Moves a block-diagram object to a target position given in PANE coordinates, the coordinates Position reads in. Move takes a position relative to the OWNER diagram, so the object is moved TWICE\3A the first move reveals the offset, the second applies target + target - landed (the user's finding of 2026-10-31 for lvdqmh_place_frame_handler). Generic\3A it knows nothing about the VI it edits. Landed is the Position read back after the second move.">
+  <Control _name="Object" conIdx="0" connection="recommended" outputs="value:4200.value" type="ref{LV.GObject}" uid="4200" uid_parent="root" value=""/>
+  <Control _name="Owner" conIdx="1" connection="recommended" outputs="value:4201.value" type="ref{LV.Diagram}" uid="4201" uid_parent="root" value=""/>
+  <Control _name="Target" conIdx="2" connection="recommended" outputs="value:4202.value" type="cluster{int32.Left,int32.Top}" uid="4202" uid_parent="root" value="[0,0]"/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4203.value" type="cluster{bool.status,int32.code,string.source}" uid="4203" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="duplicate" outputs="value:4210.value" type="bool" uid="4210" uid_parent="root" value="false"/>
+  <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4200.value,error in (no error):4203.value,position:4202.value,owner:4201.value,duplicate:4210.value" outputs="reference out:,error out:4211.err" uid="4211" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Position\3ALeft,read+Position\3ATop" type="{LV.GObject}" inputs="reference:4200.value,error in (no error):4211.err" outputs="Position\3ALeft:4212.l,Position\3ATop:4212.t,reference out:,error out:4212.err" uid="4212" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="Left,Top" inputs="input cluster:4202.value" outputs="Left:4213.l,Top:4213.t" uid="4213" uid_parent="root"/>
+  <Node _name="Subtract" inputs="x:4213.l,y:4212.l" outputs="x-y:4214.v" uid="4214" uid_parent="root"/>
+  <Node _name="Add" inputs="x:4213.l,y:4214.v" outputs="x+y:4215.v" uid="4215" uid_parent="root"/>
+  <Node _name="Subtract" inputs="x:4213.t,y:4212.t" outputs="x-y:4216.v" uid="4216" uid_parent="root"/>
+  <Node _name="Add" inputs="x:4213.t,y:4216.v" outputs="x+y:4217.v" uid="4217" uid_parent="root"/>
+  <Node _name="Bundle By Name" fields="Left,Top" inputs="Left:4215.v,Top:4217.v,input cluster:4202.value" outputs="output cluster:4218.target" uid="4218" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Move" type="{LV.GObject}" inputs="reference:4200.value,error in (no error):4212.err,position:4218.target,owner:4201.value,duplicate:4210.value" outputs="reference out:,error out:4219.err" uid="4219" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Position" type="{LV.GObject}" inputs="reference:4200.value,error in (no error):4219.err" outputs="Position:4220.pos,reference out:,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Indicator _name="Landed" conIdx="4" connection="recommended" inputs="value:4220.pos" type="cluster{int32.Left,int32.Top}" uid="4300" uid_parent="root" value="[0,0]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4220.err" type="cluster{bool.status,int32.code,string.source}" uid="4301" uid_parent="root" value="[false,0,]"/>
+</VI>
