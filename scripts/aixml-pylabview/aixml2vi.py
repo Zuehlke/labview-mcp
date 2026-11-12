@@ -9719,7 +9719,94 @@ class Composer:
         outer_end, inner_end = (outer.get("uid"), parent), (inner.get("uid"), fd)
         self.ends[(el.get("uid"), "in")] = outer_end if d == "in" else inner_end
         self.ends[(el.get("uid"), "out")] = inner_end if d == "in" else outer_end
+        self.seq_tuns = getattr(self, "seq_tuns", [])
+        self.seq_tuns.append({"seq": seq, "k": next(i for i, x in enumerate(frames) if x[2] is frame_el),
+                              "d": d, "dco": outer.find("dco"), "src": src_net,
+                              "nets": [n for _, n in pairs(el.get("outputs")) if n]})
         self.report.append("Sequence tunnel %s (%s)" % (el.get("_id"), d))
+
+    @staticmethod
+    def thread_flat_seq_skips(vi):
+        """A value from frame i of a Flat Sequence to frame j > i + 1 is threaded through every
+        frame in between, as LabVIEW draws it when a wire is dragged across them: an In and an Out
+        tunnel per middle frame, joined inside it. AIXML may write it as one Out tunnel on frame
+        i feeding an In tunnel on frame j directly; composed that way the wire ran UNDER the
+        middle frames. Rewritten here, every hop is a frame-to-frame tunnel
+        (pair_flat_seq_tunnels). A consumer outside the sequence keeps frame i's net."""
+        uids = [int(u) for u in (e.get("uid") for e in vi.iter()) if u and u.isdigit()]
+        nxt = [max(uids + [4199]) + 1]
+
+        def new_uid():
+            nxt[0] += 1
+            return str(nxt[0] - 1)
+        for st in [s for s in vi.iter("Structure") if s.get("_name") == "Flat Sequence Frame"]:
+            frames = [d for d in st if d.tag == "Diagram"]
+            if len(frames) < 3:
+                continue
+            tun = lambda f, p: [t for t in f if t.tag == "Tunnel" and t.get("_id", "").startswith(p)]
+            for i, fr in enumerate(frames):
+                for out in tun(fr, "Out"):
+                    nets = [n for _, n in pairs(out.get("outputs")) if n]
+                    if not nets:
+                        continue
+                    net = nets[0]
+                    far = [(j, t) for j in range(i + 2, len(frames)) for t in tun(frames[j], "In")
+                           if [n for _, n in pairs(t.get("inputs"))][:1] == [net]]
+                    if not far:
+                        continue
+                    hop = net        # the net leaving frame k, k = i .. last - 1
+                    for k in range(i + 1, max(j for j, _ in far)):
+                        mid = frames[k]
+                        ui, uo = new_uid(), new_uid()
+                        n_in = 1 + len(tun(mid, "In"))
+                        n_out = 1 + len(tun(mid, "Out"))
+                        ET.SubElement(mid, "Tunnel", {"_id": "In%d" % n_in, "inputs": "value:%s" % hop,
+                                                      "outputs": "value:%s.value" % ui, "uid": ui,
+                                                      "uid_parent": mid.get("uid")})
+                        ET.SubElement(mid, "Tunnel", {"_id": "Out%d" % n_out, "inputs": "value:%s.value" % ui,
+                                                      "outputs": "value:%s.value" % uo, "uid": uo,
+                                                      "uid_parent": mid.get("uid")})
+                        hop = "%s.value" % uo
+                        for j, t in far:
+                            if j == k + 1:
+                                t.set("inputs", "value:%s" % hop)
+
+    def pair_flat_seq_tunnels(self):
+        """Data from frame k to frame k+1 of a Flat Sequence runs through a FRAME-TO-FRAME
+        tunnel, `flatSeqTun`, not through two tunnels to the outside: its out half on frame k
+        (objFlags 2049), its in half on frame k+1 (0x200800), each naming the other as `mate`,
+        both on the border the two frames share and joined by a wire of no length on the parent
+        diagram (NI's VI Execution Properties.vi). NI's export writes it exactly as two `seqTun`s
+        - an Out tunnel on frame k whose net feeds an In tunnel on frame k+1 - so the pair is
+        recognised here. Composed as two `seqTun`s it had to sit on the BOTTOM edge (a seqTun on a
+        shared border is "Insane Sequence Tunnel {graphics}") and the wire ran out under frame k
+        and back in under frame k+1 (user feedback, 2026-11-12). A net that skips a frame keeps
+        the two outside tunnels: LabVIEW would thread it through the frames in between."""
+        self.flat_pairs = getattr(self, "flat_pairs", {})
+        tuns = getattr(self, "seq_tuns", [])
+        taken = set()
+        for o in [t for t in tuns if t["d"] == "out"]:
+            mate = next((i for i in tuns if i["d"] == "in" and i["seq"] is o["seq"] and i["k"] == o["k"] + 1
+                         and i["src"] in o["nets"] and i["dco"].get("uid") not in taken), None)
+            if mate is None:
+                continue
+            taken.add(mate["dco"].get("uid"))
+            for half, other in ((o, mate), (mate, o)):
+                dco = half["dco"]
+                dco.set("class", "flatSeqTun")
+                for tag in ("dsw", "dcoFiller"):     # NI's flatSeqTun carries neither
+                    x = dco.find(tag)
+                    if x is not None:
+                        dco.remove(x)
+                if half is mate:
+                    dco.find("objFlags").text = str(0x200800)
+                ET.SubElement(dco, "mate", {"uid": other["dco"].get("uid")})
+            # the pair's slot on the shared border, counted per border so both halves get one y
+            border = (id(o["seq"]), o["k"])
+            n = sum(1 for b in self.flat_pairs.values() if b[0] == border and b[2] == "out")
+            self.flat_pairs[o["dco"].get("uid")] = (border, n, "out")
+            self.flat_pairs[mate["dco"].get("uid")] = (border, n, "in")
+            self.report.append("Frame-to-frame tunnel, frame %d -> %d" % (o["k"], mate["k"]))
 
     def add_tunnel(self, el, loop_el):
         d = "in" if el.get("_id", "").startswith("In") else "out"
@@ -10256,6 +10343,7 @@ class Composer:
                 # "Insane Sequence Tunnel {graphics}")
                 first, last = fr is frames[0][0], fr is frames[-1][0]
                 slot = {0: 0, 1: 0, "b0": 0, "b1": 0}
+                fk = next(i for i, x in enumerate(frames) if x[0] is fr)
                 for t in fr.find("termList"):
                     tb = t.find("dco/termBounds")
                     if tb is None:
@@ -10264,6 +10352,18 @@ class Composer:
                     tt, tl_, tbb, tr = lvheap.parse_bounds(tb.text)
                     th, tw = tbb - tt, tr - tl_
                     shared = (out and not last) or (not out and not first)
+                    pair = getattr(self, "flat_pairs", {}).get(t.find("dco").get("uid"))
+                    if pair is not None:
+                        # a frame-to-frame tunnel ACROSS the shared border, both halves on one
+                        # spot: NI's out half (161, 49, 170, 58) on a frame 56 wide, its in half
+                        # (161, -2, 170, 7) on the next, which starts 5 px before the first ends
+                        _, n, d_ = pair
+                        kk = fk if d_ == "out" else fk - 1
+                        lab = max((fd_.sublabel["h"] if fd_.sublabel else 0) for _, fd_, _ in frames[kk:kk + 2])
+                        y = 20 + lab + 24 * n
+                        xx = w - tw + 2 if d_ == "out" else -2
+                        tb.text = lvheap.fmt_bounds((y, xx, y + th, xx + tw))
+                        continue
                     if shared:
                         k = slot["b%d" % out]
                         slot["b%d" % out] += 1
@@ -10914,6 +11014,7 @@ class Composer:
         self.pane_terms = []
         self.con_taken = {}
         self.term_label = {}
+        self.thread_flat_seq_skips(vi)
         elements = []
         labels = []
         for el in self.flatten(vi):
@@ -11121,6 +11222,7 @@ class Composer:
             self.add_event_filter(e)
         self.finish_cases()
         self.finish_events()
+        self.pair_flat_seq_tunnels()
         nets = self.wire(elements)
         for el in labels:
             self.add_label(el)

@@ -3339,3 +3339,20 @@ each frame's selector from its own condition (`commentSelInfoArray`), never from
 Four VIs composed, saved by LabVIEW and run - the Default frame first, last and in the middle, and
 a `RUN_TIME_ENGINE!=True` frame that holds on the desktop and ran - were exported by the reader and
 by NI's converter with identical selectors frame by frame (fixtures `Cond *.vi` beside the above).
+
+## Flat Sequence wires ran under the frames (fixed 2026-11-12)
+
+User feedback: in a generated Flat Sequence, every wire from one frame to the next left the frame
+at the BOTTOM and came back in through the bottom of the next one, and an agent asked to wire
+through the divider could not. Measured on `t86_flat_sequence`: true on BOTH backends - NI's
+converter draws it that way, and the composer had copied its output.
+
+LabVIEW's own object for data from frame k to frame k+1 is a `flatSeqTun` PAIR (NI's
+`VI Execution Properties.vi`), the two halves on one spot across the shared border and joined by a
+wire of no length. NI's export writes it as an Out tunnel on frame k whose net feeds an In tunnel
+on frame k+1 - all AIXML can say, so an author writes nothing different. The composer now builds
+that pair from it, and threads a value that skips frames through each frame in between, as
+LabVIEW does when a wire is dragged across. A tunnel to the OUTSIDE from a middle frame still sits
+on the bottom edge. On the grpc backend the route is NI's converter's and unchanged.
+`t210_flat_sequence_frame_tunnels`; experiments/aixml-without-grpc/FINDINGS.md, "Frame-to-frame
+tunnels of a Flat Sequence".

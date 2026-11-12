@@ -1,0 +1,27 @@
+<VI _name="T210 Flat Sequence Frame Tunnels.vi" description="Three frames: two values cross the shared borders, one skips the middle frame, one leaves the middle frame to the outside.">
+  <Structure _name="Flat Sequence Frame" uid="4500" uid_parent="root">
+    <Diagram label="first" uid="4510" uid_parent="4500">
+      <Constant _name="two" outputs="value:4511.value" type="double" uid="4511" uid_parent="4510" value="2"/>
+      <Constant _name="three" outputs="value:4513.value" type="double" uid="4513" uid_parent="4510" value="3"/>
+      <Tunnel _id="Out1" inputs="value:4511.value" outputs="value:4512.value" uid="4512" uid_parent="4510"/>
+      <Tunnel _id="Out2" inputs="value:4513.value" outputs="value:4514.value" uid="4514" uid_parent="4510"/>
+      <Tunnel _id="Out3" inputs="value:4511.value" outputs="value:4515.value" uid="4515" uid_parent="4510"/>
+    </Diagram>
+    <Diagram label="second&#10;two lines" uid="4520" uid_parent="4500">
+      <Tunnel _id="In1" inputs="value:4512.value" outputs="value:4521.value" uid="4521" uid_parent="4520"/>
+      <Tunnel _id="In2" inputs="value:4515.value" outputs="value:4526.value" uid="4526" uid_parent="4520"/>
+      <Node _name="Increment" inputs="x:4521.value" outputs="x+1:4523.x+1" uid="4523" uid_parent="4520"/>
+      <Node _name="Add" inputs="x:4523.x+1,y:4526.value" outputs="x+y:4527.x+y" uid="4527" uid_parent="4520"/>
+      <Tunnel _id="Out1" inputs="value:4523.x+1" outputs="value:4524.value" uid="4524" uid_parent="4520"/>
+      <Tunnel _id="Out2" inputs="value:4527.x+y" outputs="value:4525.value" uid="4525" uid_parent="4520"/>
+    </Diagram>
+    <Diagram label="third" uid="4530" uid_parent="4500">
+      <Tunnel _id="In1" inputs="value:4524.value" outputs="value:4531.value" uid="4531" uid_parent="4530"/>
+      <Tunnel _id="In2" inputs="value:4514.value" outputs="value:4532.value" uid="4532" uid_parent="4530"/>
+      <Node _name="Multiply" inputs="x:4531.value,y:4532.value" outputs="x*y:4533.x*y" uid="4533" uid_parent="4530"/>
+      <Tunnel _id="Out1" inputs="value:4533.x*y" outputs="value:4534.value" uid="4534" uid_parent="4530"/>
+    </Diagram>
+  </Structure>
+  <Indicator _name="mid" inputs="value:4525.value" type="double" uid="4540" uid_parent="root" value="0"/>
+  <Indicator _name="result" inputs="value:4534.value" type="double" uid="4541" uid_parent="root" value="0"/>
+</VI>
