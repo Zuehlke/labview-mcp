@@ -11250,9 +11250,28 @@ class Composer:
                 self.bd, self.hotpoints,
                 absolute_owners=[h.get("uid") for h, _ in getattr(self, "fb_pairs", [])])
             self.report.append("wires routed: %d, left generic: %d" % (routed, left))
+        self.flat_pair_wires()
         self.connector_pane()
         # escaped as NI escapes it (\2C, \3A, \0A, a doubled backslash), like a control's below
         self.description = unescape(vi.get("description") or "")
+
+    def flat_pair_wires(self):
+        """The wire joining the two halves of a frame-to-frame tunnel has no length: NI writes its
+        table as `01` (VI Execution Properties.vi). Any routed or generic table between the two
+        coincident ends was "Wiring insanity found and fixed" on every load (t86: 4 lines)."""
+        if not getattr(self, "flat_pairs", None):
+            return
+        terms = {t.get("uid"): t for t in self.bd.iter("SL__arrayElement") if t.get("class") == "term"}
+        for s in self.bd.iter("SL__arrayElement"):
+            tl = s.find("termList") if s.get("class") == "signal" else None
+            if tl is None or len(tl) != 2:
+                continue
+            dcos = [terms.get(x.get("uid")) for x in tl]
+            dcos = [t.find("dco") if t is not None else None for t in dcos]
+            # the OUTER halves only (they carry the full dco); an inner term names its dco by uid,
+            # and two inner ones are a pass-through INSIDE a middle frame, a real wire
+            if all(d is not None and d.get("class") == "flatSeqTun" for d in dcos):
+                s.find("compressedWireTable").text = "01"
 
     def set_array_anchors(self):
         """Give every array constant its nRC/oRC anchor now that every position is final (see
