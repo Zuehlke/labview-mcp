@@ -3238,8 +3238,12 @@ Out tunnel on frame k whose net feeds an In tunnel on frame k+1, which is all AI
 composed become a `flatSeqTun` pair placed across the border, one slot per pair, both halves on
 one y below the taller of the two frames' subdiagram labels. A net from frame i to frame j > i+1 is
 threaded through every frame in between (`thread_flat_seq_skips`, an In and an Out tunnel per
-middle frame, as LabVIEW does when a wire is dragged across), so every hop is such a pair. A tunnel
-to the OUTSIDE on a shared border still goes to the bottom edge. `t210_flat_sequence_frame_tunnels`
+middle frame, as LabVIEW does when a wire is dragged across), so every hop is such a pair. A value
+a middle frame hands to the OUTSIDE is threaded to the LAST frame and leaves through its right edge:
+left as a tunnel on the middle frame it sat on the bottom edge and ran under every later frame
+(the test project `C:	emp\FlatSequence`, Mean and Max out of the third of four frames). The
+pair's joining wire gets NI's table `01`: a routed table between the two coincident ends was
+"Wiring insanity found and fixed" four times per load of t86, and none after. `t210_flat_sequence_frame_tunnels`
 (three frames, two pairs on one border, a value that skips the middle frame, one that leaves the
 middle frame) composes, loads with no `Insane` line, computes `mid=5, result=9`, renders with every
 hop on a divider, and round-trips through the reader.

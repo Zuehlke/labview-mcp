@@ -3352,7 +3352,9 @@ LabVIEW's own object for data from frame k to frame k+1 is a `flatSeqTun` PAIR (
 wire of no length. NI's export writes it as an Out tunnel on frame k whose net feeds an In tunnel
 on frame k+1 - all AIXML can say, so an author writes nothing different. The composer now builds
 that pair from it, and threads a value that skips frames through each frame in between, as
-LabVIEW does when a wire is dragged across. A tunnel to the OUTSIDE from a middle frame still sits
-on the bottom edge. On the grpc backend the route is NI's converter's and unchanged.
+LabVIEW does when a wire is dragged across. A value a middle frame hands to the OUTSIDE is threaded
+the same way to the last frame and leaves through its right edge (it sat on the middle frame's
+bottom edge and ran under every later frame). The joining wire of a pair is written with NI's
+zero-length table `01`. On the grpc backend the route is NI's converter's and unchanged.
 `t210_flat_sequence_frame_tunnels`; experiments/aixml-without-grpc/FINDINGS.md, "Frame-to-frame
 tunnels of a Flat Sequence".

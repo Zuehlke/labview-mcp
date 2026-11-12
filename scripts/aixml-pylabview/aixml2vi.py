@@ -9732,44 +9732,68 @@ class Composer:
         tunnel per middle frame, joined inside it. AIXML may write it as one Out tunnel on frame
         i feeding an In tunnel on frame j directly; composed that way the wire ran UNDER the
         middle frames. Rewritten here, every hop is a frame-to-frame tunnel
-        (pair_flat_seq_tunnels). A consumer outside the sequence keeps frame i's net."""
+        (pair_flat_seq_tunnels).
+        A value a frame before the LAST hands to the OUTSIDE is threaded the same way to the last
+        frame and leaves through its right edge, where LabVIEW's own outputs leave: as a tunnel on
+        the middle frame it sat on the bottom edge and the wire ran under every later frame (the
+        test project of 2026-11-12, Mean and Max out of the third of four frames)."""
         uids = [int(u) for u in (e.get("uid") for e in vi.iter()) if u and u.isdigit()]
         nxt = [max(uids + [4199]) + 1]
 
         def new_uid():
             nxt[0] += 1
             return str(nxt[0] - 1)
+
+        def src_of(t):
+            return [n for _, n in pairs(t.get("inputs"))][:1]
         for st in [s for s in vi.iter("Structure") if s.get("_name") == "Flat Sequence Frame"]:
             frames = [d for d in st if d.tag == "Diagram"]
-            if len(frames) < 3:
+            if len(frames) < 2:
                 continue
             tun = lambda f, p: [t for t in f if t.tag == "Tunnel" and t.get("_id", "").startswith(p)]
-            for i, fr in enumerate(frames):
+            for i, fr in enumerate(frames[:-1]):
                 for out in tun(fr, "Out"):
                     nets = [n for _, n in pairs(out.get("outputs")) if n]
                     if not nets:
                         continue
                     net = nets[0]
                     far = [(j, t) for j in range(i + 2, len(frames)) for t in tun(frames[j], "In")
-                           if [n for _, n in pairs(t.get("inputs"))][:1] == [net]]
-                    if not far:
+                           if src_of(t) == [net]]
+                    pat = re.compile(r"(?<=:)%s(?=,|$)" % re.escape(net))
+                    inside = set(st.iter())      # afresh: threading adds tunnels to it
+                    outside = [e for e in vi.iter() if e not in inside and e.get("inputs")
+                               and pat.search(e.get("inputs"))]
+                    if not far and not outside:
                         continue
-                    hop = net        # the net leaving frame k, k = i .. last - 1
-                    for k in range(i + 1, max(j for j, _ in far)):
+                    last = len(frames) - 1 if outside else max(j for j, _ in far)
+                    hop = net        # the net leaving frame k-1
+                    for k in range(i + 1, last + 1):
                         mid = frames[k]
-                        ui, uo = new_uid(), new_uid()
-                        n_in = 1 + len(tun(mid, "In"))
-                        n_out = 1 + len(tun(mid, "Out"))
-                        ET.SubElement(mid, "Tunnel", {"_id": "In%d" % n_in, "inputs": "value:%s" % hop,
-                                                      "outputs": "value:%s.value" % ui, "uid": ui,
-                                                      "uid_parent": mid.get("uid")})
-                        ET.SubElement(mid, "Tunnel", {"_id": "Out%d" % n_out, "inputs": "value:%s.value" % ui,
+                        if k == last and not outside:
+                            break
+                        # the next frame's own In tunnel of this value, if the document has one,
+                        # is the in half: a second one beside it would be a second pair
+                        own = next((t for t in tun(mid, "In") if src_of(t) == [hop]), None) if k == i + 1 else None
+                        if own is not None:
+                            inner = [n for _, n in pairs(own.get("outputs")) if n][0]
+                        else:
+                            ui = new_uid()
+                            ET.SubElement(mid, "Tunnel", {"_id": "In%d" % (1 + len(tun(mid, "In"))),
+                                                          "inputs": "value:%s" % hop,
+                                                          "outputs": "value:%s.value" % ui, "uid": ui,
+                                                          "uid_parent": mid.get("uid")})
+                            inner = "%s.value" % ui
+                        uo = new_uid()
+                        ET.SubElement(mid, "Tunnel", {"_id": "Out%d" % (1 + len(tun(mid, "Out"))),
+                                                      "inputs": "value:%s" % inner,
                                                       "outputs": "value:%s.value" % uo, "uid": uo,
                                                       "uid_parent": mid.get("uid")})
                         hop = "%s.value" % uo
                         for j, t in far:
                             if j == k + 1:
                                 t.set("inputs", "value:%s" % hop)
+                    for e in outside:
+                        e.set("inputs", pat.sub(hop, e.get("inputs")))
 
     def pair_flat_seq_tunnels(self):
         """Data from frame k to frame k+1 of a Flat Sequence runs through a FRAME-TO-FRAME
