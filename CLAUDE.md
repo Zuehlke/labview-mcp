@@ -104,8 +104,11 @@ report as information and call it.
 - A plain VI in `vi.lib`, `user.lib`, `instr.lib` or an LVAddon resolves by its bare name, with
   or without a palette entry.
 - A library member needs its qualifier, `openg_picture.lvlib\3ADraw Image from File__ogtk.vi`.
-  The qualifier is FLAT (no library folders), and it is not derivable from the index: get it from
-  an export of a VI that calls it, or settle both spellings in one throwaway validate.
+  The qualifier is FLAT (no library folders). `lvai_palette_index` prints it where the `.mnu`'s
+  containers or a library name the owner (`NI_AALPro.lvlib:FFT.vi`, since 2026-11-13); a BARE hit
+  refused as `Unsupported SubVI` is still a library member - get the qualifier from an export of a
+  VI that calls it, or settle both spellings in one throwaway validate. Never rebuild it.
+- NI Vision's `.llb` members carry NO extension: `target="IMAQ Create"`. `docs/imaq-support.md`.
 - **A VI inside an `.llb` is not a reason to give up** - search for it and try the call.
 - **A path never resolves**, in any spelling.
 - **Project-local code resolves by bare name once it is LOADED** (`lvai_open_file`, through its
@@ -508,6 +511,7 @@ document; `experiments/` does not ship.
 | pylabview route and edits | `docs/pylabview-controls.md`, `docs/connector-pane-repair.md` | `pylv_route`, `pylv_apply` |
 | Stale compiled code | `docs/pylabview-stale-compiled-code.md` | `pylv_apply` |
 | Network streams; tag refnums; IVI on pylabview | `docs/network-streams.md`, `docs/aixml-backends.md` | — |
+| NI-IMAQdx and NI Vision (IMAQ) | `docs/imaq-support.md` | — |
 | What cold builds found | `docs/cold-build-*.md` | — |
 | Why a tool call failed with no detail | `docs/tool-argument-errors.md` | — |
 | Station check; crashes | `docs/aixml-backends.md`, `docs/labview-crash-signatures.md` | `pylv_status` (`labviewHealth`, `grpcService`), `lvai_status` |

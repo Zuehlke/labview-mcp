@@ -2824,13 +2824,23 @@ Two details that are easy to get wrong:
   list, one `Call` per line, with each instance's inputs and outputs spelled out. Two calls —
   `lvai_convert_vi_to_aixml` on the wrapper, then copy — replace all guessing.
 
-The qualifier is not derivable from the index either: the palette prints
-`Categories\OpenG\functions_oglib_picture.mnu` and the VI lives in `picture.llb`, neither of which
-names `openg_picture.lvlib`. Get it the way §9 already recommends for the target itself — export a
-VI that calls it, where the `_name` comes back in the library-qualified form. Cheaper still: put
-both spellings in one throwaway probe document, one `Call` each, and validate once. Unresolvable
-targets are reported by name, and a resolved one only complains about its unwired terminals, so a
-single `errorCode 1` message tells you which spelling to use.
+**`lvai_palette_index` prints the qualified target since 2026-11-13** (`NI_AALPro.lvlib:FFT.vi`,
+`openg_picture.lvlib:Draw Image from File__ogtk.vi`). THIS PARAGRAPH SAID the qualifier "is not
+derivable from the index": the palette prints `functions_oglib_picture.mnu` and the VI lives in
+`picture.llb`, neither naming `openg_picture.lvlib`. True of the item names, false of the file:
+every `.mnu` also carries PTH0 records naming its CONTAINERS, and a container is often the library
+itself (Signal Processing's `antransform.mnu` names `<vilib>\Analysis\NI_AALPro.lvlib`). Where the
+container is a folder or an `.llb`, the index looks the file up in the installation's `.lvlib`s.
+The cost of the old answer was concrete: a colleague's generator, handed the bare `FFT.vi`, was
+refused and rebuilt FFT from primitives. A hit that is still bare and still refused is a member of
+a library neither names - then export a VI that calls it, or put both spellings in one throwaway
+probe document and validate once (an unresolvable target is reported by name, a resolved one only
+complains about unwired terminals). FFT is also POLYMORPHIC, so its `Call` needs `instance` and
+`adapt` as above; `lvai_vi_terminals` on the wrapper prints all four instances.
+
+NI Vision's `.llb` members have NO extension (`IMAQ Create`, `IMAQ Dispose` in `Basics.llb`), and
+NI's export calls them so: `target="IMAQ Create"`. Their palettes list the names without `.vi`,
+which is why the index missed the whole Vision palette until 2026-11-13.
 
 > **The boundary is palette reachability, not library membership.** An earlier version of this
 > section read the fourth row as "library-qualified targets do not resolve" and concluded that only

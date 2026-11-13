@@ -413,14 +413,16 @@ The third row is the one that gets forgotten. "Is this VI broken", "list a proje
 3. **From scratch**, only if both came back empty — and record *why*, because the report has to
    distinguish "nothing in the index" from "the target would not resolve".
 
-**The qualifier trap, before you write a `Call`.** The index prints the bare file name, and for a
-library-owned VI that is not the target string. `Draw Image from File__ogtk.vi` is refused;
-`openg_picture.lvlib\3ADraw Image from File__ogtk.vi` validates and runs — the same VI. The
-qualifier is not derivable from what the index shows. Settle it either by exporting a VI that
-already calls the target, or by putting **both spellings as two `Call`s into one throwaway
-`lvai_validate_aixml`**: an unresolvable target is named in the message, a resolved one only
-complains about unwired terminals. Do this once, cheaply, rather than concluding the VI is not
-callable — that mistake has been made three times.
+**The qualifier trap, before you write a `Call`.** The index prints the `Call` target, qualified
+where the palette or a library names the owner: `NI_AALPro.lvlib:FFT.vi`,
+`openg_picture.lvlib:Draw Image from File__ogtk.vi` (write `:` as `\3A` in AIXML). Copy it. A
+BARE `.vi` hit may still be library-owned: if it is refused as `Unsupported SubVI`, settle the
+qualifier by exporting a VI that already calls the target, or by putting **both spellings as two
+`Call`s into one throwaway `lvai_validate_aixml`**. Never conclude the VI is not callable and
+rebuild it from primitives — that mistake has been made four times, the last one a hand-built FFT.
+Analysis VIs such as FFT are POLYMORPHIC: `lvai_vi_terminals` on the wrapper prints each
+instance's `Call` with `instance` and `adapt="true"`. NI Vision's `.llb` VIs have NO extension:
+`target="IMAQ Create"`.
 
 ### Phase 3 — Take the template
 
@@ -953,9 +955,9 @@ Everything here was verified before this agent was written. Treat it as fact.
   `ValidateAIXML` - while `ConvertAIXMLToVI` accepts a project VI by bare name once it is LOADED,
   which `lvai_generate_vi` uses by itself (measured 2026-09-25; see "A GENERATED VI CALLS
   PROJECT-LOCAL CODE" below).
-- **A palette-VI hit is not necessarily the target string.** `.mnu` files store only the bare
-  name, so the `lvlib:` qualifier cannot be printed by the index and is not derivable from the
-  palette path either.
+- **A bare palette-VI hit is not necessarily the whole target string.** The index qualifies what
+  the `.mnu`'s containers or the installation's libraries name; a library neither names leaves the
+  hit bare, and its bare name is refused.
 - **Built-in functions are not in the palette index**, and a `Call` is the wrong construct for
   one anyway — primitives are `Node` elements. The palette's display label is not the AIXML node
   name either ("To XML" where AIXML wants "Flatten To XML").

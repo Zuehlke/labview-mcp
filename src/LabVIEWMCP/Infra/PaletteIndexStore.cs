@@ -39,7 +39,9 @@ internal static class PaletteIndexStore
     /// older file then reads as a miss and is rebuilt, rather than deserialising into a record whose
     /// fields have quietly moved.
     /// </summary>
-    private const int FormatVersion = 1;
+    // 2: PaletteVi.Target (2026-11-13). 3: the same day, after a v2 build had cached primitive
+    // stand-ins from .llb folders (Machine Epsilon) - a dev-station-only cache, retired anyway.
+    private const int FormatVersion = 3;
 
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = false };
 
