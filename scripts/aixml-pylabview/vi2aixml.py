@@ -202,6 +202,11 @@ def aixml_type(tree):
             return "ref{%s}" % rt + ("{%s}" % inner if inner else "")
         if rt == "UsrDefndTag":
             return "ref{GenClassTag.%s.%s}" % (tree.get("Ident") or "", tree.get("TypeName") or "")
+        if rt == "UsrDefTagFlt" and tree.get("Ident") and tree.get("TypeName"):
+            # a user-defined tag FLATTEN refnum - NI Vision's IMAQ Image - as NI's export writes it:
+            # ref{GenClassTagFlatten.IMAQImage.IMAQImage} (Acquire Single Image (Snap).vi,
+            # 2026-11-13; read `?TypeDef` 46 times over the IMAQdx examples until then)
+            return "ref{GenClassTagFlatten.%s.%s}" % (tree.get("Ident"), tree.get("TypeName"))
         if rt == "UsrDefined" and tree.get("Ident") and tree.get("TypeName"):
             # a USER-DEFINED refnum, as NI's export writes one: ref{GenClass.<Ident>.<TypeName>}
             # (XML DOM, TDM storage, security ... - `type Refnum.UsrDefined not mapped` in 115 VIs
@@ -3509,8 +3514,15 @@ class Reader:
         if not default.startswith("reference"):
             return default
         tree = self.tid_tree(term)
-        if tree is not None and tree.get("RefType") in ("UsrDefndTag", "UsrDefined") and tree.get("Label"):
-            return tree.get("Label")
+        label = tree.get("Label") if tree is not None else None
+        while tree is not None and tree.get("Type") == "TypeDef":
+            # a typedef'd session (IMAQdx Session.ctl): the refnum is inside, and NI names the
+            # terminal after the TYPEDEF's own label (`IMAQdx Session`), not the wired source's
+            # (`Session Out`) - its export of Getting Started with Attributes.vi, 2026-11-13
+            tree = next((c for c in tree if c.tag == "TypeDesc"), None)
+            label = (tree.get("Label") if tree is not None else None) or label
+        if tree is not None and tree.get("RefType") in ("UsrDefndTag", "UsrDefined") and label:
+            return label
         return default
 
     def _vi_server_class(self, node):
@@ -3527,6 +3539,11 @@ class Reader:
             d = t.find("dco")
             if d is not None and d.get("class") == "hGrowCItem" and int(d.findtext("objFlags") or 0) == 0x10000:
                 tree = self.tid_tree(t)
+                # a TYPEDEF'd refnum names its class on the type it wraps: an IMAQdx session's
+                # reference input is the driver's `IMAQdx Session` typedef, and the node read `{?}`
+                # 85 times over the IMAQdx examples where NI writes {GenClassTag.IMAQdx.IMAQdx}
+                while tree is not None and tree.get("Type") == "TypeDef":
+                    tree = next((c for c in tree if c.tag == "TypeDesc"), None)
                 if tree is None:
                     return None
                 rt = tree.get("RefType")

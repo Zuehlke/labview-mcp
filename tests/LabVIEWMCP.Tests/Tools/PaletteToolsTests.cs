@@ -509,6 +509,59 @@ public class PaletteToolsTests : IDisposable
     }
 
     [Fact]
+    public void ARelativeContainerIsThePalettesOwnFolder()
+    {
+        // vi.lib\Bit Manipulation\type assertion\dir.mnu: PTH0 [''] - the folder it sits in
+        WriteFile("vi.lib/Bit Manipulation/type assertion/Assert 16-bit.vim", [1]);
+        WriteFile("vi.lib/Bit Manipulation/NI_Bit Manipulation.lvlib", Encoding.UTF8.GetBytes(
+            "<Library><Item Name=\"Assert 16-bit.vim\" Type=\"VI\" " +
+            "URL=\"/&lt;vilib&gt;/Bit Manipulation/type assertion/Assert 16-bit.vim\"/></Library>"));
+        WritePaletteWithContainers("Categories/BitAssert.mnu", ["Assert 16-bit.vim"], [""]);
+        // the palette lives under menus here; move it beside its VIs as the real one does
+        var mnu = Path.Combine(_root, "vi.lib", "Bit Manipulation", "type assertion", "dir.mnu");
+        File.Move(Path.Combine(_root, "menus", "Categories", "BitAssert.mnu"), mnu);
+        WritePalette("x.mnu", "Something.vi");
+
+        var index = PaletteIndex.Build(_root, refresh: true);
+
+        Assert.Equal("NI_Bit Manipulation.lvlib:Assert 16-bit.vim",
+            index.Vis.Single(v => v.Name == "Assert 16-bit.vim").CallTarget);
+    }
+
+    [Fact]
+    public void AClassMemberGetsItsLibraryAndClassChain()
+    {
+        // Report Generation: a palette VI listed by NI_report.lvclass, which a library lists
+        WriteFile("vi.lib/Utility/NIReport.llb/Append Report Text.vi", [1]);
+        WriteFile("vi.lib/Utility/NIReport.llb/NI_report.lvclass", Encoding.UTF8.GetBytes(
+            "<LVClass><Item Name=\"Append Report Text.vi\" Type=\"VI\" URL=\"../Append Report Text.vi\"/></LVClass>"));
+        WriteFile("vi.lib/Utility/NI_ReportGenerationCore.lvlib", Encoding.UTF8.GetBytes(
+            "<Library><Item Name=\"NI_report.lvclass\" Type=\"LVClass\" URL=\"../NIReport.llb/NI_report.lvclass\"/></Library>"));
+        WritePaletteWithContainers("Categories/report.mnu", ["Append Report Text.vi"],
+            ["<vilib>", "Utility", "NIReport.llb"]);
+
+        var index = PaletteIndex.Build(_root, refresh: true);
+
+        Assert.Equal("NI_ReportGenerationCore.lvlib:NI_report.lvclass:Append Report Text.vi",
+            Assert.Single(index.Vis).CallTarget);
+    }
+
+    [Fact]
+    public void AMemberOfAClassContainerIsQualifiedWithIt()
+    {
+        // plat-nireport.mnu names the CLASS file itself as its container
+        WriteFile("vi.lib/Utility/NIReport.llb/NI_report.lvclass", Encoding.UTF8.GetBytes(
+            "<LVClass><Item Name=\"Append Report Text.vi\" Type=\"VI\" " +
+            "URL=\"/&lt;vilib&gt;/Utility/NIReport.llb/Append Report Text.vi\"/></LVClass>"));
+        WritePaletteWithContainers("Categories/plat-nireport.mnu", ["Append Report Text.vi"],
+            ["<vilib>", "Utility", "NIReport.llb", "NI_report.lvclass"]);
+
+        var index = PaletteIndex.Build(_root, refresh: true);
+
+        Assert.Equal("NI_report.lvclass:Append Report Text.vi", Assert.Single(index.Vis).CallTarget);
+    }
+
+    [Fact]
     public void AnExtensionLessFileInAnLlbFolderIsNotListed()
     {
         // vi.lib\dlg_ctls.llb\Machine Epsilon: a real VI, but the stand-in for a primitive

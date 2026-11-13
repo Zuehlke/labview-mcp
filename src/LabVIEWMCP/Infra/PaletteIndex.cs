@@ -307,7 +307,7 @@ internal static class PaletteIndex
 
                 var relative = Path.GetRelativePath(source.MenusFolder, files[i]);
                 var label = source.Label.Length == 0 ? relative : source.Label + ": " + relative;
-                foreach (var vi in containers.Entries(palette, source, label))
+                foreach (var vi in containers.Entries(palette, source, label, files[i]))
                 {
                     // A bare entry and a qualified one of the same name are one VI seen from two
                     // palettes, one of which named its library; keep the one that says how to
@@ -455,10 +455,14 @@ internal static class PaletteIndex
 
         private Dictionary<string, string> Owners => _owners ??= LibraryOwners.Scan(root, sources);
 
-        public IEnumerable<PaletteVi> Entries(Palette palette, PaletteSource source, string label)
+        public IEnumerable<PaletteVi> Entries(Palette palette, PaletteSource source, string label, string mnuPath)
         {
+            // The palette file's OWN folder is a container too: a dir.mnu - Bit Manipulation's
+            // type assertion palette - names its VIs by a RELATIVE PTH0 of one empty component
+            // (`this folder`), and other palettes sit beside their VIs naming none at all.
             var places = palette.Containers
-                .SelectMany(c => Resolve(c, source.AnchorRoot))
+                .SelectMany(c => Resolve(c, source.AnchorRoot, mnuPath))
+                .Append(Path.GetDirectoryName(mnuPath)!)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
@@ -483,10 +487,15 @@ internal static class PaletteIndex
             {
                 if (llbFilesOnly && !(place.EndsWith(".llb", StringComparison.OrdinalIgnoreCase) && File.Exists(place)))
                     continue;
-                if (place.EndsWith(".lvlib", StringComparison.OrdinalIgnoreCase))
+                // a LIBRARY or a CLASS as the container: Report Generation's plat-nireport.mnu
+                // names `<vilib>\Utility\NIReport.llb\NI_report.lvclass`, and its items are that
+                // class's members - `NI_report.lvclass:Append Report Text.vi` (2026-11-13; only
+                // .lvlib containers were read, and the hit came back bare)
+                if (place.EndsWith(".lvlib", StringComparison.OrdinalIgnoreCase) ||
+                    place.EndsWith(".lvclass", StringComparison.OrdinalIgnoreCase))
                 {
                     if (Members(place)?.Contains(name) == true)
-                        return new PaletteVi(name, label, Path.GetFileName(place) + ":" + name);
+                        return new PaletteVi(name, label, LibraryOwners.Qualify(Owners, place) + ":" + name);
                     continue;
                 }
 
@@ -500,17 +509,28 @@ internal static class PaletteIndex
                     file = Path.Combine(place, name);
 
                 if (file is null) continue;
-                return Owners.TryGetValue(Path.GetFullPath(file), out var owner)
-                    ? new PaletteVi(name, label, owner + ":" + name)
+                var full = Path.GetFullPath(file);
+                return Owners.ContainsKey(full)
+                    ? new PaletteVi(name, label, LibraryOwners.Qualify(Owners, full))
                     : new PaletteVi(name, label);
             }
             return null;
         }
 
         /// <summary>Candidate paths for one PTH0: `&lt;vilib&gt;` in the add-on's tree first, then
-        /// the installation's; `&lt;userlib&gt;` and `&lt;instrlib&gt;` the installation's.</summary>
-        private IEnumerable<string> Resolve(string[] comps, string? anchorRoot)
+        /// the installation's; `&lt;userlib&gt;` and `&lt;instrlib&gt;` the installation's. A
+        /// path with no anchor is RELATIVE to the palette file treated as a directory, each empty
+        /// component one level up - `['']` is the palette's own folder.</summary>
+        private IEnumerable<string> Resolve(string[] comps, string? anchorRoot, string mnuPath)
         {
+            if (comps.Length > 0 && !comps[0].StartsWith('<'))
+            {
+                var p = mnuPath;
+                foreach (var c in comps)
+                    p = c.Length == 0 ? Path.GetDirectoryName(p) ?? p : Path.Combine(p, c);
+                yield return p;
+                yield break;
+            }
             if (comps.Length < 2) yield break;
             var rest = comps.Skip(1).ToArray();
             var folder = comps[0].ToLowerInvariant() switch
@@ -553,14 +573,30 @@ internal static class PaletteIndex
 }
 
 /// <summary>
-/// Which library lists which VI file, read from every `.lvlib` of the installation and of the
-/// add-ons' vi.lib trees - so a palette VI found in a directory or .llb gets the qualifier its
-/// `Call` needs. Measured 2026-11-13: 249 libraries listing 13 818 VIs, 257 of them palette VIs
-/// (openg_variant.lvlib 63, JSONtext.lvlib 46 ...). A class's members are not read: a palette
-/// entry for one would need a lib:class:vi chain.
+/// Which library or CLASS lists which file, read from every `.lvlib` and `.lvclass` of the
+/// installation and of the add-ons' vi.lib trees - so a palette VI found in a directory or .llb
+/// gets the qualifier its `Call` needs. The map is file -> OWNER FILE; <see cref="Qualify"/> walks
+/// it into the chain NI writes: `NI_ReportGenerationCore.lvlib:NI_report.lvclass:Append Report
+/// Text.vi` for a class member whose class a library lists. Measured 2026-11-13: 249 libraries
+/// listing 13 818 VIs, 257 of them palette VIs (openg_variant.lvlib 63, JSONtext.lvlib 46 ...); the
+/// classes were added the same day, after 444 palette hits stayed bare whose name a class listed
+/// (Report Generation, Caraya's Assert.lvclass, Actor Framework).
 /// </summary>
 internal static class LibraryOwners
 {
+    /// <summary>The qualified name of an owned file (a VI, a class, a library): every owner's
+    /// file name, outermost first, then its own. A file nobody lists is its own name.</summary>
+    public static string Qualify(IReadOnlyDictionary<string, string> owners, string file)
+    {
+        var chain = new List<string> { Path.GetFileName(file) };
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { file };
+        for (var at = file; owners.TryGetValue(at, out var owner) && seen.Add(owner); at = owner)
+            chain.Insert(0, Path.GetFileName(owner));
+        return string.Join(":", chain);
+    }
+
+    private static readonly string[] OwnerPatterns = ["*.lvlib", "*.lvclass"];
+
     public static Dictionary<string, string> Scan(string root, IReadOnlyList<PaletteSource> sources)
     {
         var trees = new List<string>
@@ -574,17 +610,28 @@ internal static class LibraryOwners
         var owners = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var tree in trees.Distinct(StringComparer.OrdinalIgnoreCase).Where(Directory.Exists))
         {
-            IEnumerable<string> libraries;
-            try { libraries = Directory.EnumerateFiles(tree, "*.lvlib", SearchOption.AllDirectories).ToList(); }
+            List<string> ownerFiles;
+            try
+            {
+                ownerFiles = [.. OwnerPatterns.SelectMany(p =>
+                    Directory.EnumerateFiles(tree, p, SearchOption.AllDirectories))];
+            }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { continue; }
 
-            foreach (var lvlib in libraries.Order(StringComparer.OrdinalIgnoreCase))
-                foreach (var (_, url) in Items(lvlib))
-                    foreach (var file in UrlTargets(lvlib, url, root, tree))
-                        owners.TryAdd(file, Path.GetFileName(lvlib));
+            foreach (var ownerFile in ownerFiles.Order(StringComparer.OrdinalIgnoreCase))
+            {
+                var full = Path.GetFullPath(ownerFile);
+                foreach (var (_, url, _) in Items(ownerFile, OwnedKinds))
+                    foreach (var file in UrlTargets(ownerFile, url, root, tree))
+                        if (!string.Equals(file, full, StringComparison.OrdinalIgnoreCase))
+                            owners.TryAdd(file, full);
+            }
         }
         return owners;
     }
+
+    /// <summary>What an owner lists that can itself be named in a qualifier chain.</summary>
+    private static readonly HashSet<string> OwnedKinds = ["VI", "LVClass", "Library"];
 
     /// <summary>
     /// The file(s) an Item URL can mean. Relative URLs are relative to the library FILE treated as
@@ -616,21 +663,24 @@ internal static class LibraryOwners
     }
 
     public static HashSet<string> MemberNames(string lvlib) =>
-        Items(lvlib).Select(i => i.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Items(lvlib, ViKind).Select(i => i.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Every `Item Type="VI"` of a library, at any folder depth: (Name, URL).</summary>
-    private static List<(string Name, string Url)> Items(string lvlib)
+    private static readonly HashSet<string> ViKind = ["VI"];
+
+    /// <summary>Every `Item` of one of <paramref name="kinds"/> in a library or class, at any
+    /// folder depth: (Name, URL, Type).</summary>
+    private static List<(string Name, string Url, string Type)> Items(string owner, HashSet<string> kinds)
     {
-        var items = new List<(string, string)>();
+        var items = new List<(string, string, string)>();
         try
         {
-            using var reader = System.Xml.XmlReader.Create(lvlib,
+            using var reader = System.Xml.XmlReader.Create(owner,
                 new System.Xml.XmlReaderSettings { DtdProcessing = System.Xml.DtdProcessing.Ignore });
             while (reader.Read())
                 if (reader.NodeType == System.Xml.XmlNodeType.Element && reader.Name == "Item" &&
-                    reader.GetAttribute("Type") == "VI" &&
+                    reader.GetAttribute("Type") is { } type && kinds.Contains(type) &&
                     reader.GetAttribute("Name") is { } name && reader.GetAttribute("URL") is { } url)
-                    items.Add((name, url));
+                    items.Add((name, url, type));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Xml.XmlException)
         {

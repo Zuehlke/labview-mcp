@@ -1,0 +1,11 @@
+<VI _name="t212_imaqdx_session_property.vi" description="An NI-IMAQdx session (ref{GenClassTag.IMAQdx.IMAQdx}) - its control part carries an embedded MNGI image - into a property node of the session's class, read by the category names NI's export writes (Camera Attributes:Display Name). With no camera the node answers an error, which is the observable; the point is that the VI loads and runs.">
+  <FreeLabel comment="Read one attribute of the session" uid="4299" uid_parent="root"/>
+  <Control _name="Camera Name" outputs="value:4200.value" type="ref{GenClassTag.IMAQdx.IMAQdx}" uid="4200" uid_parent="root" value=""/>
+  <Constant _name="ActiveAttribute" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value="AcquisitionAttributes::Timeout"/>
+  <Node _name="Property Node" fields="write+Camera Attributes\3AActive Attribute,read+Camera Attributes\3ADisplay Name" inputs="IMAQdx Session:4200.value,error in (no error):,Camera Attributes\3AActive Attribute:4201.value" outputs="IMAQdx Session:4210.IMAQdx Session,error out:4210.error out,Camera Attributes\3ADisplay Name:4210.DisplayName" type="{GenClassTag.IMAQdx.IMAQdx}" uid="4210" uid_parent="root"/>
+  <Indicator _name="Session Out" inputs="value:4210.IMAQdx Session" type="ref{GenClassTag.IMAQdx.IMAQdx}" uid="4211" uid_parent="root" value=""/>
+  <Indicator _name="Display Name" inputs="value:4210.DisplayName" type="string" uid="4212" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4210.error out" type="cluster{bool.status,int32.code,string.source}" uid="4213" uid_parent="root" value=""/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4210.error out" outputs="code:4214.code" uid="4214" uid_parent="root"/>
+  <Indicator _name="code" inputs="value:4214.code" type="int32" uid="4215" uid_parent="root" value=""/>
+</VI>

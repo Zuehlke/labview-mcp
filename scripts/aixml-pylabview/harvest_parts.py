@@ -43,17 +43,26 @@ def image_ids(el):
     return sorted(out)
 
 
+MNGI_PREFIX = "MNGI:"
+
+
 def dsim_images(bundle, ids):
-    """{index: hex} for the DSIM sections a part needs, read from the donor bundle."""
+    """{index: hex} for the embedded images a part needs, read from the donor bundle: a DSIM
+    section as its bytes, an MNGI section (a PNG - where a VI saved by LabVIEW 2023 and later
+    keeps them) as MNGI_PREFIX + its bytes, so the composer writes it back into an MNGI block.
+    Only DSIM was read until 2026-11-13: NI-IMAQdx's session control (ImageResID 35, an MNGI
+    PNG in Acquire Every Image as Raw Data.vi) came without its image and every composed VI
+    holding one answered `Cannot load front panel` (1013)."""
     out = {}
-    blk = bundle.main.find("DSIM")
-    if blk is None:
-        return out
-    for sec in blk.findall("Section"):
-        i = int(sec.get("Index"))
-        if i in ids and sec.get("File"):
-            with open(os.path.join(bundle.dir, sec.get("File")), "rb") as f:
-                out[i] = f.read().hex().upper()
+    for tag, prefix in (("DSIM", ""), ("MNGI", MNGI_PREFIX)):
+        blk = bundle.main.find(tag)
+        if blk is None:
+            continue
+        for sec in blk.findall("Section"):
+            i = int(sec.get("Index"))
+            if i in ids and i not in out and sec.get("File"):
+                with open(os.path.join(bundle.dir, sec.get("File")), "rb") as f:
+                    out[i] = prefix + f.read().hex().upper()
     return out
 
 
@@ -519,7 +528,7 @@ class Harvester:
                     # (CtlFlags): Ring and Enum both hold a stdRing, of different types
                     self.save("fpdco", "fpdco/stdRefNum/%s/%s.%s" % (ind, tk, types[0].get("CtlFlags")),
                               source, fpdco, types)
-                if tk == "Refnum.UsrDefndTag" and lvheap.tag_refnum_class(types[0]):
+                if tk in ("Refnum.UsrDefndTag", "Refnum.UsrDefTagFlt") and lvheap.tag_refnum_class(types[0]):
                     # a user-defined TAG refnum is class-specific inside too (its tag ddo names
                     # the class's DLL, its STR section the typeClass), so one class's part cannot
                     # serve another: a DAQmx task against the nisyscfg part was `no part for a
@@ -581,7 +590,7 @@ class Harvester:
                     types = resolve_types(b, e)
                     tk = lvheap.type_key(types[0])
                     self.save("const", "const/%s/%s" % (ddo.get("class"), tk), source, e, types)
-                    if tk == "Refnum.UsrDefndTag" and lvheap.tag_refnum_class(types[0]):
+                    if tk in ("Refnum.UsrDefndTag", "Refnum.UsrDefTagFlt") and lvheap.tag_refnum_class(types[0]):
                         # class-specific as on the pane, above - the generic const donor is a
                         # `Variable` refnum, which refused a NIDAQ one
                         self.save("const", "const/%s/%s.%s" % (ddo.get("class"), tk, lvheap.tag_refnum_class(types[0])),

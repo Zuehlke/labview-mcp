@@ -1,0 +1,11 @@
+<VI _name="t213_imaqdx_open_camera_property.vi" description="An IMAQdx property node fed by IMAQdx Open Camera.vi's Session Out - the driver's IMAQdx.ctl TYPEDEF around the session refnum. The composer typed the node with the bare class refnum then and the VI did not load (Memory is full); it reads through the typedef now. A camera name that does not exist makes Open Camera answer IMAQdx's own error, which the node passes on.">
+  <FreeLabel comment="Open, read one attribute, report" uid="4299" uid_parent="root"/>
+  <Control _name="Camera Name" outputs="value:4200.value" type="ref{GenClassTag.IMAQdx.IMAQdx}" uid="4200" uid_parent="root" value=""/>
+  <Constant _name="ActiveAttribute" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value="AcquisitionAttributes::Timeout"/>
+  <Call inputs="Session In:4200.value,error in:,Camera Control Mode:" outputs="Session Out:4202.Session Out,error out:4202.error out" target="NI_Vision_Acquisition_Software.lvlib\3AIMAQdx Open Camera.vi" uid="4202" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Camera Attributes\3AActive Attribute,read+Camera Attributes\3ADisplay Name" inputs="IMAQdx Session:4202.Session Out,error in (no error):4202.error out,Camera Attributes\3AActive Attribute:4201.value" outputs="Camera Attributes\3ADisplay Name:4203.DisplayName,IMAQdx Session:4203.IMAQdx Session,error out:4203.error out" type="{GenClassTag.IMAQdx.IMAQdx}" uid="4203" uid_parent="root"/>
+  <Call inputs="Session In:4203.IMAQdx Session,error in:4203.error out" outputs="error out:4204.error out" target="NI_Vision_Acquisition_Software.lvlib\3AIMAQdx Close Camera.vi" uid="4204" uid_parent="root"/>
+  <Indicator _name="Display Name" inputs="value:4203.DisplayName" type="string" uid="4205" uid_parent="root" value=""/>
+  <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4204.error out" outputs="code:4206.code" uid="4206" uid_parent="root"/>
+  <Indicator _name="code" inputs="value:4206.code" type="int32" uid="4207" uid_parent="root" value=""/>
+</VI>

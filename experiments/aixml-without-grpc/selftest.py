@@ -98,7 +98,12 @@ def log_saturated():
 # block (GetTagVariant: variant has value of null) and the font table (indexing font out of
 # range) both passed the Insane-only gate with right values, measured against LabVIEW's own VI
 # of the same objects, which logged nothing.
-EXPECTED_DWARNS = ("Wiring insanity found and fixed",)
+# "DestroyPlatformEvent failed with MgErr 42" is LabVIEW's own teardown, recorded as benign since
+# 2026-09 (docs/claude-md-archive.md: a fresh instance shows it with no VI loaded; it tracks the
+# number of close operations). Counted here it failed a run on timing alone: in the full suite of
+# 2026-11-13 six cases read `dwarn:1`, five of them clean when rerun alone, and t162 reads 2-4 of
+# them on the committed composer exactly as on the changed one - noise, not the composed VI.
+EXPECTED_DWARNS = ("Wiring insanity found and fixed", "DestroyPlatformEvent failed with MgErr 42")
 # what an INTERACTION a case posts makes LabVIEW log, whatever VI it runs: closing a popup menu
 # with Escape logs "WDestroy called on tracking window" - for LabVIEW's own save of t142 exactly
 # as for the composed VI (an A/B, 2026-10-11) - so it is expected only where a case posts esc
@@ -206,7 +211,11 @@ def main(argv):
     full = [n for n, s, _ in results if s.endswith("(log full)")]
     if full:
         print("NOT CHECKED for insanity - each fills a fresh LabVIEW log on its own: %s" % ", ".join(full))
-    return 0 if all(s in ("PASS", "LOADS", "PASS (log full)", "LOADS (log full)") for _, s, _ in results) else 1  # insane counts as a failure
+    noenv = [n for n, s, _ in results if s.startswith("NOENV")]
+    if noenv:
+        print("NOT TESTED - this desktop session shows no front panel to post to: %s" % ", ".join(noenv))
+    return 0 if all(s in ("PASS", "LOADS", "PASS (log full)", "LOADS (log full)", "NOENV")
+                    for _, s, _ in results) else 1  # insane counts as a failure
 
 
 def run_test(name, expect, out_dir, stamp):
@@ -278,15 +287,32 @@ def run_test(name, expect, out_dir, stamp):
                         os.path.join(HERE, "lv-fp.ps1"), "-ViPath", hvi],
                        capture_output=True, text=True, timeout=120, stdin=subprocess.DEVNULL)
     verdicts = []
+    noenv = False
     for case in cases:
-        state, got, raw = lvcom(run_vi, case.get("inputs", ""), list(case["outputs"]),
-                                post=case.get("post"), post_after_ms=case.get("postAfterMs"))
-        ok = all(same(v, got.get(k)) for k, v in case["outputs"].items()) and "SERVED FROM" not in raw
-        verdicts.append("%s %s -> %s" % ("ok" if ok else "FAIL", case.get("inputs", ""),
+        # A LIVE case (`post`: keys, a close, an activation sent to the VI's own panel) follows
+        # whichever window the desktop holds active, so in a long run it can lose to the run
+        # before it: t133 and t138 failed in the full suite and passed alone, on the committed
+        # composer too (2026-11-13). It gets ONE retry - a second failure is a failure.
+        for attempt in range(2 if case.get("post") else 1):
+            state, got, raw = lvcom(run_vi, case.get("inputs", ""), list(case["outputs"]),
+                                    post=case.get("post"), post_after_ms=case.get("postAfterMs"))
+            ok = all(same(v, got.get(k)) for k, v in case["outputs"].items()) and "SERVED FROM" not in raw
+            if ok:
+                break
+        # NO PANEL WINDOW to post to: the desktop session does not show the VI's own front panel
+        # (a VI opening it with Front Panel Window:Open ran without error and no window existed -
+        # measured 2026-11-13 on a probe of nothing else). The case then tests the desktop, not
+        # the composed VI, and is reported as NOENV with its reason rather than as a FAIL.
+        if not ok and case.get("post") and re.search(r"post \S+ to 0 panel window", raw):
+            noenv = True
+        verdicts.append("%s %s -> %s" % ("ok" if ok else ("NOENV" if noenv else "FAIL"), case.get("inputs", ""),
                                          ", ".join("%s=%s" % (k, got.get(k)) for k in case["outputs"])))
         if "<TIMEOUT>" in raw:
             verdicts[-1] += " (TIMEOUT)"
-    status = "PASS" if all(v.startswith("ok") for v in verdicts) else "FAIL"
+    status = "PASS" if all(v.startswith("ok") for v in verdicts) else \
+        "NOENV" if all(v.startswith(("ok", "NOENV")) for v in verdicts) else "FAIL"
+    if noenv:
+        verdicts.append("no panel window to post to: the desktop session shows no front panel")
     bad = insanities(vi)
     steps = {p.split(":")[0] for c in cases for p in (c.get("post") or "").split(";") if p}
     posted = tuple(x for k in steps for x in POSTED_DWARNS.get(k, ()))

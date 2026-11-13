@@ -108,7 +108,9 @@ report as information and call it.
   containers or a library name the owner (`NI_AALPro.lvlib:FFT.vi`, since 2026-11-13); a BARE hit
   refused as `Unsupported SubVI` is still a library member - get the qualifier from an export of a
   VI that calls it, or settle both spellings in one throwaway validate. Never rebuild it.
-- NI Vision's `.llb` members carry NO extension: `target="IMAQ Create"`. `docs/imaq-support.md`.
+- NI Vision's `.llb` members carry NO extension: `target="IMAQ Create"`. An IMAQ Image
+  (`ref{GenClassTagFlatten.IMAQImage.IMAQImage}`) composes only on the pylabview backend - NI's
+  converter builds it as `Generic Tag Thing` and breaks the VI. `docs/imaq-support.md`.
 - **A VI inside an `.llb` is not a reason to give up** - search for it and try the call.
 - **A path never resolves**, in any spelling.
 - **Project-local code resolves by bare name once it is LOADED** (`lvai_open_file`, through its

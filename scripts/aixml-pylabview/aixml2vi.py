@@ -85,6 +85,8 @@ SCALARS = {
 # type key (lvheap.type_key) -> the front-panel class of its object
 DDO_OF_KEY = {v[0]: v[1] for v in SCALARS.values()}
 DDO_OF_KEY.update({"Refnum.LVObjCtl": "stdRefNum", "Refnum.VisaRef": "stdRefNum", "Refnum.UsrDefndTag": "stdRefNum",
+                   # NI Vision's IMAQ Image (a tag FLATTEN refnum): the same refnum object (2026-11-13)
+                   "Refnum.UsrDefTagFlt": "stdRefNum",
                    "Refnum.IVIRef": "stdRefNum",
                    "Refnum.Queue": "stdRefNum",
                    # a MENU refnum in a cluster (MGI's Event Cluster) and an event registration
@@ -545,6 +547,20 @@ def refnum_type(inner, plain_class=False):
                 cls, flags, nested = (row + [""])[:3]
                 _REF_CLASSES[cls] = (flags, nested)
     inner = inner.strip()
+    mf = re.fullmatch(r"GenClassTagFlatten\.([^.]+)\.(.+)", inner)
+    if mf:
+        # a user-defined tag FLATTEN refnum - NI Vision's IMAQ Image: Ident and TypeName the
+        # class (IMAQImage), no client, a void variant. NI's own converter builds this type as
+        # `Generic Tag Thing` and the VI breaks on its first wire ("IMAQ Image.ctl" against
+        # "Generic Tag Thing"), so the class comes from NI's examples; the examples' client - a
+        # Tag with an empty ident - is left out, as NI's converter leaves it out. MEASURED
+        # 2026-11-13: IMAQ Create -> an Image indicator of this type -> Imaq Dispose composes
+        # executable and RUNS (image "probe" created and disposed, no error); NI's build of the
+        # probe with only the class changed loads executable too.
+        el = ET.Element("TypeDesc", {"Type": "Refnum", "RefType": "UsrDefTagFlt", "Ident": mf.group(1),
+                                     "FirstClient": "0", "TypeName": mf.group(2), "Format": "inline"})
+        el.append(_void_variant())
+        return el
     m = re.fullmatch(r"GenClassTag\.([^.]+)\.(.+)", inner)
     if m:
         # a user-defined tag refnum (NI System Configuration, DataFinder, DAQmx task ...): a
@@ -800,7 +816,7 @@ def unverified_wire_type(tree):
         if tree.get("RefType") in ("DataValueRef", "DataLog") and not fields(tree):
             # only the CONTAINER form is measured; a bare one stays refused
             return "Refnum.%s (no element type)" % tree.get("RefType")
-        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "IVIRef", "UsrDefndTag", "TDMSFile", "UDClassInst",
+        if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "IVIRef", "UsrDefndTag", "UsrDefTagFlt", "TDMSFile", "UDClassInst",
                                        "UserEvent", "EventReg", "Menu", "Queue", "ByteStream", "NotifierRef",
                                        "DataValueRef", "DataLog"):
             # UsrDefined is a family of unrelated classes; only NI-TClk's session reference is
@@ -1116,7 +1132,10 @@ def tag_class(tree, node_name=None):
     and is named by the NODE: `GenClassTag.DAQmx Timing.NIDAQ` (learn_node_classes.py over 21 VIs,
     98 nodes, 2026-10-21; issue #96). An IVI instrument session is named by its driver,
     `IVI.niRFSA`, as NI's export writes `type="{IVI.niRFSA}"` (2026-10-30). None for any other
-    refnum."""
+    refnum. A TYPEDEF'd refnum is read through: an IMAQdx session is the driver's `IMAQdx
+    Session` typedef around `GenClassTag.IMAQdx.IMAQdx` (2026-11-13)."""
+    while tree is not None and tree.get("Type") == "TypeDef":
+        tree = next((c for c in tree if c.tag == "TypeDesc"), None)
     if tree is not None and tree.get("RefType") == "IVIRef" and tree.get("Ident"):
         return "IVI.%s" % tree.get("Ident")
     if tree is None or tree.get("RefType") != "UsrDefndTag" or not tree.get("TypeName"):
@@ -1555,6 +1574,14 @@ def _const_value(tree, value):
                 cb = lvheap.value_bytes(c)
                 body += struct.pack(">B", len(cb)) + cb
         return (b"PTH0" + struct.pack(">I", len(body)) + body).hex().upper()
+    if t == "Refnum" and tree.get("RefType") == "UsrDefTagFlt":
+        # NI Vision's IMAQ Image, the null one: NI's converter writes 20 bytes for it -
+        # 00000000 00000000 00000000 00000001 00000000 (its build of probes/ptypes-imaq.xml,
+        # 2026-11-13) - and the composer's 4-byte null refnum broke the VI on its own (a lone
+        # image constant, execState 0, while a control wired to an indicator ran)
+        if (value or "").strip():
+            raise Unsupported("an IMAQ Image constant has no literal value (%r)" % value)
+        return "0000000000000000000000000000000100000000"
     if t == "Refnum" and tree.get("RefType") in ("IVIRef", "VisaRef", "UsrDefndTag"):
         # an IVI or VISA session or a DAQmx task holds its NAME, flattened like a string: NI's
         # converter wrote 00000007 53696D52465341 for value="SimRFSA" (probes/pivi-sim.xml),
@@ -2265,7 +2292,7 @@ class Composer:
                 next(iter(cands), None)
         if key is None and ddo_class == "listbox":
             key = self._listbox_part(want, tkey)
-        if key is None and tkey == "Refnum.UsrDefndTag" and lvheap.tag_refnum_class(tree):
+        if key is None and tkey in ("Refnum.UsrDefndTag", "Refnum.UsrDefTagFlt") and lvheap.tag_refnum_class(tree):
             # a user-defined tag refnum is class-specific inside (the guard below says why), so a
             # part harvested for THIS class is preferred; the generic key stays the fallback, and
             # a class with no part of its own still reaches that guard's named refusal
@@ -4182,6 +4209,22 @@ class Composer:
         ref_tree = refnum_type(cls, plain_class=True)
         ins0 = dict(pairs(el.get("inputs")))
         wired_ref = self.net_type.get(ins0.get("reference")) if ins0.get("reference") else None
+        if tag:
+            # a TYPEDEF'd session is typed by the refnum INSIDE it: `IMAQdx Open Camera.vi`'s
+            # `Session Out` is the driver's IMAQdx.ctl around ref{GenClassTag.IMAQdx.IMAQdx}, and
+            # with the typedef unread the node fell back to the bare class refnum and the VI did
+            # not LOAD (`Memory is full`, load error code 1) - while a session CONTROL wired in
+            # composed fine. Found 2026-11-13 by the agent building Read Camera Attribute.vi; it
+            # is the cause of the five IMAQdx examples that composed but did not load.
+            # The inner element cannot be taken over as it stands - its client Tag is an index
+            # into the CALLEE's type table ("can't convert negative int to unsigned" on rebuild) -
+            # so the refnum is built afresh from its class, as a session control's is.
+            inner = wired_ref
+            while inner is not None and inner.get("Type") == "TypeDef":
+                inner = next((c for c in inner if c.tag == "TypeDesc"), None)
+            if inner is not None and inner is not wired_ref and inner.get("RefType") == "UsrDefndTag" \
+                    and inner.get("Ident") and inner.get("TypeName"):
+                wired_ref = type_tree("ref{GenClassTag.%s.%s}" % (inner.get("Ident"), inner.get("TypeName")))
         strict = wired_ref is not None and wired_ref.get("Type") == "Refnum" and fields(wired_ref)
         if tag:
             # a TAG refnum's node is typed with the refnum WIRED into it, which carries more than
@@ -11682,16 +11725,29 @@ class Composer:
                 blk.append(sec)
         if getattr(self, "images", None):
             # the DSIM block ("Dynamic Size Image") sits before the front-panel heap, as in
-            # LabVIEW's own files; one binary section per image
-            blk = m.find("DSIM")
-            if blk is None:
-                blk = ET.Element("DSIM")
-                m.insert(list(m).index(m.find("FPHb")), blk)
-            for i, hx in sorted(self.images.items()):
-                fn = "%s_DSIM%d.bin" % (base, i)
-                with open(os.path.join(out_dir, fn), "wb") as f:
-                    f.write(bytes.fromhex(hx))
-                ET.SubElement(blk, "Section", {"Index": str(i), "Format": "bin", "File": fn})
+            # LabVIEW's own files; one binary section per image. An image harvested from an MNGI
+            # block (a PNG, `MNGI:` + hex - LabVIEW 2023 and later) goes back into one, after
+            # FPEx as in NI's files: NI-IMAQdx's session control holds such an image, and
+            # without it the panel did not load (2026-11-13)
+            for kind in ("DSIM", "MNGI"):
+                items = [(i, hx) for i, hx in sorted(self.images.items())
+                         if hx.startswith("MNGI:") == (kind == "MNGI")]
+                if not items:
+                    continue
+                blk = m.find(kind)
+                if blk is None:
+                    blk = ET.Element(kind)
+                    at = list(m).index(m.find("FPEx")) + 1 if kind == "MNGI" and m.find("FPEx") is not None \
+                        else list(m).index(m.find("FPHb"))
+                    m.insert(at, blk)
+                for i, hx in items:
+                    png = kind == "MNGI"
+                    fn = "%s_%s%d.%s" % (base, kind, i, "png" if png else "bin")
+                    with open(os.path.join(out_dir, fn), "wb") as f:
+                        f.write(bytes.fromhex(hx[len("MNGI:"):] if png else hx))
+                    attrs = {"Index": str(i), "PaddingLength": "0", "Format": "png", "File": fn} if png \
+                        else {"Index": str(i), "Format": "bin", "File": fn}
+                    ET.SubElement(blk, "Section", attrs)
         # NO COMPILED CODE, EVER - the user's rule of 2026-10-09: a composed VI is source-only,
         # so it carries less data and LabVIEW compiles it in memory on load. Asserted rather
         # than assumed, because a part or skeleton cut from a compiled VI could bring it in.

@@ -2400,5 +2400,37 @@
     }
    }
   ]
+ },
+ "t211_imaq_image_create_dispose": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t212_imaqdx_session_property": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "code": -1074360316,
+     "Display Name": ""
+    }
+   }
+  ]
+ },
+ "t213_imaqdx_open_camera_property": {
+  "cases": [
+   {
+    "inputs": "Camera Name=NoSuchCam",
+    "outputs": {
+     "code": -1074360311,
+     "Display Name": ""
+    }
+   }
+  ]
  }
 }

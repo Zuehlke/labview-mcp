@@ -3358,3 +3358,21 @@ bottom edge and ran under every later frame). The joining wire of a pair is writ
 zero-length table `01`. On the grpc backend the route is NI's converter's and unchanged.
 `t210_flat_sequence_frame_tunnels`; experiments/aixml-without-grpc/FINDINGS.md, "Frame-to-frame
 tunnels of a Flat Sequence".
+
+## NI Vision and NI-IMAQdx (2026-11-13)
+
+The IMAQ Image is a user-defined tag FLATTEN refnum (RefType 29, `UsrDefTagFlt`), which NI's export
+writes `ref{GenClassTagFlatten.IMAQImage.IMAQImage}`. pylabview could not read it (it dropped its
+type name, `usrdeftagflt-type-name` in patches.json) nor rebuild its client Tag (`tag-empty-ident`);
+the reader now names it, and the COMPOSER builds it - which NI's converter cannot: it writes a
+`Generic Tag Thing` refnum and NI's own export of `Acquire Single Image (Snap).vi` comes back
+broken on gRPC, while the composer's build of the same document is executable. A null IMAQ Image
+constant is 20 bytes, not a null refnum's 4.
+
+Two general findings came with it. **Embedded images of a LabVIEW 2023+ donor live in `MNGI`**
+(PNG), not `DSIM`: the harvester copied DSIM only, and the IMAQdx session control's image was lost
+(`Cannot load front panel`); both kinds are carried now. **`resolve._carries` was case-sensitive**,
+so `Imaq Dispose` (NI's spelling) missed Basics.llb's `IMAQ Dispose`. Suite cases
+`t211_imaq_image_create_dispose`, `t212_imaqdx_session_property`. Everything else - the property
+names learned for the session's class, the round trip of the 43 examples, what is still open - is
+in docs/imaq-support.md.

@@ -41,7 +41,9 @@ internal static class PaletteIndexStore
     /// </summary>
     // 2: PaletteVi.Target (2026-11-13). 3: the same day, after a v2 build had cached primitive
     // stand-ins from .llb folders (Machine Epsilon) - a dev-station-only cache, retired anyway.
-    private const int FormatVersion = 3;
+    // 4: class-member chains and relative palette containers (2026-11-13). 5: a CLASS as a
+    // palette's container (Report Generation), the same day.
+    private const int FormatVersion = 5;
 
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = false };
 

@@ -3249,3 +3249,29 @@ middle frame) composes, loads with no `Insane` line, computes `mid=5, result=9`,
 hop on a divider, and round-trips through the reader.
 
 NI's gRPC converter still draws a frame-to-frame wire under the frames; that route is NI's.
+
+
+### The three live cases, and the suite's verdicts on noise (2026-11-13)
+
+A full run of the suite read 175 PASS, `t133`, `t136`, `t138` FAIL and six `PASS dwarn:1`. None of
+it was the composer:
+
+- **`t133` and `t138` pass alone**, on the changed composer and on the committed one alike; in the
+  long run they lose the desktop's active window to the run before. A LIVE case (one with `post`)
+  now gets one retry - a second failure is still a failure.
+- **`t136` could not run for an hour, then ran.** `lv-com.ps1` answered `post activate to 0 panel
+  window(s)`, and a probe of nothing else - a VI that opens its own panel with `Front Panel
+  Window:Open`, waits 3 s, closes it - ran without error while no window of that name existed,
+  after a restart through `lv-restart.ps1` too; later the same afternoon, with the person at the
+  machine working in other windows, t136 PASSED twice in a row. A live case whose post finds no
+  panel is now `NOENV`, listed as NOT TESTED, and does not fail the run; a case that finds its
+  panel and still misses its expectation is a FAIL as before.
+- **The live cases follow the desktop, run by run.** On ONE composed t133, posted four ways in a
+  row: `char;sysclose` at 600 ms gave `Char=97` and at 1200 ms `Char=0`; with `activate` first,
+  both timings gave `Last Frame=0` - while ten minutes before, `activate` first was the only way
+  that worked. t138 passed without `activate` and failed with it (the activation hands the key
+  focus to the string `Typed`). No post sequence was stable while the desktop was in use, so the
+  cases were left as they were: they are a check for an IDLE desktop, not of the composer.
+- **`DestroyPlatformEvent failed with MgErr 42`** is LabVIEW's teardown (recorded as benign since
+  2026-09), and five of the six `dwarn:1` cases were clean when rerun alone; `t162` shows 2-4 of
+  them on the committed composer as on the changed one. It joins `EXPECTED_DWARNS`.
