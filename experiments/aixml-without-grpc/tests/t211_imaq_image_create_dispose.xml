@@ -1,0 +1,10 @@
+<VI _name="t211_imaq_image_create_dispose.vi" description="NI Vision's IMAQ Image, a user-defined tag FLATTEN refnum (ref{GenClassTagFlatten.IMAQImage.IMAQImage}): IMAQ Create - an extension-less .llb member - into an Image indicator, a null image constant beside it, then Imaq Dispose, called in the casing NI's export writes. NI's own converter builds this type as Generic Tag Thing and breaks on the first wire.">
+  <FreeLabel comment="Create, show and dispose one image" uid="4299" uid_parent="root"/>
+  <Constant _name="Image Name" outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value="t211"/>
+  <Call inputs="Image Name:4200.value,error in (no error):,Border Size:,Image Type:" outputs="New Image:4201.New Image,error out:4201.error out" target="IMAQ Create" uid="4201" uid_parent="root"/>
+  <Indicator _name="Image" inputs="value:4201.New Image" type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}" uid="4202" uid_parent="root" value=""/>
+  <Constant _name="no image" outputs="value:4205.value" type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}" uid="4205" uid_parent="root" value=""/>
+  <Indicator _name="null image" inputs="value:4205.value" type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}" uid="4206" uid_parent="root" value=""/>
+  <Call inputs="Image:4201.New Image,error in (no error):4201.error out,All Images? (No):" outputs="error out:4203.error out" target="Imaq Dispose" uid="4203" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4203.error out" type="cluster{bool.status,int32.code,string.source}" uid="4204" uid_parent="root" value=""/>
+</VI>

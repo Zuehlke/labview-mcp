@@ -1,0 +1,10 @@
+<VI _name="PTypes IMAQ.vi" description="Donor probe for the NI Vision and NI-IMAQdx refnum parts: an IMAQ Image (a User Defined Tag FLATTEN refnum, ref{GenClassTagFlatten.IMAQImage.IMAQImage}) and an IMAQdx session (a User Defined Tag refnum, ref{GenClassTag.IMAQdx.IMAQdx}), each as a front-panel control, as an indicator and as a diagram constant. NI's converter builds this one; harvest_parts.py then files the parts by class. The spellings are NI's own, from its export of Acquire Single Image (Snap).vi (2026-11-13).">
+  <Control _name="Image In" outputs="value:4200.value" type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}" uid="4200" uid_parent="root" value=""/>
+  <Indicator _name="Image Out" inputs="value:4200.value" type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}" uid="4205" uid_parent="root" value=""/>
+  <Constant _name="no image" outputs="value:4210.value" type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}" uid="4210" uid_parent="root" value=""/>
+  <Indicator _name="image constant out" inputs="value:4210.value" type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}" uid="4215" uid_parent="root" value=""/>
+  <Control _name="Session In" outputs="value:4220.value" type="ref{GenClassTag.IMAQdx.IMAQdx}" uid="4220" uid_parent="root" value=""/>
+  <Indicator _name="Session Out" inputs="value:4220.value" type="ref{GenClassTag.IMAQdx.IMAQdx}" uid="4225" uid_parent="root" value=""/>
+  <Constant _name="no session" outputs="value:4230.value" type="ref{GenClassTag.IMAQdx.IMAQdx}" uid="4230" uid_parent="root" value=""/>
+  <Indicator _name="session constant out" inputs="value:4230.value" type="ref{GenClassTag.IMAQdx.IMAQdx}" uid="4235" uid_parent="root" value=""/>
+</VI>

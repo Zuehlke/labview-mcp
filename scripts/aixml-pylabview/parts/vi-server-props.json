@@ -20,6 +20,10 @@
    "nodeName": "DAQmx Trigger",
    "oMId": "0019"
   },
+  "GenClassTag.IMAQdx.IMAQdx": {
+   "nodeName": "IMAQdx",
+   "oMId": "00A9"
+  },
   "GenClassTag.NetworkStream.DataExchange": {
    "nodeName": "Network Stream Endpoint",
    "oMId": "0006"
@@ -15419,6 +15423,262 @@
     "label": "Start.Term",
     "source": "Analog Input - Synchronization.vi",
     "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   }
+  },
+  "GenClassTag.IMAQdx.IMAQdx": {
+   "Acquisition Attributes:Height": {
+    "access": "rw",
+    "code": 20,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "Height",
+    "label": "Height",
+    "source": "Change Configuration Attributes While Acquiring.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Acquisition Attributes:Overwrite Mode": {
+    "access": "w",
+    "code": 27,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "OverwriteMode",
+    "infoFlags": 4096,
+    "label": "OverwriteMode",
+    "source": "Acquire Every Image as Raw Data.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Acquisition Attributes:Timeout": {
+    "access": "rw",
+    "code": 28,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "label": "Timeout",
+    "source": "Acquire Triggered Images.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Acquisition Attributes:Width": {
+    "access": "rw",
+    "code": 19,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "Width",
+    "label": "Width",
+    "source": "Change Configuration Attributes While Acquiring.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Active Attribute": {
+    "access": "rw",
+    "code": 31,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "ActiveAttribute",
+    "label": "ActiveAttribute",
+    "source": "Acquire Every Image as Raw Data.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Description": {
+    "access": "r",
+    "code": 75,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "Description",
+    "label": "Description",
+    "source": "Getting Started with Attributes.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Display Name": {
+    "access": "r",
+    "code": 76,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "DisplayName",
+    "label": "DisplayName",
+    "source": "Getting Started with Attributes.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Enum:Strings[]": {
+    "access": "r",
+    "code": 46,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "label": "EnumStrings[]",
+    "source": "Acquire Triggered Images.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Camera Attributes:Enum:Values[]": {
+    "access": "r",
+    "code": 45,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "label": "EnumValues[]",
+    "source": "Acquire Triggered Images.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Camera Attributes:Increment:DBL": {
+    "access": "r",
+    "code": 54,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "label": "IncDBL",
+    "source": "Update Value Control.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Increment:String": {
+    "access": "r",
+    "code": 55,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "IncString",
+    "label": "IncString",
+    "source": "Getting Started with Attributes.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Increment:U32": {
+    "access": "r",
+    "code": 53,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "IncU32",
+    "label": "IncU32",
+    "source": "Change Configuration Attributes While Acquiring.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Is Readable": {
+    "access": "r",
+    "code": 47,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "IsReadable",
+    "label": "IsReadable",
+    "source": "Getting Started with Attributes.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Is Writable": {
+    "access": "r",
+    "code": 48,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "IsWritable",
+    "label": "IsWritable",
+    "source": "Change Configuration Attributes While Acquiring.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Maximum:DBL": {
+    "access": "r",
+    "code": 39,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "label": "MaxDBL",
+    "source": "Update Value Control.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Maximum:String": {
+    "access": "r",
+    "code": 40,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "MaxString",
+    "label": "MaxString",
+    "source": "Getting Started with Attributes.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Maximum:U32": {
+    "access": "r",
+    "code": 38,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "MaxU32",
+    "label": "MaxU32",
+    "source": "Change Configuration Attributes While Acquiring.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Minimum:DBL": {
+    "access": "r",
+    "code": 36,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "label": "MinDBL",
+    "source": "Update Value Control.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Minimum:String": {
+    "access": "r",
+    "code": 37,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "MinString",
+    "label": "MinString",
+    "source": "Getting Started with Attributes.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Minimum:U32": {
+    "access": "r",
+    "code": 35,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "MinU32",
+    "label": "MinU32",
+    "source": "Change Configuration Attributes While Acquiring.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Tooltip": {
+    "access": "r",
+    "code": 56,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "label": "Tooltip",
+    "source": "Update Value Control.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Type": {
+    "access": "r",
+    "code": 41,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "Type",
+    "label": "Type",
+    "source": "Getting Started with Attributes.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Units": {
+    "access": "r",
+    "code": 57,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "Units",
+    "label": "Units",
+    "source": "Getting Started with Attributes.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Value:Bool": {
+    "access": "rw",
+    "code": 42,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "label": "ValueBool",
+    "source": "Flush Control Value.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Value:DBL": {
+    "access": "rw",
+    "code": 33,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "ValueDBL",
+    "label": "ValueDBL",
+    "source": "Acquire Every Image as Raw Data.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Value:String": {
+    "access": "rw",
+    "code": 34,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "ValueString",
+    "label": "ValueString",
+    "source": "Getting Started with Attributes.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Camera Attributes:Value:U32": {
+    "access": "rw",
+    "code": 32,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "label": "ValueU32",
+    "source": "Acquire Triggered Images.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Status Information:Acquisition In Progress": {
+    "access": "r",
+    "code": 6,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "AcquisitionInProgress",
+    "label": "AcquisitionInProgress",
+    "source": "Event Structure.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Status Information:Lost Buffer Count": {
+    "access": "r",
+    "code": 9,
+    "declaredBy": "GenClassTag.IMAQdx.IMAQdx",
+    "heapName": "LostBufferCount",
+    "infoFlags": 4096,
+    "label": "LostBufferCount",
+    "source": "Parallel Processing (Optimized Performance).vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    }
   },
   "GenClassTag.NetworkStream.DataExchange": {
@@ -32916,6 +33176,14 @@
     "source": "<labview>\\vi.lib\\fxp\\FXPxcontrol\\fxpUpdateMixedStateControls.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
+   "Increment": {
+    "access": "w",
+    "code": 104050695,
+    "declaredBy": "LV.Digital",
+    "label": "Increment",
+    "source": "Change Configuration Attributes While Acquiring.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Increment/Decrement Visible?": {
     "access": "r",
     "code": 104053764,
@@ -34814,7 +35082,7 @@
     "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0005\" HasItem=\"0\" Format=\"inline\" />"
    },
    "Value": {
-    "access": "r",
+    "access": "rw",
     "code": 104013837,
     "declaredBy": "LV.Enum",
     "label": "Value",
@@ -59071,7 +59339,7 @@
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
    "Strings And Values []": {
-    "access": "r",
+    "access": "rw",
     "code": 104062980,
     "declaredBy": "LV.Ring",
     "label": "",
@@ -62659,7 +62927,7 @@
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Data Range\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Minimum\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Maximum\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Increment\" /></TypeDesc><Label Text=\"LVMinMaxIncTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Data Entry Limits:Increment": {
-    "access": "r",
+    "access": "rw",
     "code": 104050695,
     "declaredBy": "LV.Slide",
     "label": "Increment",
@@ -62667,7 +62935,7 @@
     "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Data Entry Limits:Maximum": {
-    "access": "r",
+    "access": "rw",
     "code": 104050694,
     "declaredBy": "LV.Slide",
     "label": "Maximum",
@@ -62675,7 +62943,7 @@
     "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Data Entry Limits:Minimum": {
-    "access": "r",
+    "access": "rw",
     "code": 104050693,
     "declaredBy": "LV.Slide",
     "label": "Minimum",
@@ -62826,6 +63094,14 @@
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Housing Size\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
+   "Increment": {
+    "access": "w",
+    "code": 104050695,
+    "declaredBy": "LV.Slide",
+    "label": "Increment",
+    "source": "Acquire Every Image (178x Smart Camera).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Indicator": {
     "access": "r",
     "code": 104013831,
@@ -62914,6 +63190,22 @@
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"MasterRect\"><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Left\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Top\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Right\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"Bottom\" /></TypeDesc><Label Text=\"LVRectTypeDef.ctl\" />\n        </TypeDesc>"
    },
+   "Maximum": {
+    "access": "w",
+    "code": 104050694,
+    "declaredBy": "LV.Slide",
+    "label": "Maximum",
+    "source": "Acquire Every Image (178x Smart Camera).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Minimum": {
+    "access": "w",
+    "code": 104050693,
+    "declaredBy": "LV.Slide",
+    "label": "Minimum",
+    "source": "Acquire Every Image (178x Smart Camera).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Modified": {
     "access": "r",
     "code": 103970820,
@@ -62995,7 +63287,7 @@
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"OutOfRngAction\"><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"OutOfRngActMin\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"OutOfRngActMax\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"OutOfRngActInc\" /></TypeDesc><Label Text=\"LVOutOfRangeActionTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Response to Value Outside Limits:Increment": {
-    "access": "r",
+    "access": "rw",
     "code": 104050702,
     "declaredBy": "LV.Slide",
     "label": "OutOfRngActInc",
@@ -63003,7 +63295,7 @@
     "type": "<TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Response to Value Outside Limits:Maximum": {
-    "access": "r",
+    "access": "rw",
     "code": 104050700,
     "declaredBy": "LV.Slide",
     "label": "OutOfRngActMax",
@@ -63011,7 +63303,7 @@
     "type": "<TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Response to Value Outside Limits:Minimum": {
-    "access": "r",
+    "access": "rw",
     "code": 104050701,
     "declaredBy": "LV.Slide",
     "label": "OutOfRngActMin",
@@ -63300,6 +63592,14 @@
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    },
+   "Increment": {
+    "access": "w",
+    "code": 104001543,
+    "declaredBy": "LV.SlideScale",
+    "label": "Increment",
+    "source": "Acquire Every Image (178x Smart Camera).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Is On Block Diagram?": {
     "access": "r",
     "code": 103970821,
@@ -63453,7 +63753,7 @@
     "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Range:Maximum": {
-    "access": "r",
+    "access": "rw",
     "code": 104001542,
     "declaredBy": "LV.SlideScale",
     "label": "Maximum",
@@ -63461,7 +63761,7 @@
     "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Range:Minimum": {
-    "access": "r",
+    "access": "rw",
     "code": 104001541,
     "declaredBy": "LV.SlideScale",
     "label": "Minimum",
@@ -69033,7 +69333,7 @@
     "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"CellSize\"><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Width\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Height\" /></TypeDesc><Label Text=\"LVBoundsTypeDef.ctl\" />\n        </TypeDesc>"
    },
    "Active Cell:String": {
-    "access": "r",
+    "access": "rw",
     "code": 1969896473,
     "declaredBy": "LV.TreeControl",
     "label": "Cell String",

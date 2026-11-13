@@ -42,6 +42,12 @@ def main(argv):
         if not os.path.exists(meta):
             continue
         m = json.load(open(meta, encoding="utf-8"))
+        if m.get("Backend") == "pylabview":
+            # the READER's own export, cached beside NI's since the pylabview backend became the
+            # default: pairing it with the reader learns the heap's short names back (`ActiveAttribute`
+            # 45 times against NI's `Camera Attributes:Active Attribute` 148, 2026-11-13) and turns
+            # every code both sources saw into a dispute. Only NI's exports teach NI's names.
+            continue
         vp = m.get("ViPath")
         if not vp or not os.path.exists(vp) or ".llb\\" in vp.lower():
             continue

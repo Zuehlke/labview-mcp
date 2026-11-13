@@ -30,6 +30,16 @@ public class ExampleScopeTests
         Assert.Null(ExampleScope.ExtraSoftware(Example("Analog Measurements", source)));
 
     [Fact]
+    public void IMAQdx_is_assumed_installed() =>
+        Assert.Null(ExampleScope.ExtraSoftware(Example(@"Vision Acquisition\NI-IMAQdx", "niimaqdx")));
+
+    [Fact]
+    public void An_IMAQdx_example_needing_Vision_Development_stays_out() =>
+        Assert.Equal("NI Vision Development Module", ExampleScope.ExtraSoftware(Example(
+            @"Vision Acquisition\NI-IMAQdx", "niimaqdx",
+            description: "This example requires NI Vision Development Module.")));
+
+    [Fact]
     public void Another_addon_is_named_as_the_thing_that_is_missing()
     {
         var extra = ExampleScope.ExtraSoftware(Example("Time Frequency Analysis", "aspt64"));

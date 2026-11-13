@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="const" key="const/stdRefNum/Refnum.UsrDefTagFlt" source="ptypes-imaq.vi"><types><TypeDesc Type="Refnum" RefType="UsrDefTagFlt" Ident="Generic Tag Thing" FirstClient="0" TypeName="" Format="inline" Label="no image"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Tag" Prop1="0xFFFFFFFF" TagType="UserDefined" Format="inline"><Ident />
+        <LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc><TypeDesc Type="Refnum" RefType="UsrDefTagFlt" Ident="Generic Tag Thing" FirstClient="0" TypeName="" Format="inline" Label="no image"><LVVariant Index="0" HasVarItem2="1" VarType2="0" Version="auto">
+          <DataType Index="0" Type="Void" Format="inline" />
+          </LVVariant>
+        </TypeDesc></types><heap><SL__arrayElement class="term" uid="4284">
+            <objFlags>131136</objFlags>
+            <dco class="bDConstDCO" uid="4282">
+              <typeDesc>TypeID(22)</typeDesc>
+              <dsw>4096</dsw>
+              <ddo class="stdRefNum" uid="4210">
+                <objFlags>8196</objFlags>
+                <bounds>(246, 177, 264, 262)</bounds>
+                <partsList elements="3">
+                  <SL__arrayElement class="label" uid="4281">
+                    <objFlags>1507650</objFlags>
+                    <partID>16</partID>
+                    <masterPart>8017</masterPart>
+                    <howGrow>4096</howGrow>
+                    <bounds>(1, 0, 16, 51)</bounds>
+                    <image class="Image">
+                      <ImageResID>-619</ImageResID>
+                      </image>
+                    <fgColor>01000000</fgColor>
+                    <bgColor>01000000</bgColor>
+                    <textRec class="textHair">
+                      <mode>82948</mode>
+                      <text>"no image"</text>
+                      <bgColor>01000000</bgColor>
+                      <fr elements="1">
+                        <SL__arrayElement class="fontRun">
+                          <fontid>1</fontid>
+                          </SL__arrayElement>
+                        </fr>
+                      </textRec>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="stdTag" uid="4273">
+                    <objFlags>2068</objFlags>
+                    <partID>8017</partID>
+                    <howGrow>240</howGrow>
+                    <bounds>(0, 51, 18, 85)</bounds>
+                    <partsList elements="5">
+                      <SL__arrayElement class="multiCosm" uid="4275">
+                        <objFlags>2362</objFlags>
+                        <partID>79</partID>
+                        <masterPart>9</masterPart>
+                        <howGrow>194</howGrow>
+                        <bounds>(1, 22, 17, 33)</bounds>
+                        <fgColor>007F007F</fgColor>
+                        <bgColor>00FFFFFF</bgColor>
+                        <table elements="2">
+                          <SL__arrayElement class="Image">
+                            <ImageResID>-377</ImageResID>
+                            </SL__arrayElement>
+                          <SL__arrayElement class="Image">
+                            <ImageResID>-378</ImageResID>
+                            </SL__arrayElement>
+                          </table>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="selLabel" uid="4276">
+                        <objFlags>3541298</objFlags>
+                        <partID>11</partID>
+                        <masterPart>9</masterPart>
+                        <howGrow>240</howGrow>
+                        <bounds>(1, 11, 16, 21)</bounds>
+                        <image class="Image">
+                          <ImageResID>-11</ImageResID>
+                          </image>
+                        <fgColor>01000000</fgColor>
+                        <bgColor>00FFFFFF</bgColor>
+                        <textRec class="textHair">
+                          <mode>8406020</mode>
+                          <bgColor>00FFFFFF</bgColor>
+                          </textRec>
+                        <nVisItems>10</nVisItems>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="cosm" uid="4277">
+                        <objFlags>3378</objFlags>
+                        <partID>43</partID>
+                        <masterPart>9</masterPart>
+                        <howGrow>4108</howGrow>
+                        <bounds>(2, 3, 16, 10)</bounds>
+                        <image class="Image">
+                          <ImageResID>-683</ImageResID>
+                          </image>
+                        <fgColor>007F007F</fgColor>
+                        <bgColor>007F007F</bgColor>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="cosm" uid="4278">
+                        <objFlags>2323</objFlags>
+                        <partID>9</partID>
+                        <howGrow>240</howGrow>
+                        <bounds>(0, 0, 18, 34)</bounds>
+                        <image class="Image">
+                          <ImageResID>-17</ImageResID>
+                          </image>
+                        <fgColor>007F007F</fgColor>
+                        <bgColor>00FFFFFF</bgColor>
+                        </SL__arrayElement>
+                      <SL__arrayElement class="annex" uid="4279">
+                        <partID>66</partID>
+                        <rsrcID>3456</rsrcID>
+                        </SL__arrayElement>
+                      </partsList>
+                    <typeDesc>TypeID(23)</typeDesc>
+                    <MouseWheelSupport>3</MouseWheelSupport>
+                    <selLabFlags>23</selLabFlags>
+                    <selLabData>5</selLabData>
+                    <tagType>5</tagType>
+                    <variantIndex>8</variantIndex>
+                    <tagDLLPath />
+                    <tagDLLName>[NULL]</tagDLLName>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="annex" uid="4280">
+                    <partID>66</partID>
+                    <rsrcID>3455</rsrcID>
+                    </SL__arrayElement>
+                  </partsList>
+                <typeDesc>TypeID(24)</typeDesc>
+                <MouseWheelSupport>0</MouseWheelSupport>
+                </ddo>
+              <ConstValue>0000000000000000000000000000000100000000</ConstValue>
+              </dco>
+            </SL__arrayElement>
+          </heap><strs><Section Index="8" Format="inline">
+      <LVVariant HasVarItem2="1" VarType2="0" Version="auto">
+        <DataType Index="0" Type="Void" Format="inline" />
+        <Attributes>
+          <LVVariant Name="displayFilter" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="NumUInt32" Prop1="0" Format="inline" />
+            <DataFill>
+              <U32>1</U32>
+              </DataFill>
+            </LVVariant>
+          <LVVariant Name="typeClass" HasVarItem2="1" VarType2="0" Version="auto">
+            <DataType Index="0" Type="String" Prop1="0xFFFFFFFF" Format="inline" />
+            <DataFill>
+              <String>Generic Tag Thing</String>
+              </DataFill>
+            </LVVariant>
+          </Attributes>
+        <DataFill>
+          <Void />
+          </DataFill>
+        </LVVariant>
+      </Section></strs></part>

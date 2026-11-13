@@ -1431,8 +1431,7 @@ class TDObjectTag(TDObject):
             for subelem in td_elem:
                 if (subelem.tag == "Ident"):
                     identStr = subelem.text
-                    if identStr is not None:
-                        self.ident = identStr.encode(self.vi.textEncoding)
+                    self.ident = (identStr or "").encode(self.vi.textEncoding)
                 elif (subelem.tag == "LVVariant"):
                     i = int(subelem.get("Index"), 0)
                     obj = LVVariant(i, self.vi, self.blockref, self.po)

@@ -1103,7 +1103,7 @@ class RefnumCallback(RefnumBase_RCIOOMId):
         return exp_whole_len
 
 
-class RefnumUsrDefTagFlt(RefnumBase_RCIOOMId):
+class RefnumUsrDefTagFlt(RefnumUsrDefined):
     """ User Defined Tag Flatten Refnum Connector
 
     Usage unknown.

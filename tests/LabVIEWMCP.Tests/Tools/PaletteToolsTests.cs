@@ -387,7 +387,8 @@ public class PaletteToolsTests : IDisposable
     public void RealInstallationYieldsVisAndExcludesPrimitives()
     {
         PaletteIndex.Result index;
-        try { index = PaletteIndex.Build(); }
+        // a fresh scan: a disk cache written by an older build would test that build, not this one
+        try { index = PaletteIndex.Build(refresh: true); }
         catch { return; }        // no LabVIEW here; the suite must not require one
 
         Assert.True(index.PaletteFilesScanned > 100,
@@ -406,11 +407,169 @@ public class PaletteToolsTests : IDisposable
         // therefore SHADOW a primitive's name, and a Call to it hits the VI, not the function.
         // The exclusion is a property of the parser, covered by OnlyBareViNamesQualify and
         // NonViEntriesAreIgnored above; here only the entry shape can be checked.
+        // An extension-less name is admitted only from an .llb container FILE (NI Vision's); the
+        // stand-ins for primitives in vi.lib\dlg_ctls.llb (a FOLDER) must stay out.
+        Assert.DoesNotContain("Machine Epsilon", names);
+        Assert.DoesNotContain("Start Asynchronous Call", names);
         Assert.All(index.Vis, vi =>
         {
-            Assert.True(PaletteIndex.IsViName(vi.Name), $"not a bare VI name: {vi.Name}");
+            Assert.True(PaletteIndex.IsViName(vi.Name) || !vi.Name.Contains('.'),
+                $"not a bare VI name: {vi.Name}");
             Assert.False(string.IsNullOrWhiteSpace(vi.PaletteFile));
         });
+
+        // FFT's palette names NI_AALPro.lvlib as its container; the bare name is refused as a Call.
+        var fft = index.Vis.SingleOrDefault(v => v.Name == "FFT.vi");
+        if (fft is not null) Assert.Equal("NI_AALPro.lvlib:FFT.vi", fft.CallTarget);
+    }
+
+    // ---------- containers: libraries, .llb files ----------
+
+    /// <summary>A palette whose item list is followed by PTH0 records naming its containers,
+    /// laid out as a real .mnu: items first, then each PTH0 (size, type, count, components).</summary>
+    private string WritePaletteWithContainers(string relative, string[] items, params string[][] containers)
+    {
+        var bytes = new List<byte>(Pascal(items));
+        foreach (var comps in containers)
+        {
+            var body = new List<byte> { 0, 0, (byte)(comps.Length >> 8), (byte)comps.Length };
+            foreach (var c in comps)
+            {
+                body.Add((byte)c.Length);
+                body.AddRange(Encoding.ASCII.GetBytes(c));
+            }
+            bytes.AddRange("PTH0"u8.ToArray());
+            bytes.AddRange(new byte[] { 0, 0, 0, (byte)body.Count });
+            bytes.AddRange(body);
+        }
+        var path = Path.Combine(_root, "menus", relative.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, bytes.ToArray());
+        return path;
+    }
+
+    private void WriteFile(string relative, byte[] content)
+    {
+        var path = Path.Combine(_root, relative.Replace('/', Path.DirectorySeparatorChar));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, content);
+    }
+
+    [Fact]
+    public void AMemberOfALibraryContainerIsQualifiedWithIt()
+    {
+        // antransform.mnu: FFT.vi, container <vilib>\Analysis\NI_AALPro.lvlib (2026-11-13)
+        WriteFile("vi.lib/Analysis/NI_AALPro.lvlib", Encoding.UTF8.GetBytes(
+            "<?xml version='1.0' encoding='UTF-8'?><Library LVVersion=\"26008000\">" +
+            "<Item Name=\"Transforms\" Type=\"Folder\">" +
+            "<Item Name=\"FFT.vi\" Type=\"VI\" URL=\"/&lt;vilib&gt;/Analysis/2dsp.llb/FFT.vi\"/>" +
+            "</Item></Library>"));
+        WritePaletteWithContainers("Categories/antransform.mnu", ["FFT.vi", "DCT.vi"],
+            ["<vilib>", "Analysis", "NI_AALPro.lvlib"]);
+
+        var index = PaletteIndex.Build(_root, refresh: true);
+
+        Assert.Equal("NI_AALPro.lvlib:FFT.vi", index.Vis.Single(v => v.Name == "FFT.vi").CallTarget);
+        Assert.Null(index.Vis.Single(v => v.Name == "DCT.vi").Target);   // not a member: bare, as before
+        var text = PaletteTools.PaletteIndexTool("FFT", installRoot: _root);
+        Assert.Contains("NI_AALPro.lvlib:FFT.vi", text);
+    }
+
+    [Fact]
+    public void AVIInADirectoryContainerGetsTheLibraryThatListsIt()
+    {
+        // OpenG: picture.llb is a folder; openg_picture.lvlib lists the file by a relative URL
+        WriteFile("user.lib/_OpenG.lib/picture/picture.llb/Draw Image from File__ogtk.vi", [1]);
+        WriteFile("user.lib/_OpenG.lib/picture/openg_picture.lvlib", Encoding.UTF8.GetBytes(
+            "<Library><Item Name=\"Draw Image from File__ogtk.vi\" Type=\"VI\" " +
+            "URL=\"../picture.llb/Draw Image from File__ogtk.vi\"/></Library>"));
+        WritePaletteWithContainers("Categories/OpenG/picture.mnu", ["Draw Image from File__ogtk.vi"],
+            ["<userlib>", "_OpenG.lib", "picture", "picture.llb"]);
+
+        var index = PaletteIndex.Build(_root, refresh: true);
+
+        Assert.Equal("openg_picture.lvlib:Draw Image from File__ogtk.vi",
+            Assert.Single(index.Vis).CallTarget);
+    }
+
+    [Fact]
+    public void AnExtensionLessMemberOfAnLlbFileIsListedByItsOwnName()
+    {
+        // NI Vision: Management.mnu lists `IMAQ Create` and names <vilib>\vision\Basics.llb, a
+        // container FILE whose member carries no extension
+        var llb = new List<byte>("RSRC\r\n\0\u0003LVARLBVW"u8.ToArray());
+        llb.Add(11); llb.AddRange(Encoding.ASCII.GetBytes("IMAQ Create"));
+        WriteFile("vi.lib/vision/Basics.llb", llb.ToArray());
+        WritePaletteWithContainers("Categories/Management.mnu", ["IMAQ Create", "IMAQ Missing"],
+            ["<vilib>", "vision", "Basics.llb"]);
+
+        var index = PaletteIndex.Build(_root, refresh: true);
+
+        Assert.Equal("IMAQ Create", Assert.Single(index.Vis).CallTarget);
+    }
+
+    [Fact]
+    public void ARelativeContainerIsThePalettesOwnFolder()
+    {
+        // vi.lib\Bit Manipulation\type assertion\dir.mnu: PTH0 [''] - the folder it sits in
+        WriteFile("vi.lib/Bit Manipulation/type assertion/Assert 16-bit.vim", [1]);
+        WriteFile("vi.lib/Bit Manipulation/NI_Bit Manipulation.lvlib", Encoding.UTF8.GetBytes(
+            "<Library><Item Name=\"Assert 16-bit.vim\" Type=\"VI\" " +
+            "URL=\"/&lt;vilib&gt;/Bit Manipulation/type assertion/Assert 16-bit.vim\"/></Library>"));
+        WritePaletteWithContainers("Categories/BitAssert.mnu", ["Assert 16-bit.vim"], [""]);
+        // the palette lives under menus here; move it beside its VIs as the real one does
+        var mnu = Path.Combine(_root, "vi.lib", "Bit Manipulation", "type assertion", "dir.mnu");
+        File.Move(Path.Combine(_root, "menus", "Categories", "BitAssert.mnu"), mnu);
+        WritePalette("x.mnu", "Something.vi");
+
+        var index = PaletteIndex.Build(_root, refresh: true);
+
+        Assert.Equal("NI_Bit Manipulation.lvlib:Assert 16-bit.vim",
+            index.Vis.Single(v => v.Name == "Assert 16-bit.vim").CallTarget);
+    }
+
+    [Fact]
+    public void AClassMemberGetsItsLibraryAndClassChain()
+    {
+        // Report Generation: a palette VI listed by NI_report.lvclass, which a library lists
+        WriteFile("vi.lib/Utility/NIReport.llb/Append Report Text.vi", [1]);
+        WriteFile("vi.lib/Utility/NIReport.llb/NI_report.lvclass", Encoding.UTF8.GetBytes(
+            "<LVClass><Item Name=\"Append Report Text.vi\" Type=\"VI\" URL=\"../Append Report Text.vi\"/></LVClass>"));
+        WriteFile("vi.lib/Utility/NI_ReportGenerationCore.lvlib", Encoding.UTF8.GetBytes(
+            "<Library><Item Name=\"NI_report.lvclass\" Type=\"LVClass\" URL=\"../NIReport.llb/NI_report.lvclass\"/></Library>"));
+        WritePaletteWithContainers("Categories/report.mnu", ["Append Report Text.vi"],
+            ["<vilib>", "Utility", "NIReport.llb"]);
+
+        var index = PaletteIndex.Build(_root, refresh: true);
+
+        Assert.Equal("NI_ReportGenerationCore.lvlib:NI_report.lvclass:Append Report Text.vi",
+            Assert.Single(index.Vis).CallTarget);
+    }
+
+    [Fact]
+    public void AMemberOfAClassContainerIsQualifiedWithIt()
+    {
+        // plat-nireport.mnu names the CLASS file itself as its container
+        WriteFile("vi.lib/Utility/NIReport.llb/NI_report.lvclass", Encoding.UTF8.GetBytes(
+            "<LVClass><Item Name=\"Append Report Text.vi\" Type=\"VI\" " +
+            "URL=\"/&lt;vilib&gt;/Utility/NIReport.llb/Append Report Text.vi\"/></LVClass>"));
+        WritePaletteWithContainers("Categories/plat-nireport.mnu", ["Append Report Text.vi"],
+            ["<vilib>", "Utility", "NIReport.llb", "NI_report.lvclass"]);
+
+        var index = PaletteIndex.Build(_root, refresh: true);
+
+        Assert.Equal("NI_report.lvclass:Append Report Text.vi", Assert.Single(index.Vis).CallTarget);
+    }
+
+    [Fact]
+    public void AnExtensionLessFileInAnLlbFolderIsNotListed()
+    {
+        // vi.lib\dlg_ctls.llb\Machine Epsilon: a real VI, but the stand-in for a primitive
+        WriteFile("vi.lib/dlg_ctls.llb/Machine Epsilon", "RSRC\r\n\0\u0003LVINLBVW"u8.ToArray());
+        WritePaletteWithContainers("Categories/annumeric.mnu", ["Machine Epsilon"],
+            ["<vilib>", "dlg_ctls.llb"]);
+
+        Assert.Empty(PaletteIndex.Build(_root, refresh: true).Vis);
     }
 
     // ---------- .mnu files that live OUTSIDE any menus folder ----------

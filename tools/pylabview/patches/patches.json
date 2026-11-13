@@ -187,6 +187,22 @@
       "replace": "        tagParse = re.match(r\"^[(]([0-9A-Fx]+)[)](\\\".*\\\")?$\", tagText, re.MULTILINE|re.DOTALL)\r\n        if tagParse is not None:\r\n            count = int(tagParse.group(1), 0)\r\n        if count is None:\r\n            raise AttributeError(\"Tag '{}' of Class '{}' has content with no string list length\"\\\r\n",
       "why": "HeapNodeStringList.prepareContentXML writes an EMPTY list as `(0)` - no quoted string after the count - and initContentWithXML then refuses exactly that text ('has content with no string list length'), because its first pattern demands at least one quoted string. So pylabview cannot read back its own export of a text ring with no items, and a VI holding one fails every extract/rebuild round trip. The second pattern already matches `(0)` with zero groups and updateContent writes empty content for it. Measured 2026-11-08 in a reader+composer sweep of vi.lib: Test Fuzzy Control.vi (fuzzy logic.llb), whose `error ring` has items filled at run time by a Property Node; patched, it rebuilds.",
       "upstream": "not reported yet; the reader of a string list does not accept the writer's own empty form."
+    },
+    {
+      "id": "usrdeftagflt-type-name",
+      "file": "pylabview/LVdatatyperef.py",
+      "find": "class RefnumUsrDefTagFlt(RefnumBase_RCIOOMId):\r\n    \"\"\" User Defined Tag Flatten Refnum Connector\r\n",
+      "replace": "class RefnumUsrDefTagFlt(RefnumUsrDefined):\r\n    \"\"\" User Defined Tag Flatten Refnum Connector\r\n",
+      "why": "A User Defined Tag Flatten refnum (RefType 29) carries the same OMId layout as a User Defined Tag refnum (21): ident string, firstclient, client index, and then a SECOND padded string, the type name. Upstream derives it from RefnumBase_RCIOOMId and stops after the client index, so the type name is read as the start of the LVVariant that follows ('TypeDesc -1 type 0x70 RefType 29 data size 60, expected 34'), the enclosing typedef fails its sanity check, and the next numeric TD is left with prop1 None - readRSRC then dies with \"unsupported operand type(s) for &: 'NoneType' and 'int'\" and extracts NOTHING. The IMAQ Image refnum of NI Vision is this type: bytes 09 'IMAQImage' 00 | 0001 | 000c | 09 'IMAQImage' 00, then the variant 2300 8000 ... exactly as a UsrDefndTag 'IMAQdx' session refnum carries it. Measured 2026-11-13 on the NI-IMAQdx examples of LabVIEW 2026: 4 of 5 sampled VIs failed with this cause; patched, Acquire Every Image.vi extracts with no TypeDesc warning. Deriving from RefnumUsrDefined also gives the XML a TypeName attribute and reads it back, so the round trip carries it.",
+      "upstream": "not reported yet. Remove this entry once upstream reads the type name - the Find spans the class line his fix would change, so provision fails loudly rather than stacking."
+    },
+    {
+      "id": "tag-empty-ident",
+      "file": "pylabview/LVdatatype.py",
+      "find": "                    identStr = subelem.text\r\n                    if identStr is not None:\r\n                        self.ident = identStr.encode(self.vi.textEncoding)\r\n",
+      "replace": "                    identStr = subelem.text\r\n                    self.ident = (identStr or \"\").encode(self.vi.textEncoding)\r\n",
+      "why": "A Tag type descriptor whose Ident is the EMPTY string is exported as <Ident /> - ElementTree reads its text as None - and read back with ident None, so the rebuild dies in prepareRSRCData: `strlen = len(self.ident)` -> \"object of type 'NoneType' has no len()\". NI Vision's IMAQ Image refnum carries exactly such a tag (its User Defined Tag Flatten refnum names it as its client). It only became reachable with usrdeftagflt-type-name: before that, no VI holding an IMAQ Image extracted at all. Measured 2026-11-13 on Acquire Single Image (Snap).vi of the NI-IMAQdx examples: extract, rebuild failed with that error; patched, the rebuild goes through.",
+      "upstream": "not reported yet. Remove this entry once upstream maps an empty <Ident /> to b'' - the Find spans the two lines such a fix rewrites."
     }
   ]
 }

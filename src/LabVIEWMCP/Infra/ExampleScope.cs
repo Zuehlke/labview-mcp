@@ -41,8 +41,8 @@ namespace LabVIEWMcp.Infra;
 /// object-oriented example whose class is named FPGAChip, and it missed `Scan Engine.lvproj`,
 /// which really does declare an `RT Generic` target and says so nowhere in its path.
 ///
-/// DAQmx is deliberately treated as always present. That is the user's call for this environment,
-/// not something derived - it is the one driver assumed installed everywhere here.
+/// DAQmx and NI-IMAQdx are deliberately treated as always present. That is the user's call for this
+/// environment, not something derived - they are the drivers assumed installed everywhere here.
 /// </summary>
 internal static class ExampleScope
 {
@@ -50,8 +50,14 @@ internal static class ExampleScope
     /// Add-on directories under %ProgramFiles%\NI\LVAddons whose examples still count as plain
     /// LabVIEW. Matched as a prefix, because the same add-on installs as `nidaqmx`, `nidaqmx32`
     /// and `nidaqmx64`.
+    ///
+    /// `niimaqdx` (NI-IMAQdx, Vision Acquisition) joined DAQmx on 2026-11-13, the user's call when
+    /// IMAQ support was taken up: with it out of scope all 37 of its examples were held back by
+    /// default and "IMAQdx Snap" answered "No example matches". An IMAQdx example that also needs
+    /// the Vision Development Module still says so through its description (signal 2) - "Rolling
+    /// Image Average" stays out.
     /// </summary>
-    private static readonly string[] AssumedInstalled = ["nidaqmx"];
+    private static readonly string[] AssumedInstalled = ["nidaqmx", "niimaqdx"];
 
     /// <summary>
     /// Null when the example runs on a plain LabVIEW installation; otherwise what else it needs,

@@ -26,9 +26,11 @@ internal sealed class PaletteTools
         a library member by its qualifier, a loose vi.lib/user.lib VI by bare name, an `.llb`
         member either way. Project-local code does not resolve unless loaded. Settle a target with a
         throwaway lvai_validate_aixml. lvai_aixml_reference section 9.
-        A HIT PRINTS THE BARE NAME: a library-owned VI needs its `lvlib:` qualifier
-        (`openg_picture.lvlib:Draw Image from File__ogtk.vi`), which neither the name nor the palette
-        path shows - export a VI that calls it, or validate both spellings in one document.
+        A HIT PRINTS THE CALL TARGET: qualified where the palette or a library names the owner
+        (`NI_AALPro.lvlib:FFT.vi`), extension-less for NI Vision's .llb members (`IMAQ Create`).
+        A BARE `.vi` hit may still be library-owned where neither says so - a bare-name refusal
+        then means find the qualifier, never rebuild. Many analysis VIs are POLYMORPHIC: read
+        the instance with lvai_vi_terminals before writing the Call.
         BUILT-IN FUNCTIONS ARE NOT LISTED: a primitive is a `Node`, and its palette label is not its
         AIXML name. For a whole working diagram use lvai_example_index.
         No query: totals plus scan locations. query: matching VIs with their palette.
@@ -73,9 +75,8 @@ internal sealed class PaletteTools
 
         if (string.IsNullOrWhiteSpace(query))
             return header + Environment.NewLine +
-                   "Pass a query to look one up, e.g. query='Error Handler'. A vi.lib utility is a " +
-                   "legal `Call` target under the bare name printed here; one owned by a palette " +
-                   "library needs its `lvlib:` qualifier, which a .mnu does not record." +
+                   "Pass a query to look one up, e.g. query='Error Handler'. Each hit prints its " +
+                   "`Call` target, qualified with its `lvlib:` where the owner is known." +
                    Environment.NewLine +
                    "Built-in functions are not listed; they are `Node` elements, not Calls.";
 
@@ -87,7 +88,7 @@ internal sealed class PaletteTools
         // narrow a query - 'file read' now reaches file.mnu.
         var words = Search.Words(query);
         var matches = index.Vis
-            .Where(v => Search.MatchesAll(words, v.Name, v.PaletteFile))
+            .Where(v => Search.MatchesAll(words, v.CallTarget, v.PaletteFile))
             .ToList();
 
         if (matches.Count == 0)
@@ -104,15 +105,17 @@ internal sealed class PaletteTools
         var sb = new StringBuilder($"{matches.Count} of {index.Vis.Count} match \"{query}\":");
         sb.AppendLine();
         foreach (var vi in matches.Take(limit))
-            sb.AppendLine($"  {vi.Name}\t{vi.PaletteFile}");
+            sb.AppendLine($"  {vi.CallTarget}\t{vi.PaletteFile}");
         if (matches.Count > limit)
             sb.AppendLine($"  ... {matches.Count - limit} more; narrow the query or raise limit");
 
-        // The names above are palette ITEM names. For a library-owned VI the Call target is the
-        // qualified form, and saying nothing here is what makes a callable VI look uncallable.
-        sb.AppendLine("These are palette item names. If the VI belongs to a palette library the " +
-                      "`Call` target is `<library>.lvlib:<name>` - the bare name is refused, and " +
-                      "the qualifier is not in the .mnu.");
+        // A bare name refused by validation used to read as "not callable" and sent generators off
+        // to rebuild FFT from primitives; say what the refusal really means.
+        sb.AppendLine("These are `Call` targets - qualified (`<library>.lvlib:<name>`) where the " +
+                      "owner is known. A bare `.vi` refused as Unsupported SubVI is most likely a " +
+                      "library member whose owner was not found: get the qualifier (lvai_vi_terminals " +
+                      "on its file, or an export of a VI that calls it), do not rebuild it. A " +
+                      "polymorphic VI needs `instance` and `adapt` - lvai_vi_terminals prints both.");
 
         return sb.ToString().TrimEnd();
     }

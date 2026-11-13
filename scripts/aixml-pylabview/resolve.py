@@ -320,10 +320,14 @@ def _carries(container, name):
             data = fh.read()
     except OSError:
         return False
+    # CASE-INSENSITIVE, as LabVIEW resolves names: NI's export of the IMAQdx examples calls
+    # `Imaq Dispose`, and Basics.llb carries the member as `IMAQ Dispose` - an exact byte search
+    # answered "neither near the caller nor in the installation" (2026-11-13)
+    data = data.lower()
     try:
-        return name.encode("mac_roman") in data
+        return name.lower().encode("mac_roman") in data
     except UnicodeEncodeError:
-        return name.encode("utf-8", "ignore") in data
+        return name.lower().encode("utf-8", "ignore") in data
 
 
 def relative_ref(from_file, to_path):
