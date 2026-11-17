@@ -842,7 +842,7 @@ happens, and say what the old text claimed.
 
 The server converts AIXML two ways: NI's gRPC service (`grpc`, the default) and our own pylabview
 composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAULT
-(`"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json`, overridden by `LABVIEWMCP_AIXML_BACKEND` and `--aixml-backend`); you do not pick one on your own. **A LabVIEW
+(pylabview unless `LABVIEWMCP_AIXML_BACKEND` or `--aixml-backend` names another); you do not pick one on your own. **A LabVIEW
 OLDER than 2026 in use makes `pylabview` the default by itself** - and there every compose WARNS
 (`versionWarning`): the VI carries the composer's LabVIEW 2026 version stamp, which an older
 LabVIEW may refuse to open - not measured. It is still written; quote the warning in your

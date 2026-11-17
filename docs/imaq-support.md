@@ -151,3 +151,39 @@ cause above (it had worked round it on gRPC; the VI is regenerated on pylabview 
 results), and the Report agent showed that a palette whose container is a CLASS
 (`plat-nireport.mnu` names `NI_report.lvclass`) gave bare hits - `PaletteIndex` reads `.lvclass`
 containers like `.lvlib` ones now.
+
+## 8. The Image Display (2026-11-17)
+
+User feedback: "it cannot create a vision image front panel indicator ... it created a 2D picture
+control and is drawing bounding boxes and text in there directly". The plain IMAQ Image refnum
+control shows the image's name only; NI's Image Display - the panel object that draws the image,
+with its zoom and ROI tools - was out of reach.
+
+**How to ask for it:** `style="Image Display"` (or `Image Display (Classic)`, `Image Display
+(Silver)`) on a `ref{GenClassTagFlatten.IMAQImage.IMAQImage}` control or indicator. Boxes and text
+go into the image's overlay with the IMAQ Overlay VIs (Overlay.llb, NI Vision Common).
+
+**How it is built:** the composer writes the plain refnum and reports `imageDisplay
+<label>|<ctl>`; `lvai_generate_vi`'s step `imageDisplay` replaces the control with NI's `.ctl`
+(`vi.lib\vision\Image Display Controls.llb`) through `{LV.Control} Replace` and saves
+(`scripts/lvai_replace_image_display.xml`). The result is the object LabVIEW itself drops from the
+Vision palette: a `plugInDDO` of class `ImageControl` from `nivision.dll`, typed `IMAQ Image.ctl`.
+
+**Why not compose the display directly** - measured, each step on its own:
+
+| try | result |
+|---|---|
+| the display's part, harvested from NI's Snap example, every object, type, image and plug-in field identical to the donor's | panel not loadable (`Cannot load front panel`, "Going from good to bad after compiling") |
+| the same with the refnum in the examples' shape (FirstClient 1, client Tag) | the same |
+| with image deduplication off | the same |
+| with NI's `IMAQ Image.ctl` typedef kept as the display's type | not loadable at all (`load error code 1`) |
+| NI's Snap round-tripped through pylabview, the display's type swapped for the plain refnum | **executable** - so neither the typedef nor pylabview's writing is the cause |
+| composed with the plain refnum, then `{LV.Control} Replace` with `Image Display.ctl` + `Save.Instrument` | **executable, runs** (width 4, height 3 for a 3 x 4 array), still source only |
+
+What makes LabVIEW refuse the composed plug-in object was not found; the Replace makes it moot.
+
+**Two general findings on the way:** an MNGI section pylabview could not decode is kept RAW
+(`Format="bin"`), and the composer wrote every MNGI section back as a PNG, which pylabview's PIL
+then refused - it writes each in the form it came in now. The reader writes `style="Image
+Display"` for NI's display, so examples keep it through a round trip (which of NI's three looks is
+not read - it comes back as the plain one).

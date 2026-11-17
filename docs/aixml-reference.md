@@ -2532,6 +2532,24 @@ Note the difference from an enum, which encodes its labels inside the *type*
 (`uint8{Label A,Label B}`, §5): a Ring keeps `type` plain and lists the labels separately,
 because its values need not be consecutive.
 
+### An IMAQ Image that SHOWS the image: `style="Image Display"`
+
+An IMAQ Image control or indicator, `type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}"`, is by
+default the plain refnum control - it shows the image's NAME, not its pixels. For NI Vision's
+Image Display (zoom, ROI tools, overlays drawn by IMAQ Overlay ...) add the style:
+
+```xml
+<Indicator _name="Image" inputs="value:4203.Image Out" style="Image Display"
+           type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}" uid="4205" uid_parent="root" value=""/>
+```
+
+`Image Display (Classic)` and `Image Display (Silver)` are NI's other two looks. **pylabview only**:
+the composer writes the plain refnum and `lvai_generate_vi` replaces it with NI's `.ctl` from
+`vi.lib\vision\Image Display Controls.llb` (step `imageDisplay`), so it needs a running LabVIEW and
+NI Vision Common. NI's export carries no style for the display; our reader writes this one. Draw
+boxes and text into the image with the IMAQ Overlay VIs rather than a 2D Picture. Measured
+2026-11-17, `t214_imaq_image_display`; docs/imaq-support.md.
+
 ### A waveform indicator is not a graph, and a wrong `style` is dropped in silence
 
 `type="doublewaveform"` alone produces the **cluster** display — t0, dt and the Y array as

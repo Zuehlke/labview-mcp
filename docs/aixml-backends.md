@@ -53,48 +53,26 @@ Highest wins:
 | 1 | `backend` argument of the call | `call` |
 | 2 | `--aixml-backend <grpc\|pylabview\|auto>` on the server's command line | `--aixml-backend` |
 | 3 | `LABVIEWMCP_AIXML_BACKEND` in the server's environment (same three values) | `LABVIEWMCP_AIXML_BACKEND` |
-| 4 | **`"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json`** - THE place to choose | `settings file <path>` |
-| 5 | nothing set | `default` (**pylabview**, since 2026-11-05) |
+| 4 | nothing set | `default` (**pylabview**, since 2026-11-05) |
 
 **pylabview is the default on every LabVIEW - the user's decision of 2026-11-05.** Before it, an
 omitted backend was grpc, and pylabview only on a LabVIEW older than 2026 (the rule of 2026-10-12,
 which the new default covers and replaces).
 
-**The settings file is the user's decision of 2026-10-13: the choice is an entry that is ALWAYS in
-a file, with every allowed value and what it means written beside it.** The server creates the file
-on its first start - with `"aixmlBackend": "pylabview"` and `"setDefaultDone": true` - and otherwise
-rewrites it ONCE (below), so an edit and its comments stay. It is read on EVERY call (cached by
-content), so a change takes effect without a restart. The comments are JSON comments, read with
-comments skipped:
+**`auto` - in the flag or the variable - makes NO choice**, so the default decides. An unknown value
+is REFUSED by name. `pylv_status` shows the default in force and where it came from.
 
-```jsonc
-{
-  //   "pylabview"  The DEFAULT. Our own composer and reader (scripts\aixml-pylabview). Needs NO NI service ...
-  //   "grpc"       NI's AI service inside LabVIEW (Nigel). ...
-  //   "auto"       The server's default - today "pylabview".
-  "aixmlBackend": "pylabview",
-  "setDefaultDone": true
-}
-```
-
-**The one-time switch (`setDefaultDone`).** An EXISTING file whose `setDefaultDone` is not `true`
-- every installation from before 2026-11-05 - is switched at the next server start:
-`"aixmlBackend"` becomes `"pylabview"` whatever it said, `"setDefaultDone": true` is added, the old
-template's comment promising grpc for `auto` is reworded, and everything else (comments,
-`labviewExe`, `labviewPref`) stays. The old file is kept as `settings.json.bak`, and the server logs
-one `info:` line to stderr. From then on the marker stops it: a user who sets `"grpc"` afterwards
-keeps it. A file that does not parse is left alone (the resolver refuses it by name anyway).
-`ServerSettings.MigrateDefaultOnce`, tested in `ServerSettingsMigrationTests`.
-
-It lives beside the cache under `%USERPROFILE%` rather than beside the exe: a plugin update replaces
-the exe's folder and would take the choice with it, and `%LOCALAPPDATA%` is redirected for a server
-the desktop app starts (`CacheDirectory`). `LABVIEWMCP_SETTINGS` points at another file - the test
-suite uses it to read none. **`auto` - in the file, the flag or the variable - makes NO choice**, so
-the default decides. A file that does not parse, an
-entry that is not a string, or a value that is none of the three is REFUSED by name with the
-file's path, like an unknown name anywhere else. Rules 2 and 3 stay as overrides for a host that
-cannot edit the profile (CI, a shared registration); `pylv_status` shows the file's path, whether it
-exists, its entry and the default in force.
+**The settings-file switch is gone (the user's decision of 2026-11-17).** From 2026-10-13 the
+backend was chosen by `"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json`, a file the
+server created at its first start and switched to pylabview once on 2026-11-05 (marker
+`"setDefaultDone"`, old file kept as `settings.json.bak`). The server no longer creates, migrates
+or reads that entry. At every start it REMOVES `aixmlBackend` and `setDefaultDone` from an old
+file (`ServerSettings.RemoveRetiredKeys`, tested in `ServerSettingsCleanupTests`): the other entries
+are written back as plain JSON, a file left with none is deleted, the old file is kept as
+`settings.json.bak`, and one `info:` line goes to stderr. A file that does not parse is left alone.
+A `"grpc"` that was in the file is gone with it - use the flag or the variable instead.
+The file itself stays OPTIONAL, for `labviewExe` and `labviewPref` only (`LabViewContext`);
+`LABVIEWMCP_SETTINGS` points at another one - the test suite uses it to read none.
 
 **The former rule 5 (2026-10-12 to 2026-11-05)** made pylabview the default on a LabVIEW older
 than 2026, even LabVIEW 2025, which HAS NI's service. The default now covers it. "In use" - the
@@ -226,14 +204,13 @@ on an older release are not. The measurement that settles it: compose with the o
 stamp and load the VI there. If a VI does not load, NI's service (`backend: "grpc"`) writes one
 for that station.
 
-The composer as the default is one edit in `%USERPROFILE%\.labviewmcp\settings.json`,
-`"aixmlBackend": "pylabview"`, effective on the next call. The variable still works as an override
-in a server registration, where a file cannot be edited:
+The composer is the default with nothing set. NI's converter as the server default is the variable
+in the server registration (or `--aixml-backend grpc`):
 
 ```json
 "labview": {
   "command": "C:\\...\\LabVIEWMCP.exe",
-  "env": { "LABVIEWMCP_AIXML_BACKEND": "pylabview" }
+  "env": { "LABVIEWMCP_AIXML_BACKEND": "grpc" }
 }
 ```
 

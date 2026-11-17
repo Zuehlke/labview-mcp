@@ -82,6 +82,26 @@ SCALARS = {
         ("single", "Float32"), ("extended", "FloatExt"),
         ("complexsingle", "Complex64"), ("complexextended", "ComplexExt"))},
 }
+# the styles that make an IMAQ Image control NI Vision's IMAGE DISPLAY (a plugInDDO that DRAWS the
+# image, where the plain refnum control shows only its name) - one per control NI ships in
+# vi.lib\vision\Image Display Controls.llb. Written by the reader, accepted by the composer; NI's
+# own export carries no style there.
+#
+# THE COMPOSER DOES NOT BUILD THE DISPLAY ITSELF. Its part, harvested from NI's Acquire Single
+# Image (Snap).vi and placed with every object, type, image and plug-in field identical to the
+# donor's (className ImageControl, nivision.dll, LoadImageControlVTable), composed a VI whose panel
+# LabVIEW refused - `Cannot load front panel` (1013), "Going from good to bad after compiling" -
+# while the same donor round-tripped through pylabview, even with the display's type swapped for the
+# plain refnum, loaded executable (2026-11-17). So the control is composed as the plain IMAQ Image
+# refnum, reported under `imageDisplay` in the report, and lvai_generate_vi REPLACES it with NI's
+# .ctl through {LV.Control} Replace in LabVIEW - which gives exactly the object LabVIEW drops from
+# the Vision palette. Measured: Replace + Save.Instrument on a composed VI, panel object plugInDDO
+# typed IMAQ Image.ctl, still source-only, executable, runs.
+IMAGE_DISPLAY_STYLES = {
+    "Image Display": "Image Display.ctl",
+    "Image Display (Classic)": "Image Display (Classic).ctl",
+    "Image Display (Silver)": "Image Display (Silver).ctl",
+}
 # type key (lvheap.type_key) -> the front-panel class of its object
 DDO_OF_KEY = {v[0]: v[1] for v in SCALARS.values()}
 DDO_OF_KEY.update({"Refnum.LVObjCtl": "stdRefNum", "Refnum.VisaRef": "stdRefNum", "Refnum.UsrDefndTag": "stdRefNum",
@@ -2544,6 +2564,15 @@ class Composer:
                                    % (style, name, force, tree.get("Type")))
                 self._note_degraded(name, style, tree)
                 force = None
+        elif style in IMAGE_DISPLAY_STYLES:
+            # NI Vision's IMAGE DISPLAY (user feedback, 2026-11-17: for want of it an agent drew
+            # bounding boxes into a 2D Picture). Composed as the plain IMAQ Image refnum and
+            # replaced by NI's .ctl afterwards - IMAGE_DISPLAY_STYLES says why
+            if not (tree.get("Type") == "Refnum" and tree.get("RefType") == "UsrDefTagFlt"
+                    and tree.get("Ident") == "IMAQImage"):
+                raise Unsupported("%s %r: style %r needs type ref{GenClassTagFlatten.IMAQImage.IMAQImage}, not %s"
+                                  % (el.tag, name, style, aixml_type))
+            self.report.append("imageDisplay %s|%s" % (name, IMAGE_DISPLAY_STYLES[style]))
         elif style == "latched" and (is_ind or tree.get("Type") != "Boolean"):
             raise Unsupported("%s %r: style latched on a %s %s" % (el.tag, name, "indicator" if is_ind else "control", tree.get("Type")))
         elif style not in (None, "", "latched"):
@@ -11741,10 +11770,15 @@ class Composer:
                         else list(m).index(m.find("FPHb"))
                     m.insert(at, blk)
                 for i, hx in items:
-                    png = kind == "MNGI"
+                    data = bytes.fromhex(hx[len("MNGI:"):] if kind == "MNGI" else hx)
+                    # an MNGI section is a PNG where pylabview could read it, else the raw bytes it
+                    # kept (`Parsing failed for block b'MNGI' ... switched to raw`): written back in
+                    # the form it came in, as PIL refuses the raw ones (the Image Display's toolbar,
+                    # 2026-11-17)
+                    png = kind == "MNGI" and data[:8] == b"\x89PNG\r\n\x1a\n"
                     fn = "%s_%s%d.%s" % (base, kind, i, "png" if png else "bin")
                     with open(os.path.join(out_dir, fn), "wb") as f:
-                        f.write(bytes.fromhex(hx[len("MNGI:"):] if png else hx))
+                        f.write(data)
                     attrs = {"Index": str(i), "PaddingLength": "0", "Format": "png", "File": fn} if png \
                         else {"Index": str(i), "Format": "bin", "File": fn}
                     ET.SubElement(blk, "Section", attrs)

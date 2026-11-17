@@ -82,17 +82,19 @@ if (CommandLine.StringArg(args, AixmlBackend.Flag) is { Length: > 0 } wantedBack
     AixmlBackend.SetFromCommandLine(backendName);
 }
 
-// The settings file carries the backend choice with every allowed value explained beside it - the
-// user's decision of 2026-10-13. Created on the first start, never rewritten: from then on it is
-// the user's file. A profile that cannot be written does not stop the server.
-ServerSettings.EnsureExists();
-
-// Once per file: switch an existing installation to the pylabview default (2026-11-05). The
-// marker setDefaultDone keeps it from ever happening twice; the old file is kept as .bak.
-if (ServerSettings.MigrateDefaultOnce() == ServerSettings.Migration.Migrated)
-    Console.Error.WriteLine(
-        $"info: {ServerSettings.FilePath}: aixmlBackend switched to pylabview once (setDefaultDone); " +
-        "the previous file is settings.json.bak.");
+// The settings file no longer chooses the backend (2026-11-17): drop the retired keys from an old
+// file, keeping labviewExe/labviewPref, and delete a file left empty. The old one stays as .bak.
+switch (ServerSettings.RemoveRetiredKeys())
+{
+    case ServerSettings.Cleanup.Rewritten:
+        Console.Error.WriteLine($"info: {ServerSettings.FilePath}: removed the retired aixmlBackend/setDefaultDone " +
+                                "entries; the previous file is settings.json.bak.");
+        break;
+    case ServerSettings.Cleanup.Deleted:
+        Console.Error.WriteLine($"info: {ServerSettings.FilePath}: held only the retired aixmlBackend/setDefaultDone " +
+                                "entries and was deleted; the previous file is settings.json.bak.");
+        break;
+}
 
 if (CommandLine.HasFlag(args, "--selftest"))
     return await SelfTest.RunAsync(

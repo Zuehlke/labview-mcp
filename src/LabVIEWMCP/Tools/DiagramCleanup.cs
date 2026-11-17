@@ -284,6 +284,96 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
     }
 
     /// <summary>
+    /// NI VISION'S IMAGE DISPLAY on a generated panel (user feedback of 2026-11-17: with only the
+    /// plain IMAQ Image refnum control an agent drew bounding boxes into a 2D Picture instead).
+    /// The AIXML asks for it as <c>style="Image Display"</c> (or <c>(Classic)</c>, <c>(Silver)</c>)
+    /// on a <c>ref{GenClassTagFlatten.IMAQImage.IMAQImage}</c>; the composer writes the plain refnum
+    /// and reports <c>imageDisplay &lt;label&gt;|&lt;ctl&gt;</c>, and this step REPLACES each one with
+    /// NI's .ctl from <c>vi.lib\vision\Image Display Controls.llb</c> through <c>{LV.Control}</c>
+    /// <c>Replace</c>, saving in place. Composing the plug-in object (className ImageControl,
+    /// nivision.dll) directly gave a panel LabVIEW refused to load, every field identical to NI's;
+    /// the Replace gives the object LabVIEW drops from the palette (docs/imaq-support.md).
+    /// </summary>
+    internal const string ImageDisplayHelperFileName = "lvai_replace_image_display.xml";
+
+    /// <summary>The prefix of the composer's report line naming an Image Display to place.</summary>
+    internal const string ImageDisplayReportPrefix = "imageDisplay ";
+
+    /// <summary>(label, .ctl file name) of every Image Display a composer report asks for.</summary>
+    internal static List<(string Label, string Ctl)> ImageDisplaysIn(JsonArray? report) =>
+        report is null ? [] :
+        [.. report.Select(r => r?.GetValue<string>() ?? "")
+                  .Where(r => r.StartsWith(ImageDisplayReportPrefix, StringComparison.Ordinal))
+                  .Select(r => r[ImageDisplayReportPrefix.Length..].Split('|', 2))
+                  .Where(p => p.Length == 2 && p[0].Length > 0)
+                  .Select(p => (p[0], p[1]))];
+
+    /// <summary>Where NI Vision Common keeps its display controls on this station, or null:
+    /// the add-ons LabVIEW loads first, then the installation's own vi.lib.</summary>
+    internal static string? ImageDisplayLlb()
+    {
+        const string relative = @"vi.lib\vision\Image Display Controls.llb";
+        var context = LabViewContext.Resolve();
+        var roots = context.SelectedAddons().Select(a => a.Folder).ToList();
+        if (context.ExePath is { } exe && Path.GetDirectoryName(exe) is { } install) roots.Add(install);
+        return roots.Select(r => Path.Combine(r, relative)).FirstOrDefault(File.Exists);
+    }
+
+    /// <summary>The `imageDisplay` step: every display of <paramref name="displays"/> replaced and
+    /// the VI saved; compiled code a save brought in is stripped again. Never throws for a LabVIEW
+    /// refusal: read `ok`, and `replaced` / `failed` per control.</summary>
+    public async Task<JsonObject> RunImageDisplaysAsync(string viPath, string backend,
+                                                        IReadOnlyList<(string Label, string Ctl)> displays,
+                                                        int timeoutSeconds, CancellationToken ct)
+    {
+        var full = Path.GetFullPath(viPath);
+        var step = new JsonObject { ["step"] = "imageDisplay", ["backend"] = backend };
+        if (backend != AixmlBackend.PyLabview)
+            return Fail(step, "An Image Display is placed after the pylabview composer only; NI's " +
+                              "converter builds the IMAQ Image itself wrongly (docs/imaq-support.md).");
+        if (ImageDisplayLlb() is not { } llb)
+            return Fail(step, "NI Vision Common's Image Display Controls.llb was not found in the add-ons " +
+                              "LabVIEW loads or in its vi.lib - the controls stay plain IMAQ Image refnums.");
+        var (helperVi, problem) = await ComposedHelpers.EnsureAsync(ImageDisplayHelperFileName, timeoutSeconds, ct);
+        if (helperVi is null) return Fail(step, "The Image Display helper could not be composed: " + problem);
+
+        var compiledBefore = BulkTools.ContainsCompiledCode(full);
+        var replaced = new JsonArray();
+        var failed = new JsonArray();
+        foreach (var (label, ctl) in displays)
+        {
+            var run = JsonNode.Parse(await new RunTools(connection).RunViAndReadValuesAsync(
+                helperVi, new JsonObject
+                {
+                    ["vi path"] = full, ["control name"] = label, ["ctl path"] = Path.Combine(llb, ctl),
+                }.ToJsonString(), timeoutSeconds: timeoutSeconds, backend: backend, ct: ct)) as JsonObject;
+            var error = CarayaRunTools.ErrorOut(run?["values"] as JsonObject);
+            if (error?["code"]?.GetValue<int?>() is 0)
+                replaced.Add(new JsonObject { ["control"] = label, ["ctl"] = ctl });
+            else
+                failed.Add(new JsonObject
+                {
+                    ["control"] = label, ["ctl"] = ctl,
+                    ["code"] = error?["code"]?.DeepClone(), ["source"] = error?["source"]?.DeepClone(),
+                });
+        }
+        step["replaced"] = replaced;
+        if (failed.Count > 0) step["failed"] = failed;
+        if (!compiledBefore && BulkTools.ContainsCompiledCode(full))
+            step["compiledCodeStripped"] = await StripCompiledAsync(full, timeoutSeconds, ct);
+        if (failed.Count > 0)
+            return Fail(step, $"{failed.Count} of {displays.Count} Image Display(s) were not placed and " +
+                              "stay plain IMAQ Image refnum controls - read `failed`.");
+        if (BulkTools.ContainsCompiledCode(full) && !compiledBefore)
+            return Fail(step, "The Image Display was placed and LabVIEW's save wrote COMPILED CODE; " +
+                              "stripping it again failed. Read compiledCodeStripped.");
+        step["ok"] = true;
+        step["note"] = $"{replaced.Count} IMAQ Image control(s) replaced with NI Vision's Image Display " +
+                       "and the VI saved in place, source only.";
+        return step;
+    }
+
+    /// <summary>
     /// A DQMH module's Main.vi: named Main.vi, beside the two event clusters every module folder
     /// carries. The DQMH tools never clean up at all; this guards every other route to the same file.
     /// </summary>

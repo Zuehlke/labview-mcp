@@ -1,0 +1,12 @@
+<VI _name="t214_imaq_image_display.vi" description="NI Vision's Image Display indicator (style Image Display on an IMAQ Image), the panel object that draws the image: IMAQ Create, IMAQ ArrayToImage fills it from a 2D U8 array, IMAQ GetImageSize reads it back. The image is NOT disposed, so the display keeps it.">
+  <FreeLabel comment="Fill an image and show it" uid="4299" uid_parent="root"/>
+  <Constant _name="Image Name" outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value="t214"/>
+  <Control _name="Pixels" outputs="value:4201.value" type="array.2{uint8}" uid="4201" uid_parent="root" value="[[0,64,128,255],[255,128,64,0],[32,96,160,224]]"/>
+  <Call inputs="Image Name:4200.value,error in (no error):,Border Size:,Image Type:" outputs="New Image:4202.New Image,error out:4202.error out" target="IMAQ Create" uid="4202" uid_parent="root"/>
+  <Call inputs="Image:4202.New Image,Image Pixels (U8):4201.value,error in (no error):4202.error out,Image Pixels (I16):,Image Pixels (Float):,Image Pixels (U16):" outputs="Image Out:4203.Image Out,error out:4203.error out" target="IMAQ ArrayToImage" uid="4203" uid_parent="root"/>
+  <Call inputs="Image:4203.Image Out,error in (no error):4203.error out" outputs="X Resolution:4204.X Resolution,Y Resolution:4204.Y Resolution,error out:4204.error out" target="IMAQ GetImageSize" uid="4204" uid_parent="root"/>
+  <Indicator _name="Image" inputs="value:4203.Image Out" style="Image Display" type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}" uid="4205" uid_parent="root" value=""/>
+  <Indicator _name="width" inputs="value:4204.X Resolution" type="int32" uid="4206" uid_parent="root" value=""/>
+  <Indicator _name="height" inputs="value:4204.Y Resolution" type="int32" uid="4207" uid_parent="root" value=""/>
+  <Indicator _name="error out" inputs="value:4204.error out" type="cluster{bool.status,int32.code,string.source}" uid="4208" uid_parent="root" value=""/>
+</VI>

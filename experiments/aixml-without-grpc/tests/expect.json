@@ -2432,5 +2432,17 @@
     }
    }
   ]
+ },
+ "t214_imaq_image_display": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "width": 4,
+     "height": 3,
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }
