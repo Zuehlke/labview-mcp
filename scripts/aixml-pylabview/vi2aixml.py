@@ -1324,6 +1324,12 @@ class Reader:
                 self._ring(el, ring, t)
             elif cls == "tableControl":
                 el.set("style", "Table")
+            elif cls == "plugInDDO" and bytes.fromhex(ddo.findtext("className") or "").startswith(b"ImageControl"):
+                # NI Vision's IMAGE DISPLAY (a plug-in object of nivision.dll): NI's export writes
+                # it as a plain IMAQ Image refnum; the style keeps it an Image Display through a
+                # round trip, where lvai_generate_vi places NI's .ctl (2026-11-17). Which of NI's
+                # three looks (plain, Classic, Silver) is not read - it comes back as the plain one
+                el.set("style", "Image Display")
             elif cls == "xControl":
                 # an XCONTROL INSTANCE: NI's export writes it as a plain control of its data type;
                 # which .xctl it is goes after </VI> (`xcontrol`), read off the panel's XCXI link

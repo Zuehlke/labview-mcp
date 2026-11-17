@@ -1,0 +1,25 @@
+<VI _name="lvai_replace_image_display.vi" description="Replaces ONE front panel control of a VI, found by its label, with a .ctl through {LV.Control} Replace and saves the VI in place. lvai_generate_vi runs it for every IMAQ Image control the AIXML asked for as style Image Display: the composer writes the plain IMAQ Image refnum, and this turns it into NI Vision's Image Display - the object LabVIEW drops from the Vision palette (vi.lib\5Cvision\5CImage Display Controls.llb). Composing that plug-in object directly gave a panel LabVIEW refused to load (2026-11-17). Runs in LabVIEW's main application instance, where the VI was generated.">
+  <FreeLabel comment="Replace one control by its .ctl and save" uid="4200" uid_parent="root"/>
+  <Control _name="vi path" type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.value"/>
+  <Control _name="control name" type="string" uid="4203" uid_parent="root" value="" outputs="value:4203.value"/>
+  <Control _name="ctl path" type="string" uid="4204" uid_parent="root" value="" outputs="value:4204.value"/>
+  <Node _name="String To Path" inputs="string:4201.value" outputs="path:4230.path" uid="4230" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4204.value" outputs="path:4231.path" uid="4231" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):,vi path:4230.path,error in (no error):" outputs="vi reference:4235.vi,error out:4235.err" uid="4235" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:4235.vi,error in (no error):4235.err" outputs="Front Panel:4240.panel,reference out:,error out:4240.err" uid="4240" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:4240.panel,error in (no error):4240.err" outputs="Controls[]:4245.controls,reference out:,error out:4245.err" uid="4245" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4250" uid_parent="root" label="Read the label of each panel control">
+    <Tunnel _id="In1" inputs="value:4245.controls" mode="index" outputs="value:4251.value" uid="4251" uid_parent="4250"/>
+    <Node _name="Property Node" fields="read+Terminal" type="{LV.Control}" inputs="reference:4251.value" outputs="Terminal:4252.term,reference out:,error out:" uid="4252" uid_parent="4250"/>
+    <Node _name="Property Node" fields="read+Name" type="{LV.Terminal}" inputs="reference:4252.term" outputs="Name:4253.name,reference out:,error out:" uid="4253" uid_parent="4250"/>
+    <Tunnel _id="Out1" inputs="value:4253.name" mode="index" outputs="value:4254.value" uid="4254" uid_parent="4250"/>
+  </Structure>
+  <Node _name="Search 1D Array" inputs="1D array:4254.value,element:4203.value,start index (0):" outputs="index of element:4266.index" uid="4266" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4245.controls,index:4266.index" outputs="element:4284.element" uid="4284" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Replace" type="{LV.Control}" inputs="reference:4284.element,Path:4231.path,error in (no error):4245.err" outputs="reference out:,error out:4285.err," uid="4285" uid_parent="root"/>
+  <Indicator _name="control index" type="int32" uid="4294" uid_parent="root" value="0" inputs="value:4266.index"/>
+  <Indicator _name="replace error" type="cluster{bool.status,int32.code,string.source}" uid="4293" uid_parent="root" value="[false,0,]" inputs="value:4285.err"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4235.vi,error in (no error):4285.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4310.err" uid="4310" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4235.vi,error in (no error):4310.err" outputs="error out:4331.err" uid="4331" uid_parent="root"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" uid="4340" uid_parent="root" value="[false,0,]" inputs="value:4331.err"/>
+</VI>

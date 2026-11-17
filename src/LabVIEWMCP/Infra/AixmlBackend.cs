@@ -9,14 +9,13 @@ namespace LabVIEWMcp.Infra;
 ///   1. the `backend` argument of the call
 ///   2. `--aixml-backend` on the server's command line
 ///   3. the LABVIEWMCP_AIXML_BACKEND environment variable
-///   4. `aixmlBackend` in the settings file, %USERPROFILE%\.labviewmcp\settings.json - the user's
-///      decision of 2026-10-13 that the choice is an entry ALWAYS present in a file, its values
-///      explained beside it (<see cref="ServerSettings"/>). "auto" there and in 2. or 3. makes no
-///      choice, so the default below decides
-///   5. pylabview - the user's decision of 2026-11-05: our own composer is the default on every
+///   4. pylabview - the user's decision of 2026-11-05: our own composer is the default on every
 ///      LabVIEW. It replaced "grpc, except pylabview on a LabVIEW older than 2026" (the rule of
-///      2026-10-12), which this default covers. Existing settings files are switched over once
-///      (<see cref="ServerSettings.MigrateDefaultOnce"/>).
+///      2026-10-12), which this default covers. "auto" in 2. or 3. makes no choice, so this decides.
+///
+/// The settings file (%USERPROFILE%\.labviewmcp\settings.json) chose the backend from 2026-10-13
+/// until the user removed that switch on 2026-11-17: an `aixmlBackend` entry still in an old file
+/// is IGNORED. The file keeps only the optional labviewExe/labviewPref (<see cref="ServerSettings"/>).
 ///
 /// THE SERVER DEFAULT REACHES ONLY A TOOL THE CLIENT CALLED ITSELF. About forty places in this
 /// server call lvai_generate_vi or the convert tools from C# - the class tools, the test
@@ -110,13 +109,14 @@ internal static class AixmlBackend
         value?.Trim().ToLowerInvariant() is { } v && Names.Contains(v) ? v : null;
 
     /// <summary>What a SERVER-WIDE setting may say: a backend, or "auto" to leave it to the rules below.</summary>
-    public static readonly string[] SettingNames = [Grpc, PyLabview, ServerSettings.Auto];
+    public static readonly string[] SettingNames = [Grpc, PyLabview, Auto];
+
+    /// <summary>The value that leaves the choice to the server: its default, pylabview.</summary>
+    public const string Auto = "auto";
 
     /// <summary>A known setting value in its canonical spelling, or null.</summary>
     public static string? NormaliseSetting(string? value) =>
         value?.Trim().ToLowerInvariant() is { } v && SettingNames.Contains(v) ? v : null;
-
-    private static string SettingsSource(string path) => $"settings file {path}";
 
     /// <summary>
     /// The backend for a call to <paramref name="tool"/>. False, with the refusal in
@@ -128,7 +128,7 @@ internal static class AixmlBackend
     {
         var resolved = TryResolve(perCall, tool, ClientTool.Value, _flagValue,
                                   Environment.GetEnvironmentVariable(Variable), Inherited.Value,
-                                  () => ServerSettings.ReadBackend(), LabViewInUse, out choice, out error);
+                                  LabViewInUse, out choice, out error);
         // A route on pylabview hands its choice down: every inner call this tool makes from here on
         // inherits it. Set in the CALLER's async context (this method is synchronous), so it ends
         // with the tool that resolved it.
@@ -157,18 +157,7 @@ internal static class AixmlBackend
     /// </summary>
     internal static bool TryResolve(string? perCall, string tool, string? clientTool,
                                     string? flagValue, string? environmentValue, Choice? inherited,
-                                    Func<int?> labviewInUse, out Choice choice, out string error) =>
-        TryResolve(perCall, tool, clientTool, flagValue, environmentValue, inherited,
-                   () => null, labviewInUse, out choice, out error);
-
-    /// <summary>
-    /// The same, with the settings file's entry as well - read only when the call, the flag and the
-    /// environment are all silent, like the LabVIEW release below it.
-    /// </summary>
-    internal static bool TryResolve(string? perCall, string tool, string? clientTool,
-                                    string? flagValue, string? environmentValue, Choice? inherited,
-                                    Func<ServerSettings.BackendEntry?> settings, Func<int?> labviewInUse,
-                                    out Choice choice, out string error)
+                                    Func<int?> labviewInUse, out Choice choice, out string error)
     {
         choice = new Choice(Default, "default");
         error = "";
@@ -196,8 +185,8 @@ internal static class AixmlBackend
             return true;
         }
 
-        // "auto" in the flag, the variable or the file makes no choice: the next rule down decides
-        if (!string.IsNullOrWhiteSpace(flagValue) && NormaliseSetting(flagValue) != ServerSettings.Auto)
+        // "auto" in the flag or the variable makes no choice: the next rule down decides
+        if (!string.IsNullOrWhiteSpace(flagValue) && NormaliseSetting(flagValue) != Auto)
         {
             choice = new Choice(Normalise(flagValue) ?? Grpc, Flag);
             return true;
@@ -211,33 +200,10 @@ internal static class AixmlBackend
                         "Fix the variable in the server's configuration, or pass backend on the call.";
                 return false;
             }
-            if (fromEnvironment != ServerSettings.Auto)
+            if (fromEnvironment != Auto)
             {
                 choice = new Choice(fromEnvironment, Variable);
                 return true;
-            }
-        }
-
-        if (settings() is { } entry)
-        {
-            if (entry.Error is { } unreadable)
-            {
-                error = unreadable + " Fix the settings file, or pass backend on the call.";
-                return false;
-            }
-            if (!string.IsNullOrWhiteSpace(entry.Value))
-            {
-                if (NormaliseSetting(entry.Value) is not { } fromFile)
-                {
-                    error = $"\"{ServerSettings.BackendKey}\": \"{entry.Value}\" in {entry.Path} is not one of: " +
-                            $"{string.Join(", ", SettingNames)}. Fix the settings file, or pass backend on the call.";
-                    return false;
-                }
-                if (fromFile != ServerSettings.Auto)
-                {
-                    choice = new Choice(fromFile, SettingsSource(entry.Path));
-                    return true;
-                }
             }
         }
 
@@ -247,16 +213,11 @@ internal static class AixmlBackend
     /// <summary>What a client is told when it names no backend: the server default, for status tools.</summary>
     public static Choice ServerDefault()
     {
-        if (!string.IsNullOrWhiteSpace(_flagValue) && _flagValue != ServerSettings.Auto)
+        if (!string.IsNullOrWhiteSpace(_flagValue) && _flagValue != Auto)
             return new Choice(_flagValue, Flag);
         var environment = Environment.GetEnvironmentVariable(Variable);
-        if (!string.IsNullOrWhiteSpace(environment) && NormaliseSetting(environment) != ServerSettings.Auto)
+        if (!string.IsNullOrWhiteSpace(environment) && NormaliseSetting(environment) != Auto)
             return new Choice(Normalise(environment) ?? $"invalid: {environment}", Variable);
-        var entry = ServerSettings.ReadBackend();
-        if (entry.Error is { } unreadable)
-            return new Choice($"invalid: {unreadable}", SettingsSource(entry.Path));
-        if (!string.IsNullOrWhiteSpace(entry.Value) && NormaliseSetting(entry.Value) != ServerSettings.Auto)
-            return new Choice(Normalise(entry.Value) ?? $"invalid: {entry.Value}", SettingsSource(entry.Path));
         return new Choice(Default, "default");
     }
 
@@ -306,7 +267,7 @@ internal static class AixmlBackend
 
     /// <summary>The parameter text, shared so the tools describe it alike - short, see above.</summary>
     public const string ParameterDescription = """
-        Omit it: the server's default applies (settings.json `aixmlBackend`). "grpc" is NI's
+        Omit it: the server's default applies (pylabview). "grpc" is NI's
         service; "pylabview" our own composer and reader, with no NI service (a run, an
         executability check or a render then goes over LabVIEW's ActiveX server). The answer names
         the route under `backend`. docs/aixml-backends.md.

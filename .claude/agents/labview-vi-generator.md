@@ -422,7 +422,10 @@ qualifier by exporting a VI that already calls the target, or by putting **both 
 rebuild it from primitives — that mistake has been made four times, the last one a hand-built FFT.
 Analysis VIs such as FFT are POLYMORPHIC: `lvai_vi_terminals` on the wrapper prints each
 instance's `Call` with `instance` and `adapt="true"`. NI Vision's `.llb` VIs have NO extension:
-`target="IMAQ Create"`.
+`target="IMAQ Create"`. **To SHOW an IMAQ image on the panel** give its control or indicator
+`style="Image Display"` (type `ref{GenClassTagFlatten.IMAQImage.IMAQImage}`, pylabview backend);
+`lvai_generate_vi` places NI Vision's Image Display (step `imageDisplay`). Draw boxes and text
+into the image with the IMAQ Overlay VIs - never a 2D Picture as a stand-in.
 
 ### Phase 3 — Take the template
 
@@ -993,7 +996,7 @@ Everything here was verified before this agent was written. Treat it as fact.
 
 The server converts AIXML two ways: NI's gRPC service (`grpc`, the default) and our own pylabview
 composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAULT
-(`"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json`, overridden by `LABVIEWMCP_AIXML_BACKEND` and `--aixml-backend`); you do not pick one on your own. **A LabVIEW
+(pylabview unless `LABVIEWMCP_AIXML_BACKEND` or `--aixml-backend` names another); you do not pick one on your own. **A LabVIEW
 OLDER than 2026 in use makes `pylabview` the default by itself** - and there every compose WARNS
 (`versionWarning`): the VI carries the composer's LabVIEW 2026 version stamp, which an older
 LabVIEW may refuse to open - not measured. It is still written; quote the warning in your

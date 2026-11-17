@@ -690,6 +690,19 @@ internal sealed class BulkTools(LvaiConnection connection)
             // diagramSize measures the diagram the caller gets. The user's recommendation of
             // 2026-10-12, for both backends; a failure leaves the VI as generated and is reported.
             var cleanNote = "";
+            // NI VISION'S IMAGE DISPLAY: the composer wrote each one as the plain IMAQ Image refnum
+            // and named it in its report; it is replaced with NI's .ctl here, before the panel is
+            // arranged and the diagram laid out around the display's real size (2026-11-17)
+            if (composed && DiagramCleanup.ImageDisplaysIn(Parsed(convert)?["composerReport"] as JsonArray)
+                    is { Count: > 0 } displays)
+            {
+                var placed = await new DiagramCleanup(connection).RunImageDisplaysAsync(
+                    viPath, choice.Name, displays, timeoutSeconds, ct);
+                steps.Add(placed);
+                if (placed["ok"]?.GetValue<bool>() != true)
+                    cleanNote += " The Image Display was NOT placed - the control is a plain IMAQ Image " +
+                                 "refnum: " + placed["note"]?.GetValue<string>();
+            }
             if (measureDiagram && !openVI)
             {
                 // the CONSTANTS first (labels, white-space strings, array sizes), so the layout

@@ -110,7 +110,9 @@ report as information and call it.
   VI that calls it, or settle both spellings in one throwaway validate. Never rebuild it.
 - NI Vision's `.llb` members carry NO extension: `target="IMAQ Create"`. An IMAQ Image
   (`ref{GenClassTagFlatten.IMAQImage.IMAQImage}`) composes only on the pylabview backend - NI's
-  converter builds it as `Generic Tag Thing` and breaks the VI. `docs/imaq-support.md`.
+  converter builds it as `Generic Tag Thing` and breaks the VI. `style="Image Display"` on it
+  gives NI Vision's Image Display, placed by `lvai_generate_vi` (`{LV.Control} Replace` with NI's
+  `.ctl` - composing the plug-in object directly does not load). `docs/imaq-support.md`.
 - **A VI inside an `.llb` is not a reason to give up** - search for it and try the call.
 - **A path never resolves**, in any spelling.
 - **Project-local code resolves by bare name once it is LOADED** (`lvai_open_file`, through its
@@ -367,10 +369,11 @@ can carry a default (`double.Gain=1`) and may be a `path`. `docs/typedef-disconn
 | `.ctl`, icon, layout, decorations, read with no LabVIEW | pylabview (`pylv_*`) |
 
 **The AIXML tools have two backends**, NI's gRPC service and our pylabview composer, chosen by
-`"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json` (or `--aixml-backend`,
-`LABVIEWMCP_AIXML_BACKEND`). **pylabview is the default** (the user's decision of 2026-11-05; it
-was grpc, pylabview only below LabVIEW 2026); an existing settings file is switched to it once,
-marked by `"setDefaultDone": true`. The composer writes the file version of the LabVIEW in use. What needs a running LabVIEW goes over ActiveX there, which
+the call's `backend`, `--aixml-backend` or `LABVIEWMCP_AIXML_BACKEND`; with none of them,
+**pylabview** (the user's decision of 2026-11-05; it was grpc, pylabview only below LabVIEW 2026).
+`"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json` chooses NOTHING any more (removed
+2026-11-17; the server strips both retired keys from an old file at start, `.bak` kept); that
+file is optional and holds only `labviewExe`/`labviewPref`. The composer writes the file version of the LabVIEW in use. What needs a running LabVIEW goes over ActiveX there, which
 only ATTACHES, never starts LabVIEW. Pass `backend` only when you mean it.
 `docs/aixml-backends.md`.
 
