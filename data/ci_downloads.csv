@@ -155,3 +155,4 @@ run_id,workflow,created_at,event,conclusion,run_attempt,tag
 43566380762,verify-release.yml,2026-11-14T06:26:56Z,schedule,success,1,v2.7.2
 43685507111,verify-release.yml,2026-11-15T06:27:19Z,schedule,success,1,v2.7.2
 43818846218,verify-release.yml,2026-11-16T06:44:31Z,schedule,success,1,v2.7.2
+44031704398,verify-release.yml,2026-11-17T06:30:24Z,schedule,success,1,v2.7.2
