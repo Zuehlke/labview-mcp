@@ -144,6 +144,14 @@ public sealed class BausteineFindingsTests
         </Project>
         """;
 
+    /// <summary>
+    /// The text with CRLF line ends, as LabVIEW writes a .lvproj - whatever line ends this SOURCE
+    /// file has. A raw string literal takes them from the checkout: after a `git checkout` with
+    /// core.autocrlf the literal already held CRLF, `.Replace("\n", "\r\n")` made `\r\r\n`, and the
+    /// test failed on a correct ledger (2026-11-18).
+    /// </summary>
+    private static string Crlf(string text) => text.Replace("\r\n", "\n").Replace("\n", "\r\n");
+
     [Fact]
     public void OnlyAFolderALibraryCallEmptiedIsRemoved()
     {
@@ -153,12 +161,12 @@ public sealed class BausteineFindingsTests
         try
         {
             ProjectFolderLedger.Reset();
-            File.WriteAllText(project, Before.Replace("\n", "\r\n"));
+            File.WriteAllText(project, Crlf(Before));
             var recorded = ProjectFolderLedger.Record(project,
                 [Path.Combine(dir, "SubVIs", "Read Inventory.vi"), Path.Combine(dir, "SubVIs", "Log Event.vi")]);
             Assert.Equal(["My Computer/SubVIs"], recorded);
 
-            File.WriteAllText(project, AfterSave.Replace("\n", "\r\n"));
+            File.WriteAllText(project, Crlf(AfterSave));
             Assert.Equal(["My Computer/SubVIs"], ProjectFolderLedger.RemoveEmptyRecorded(project));
 
             var text = File.ReadAllText(project);
