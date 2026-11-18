@@ -464,6 +464,21 @@ internal sealed class DiagramCleanup(LvaiConnection connection)
             step["skipped"] = "The VI is source only already.";
             return step;
         }
+        if (ParallelCalls.Shared.ProjectChangeRefusalFromInside() is { } parallel)
+        {
+            // NOT while other agents share this LabVIEW: closing the project under them raised a
+            // modal dialog that stalled every agent (cold ATM build, 2026-11-18). The strip waits
+            // for the orchestrator's next close of this project.
+            DeferredSourceOnly.Add(viPath, projectPath);
+            step["ok"] = true;
+            step["deferred"] = true;
+            step["sourceOnly"] = false;
+            step["projectActive"] = true;
+            step["note"] = "DEFERRED: the project was NOT closed for the strip, because " + parallel +
+                           " The VI keeps its compiled code until the orchestrator closes this project " +
+                           "with lvai_close_active_project, which strips it then (`deferredSourceOnly`).";
+            return step;
+        }
         var closed = await new CloseTools(connection).CloseActiveProjectAsync(
             projectPath: Path.GetFullPath(projectPath), timeoutSeconds: timeoutSeconds, ct: ct,
             backend: BackendRoute.Current);

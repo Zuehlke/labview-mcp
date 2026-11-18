@@ -345,3 +345,140 @@ but the method is worth keeping: parse the session JSONL, pair each `tool_use` w
 `tool_result` by id for the tool's own duration, and measure result→next-use gaps for model latency,
 discarding gaps over 600 s as human pauses. Re-run it after any of §3 lands, and the ratio in §1 is
 the number to watch.
+
+## 6. Batch forms added 2026-11-18, from 94 agent runs since 2026-11-05
+
+Measured with the method of section 5 over the subagent transcripts (2 326 requests):
+
+| tool | calls | straight after itself | what it became |
+|---|---|---|---|
+| `lvai_run_vi_and_read_values` | 406 | 71 % | `inputSetsJson`: several runs, `runs` with `values` as label -> value |
+| `lvai_dqmh_new_event` | 67 | 66 % | `eventsJson`: all events of a module, one resumable job |
+| `lvai_dqmh_place_handler` | 52 | 71 % | `handlersJson`: one layout and one source-only pass for the batch |
+| `Read` of the build contract | 59 | - (25 k chars each) | `lvai_check_build_contract forBuilder`: the builder's slice |
+| `Read` of a PDF or PNG | 40 | - (139 k chars each) | `spec.txt` and `panel.xml`, written once by the orchestrator |
+
+An agent's first request was at a median of 94 k tokens (184-218 k on 2026-10-31), and 17 % of the
+agent requests ran above 200 k.
+
+**Accepted against LabVIEW 2026 on 2026-11-18** (pylabview backend, after a client restart):
+
+| form | test | result |
+|---|---|---|
+| `forBuilder` | `account` on the ATM_DQMH_Cold_10 contract (37 VIs, 32 926 chars) | 7 VIs, 3 types, 3 Call skeletons, 2 waves, about 9 k chars; `nobody` refused as `noSuchBuilder` with the six names |
+| `inputSetsJson` | `Verify Account In File.vi`, 4 sets: found, not found, missing file, unknown control | 4 runs in one call, 2.4 s; the target's own Error 7 in `error out` with `ok: true`; the unknown control kept its whole `unknownControl` answer |
+| `eventsJson` | a fresh Singleton `Bank`: Request, Request and Wait for Reply, Request without arguments | a bad entry refused before anything was scripted; then 3 events in 4 calls (19-79 s each, collected with the same call, `progress` 0/1/2 of 3), `completionNeeded` kept |
+| `handlersJson` | the three frames, dry run then real | dry run 9.5 s; placed in 24 s, one layout and no source-only work left, Main.vi executable again |
+
+The handler batch's FAILURE path had two faults, fixed the same day: `nextHandler` named the
+entry AFTER the failed one (a retry from it would have skipped the failed frame), and the note said
+"Main.vi is NOT executable" when nothing had been placed or read. Measured by calling the batch
+again on frames that already held code. Re-run after a client restart, the same day: an occupied
+first frame answers `nextHandler: 0` and "Main.vi was not changed"; a batch of a free frame
+(`Ping`) and an occupied one placed the first, stopped at `nextHandler: 1`, laid Main.vi out once
+(17.7 s) and left it executable.
+
+**Repeatable as `scripts/accept_batch_calls.py`**: it writes a fresh test project under
+`C:\Temp\BatchCallsAccept_<time>` (a contract of two builders, an `Add Numbers.vi` run target,
+a Singleton DQMH module `Bank` with four events and three handlers), drives the exe over raw stdio
+- so a branch build needs no client restart - and checks 41 answers. First run 2026-11-18 on a
+warm LabVIEW: 33 of 33 in 159 s; the module came in one call, the four events in two. Extended the
+same day by section 5 (a DQMH unit test filled and run green, a wrong expectation red, a misspelt
+field refused before scripting, a plain Request refused) and section 6 (a library over a project
+folder: slim answer, the emptied folder swept, a user's empty folder kept): 41 of 41 in 170 s after
+a client restart, on a LabVIEW that had been up 1.7 h (restarting it was not permitted from here).
+
+An event takes 19-79 s on its own, so the event batch saves fewer turns than its call count
+suggests: three events cost four calls, where three single events would have cost about five.
+
+The two request-bound batches stop before the client's 60 s: the next item starts only if the time
+so far plus the last item's duration stays under 40 s (`nextSet`, `nextHandler`). The event batch
+runs detached like a single event and needs no such stop.
+
+## 7. Skeletons for the shapes agents write most (2026-11-18)
+
+**The symptom.** Agents author nearly every VI as AIXML by hand, and output tokens are the slow
+and the expensive ones (`docs/token-economy.md` 4.4). They also look the same spellings up
+independently: `lvai_aixml_reference` was called 298 times in 94 runs at 8 k characters an answer.
+
+**The count**, over the 762 AIXML files (3.86 M characters) that 148 agent runs wrote since
+2026-11-01, and the terms they looked up:
+
+| shape | files | most looked-up terms (calls / agents) |
+|---|---|---|
+| fields of a cluster by name | 376 | `unbundle by name` 108 / 53, `bundle by name` 76 / 35 |
+| a For Loop over an array | 218 | `index array` 76 / 36, `for loop` 56 / 27, `shift register` 34 / 17 |
+| a Case Structure or `Select` | 184 | `select` 114 / 57, `case structure` 82 / 39 |
+| a control property | 94 | `property node` 54 / 24 |
+| errors joined | 70 | `merge errors` 122 / 60 - the most looked-up term of all |
+| formatted text | 66 | `format into string` 78 / 38, `concatenate strings` 72 / 36 |
+| a text file read / written | 46 / 34 | `read from text file` 32 / 16, `spreadsheet string to array` 30 / 14 |
+| a queue | 40 | `obtain queue` 32 / 16, `enqueue element` 26 / 13 |
+| a search by key | 38 | `search 1d array` 42 / 21 |
+
+The three skeletons that existed were read 78 times in the same runs, so a skeleton IS used.
+
+**What was built**: six whole VIs in `scripts/aixml-skeletons/` with one index (`README.md`):
+`cluster-array-loop`, `text-table-read`, `text-table-write`, `find-by-key`,
+`control-group-disable`, `string-command-queue`. Each was generated through `lvai_generate_vis`
+on pylabview and on grpc (executable, pane clean, within the diagram budget) and run on both
+builds; the values are in the index. `AixmlSkeletonTests` pins the offline part.
+
+**What the run found that nothing else did**: the first `string-command-queue` wired
+`Release Queue` from `Obtain Queue`, so it ran in parallel with both loops and released the queue
+before the first `Enqueue` - Error 1, nothing handled, with validation and `execState` both green.
+Twelve agents had looked `release queue` up; none of the lookups says where its queue must come
+from. The skeleton routes it through the consumer loop and the test pins that.
+
+**Not measured**: what the skeletons save. The estimate is one read of about 5 k characters in
+place of several lookups of 8 k, plus the wrong attempts they prevent; a cold build before and
+after would settle it. No generator was built - the count shows which nodes recur, not yet which
+whole diagrams do.
+
+**Measured afterwards, the same day.** One `labview-vi-generator` run on a task the skeletons
+cover (a price looked up in a CSV file): it read the index and the two fitting skeletons, made 0
+`lvai_aixml_reference` calls (single-VI agents since 2026-11-01: 1-3 calls, 3-19 terms), and
+finished in 9 requests and 58 s, right on the first generation. One run is a direction, not a
+rate. Four more skeletons followed (`record-update`, `path-beside-vi`, `log-append`,
+`error-case`), each from the same count and each generated on both backends and run.
+
+## 8. Everything on one application: `C:\Temp\Bausteine` (2026-11-18)
+
+A small inventory application built by the orchestrator workflow with every form of this branch:
+`spec.txt` prepared once, a build contract (2 builders, 2 waves), `forBuilder`, the skeletons, a
+DQMH module with `eventsJson` and `handlersJson`, `inputSetsJson` for every test run, a library
+with private data VIs in function folders. Report in the project folder (`BERICHT.md`).
+
+| agent | task | requests | tool calls | wall | output | context first -> last |
+|---|---|---|---|---|---|---|
+| vi-generator (data) | 5 data VIs, built and run | 11 | 25 | 128 s | 14 k | 103 k -> 142 k |
+| vi-generator (handlers) | 2 handlers calling them | 11 | 14 | 92 s | 9 k | 104 k -> 128 k |
+| dqmh-module | module + 2 events, later the end-to-end run | 14 | 16 | 149 s | 7 k | 74 k -> 94 k |
+
+Neither VI agent read the contract file or made an `lvai_aixml_reference` or `lvai_vi_terminals`
+call; every VI was executable on its first generation and the contract verified 7 of 7. The plan
+check caught a name clash before anything was built (`Find Item.vi` exists in JSONtext). The
+module ran end to end through its API VIs: Set Stock Washer = 12, Get Stock Washer 12, Gizmo not
+found, no error and no timeout.
+
+**Found on the way - fixed the same day** (measured against LabVIEW after the fix):
+- `lvai_dqmh_new_unit_test` writes Delacor's template, and its test VI is broken until its request
+  inputs and expected value are wired - the unit test could not be run as written.
+- `lvai_create_library` and `lvai_add_to_library` answer every helper run with its XML (about
+  14 k characters for two and for five items) - a candidate for compact success answers.
+- A diagram comment with a comma cost the data agent three `sed` fixes.
+- After the VIs moved into the library the project kept an empty `SubVIs` folder.
+
+The fixes: `lvai_dqmh_new_unit_test` fills and runs the test (`argumentsJson`, `expectedJson`,
+`runTest`; `docs/dqmh-scripting.md` §9a); `lvai_create_library` and `lvai_add_to_library` slim
+every step's answer on success (`Json.SlimSteps`; 14 k -> about 3 k characters, a failed step
+keeps everything); a folder a library call emptied is removed by the next close's sweep
+(`emptyFoldersRemoved`, `ProjectFolderLedger`) and a user's own empty folder is left; and a raw
+comma in `description`/`comment`/`label` is documented as fine (`docs/aixml-reference.md`), with
+the skeleton that taught `\2C` rewritten.
+
+**Open in the workflow, not in a tool**: after the orchestrator moves the built VIs into a library,
+the build contract still names them bare (`owner` empty), so `callSkeletons` for a later builder
+would call `Read Inventory.vi` instead of `Inventory Data.lvlib:Read Inventory.vi`. Seen on the
+Bausteine contract after the library step; the contract's `owner` has to be set when the library
+is made.

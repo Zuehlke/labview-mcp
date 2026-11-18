@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="log-append.vi"
+    description="Skeleton. Appends one line to a text file through a file REFNUM\3A Open/Create/Replace File (open or create)\2C Get File Size\2C Set File Position to the end\2C Write to Text File\2C Close File. The file is created when missing\3B an empty path gives a file error instead of a dialog. Copy the shapes\2C not the file.">
+  <Control _name="Log File" conIdx="0" connection="required" description="Full path of the text file to append to."
+           outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="Line" conIdx="5" connection="recommended" description="The text to append\2C without its line end."
+           outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code." outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Open, seek to the end, write, close" uid="4290" uid_parent="root"/>
+
+  <Node _name="Empty String/Path?" inputs="string/path:4200.value" outputs="empty?:4203.empty?" uid="4203" uid_parent="root"/>
+  <Constant _name="relative path (no dialog)" outputs="value:4204.value" type="path" uid="4204" uid_parent="root" value="Log File is empty"/>
+  <Node _name="Select" inputs="t:4204.value,s:4203.empty?,f:4200.value" outputs="s? t\3Af:4205.s? t\3Af" uid="4205" uid_parent="root"/>
+  <Constant _name="open or create" outputs="value:4206.value"
+            type="uint16{open,replace,create,open or create,replace or create,replace or create with confirmation}"
+            uid="4206" uid_parent="root" value="3"/>
+  <Node _name="Open/Create/Replace File"
+        inputs="file path (use dialog):4205.s? t\3Af,operation (0\3Aopen):4206.value,access (0\3Aread/write):,error in:4201.value,prompt:,disable buffering (F):"
+        outputs="refnum out:4210.refnum out,cancelled:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="Get File Size" inputs="file:4210.refnum out,error in:4210.error out"
+        outputs="refnum out:4211.refnum out,size (in bytes):4211.size (in bytes),error out:4211.error out" uid="4211" uid_parent="root"/>
+  <Node _name="Set File Position" inputs="refnum:4211.refnum out,offset (in bytes) (0):4211.size (in bytes),error in:4211.error out"
+        outputs="refnum out:4212.refnum out,error out:4212.error out" uid="4212" uid_parent="root"/>
+  <Constant _name="line end" outputs="value:4213.value" type="string" uid="4213" uid_parent="root" value="&#10;"/>
+  <Node _name="Concatenate Strings" inputs="string:4202.value,string:4213.value"
+        outputs="concatenated string:4214.concatenated string" uid="4214" uid_parent="root"/>
+  <Node _name="Write to Text File"
+        inputs="file (use dialog):4212.refnum out,text:4214.concatenated string,error in:4212.error out,prompt (Choose or enter file path):"
+        outputs="refnum out:4215.refnum out,cancelled:,error out:4215.error out" uid="4215" uid_parent="root"/>
+  <Node _name="Close File" inputs="refnum:4215.refnum out,error in:4215.error out"
+        outputs="path:,error out:4216.error out" uid="4216" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in\2C or the first error of this VI." inputs="value:4216.error out" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>

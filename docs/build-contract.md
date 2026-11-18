@@ -98,6 +98,15 @@ earlier waves. Everything in one wave can be built in parallel. `callSkeletonsFo
 ready `<Call>` per named VI, written by the same code as `lvai_vi_terminals`, so a caller needs
 no export of a callee that does not exist yet.
 
+**`forBuilder` answers ONE builder's part** (`slice`, since 2026-11-18): its VIs' entries as the
+contract wrote them (with `callAs` and `fullPath` added), only the named `types` they use, a
+`<Call>` for every VI they call, and the waves they fall into. The application's `waves` and the
+warnings about other builders' VIs are left out (`warningsAboutOtherVis` counts them); errors stay,
+because a broken contract concerns everyone. An unknown name is refused as `noSuchBuilder` with
+the names that exist. Measured over 94 agent runs: the contract file was read whole 59 times at
+25 k characters on average, and every builder carried the other builders' VIs for the rest of its
+run. A builder asks for its slice and does not read the file.
+
 ## 4. What `mode=verify` checks (after a wave)
 
 Each named VI that exists is exported (on the chosen backend, through the export cache) and its
@@ -113,10 +122,13 @@ wave.
 ## 5. The workflow
 
 1. **Orchestrator, before any agent:**
-   1. Read the spec and the supplied panel once.
+   1. Read the spec and the supplied panel once, and save them in the build folder as `spec.txt`
+      (the text) and `panel.xml` (`lvai_convert_vi_to_aixml` of the supplied VI). Agents get those
+      paths: a PDF read by an agent cost about 139 k characters each time, 40 times in 94 runs.
    2. Write `build-contract.json`.
    3. Run `lvai_check_build_contract mode=plan` until `ok`.
-2. **Spawn wave 0's builders** with the contract path and their VIs.
+2. **Spawn wave 0's builders** with the contract path and their `builder` name; each starts with
+   `mode=plan forBuilder=<name>`.
 3. **At the same time, spawn the main-VI builder** to author its scaffold against the contract.
    It writes AIXML and plans the graft, and does not generate until its callees exist.
 4. **After each wave:**
@@ -237,3 +249,38 @@ says so.
 The script defect: it wrote the loose `Get Balance.vi` and the module's `Get Balance.vi` into one
 export folder and read the wrong file back. That is the same name clash, one level up, and
 `verify` answered it with five `differs`, which is what it is for.
+
+## 8. A project close INSIDE a tool, during a parallel build (2026-11-18)
+
+**Symptom.** The cold ATM rebuild of 2026-11-18 (five agents, one LabVIEW): the user saw a LabVIEW
+dialog and pressed Discard. The subagents' transcripts place it at 19:39:14-19:40:15: every lvai
+call of every agent stalled for that minute, two of them answered the client "Request timed out",
+and all of them went on the moment the dialog was answered. In that minute the dqmh agent's
+`lvai_dqmh_place_handler` was closing the project for its source-only strip of Main.vi, while the
+account agent regenerated `Deposit To File.vi` - one of the handlers just placed into Main.vi - and
+ran its VIs. Nothing was lost (Main.vi was saved at 19:39:38, the handler regenerated and retested
+afterwards, every check after 19:46 green), but a modal dialog in a parallel build stalls everyone
+and waits for a person.
+
+**Cause.** The `projectChangeWhileParallel` guard (`ParallelCalls`) covered only
+`lvai_open_file` and `lvai_close_active_project` called directly. Tools that close the project
+INSIDE their own call for a pylabview edit went past it: place_handler and the AF hook tools
+(`DiagramCleanup.SourceOnlyInProjectAsync`), and `lvai_graft_diagram`, which closed and reopened the
+project twice more in the same build (the main agent reported it).
+
+**Fix.** `ParallelCalls.ProjectChangeRefusalFromInside()` - the same verdict, with the calling tool
+itself not counted - is asked before such a close:
+- the source-only strip is DEFERRED (`sourceOnly.deferred: true`, the project stays open and
+  active, the VI keeps its compiled code for now) and recorded in `DeferredSourceOnly`; the next
+  `lvai_close_active_project` WITH `projectPath` for that project strips it (`deferredSourceOnly`) -
+  the orchestrator's close after the last wave;
+- `lvai_graft_diagram` is REFUSED before it does anything (it also uses the system clipboard); the
+  main-VI agent waits and calls it again, which in that build would have passed at 19:43, a minute
+  after the last other agent finished.
+An agent working alone is unaffected: its own call is not counted. Replayed from the transcripts in
+`ParallelCallsTests.The_internal_close_of_place_handler_in_the_cold_ATM_build_is_refused`.
+
+**Not changed:** the many other tools that close a project internally (class tools, test
+generators, `lvai_wire_dynamic_events`, ...) - they are run by one agent at a time or by the
+orchestrator, and were not seen in a parallel build. Which dialog LabVIEW showed was not captured:
+the user remembers only that it was LabVIEW's and that Discard ended it.

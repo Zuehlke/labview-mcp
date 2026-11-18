@@ -31,6 +31,8 @@ internal sealed class BuildContractTools(LvaiConnection connection)
         `Account Manager.lvlib:Deposit.vi`), installation namesakes, two builders in one folder,
         and cycles. Answers the build WAVES (what can be built in parallel, in order) and, for the
         names in `callSkeletonsFor`, a ready `<Call>` per VI so a caller needs no lvai_vi_terminals.
+        A BUILDER asks with `forBuilder` and gets only ITS part - its VIs' entries, the types they
+        name, a `<Call>` per callee and its waves - instead of reading the whole contract file.
         mode=verify (after a wave): exports each built VI named in `vis` (default: all that exist)
         and compares its pane with the contract - missing or extra terminals, type, conIdx,
         connection, direction. `ok` is false on any difference or on a named VI not yet built.
@@ -46,18 +48,22 @@ internal sealed class BuildContractTools(LvaiConnection connection)
         string? callSkeletonsFor = null,
         [Description("Local budget in seconds per exported VI (verify)")] int timeoutSeconds = 180,
         [Description(AixmlBackend.ParameterDescription)] string? backend = null,
+        [Description("plan only: a `builder` name of the contract. The answer is that builder's slice " +
+                     "(`slice`), which replaces reading build-contract.json")]
+        string? forBuilder = null,
         CancellationToken ct = default)
     {
         if (!File.Exists(contractPath))
             return Json.Error("fileNotFound", $"No contract at '{contractPath}'.", new { contractPath });
 
         BuildContract.Document doc;
-        try { doc = BuildContract.Parse(await File.ReadAllTextAsync(contractPath, ct), contractPath); }
+        var contractText = await File.ReadAllTextAsync(contractPath, ct);
+        try { doc = BuildContract.Parse(contractText, contractPath); }
         catch (ArgumentException e) { return Json.Error("badContract", e.Message, new { contractPath }); }
 
         return mode switch
         {
-            "plan" => Plan(doc, contractPath, callSkeletonsFor),
+            "plan" => Plan(doc, contractPath, callSkeletonsFor, forBuilder, contractText),
             "verify" => await VerifyAsync(doc, contractPath, vis, timeoutSeconds, backend, ct),
             _ => Json.Error("badArguments", $"mode \"{mode}\" is not plan or verify.", new { mode }),
         };
@@ -65,7 +71,8 @@ internal sealed class BuildContractTools(LvaiConnection connection)
 
     // ------------------------------------------------------------------ plan
 
-    private static string Plan(BuildContract.Document doc, string contractPath, string? callSkeletonsFor)
+    internal static string Plan(BuildContract.Document doc, string contractPath, string? callSkeletonsFor,
+                                string? forBuilder = null, string? contractText = null)
     {
         var station = StationPaneDefault.Read();
         var result = BuildContract.Plan(doc, station.Pattern, InstallationNamesake);
@@ -103,6 +110,30 @@ internal sealed class BuildContractTools(LvaiConnection connection)
             answer["callSkeletons"] = skeletons;
         }
 
+        if (!string.IsNullOrWhiteSpace(forBuilder))
+        {
+            if (BuildContractSlice.For(doc, contractText ?? "", forBuilder.Trim(), result.Waves) is not { } slice)
+                return Json.Error("noSuchBuilder", $"No VI of this contract has the builder \"{forBuilder.Trim()}\".",
+                    new
+                    {
+                        contractPath,
+                        builders = doc.Vis.Select(v => v.Builder).Where(b => b is not null)
+                                      .Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+                    });
+            // the whole application's waves and other builders' warnings are what the slice spares
+            answer.Remove("waves");
+            var mine = slice.Names;
+            var all = result.Warnings.Count;
+            var kept = result.Warnings.Where(f => f.Vi is null || mine.Contains(f.Vi)).ToList();
+            answer["warnings"] = new JsonArray([.. kept.Select(f => (JsonNode)f.ToJson())]);
+            if (kept.Count < all) answer["warningsAboutOtherVis"] = all - kept.Count;
+            answer["slice"] = slice.Json;
+            answer["note"] = "`slice` is your whole part of the contract - build from it and do not read the " +
+                             "contract file. `callSkeletons` holds a ready <Call> for every VI yours call. When " +
+                             "done, run mode=verify with your VIs.";
+            return Json.Document(answer);
+        }
+
         answer["note"] = result.Errors.Count == 0
             ? "Hand each builder the contract path and its wave. Build wave by wave; after each, run " +
               "mode=verify on that wave before building the next."
@@ -114,7 +145,7 @@ internal sealed class BuildContractTools(LvaiConnection connection)
     /// The contract entry as the terminal list an export would give, so the one Call-skeleton
     /// writer serves both. Only pane terminals - a contract has no others.
     /// </summary>
-    private static ViTerminals.Result ToResult(BuildContract.Vi vi) =>
+    internal static ViTerminals.Result ToResult(BuildContract.Vi vi) =>
         new(vi.QualifiedName,
             [.. vi.Inputs.Select(t => new ViTerminals.Terminal(t.Name, t.Type, t.ConIdx ?? 0, t.Connection))],
             [.. vi.Outputs.Select(t => new ViTerminals.Terminal(t.Name, t.Type, t.ConIdx ?? 0, t.Connection))],

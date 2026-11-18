@@ -35,6 +35,7 @@ server's MCP `instructions`. Keep that brief in step with every change to this s
 agent** (the user's decision of 2026-11-01). `build-contract.json` in the build folder names every
 VI with its path, owner, builder, connector pane and callees; `lvai_check_build_contract mode=plan`
 checks it without LabVIEW and answers the build WAVES. Every builder gets the contract path and
+its `builder` name, asks for its own part with `forBuilder` (never reads the whole file) and
 implements against it, the main-VI agent authors its scaffold in parallel with wave 0, and
 `mode=verify` gates each wave before the next is built. `docs/build-contract.md`.
 
@@ -52,6 +53,10 @@ Main.vi); a handler reads `<field> in` and writes `<field> out`, and `lvai_dqmh_
 wires both on the shift-register wire. A reply's error goes to the requester only.
 `docs/dqmh-patterns.md` §12.
 
+**THE SPEC AND A SUPPLIED PANEL ARE PREPARED ONCE, BY THE ORCHESTRATOR**: `spec.txt` and `panel.xml`
+(the panel's AIXML export) in the build folder, and agents get those paths. Agents read a PDF 40
+times in 94 runs (2026-11-18), about 139 k characters each time. `docs/build-contract.md` §5.
+
 **ONE AGENT, ONE OUTPUT DIRECTORY.** Two agents in one folder overwrite each other's files. Give
 each its own folder (`<project>\Tests\<ClassName>\`) and say so in its prompt.
 
@@ -61,7 +66,11 @@ orchestrator opens projects, SWAPS and lists VIs (`lvai_add_vis_to_project`, nev
 Build by DEPENDENCY: leaf VIs in parallel with no project open, then one agent for the callers.
 The server ENFORCES it: `lvai_open_file` with a project and `lvai_close_active_project` are
 refused (`projectChangeWhileParallel`) while top-level tool calls overlap or overlapped in the last
-60 s (`ParallelCalls`; an agent's project open crashed LabVIEW on 2026-11-11).
+60 s (`ParallelCalls`; an agent's project open crashed LabVIEW on 2026-11-11). A tool's INTERNAL close
+obeys it too (`ProjectChangeRefusalFromInside`): `lvai_graft_diagram` is refused, and
+`lvai_dqmh_place_handler` and the AF hook tools defer their source-only strip to the next
+`lvai_close_active_project` with `projectPath` (`deferredSourceOnly`) - place_handler's close under
+four other agents raised a modal dialog that stalled them all on 2026-11-18.
 Restart LabVIEW between two builds of the same application: a same-named VI of the earlier build,
 still in memory, captures a bare-name `Call` in silence.
 
@@ -124,6 +133,14 @@ report as information and call it.
 Every validation leaves a scratch `LVMCP Validate.vi` (numbered `…2`, `…3`) in memory that cannot
 be closed; "Don't Save - All" at exit is always safe. `docs/scratch-vis-in-memory.md`.
 
+**A SKELETON BEFORE A LOOKUP**: `scripts/aixml-skeletons/README.md` indexes whole VIs that were
+generated on both backends and run - clusters in a loop, a text file read and written, a search by
+key, a record changed in place, a control group, a queue with a string case, a log appended through
+a refnum, an error case, a path beside the VI. A VI agent that read the index made no lookup at all
+(2026-11-18). One read replaces the lookups for every node in
+it. A new one is added only after it was generated on BOTH backends and RUN (a `Release Queue`
+wired from `Obtain Queue` passed validation and execState and released the queue first).
+
 **Look terminal names up, never guess them** (`lvai_vi_terminals`, or the contract's
 `callSkeletonsFor`). They are literal and surprising (`x > y?`). Batch every lookup into ONE call:
 `lvai_aixml_reference node=` and `lvai_vi_server_reference query=` take comma-separated lists.
@@ -145,7 +162,9 @@ full size; the composer writes an error constant as NI's brown icon. `docs/aixml
 unwired. `lvai_check_aixml` repairs the output case.
 
 **AIXML values:** a backslash in `value=` is `\5C` (a raw one refuses the whole file, `Error 42`);
-a line break is `&#10;`; commas inside a `value` are structure. A mode attribute can change a
+a line break is `&#10;`; commas inside a `value` are structure. TEXT attributes - `description`,
+a `FreeLabel`'s `comment`, a structure's `label` - take a RAW comma and colon on both backends
+(measured 2026-11-18); `\2C` there is only how an export spells them, not something to write. A mode attribute can change a
 node's output type only together with its wiring (`Read from Text File` `readLines` needs `count`)
 - copy a variant already in the state you want.
 
@@ -191,7 +210,8 @@ still wrote the VI. `docs/bulk-operations.md`, `docs/diagram-layout.md`.
 it is STRICTER than conversion (convert writes, validate refuses). Run with
 `lvai_run_vi_and_read_values`: inputs go in as text and land as the control's type (numeric,
 boolean, path, string; an enum by name or index; an array or cluster as LabVIEW's XML); a value
-must not contain a line break. A VI that does not end runs only with `runForMs` - the untimed
+must not contain a line break. Several input sets go into ONE call (`inputSetsJson`), never one
+call per set. A VI that does not end runs only with `runForMs` - the untimed
 helper blocks the whole gRPC service. An event-driven VI is verified by DRIVING its events
 (`signalsJson`), not by a start-up snapshot. Never report success from an empty answer.
 
@@ -479,6 +499,7 @@ document; `experiments/` does not ship.
 | Question | Document | Tool |
 |---|---|---|
 | Read or write AIXML | `docs/aixml-reference.md` | `lvai_aixml_reference` |
+| Whole VIs to copy shapes from | `scripts/aixml-skeletons/README.md` | — |
 | What validation does NOT catch; lint with no LabVIEW | `docs/aixml-reference.md`, `docs/aixml-lint.md` | `lvai_check_aixml`, `scripts/aixml_lint.py` |
 | AIXML without NI's service; which LabVIEW and INI the server uses | `docs/aixml-backends.md` | `backend`, `lvai_list_labview_installations` |
 | A multi-VI build by several agents | `docs/build-contract.md` | `lvai_check_build_contract` |

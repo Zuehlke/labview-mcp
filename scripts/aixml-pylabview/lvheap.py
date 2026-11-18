@@ -217,22 +217,34 @@ class Bundle:
     def flat_of_consolidated(self, cons):
         return self.toplevel[cons]
 
-    def tree(self, flat_id):
+    # The READER's hook for linked typedefs: a callable taking a flat TypeDef element and returning
+    # the TypeDef as its .ctl on disk holds it now (fully inlined), or None to keep the copy this
+    # file embeds. None here - the composer copies a callee's types as they stand.
+    typedef_resolver = None
+
+    def tree(self, flat_id, snapshot=False):
         """A flat TypeDesc with every child reference inlined, recursively. A reference past
         the end of the list (NI's Set Collection - Word Counting.vi: a set type) comes back as
-        an Unknown type, which the reader reports, instead of ending the whole read."""
+        an Unknown type, which the reader reports, instead of ending the whole read.
+
+        A linked TYPEDEF comes back as its .ctl defines it when a typedef_resolver is set, unless
+        `snapshot`: then as this file embeds it - the type its saved DATA is flattened against."""
         if not 0 <= flat_id < len(self.flat):
             return ET.Element("TypeDesc", {"Type": "Unknown", "Format": "inline", "ref.TypeID": str(flat_id)})
-        return self._inline(self.flat[flat_id])
+        return self._inline(self.flat[flat_id], snapshot)
 
-    def _inline(self, src):
+    def _inline(self, src, snapshot=False):
+        if not snapshot and self.typedef_resolver is not None and src.get("Type") == "TypeDef":
+            disk = self.typedef_resolver(src, self._inline(src, True))
+            if disk is not None:
+                return disk
         out = ET.Element("TypeDesc", {k: v for k, v in src.attrib.items()})
         for child in src:
             if child.tag != "TypeDesc":
                 out.append(copy.deepcopy(child))
                 continue
             if child.get("TypeID") is not None:
-                sub = self.tree(int(child.get("TypeID")))
+                sub = self.tree(int(child.get("TypeID")), snapshot)
                 for k, v in child.attrib.items():
                     if k != "TypeID":
                         sub.set("ref." + k, v)
@@ -243,11 +255,11 @@ class Bundle:
                 # harvested LVPositionTypeDef.ctl carried its donor's ids for Left and Top into
                 # the composed VI, where 2 and 3 were two strings, and the VI loaded broken
                 # (2026-10-10, lvbd_graft_paste.xml; 72 of 1167 parts were affected).
-                out.append(self._inline(child))
+                out.append(self._inline(child, snapshot))
         return out
 
-    def heap_type_tree(self, heap_tid):
-        return self.tree(self.flat_of_heap(heap_tid))
+    def heap_type_tree(self, heap_tid, snapshot=False):
+        return self.tree(self.flat_of_heap(heap_tid), snapshot)
 
 
 class TypeTable:

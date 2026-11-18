@@ -125,8 +125,47 @@ internal sealed class RunTools(LvaiConnection connection)
             in as an array or cluster input.
             """)]
         bool includeXml = false,
+        [Description("""
+            SEVERAL RUNS IN ONE CALL: a JSON array of input objects, each shaped like inputsJson, e.g.
+            [{"x":"1","y":"2"},{"x":"-1","y":"0"}]. The VI runs once per set, in order; the answer
+            is `runs`, one compact entry per set (`values` as label -> value). Use it instead of
+            calling this tool back to back. Not together with inputsJson. Stops before the client's
+            time limit and names the rest in `nextSet`.
+            """)]
+        string? inputSetsJson = null,
         CancellationToken ct = default)
     {
+        if (!string.IsNullOrWhiteSpace(inputSetsJson))
+        {
+            if (!string.IsNullOrWhiteSpace(inputsJson))
+                return Json.Error("badArguments",
+                    "Pass inputsJson (one run) or inputSetsJson (several runs), not both.");
+            List<JsonObject> sets;
+            try { sets = RunBatch.ParseInputSets(inputSetsJson); }
+            catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message, new { inputSetsJson }); }
+
+            var wall = System.Diagnostics.Stopwatch.StartNew();
+            var runs = new JsonArray();
+            int? nextSet = null;
+            for (var i = 0; i < sets.Count; i++)
+            {
+                var before = wall.ElapsedMilliseconds;
+                var one = await RunViAndReadValuesAsync(viPath, sets[i].ToJsonString(), includeRawXml, helperViPath,
+                    helperAixmlPath, regenerateHelper && i == 0, timeoutSeconds, runForMs, signalsJson, signalGapMs,
+                    closePanelAfterRun, backend, ct, nativeValues: true, includeXml: includeXml);
+                runs.Add(RunBatch.CompactRun(i, sets[i], JsonNode.Parse(one) as JsonObject));
+                // An overrun costs the whole answer while LabVIEW keeps running, so the next run
+                // starts only if it fits - estimated by the one just measured.
+                if (i + 1 < sets.Count &&
+                    RunBatch.NextRunWouldOverrun(wall.ElapsedMilliseconds, wall.ElapsedMilliseconds - before))
+                {
+                    nextSet = i + 1;
+                    break;
+                }
+            }
+            return Json.Document(RunBatch.Answer(viPath, sets.Count, runs, nextSet, wall.ElapsedMilliseconds));
+        }
+
         // THE CLIENT GETS NATIVE VALUES, THE SERVER'S OWN CALLERS KEEP THE XML. About thirty tools
         // drive their helper VIs through RunViAndReadValuesAsync and read `error out` and their
         // counts out of `xml`, so the slimming happens here, at the MCP boundary, and nowhere else.

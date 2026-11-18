@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="error-case.vi"
+    description="Skeleton. Does its work only when there is no error\3A a Case Structure on the error cluster with the frames No Error and Error. Inside No Error it raises its OWN error for a bad input (Error Cluster From Error Code)\2C and the error leaves the case through ONE tunnel. Copy the shapes\2C not the file.">
+  <Control _name="Value" conIdx="0" connection="recommended" description="The value to work on\3B negative values are refused with error 5000."
+           outputs="value:4200.value" type="double" uid="4200" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code." outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Work only when no error came in" uid="4290" uid_parent="root"/>
+
+  <Structure _name="Case Structure" selectin="4201.value" uid="4220" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4201.value" uid="4221" uid_parent="4220"/>
+    <Tunnel _id="In2" inputs="value:4200.value" uid="4222" uid_parent="4220"/>
+    <CaseFrame label="Double the value\2C refuse a negative one" selector="No Error" selectout="" uid="4230" uid_parent="4220">
+      <Tunnel _id="In1" outputs="value:4231.value" uid="4231" uid_parent="4230"/>
+      <Tunnel _id="In2" outputs="value:4232.value" uid="4232" uid_parent="4230"/>
+      <Constant _name="two" outputs="value:4233.value" type="double" uid="4233" uid_parent="4230" value="2"/>
+      <Node _name="Multiply" inputs="x:4232.value,y:4233.value" outputs="x*y:4234.x*y" uid="4234" uid_parent="4230"/>
+      <Node _name="Less Than 0?" inputs="x:4232.value" outputs="x &lt; 0?:4235.x &lt; 0?" uid="4235" uid_parent="4230"/>
+      <Constant _name="error code (0)" outputs="value:4236.value" type="int32" uid="4236" uid_parent="4230" value="5000"/>
+      <Constant _name="error message" outputs="value:4237.value" type="string" uid="4237" uid_parent="4230" value="Value must not be negative."/>
+      <Call target="Error Cluster From Error Code.vi"
+            inputs="error code (0):4236.value,error in (no error):4231.value,error message (&quot;&quot;):4237.value,is warning? (False):,show call chain? (False):"
+            outputs="error out:4238.error out" uid="4238" uid_parent="4230"/>
+      <Node _name="Select" inputs="t:4238.error out,s:4235.x &lt; 0?,f:4231.value" outputs="s? t\3Af:4239.s? t\3Af" uid="4239" uid_parent="4230"/>
+      <Tunnel _id="Out1" inputs="value:4239.s? t\3Af" uid="4240" uid_parent="4230"/>
+      <Tunnel _id="Out2" inputs="value:4234.x*y" uid="4241" uid_parent="4230"/>
+    </CaseFrame>
+    <CaseFrame label="An error came in\3A pass it on\2C no result" selector="Error" selectout="" uid="4242" uid_parent="4220">
+      <Tunnel _id="In1" outputs="value:4243.value" uid="4243" uid_parent="4242"/>
+      <Tunnel _id="In2" outputs="value:" uid="4244" uid_parent="4242"/>
+      <Constant _name="no result" outputs="value:4245.value" type="double" uid="4245" uid_parent="4242" value="0"/>
+      <Tunnel _id="Out1" inputs="value:4243.value" uid="4246" uid_parent="4242"/>
+      <Tunnel _id="Out2" inputs="value:4245.value" uid="4247" uid_parent="4242"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4248.value" uid="4248" uid_parent="4220"/>
+    <Tunnel _id="Out2" outputs="value:4249.value" uid="4249" uid_parent="4220"/>
+  </Structure>
+
+  <Indicator _name="Result" conIdx="4" connection="recommended" description="Twice Value\3B 0 when an error came in."
+             inputs="value:4249.value" type="double" uid="4250" uid_parent="root" value="0"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in\2C or the first error of this VI." inputs="value:4248.value" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>

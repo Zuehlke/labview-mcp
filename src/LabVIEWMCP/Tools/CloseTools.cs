@@ -125,6 +125,8 @@ internal sealed class CloseTools(LvaiConnection connection)
         the close.
         Refused (`projectChangeWhileParallel`) while tool calls overlap - several agents on one
         LabVIEW - or overlapped in the last 60 s: projects are the orchestrator's job then.
+        With projectPath it also strips the compiled code other tools DEFERRED while agents shared
+        LabVIEW (`deferredSourceOnly`: DQMH Main.vi after place_handler, AF overrides).
         """)]
     public async Task<string> CloseActiveProjectAsync(
         [Description("Where to keep the generated helper VI; defaults to a per-user temp directory.")]
@@ -217,6 +219,18 @@ internal sealed class CloseTools(LvaiConnection connection)
                 if (node is System.Text.Json.Nodes.JsonObject o && o["projectSweep"] is { } sweep)
                 {
                     sweep["projectPathFrom"] = pathFrom;
+                    // The source-only strips other tools DEFERRED while agents shared this LabVIEW
+                    // (DeferredSourceOnly): the project is closed now, so the pylabview edit is safe.
+                    if (o["closed"]?.GetValue<bool>() == true && projectPath is { Length: > 0 }
+                        && DeferredSourceOnly.Take(projectPath) is { Count: > 0 } deferred)
+                    {
+                        var strips = new System.Text.Json.Nodes.JsonArray();
+                        foreach (var vi in deferred)
+                            strips.Add(File.Exists(vi)
+                                ? await new DiagramCleanup(connection).StripCompiledAsync(vi, timeoutSeconds, ct)
+                                : new System.Text.Json.Nodes.JsonObject { ["vi"] = vi, ["skipped"] = "The file is gone." });
+                        o["deferredSourceOnly"] = strips;
+                    }
                     return Json.Document(o);
                 }
             }
@@ -264,6 +278,10 @@ internal sealed class CloseTools(LvaiConnection connection)
             // as well, and the open after it refused the project. The folder entry is kept.
             var duplicates = LvClass.RemoveDuplicateViEntries(full);
 
+            // A folder a library call of this session emptied - LabVIEW's save drops the loose
+            // entries and leaves the folder (measured 2026-11-18). Only those are removed.
+            var emptied = ProjectFolderLedger.RemoveEmptyRecorded(full);
+
             return new JsonObject
             {
                 ["swept"] = true,
@@ -271,6 +289,7 @@ internal sealed class CloseTools(LvaiConnection connection)
                 ["strayVisRemoved"] = removed,
                 ["strayVisRemovedNames"] = new JsonArray([.. names.Select(n => (JsonNode)n!)]),
                 ["duplicateEntriesRemoved"] = new JsonArray([.. duplicates.Select(n => (JsonNode)n!)]),
+                ["emptyFoldersRemoved"] = new JsonArray([.. emptied.Select(n => (JsonNode)n!)]),
                 // WHAT IT DOES NOT REACH, said plainly rather than left to be discovered. The same
                 // WeighBridge close also adopted a VI from a directory OUTSIDE the project tree
                 // (`../../wb-negctl/Neg Control.vi`), and that one stays: the file exists and sits
@@ -289,7 +308,10 @@ internal sealed class CloseTools(LvaiConnection connection)
                     + "%TEMP% when the project itself does not live there. A VI adopted "
                     + "from any OTHER directory is left alone and is not reported, because nothing "
                     + "here can distinguish it from one the user listed on purpose."
-                    : duplicates.Count > 0 ? "" : "Nothing to remove."),
+                    : duplicates.Count > 0 || emptied.Count > 0 ? "" : "Nothing to remove.")
+                    + (emptied.Count > 0
+                        ? " Folders a library call emptied were removed (emptyFoldersRemoved); an empty folder of your own is never touched."
+                        : ""),
             };
         }
         catch (Exception failure)

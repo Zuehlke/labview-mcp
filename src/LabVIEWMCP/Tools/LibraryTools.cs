@@ -215,6 +215,13 @@ internal sealed class LibraryTools(LvaiConnection connection)
                         new JsonObject { ["steps"] = steps });
             }
 
+            // A folder whose every entry this call takes over is left EMPTY at the project's next
+            // save; it is recorded so the close sweep removes it (ProjectFolderLedger).
+            var ledgerProject = projectPath is { Length: > 0 } ? projectPath
+                : (await new ActionTools(connection).ProjectIsActiveAsync(timeoutSeconds, ct: ct)).Item3;
+            var foldersToEmpty = ledgerProject is { Length: > 0 } && File.Exists(ledgerProject)
+                ? ProjectFolderLedger.Record(ledgerProject, items.Select(i => i.Path)) : [];
+
             // ONE RUN PER ITEM. The helper adds one item and saves the library, which keeps it
             // simple enough to read; the loop lives here so the CALLER still spends one turn.
             var added = new JsonArray();
@@ -308,7 +315,8 @@ internal sealed class LibraryTools(LvaiConnection connection)
                 ["verify"] = verify,
                 ["projectEntriesToRemove"] =
                     new JsonArray([.. items.Select(i => (JsonNode)i.Name)]),
-                ["steps"] = steps,
+                ["foldersLeftEmpty"] = new JsonArray([.. foldersToEmpty.Select(f => (JsonNode)f)]),
+                ["steps"] = Json.SlimSteps(steps, keep: !verified),
                 ["note"] = verified
                     ? "Added and verified from the .lvlib. Each item now belongs to the project " +
                       "THROUGH this library, so remove any entry it had in the .lvproj on its own - " +

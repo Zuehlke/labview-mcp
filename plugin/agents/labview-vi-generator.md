@@ -222,6 +222,17 @@ Measured facts that each cost minutes when found at run time. Plan around them f
   connector pane".
 - **Start from a skeleton where one fits, and name your elements instead of numbering them.**
   `scripts/aixml-skeletons/` holds complete, validated AIXML for shapes that are easy to get wrong.
+  **Read `scripts/aixml-skeletons/README.md` FIRST - one small index - and then the ONE file that
+  fits**, before any `lvai_aixml_reference` lookup: a skeleton is a whole VI that was generated on
+  both backends and run, and it spells out every node it uses. Six cover the shapes agents wrote
+  most (2026-11-18): an array of clusters walked with shift registers (`cluster-array-loop`), a
+  text/CSV file read and written (`text-table-read`, `text-table-write`), a record found by its key
+  (`find-by-key`), a control group disabled through references (`control-group-disable`), and a
+  queue between a producer and a consumer with a string Case Structure (`string-command-queue`),
+  a record changed in place (`record-update`), a file beside the VI (`path-beside-vi`), a line
+  appended through a file refnum (`log-append`) and a Case Structure on the error cluster that
+  raises its own error (`error-case`).
+  Look up only the nodes no skeleton shows, all of them in one call.
   `accumulate-across-a-loop.xml` carries the `maxin` For Loop, the shift-register accumulator and
   the seed/append/keep case pair without which the inner indexing loop runs zero times on iteration
   0 and the accumulator stays empty for the whole run. It answers a different question from
@@ -293,12 +304,15 @@ When the task prompt names a **build contract** (`build-contract.json`, docs/bui
 the orchestrator has already settled every interface of the application. The contract is the
 specification, not a suggestion:
 
+- **Start with `lvai_check_build_contract mode=plan forBuilder=<your builder name>` and build from
+  its `slice`. Do NOT Read the contract file** - the slice is your VIs, the types they name and a
+  ready `<Call>` for every VI they call; the rest is other builders' work.
+- **Read `spec.txt` / `panel.xml` when the prompt names them, never the PDF or the supplied VI.**
 - **Names, types, `conIdx` and `connection` of every terminal come from the contract.** Author the
   AIXML from it verbatim. A named type `@X` is the literal under `types.X`.
-- **A callee's terminals come from the contract, not from its file.** Ask
-  `lvai_check_build_contract mode=plan callSkeletonsFor=<callees>` for ready `<Call>` elements -
-  one call for all of them - instead of `lvai_vi_terminals` per callee. The callee may not exist
-  yet; author against the contract anyway and generate once it does.
+- **A callee's terminals come from the contract, not from its file**: `slice.callSkeletons`, or
+  `callSkeletonsFor=<names>` for a VI outside your slice - never `lvai_vi_terminals` per callee.
+  The callee may not exist yet; author against the contract anyway and generate once it does.
 - **Call an owned VI by the qualified name the contract gives** (`Account Manager.lvlib:Deposit.vi`),
   never by its bare file name.
 - **Build only the VIs whose `builder` is you, in the folder the contract gives.**
@@ -571,6 +585,8 @@ impossible.
 
    - **Every output a `string`** → `lvai_run_vi_as_top_level`.
    - **Anything else — a boolean, numeric, cluster, array or waveform** → **`lvai_run_vi_and_read_values`**.
+     **Several input sets go into ONE call** (`inputSetsJson`: an array of input objects; the
+     answer is `runs`, one compact entry per set) - never one call per set.
      It sets the inputs, runs the target and reads *every* control and indicator back through VI
      Server, so the values arrive intact. That is the normal case: a VI whose outputs are all
      strings is the exception.
@@ -822,7 +838,12 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    because its duplicate has no wire ends to move. An Event Structure's frames are re-registered on
    the supplied controls by the graft itself (`events`); the graft closes the project for that
    pylabview edit and OPENS IT AGAIN afterwards (`events.projectReopened`), so the bind can follow
-   directly - only on `projectReopened: false` open it yourself. LabVIEW's close-save may list the
+   directly - only on `projectReopened: false` open it yourself. **In a parallel build the graft
+   answers `projectChangeWhileParallel` and does nothing** while other agents' calls run (or ran in
+   the last 60 s): it uses the clipboard and closes the project. Wait as the refusal says (a
+   PowerShell sleep of 20 s per round) and call it again - never work around it (measured
+   2026-11-18: a project close under other agents raised a modal dialog that stalled every agent
+   for a minute). LabVIEW's close-save may list the
    SCAFFOLD in the project at target level: move it with `lvai_add_vis_to_project`
    `folderName: By-products`.
    **Before you REGENERATE a scaffold that calls a project-local subVI, open that subVI again**

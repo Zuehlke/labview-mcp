@@ -1,0 +1,25 @@
+<VI _name="Test - Inventory - Set Stock 1.vi" description="\0D\0A_____\0D\0ACreated using DQMH Framework\3A Event Scripter 7.1.2.1547.">
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" description="&lt;B&gt;error out&lt;/B&gt; passes error or warning information out of a VI to be used by other VIs.\0A\0ARight-click the &lt;B&gt;error out&lt;/B&gt; indicator on the front panel and select &lt;B&gt;Explain Error&lt;/B&gt; or &lt;B&gt;Explain Warning&lt;/B&gt; from the shortcut menu for more information about the error." uid="43" uid_parent="root" value="[false,0,]" conIdx="0" connection="recommended" inputs="value:337.value" />
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" description="&lt;B&gt;error in&lt;/B&gt; can accept error information wired from VIs previously called. Use this information to decide if any functionality should be bypassed in the event of errors from other VIs.\0A\0ARight-click the &lt;B&gt;error in&lt;/B&gt; control on the front panel and select &lt;B&gt;Explain Error&lt;/B&gt; or &lt;B&gt;Explain Warning&lt;/B&gt; from the shortcut menu for more information about the error." uid="113" uid_parent="root" value="[false,0,]" conIdx="8" connection="recommended" outputs="value:113.value" />
+  <Indicator _name="Pass" type="bool" uid="279" uid_parent="root" value="false" conIdx="3" connection="recommended" inputs="value:365.value" />
+  <Structure _name="Case Structure" uid="173" uid_parent="root" selectin="113.value">
+    <CaseFrame selector="No Error" uid="300" uid_parent="173" selectout="300.value">
+      <Tunnel _id="Out1" uid="336" uid_parent="300" inputs="value:242.error out" />
+      <Tunnel _id="Out2" uid="363" uid_parent="300" inputs="value:408.x = y?" />
+      <Node _name="Equal?" uid="408" uid_parent="300" outputs="x = y?:408.x = y?" inputs="y:,x:" />
+      <Node _name="Unbundle By Name" uid="452" uid_parent="300" fields="?" inputs="input cluster:" />
+      <Call uid="242" uid_parent="300" target="Inventory.lvlib:Set Stock.vi" outputs="error out:242.error out,timed out?:,Found:" inputs="wait for reply (T):,Quantity:,error in:300.value,Item Name:,Inventory File:" />
+      <FreeLabel comment="#DQMH_CodeNeeded Add code to check the Reply Payload of the Request and Wait for Reply VI to see if the test passes or fails." uid="194" uid_parent="300" />
+    </CaseFrame>
+    <CaseFrame selector="Error" uid="290" uid_parent="173" selectout="290.value">
+      <Tunnel _id="Out1" uid="335" uid_parent="290" inputs="value:290.value" />
+      <Tunnel _id="Out2" uid="361" uid_parent="290" inputs="value:" />
+    </CaseFrame>
+    <Tunnel _id="Out1" uid="337" uid_parent="173" outputs="value:337.value" />
+    <Tunnel _id="Out2" uid="365" uid_parent="173" cond="true" outputs="value:365.value" />
+  </Structure>
+</VI>
+<?lvmcp pane="4815"?>
+<?lvmcp paneflags="0:0D08,3:0900,8:0A00"?>
+<?lvmcp exec IsReentrant="0" PooledReentrancy="0" IsSubroutine="0" Priority="1" PrefExecSyst="-1" SaveParallel="0" InStBit4="1"?>
+<?lvmcp calllink uid="242" tp="1" path="|||Libraries|Inventory|Set Stock.vi"?>

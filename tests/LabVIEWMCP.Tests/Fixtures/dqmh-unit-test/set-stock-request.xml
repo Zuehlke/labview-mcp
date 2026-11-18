@@ -1,0 +1,121 @@
+<VI _name="Inventory.lvlib:Set Stock.vi" description="\0D\0D\0A_____\0D\0ACreated using DQMH Framework\3A Event Scripter 7.1.2.1547.">
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" description="&lt;B&gt;error out&lt;/B&gt; passes error or warning information out of a VI to be used by other VIs.\0A\0ARight-click the &lt;B&gt;error out&lt;/B&gt; indicator on the front panel and select &lt;B&gt;Explain Error&lt;/B&gt; or &lt;B&gt;Explain Warning&lt;/B&gt; from the shortcut menu for more information about the error." uid="43" uid_parent="root" value="[false,0,]" conIdx="0" connection="recommended" inputs="value:254.error out" />
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" description="&lt;B&gt;error in&lt;/B&gt; can accept error information wired from VIs previously called. Use this information to decide if any functionality should be bypassed in the event of errors from other VIs.\0A\0ARight-click the &lt;B&gt;error in&lt;/B&gt; control on the front panel and select &lt;B&gt;Explain Error&lt;/B&gt; or &lt;B&gt;Explain Warning&lt;/B&gt; from the shortcut menu for more information about the error." uid="113" uid_parent="root" value="[false,0,]" conIdx="8" connection="recommended" outputs="value:113.value" />
+  <Indicator _name="timed out?" type="bool" uid="353" uid_parent="root" value="false" conIdx="1" connection="recommended" inputs="value:509.value" />
+  <Control _name="wait for reply (T)" type="bool" uid="517" uid_parent="root" value="true" conIdx="6" connection="optional" outputs="value:517.value" />
+  <Constant _name="DQMH_ARG" type="cluster{path.Inventory File,string.Item Name,double.Quantity,ref{Notifier}{cluster{bool.Found,cluster{bool.status,int32.code,string.source}.error}}.Wait Notifier,bool.wait for reply}" uid="604" uid_parent="root" value="[,,0,,false]" outputs="value:604.value" />
+  <Control _name="Inventory File" type="path" uid="754" uid_parent="root" value="" conIdx="10" connection="required" outputs="value:754.value" />
+  <Control _name="Item Name" type="string" uid="811" uid_parent="root" value="" conIdx="9" connection="required" outputs="value:811.value" />
+  <Control _name="Quantity" type="double" uid="839" uid_parent="root" value="0" conIdx="7" connection="required" outputs="value:839.value" />
+  <Node _name="Merge Errors" uid="254" uid_parent="root" inputs="error in:708.value,error in:132.error out" outputs="error out:254.error out" />
+  <Node _name="Unbundle By Name" uid="463" uid_parent="root" fields="Set Stock" inputs="input cluster:132.Inventory Request Events" outputs="Set Stock:463.Set Stock" />
+  <Structure _name="Case Structure" uid="279" uid_parent="root" selectin="634.NaN/Path/Refnum?">
+    <Tunnel _id="In1" uid="679" uid_parent="279" inputs="value:113.value" />
+    <Tunnel _id="In2" uid="693" uid_parent="279" inputs="value:463.Set Stock" />
+    <Tunnel _id="In3" uid="771" uid_parent="279" inputs="value:604.value" />
+    <Tunnel _id="In4" uid="825" uid_parent="279" inputs="value:754.value" />
+    <Tunnel _id="In5" uid="852" uid_parent="279" inputs="value:811.value" />
+    <Tunnel _id="In6" uid="880" uid_parent="279" inputs="value:839.value" />
+    <Tunnel _id="In7" uid="615" uid_parent="279" inputs="value:517.value" />
+    <CaseFrame selector="False" uid="648" uid_parent="279" selectout="">
+      <Tunnel _id="In1" uid="678" uid_parent="648" outputs="value:678.value" />
+      <Tunnel _id="In2" uid="692" uid_parent="648" outputs="value:692.value" />
+      <Tunnel _id="Out1" uid="707" uid_parent="648" inputs="value:1420.value" />
+      <Tunnel _id="Out2" uid="487" uid_parent="648" inputs="value:1407.value" />
+      <Tunnel _id="In3" uid="763" uid_parent="648" outputs="value:763.value" />
+      <Tunnel _id="In4" uid="817" uid_parent="648" outputs="value:817.value" />
+      <Tunnel _id="In5" uid="844" uid_parent="648" outputs="value:844.value" />
+      <Tunnel _id="In6" uid="872" uid_parent="648" outputs="value:872.value" />
+      <Tunnel _id="In7" uid="561" uid_parent="648" outputs="value:561.value" />
+      <Node _name="Generate User Event" uid="185" uid_parent="648" inputs="user event:692.value,event data cluster:494.output cluster,error in:1030.value,priority (normal):" outputs="user event out:,error out:185.error out" />
+      <Node _name="Bundle By Name" uid="494" uid_parent="648" fields="Inventory File,Item Name,Quantity,Wait Notifier,wait for reply" inputs="input cluster:763.value,Inventory File:817.value,Item Name:844.value,Quantity:872.value,Wait Notifier:590.value,wait for reply:561.value" outputs="output cluster:494.output cluster" />
+      <Structure _name="Case Structure" uid="266" uid_parent="648" selectin="561.value">
+        <Tunnel _id="In1" uid="1018" uid_parent="266" inputs="value:678.value" />
+        <CaseFrame selector="False" uid="986" uid_parent="266" selectout="">
+          <Tunnel _id="In1" uid="1016" uid_parent="986" outputs="value:1016.value" />
+          <Tunnel _id="Out1" uid="1028" uid_parent="986" inputs="value:1016.value" />
+          <Tunnel _id="Out2" uid="1042" uid_parent="986" inputs="value:" />
+        </CaseFrame>
+        <CaseFrame selector="True" uid="992" uid_parent="266" selectout="">
+          <Tunnel _id="In1" uid="1017" uid_parent="992" outputs="value:1017.value" />
+          <Tunnel _id="Out1" uid="1029" uid_parent="992" inputs="value:205.error out" />
+          <Tunnel _id="Out2" uid="1043" uid_parent="992" inputs="value:205.notifier out" />
+          <Constant _name="DQMH_WAIT_ARG" type="cluster{bool.Found,cluster{bool.status,int32.code,string.source}.error}" uid="619" uid_parent="992" value="[false,[false,0,]]" outputs="value:619.value" />
+          <Node _name="Obtain Notifier" uid="205" uid_parent="992" outputs="notifier out:205.notifier out,created new?:,error out:205.error out" inputs="name (unnamed):,notification data type:619.value,create if not found? (T):,error in (no error):1017.value" />
+        </CaseFrame>
+        <Tunnel _id="Out1" uid="1030" uid_parent="266" outputs="value:1030.value" />
+        <Tunnel _id="Out2" uid="1044" uid_parent="266" cond="true" outputs="value:1044.value" />
+      </Structure>
+      <Structure _name="Case Structure" uid="1341" uid_parent="648" selectin="561.value">
+        <Tunnel _id="In1" uid="1380" uid_parent="1341" inputs="value:185.error out" />
+        <Tunnel _id="In2" uid="1394" uid_parent="1341" inputs="value:590.value" />
+        <CaseFrame selector="False" uid="1349" uid_parent="1341" selectout="">
+          <Tunnel _id="In1" uid="1378" uid_parent="1349" outputs="value:1378.value" />
+          <Tunnel _id="In2" uid="1392" uid_parent="1349" outputs="value:" />
+          <Tunnel _id="Out1" uid="1405" uid_parent="1349" inputs="value:" />
+          <Tunnel _id="Out2" uid="1418" uid_parent="1349" inputs="value:1378.value" />
+        </CaseFrame>
+        <CaseFrame selector="True" uid="1355" uid_parent="1341" selectout="">
+          <Tunnel _id="In1" uid="1379" uid_parent="1355" outputs="value:1379.value" />
+          <Tunnel _id="In2" uid="1393" uid_parent="1355" outputs="value:1393.value" />
+          <Tunnel _id="Out1" uid="1406" uid_parent="1355" inputs="value:331.timed out?" />
+          <Tunnel _id="Out2" uid="1419" uid_parent="1355" inputs="value:383.error out" />
+          <Indicator _name="Found" type="bool" uid="919" uid_parent="1355" value="false" conIdx="3" connection="recommended" inputs="value:607.Found" />
+          <Node _name="Wait on Notification" uid="331" uid_parent="1355" inputs="notifier:1393.value,ignore previous (F):,timeout in ms (-1):362.Module Timeout,error in (no error):1379.value" outputs="notifier out:331.notifier out,notification:331.notification,timed out?:331.timed out?,error out:331.error out" />
+          <Node _name="Release Notifier" uid="379" uid_parent="1355" outputs="notifier name:,last notification:,error out:379.error out" inputs="notifier:331.notifier out,force destroy? (F):,error in (no error):331.error out" />
+          <Structure _name="Case Structure" uid="417" uid_parent="1355" selectin="331.timed out?">
+            <CaseFrame selector="False" uid="425" uid_parent="417" selectout="">
+              <Tunnel _id="Out1" uid="722" uid_parent="425" inputs="value:" />
+            </CaseFrame>
+            <CaseFrame selector="True" uid="431" uid_parent="417" selectout="">
+              <Tunnel _id="Out1" uid="730" uid_parent="431" inputs="value:1175.error out" />
+              <Constant _name="DQMH_TIMEOUTMSG" type="string" uid="522" uid_parent="431" value="%s: The 'Set Stock' request timed out." outputs="value:522.value" />
+              <Node _name="Format Into String" uid="468" uid_parent="431" inputs="format string:522.value,initial string:,error in:,input 1:265.Module Name" outputs="resulting string:468.resulting string,error out:" />
+              <Call uid="265" uid_parent="431" target="Inventory.lvlib:Module Name--constant.vi" outputs="Module Name:265.Module Name" />
+              <Call uid="436" uid_parent="431" target="Inventory.lvlib:Status Updated.vi" inputs="error in:,Status:468.resulting string" outputs="error out:" />
+              <Call uid="1175" uid_parent="431" target="Inventory.lvlib:Request and Wait for Reply Timeout--error.vi" outputs="error out:1175.error out" inputs="Error Message:468.resulting string" />
+            </CaseFrame>
+            <Tunnel _id="Out1" uid="735" uid_parent="417" cond="true" outputs="value:735.value" />
+          </Structure>
+          <Node _name="Merge Errors" uid="383" uid_parent="1355" inputs="error in:379.error out,error in:735.value,error in:544.error" outputs="error out:383.error out" />
+          <Node _name="Unbundle By Name" uid="544" uid_parent="1355" fields="error" inputs="input cluster:331.notification" outputs="error:544.error" />
+          <Node _name="Unbundle By Name" uid="607" uid_parent="1355" fields="Found" outputs="Found:607.Found" inputs="input cluster:331.notification" />
+          <Call uid="362" uid_parent="1355" target="Inventory.lvlib:Module Timeout--constant.vi" outputs="Module Timeout:362.Module Timeout" />
+        </CaseFrame>
+        <Tunnel _id="Out1" uid="1407" uid_parent="1341" cond="true" outputs="value:1407.value" />
+        <Tunnel _id="Out2" uid="1420" uid_parent="1341" outputs="value:1420.value" />
+      </Structure>
+      <Structure _name="Flat Sequence Frame" uid="506" uid_parent="648">
+        <Tunnel _id="In1" uid="570" uid_parent="506" inputs="value:1044.value" outputs="value:570.value" />
+        <Tunnel _id="Out1" uid="590" uid_parent="506" outputs="value:590.value" inputs="value:570.value" />
+      </Structure>
+    </CaseFrame>
+    <CaseFrame selector="True" uid="642" uid_parent="279" selectout="">
+      <Tunnel _id="In1" uid="677" uid_parent="642" outputs="value:677.value" />
+      <Tunnel _id="In2" uid="691" uid_parent="642" outputs="value:" />
+      <Tunnel _id="Out1" uid="706" uid_parent="642" inputs="value:776.error out" />
+      <Tunnel _id="Out2" uid="497" uid_parent="642" inputs="value:" />
+      <Tunnel _id="In3" uid="766" uid_parent="642" outputs="value:" />
+      <Tunnel _id="In4" uid="821" uid_parent="642" outputs="value:" />
+      <Tunnel _id="In5" uid="848" uid_parent="642" outputs="value:" />
+      <Tunnel _id="In6" uid="876" uid_parent="642" outputs="value:" />
+      <Tunnel _id="In7" uid="598" uid_parent="642" outputs="value:" />
+      <Node _name="Merge Errors" uid="776" uid_parent="642" inputs="error in:677.value,error in:211.error out" outputs="error out:776.error out" />
+      <Call uid="211" uid_parent="642" target="Inventory.lvlib:Module Not Running--error.vi" outputs="error out:211.error out" />
+    </CaseFrame>
+    <Tunnel _id="Out1" uid="708" uid_parent="279" outputs="value:708.value" />
+    <Tunnel _id="Out2" uid="509" uid_parent="279" cond="true" outputs="value:509.value" />
+  </Structure>
+  <Node _name="Not A Number/Path/Refnum?" uid="634" uid_parent="root" outputs="NaN/Path/Refnum?:634.NaN/Path/Refnum?" inputs="number/path/refnum:463.Set Stock" />
+  <Call uid="132" uid_parent="root" target="Inventory.lvlib:Obtain Request Events.vi" outputs="error out:132.error out,Inventory Request Events:132.Inventory Request Events" inputs="error in:,Create New? (F):" />
+  <FreeLabel comment="Note\3A Do not modify or remove the &quot;DQMH&quot; labels on objects. These labels are used by the Tools &gt; DQMH Consortium &gt; DQMH utilities." uid="350" uid_parent="root" />
+</VI>
+<?lvmcp pane="4815"?>
+<?lvmcp paneflags="0:0900,1:0900,3:0900,7:1000,8:0800,9:1000,10:1000"?>
+<?lvmcp exec IsReentrant="0" PooledReentrancy="1" IsSubroutine="0" Priority="1" PrefExecSyst="-1" SaveParallel="1" InStBit4="1"?>
+<?lvmcp calllink uid="265" tp="1" path="|Module Name--constant.vi"?>
+<?lvmcp calllink uid="436" tp="1" path="|Status Updated.vi"?>
+<?lvmcp calllink uid="1175" tp="1" path="|Request and Wait for Reply Timeout--error.vi"?>
+<?lvmcp calllink uid="362" tp="1" path="|Module Timeout--constant.vi"?>
+<?lvmcp calllink uid="211" tp="1" path="|Module Not Running--error.vi"?>
+<?lvmcp calllink uid="132" tp="1" path="|Obtain Request Events.vi"?>

@@ -215,6 +215,17 @@ instance holds its own copy of the VI.
   are — the two spellings mix in one file, and a file with no symbol is not rewritten at all.
   `scripts/aixml-skeletons/` holds validated shapes worth copying from, and its header says what in
   it is a station-specific measurement rather than a fact.
+  **Read `scripts/aixml-skeletons/README.md` FIRST - one small index - and then the ONE file that
+  fits**, before any `lvai_aixml_reference` lookup: a skeleton is a whole VI that was generated on
+  both backends and run, and it spells out every node it uses. Six cover the shapes agents wrote
+  most (2026-11-18): an array of clusters walked with shift registers (`cluster-array-loop`), a
+  text/CSV file read and written (`text-table-read`, `text-table-write`), a record found by its key
+  (`find-by-key`), a control group disabled through references (`control-group-disable`), and a
+  queue between a producer and a consumer with a string Case Structure (`string-command-queue`),
+  a record changed in place (`record-update`), a file beside the VI (`path-beside-vi`), a line
+  appended through a file refnum (`log-append`) and a Case Structure on the error cluster that
+  raises its own error (`error-case`).
+  Look up only the nodes no skeleton shows, all of them in one call.
 - **Preserve what you are not changing.** Start from the exported AIXML and edit it. Do not
   re-author the VI from scratch because that felt tidier — every `uid` you needlessly change is
   a diff the user has to review.
@@ -227,12 +238,15 @@ When the task prompt names a **build contract** (`build-contract.json`, docs/bui
 the orchestrator has already settled every interface of the application. The contract is the
 specification, not a suggestion:
 
+- **Start with `lvai_check_build_contract mode=plan forBuilder=<your builder name>` and build from
+  its `slice`. Do NOT Read the contract file** - the slice is your VIs, the types they name and a
+  ready `<Call>` for every VI they call; the rest is other builders' work.
+- **Read `spec.txt` / `panel.xml` when the prompt names them, never the PDF or the supplied VI.**
 - **Names, types, `conIdx` and `connection` of every terminal come from the contract.** Author the
   AIXML from it verbatim. A named type `@X` is the literal under `types.X`.
-- **A callee's terminals come from the contract, not from its file.** Ask
-  `lvai_check_build_contract mode=plan callSkeletonsFor=<callees>` for ready `<Call>` elements -
-  one call for all of them - instead of `lvai_vi_terminals` per callee. The callee may not exist
-  yet; author against the contract anyway and generate once it does.
+- **A callee's terminals come from the contract, not from its file**: `slice.callSkeletons`, or
+  `callSkeletonsFor=<names>` for a VI outside your slice - never `lvai_vi_terminals` per callee.
+  The callee may not exist yet; author against the contract anyway and generate once it does.
 - **Call an owned VI by the qualified name the contract gives** (`Account Manager.lvlib:Deposit.vi`),
   never by its bare file name.
 - **Build only the VIs whose `builder` is you, in the folder the contract gives.**

@@ -1066,6 +1066,21 @@ configured, each carrying `#CodeNeeded` ("Configure this frame for the Module Di
 event..."). Delacor's own `templates\Unit Test Request.vit` is `execState 0` as well - the control
 that settles it. Setup and teardown read 1.
 
+**Filled and run since 2026-11-18** (`argumentsJson`, `expectedJson`, `runTest`). On a DQMH 7.x
+Request and Wait for Reply event the template's `No Error` frame calls the request VI with every
+argument unwired, an `Unbundle By Name` with no field and an `Equal?` with no inputs feed `Pass`.
+The tool exports that VI, puts the argument values in as constants, compares each expected reply
+field and `timed out?` (FALSE) with `Equal?`, ANDs them into `Pass`, and generates the VI over its
+own path on pane 4815, keeping Delacor's frames, call and error chain (`DqmhUnitTestFill`).
+Measured on the Bausteine project: Set Stock Washer = 12 passed, Get Stock Washer = 12 passed, a
+deliberately wrong 99 answered `pass: false`; setup and teardown ran around each.
+
+Two things the first try got wrong, both fixed: the state was read with the VI outside the
+project's instance and answered 0 for a test that ran and passed (it calls `Inventory.lvlib:...`);
+the project is now closed before the VI is written and the VI opened THROUGH the project before
+its state is read. And a field name refused only after scripting left a broken `Get Stock 6`
+behind; the names are now checked against the request VI before anything is scripted.
+
 **This contradicts `docs/aixml-call-loaded-vi.md` §3**: there `ValidateAIXML` refused a loaded
 project-local target in every arm; here it ACCEPTED loaded project-library members. Recorded there
 as section 9.

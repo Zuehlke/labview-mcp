@@ -63,7 +63,9 @@ internal sealed class GraftTools(LvaiConnection connection)
         call lvai_bind_control_references after the graft.
         NEEDS AN ACTIVE PROJECT: pass projectPath and the tool opens it when it is not active
         (`noActiveProject` otherwise). USES THE SYSTEM CLIPBOARD: run it from the
-        orchestrator, one graft at a time. To graft IN PLACE, copy the supplied VI aside, pass the
+        orchestrator, one graft at a time; while other agents' calls run (or ran in the last 60 s)
+        it is REFUSED before doing anything (`projectChangeWhileParallel`) - call it again once they
+        are done. To graft IN PLACE, copy the supplied VI aside, pass the
         copy as panelViPath and the original as outputViPath with overwrite; do not open the
         supplied VI first. `switchActions` true means the saved control is NOT latched. The
         rewired diagram is laid out with lvai_layout_diagram (`cleanUpDiagram`); the panel is not touched.
@@ -104,6 +106,21 @@ internal sealed class GraftTools(LvaiConnection connection)
             var scaffold = Path.GetFullPath(scaffoldViPath);
             var output = Path.GetFullPath(outputViPath);
             if (PathRefusal(panel, scaffold, output, overwrite) is { } refused) return refused;
+
+            // ---- 0a. NOT while other agents share this LabVIEW, before anything is done: the graft
+            // uses the system clipboard and closes and reopens the active project to re-register
+            // the Event Structure (a pylabview edit). In the cold ATM build of 2026-11-18 it did that
+            // twice while four other agents worked, beside the place_handler close that raised a
+            // modal dialog and stalled them all. Calling it again once they are done costs nothing.
+            if (ParallelCalls.Shared.ProjectChangeRefusalFromInside() is { } parallel)
+                return Json.Error("projectChangeWhileParallel",
+                    "lvai_graft_diagram was REFUSED and did nothing: " + parallel + " The graft uses the " +
+                    "system clipboard and closes and reopens the active project for its event " +
+                    "registration, which other agents' calls must not run beside. Call it again once the " +
+                    "other agents have finished - the refusal names when the guard lifts.",
+                    new { tool = "lvai_graft_diagram",
+                          rule = "CLAUDE.md: NO AGENT MAY OPEN OR CLOSE A PROJECT while agents share one LabVIEW",
+                          docs = "docs/keep-supplied-front-panel.md" });
             string? project = null;
             if (!string.IsNullOrWhiteSpace(projectPath))
             {

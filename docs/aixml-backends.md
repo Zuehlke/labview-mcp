@@ -3353,3 +3353,206 @@ so `Imaq Dispose` (NI's spelling) missed Basics.llb's `IMAQ Dispose`. Suite case
 `t211_imaq_image_create_dispose`, `t212_imaqdx_session_property`. Everything else - the property
 names learned for the session's class, the round trip of the 43 examples, what is still open - is
 in docs/imaq-support.md.
+
+## A linked typedef read from the VI's stale copy (fixed 2026-11-18, issue #136)
+
+**Symptom** (reported against 2.6.8): `Inner.ctl` nested as a linked typedef in `Outer.ctl`,
+`Outer.ctl` used in `Caller.vi`; `Inner.ctl` gets a field B and is saved ALONE. LabVIEW's Context
+Help shows A and B on the caller's wire, the reader's export only A - and says nothing. Clearing
+the compiled object cache changes nothing, because the reader reads the file, not LabVIEW.
+
+**Cause.** A VI - and a `.ctl` - saves a COPY of every typedef it uses, nested ones included
+(VCTP `TypeDef` entries, the qualified name as `Label` children). LabVIEW replaces that copy from
+the `.ctl` when it loads the file; the reader flattened the copy (`aixml_type`, `TypeDef`) and
+never opened a `.ctl`. NI's converter is not affected: it loads the VI in LabVIEW.
+
+**Fix.** `vi2aixml.TypedefLinks`, hooked into `lvheap.Bundle.tree` as `typedef_resolver`:
+- each `TypeDef` is matched by its qualified name to the file's `TDCC` link record (LinkSaveFlag 2
+  completed by the file's own LIBN, as for calls; the bare `.ctl` name when it is unique), and the
+  record's path is resolved like a call's (`link_file`: relative to the file, or `<vilib>` ...);
+- the `.ctl` is read with pylabview, its own `TypeDef` found through its CONP, and ITS linked
+  typedefs resolved the same way - recursively, a cycle keeping the copy;
+- a copy whose structure (`_type_shape`: every attribute but layout and the outermost LABEL, which
+  is the instance's) equals the `.ctl`'s is kept byte for byte; a differing one is replaced by the
+  `.ctl`'s definition, the instance label kept;
+- a saved VALUE (a control's default, a constant) stays decoded against the copy it was flattened
+  with, and carried into the new type field by field as LabVIEW does on load (`mutate_value`,
+  below); what cannot be carried is the new type's empty value, with a note. (Until the issue's
+  own case was built the whole value was written empty - see the last section.)
+
+**What the export says.** Per finding an XML comment inside `<VI>` and, after `</VI>`,
+`<?lvmcp typedef name="<qualified name>" status="drift|unresolved" detail="..."?>`:
+- `drift` - the copy was stale; the `.ctl`'s definition was used. An ENCLOSING typedef whose own
+  file did not change is reported too: its copy in the VI is stale through the nested one;
+- `unresolved` - the link's `.ctl` is not there or cannot be read; the copy was used and is an
+  UNVERIFIED snapshot. A nested `.ctl` that cannot be read inside a resolved one is reported the
+  same way.
+A `TypeDef` no `TDCC` of the file names is not one of its links and is read as embedded,
+unreported: a callee's pane type or an event's data (DQMH Main.vi: 7 of 18 typedefs - the module's
+own argument clusters reached through calls, LabVIEW's `lveventtype.ctl`), which LabVIEW refreshes
+through that owner. A class's private data cluster is a `TypeDef` too, with a non-zero `Flag1`
+(Delacor's Message Queue.ctl, `0xE5C5AD3E`), and is left to the class reading.
+
+**Measured.** The fixture is DQMH's `Obtain Request Events.vi` with its fourteen argument and reply
+typedefs from the ATM build (`tests/.../Fixtures/reader/typedef-drift`): three levels of linked
+typedefs. With `Deposit Argument--cluster.ctl` replaced on disk by another real `.ctl` of the
+module, the old reader exported the stale `double.Amount`; the new one exports the new fields in
+the constant AND inside the `Request Events` cluster, and reports both typedefs as `drift`. With
+the `.ctl` deleted, `unresolved`. Over 144 VIs (the ATM build and every 25th shipping example) the
+export is byte-identical to the old reader's. Cost: each linked `.ctl` is one pylabview extraction
+(about 0.7 s as a process), run eight at a time and cached by path, size and mtime - DQMH's
+Main.vi (11 links) read in 4.1 s instead of 2.7 s before the write-time filter below. In the server's resident worker pylabview
+runs IN-PROCESS and swaps `sys.argv` and stdout, so threads failed every extraction there with an
+empty message: the worker reads them one by one (the fixture in 1.8 s). Two more things the first
+suite run found: the bundled Python has no `concurrent` package (plain `threading`), and `--` - in
+every DQMH typedef name - may not stand in an XML comment, so the notes write it `- -`; the
+`<?lvmcp typedef?>` names are exact. Suite: `ReaderTypedefDriftTests`.
+
+## A subVI call read from the caller's stale pane copy (fixed 2026-11-18, sibling of issue #136)
+
+**The same mechanism as the typedefs.** A caller saves a COPY of every callee's connector pane
+(the `VIVI` link's Function type; the call node's terms carry its labelled slot types, one per
+slot, `Void` where a slot is empty). LabVIEW relinks the call to the callee's pane on load; the
+reader named the Call's terminals from the copy, so a callee changed and saved ALONE - a terminal
+renamed, added, removed or retyped - was exported as it had been.
+
+**Fix.** `vi2aixml.callee_pane` reads the callee's pane from its file - the slot's fPDCO through
+the front panel's `cons` array (as `callee_slots` does), its direction from the fPDCO's objFlags,
+its type from the pane's Function type with the callee's own linked typedefs resolved - and
+`Reader.call` compares it slot by slot with the copy:
+- a slot whose label, type or direction differs takes the callee's name, and the difference is
+  reported (`'New Balance' is now named 'Success'`, `changed type from double to bool - a wire to
+  it may break`);
+- a slot the callee no longer has is LEFT OFF the call, its wire ending nowhere, and reported as
+  one that breaks the caller - NI's export of a caller whose callee lost a wired input does the
+  same, and LabVIEW loads that caller broken (`the type of the sink is void`);
+- a slot the callee gained is listed on the Call unwired, in SLOT order among the call's own
+  terminals, as NI's export lists it;
+- a slot that IS a linked typedef on both sides, with the same name, whose type differs is the
+  TYPEDEF changing - this VI's copy of it inside the callee's pane is stale. LabVIEW updates such a
+  wire rather than breaking it, and the report says so (`carries typedef ..., which changed since
+  this VI was saved`). The typedef check above cannot see this one: the copy is no link of the
+  caller's (no `TDCC`), it travels with the callee's pane.
+Per call: `<?lvmcp subvi uid=".." target=".." status="drift|unresolved" detail=".."?>` after
+`</VI>` and a comment inside it. `unresolved`: the callee's file is not found or cannot be read,
+and the terminals are the caller's copy.
+
+**Checked: the project's own code only.** A callee reached through an anchored path (`<vilib>`,
+`<userlib>`, `<instrlib>`, an LVAddon) is not read: NI keeps those panes stable, and an example
+calling twenty vi.lib VIs would pay twenty extractions for nothing. Not checked either: a `.vim`
+(its instance adapts its types, and the link points at an instance saved INSIDE the caller,
+`Example of JOBJ Tag.vi\<guid>.vi`), an Express VI instance, an XNode. A change of the callee's pane
+PATTERN is compared slot by slot as it stands - how LabVIEW maps the slots of a changed pattern
+was not measured.
+
+**Measured.** The fixture is the ATM build's `Controller\Deposit Amount.vi` calling the DQMH API
+VI `Account Manager.lvlib:Deposit.vi` (`tests/.../Fixtures/reader/subvi-drift`), the callee's
+file replaced by another real API VI of the module: by `Withdraw.vi` - slot 3 New Balance (double)
+becomes Success (bool), New Balance appears in slot 2; by `Verify Account.vi` - the WIRED Amount
+is gone, Found/First Name/Last Name appear; deleted - `unresolved`. Each is read as described.
+Over the same 144 VIs as the typedef check, 135 read byte-identically to the old reader and 9
+report drift - all of them REAL: nine DQMH API and helper VIs of the ATM build carry a copy of
+`Request Events--cluster.ctl` inside `Obtain Request Events.vi`'s pane from before the Withdraw
+event was added, and were not saved since. Two malleable-instance links read as `unresolved` in the
+first sweep, which is why such links are skipped. Suite: `ReaderSubviDriftTests`.
+
+**Measured against LabVIEW (2026-11-18), `C:\temp\Issue136SubVI`:** `Caller.vi` calls `Sub.vi`
+(X wired, Y unwired, Result into an indicator). Sub.vi version 2, saved alone, renamed Y to Gain
+and Result to Sum and gained Status at slot 6; version 3 also lost the wired X. After each, NI's
+export (grpc, `refresh`) and the reader's are identical in every element - LabVIEW relinks a call
+BY SLOT: a renamed terminal keeps its wire under its new name. The file swap fixtures above were
+built on that assumption; this is the measurement. The first comparison found the two rules the
+list above now states (slot order for a gained terminal, a lost one left off - the reader had
+appended the first and kept the second). Suite: `ReaderIssue136Tests`.
+
+### Linked files are read only when they are NEWER than the copy (2026-11-18)
+
+Reading every linked `.ctl` and every project subVI cost a pylabview extraction each. The user's
+proposal: decide by WRITE TIME. LabVIEW writes the current definition of a typedef, and the
+current pane of a subVI, into a file's copy when it saves that file, so a linked file written
+BEFORE the file holding the copy cannot have changed since - and is not opened
+(`vi2aixml.newer_than`). The holder is the read VI for its own links, and the `.ctl` for the
+links nested in it. A checksum cannot do this: neither a `TDCC` nor a `VIVI` carries a fingerprint
+of the linked file (a `VIVI`'s `StdViGUID` names the VI, not its version), and the reader meets
+most code for the first time, so it has no baseline to compare one against.
+
+- On the ATM build all nine real drift cases were still found: each stale VI is older than the
+  `.ctl` and the subVI it is stale against. `Main.vi` reads 4 of its 26 linked files - the four
+  `SubVIs\*.vi` the library sweep resaved after it - instead of 26.
+- Each export says how it checked: `<?lvmcp linkcheck mode="byDate|full" read="n"
+  skippedByDate="m"?>` after `</VI>`, counting distinct files.
+- **A write time says nothing after a git clone or checkout**: every file is written then, in no
+  particular order, and a stale copy committed to the repository can look current. Copying in
+  Explorer and unpacking a ZIP keep the times. `--full-link-check` on `vi2aixml.py`, or
+  `LABVIEWMCP_FULL_LINK_CHECK=1` in the server's environment, reads every linked file.
+- A typedef nested in an OLDER `.ctl` is still checked when the reader's VI links it itself (DQMH
+  callers link every nested argument and reply typedef): the older outer copy is kept and the
+  nested one resolved through the VI's own link. One the VI does not link is checked only by the
+  full check.
+
+**The caches survive the read.** `vi2aixml.py` runs as `__main__` in the resident worker, freshly
+for every call, so caches in its globals were empty on the next read. They live in
+`linkcache.py` now, an imported module the worker keeps; a key is path, size, write time and
+check mode, so a changed file is read again.
+
+| `Main.vi` of the ATM module | first read | second read |
+|---|---|---|
+| old reader, own process | 1.4 s | 1.4 s |
+| by date, own process | 2.1 s (4 files read) | 2.1 s |
+| full check, own process | 5.3 s (31 files) | 5.3 s |
+| by date, resident worker | 1.6 s | 0.8 s |
+| full check, resident worker | 3.8 s | 0.8 s |
+
+Suites: `ReaderTypedefDriftTests`, `ReaderSubviDriftTests` - each sets the fixture's write times
+as the build left them (the VI last), saves the changed file NOW, and has one case where the
+changed file is older than its caller: not read by date, found by the full check.
+
+### The issue's own case, built in LabVIEW and compared with NI's export (2026-11-18)
+
+`C:\temp\Issue136`, as reported: `Inner.ctl` (A) nested in `Outer.ctl` (Inner, Count), both made
+with `lvai_create_typedef`; `Caller.vi` an Outer typedef constant `[[1.5],7]` into Unbundle By Name
+`Count` (`lvai_generate_vi`, the constant bound with `lvai_swap_subvis constantsJson`). Then
+`Inner.ctl` saved again by LabVIEW with A and B; `Outer.ctl` and `Caller.vi` left untouched on disk
+(write times 18:10:40, 18:11:14; Inner 18:11:33). NI's converter (grpc, `refresh`) LOADS the VI, so
+its export is LabVIEW's own view.
+
+| reader | Outer constant | Unbundle field | vs NI's export |
+|---|---|---|---|
+| before the fix | `cluster{cluster{double.A}...}`, `[[1.5],7]`, no note | `Count` | the type and value differ |
+| first fix | `cluster{cluster{double.A,double.B}...}`, `[[0,0],0]` | **`Inner.B`** | field and value differ |
+| final | `cluster{cluster{double.A,double.B}...}`, `[[1.5,0],7]` | `Count` | **identical in every element** |
+
+Two things only this case showed:
+- **A position stored in the heap counts against the type AS SAVED.** Unbundle By Name's `<i>`
+  numbers the fields depth first; against the resolved type (Inner gained B) index 2 named
+  `Inner.B` instead of `Count`. LabVIEW remaps a selection by NAME on load. Bundle/Unbundle By
+  Name, Bundle, Unbundle, In Place Unbundle/Bundle and a Case selector's enum items now read their
+  labels from the snapshot (`tid_tree(..., snapshot=True)`); the wire types stay resolved.
+- **LabVIEW carries a saved value into the changed type field by field, by label**: `[[1.5],7]`
+  became `[[1.5,0],7]`. `mutate_value` does the same - same type as it is, two clusters matched
+  by label (a gained field empty, a lost one dropped), anything else empty with a note.
+
+Suite: `ReaderIssue136Tests` - these three files, the write times as above, and NI's export as the
+expected text.
+
+### Enum typedefs: LabVIEW keeps the item, else the number (measured 2026-11-18)
+
+`C:\temp\Issue136Enum`, built like the issue's case: `Caller.vi` holds State = Stop of
+`{Init,Run,Stop}` and Mode = Run of `{Off,Run,Stop}`, `Caller2.vi` Level = High of `{Low,Mid,High}`;
+then each `.ctl` was saved alone - State gained Pause before Run, Mode lost Run, Level lost High.
+NI's export after each change:
+
+| constant | saved | new items | NI writes | rule |
+|---|---|---|---|---|
+| State | 2 (Stop) | Init, Pause, Run, Stop | 3 | the ITEM, at its new place |
+| Mode | 1 (Run) | Off, Stop | 1 (Stop) | item gone: the NUMBER |
+| Level | 2 (High) | Low, Mid | 1 (Mid) | number past the end: the LAST item |
+
+`mutate_value` follows those three rows; the reader wrote 0 for the last two until then (a
+"written as the new type's empty value" note). An ARRAY is carried element by element when its
+dimension count is unchanged - written from the cluster and enum rules, NOT measured in LabVIEW.
+The three exports are the expected text of `ReaderIssue136Tests`.
+
+**The 144-VI comparison, rerun after all of this:** 135 exports identical to the old reader's
+except for the added `<?lvmcp linkcheck?>` line (77 of them carry one), and the same 9 real drift
+reports in the ATM build as before. No other difference.

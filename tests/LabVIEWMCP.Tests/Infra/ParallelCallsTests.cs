@@ -164,4 +164,67 @@ public sealed class ParallelCallsTests
         Assert.Equal("projectChangeWhileParallel", json.GetProperty("errorKind").GetString());
         Assert.Contains("ORCHESTRATOR", json.GetProperty("error").GetString());
     }
+
+    /// <summary>
+    /// The cold ATM build of 2026-11-18, replayed from the subagents' transcripts (UTC): the dqmh
+    /// agent's lvai_dqmh_place_handler started 18:39:14 and closed the project INSIDE its call for the
+    /// source-only strip, while the account agent ran lvai_run_vi_and_read_values (18:39:15-18:39:20)
+    /// and lvai_generate_vi (from 18:39:32). LabVIEW raised a modal dialog, every agent's call stalled
+    /// until the user pressed Discard. The internal close has to see those calls.
+    /// </summary>
+    [Fact]
+    public void The_internal_close_of_place_handler_in_the_cold_ATM_build_is_refused()
+    {
+        var clock = new Clock();
+        var calls = new ParallelCalls(() => clock.Now);
+
+        clock.At(39, 13);
+        var account = calls.Enter("lvai_run_vi_and_read_values");
+        clock.At(39, 14);
+        using var place = calls.Enter("lvai_dqmh_place_handler");
+        clock.At(39, 18);
+        account.Dispose();
+
+        // the strip's close, ~24 s into place_handler: nothing else is in flight at that instant
+        clock.At(39, 38);
+        var why = calls.ProjectChangeRefusalFromInside();
+        Assert.NotNull(why);
+        Assert.Contains("overlapped 24 s ago", why);
+        Assert.Contains("lvai_run_vi_and_read_values", why);
+
+        // and while the account agent's generate runs beside it, at once
+        var generate = calls.Enter("lvai_generate_vi");
+        Assert.Contains("1 other tool call(s) are running", calls.ProjectChangeRefusalFromInside());
+        generate.Dispose();
+    }
+
+    /// <summary>
+    /// The caller itself is in flight and not counted, whatever its name - an agent alone may still
+    /// close its project from inside a tool, as before.
+    /// </summary>
+    [Fact]
+    public void One_agent_alone_may_still_close_its_project_from_inside_a_tool()
+    {
+        var clock = new Clock();
+        var calls = new ParallelCalls(() => clock.Now);
+
+        clock.At(18, 0);
+        calls.Enter("lvai_generate_vi").Dispose();
+        clock.At(18, 5);
+        using var graft = calls.Enter("lvai_graft_diagram");
+        Assert.Null(calls.ProjectChangeRefusalFromInside());
+    }
+
+    [Fact]
+    public void A_deferred_strip_is_handed_to_that_project_s_close_once()
+    {
+        DeferredSourceOnly.Clear();
+        DeferredSourceOnly.Add(@"C:\build\Libraries\M\Main.vi", @"C:\build\App.lvproj");
+        DeferredSourceOnly.Add(@"C:\other\Main.vi", @"C:\other\Other.lvproj");
+
+        // the project path compared as Windows does, ignoring case
+        Assert.Equal([@"C:\build\Libraries\M\Main.vi"], DeferredSourceOnly.Take(@"c:\BUILD\app.lvproj"));
+        Assert.Empty(DeferredSourceOnly.Take(@"C:\build\App.lvproj"));
+        Assert.Equal([@"C:\other\Main.vi"], DeferredSourceOnly.Take(@"C:\other\Other.lvproj"));
+    }
 }
