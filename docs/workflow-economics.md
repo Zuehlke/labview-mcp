@@ -378,6 +378,12 @@ first frame answers `nextHandler: 0` and "Main.vi was not changed"; a batch of a
 (`Ping`) and an occupied one placed the first, stopped at `nextHandler: 1`, laid Main.vi out once
 (17.7 s) and left it executable.
 
+**Repeatable as `scripts/accept_batch_calls.py`**: it writes a fresh test project under
+`C:\Temp\BatchCallsAccept_<time>` (a contract of two builders, an `Add Numbers.vi` run target,
+a Singleton DQMH module `Bank` with four events and three handlers), drives the exe over raw stdio
+- so a branch build needs no client restart - and checks 33 answers. First run 2026-11-18 on a
+warm LabVIEW: 33 of 33 in 159 s; the module came in one call, the four events in two.
+
 An event takes 19-79 s on its own, so the event batch saves fewer turns than its call count
 suggests: three events cost four calls, where three single events would have cost about five.
 
