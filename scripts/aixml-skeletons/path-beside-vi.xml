@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="path-beside-vi.vi"
+    description="Skeleton. Builds the path of a file that lies in the same folder as this VI\3A Current VI's Path\2C Strip Path\2C Build Path. In a built application the VI's path points into the executable - check that case before shipping. Copy the shapes\2C not the file.">
+  <Control _name="File Name" conIdx="0" connection="required" description="Name of the file\2C or a path relative to this VI's folder."
+           outputs="value:4200.value" type="string" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code." outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="A file in the folder of this VI" uid="4290" uid_parent="root"/>
+  <Node _name="Current VI's Path" outputs="path:4210.path" uid="4210" uid_parent="root"/>
+  <Node _name="Strip Path" inputs="path:4210.path" outputs="stripped path:4211.stripped path,name:" uid="4211" uid_parent="root"/>
+  <Node _name="Build Path" inputs="base path:4211.stripped path,name or relative path:4200.value"
+        outputs="appended path:4212.appended path" uid="4212" uid_parent="root"/>
+  <Indicator _name="Path" conIdx="4" connection="recommended" description="The file's full path."
+             inputs="value:4212.appended path" type="path" uid="4250" uid_parent="root" value=""/>
+  <Indicator _name="Folder" conIdx="6" connection="recommended" description="The folder of this VI."
+             inputs="value:4211.stripped path" type="path" uid="4251" uid_parent="root" value=""/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in\2C or the first error of this VI." inputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -430,3 +430,10 @@ from. The skeleton routes it through the consumer loop and the test pins that.
 place of several lookups of 8 k, plus the wrong attempts they prevent; a cold build before and
 after would settle it. No generator was built - the count shows which nodes recur, not yet which
 whole diagrams do.
+
+**Measured afterwards, the same day.** One `labview-vi-generator` run on a task the skeletons
+cover (a price looked up in a CSV file): it read the index and the two fitting skeletons, made 0
+`lvai_aixml_reference` calls (single-VI agents since 2026-11-01: 1-3 calls, 3-19 terms), and
+finished in 9 requests and 58 s, right on the first generation. One run is a direction, not a
+rate. Four more skeletons followed (`record-update`, `path-beside-vi`, `log-append`,
+`error-case`), each from the same count and each generated on both backends and run.

@@ -18,6 +18,7 @@ public sealed class AixmlSkeletonTests
     [
         "cluster-array-loop", "text-table-read", "text-table-write",
         "find-by-key", "control-group-disable", "string-command-queue",
+        "record-update", "path-beside-vi", "log-append", "error-case",
     ];
 
     public static TheoryData<string> AddedSkeletons => new(Added);

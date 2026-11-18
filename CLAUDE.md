@@ -131,7 +131,9 @@ be closed; "Don't Save - All" at exit is always safe. `docs/scratch-vis-in-memor
 
 **A SKELETON BEFORE A LOOKUP**: `scripts/aixml-skeletons/README.md` indexes whole VIs that were
 generated on both backends and run - clusters in a loop, a text file read and written, a search by
-key, a control group, a queue with a string case. One read replaces the lookups for every node in
+key, a record changed in place, a control group, a queue with a string case, a log appended through
+a refnum, an error case, a path beside the VI. A VI agent that read the index made no lookup at all
+(2026-11-18). One read replaces the lookups for every node in
 it. A new one is added only after it was generated on BOTH backends and RUN (a `Release Queue`
 wired from `Obtain Queue` passed validation and execState and released the queue first).
 

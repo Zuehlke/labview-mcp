@@ -221,7 +221,10 @@ instance holds its own copy of the VI.
   most (2026-11-18): an array of clusters walked with shift registers (`cluster-array-loop`), a
   text/CSV file read and written (`text-table-read`, `text-table-write`), a record found by its key
   (`find-by-key`), a control group disabled through references (`control-group-disable`), and a
-  queue between a producer and a consumer with a string Case Structure (`string-command-queue`).
+  queue between a producer and a consumer with a string Case Structure (`string-command-queue`),
+  a record changed in place (`record-update`), a file beside the VI (`path-beside-vi`), a line
+  appended through a file refnum (`log-append`) and a Case Structure on the error cluster that
+  raises its own error (`error-case`).
   Look up only the nodes no skeleton shows, all of them in one call.
 - **Preserve what you are not changing.** Start from the exported AIXML and edit it. Do not
   re-author the VI from scratch because that felt tidier — every `uid` you needlessly change is

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="record-update.vi"
+    description="Skeleton. Changes one field of the record whose key matches\2C in place in the array\3A search by key\2C Bundle By Name on the found element\2C Replace Array Subset at its index. An unknown key leaves the array unchanged and Found FALSE. Copy the shapes\2C not the file.">
+  <Control _name="Items" conIdx="0" connection="required" description="The records."
+           outputs="value:4200.value" type="array{cluster{string.Name,double.Value}}" uid="4200" uid_parent="root" value="[]"/>
+  <Control _name="Name" conIdx="5" connection="required" description="Key of the record to change."
+           outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value=""/>
+  <Control _name="New Value" conIdx="7" connection="recommended" description="The value to write into that record."
+           outputs="value:4203.value" type="double" uid="4203" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code." outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Change one record in place by its key" uid="4290" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4220" uid_parent="root" label="Collect each record's key">
+    <Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Node _name="Unbundle By Name" fields="Name" inputs="input cluster:4221.value" outputs="Name:4222.Name" uid="4222" uid_parent="4220"/>
+    <Tunnel _id="Out1" inputs="value:4222.Name" mode="index" outputs="value:4223.value" uid="4223" uid_parent="4220"/>
+  </Structure>
+
+  <Node _name="Search 1D Array" inputs="1D array:4223.value,element:4202.value,start index (0):"
+        outputs="index of element:4230.index of element" uid="4230" uid_parent="root"/>
+  <Node _name="Greater Or Equal To 0?" inputs="x:4230.index of element" outputs="x &gt;= 0?:4231.x &gt;= 0?" uid="4231" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4200.value,index:4230.index of element" outputs="element:4232.element" uid="4232" uid_parent="root"/>
+  <Node _name="Bundle By Name" fields="Value" inputs="Value:4203.value,input cluster:4232.element"
+        outputs="output cluster:4233.output cluster" uid="4233" uid_parent="root"/>
+  <Node _name="Replace Array Subset" inputs="array:4200.value,index:4230.index of element,new element/subarray:4233.output cluster"
+        outputs="output array:4234.output array" uid="4234" uid_parent="root"/>
+
+  <Indicator _name="Items Out" conIdx="4" connection="recommended" description="The records with the one changed\3B unchanged when the key is unknown."
+             inputs="value:4234.output array" type="array{cluster{string.Name,double.Value}}" uid="4250" uid_parent="root" value="[]"/>
+  <Indicator _name="Found" conIdx="6" connection="recommended" description="TRUE when a record with this key was changed."
+             inputs="value:4231.x &gt;= 0?" type="bool" uid="4251" uid_parent="root" value="false"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in\2C or the first error of this VI." inputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>
