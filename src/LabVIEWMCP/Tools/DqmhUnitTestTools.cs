@@ -49,7 +49,10 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
         DQMH Unit Test) with no dialog - safe unattended. MUTATING. Writes
         `Test - <Module> - <Event> <n>.vi`, `<Module> setup.vi` and `<Module> teardown.vi` under
         `<project folder>\Unit Tests\<Module>\`; Delacor lists them in the .lvproj itself.
-        The test VI is NOT executable when created - Delacor's design (`#CodeNeeded` frames); each
+        The test VI is NOT executable as Delacor writes it (`#CodeNeeded`) - unless you give
+        `argumentsJson` and `expectedJson`: then it is FILLED (request inputs as constants, each
+        expected reply field compared, `timed out?` FALSE, all ANDed into `Pass`) and regenerated
+        over the same path; `runTest` then runs setup, test and teardown and answers `pass`. Each
         VI's exec state is reported. Only REQUEST events qualify; an unknown name answers
         `eventNotFound` with the module's request events. Names bare or Delacor-spelt (`Heater` /
         `Heater.lvlib`), case-insensitive.
@@ -63,6 +66,18 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
         [Description("Local budget in seconds; the scripting itself takes about a second")]
         int timeoutSeconds = 600,
         [Description(DqmhTools.BackendDescription)] string? backend = null,
+        [Description("""
+            Fill the test: the request's arguments as a JSON object of name -> value text,
+            e.g. {"Item Name":"Washer","Quantity":"12"}. An argument left out keeps its default.
+            """)]
+        string? argumentsJson = null,
+        [Description("""
+            Fill the test: the reply fields to compare, name -> expected value text, e.g.
+            {"Found":"true"}. Needed to fill; a plain Request has no reply and cannot be filled.
+            """)]
+        string? expectedJson = null,
+        [Description("After filling: run setup.vi, the test and teardown.vi and answer `pass`")]
+        bool runTest = false,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(() => DqmhTools.WithBackendAsync(backend, "lvai_dqmh_new_unit_test", async () =>
         {
@@ -70,6 +85,18 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
                 return Json.Error("badArguments", "moduleName is required.");
             if (string.IsNullOrWhiteSpace(eventName))
                 return Json.Error("badArguments", "eventName is required.");
+            Dictionary<string, string> fillArguments, fillExpected;
+            try
+            {
+                fillArguments = DqmhUnitTestFill.ParseValues(argumentsJson, "argumentsJson");
+                fillExpected = DqmhUnitTestFill.ParseValues(expectedJson, "expectedJson");
+            }
+            catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message); }
+            if (fillArguments.Count > 0 && fillExpected.Count == 0)
+                return Json.Error("badArguments",
+                    "argumentsJson without expectedJson fills nothing a test can check - give the reply fields to compare.");
+            if (runTest && fillExpected.Count == 0)
+                return Json.Error("badArguments", "runTest needs a filled test - give expectedJson.");
 
             if (StatusTools.ScriptsDirectory() is not { } scripts
                 || !File.Exists(Path.Combine(scripts, HelperName + ".xml")))
@@ -99,6 +126,31 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             if (await headless.EnsureWrapperAsync(scripts, helperName, targets, projectPath, steps,
                     timeoutSeconds, ct) is { } wrapperError)
                 return wrapperError;
+
+            // ---- 1b. a fill is checked against the request VI BEFORE anything is scripted --------
+            if (fillExpected.Count > 0 && projectPath is not null)
+            {
+                var requestFolder = DqmhFrameTools.ModuleFolder(projectPath, moduleName);
+                var requestVi = requestFolder is null ? null
+                    : Path.Combine(requestFolder, DqmhHeadless.DelacorEventName(eventName));
+                if (requestVi is not null && File.Exists(requestVi))
+                {
+                    var (requestXml, _, _) = await headless.ExportAsync(requestVi, "dqmh-request", timeoutSeconds, ct);
+                    if (ViTerminals.Parse(requestXml) is { } requestTerminals)
+                    {
+                        try
+                        {
+                            DqmhUnitTestFill.CheckNames(requestTerminals,
+                                Path.GetFileNameWithoutExtension(requestVi), fillArguments, fillExpected);
+                        }
+                        catch (ArgumentException bad)
+                        {
+                            return Json.Error("badArguments", bad.Message + " Nothing was scripted.",
+                                new { requestVi });
+                        }
+                    }
+                }
+            }
 
             // ---- 2. run, then retry ONCE with Delacor's own spelling ---------------------------
             var module = DqmhHeadless.DelacorModuleName(moduleName);
@@ -222,8 +274,125 @@ internal sealed class DqmhUnitTestTools(LvaiConnection connection)
             };
             foreach (var (key, value) in detail)
                 answer[key] = value?.DeepClone();
+
+            if (fillExpected.Count > 0 && created.Count > 0 && projectPath is not null)
+            {
+                var fill = await FillAsync(projectPath, module, evt, created, fillArguments, fillExpected, runTest,
+                                           timeoutSeconds, ct);
+                answer["fill"] = fill;
+                if (fill["ok"]?.GetValue<bool>() != true) answer["ok"] = false;
+                if (fill["pass"] is { } pass) answer["pass"] = pass.DeepClone();
+                answer["note"] = fill["note"]?.DeepClone();
+            }
             return Json.Document(answer);
         }));
+
+    /// <summary>
+    /// Fills the test VI Delacor just wrote and regenerates it over its own path. The test VI is
+    /// loaded in the project's instance, so the generation's pane step (4815, Delacor's pane)
+    /// closes the project first; it is opened again afterwards, because the run and the next DQMH
+    /// call need it active.
+    /// </summary>
+    private async Task<JsonObject> FillAsync(string projectPath, string module, string evt, List<string> created,
+        Dictionary<string, string> arguments, Dictionary<string, string> expected, bool run,
+        int timeoutSeconds, CancellationToken ct)
+    {
+        var step = new JsonObject { ["step"] = "fill" };
+        var testVi = created.FirstOrDefault(f => Path.GetFileName(f).StartsWith("Test - ", StringComparison.OrdinalIgnoreCase)
+                                                 && f.EndsWith(".vi", StringComparison.OrdinalIgnoreCase));
+        var folder = DqmhFrameTools.ModuleFolder(projectPath, module);
+        var requestVi = folder is null ? null : Path.Combine(folder, evt);
+        if (testVi is null || requestVi is null || !File.Exists(requestVi))
+        {
+            step["ok"] = false;
+            step["note"] = "The test VI or the request VI was not found, so the test was not filled.";
+            step["testVi"] = testVi;
+            step["requestVi"] = requestVi;
+            return step;
+        }
+        step["testVi"] = testVi;
+        var headless = new DqmhHeadless(connection);
+        var (testXml, _, testError) = await headless.ExportAsync(testVi, "dqmh-unit-test", timeoutSeconds, ct);
+        var (requestXml, _, requestError) = await headless.ExportAsync(requestVi, "dqmh-request", timeoutSeconds, ct);
+        if (testXml is null || ViTerminals.Parse(requestXml) is not { } request)
+        {
+            step["ok"] = false;
+            step["note"] = $"The test or the request VI could not be read: {testError ?? requestError}.";
+            return step;
+        }
+        string filled;
+        try { filled = DqmhUnitTestFill.Fill(testXml, Path.GetFileNameWithoutExtension(evt), request, arguments, expected); }
+        catch (ArgumentException bad)
+        {
+            step["ok"] = false;
+            step["errorKind"] = "badArguments";
+            step["note"] = bad.Message + " The test VI was left as Delacor wrote it.";
+            return step;
+        }
+        var source = Path.Combine(Path.GetTempPath(), "LabVIEWMCP", $"dqmh-unit-test-filled.{Guid.NewGuid():N}.xml");
+        Directory.CreateDirectory(Path.GetDirectoryName(source)!);
+        await File.WriteAllTextAsync(source, filled, ct);
+        // THE PROJECT IS CLOSED BEFORE THE TEST VI IS WRITTEN, and the VI is opened THROUGH the
+        // project before its state is read. Measured 2026-11-18: read the other way round, a filled
+        // test that ran and passed answered execState 0 - it calls `Inventory.lvlib:...`, and a VI
+        // read outside the project's instance does not see the library the project holds.
+        var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+            projectPath: Path.GetFullPath(projectPath), timeoutSeconds: timeoutSeconds, ct: ct,
+            backend: BackendRoute.Current);
+        step["closeProject"] = (JsonNode.Parse(closed) as JsonObject)?["closed"]?.DeepClone();
+        string generated;
+        try
+        {
+            generated = await new BulkTools(connection).GenerateViAsync(source, testVi, panePattern: 4815,
+                timeoutSeconds: timeoutSeconds, ct: ct, measureDiagram: true, icon: "none", cleanUpPanel: false);
+        }
+        finally { if (File.Exists(source)) File.Delete(source); }
+        var generation = JsonNode.Parse(generated) as JsonObject;
+        var opened = JsonNode.Parse(await new ActionTools(connection).OpenFileAsync(
+            viPath: testVi, viName: Path.GetFileName(testVi), projectPath: Path.GetFullPath(projectPath),
+            projectName: Path.GetFileName(projectPath), checkActive: true, timeoutSeconds: timeoutSeconds,
+            ct: ct)) as JsonObject;
+        var reopenFailure = opened?["projectBecameActive"]?.GetValue<bool>() == true ? null : "project not active";
+        var exec = await headless.ExecStateAsync(testVi, timeoutSeconds, ct);
+        step["generated"] = generation?["ok"]?.DeepClone();
+        step["execState"] = exec;
+        step["projectActive"] = reopenFailure is null;
+        if (generation?["ok"]?.GetValue<bool>() != true || exec != 1)
+        {
+            step["ok"] = false;
+            step["generation"] = generation?.DeepClone();
+            step["note"] = "The filled test VI did not come out executable - `generation` holds the generator's answer.";
+            return step;
+        }
+
+        if (run)
+        {
+            var runs = new JsonArray();
+            var runner = new RunTools(connection);
+            var dir = Path.GetDirectoryName(testVi)!;
+            bool? pass = null;
+            foreach (var vi in new[] { Path.Combine(dir, module.Replace(".lvlib", "") + " setup.vi"), testVi,
+                                       Path.Combine(dir, module.Replace(".lvlib", "") + " teardown.vi") })
+            {
+                if (!File.Exists(vi)) { runs.Add(new JsonObject { ["vi"] = vi, ["ran"] = false, ["why"] = "not on disk" }); continue; }
+                var answer = JsonNode.Parse(await runner.RunViAndReadValuesAsync(vi, timeoutSeconds: timeoutSeconds,
+                    ct: ct, nativeValues: true, includeXml: false)) as JsonObject;
+                var entry = RunBatch.CompactRun(runs.Count, new JsonObject(), answer);
+                entry["vi"] = Path.GetFileName(vi);
+                if (vi == testVi && entry["values"]?["Pass"] is JsonValue p && p.TryGetValue<bool>(out var b)) pass = b;
+                runs.Add(entry);
+            }
+            step["runs"] = runs;
+            step["pass"] = pass;
+        }
+        step["ok"] = true;
+        step["note"] = run
+            ? (step["pass"]?.GetValue<bool?>() == true
+                ? "Filled, executable and PASSED: setup, test and teardown ran."
+                : "Filled and executable, but the test did NOT pass - read `runs` (the test's error out and Pass).")
+            : "Filled and executable. Run it with setup.vi before and teardown.vi after, or pass runTest: true.";
+        return step;
+    }
 
     /// <summary>
     /// The names to retry with when the first run matched nothing only because of spelling, or

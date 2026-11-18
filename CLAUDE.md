@@ -158,7 +158,9 @@ full size; the composer writes an error constant as NI's brown icon. `docs/aixml
 unwired. `lvai_check_aixml` repairs the output case.
 
 **AIXML values:** a backslash in `value=` is `\5C` (a raw one refuses the whole file, `Error 42`);
-a line break is `&#10;`; commas inside a `value` are structure. A mode attribute can change a
+a line break is `&#10;`; commas inside a `value` are structure. TEXT attributes - `description`,
+a `FreeLabel`'s `comment`, a structure's `label` - take a RAW comma and colon on both backends
+(measured 2026-11-18); `\2C` there is only how an export spells them, not something to write. A mode attribute can change a
 node's output type only together with its wiring (`Read from Text File` `readLines` needs `count`)
 - copy a variant already in the state you want.
 

@@ -284,10 +284,15 @@ and each VI's exec state. No keystroke, no foreground - this one IS unattended-s
 
 - **Only REQUEST events** get a unit test - Delacor's own filter. `eventNotFound` lists the ones
   the module has.
-- **The test VI reads `execState 0` when it is created, by Delacor's design**: its event frames
-  carry `#CodeNeeded` notes for the module's broadcasts, and Delacor's own template is broken the
-  same way. Setup and teardown read 1. Report this as the state Delacor leaves, never as a failure,
-  and do not run the test VI.
+- **A test that should RUN is filled in the same call**: `argumentsJson` (the request's argument
+  values, name -> text) and `expectedJson` (the reply fields to compare), plus `runTest: true` to
+  run setup, test and teardown - the answer's `pass` is the verdict. The names are checked against
+  the request VI BEFORE Delacor scripts, so a misspelt field leaves nothing behind. Measured on
+  DQMH 7.x "Request and Wait for Reply" events (2026-11-18); a plain Request has no reply and is
+  refused. Test on a COPY of any file the request changes.
+- **Without them the test VI reads `execState 0`, by Delacor's design**: its frames carry
+  `#CodeNeeded`. Setup and teardown read 1. Report that as the state Delacor leaves, never as a
+  failure, and do not run an unfilled test VI.
 - Delacor saves the `.lvproj` itself and lists the three VIs under a `Unit Tests` folder.
 
 ## Phase 8 — every other DQMH function, no dialog

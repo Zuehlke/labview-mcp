@@ -206,7 +206,7 @@ internal sealed class LibraryCreateTools(LvaiConnection connection)
                 ["looseEntriesLeft"] = looseLeft,
                 ["projectLeftOpen"] = false,
                 ["verify"] = verify,
-                ["steps"] = steps,
+                ["steps"] = Json.SlimSteps(steps, keep: !ok),
                 ["note"] = ok
                     ? "Created by LabVIEW, listed in the project, read back from the files. The project is " +
                       "closed. Give it an icon with lvai_set_owner_icon (project closed)."

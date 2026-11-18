@@ -115,6 +115,33 @@ internal static class Json
     /// The kept fields are deliberately few. Everything a caller acts on should be LIFTED by the
     /// composing tool into its own top-level answer; the sub-answers are evidence, not interface.
     /// </summary>
+    /// <summary>
+    /// Every `answer` inside <paramref name="steps"/> run through <see cref="Slim"/>, and the
+    /// `steps` of a sub-answer that is itself a composition likewise. Measured 2026-11-18 on the
+    /// Bausteine test project: lvai_create_library answered about 14 k characters for two items
+    /// and lvai_add_to_library as much for five, every helper run with its flattened XML.
+    /// </summary>
+    public static JsonArray SlimSteps(JsonArray steps, bool keep)
+    {
+        if (keep) return steps;
+        foreach (var step in steps)
+        {
+            if (step is not JsonObject s || s["answer"] is not JsonObject answer) continue;
+            if (LooksFailed(answer)) continue;
+            if (answer["steps"] is JsonArray inner && answer["ok"]?.GetValue<bool>() == true)
+            {
+                var lifted = answer.DeepClone().AsObject();
+                lifted["steps"] = SlimSteps(inner.DeepClone().AsArray(), keep: false);
+                s["answer"] = lifted;
+            }
+            else
+            {
+                s["answer"] = Slim(answer, keep: false);
+            }
+        }
+        return steps;
+    }
+
     public static JsonNode? Slim(JsonNode? answer, bool keep)
     {
         if (keep || answer is not JsonObject o) return answer;
@@ -124,7 +151,7 @@ internal static class Json
         [
             "ok", "errorCode", "errorKind", "errorMessage", "errorSource", "failedAtStep",
             "elapsedMs", "totalElapsedMs", "viBytes", "viExistsNow", "closed", "nothingToClose",
-            "diagramSize",
+            "diagramSize", "projectSweep",
         ];
 
         var slim = new JsonObject();

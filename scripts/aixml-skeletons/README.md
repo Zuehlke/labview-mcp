@@ -31,6 +31,9 @@ most were `Merge Errors` (122 calls, 60 agents), `Select` (114), `Unbundle By Na
 - `error in` on conIdx 11 `required`, `error out` on 15 `recommended`, the house error type.
 - One position-independent `FreeLabel`; what an iteration or a frame does is the structure's `label=`.
 - uids from 4200. They are plain numbers here: renumber when you copy two skeletons into one VI.
+- A comma in `description`, `comment` or `label` is written RAW (`log-append.xml`). An export
+  shows it as `\2C`; that is the reader's spelling, both generate the same VI (measured on both
+  backends, 2026-11-18). Only inside a `value` is a comma structure.
 - The item type is `cluster{string.Name,double.Value}` - replace it with yours in every place.
 
 ## Shapes that were got wrong while writing them

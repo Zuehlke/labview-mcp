@@ -655,10 +655,14 @@ Note the validator's own wording says "escaped with another backslash". Both spe
 accepted and decodes back to `:`, so escaping it is harmless, but it is not required the way the
 backslash is. An absolute Windows path is conventionally written `C\3A\5Ctemp\5Cout.txt`.
 
-Both `:` and `,` are separators inside `inputs`/`outputs`, which is why they are escaped
-everywhere — including in free text. You may write a literal comma in a `comment` and
-LabVIEW will accept it, but it comes back as `\2C` on the next export, so emit `\2C`
-yourself if you want authored and exported files to match.
+Both `:` and `,` are separators inside `inputs`/`outputs`, which is why an EXPORT escapes them
+everywhere — including in free text. **When you AUTHOR free text - `description`, a `FreeLabel`'s
+`comment`, a structure's `label` - write the comma and the colon RAW.** Measured 2026-11-18 on
+both backends with one probe carrying `Name,Quantity` in all three: generated, executable, and
+read back with the same text (spelt `\2C` / `\3A` by the export). The old advice here - "emit
+`\2C` yourself so authored and exported files match" - cost a VI agent three failed `sed` edits
+on the Bausteine build for no gain: a shell treats `\2` as a back-reference. Match an export only
+when you diff against one.
 
 **What is accepted is wider than what is emitted.** `\3B` for a semicolon was accepted on
 input and came back as a plain `;`. So the decoder handles the general `\XX` form, while the

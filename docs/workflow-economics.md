@@ -457,10 +457,18 @@ check caught a name clash before anything was built (`Find Item.vi` exists in JS
 module ran end to end through its API VIs: Set Stock Washer = 12, Get Stock Washer 12, Gizmo not
 found, no error and no timeout.
 
-**Found on the way, not fixed yet:**
+**Found on the way - fixed the same day** (measured against LabVIEW after the fix):
 - `lvai_dqmh_new_unit_test` writes Delacor's template, and its test VI is broken until its request
   inputs and expected value are wired - the unit test could not be run as written.
 - `lvai_create_library` and `lvai_add_to_library` answer every helper run with its XML (about
   14 k characters for two and for five items) - a candidate for compact success answers.
 - A diagram comment with a comma cost the data agent three `sed` fixes.
 - After the VIs moved into the library the project kept an empty `SubVIs` folder.
+
+The fixes: `lvai_dqmh_new_unit_test` fills and runs the test (`argumentsJson`, `expectedJson`,
+`runTest`; `docs/dqmh-scripting.md` §9a); `lvai_create_library` and `lvai_add_to_library` slim
+every step's answer on success (`Json.SlimSteps`; 14 k -> about 3 k characters, a failed step
+keeps everything); a folder a library call emptied is removed by the next close's sweep
+(`emptyFoldersRemoved`, `ProjectFolderLedger`) and a user's own empty folder is left; and a raw
+comma in `description`/`comment`/`label` is documented as fine (`docs/aixml-reference.md`), with
+the skeleton that taught `\2C` rewritten.
