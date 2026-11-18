@@ -437,3 +437,30 @@ cover (a price looked up in a CSV file): it read the index and the two fitting s
 finished in 9 requests and 58 s, right on the first generation. One run is a direction, not a
 rate. Four more skeletons followed (`record-update`, `path-beside-vi`, `log-append`,
 `error-case`), each from the same count and each generated on both backends and run.
+
+## 8. Everything on one application: `C:\Temp\Bausteine` (2026-11-18)
+
+A small inventory application built by the orchestrator workflow with every form of this branch:
+`spec.txt` prepared once, a build contract (2 builders, 2 waves), `forBuilder`, the skeletons, a
+DQMH module with `eventsJson` and `handlersJson`, `inputSetsJson` for every test run, a library
+with private data VIs in function folders. Report in the project folder (`BERICHT.md`).
+
+| agent | task | requests | tool calls | wall | output | context first -> last |
+|---|---|---|---|---|---|---|
+| vi-generator (data) | 5 data VIs, built and run | 11 | 25 | 128 s | 14 k | 103 k -> 142 k |
+| vi-generator (handlers) | 2 handlers calling them | 11 | 14 | 92 s | 9 k | 104 k -> 128 k |
+| dqmh-module | module + 2 events, later the end-to-end run | 14 | 16 | 149 s | 7 k | 74 k -> 94 k |
+
+Neither VI agent read the contract file or made an `lvai_aixml_reference` or `lvai_vi_terminals`
+call; every VI was executable on its first generation and the contract verified 7 of 7. The plan
+check caught a name clash before anything was built (`Find Item.vi` exists in JSONtext). The
+module ran end to end through its API VIs: Set Stock Washer = 12, Get Stock Washer 12, Gizmo not
+found, no error and no timeout.
+
+**Found on the way, not fixed yet:**
+- `lvai_dqmh_new_unit_test` writes Delacor's template, and its test VI is broken until its request
+  inputs and expected value are wired - the unit test could not be run as written.
+- `lvai_create_library` and `lvai_add_to_library` answer every helper run with its XML (about
+  14 k characters for two and for five items) - a candidate for compact success answers.
+- A diagram comment with a comma cost the data agent three `sed` fixes.
+- After the VIs moved into the library the project kept an empty `SubVIs` folder.
