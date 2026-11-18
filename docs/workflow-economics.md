@@ -373,7 +373,10 @@ agent requests ran above 200 k.
 The handler batch's FAILURE path had two faults, fixed the same day: `nextHandler` named the
 entry AFTER the failed one (a retry from it would have skipped the failed frame), and the note said
 "Main.vi is NOT executable" when nothing had been placed or read. Measured by calling the batch
-again on frames that already held code.
+again on frames that already held code. Re-run after a client restart, the same day: an occupied
+first frame answers `nextHandler: 0` and "Main.vi was not changed"; a batch of a free frame
+(`Ping`) and an occupied one placed the first, stopped at `nextHandler: 1`, laid Main.vi out once
+(17.7 s) and left it executable.
 
 An event takes 19-79 s on its own, so the event batch saves fewer turns than its call count
 suggests: three events cost four calls, where three single events would have cost about five.
