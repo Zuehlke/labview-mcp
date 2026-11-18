@@ -222,6 +222,14 @@ Measured facts that each cost minutes when found at run time. Plan around them f
   connector pane".
 - **Start from a skeleton where one fits, and name your elements instead of numbering them.**
   `scripts/aixml-skeletons/` holds complete, validated AIXML for shapes that are easy to get wrong.
+  **Read `scripts/aixml-skeletons/README.md` FIRST - one small index - and then the ONE file that
+  fits**, before any `lvai_aixml_reference` lookup: a skeleton is a whole VI that was generated on
+  both backends and run, and it spells out every node it uses. Six cover the shapes agents wrote
+  most (2026-11-18): an array of clusters walked with shift registers (`cluster-array-loop`), a
+  text/CSV file read and written (`text-table-read`, `text-table-write`), a record found by its key
+  (`find-by-key`), a control group disabled through references (`control-group-disable`), and a
+  queue between a producer and a consumer with a string Case Structure (`string-command-queue`).
+  Look up only the nodes no skeleton shows, all of them in one call.
   `accumulate-across-a-loop.xml` carries the `maxin` For Loop, the shift-register accumulator and
   the seed/append/keep case pair without which the inner indexing loop runs zero times on iteration
   0 and the accumulator stays empty for the whole run. It answers a different question from

@@ -129,6 +129,12 @@ report as information and call it.
 Every validation leaves a scratch `LVMCP Validate.vi` (numbered `…2`, `…3`) in memory that cannot
 be closed; "Don't Save - All" at exit is always safe. `docs/scratch-vis-in-memory.md`.
 
+**A SKELETON BEFORE A LOOKUP**: `scripts/aixml-skeletons/README.md` indexes whole VIs that were
+generated on both backends and run - clusters in a loop, a text file read and written, a search by
+key, a control group, a queue with a string case. One read replaces the lookups for every node in
+it. A new one is added only after it was generated on BOTH backends and RUN (a `Release Queue`
+wired from `Obtain Queue` passed validation and execState and released the queue first).
+
 **Look terminal names up, never guess them** (`lvai_vi_terminals`, or the contract's
 `callSkeletonsFor`). They are literal and surprising (`x > y?`). Batch every lookup into ONE call:
 `lvai_aixml_reference node=` and `lvai_vi_server_reference query=` take comma-separated lists.
@@ -485,6 +491,7 @@ document; `experiments/` does not ship.
 | Question | Document | Tool |
 |---|---|---|
 | Read or write AIXML | `docs/aixml-reference.md` | `lvai_aixml_reference` |
+| Whole VIs to copy shapes from | `scripts/aixml-skeletons/README.md` | — |
 | What validation does NOT catch; lint with no LabVIEW | `docs/aixml-reference.md`, `docs/aixml-lint.md` | `lvai_check_aixml`, `scripts/aixml_lint.py` |
 | AIXML without NI's service; which LabVIEW and INI the server uses | `docs/aixml-backends.md` | `backend`, `lvai_list_labview_installations` |
 | A multi-VI build by several agents | `docs/build-contract.md` | `lvai_check_build_contract` |

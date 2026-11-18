@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="string-command-queue.vi"
+    description="Skeleton. A producer enqueues string commands and one consumer loop dequeues them and decides per command in a case structure\3A Add counts\2C Exit stops\2C anything else is ignored. The consumer also stops on a dequeue timeout or an error. Copy the shapes\2C not the file.">
+  <Control _name="Commands" conIdx="0" connection="required" description="The commands to send\2C in order."
+           outputs="value:4200.value" type="array{string}" uid="4200" uid_parent="root" value="[]"/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code." outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Commands go through a queue to one consumer" uid="4290" uid_parent="root"/>
+  <Constant _name="queue element type" outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value=""/>
+  <Node _name="Obtain Queue" inputs="element data type:4202.value,error in (no error):4201.value"
+        outputs="queue out:4210.queue out,error out:4210.error out" uid="4210" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4220" uid_parent="root" label="Producer\3A one command per element">
+    <Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Tunnel _id="In2" inputs="value:4210.queue out" outputs="value:4222.value" uid="4222" uid_parent="4220"/>
+    <ShiftReg uid="4223" uid_parent="4220">
+      <Left inputs="value:4210.error out" outputs="value:4224.value" uid="4224" uid_parent="4223"/>
+      <Right inputs="value:4226.error out" outputs="value:4225.value" uid="4225" uid_parent="4223"/>
+    </ShiftReg>
+    <Node _name="Enqueue Element" inputs="queue:4222.value,element:4221.value,error in (no error):4224.value"
+          outputs="queue out:,timed out?:,error out:4226.error out" uid="4226" uid_parent="4220"/>
+  </Structure>
+
+  <Constant _name="dequeue timeout ms" outputs="value:4230.value" type="int32" uid="4230" uid_parent="root" value="100"/>
+  <Constant _name="zero handled" outputs="value:4231.value" type="int32" uid="4231" uid_parent="root" value="0"/>
+
+  <Structure _name="While Loop" count="" uid="4240" uid_parent="root" label="Consumer\3A one command per iteration">
+    <Tunnel _id="In1" inputs="value:4210.queue out" outputs="value:4241.value" uid="4241" uid_parent="4240"/>
+    <Tunnel _id="In2" inputs="value:4230.value" outputs="value:4242.value" uid="4242" uid_parent="4240"/>
+    <ShiftReg uid="4243" uid_parent="4240">
+      <Left inputs="value:4225.value" outputs="value:4244.value" uid="4244" uid_parent="4243"/>
+      <Right inputs="value:4250.error out" outputs="value:4245.value" uid="4245" uid_parent="4243"/>
+    </ShiftReg>
+    <ShiftReg uid="4246" uid_parent="4240">
+      <Left inputs="value:4231.value" outputs="value:4247.value" uid="4247" uid_parent="4246"/>
+      <Right inputs="value:4268.value" outputs="value:4248.value" uid="4248" uid_parent="4246"/>
+    </ShiftReg>
+    <Node _name="Dequeue Element" inputs="queue:4241.value,timeout in ms (-1):4242.value,error in (no error):4244.value"
+          outputs="queue out:4250.queue out,element:4250.element,timed out?:4250.timed out?,error out:4250.error out" uid="4250" uid_parent="4240"/>
+
+    <Structure _name="Case Structure" selectin="4250.element" uid="4260" uid_parent="4240">
+      <Tunnel _id="In1" inputs="value:4247.value" uid="4261" uid_parent="4260"/>
+      <CaseFrame label="Add counts one" selector="&quot;Add&quot;" selectout="" uid="4270" uid_parent="4260">
+        <Tunnel _id="In1" outputs="value:4271.value" uid="4271" uid_parent="4270"/>
+        <Node _name="Increment" inputs="x:4271.value" outputs="x+1:4272.x+1" uid="4272" uid_parent="4270"/>
+        <Constant _name="go on" outputs="value:4273.value" type="bool" uid="4273" uid_parent="4270" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4272.x+1" uid="4274" uid_parent="4270"/>
+        <Tunnel _id="Out2" inputs="value:4273.value" uid="4275" uid_parent="4270"/>
+      </CaseFrame>
+      <CaseFrame label="Exit stops the consumer" selector="&quot;Exit&quot;" selectout="" uid="4276" uid_parent="4260">
+        <Tunnel _id="In1" outputs="value:4277.value" uid="4277" uid_parent="4276"/>
+        <Constant _name="stop now" outputs="value:4278.value" type="bool" uid="4278" uid_parent="4276" value="true"/>
+        <Tunnel _id="Out1" inputs="value:4277.value" uid="4279" uid_parent="4276"/>
+        <Tunnel _id="Out2" inputs="value:4278.value" uid="4280" uid_parent="4276"/>
+      </CaseFrame>
+      <CaseFrame label="Unknown commands are ignored" selector="Default" selectout="" uid="4281" uid_parent="4260">
+        <Tunnel _id="In1" outputs="value:4282.value" uid="4282" uid_parent="4281"/>
+        <Constant _name="keep going" outputs="value:4283.value" type="bool" uid="4283" uid_parent="4281" value="false"/>
+        <Tunnel _id="Out1" inputs="value:4282.value" uid="4284" uid_parent="4281"/>
+        <Tunnel _id="Out2" inputs="value:4283.value" uid="4285" uid_parent="4281"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4268.value" uid="4268" uid_parent="4260"/>
+      <Tunnel _id="Out2" outputs="value:4269.value" uid="4269" uid_parent="4260"/>
+    </Structure>
+
+    <Node _name="Or" inputs="x:4269.value,y:4250.timed out?" outputs="x .or. y?:4291.x .or. y?" uid="4291" uid_parent="4240"/>
+    <Node _name="Or" inputs="x:4291.x .or. y?,y:4250.error out" outputs="x .or. y?:4292.x .or. y?" uid="4292" uid_parent="4240"/>
+    <Condition inputs="value:4292.x .or. y?" uid="4293" uid_parent="4240" value="stop"/>
+    <Tunnel _id="Out1" inputs="value:4250.queue out" outputs="value:4249.value" uid="4249" uid_parent="4240"/>
+  </Structure>
+
+  <Node _name="Release Queue" inputs="queue:4249.value,error in (no error):" outputs="error out:4295.error out" uid="4295" uid_parent="root"/>
+  <Node _name="Merge Errors" inputs="error in:4245.value,error in:4295.error out" outputs="error out:4296.error out" uid="4296" uid_parent="root"/>
+
+  <Indicator _name="Handled" conIdx="4" connection="recommended" description="Number of Add commands the consumer handled."
+             inputs="value:4248.value" type="int32" uid="4297" uid_parent="root" value="0"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in\2C or the first error of this VI." inputs="value:4296.error out" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>

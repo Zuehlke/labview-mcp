@@ -261,6 +261,7 @@ Vorab-Entscheidung.
 | 4a kompakte Erfolgsantworten | umgesetzt | `lvai_generate_vis`-Antwort: 17 % der ausführlichen (1 174 statt 7 106 Zeichen); volle Antwort mit `verbose: true` |
 | 2g Graft | umgesetzt | öffnet das Projekt selbst (`projectPath`); lehnt gebundene `VI Server Reference`s vorab ab (`scaffoldBoundReferences`) |
 | 2f Fixtures | umgesetzt | `lvai_run_caraya_tests fixturesJson`: Reset vor dem Lauf; ATM-Suite 28/0 |
+| 1b Bausteine | umgesetzt 2026-11-18 | sechs Skeletons nach Zählung über 762 AIXML-Dateien, auf beiden Backends erzeugt und ausgeführt; `scripts/aixml-skeletons/README.md`, `docs/workflow-economics.md` §7 |
 
 Bei der Abnahme fiel auf, dass das `Accounts.txt` des ATM-Builds schon am 2026-10-31 um 11:50 auf
 350 statt 550 stand. Ein Reset aus der Liefer-Datei hätte die Withdraw-Tests also rot gemacht.

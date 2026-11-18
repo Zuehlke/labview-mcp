@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="control-group-disable.vi"
+    description="Skeleton. Disables and greys out\2C or enables\2C every control whose reference it is given. The group is an array of REFERENCES the caller builds\2C never an array of names. The references are not closed. Copy the shapes\2C not the file.">
+  <Control _name="Controls" conIdx="0" connection="required" description="References of the controls to change. Not closed by this VI."
+           outputs="value:4200.value" type="array{ref{LV.Control}}" uid="4200" uid_parent="root" value="[]"/>
+  <Control _name="Disabled" conIdx="5" connection="required" description="TRUE disables and greys out the controls\3B FALSE enables them."
+           outputs="value:4202.value" type="bool" uid="4202" uid_parent="root" value="false"/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code." outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="One iteration per control reference" uid="4290" uid_parent="root"/>
+  <Constant _name="Disabled and greyed" outputs="value:4203.value" type="uint8" uid="4203" uid_parent="root" value="2"/>
+  <Constant _name="Enabled" outputs="value:4204.value" type="uint8" uid="4204" uid_parent="root" value="0"/>
+  <Node _name="Select" inputs="t:4203.value,s:4202.value,f:4204.value" outputs="s? t\3Af:4205.s? t\3Af" uid="4205" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4220" uid_parent="root" label="Write Disabled on one control">
+    <Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Tunnel _id="In2" inputs="value:4205.s? t\3Af" outputs="value:4222.value" uid="4222" uid_parent="4220"/>
+    <ShiftReg uid="4223" uid_parent="4220">
+      <Left inputs="value:4201.value" outputs="value:4224.value" uid="4224" uid_parent="4223"/>
+      <Right inputs="value:4226.error out" outputs="value:4225.value" uid="4225" uid_parent="4223"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="write+Disabled" inputs="reference:4221.value,error in (no error):4224.value,Disabled:4222.value"
+          outputs="reference out:,error out:4226.error out" type="{LV.Control}" uid="4226" uid_parent="4220"/>
+  </Structure>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in\2C or the first error of this VI." inputs="value:4225.value" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="text-table-read.vi"
+    description="Skeleton. Reads a comma-separated text file (Name\2CValue per line) into an array of clusters. An empty path gives a file error instead of a file dialog. Copy the shapes\2C not the file.">
+  <Control _name="File" conIdx="0" connection="required" description="Full path of the text file to read."
+           outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code." outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="One cluster per line of the file" uid="4290" uid_parent="root"/>
+
+  <Node _name="Empty String/Path?" inputs="string/path:4200.value" outputs="empty?:4202.empty?" uid="4202" uid_parent="root"/>
+  <Constant _name="relative path (no dialog)" outputs="value:4203.value" type="path" uid="4203" uid_parent="root" value="File is empty"/>
+  <Node _name="Select" inputs="t:4203.value,s:4202.empty?,f:4200.value" outputs="s? t\3Af:4204.s? t\3Af" uid="4204" uid_parent="root"/>
+  <Node _name="Read from Text File"
+        inputs="file (use dialog):4204.s? t\3Af,count:,error in:4201.value,prompt (Open existing file):"
+        outputs="refnum out:,text:4210.text,cancelled:,error out:4210.error out" uid="4210" uid_parent="root"/>
+
+  <Constant _name="format" outputs="value:4211.value" type="string" uid="4211" uid_parent="root" value="%s"/>
+  <Constant _name="comma" outputs="value:4212.value" type="string" uid="4212" uid_parent="root" value="\2C"/>
+  <Constant _name="2D string type" outputs="value:4213.value" type="array.2{string}" uid="4213" uid_parent="root" value="[]"/>
+  <Node _name="Spreadsheet String To Array"
+        inputs="format string:4211.value,spreadsheet string:4210.text,array type (2D Dbl):4213.value,delimiter (Tab):4212.value"
+        outputs="array:4214.array" uid="4214" uid_parent="root"/>
+  <Constant _name="empty item" outputs="value:4215.value" type="cluster{string.Name,double.Value}" uid="4215" uid_parent="root" value="[,0]"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4220" uid_parent="root" label="One row becomes one item">
+    <Tunnel _id="In1" inputs="value:4214.array" mode="index" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Tunnel _id="In2" inputs="value:4215.value" outputs="value:4222.value" uid="4222" uid_parent="4220"/>
+    <Node _name="Index Array" inputs="array:4221.value,index:,index:" outputs="element:4223.value,element:4224.value" uid="4225" uid_parent="4220"/>
+    <Node _name="Fract/Exp String To Number" inputs="string:4224.value,offset:,default (0 dbl):,use system decimal point (T):"
+          outputs="offset past number:,number:4226.number" uid="4226" uid_parent="4220"/>
+    <Node _name="Bundle By Name" fields="Name,Value" inputs="Name:4223.value,Value:4226.number,input cluster:4222.value"
+          outputs="output cluster:4227.output cluster" uid="4227" uid_parent="4220"/>
+    <Tunnel _id="Out1" inputs="value:4227.output cluster" mode="index" outputs="value:4228.value" uid="4228" uid_parent="4220"/>
+  </Structure>
+
+  <Indicator _name="Items" conIdx="4" connection="recommended" description="Every line of the file\2C in file order."
+             inputs="value:4228.value" type="array{cluster{string.Name,double.Value}}" uid="4250" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in\2C or the first error of this VI." inputs="value:4210.error out" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>

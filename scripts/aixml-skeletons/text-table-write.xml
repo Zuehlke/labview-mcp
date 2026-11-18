@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="text-table-write.vi"
+    description="Skeleton. Writes an array of clusters to a text file\2C one comma-separated line per item (Name\2CValue)\2C replacing the file. An empty path gives a file error instead of a file dialog. Copy the shapes\2C not the file.">
+  <Control _name="File" conIdx="0" connection="required" description="Full path of the text file to write. Its content is replaced."
+           outputs="value:4200.value" type="path" uid="4200" uid_parent="root" value=""/>
+  <Control _name="Items" conIdx="5" connection="required" description="The items to write\2C in file order."
+           outputs="value:4202.value" type="array{cluster{string.Name,double.Value}}" uid="4202" uid_parent="root" value="[]"/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code." outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="One comma-separated line per item" uid="4290" uid_parent="root"/>
+  <Constant _name="comma" outputs="value:4203.value" type="string" uid="4203" uid_parent="root" value="\2C"/>
+  <Constant _name="line end" outputs="value:4204.value" type="string" uid="4204" uid_parent="root" value="&#10;"/>
+  <Constant _name="value format" outputs="value:4205.value" type="string" uid="4205" uid_parent="root" value="%#.2f"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4220" uid_parent="root" label="One item becomes one line">
+    <Tunnel _id="In1" inputs="value:4202.value" mode="index" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Tunnel _id="In2" inputs="value:4203.value" outputs="value:4222.value" uid="4222" uid_parent="4220"/>
+    <Tunnel _id="In3" inputs="value:4204.value" outputs="value:4223.value" uid="4223" uid_parent="4220"/>
+    <Tunnel _id="In4" inputs="value:4205.value" outputs="value:4224.value" uid="4224" uid_parent="4220"/>
+    <Node _name="Unbundle By Name" fields="Name,Value" inputs="input cluster:4221.value"
+          outputs="Name:4225.Name,Value:4225.Value" uid="4225" uid_parent="4220"/>
+    <Node _name="Format Into String" inputs="initial string:,error in:,input 1:4225.Value,format string:4224.value"
+          outputs="resulting string:4226.resulting string,error out:" uid="4226" uid_parent="4220"/>
+    <Node _name="Concatenate Strings" inputs="string:4225.Name,string:4222.value,string:4226.resulting string,string:4223.value"
+          outputs="concatenated string:4227.concatenated string" uid="4227" uid_parent="4220"/>
+    <Tunnel _id="Out1" inputs="value:4227.concatenated string" mode="index" outputs="value:4228.value" uid="4228" uid_parent="4220"/>
+  </Structure>
+
+  <Node _name="Concatenate Strings" inputs="string:4228.value" outputs="concatenated string:4230.concatenated string" uid="4230" uid_parent="root"/>
+  <Node _name="Empty String/Path?" inputs="string/path:4200.value" outputs="empty?:4231.empty?" uid="4231" uid_parent="root"/>
+  <Constant _name="relative path (no dialog)" outputs="value:4232.value" type="path" uid="4232" uid_parent="root" value="File is empty"/>
+  <Node _name="Select" inputs="t:4232.value,s:4231.empty?,f:4200.value" outputs="s? t\3Af:4233.s? t\3Af" uid="4233" uid_parent="root"/>
+  <Node _name="Write to Text File"
+        inputs="file (use dialog):4233.s? t\3Af,text:4230.concatenated string,error in:4201.value,prompt (Choose or enter file path):"
+        outputs="refnum out:,cancelled:,error out:4234.error out" uid="4234" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in\2C or the first error of this VI." inputs="value:4234.error out" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>

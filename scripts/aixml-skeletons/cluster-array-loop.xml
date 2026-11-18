@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="cluster-array-loop.vi"
+    description="Skeleton. Walks an array of clusters\2C reads fields by name\2C keeps a running total and a count on shift registers and returns both in a cluster built by name. Copy the shapes\2C not the file.">
+  <Control _name="Items" conIdx="0" connection="required" description="The items to walk."
+           outputs="value:4200.value" type="array{cluster{string.Name,double.Value}}" uid="4200" uid_parent="root" value="[]"/>
+  <Control _name="Minimum" conIdx="5" connection="recommended" description="Only items with Value at or above this count."
+           outputs="value:4202.value" type="double" uid="4202" uid_parent="root" value="0"/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code." outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Total and count of the items that qualify" uid="4290" uid_parent="root"/>
+  <Constant _name="zero total" outputs="value:4203.value" type="double" uid="4203" uid_parent="root" value="0"/>
+  <Constant _name="zero count" outputs="value:4204.value" type="int32" uid="4204" uid_parent="root" value="0"/>
+  <Constant _name="empty result" outputs="value:4205.value" type="cluster{int32.Count,double.Total}" uid="4205" uid_parent="root" value="[0,0]"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4220" uid_parent="root" label="One item per iteration">
+    <Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Tunnel _id="In2" inputs="value:4202.value" outputs="value:4222.value" uid="4222" uid_parent="4220"/>
+    <ShiftReg uid="4223" uid_parent="4220">
+      <Left inputs="value:4203.value" outputs="value:4224.value" uid="4224" uid_parent="4223"/>
+      <Right inputs="value:4234.x+y" outputs="value:4225.value" uid="4225" uid_parent="4223"/>
+    </ShiftReg>
+    <ShiftReg uid="4226" uid_parent="4220">
+      <Left inputs="value:4204.value" outputs="value:4227.value" uid="4227" uid_parent="4226"/>
+      <Right inputs="value:4236.s? t\3Af" outputs="value:4228.value" uid="4228" uid_parent="4226"/>
+    </ShiftReg>
+    <Node _name="Unbundle By Name" fields="Value" inputs="input cluster:4221.value" outputs="Value:4230.Value" uid="4230" uid_parent="4220"/>
+    <Node _name="Greater Or Equal?" inputs="x:4230.Value,y:4222.value" outputs="x &gt;= y?:4231.x &gt;= y?" uid="4231" uid_parent="4220"/>
+    <Constant _name="nothing to add" outputs="value:4232.value" type="double" uid="4232" uid_parent="4220" value="0"/>
+    <Node _name="Select" inputs="t:4230.Value,s:4231.x &gt;= y?,f:4232.value" outputs="s? t\3Af:4233.s? t\3Af" uid="4233" uid_parent="4220"/>
+    <Node _name="Add" inputs="x:4224.value,y:4233.s? t\3Af" outputs="x+y:4234.x+y" uid="4234" uid_parent="4220"/>
+    <Node _name="Increment" inputs="x:4227.value" outputs="x+1:4235.x+1" uid="4235" uid_parent="4220"/>
+    <Node _name="Select" inputs="t:4235.x+1,s:4231.x &gt;= y?,f:4227.value" outputs="s? t\3Af:4236.s? t\3Af" uid="4236" uid_parent="4220"/>
+  </Structure>
+
+  <Node _name="Bundle By Name" fields="Count,Total" inputs="Count:4228.value,Total:4225.value,input cluster:4205.value"
+        outputs="output cluster:4240.output cluster" uid="4240" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:4200.value" outputs="size(s):4241.size(s)" uid="4241" uid_parent="root"/>
+
+  <Indicator _name="Result" conIdx="4" connection="recommended" description="Count and Total of the items at or above Minimum."
+             inputs="value:4240.output cluster" type="cluster{int32.Count,double.Total}" uid="4250" uid_parent="root" value="[0,0]"/>
+  <Indicator _name="Items Seen" conIdx="6" connection="recommended" description="Number of items in Items."
+             inputs="value:4241.size(s)" type="int32" uid="4251" uid_parent="root" value="0"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in\2C or the first error of this VI." inputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>

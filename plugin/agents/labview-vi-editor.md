@@ -215,6 +215,14 @@ instance holds its own copy of the VI.
   are — the two spellings mix in one file, and a file with no symbol is not rewritten at all.
   `scripts/aixml-skeletons/` holds validated shapes worth copying from, and its header says what in
   it is a station-specific measurement rather than a fact.
+  **Read `scripts/aixml-skeletons/README.md` FIRST - one small index - and then the ONE file that
+  fits**, before any `lvai_aixml_reference` lookup: a skeleton is a whole VI that was generated on
+  both backends and run, and it spells out every node it uses. Six cover the shapes agents wrote
+  most (2026-11-18): an array of clusters walked with shift registers (`cluster-array-loop`), a
+  text/CSV file read and written (`text-table-read`, `text-table-write`), a record found by its key
+  (`find-by-key`), a control group disabled through references (`control-group-disable`), and a
+  queue between a producer and a consumer with a string Case Structure (`string-command-queue`).
+  Look up only the nodes no skeleton shows, all of them in one call.
 - **Preserve what you are not changing.** Start from the exported AIXML and edit it. Do not
   re-author the VI from scratch because that felt tidier — every `uid` you needlessly change is
   a diff the user has to review.

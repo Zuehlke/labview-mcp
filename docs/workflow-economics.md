@@ -390,3 +390,43 @@ suggests: three events cost four calls, where three single events would have cos
 The two request-bound batches stop before the client's 60 s: the next item starts only if the time
 so far plus the last item's duration stays under 40 s (`nextSet`, `nextHandler`). The event batch
 runs detached like a single event and needs no such stop.
+
+## 7. Skeletons for the shapes agents write most (2026-11-18)
+
+**The symptom.** Agents author nearly every VI as AIXML by hand, and output tokens are the slow
+and the expensive ones (`docs/token-economy.md` 4.4). They also look the same spellings up
+independently: `lvai_aixml_reference` was called 298 times in 94 runs at 8 k characters an answer.
+
+**The count**, over the 762 AIXML files (3.86 M characters) that 148 agent runs wrote since
+2026-11-01, and the terms they looked up:
+
+| shape | files | most looked-up terms (calls / agents) |
+|---|---|---|
+| fields of a cluster by name | 376 | `unbundle by name` 108 / 53, `bundle by name` 76 / 35 |
+| a For Loop over an array | 218 | `index array` 76 / 36, `for loop` 56 / 27, `shift register` 34 / 17 |
+| a Case Structure or `Select` | 184 | `select` 114 / 57, `case structure` 82 / 39 |
+| a control property | 94 | `property node` 54 / 24 |
+| errors joined | 70 | `merge errors` 122 / 60 - the most looked-up term of all |
+| formatted text | 66 | `format into string` 78 / 38, `concatenate strings` 72 / 36 |
+| a text file read / written | 46 / 34 | `read from text file` 32 / 16, `spreadsheet string to array` 30 / 14 |
+| a queue | 40 | `obtain queue` 32 / 16, `enqueue element` 26 / 13 |
+| a search by key | 38 | `search 1d array` 42 / 21 |
+
+The three skeletons that existed were read 78 times in the same runs, so a skeleton IS used.
+
+**What was built**: six whole VIs in `scripts/aixml-skeletons/` with one index (`README.md`):
+`cluster-array-loop`, `text-table-read`, `text-table-write`, `find-by-key`,
+`control-group-disable`, `string-command-queue`. Each was generated through `lvai_generate_vis`
+on pylabview and on grpc (executable, pane clean, within the diagram budget) and run on both
+builds; the values are in the index. `AixmlSkeletonTests` pins the offline part.
+
+**What the run found that nothing else did**: the first `string-command-queue` wired
+`Release Queue` from `Obtain Queue`, so it ran in parallel with both loops and released the queue
+before the first `Enqueue` - Error 1, nothing handled, with validation and `execState` both green.
+Twelve agents had looked `release queue` up; none of the lookups says where its queue must come
+from. The skeleton routes it through the consumer loop and the test pins that.
+
+**Not measured**: what the skeletons save. The estimate is one read of about 5 k characters in
+place of several lookups of 8 k, plus the wrong attempts they prevent; a cold build before and
+after would settle it. No generator was built - the count shows which nodes recur, not yet which
+whole diagrams do.

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="find-by-key.vi"
+    description="Skeleton. Looks a key up in an array of clusters (exact match on Name). Found is TRUE and Index and Item describe the first match\3B otherwise Found is FALSE\2C Index is -1 and Item is empty. Copy the shapes\2C not the file.">
+  <Control _name="Items" conIdx="0" connection="required" description="The items to search."
+           outputs="value:4200.value" type="array{cluster{string.Name,double.Value}}" uid="4200" uid_parent="root" value="[]"/>
+  <Control _name="Name" conIdx="5" connection="required" description="The name to look for."
+           outputs="value:4202.value" type="string" uid="4202" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code." outputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4201" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Search the key column for an exact match" uid="4290" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4220" uid_parent="root" label="Collect each item's key">
+    <Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Node _name="Unbundle By Name" fields="Name" inputs="input cluster:4221.value" outputs="Name:4222.Name" uid="4222" uid_parent="4220"/>
+    <Tunnel _id="Out1" inputs="value:4222.Name" mode="index" outputs="value:4223.value" uid="4223" uid_parent="4220"/>
+  </Structure>
+
+  <Node _name="Search 1D Array" inputs="1D array:4223.value,element:4202.value,start index (0):"
+        outputs="index of element:4230.index of element" uid="4230" uid_parent="root"/>
+  <Node _name="Greater Or Equal To 0?" inputs="x:4230.index of element" outputs="x &gt;= 0?:4231.x &gt;= 0?" uid="4231" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:4200.value,index:4230.index of element" outputs="element:4232.element" uid="4232" uid_parent="root"/>
+
+  <Indicator _name="Found" conIdx="4" connection="recommended" description="TRUE when an item with this name exists."
+             inputs="value:4231.x &gt;= 0?" type="bool" uid="4250" uid_parent="root" value="false"/>
+  <Indicator _name="Index" conIdx="6" connection="recommended" description="Index of the item\2C -1 when not found."
+             inputs="value:4230.index of element" type="int32" uid="4251" uid_parent="root" value="0"/>
+  <Indicator _name="Item" conIdx="8" connection="recommended" description="The matching item\3B empty when not found."
+             inputs="value:4232.element" type="cluster{string.Name,double.Value}" uid="4252" uid_parent="root" value="[,0]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in\2C or the first error of this VI." inputs="value:4201.value" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>
