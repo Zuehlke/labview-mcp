@@ -125,6 +125,8 @@ internal sealed class CloseTools(LvaiConnection connection)
         the close.
         Refused (`projectChangeWhileParallel`) while tool calls overlap - several agents on one
         LabVIEW - or overlapped in the last 60 s: projects are the orchestrator's job then.
+        With projectPath it also strips the compiled code other tools DEFERRED while agents shared
+        LabVIEW (`deferredSourceOnly`: DQMH Main.vi after place_handler, AF overrides).
         """)]
     public async Task<string> CloseActiveProjectAsync(
         [Description("Where to keep the generated helper VI; defaults to a per-user temp directory.")]
@@ -217,6 +219,18 @@ internal sealed class CloseTools(LvaiConnection connection)
                 if (node is System.Text.Json.Nodes.JsonObject o && o["projectSweep"] is { } sweep)
                 {
                     sweep["projectPathFrom"] = pathFrom;
+                    // The source-only strips other tools DEFERRED while agents shared this LabVIEW
+                    // (DeferredSourceOnly): the project is closed now, so the pylabview edit is safe.
+                    if (o["closed"]?.GetValue<bool>() == true && projectPath is { Length: > 0 }
+                        && DeferredSourceOnly.Take(projectPath) is { Count: > 0 } deferred)
+                    {
+                        var strips = new System.Text.Json.Nodes.JsonArray();
+                        foreach (var vi in deferred)
+                            strips.Add(File.Exists(vi)
+                                ? await new DiagramCleanup(connection).StripCompiledAsync(vi, timeoutSeconds, ct)
+                                : new System.Text.Json.Nodes.JsonObject { ["vi"] = vi, ["skipped"] = "The file is gone." });
+                        o["deferredSourceOnly"] = strips;
+                    }
                     return Json.Document(o);
                 }
             }

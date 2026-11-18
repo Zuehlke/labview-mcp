@@ -249,3 +249,38 @@ says so.
 The script defect: it wrote the loose `Get Balance.vi` and the module's `Get Balance.vi` into one
 export folder and read the wrong file back. That is the same name clash, one level up, and
 `verify` answered it with five `differs`, which is what it is for.
+
+## 8. A project close INSIDE a tool, during a parallel build (2026-11-18)
+
+**Symptom.** The cold ATM rebuild of 2026-11-18 (five agents, one LabVIEW): the user saw a LabVIEW
+dialog and pressed Discard. The subagents' transcripts place it at 19:39:14-19:40:15: every lvai
+call of every agent stalled for that minute, two of them answered the client "Request timed out",
+and all of them went on the moment the dialog was answered. In that minute the dqmh agent's
+`lvai_dqmh_place_handler` was closing the project for its source-only strip of Main.vi, while the
+account agent regenerated `Deposit To File.vi` - one of the handlers just placed into Main.vi - and
+ran its VIs. Nothing was lost (Main.vi was saved at 19:39:38, the handler regenerated and retested
+afterwards, every check after 19:46 green), but a modal dialog in a parallel build stalls everyone
+and waits for a person.
+
+**Cause.** The `projectChangeWhileParallel` guard (`ParallelCalls`) covered only
+`lvai_open_file` and `lvai_close_active_project` called directly. Tools that close the project
+INSIDE their own call for a pylabview edit went past it: place_handler and the AF hook tools
+(`DiagramCleanup.SourceOnlyInProjectAsync`), and `lvai_graft_diagram`, which closed and reopened the
+project twice more in the same build (the main agent reported it).
+
+**Fix.** `ParallelCalls.ProjectChangeRefusalFromInside()` - the same verdict, with the calling tool
+itself not counted - is asked before such a close:
+- the source-only strip is DEFERRED (`sourceOnly.deferred: true`, the project stays open and
+  active, the VI keeps its compiled code for now) and recorded in `DeferredSourceOnly`; the next
+  `lvai_close_active_project` WITH `projectPath` for that project strips it (`deferredSourceOnly`) -
+  the orchestrator's close after the last wave;
+- `lvai_graft_diagram` is REFUSED before it does anything (it also uses the system clipboard); the
+  main-VI agent waits and calls it again, which in that build would have passed at 19:43, a minute
+  after the last other agent finished.
+An agent working alone is unaffected: its own call is not counted. Replayed from the transcripts in
+`ParallelCallsTests.The_internal_close_of_place_handler_in_the_cold_ATM_build_is_refused`.
+
+**Not changed:** the many other tools that close a project internally (class tools, test
+generators, `lvai_wire_dynamic_events`, ...) - they are run by one agent at a time or by the
+orchestrator, and were not seen in a parallel build. Which dialog LabVIEW showed was not captured:
+the user remembers only that it was LabVIEW's and that Discard ended it.

@@ -104,6 +104,37 @@ internal sealed class ParallelCalls(Func<DateTime> clock)
         }
     }
 
+    /// <summary>
+    /// <see cref="ProjectChangeRefusal"/> for a project change a tool makes INTERNALLY, from inside its
+    /// own top-level call: that call is in flight itself and is not counted, whatever its name.
+    ///
+    /// WHY. The guard covered only lvai_open_file and lvai_close_active_project called directly, and
+    /// tools that close the project for a pylabview edit went past it. On 2026-11-18, in the cold ATM
+    /// build of five parallel agents, lvai_dqmh_place_handler closed the project for its source-only
+    /// strip while the account agent regenerated one of the handler VIs: LabVIEW raised a modal
+    /// dialog, every lvai call of every agent stalled for a minute (two client timeouts) until the
+    /// user pressed Discard, and lvai_graft_diagram closed the project twice more in the same build.
+    /// </summary>
+    internal string? ProjectChangeRefusalFromInside()
+    {
+        lock (_gate)
+        {
+            var others = _inFlight.Count - 1;
+            if (others > 0)
+                return $"{others} other tool call(s) are running on this server right now " +
+                       $"({string.Join(", ", _inFlight.Values.Distinct().Order())}), so several agents " +
+                       "share this LabVIEW.";
+            if (_lastOverlap is { } seen && clock() - seen < Window)
+            {
+                var wait = (int)Math.Ceiling((Window - (clock() - seen)).TotalSeconds);
+                return $"tool calls overlapped {(int)(clock() - seen).TotalSeconds} s ago " +
+                       $"({string.Join(", ", _lastOverlapTools)}), so several agents share this LabVIEW. " +
+                       $"With no further overlap the guard lifts in {wait} s.";
+            }
+            return null;
+        }
+    }
+
     /// <summary>Whether this call opens or closes a PROJECT - the two state changes the rule forbids.</summary>
     internal static bool ChangesProject(string tool, IDictionary<string, JsonElement>? arguments) =>
         tool switch

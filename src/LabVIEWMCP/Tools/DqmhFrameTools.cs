@@ -75,7 +75,9 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
         a frame already holding a subVI is refused. The #CodeNeeded text is deleted and Main.vi
         saved; its exec state before and after is reported. Then the WHOLE Main.vi is laid out
         with lvai_layout_diagram (`cleanUpDiagram`; put back when it does not finish) and made source
-        only (`sourceOnly`: the project is closed for the strip and opened again). Use `dryRun` first.
+        only (`sourceOnly`: the project is closed for the strip and opened again - DEFERRED to the
+        orchestrator's next lvai_close_active_project while other agents share LabVIEW,
+        `sourceOnly.deferred`). Use `dryRun` first.
         Needs the module's project OPEN and ACTIVE.
         """)]
     public async Task<string> PlaceHandlerAsync(

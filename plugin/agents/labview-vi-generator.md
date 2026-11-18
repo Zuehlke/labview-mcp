@@ -838,7 +838,12 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    because its duplicate has no wire ends to move. An Event Structure's frames are re-registered on
    the supplied controls by the graft itself (`events`); the graft closes the project for that
    pylabview edit and OPENS IT AGAIN afterwards (`events.projectReopened`), so the bind can follow
-   directly - only on `projectReopened: false` open it yourself. LabVIEW's close-save may list the
+   directly - only on `projectReopened: false` open it yourself. **In a parallel build the graft
+   answers `projectChangeWhileParallel` and does nothing** while other agents' calls run (or ran in
+   the last 60 s): it uses the clipboard and closes the project. Wait as the refusal says (a
+   PowerShell sleep of 20 s per round) and call it again - never work around it (measured
+   2026-11-18: a project close under other agents raised a modal dialog that stalled every agent
+   for a minute). LabVIEW's close-save may list the
    SCAFFOLD in the project at target level: move it with `lvai_add_vis_to_project`
    `folderName: By-products`.
    **Before you REGENERATE a scaffold that calls a project-local subVI, open that subVI again**

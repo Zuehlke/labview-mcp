@@ -90,7 +90,8 @@ LabVIEW's copy over the `.lvproj`. So agents GENERATE files; you alone:
 
 The server enforces this. While tool calls overlap, or overlapped in the last 60 s, it refuses a
 project open or close with `projectChangeWhileParallel`. That applies to you too, so open a project
-once a wave has finished and the guard has lifted (the refusal says how many seconds are left).
+once a wave has finished and the guard has lifted. Close with `projectPath`: that close also
+strips what place_handler deferred.
 
 A test agent in a parallel build passes `leaveProjectOpen: true` to the test generators: they
 then close no project and list nothing, and report the test VIs for you to list.

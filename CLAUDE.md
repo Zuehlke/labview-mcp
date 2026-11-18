@@ -66,7 +66,11 @@ orchestrator opens projects, SWAPS and lists VIs (`lvai_add_vis_to_project`, nev
 Build by DEPENDENCY: leaf VIs in parallel with no project open, then one agent for the callers.
 The server ENFORCES it: `lvai_open_file` with a project and `lvai_close_active_project` are
 refused (`projectChangeWhileParallel`) while top-level tool calls overlap or overlapped in the last
-60 s (`ParallelCalls`; an agent's project open crashed LabVIEW on 2026-11-11).
+60 s (`ParallelCalls`; an agent's project open crashed LabVIEW on 2026-11-11). A tool's INTERNAL close
+obeys it too (`ProjectChangeRefusalFromInside`): `lvai_graft_diagram` is refused, and
+`lvai_dqmh_place_handler` and the AF hook tools defer their source-only strip to the next
+`lvai_close_active_project` with `projectPath` (`deferredSourceOnly`) - place_handler's close under
+four other agents raised a modal dialog that stalled them all on 2026-11-18.
 Restart LabVIEW between two builds of the same application: a same-named VI of the earlier build,
 still in memory, captures a bare-name `Call` in silence.
 
