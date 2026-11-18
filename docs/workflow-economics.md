@@ -381,8 +381,12 @@ first frame answers `nextHandler: 0` and "Main.vi was not changed"; a batch of a
 **Repeatable as `scripts/accept_batch_calls.py`**: it writes a fresh test project under
 `C:\Temp\BatchCallsAccept_<time>` (a contract of two builders, an `Add Numbers.vi` run target,
 a Singleton DQMH module `Bank` with four events and three handlers), drives the exe over raw stdio
-- so a branch build needs no client restart - and checks 33 answers. First run 2026-11-18 on a
-warm LabVIEW: 33 of 33 in 159 s; the module came in one call, the four events in two.
+- so a branch build needs no client restart - and checks 41 answers. First run 2026-11-18 on a
+warm LabVIEW: 33 of 33 in 159 s; the module came in one call, the four events in two. Extended the
+same day by section 5 (a DQMH unit test filled and run green, a wrong expectation red, a misspelt
+field refused before scripting, a plain Request refused) and section 6 (a library over a project
+folder: slim answer, the emptied folder swept, a user's empty folder kept): 41 of 41 in 170 s after
+a client restart, on a LabVIEW that had been up 1.7 h (restarting it was not permitted from here).
 
 An event takes 19-79 s on its own, so the event batch saves fewer turns than its call count
 suggests: three events cost four calls, where three single events would have cost about five.
@@ -472,3 +476,9 @@ keeps everything); a folder a library call emptied is removed by the next close'
 (`emptyFoldersRemoved`, `ProjectFolderLedger`) and a user's own empty folder is left; and a raw
 comma in `description`/`comment`/`label` is documented as fine (`docs/aixml-reference.md`), with
 the skeleton that taught `\2C` rewritten.
+
+**Open in the workflow, not in a tool**: after the orchestrator moves the built VIs into a library,
+the build contract still names them bare (`owner` empty), so `callSkeletons` for a later builder
+would call `Read Inventory.vi` instead of `Inventory Data.lvlib:Read Inventory.vi`. Seen on the
+Bausteine contract after the library step; the contract's `owner` has to be set when the library
+is made.

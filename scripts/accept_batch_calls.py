@@ -13,6 +13,11 @@ branch build's new parameters are reachable without a client restart), then chec
                                               first frame (nextHandler 0, Main.vi unchanged),
                                               and a free frame before an occupied one
                                               (nextHandler 1, one layout, Main.vi executable)
+  5. lvai_dqmh_new_unit_test argumentsJson/expectedJson/runTest - a test filled and run green, a
+                                              wrong expectation red, a misspelt field refused
+                                              before Delacor scripts (no file written)
+  6. lvai_create_library over a project folder - a slim answer, the emptied folder removed by
+                                              the close sweep, a user's own empty folder kept
 
     python -I accept_batch_calls.py [--exe <LabVIEWMCP.exe>] [--root <new folder>]
 
@@ -27,6 +32,7 @@ import argparse
 import datetime
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -335,6 +341,60 @@ def main():
                               handlersJson='[{"eventName":"Ping","handler":"x"}]')
         c.check("handlers", "an unknown key refused by name", bad_key.get("errorKind") == "badArguments"
                 and "handler" in bad_key.get("error", ""))
+
+        # ---- 5. a DQMH unit test, filled and run (Get Balance answers a fixed 42)
+        print("\n== 5. lvai_dqmh_new_unit_test argumentsJson / expectedJson / runTest")
+        tests = os.path.join(root, "Unit Tests", "Bank")
+        green = server.call("lvai_dqmh_new_unit_test", moduleName="Bank", eventName="Get Balance",
+                            argumentsJson=json.dumps({"Account": "A"}), expectedJson=json.dumps({"Balance": "42"}),
+                            runTest=True)
+        c.check("unittest", "filled test executable and PASSED, %.0f s" % green["_seconds"],
+                green.get("ok") and green.get("pass") is True
+                and (green.get("fill") or {}).get("execState") == 1, short(green))
+        red = server.call("lvai_dqmh_new_unit_test", moduleName="Bank", eventName="Get Balance",
+                          argumentsJson=json.dumps({"Account": "A"}), expectedJson=json.dumps({"Balance": "41"}),
+                          runTest=True)
+        c.check("unittest", "a wrong expectation runs and answers pass FALSE",
+                red.get("ok") and red.get("pass") is False, short(red))
+        before = sorted(os.listdir(tests)) if os.path.isdir(tests) else []
+        misspelt = server.call("lvai_dqmh_new_unit_test", moduleName="Bank", eventName="Get Balance",
+                               expectedJson=json.dumps({"Saldo": "42"}))
+        c.check("unittest", "a misspelt reply field refused before scripting, no file written",
+                misspelt.get("errorKind") == "badArguments" and "Saldo" in misspelt.get("error", "")
+                and before == sorted(os.listdir(tests)), short(misspelt))
+        plain = server.call("lvai_dqmh_new_unit_test", moduleName="Bank", eventName="Set Rate",
+                            argumentsJson=json.dumps({"Rate": "1"}), expectedJson=json.dumps({"Found": "true"}))
+        c.check("unittest", "a plain Request (no reply) refused for filling",
+                plain.get("errorKind") == "badArguments" and "plain Request" in plain.get("error", ""), short(plain))
+        # ---- 6. a library over a folder: slim answer, the emptied folder swept, a user's kept
+        print("\n== 6. lvai_create_library over a project folder")
+        closed = server.call("lvai_close_active_project", projectPath=project)
+        c.check("library", "test project closed before the library project", closed.get("closed"))
+        lib_root = os.path.join(root, "LibraryTest")
+        os.makedirs(os.path.join(lib_root, "Parts"))
+        parts = [os.path.join(lib_root, "Parts", n) for n in ("Add Numbers.vi", "Error Only Core.vi")]
+        shutil.copy(os.path.join(root, "SubVIs", "Add Numbers.vi"), parts[0])
+        shutil.copy(os.path.join(handlers, "Error Only Core.vi"), parts[1])
+        lib_project = os.path.join(lib_root, "LibraryTest.lvproj")
+        write(lib_project, PROJECT.replace(
+            '\t\t<Item Name="Dependencies" Type="Dependencies"/>',
+            '\t\t<Item Name="Parts" Type="Folder">\n'
+            '\t\t\t<Item Name="Add Numbers.vi" Type="VI" URL="../Parts/Add Numbers.vi"/>\n'
+            '\t\t\t<Item Name="Error Only Core.vi" Type="VI" URL="../Parts/Error Only Core.vi"/>\n'
+            '\t\t</Item>\n'
+            '\t\t<Item Name="Keep Me" Type="Folder"/>\n'
+            '\t\t<Item Name="Dependencies" Type="Dependencies"/>'))
+        lib = server.call("lvai_create_library", libraryPath=os.path.join(lib_root, "Parts Lib", "Parts.lvlib"),
+                          projectPath=lib_project, itemsJson=json.dumps([{"path": p} for p in parts]))
+        size = len(json.dumps(lib))
+        c.check("library", "library created with both members", lib.get("ok")
+                and sorted((lib.get("verify") or {}).get("members", [])) == ["Add Numbers.vi", "Error Only Core.vi"],
+                short(lib))
+        c.check("library", "the answer is slim (%d chars)" % size, size < 6000)
+        saved = open(lib_project, encoding="utf-8-sig").read()
+        c.check("library", "the emptied folder is gone, the user's empty folder stays",
+                '"Parts"' not in saved and '<Item Name="Keep Me" Type="Folder"/>' in saved, saved)
+        project = lib_project   # already closed by the library call; the cleanup below closes nothing
         return 1 if c.failed else 0
     finally:
         print("\n== cleanup")
