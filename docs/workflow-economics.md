@@ -345,3 +345,28 @@ but the method is worth keeping: parse the session JSONL, pair each `tool_use` w
 `tool_result` by id for the tool's own duration, and measure result→next-use gaps for model latency,
 discarding gaps over 600 s as human pauses. Re-run it after any of §3 lands, and the ratio in §1 is
 the number to watch.
+
+## 6. Batch forms added 2026-11-18, from 94 agent runs since 2026-11-05
+
+Measured with the method of section 5 over the subagent transcripts (2 326 requests):
+
+| tool | calls | straight after itself | what it became |
+|---|---|---|---|
+| `lvai_run_vi_and_read_values` | 406 | 71 % | `inputSetsJson`: several runs, `runs` with `values` as label -> value |
+| `lvai_dqmh_new_event` | 67 | 66 % | `eventsJson`: all events of a module, one resumable job |
+| `lvai_dqmh_place_handler` | 52 | 71 % | `handlersJson`: one layout and one source-only pass for the batch |
+| `Read` of the build contract | 59 | - (25 k chars each) | `lvai_check_build_contract forBuilder`: the builder's slice |
+| `Read` of a PDF or PNG | 40 | - (139 k chars each) | `spec.txt` and `panel.xml`, written once by the orchestrator |
+
+An agent's first request was at a median of 94 k tokens (184-218 k on 2026-10-31), and 17 % of the
+agent requests ran above 200 k.
+
+**Not measured yet**: what the batch forms save in a real build. They are pinned offline
+(`BatchCallTests`) and compile; none was run against LabVIEW on the day it was written, because a
+build takes the `lvai_*` tools away until the client restarts. Exercise all three before trusting
+them: a run batch with one failing set, an event batch that outlives 45 s (the same call collects
+it), a handler batch on a module with a Request and Wait for Reply frame.
+
+The two request-bound batches stop before the client's 60 s: the next item starts only if the time
+so far plus the last item's duration stays under 40 s (`nextSet`, `nextHandler`). The event batch
+runs detached like a single event and needs no such stop.

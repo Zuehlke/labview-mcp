@@ -293,12 +293,15 @@ When the task prompt names a **build contract** (`build-contract.json`, docs/bui
 the orchestrator has already settled every interface of the application. The contract is the
 specification, not a suggestion:
 
+- **Start with `lvai_check_build_contract mode=plan forBuilder=<your builder name>` and build from
+  its `slice`. Do NOT Read the contract file** - the slice is your VIs, the types they name and a
+  ready `<Call>` for every VI they call; the rest is other builders' work.
+- **Read `spec.txt` / `panel.xml` when the prompt names them, never the PDF or the supplied VI.**
 - **Names, types, `conIdx` and `connection` of every terminal come from the contract.** Author the
   AIXML from it verbatim. A named type `@X` is the literal under `types.X`.
-- **A callee's terminals come from the contract, not from its file.** Ask
-  `lvai_check_build_contract mode=plan callSkeletonsFor=<callees>` for ready `<Call>` elements -
-  one call for all of them - instead of `lvai_vi_terminals` per callee. The callee may not exist
-  yet; author against the contract anyway and generate once it does.
+- **A callee's terminals come from the contract, not from its file**: `slice.callSkeletons`, or
+  `callSkeletonsFor=<names>` for a VI outside your slice - never `lvai_vi_terminals` per callee.
+  The callee may not exist yet; author against the contract anyway and generate once it does.
 - **Call an owned VI by the qualified name the contract gives** (`Account Manager.lvlib:Deposit.vi`),
   never by its bare file name.
 - **Build only the VIs whose `builder` is you, in the folder the contract gives.**
@@ -571,6 +574,8 @@ impossible.
 
    - **Every output a `string`** → `lvai_run_vi_as_top_level`.
    - **Anything else — a boolean, numeric, cluster, array or waveform** → **`lvai_run_vi_and_read_values`**.
+     **Several input sets go into ONE call** (`inputSetsJson`: an array of input objects; the
+     answer is `runs`, one compact entry per set) - never one call per set.
      It sets the inputs, runs the target and reads *every* control and indicator back through VI
      Server, so the values arrive intact. That is the normal case: a VI whose outputs are all
      strings is the exception.

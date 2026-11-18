@@ -35,6 +35,7 @@ server's MCP `instructions`. Keep that brief in step with every change to this s
 agent** (the user's decision of 2026-11-01). `build-contract.json` in the build folder names every
 VI with its path, owner, builder, connector pane and callees; `lvai_check_build_contract mode=plan`
 checks it without LabVIEW and answers the build WAVES. Every builder gets the contract path and
+its `builder` name, asks for its own part with `forBuilder` (never reads the whole file) and
 implements against it, the main-VI agent authors its scaffold in parallel with wave 0, and
 `mode=verify` gates each wave before the next is built. `docs/build-contract.md`.
 
@@ -51,6 +52,10 @@ PROJECT's own VIs before the palette. `docs/orchestrator-brief.md`.
 Main.vi); a handler reads `<field> in` and writes `<field> out`, and `lvai_dqmh_place_handler`
 wires both on the shift-register wire. A reply's error goes to the requester only.
 `docs/dqmh-patterns.md` §12.
+
+**THE SPEC AND A SUPPLIED PANEL ARE PREPARED ONCE, BY THE ORCHESTRATOR**: `spec.txt` and `panel.xml`
+(the panel's AIXML export) in the build folder, and agents get those paths. Agents read a PDF 40
+times in 94 runs (2026-11-18), about 139 k characters each time. `docs/build-contract.md` §5.
 
 **ONE AGENT, ONE OUTPUT DIRECTORY.** Two agents in one folder overwrite each other's files. Give
 each its own folder (`<project>\Tests\<ClassName>\`) and say so in its prompt.
@@ -191,7 +196,8 @@ still wrote the VI. `docs/bulk-operations.md`, `docs/diagram-layout.md`.
 it is STRICTER than conversion (convert writes, validate refuses). Run with
 `lvai_run_vi_and_read_values`: inputs go in as text and land as the control's type (numeric,
 boolean, path, string; an enum by name or index; an array or cluster as LabVIEW's XML); a value
-must not contain a line break. A VI that does not end runs only with `runForMs` - the untimed
+must not contain a line break. Several input sets go into ONE call (`inputSetsJson`), never one
+call per set. A VI that does not end runs only with `runForMs` - the untimed
 helper blocks the whole gRPC service. An event-driven VI is verified by DRIVING its events
 (`signalsJson`), not by a start-up snapshot. Never report success from an empty answer.
 

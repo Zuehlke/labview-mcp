@@ -32,23 +32,22 @@ and never re-spawn it.
 
 Before you spawn the first agent for an application of more than one VI:
 
-1. Read the specification and any supplied panel ONCE yourself.
+1. Read the specification and any supplied panel ONCE yourself, and save them in the build
+   folder as `spec.txt` and `panel.xml` (the panel's AIXML export). Agents get those paths,
+   never a PDF.
 2. Write `build-contract.json` in the build folder: every VI with its path, owner, builder,
    connector pane (terminal names, types, conIdx, connection) and the VIs it calls. A free-form
-   design document is not a substitute - no tool can check it, and every agent re-reads it.
-   The format is in `docs/build-contract.md` beside the server's exe.
+   design document is no substitute. Format: `docs/build-contract.md` beside the server's exe.
 3. Run `lvai_check_build_contract mode=plan` until it answers `ok`. It needs no LabVIEW and
    answers the build WAVES: wave 0 calls nothing in the contract, wave n only earlier waves.
-4. Spawn wave 0's builders in parallel, each with the contract path and its own VIs. At the same
-   time spawn the main-VI builder to author its scaffold against the contract; it generates only
-   once its callees exist.
+4. Spawn wave 0's builders in parallel, each with the contract path and its `builder` name (it
+   asks for its part with `forBuilder`). At the same time spawn the main-VI builder to author its
+   scaffold; it generates only once its callees exist.
 5. After each wave run `lvai_check_build_contract mode=verify` for that wave's VIs. Never build
    the next wave against a VI that differs from the contract.
-6. Test builders get the contract too: their subjects' panes and qualified call names come from
-   it, so they do not re-read what the build agents just wrote.
+6. Test builders get the contract too: subject panes and qualified call names come from it.
 
-Pass the facts an agent needs in its prompt (the spec's relevant part, the contract path). An
-agent that has to rediscover them reads long documents at runtime.
+Pass the facts an agent needs in its prompt, or it rediscovers them from long documents.
 
 ## New VIs that belong together go into a library
 

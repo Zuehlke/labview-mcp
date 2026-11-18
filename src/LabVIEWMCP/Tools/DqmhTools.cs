@@ -76,13 +76,13 @@ internal sealed class DqmhTools(LvaiConnection connection)
     public async Task<string> NewEvent(
         [Description("Module, e.g. 'Heater' or 'Heater.lvlib', matched case-insensitively")]
         string moduleName,
-        [Description("Name of the new event, e.g. 'Do Something Else'")]
-        string eventName,
+        [Description("Name of the new event, e.g. 'Do Something Else'. Empty with eventsJson")]
+        string eventName = "",
         [Description("""
             Arguments, the event's public contract: [{"name":"Channel","type":"string"},
             {"name":"Gain","type":"double"}]; AIXML type names; [] for none.
             """)]
-        string argumentsJson,
+        string argumentsJson = "",
         [Description("Event type: Request, Broadcast, Request and Wait for Reply, or Round Trip")]
         string eventType = "Request",
         [Description("""
@@ -112,61 +112,88 @@ internal sealed class DqmhTools(LvaiConnection connection)
                      "call again collects the answer (the client gives up at 60 s)")]
         int answerWithinSeconds = 45,
         [Description(BackendDescription)] string? backend = null,
+        [Description("""
+            SEVERAL EVENTS IN ONE CALL, instead of eventName and the per-event arguments:
+            [{"eventName":"Set Gain","arguments":[{"name":"Gain","type":"double"}]},
+             {"eventName":"Get State","eventType":"Request and Wait for Reply",
+              "replyArguments":[{"name":"State","type":"string"}]}].
+            Keys: eventName, arguments, eventType, replyArguments, roundTripBroadcastName,
+            description, addTesterButton, requestScoping, consumingLoop - arguments and
+            replyArguments as ARRAYS. Every event is checked before the first is created; they are
+            created in order and the run stops at the first that fails. Collect the answer with the
+            SAME call, like a single event.
+            """)]
+        string? eventsJson = null,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(() => WithBackendAsync(backend, "lvai_dqmh_new_event", async () =>
         {
             if (string.IsNullOrWhiteSpace(moduleName))
                 return Json.Error("badArguments", "moduleName is required.");
+
+            if (!string.IsNullOrWhiteSpace(eventsJson))
+            {
+                if (!string.IsNullOrWhiteSpace(eventName) || !string.IsNullOrWhiteSpace(argumentsJson))
+                    return Json.Error("badArguments",
+                        "Pass eventName and argumentsJson (one event) or eventsJson (several), not both.");
+                List<DqmhBatch.Event> batch;
+                try { batch = DqmhBatch.ParseEvents(eventsJson); }
+                catch (ArgumentException bad) { return Json.Error("badArguments", bad.Message, new { eventsJson }); }
+                // every event is checked by the single call's own rules BEFORE anything is scripted
+                foreach (var e in batch)
+                    if (EventArgumentProblem(e.EventName, e.ArgumentsJson, e.EventType ?? "Request",
+                            e.ReplyArgumentsJson, e.RoundTripBroadcastName, e.RequestScoping ?? RequestScopings[0],
+                            e.ConsumingLoop ?? DefaultConsumingLoop) is { } refused)
+                        return refused;
+                if (StatusTools.ScriptsDirectory() is not { } batchScripts)
+                    return Json.Error("scriptsMissing",
+                        "No scripts folder next to the exe - lvai_status reports it as " +
+                        "scriptsDirectory. The DQMH helpers live there.");
+
+                var onBackend = OnPyLabview ? AixmlBackend.PyLabview : AixmlBackend.Grpc;
+                var progress = new JsonObject { ["eventsDone"] = 0, ["eventsRequested"] = batch.Count };
+                return await ResumableCall.RunAsync("lvai_dqmh_new_event",
+                    string.Join("|", moduleName.Trim(), "batch", eventsJson, onBackend),
+                    TimeSpan.FromSeconds(answerWithinSeconds),
+                    async () =>
+                    {
+                        var events = new JsonArray();
+                        foreach (var e in batch)
+                        {
+                            var typeOf = Array.FindIndex(EventTypes,
+                                t => string.Equals(t, e.EventType ?? "Request", StringComparison.OrdinalIgnoreCase));
+                            var scopeOf = Array.FindIndex(RequestScopings, sc => string.Equals(sc,
+                                e.RequestScoping ?? RequestScopings[0], StringComparison.OrdinalIgnoreCase));
+                            var one = JsonNode.Parse(await new DqmhHeadless(connection).NewEventAsync(
+                                this, batchScripts, moduleName, e.EventName, typeOf, EventTypes[typeOf],
+                                ParseArguments(e.ArgumentsJson)!, ParseArguments(e.ReplyArgumentsJson)!,
+                                e.RoundTripBroadcastName, e.Description, e.AddTesterButton, timeoutSeconds,
+                                CancellationToken.None, scopeOf, e.ConsumingLoop ?? DefaultConsumingLoop)) as JsonObject;
+                            var entry = DqmhBatch.CompactEvent(e.EventName, one);
+                            events.Add(entry);
+                            lock (progress) progress["eventsDone"] = events.Count;
+                            if (entry["ok"]?.GetValue<bool>() != true) break;
+                        }
+                        return Json.Document(DqmhBatch.EventsAnswer(moduleName, batch.Count, events));
+                    },
+                    "Call lvai_dqmh_new_event again with the SAME arguments: it waits for this run and " +
+                    "returns its answer. Do not start other LabVIEW work meanwhile.",
+                    ct,
+                    () => { lock (progress) return (JsonObject)progress.DeepClone(); });
+            }
+
             if (string.IsNullOrWhiteSpace(eventName))
                 return Json.Error("badArguments", "eventName is required.");
+            if (EventArgumentProblem(eventName, argumentsJson, eventType, replyArgumentsJson,
+                    roundTripBroadcastName ?? "", requestScoping, consumingLoop) is { } problem)
+                return problem;
 
             var typeIndex = Array.FindIndex(EventTypes,
                 t => string.Equals(t, eventType, StringComparison.OrdinalIgnoreCase));
-            if (typeIndex < 0)
-                return Json.Error("badArguments",
-                    $"'{eventType}' is not a DQMH event type.",
-                    new { eventType, accepted = EventTypes });
-
-            if (ParseArguments(argumentsJson) is not { } arguments)
-                return Json.Error("badArguments",
-                    "argumentsJson must be a JSON array of {\"name\":…,\"type\":…} objects.",
-                    new { argumentsJson });
-
-            if (arguments.FirstOrDefault(a => a.Name.Contains('\n') || a.Name.Contains('\r'))
-                is { Name.Length: > 0 } broken)
-                return Json.Error("badArguments",
-                    $"Argument name '{broken.Name}' contains a line break.");
-
-            if (ParseArguments(replyArgumentsJson) is not { } replyArguments)
-                return Json.Error("badArguments",
-                    "replyArgumentsJson must be a JSON array of {\"name\":…,\"type\":…} objects.",
-                    new { replyArgumentsJson });
-
-            if (replyArguments.FirstOrDefault(a => a.Name.Contains('\n') || a.Name.Contains('\r'))
-                is { Name.Length: > 0 } brokenReply)
-                return Json.Error("badArguments",
-                    $"Reply argument name '{brokenReply.Name}' contains a line break.");
-
-            var isRoundTrip = IsRoundTrip(typeIndex);
-            var carriesReply = CarriesReply(typeIndex);
-            if (TypeRuleViolation(typeIndex, replyArguments.Count, roundTripBroadcastName)
-                is { } violation)
-                return Json.Error("badArguments", violation,
-                    new
-                    {
-                        eventType = EventTypes[typeIndex],
-                        replyArgumentsJson,
-                        roundTripBroadcastName,
-                    });
-
+            var arguments = ParseArguments(argumentsJson)!;
+            var replyArguments = ParseArguments(replyArgumentsJson)!;
             var scoping = Array.FindIndex(RequestScopings,
-                s => string.Equals(s, (requestScoping ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
-            if (scoping < 0)
-                return Json.Error("badArguments", $"'{requestScoping}' is not a request scoping.",
-                    new { accepted = RequestScopings });
+                sc => string.Equals(sc, (requestScoping ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
             var loop = string.IsNullOrWhiteSpace(consumingLoop) ? DefaultConsumingLoop : consumingLoop.Trim();
-            if (ScopingProblem(typeIndex, scoping, loop) is { } scopingProblem)
-                return Json.Error("badArguments", scopingProblem);
 
             if (StatusTools.ScriptsDirectory() is not { } scripts)
                 return Json.Error("scriptsMissing",
@@ -192,6 +219,47 @@ internal sealed class DqmhTools(LvaiConnection connection)
                 "eventNameInUse refusal on a new call as a failure - the event may be the one this run wrote.",
                 ct);
         }));
+
+    /// <summary>
+    /// What is wrong with one event's arguments, as the refusal to answer, or null. The single
+    /// call and every entry of a batch go through it, so a batch refuses exactly what a single
+    /// call would - before the first event is scripted.
+    /// </summary>
+    internal static string? EventArgumentProblem(string eventName, string argumentsJson, string eventType,
+        string replyArgumentsJson, string roundTripBroadcastName, string requestScoping, string consumingLoop)
+    {
+        var typeIndex = Array.FindIndex(EventTypes,
+            t => string.Equals(t, eventType, StringComparison.OrdinalIgnoreCase));
+        if (typeIndex < 0)
+            return Json.Error("badArguments", $"'{eventType}' is not a DQMH event type.",
+                new { eventName, eventType, accepted = EventTypes });
+        if (ParseArguments(argumentsJson) is not { } arguments)
+            return Json.Error("badArguments",
+                "argumentsJson must be a JSON array of {\"name\":…,\"type\":…} objects.",
+                new { eventName, argumentsJson });
+        if (arguments.FirstOrDefault(a => a.Name.Contains('\n') || a.Name.Contains('\r'))
+            is { Name.Length: > 0 } broken)
+            return Json.Error("badArguments", $"Argument name '{broken.Name}' contains a line break.");
+        if (ParseArguments(replyArgumentsJson) is not { } replyArguments)
+            return Json.Error("badArguments",
+                "replyArgumentsJson must be a JSON array of {\"name\":…,\"type\":…} objects.",
+                new { eventName, replyArgumentsJson });
+        if (replyArguments.FirstOrDefault(a => a.Name.Contains('\n') || a.Name.Contains('\r'))
+            is { Name.Length: > 0 } brokenReply)
+            return Json.Error("badArguments", $"Reply argument name '{brokenReply.Name}' contains a line break.");
+        if (TypeRuleViolation(typeIndex, replyArguments.Count, roundTripBroadcastName) is { } violation)
+            return Json.Error("badArguments", violation,
+                new { eventName, eventType = EventTypes[typeIndex], replyArgumentsJson, roundTripBroadcastName });
+        var scoping = Array.FindIndex(RequestScopings,
+            s => string.Equals(s, (requestScoping ?? "").Trim(), StringComparison.OrdinalIgnoreCase));
+        if (scoping < 0)
+            return Json.Error("badArguments", $"'{requestScoping}' is not a request scoping.",
+                new { eventName, accepted = RequestScopings });
+        var loop = string.IsNullOrWhiteSpace(consumingLoop) ? DefaultConsumingLoop : consumingLoop.Trim();
+        return ScopingProblem(typeIndex, scoping, loop) is { } scopingProblem
+            ? Json.Error("badArguments", scopingProblem, new { eventName })
+            : null;
+    }
 
     /// <summary>The `backend` parameter text every DQMH tool shares.</summary>
     internal const string BackendDescription = AixmlBackend.RouteParameterDescription + """

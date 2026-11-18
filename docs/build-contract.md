@@ -98,6 +98,15 @@ earlier waves. Everything in one wave can be built in parallel. `callSkeletonsFo
 ready `<Call>` per named VI, written by the same code as `lvai_vi_terminals`, so a caller needs
 no export of a callee that does not exist yet.
 
+**`forBuilder` answers ONE builder's part** (`slice`, since 2026-11-18): its VIs' entries as the
+contract wrote them (with `callAs` and `fullPath` added), only the named `types` they use, a
+`<Call>` for every VI they call, and the waves they fall into. The application's `waves` and the
+warnings about other builders' VIs are left out (`warningsAboutOtherVis` counts them); errors stay,
+because a broken contract concerns everyone. An unknown name is refused as `noSuchBuilder` with
+the names that exist. Measured over 94 agent runs: the contract file was read whole 59 times at
+25 k characters on average, and every builder carried the other builders' VIs for the rest of its
+run. A builder asks for its slice and does not read the file.
+
 ## 4. What `mode=verify` checks (after a wave)
 
 Each named VI that exists is exported (on the chosen backend, through the export cache) and its
@@ -113,10 +122,13 @@ wave.
 ## 5. The workflow
 
 1. **Orchestrator, before any agent:**
-   1. Read the spec and the supplied panel once.
+   1. Read the spec and the supplied panel once, and save them in the build folder as `spec.txt`
+      (the text) and `panel.xml` (`lvai_convert_vi_to_aixml` of the supplied VI). Agents get those
+      paths: a PDF read by an agent cost about 139 k characters each time, 40 times in 94 runs.
    2. Write `build-contract.json`.
    3. Run `lvai_check_build_contract mode=plan` until `ok`.
-2. **Spawn wave 0's builders** with the contract path and their VIs.
+2. **Spawn wave 0's builders** with the contract path and their `builder` name; each starts with
+   `mode=plan forBuilder=<name>`.
 3. **At the same time, spawn the main-VI builder** to author its scaffold against the contract.
    It writes AIXML and plans the graft, and does not generate until its callees exist.
 4. **After each wave:**
