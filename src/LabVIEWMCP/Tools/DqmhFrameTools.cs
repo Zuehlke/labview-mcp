@@ -117,13 +117,13 @@ internal sealed class DqmhFrameTools(LvaiConnection connection)
                 var before = wall.ElapsedMilliseconds;
                 var one = JsonNode.Parse(await PlaceOneAsync(moduleName, handlers[i].EventName, handlers[i].HandlerViPath,
                     dryRun, cleanUpDiagram: false, finish: false, timeoutSeconds, ct)) as JsonObject;
-                mainVi ??= one?["mainVi"]?.GetValue<string>();
+                mainVi ??= (one?["mainVi"] ?? one?["detail"]?["mainVi"])?.GetValue<string>();
                 var entry = DqmhBatch.CompactHandler(handlers[i], one);
                 placed.Add(entry);
                 if (entry["ok"]?.GetValue<bool>() != true)
                 {
                     allOk = false;
-                    if (i + 1 < handlers.Count) nextHandler = i + 1;
+                    nextHandler = i;   // the failed one is the first to retry
                     break;
                 }
                 if (i + 1 < handlers.Count &&

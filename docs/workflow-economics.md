@@ -361,11 +361,22 @@ Measured with the method of section 5 over the subagent transcripts (2 326 reque
 An agent's first request was at a median of 94 k tokens (184-218 k on 2026-10-31), and 17 % of the
 agent requests ran above 200 k.
 
-**Not measured yet**: what the batch forms save in a real build. They are pinned offline
-(`BatchCallTests`) and compile; none was run against LabVIEW on the day it was written, because a
-build takes the `lvai_*` tools away until the client restarts. Exercise all three before trusting
-them: a run batch with one failing set, an event batch that outlives 45 s (the same call collects
-it), a handler batch on a module with a Request and Wait for Reply frame.
+**Accepted against LabVIEW 2026 on 2026-11-18** (pylabview backend, after a client restart):
+
+| form | test | result |
+|---|---|---|
+| `forBuilder` | `account` on the ATM_DQMH_Cold_10 contract (37 VIs, 32 926 chars) | 7 VIs, 3 types, 3 Call skeletons, 2 waves, about 9 k chars; `nobody` refused as `noSuchBuilder` with the six names |
+| `inputSetsJson` | `Verify Account In File.vi`, 4 sets: found, not found, missing file, unknown control | 4 runs in one call, 2.4 s; the target's own Error 7 in `error out` with `ok: true`; the unknown control kept its whole `unknownControl` answer |
+| `eventsJson` | a fresh Singleton `Bank`: Request, Request and Wait for Reply, Request without arguments | a bad entry refused before anything was scripted; then 3 events in 4 calls (19-79 s each, collected with the same call, `progress` 0/1/2 of 3), `completionNeeded` kept |
+| `handlersJson` | the three frames, dry run then real | dry run 9.5 s; placed in 24 s, one layout and no source-only work left, Main.vi executable again |
+
+The handler batch's FAILURE path had two faults, fixed the same day: `nextHandler` named the
+entry AFTER the failed one (a retry from it would have skipped the failed frame), and the note said
+"Main.vi is NOT executable" when nothing had been placed or read. Measured by calling the batch
+again on frames that already held code.
+
+An event takes 19-79 s on its own, so the event batch saves fewer turns than its call count
+suggests: three events cost four calls, where three single events would have cost about five.
 
 The two request-bound batches stop before the client's 60 s: the next item starts only if the time
 so far plus the last item's duration stays under 40 s (`nextSet`, `nextHandler`). The event batch

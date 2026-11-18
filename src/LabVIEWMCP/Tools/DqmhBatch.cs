@@ -79,8 +79,8 @@ internal static class DqmhBatch
             answer["nextHandler"] = next;
             answer["next"] = allOk
                 ? $"Stopped before the client's time limit. Call again with the handlers from index {next} on."
-                : $"Stopped at the handler that failed (its full answer is under `answer`). Fix it, then call again " +
-                  $"with it and the handlers from index {next} on.";
+                : $"Stopped at handler {next}, which failed (its full answer is under `answer`); the ones before " +
+                  $"it are placed. Fix it, then call again with the handlers from index {next} on.";
         }
         answer["mainVi"] = mainVi;
         answer["cleanUpDiagram"] = cleanUp;
@@ -88,6 +88,8 @@ internal static class DqmhBatch
         answer["mainViExecState"] = mainExecState;
         answer["note"] = dryRun
             ? "Dry run: nothing was changed."
+            : mainExecState is null
+                ? "No handler was placed, so Main.vi was not changed and its exec state was not read."
             : mainExecState is 1
                 ? "Main.vi is executable. It was laid out and made source only once, after the last handler."
                 : "Main.vi is NOT executable after this call. Other frames may still carry #CodeNeeded " +

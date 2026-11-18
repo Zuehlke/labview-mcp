@@ -232,10 +232,14 @@ public sealed class BatchCallTests
             new JsonObject { ["ok"] = false })["ok"]!.GetValue<bool>());
 
         var refused = DqmhBatch.CompactHandler(handler, Obj("""{"ok":false,"errorKind":"namesDoNotMatch"}"""));
-        var stopped = Answer(new JsonArray(refused), 1, false, null);
+        // measured 2026-11-18: the batch pointed past the failed handler and said Main.vi was broken
+        var stopped = DqmhBatch.HandlersAnswer("Bank", 2, new JsonArray(refused), 0, false, false,
+            @"C:\M\Main.vi", null, null, null, 100);
         Assert.False(stopped["ok"]!.GetValue<bool>());
         Assert.Equal(0, stopped["handlersDone"]!.GetValue<int>());
-        Assert.Contains("failed", stopped["next"]!.GetValue<string>());
+        Assert.Equal(0, stopped["nextHandler"]!.GetValue<int>());
+        Assert.Contains("handler 0, which failed", stopped["next"]!.GetValue<string>());
+        Assert.Contains("was not changed", stopped["note"]!.GetValue<string>());
         Assert.Equal("namesDoNotMatch", stopped["handlers"]![0]!["answer"]!["errorKind"]!.GetValue<string>());
     }
 
