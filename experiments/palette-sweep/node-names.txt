@@ -1,0 +1,449 @@
+?primResID 1814
+?primResID 3916
+?primResID 3917
+?primResID 3918
+Absolute Value
+Accept TLS
+Add
+Add Array Elements
+Add Private Key To TLS Configuration
+Add Trusted Certificate To TLS Configuration
+Add with Error Terminals
+Always Copy
+And
+And Array Elements
+Array Index / Replace Elements
+Array Max & Min
+Array Max &amp; Min
+Array Size
+Array Split / Replace Subarrays
+Array Subset
+Array To Cluster
+Array To Spreadsheet String
+Array of Strings to Path
+Automation Close
+Automation Open
+Bitpack to Array
+Bluetooth Close Connection
+Bluetooth Create Listener
+Bluetooth Discover
+Bluetooth Open Connection
+Bluetooth Read
+Bluetooth Wait On Listener
+Bluetooth Write
+Boolean Array To Number
+Boolean To (0\2C1)
+Build Array
+Build Cluster Array
+Build Map
+Build Matrix
+Build Path
+Build Waveform
+Bundle
+Bundle By Name
+Byte Array To String
+CPU Information
+Call By Reference
+Call Chain
+Call Library Function Node
+Call MATLAB Function
+Call Parent Class Method
+Cast Unit Bases
+Close File
+Close MATLAB Session
+Close Python Session
+Close Reference
+Close TLS Configuration
+Close Variable Connection
+Cluster To Array
+Coerce To Type
+Complex Conjugate
+Complex To Polar
+Complex To Re/Im
+Compound Arithmetic
+Concatenate Strings
+Conditional Disable Structure
+Constructor Node
+Control Help Window
+Control Online Help
+Copy
+Cosine
+Create Folder
+Create Network Stream Reader Endpoint
+Create Network Stream Writer Endpoint
+Create User Event
+Current VI's Menubar
+Current VI's Path
+DataSocket Close
+DataSocket Open
+DataSocket Read
+DataSocket Write
+Date/Time To Seconds
+Decimal Digit?
+Decimal String To Number
+Decrement
+Default Directory
+Delete
+Delete Data Value Reference
+Delete From Array
+Delete Menu Items
+Delete Variant Attribute
+Dequeue Element
+Destroy Stream Endpoint
+Destroy User Event
+Diagram Disable Structure
+Divide
+Element of Set?
+Empty Array?
+Empty Collection?
+Empty String/Path?
+Enable Menu Tracking
+Enqueue Element
+Enqueue Element At Opposite End
+Equal To 0?
+Equal?
+Event Data Node
+Event Filter Node
+Exclusive Or
+Exponential
+Expression Node
+Feedback Node
+File Dialog
+File/Directory Info
+First Call?
+Fixed-Point to Integer Cast
+Flatten To JSON
+Flatten To String
+Flatten To XML
+Flattened String To Variant
+Flush File
+Flush Queue
+Flush Stream
+Format Date/Time String
+Format Into File
+Format Into String
+Format Value
+Formula Node
+Fract/Exp String To Number
+GPIB Read
+GPIB Write
+Generate Front Panel Activity
+Generate Occurrence
+Generate User Event
+Generate User-Defined Trace Event
+Get Datalog Position
+Get Date/Time In Seconds
+Get Date/Time String
+Get Drag Drop Data
+Get File Position
+Get File Size
+Get Help Window Status
+Get Menu Item Info
+Get Menu Selection
+Get Notifier Status
+Get Number of Records
+Get Queue Status
+Get Type and Creator
+Get Variant Attribute
+Get Volume Info
+Get Waveform Attribute
+Get Waveform Components
+Global Variable
+Greater Or Equal To 0?
+Greater Or Equal?
+Greater Than 0?
+Greater?
+Hex Digit?
+Hexadecimal String To Number
+Hyperbolic Cosine
+IP To String
+Implies
+In Place In / Out Element
+In Range and Coerce
+Increment
+Index & Bundle Cluster Array
+Index Array
+Initialize Array
+Insert Into Array
+Insert Into Map
+Insert Into Set
+Insert Menu Items
+Integer to Fixed-Point Cast
+Interleave 1D Arrays
+Interpolate 1D Array
+Inverse Cosine
+Inverse Hyperbolic Cosine
+Inverse Sine
+Inverse Tangent
+Inverse Tangent (2 Input)
+Invoke Node
+IrDA Close Connection
+IrDA Create Listener
+IrDA Discover
+IrDA Open Connection
+IrDA Read
+IrDA Wait On Listener
+IrDA Write
+Join Numbers
+Less Or Equal To 0?
+Less Or Equal?
+Less Than 0?
+Less?
+Lexical Class
+List Folder
+Load Certificates Into Memory
+Load Private Key Into Memory
+Local Variable
+Logarithm Base 10
+Logarithm Base 2
+Logarithm Base X
+Logical Shift
+Look In Map
+Lossy Enqueue Element
+MATLAB script
+Make TLS Configuration Immutable
+Map Get / Replace Value
+Match First String
+Match Pattern
+Matrix Size
+Max & Min
+Max &amp; Min
+Merge Errors
+Merge Signals
+Move
+Multiply
+Multiply Array Elements
+Natural Logarithm
+Negate
+New Data Value Reference
+New TLS Configuration
+New VI
+New VI Object
+Not
+Not A Number/Path/Refnum?
+Not And
+Not Equal To 0?
+Not Equal?
+Not Exclusive Or
+Not Or
+Number To Decimal String
+Number To Engineering String
+Number To Exponential String
+Number To Fractional String
+Number To Hexadecimal String
+Number To Octal String
+Obtain Notifier
+Obtain Queue
+Octal Digit?
+One Button Dialog
+Open Application Reference
+Open MATLAB Session
+Open Python Session
+Open VI Object Reference
+Open VI Reference
+Open/Create/Replace Datalog
+Open/Create/Replace File
+Or
+Or Array Elements
+Path To String
+Path Type
+Path to Array of Strings
+Pick Line
+Polar To Complex
+Polar To Re/Im
+Power Of 10
+Power Of 2
+Power Of X
+Preallocated Read from Binary File
+Preserve Run-Time Class
+Preview Queue Element
+Printable?
+Property Node
+Python Node
+Quit LabVIEW
+Quotient & Remainder
+Quotient &amp; Remainder
+Random Number (0-1)
+Re/Im To Complex
+Re/Im To Polar
+Read Datalog
+Read Map Max & Min Keys
+Read Single Element from Stream
+Read Variable
+Read from Binary File
+Read from Text File
+Reciprocal
+Refnum to Session
+Register Event Callback
+Register For Events
+Register Session
+Release Notifier
+Release Queue
+Remove Fixed-Point Overflow Status
+Remove From Map
+Remove From Set
+Replace Array Subset
+Replace Substring
+Request Deallocation
+Reshape Array
+Reverse 1D Array
+Reverse String
+Rotate
+Rotate 1D Array
+Rotate Right With Carry
+Round To Nearest
+Round Toward +Infinity
+Round Toward -Infinity
+Scale By Power Of 2
+Scan From File
+Scan From String
+Scan String For Tokens
+Scan Value
+Search 1D Array
+Search and Replace String
+Search/Split String
+Seconds To Date/Time
+Select
+Send Notification
+Set Datalog Position
+Set File Position
+Set File Size
+Set Menu Item Info
+Set Occurrence
+Set Permissions
+Set Variant Attribute
+Set Waveform Attribute
+Sign
+Sinc
+Sine
+Sine & Cosine
+Sine &amp; Cosine
+Sort 1D Array
+Split 1D Array
+Split Number
+Spreadsheet String To Array
+Square
+Square Root
+Start Asynchronous Call
+Start TLS
+Static VI Reference
+Stop
+String Length
+String Subset
+String To Byte Array
+String To IP
+String To Path
+Strip Path
+Subtract
+Swap Bytes
+Swap Values
+Swap Words
+TCP Close Connection
+TCP Create Listener
+TCP Open Connection
+TCP Read
+TCP Wait On Listener
+TCP Write
+TDMS Advanced Asynchronous Read
+TDMS Advanced Asynchronous Write
+TDMS Advanced Close
+TDMS Advanced Open
+TDMS Advanced Synchronous Read
+TDMS Advanced Synchronous Write
+TDMS Close
+TDMS Configure Asynchronous Reads
+TDMS Configure Asynchronous Writes
+TDMS Defragment
+TDMS Delete Data
+TDMS Flush
+TDMS Get Asynchronous Read Status
+TDMS Get Asynchronous Write Status
+TDMS Get Properties
+TDMS In Memory Close
+TDMS In Memory Open
+TDMS In Memory Read Bytes
+TDMS List Contents
+TDMS Open
+TDMS Read
+TDMS Reserve File Size
+TDMS Set Channel Information
+TDMS Set Next Read Position
+TDMS Set Next Write Position
+TDMS Set Properties
+TDMS Start Asynchronous Reads
+TDMS Stop Asynchronous Reads
+TDMS Write
+Tangent
+Temporary Directory
+Text to UTF-8
+Threshold 1D Array
+Tick Count (ms)
+To Byte Integer
+To Double Precision Complex
+To Double Precision Float
+To Extended Precision Float
+To Fixed-Point
+To Long Integer
+To Lower Case
+To More Generic Class
+To More Specific Class
+To Probe String
+To Quad Integer
+To Single Precision Float
+To Time Stamp
+To Unsigned Byte Integer
+To Unsigned Long Integer
+To Unsigned Quad Integer
+To Unsigned Word Integer
+To Upper Case
+To Variant
+To Word Integer
+Transpose 2D Array
+Two Button Dialog
+Type Cast
+UDP Close
+UDP Multicast Open
+UDP Open
+UDP Read
+UDP Write
+UTF-8 to Text
+Unbitpack from Array
+Unbundle
+Unbundle / Bundle Elements
+Unbundle By Name
+Unflatten From JSON
+Unflatten From String
+Unflatten From XML
+Unregister For Events
+VI Library
+VI Server Reference
+VISA Assert Trigger
+VISA Close
+VISA Disable Event
+VISA Discard Events
+VISA Enable Event
+VISA Map Trigger
+VISA Open
+VISA Out 16
+VISA Read
+VISA USB Control In
+VISA USB Control Out
+VISA Unlock
+VISA Unmap Trigger
+VISA Wait on Event
+VISA Write
+Variant To Data
+Variant To Flattened String
+Wait (ms)
+Wait For Front Panel Activity
+Wait On Asynchronous Call
+Wait Until Next ms Multiple
+Wait on Notification
+Wait on Notification from Multiple
+Wait on Occurrence
+Waveform Unbundle / Bundle Elements
+White Space?
+Write Datalog
+Write Single Element to Stream
+Write to Binary File
+Write to Text File

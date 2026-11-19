@@ -1,0 +1,6 @@
+out/
+batch*.txt
+composed-clean.txt
+sample2.txt
+gaps*.json
+__pycache__/
