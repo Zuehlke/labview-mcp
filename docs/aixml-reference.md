@@ -1131,6 +1131,26 @@ name inside is `<registration terminal>.<cluster field>`, and the trailing text 
 `Event Data Node` exposes event fields (`NewVal`, `Source`, `code`, …) via `fields`; expect
 one per frame. Filter events additionally use an `Event Filter Node`.
 
+**The TIMEOUT terminal: `timeoutin="<net>"` - pylabview backend only** (2026-11-19). NI's format
+has no attribute for the structure's timeout terminal (154 of 154 Event Structures in NI's
+exports carry none, and NI's exporter drops the wire). Our composer takes `timeoutin`, spelled
+like a Case Structure's `selectin`: one bare net name, read on the structure's OWN diagram - from
+inside a loop, through a loop tunnel. The pylabview reader writes it back on export. Measured by
+running it: a 50 ms timeout handled three times in 186 ms, 100 ms ten times in 1087 ms; unwired,
+the timeout stays -1 and a Timeout frame never fires. On grpc the attribute costs the whole
+document (`Error -2628`, closed schema) - `lvai_check_aixml` warns `eventTimeoutPylabviewOnly`.
+
+```xml
+<Structure _name="Event Structure" timeoutin="4211.value" uid="4220" uid_parent="4210">
+  <CaseFrame selector=" Timeout " uid="4222" uid_parent="4220">
+    <Node _name="Event Data Node" fields="Source,Type,Time" outputs="Source:,Type:,Time:" uid="4224" uid_parent="4222"/>
+  </CaseFrame>
+</Structure>
+```
+
+Until 2026-11-19 this section said nothing and the rest of these documents said the terminal
+"does not exist in the format"; that stays true of NI's format and of the grpc backend.
+
 ## 8. Multi-terminal nodes
 
 `fields` is a comma-separated terminal list whose meaning depends on the node:
@@ -1277,8 +1297,9 @@ export: inputs `reference`, `error in (no error)`, `JavaScript`, `arg`, `Wait fo
 The script is a FUNCTION BODY and needs `return`. At run time it needs the control's panel OPEN in
 the instance that runs the VI, and the first call right after `FP.Open` can still answer `Error 53`
 while the browser initialises - measured twice on cold starts, a second call clean - so poll or
-retry rather than calling once. **Not in an Event Structure Timeout frame**, which has no terminal
-in AIXML: `scripts/aixml-skeletons/web-browser-title-poll.xml` is the measured shape, a second loop
+retry rather than calling once. On grpc **not in an Event Structure Timeout frame**, whose
+terminal NI's format lacks (pylabview wires it, `timeoutin` under "Event Structure");
+`scripts/aixml-skeletons/web-browser-title-poll.xml` is the measured shape on both, a second loop
 paced by `Wait on Notification` with a 250 ms timeout and stopped by the notifier. A run leaves the
 panel the program opened OPEN, which keeps the VI in memory (`Error 1357` on the next convert);
 `lvai_run_vi_and_read_values` closes it afterwards (`panelClosedAfterRun`).

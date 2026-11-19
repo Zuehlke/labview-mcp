@@ -27,9 +27,12 @@ it an icon.
 
 Measured facts that each cost minutes when found at run time. Plan around them from the start.
 
-- **AIXML has no Event Structure timeout terminal** (NI's exporter drops it too). An inactivity
-  timeout is the consumer's `Dequeue Element` `timeout in ms` on a shift register (-1 idle, N
-  armed); a poll is a second While Loop paced by `Wait on Notification`.
+- **An Event Structure's timeout terminal is wired by `timeoutin="<net>"` - pylabview backend
+  ONLY** (NI's format has no attribute for it; on grpc it is `Error -2628`). Spelled like a Case
+  Structure's `selectin`, one net on the structure's own diagram; unwired, a Timeout frame never
+  fires. `docs/aixml-reference.md` "Event Structure". In a producer/consumer the inactivity
+  timeout is still best the consumer's `Dequeue Element` `timeout in ms` on a shift register (-1
+  idle, N armed); a poll is a second While Loop paced by `Wait on Notification`.
   `docs/cold-build-atm-cld.md` §4, `scripts/aixml-skeletons/web-browser-title-poll.xml`.
 - **AIXML drops every typedef on a VI's own pane.** On a CLASS MEMBER re-bind it with
   `lvai_bind_pane_typedef` (needs the `.lvclass`); on a plain subVI no route is established, so
@@ -886,7 +889,7 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    6-10 s (skeleton `.md`, "Stop is DELAYED"). At run time `Execute JavaScript` needs the panel OPEN in the running instance and can
    answer `Error 53` right after `FP.Open`, so the program opens its own panel (`FP.Open` on an
    UNWIRED `{LV.VI}` reference) and POLLS. **Do not build the poll as an Event Structure Timeout
-   frame** - AIXML has no timeout terminal on one. Copy the measured shape in
+   frame** - it starves under events, and on grpc it cannot be wired. Copy the measured shape in
    `scripts/aixml-skeletons/web-browser-title-poll.xml` (its `.md` explains each element): a
    SECOND While Loop paced by `Wait on Notification` with a 250 ms timeout, the notifier sent by
    the `Stop` frame so `timed out?` going FALSE ends the loop, and a `Select` that keeps the last

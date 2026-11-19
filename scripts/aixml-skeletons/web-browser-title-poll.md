@@ -39,8 +39,9 @@ instance, and even after `FP.Open` the first call can answer `Error 53` while th
 initialises (measured twice on cold starts). A load poll is also how a program learns that a
 navigation has finished - and, since round 5, when the browser is ready to take the start-up load.
 
-**The obvious shape - an Event Structure Timeout frame - is not authorable**: AIXML has no timeout
-terminal on an Event Structure (`docs/cold-build-atm-cld.md` §4). So the poll is a SECOND loop paced
+**The obvious shape - an Event Structure Timeout frame - is not authorable on grpc**: NI's AIXML has
+no timeout terminal on an Event Structure (`docs/cold-build-atm-cld.md` §4); pylabview wires one
+through `timeoutin` since 2026-11-19, but a poll in the event loop also starves under events. So the poll is a SECOND loop paced
 by `Wait on Notification` with a 250 ms timeout. The notifier is what stops it: the `Stop` frame
 sends a notification, `timed out?` turns FALSE, and the loop ends without a stop flag being polled.
 
