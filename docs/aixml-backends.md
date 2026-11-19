@@ -3324,6 +3324,14 @@ every place, rendered: the constant "Size: 0" over a greyed element row, the pan
 also inside a cluster) - all pass on a fresh LabVIEW log. A set constant with elements is refused
 like a map's; a set's VALUE cannot be read over ActiveX either.
 
+**An element wider than the donor's** (the set demo, same day): a `set{int32}` constant drew its
+numeric clipped to a 21 px strip. The builder grew the object, its array, cluster and pane, but
+not the frame decorations INSIDE them nor the pane's docBounds, so the array's own frame stayed at
+the string donor's width. Now a decoration spanning its owner widens, one at the far edge (a second
+column's or row's cell) moves along, the index display's frame (left of the array) stays, and
+docBounds widens with the pane. t223: a `set{int32}`, a `set{path}` and a `map{string,double}`
+constant, rendered whole.
+
 **The issue's own shape, t218 (2026-11-19, through the server):** `lvai_create_typedef` built
 `Record.ctl` = `cluster{string.Id,map{string.Name,variant.Value}.Attributes}` (its carrier VI is
 composed, so that too needed the fix); a callee generated with that cluster on its pane was bound

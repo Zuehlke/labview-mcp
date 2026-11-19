@@ -2555,5 +2555,15 @@
     }
    }
   ]
+ },
+ "t223_collection_wide_element": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

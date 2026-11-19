@@ -2157,6 +2157,27 @@ class Composer:
         pb = lvheap.parse_bounds(pane.find("bounds").text)
         dh, dw = max(0, need_h - (pb[2] - pb[0])), max(0, need_w - (pb[3] - pb[1]))
         if dh or dw:
+            # the decorations INSIDE the array, the cluster and the pane follow: one that spans
+            # its owner (the frame, a cell) widens, one at its far edge (a second column's or
+            # row's cell) moves along - otherwise a set{int32}'s numeric, wider than NI's string
+            # donor, was drawn clipped to the donor's 21 px frame (set demo, 2026-11-19). The
+            # pane's document widens with it
+            for o in (arr, clust, pane):
+                ot, ol, ob, orr = lvheap.parse_bounds(o.find("bounds").text)
+                w0, h0 = orr - ol, ob - ot
+                for part in (o.find("partsList") if o.find("partsList") is not None else []):
+                    if part.get("class") != "cosm" or part.find("bounds") is None:
+                        continue
+                    t, l, b, r = lvheap.parse_bounds(part.find("bounds").text)
+                    if r <= 0 or b <= 0:
+                        continue        # outside to the left or above: the index display's frame
+                    l2, r2 = (l + dw, r + dw) if l >= w0 // 2 else (l, r + dw)
+                    t2, b2 = (t + dh, b + dh) if t >= h0 // 2 else (t, b + dh)
+                    part.find("bounds").text = lvheap.fmt_bounds((t2, l2, b2, r2))
+            doc = pane.find("docBounds")
+            if doc is not None and doc.text:
+                t, l, b, r = lvheap.parse_bounds(doc.text)
+                doc.text = lvheap.fmt_bounds((t, l, b + dh, r + dw))
             for o in (pane, clust, arr, ddo):
                 b = lvheap.parse_bounds(o.find("bounds").text)
                 o.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[2] + dh, b[3] + dw))
