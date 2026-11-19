@@ -511,8 +511,19 @@ ref{LV.TreeControl}{array{string}}             (NI writes it for a reference mad
 ref{LV.VI}                                     VI refnum
 ref{UDClassInst}                               reference to a user-defined class instance
 tag{14}                                        IO name control (a DAQmx physical channel)
+map{string.Name,variant.Value}                 MAP: key type, value type (pylabview only)
+set{string}                                    SET: element type (pylabview only)
 {LV.VI} | {LV.Control} | {LV.String}           VI/control class references
 ```
+
+**Maps compose on the pylabview backend since 2026-11-19 (issue #140)**: a map control,
+indicator or EMPTY constant (`value=""`), a map inside a cluster, map wires, `Insert Into Map` /
+`Look In Map`, and a subVI whose pane carries a map. A map literal WITH entries is refused - fill
+it on the diagram. Sets compose the same way since the same day: a set control, indicator or EMPTY
+constant, a set in a cluster, set wires, `Insert Into Set` / `Element of Set?`, a subVI whose pane
+carries a set (before, every one of them was refused). VCTP holds both raw (0x74, 0x73); the
+composer writes the descriptor itself - docs/aixml-backends.md, "Maps and sets". Measured:
+t215-t222.
 
 `ref{UDClassInst}` carries no payload in the type string — the class identity is not encoded,
 so two unrelated class references are indistinguishable by type alone. Frameworks that thread
@@ -2575,6 +2586,28 @@ NI Vision Common. NI's export carries no style for the display; our reader write
 boxes and text into the image with the IMAQ Overlay VIs rather than a 2D Picture. Measured
 2026-11-17, `t214_imaq_image_display`; docs/imaq-support.md.
 
+### Any custom control, and the Fuse Design System: `ctl="..."` and `controlStyle`
+
+A Control or Indicator may name a CUSTOM CONTROL file - also one that is NOT a typedef, such as
+the Fuse Design System's `vi.lib\NXG_controls` (issue #139):
+
+```xml
+<Control _name="error in" ctl="vi.lib\5CNXG_controls\5CArrayMatrixCluster\5CError In NI_NXG.ctl"
+         type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" .../>
+```
+
+The path is absolute or relative to the LabVIEW folder (backslashes as `\5C`). `lvai_generate_vi`
+removes the attribute before either backend sees it (NI's schema is closed), composes the plain
+control and then REPLACES it from the `.ctl` in LabVIEW (step `controlLook`). `controlStyle:
+"fuse"` on `lvai_generate_vi` / `lvai_generate_vis` does the same for every terminal by type and
+direction; `lvai_replace_controls` does it for a VI that already exists. Measured 2026-11-19 on
+LabVIEW 2026: `{LV.Control} Replace` keeps label, data type (an int32 stays I32 against the NXG
+numeric, a DBL), direction, pane slot, enum items, latch and default value, and the NXG colours
+arrive in the saved panel - EXCEPT for arrays, whose element comes from the `.ctl`
+(`array{int32}` became `array{double}`), so arrays and clusters are not mapped. The step checks
+every replaced control's type before and after and refuses a change (`typeKept: false`).
+docs/custom-controls.md.
+
 ### A waveform indicator is not a graph, and a wrong `style` is dropped in silence
 
 `type="doublewaveform"` alone produces the **cluster** display — t0, dt and the Y array as
@@ -3114,8 +3147,8 @@ NI's exports), and the harvested parts' own type labels gave each away:
 | 2456 | `Insert Into Map` | 1: `map out` -> `value unchanged?` (Boolean); 3: the reverse (map) |
 
 NI validated a document wiring each pair; on the composer `Move` and `New VI` were broken with the
-old table and executable with the fixed one (`Insert Into Map` cannot be composed: the composer
-has no map type yet). The reader names terminals from the same tables, so its exports of VIs using
+old table and executable with the fixed one (`Insert Into Map` could not be composed then: the
+composer had no map type until issue #140, 2026-11-19; t215 now runs it). The reader names terminals from the same tables, so its exports of VIs using
 these four were consistently wrong too - a round trip could not show it. `TerminalNameTableTests`
 now fails on any slot whose part type is labelled with another slot's name and a different kind of
 type.

@@ -114,11 +114,12 @@ internal sealed class BulkTools(LvaiConnection connection)
             none.
             """)]
         string? icon = null,
-        [Description("Return every step's full answer even on success")] bool verbose = false)
+        [Description("Return every step's full answer even on success")] bool verbose = false,
+        [Description(ControlLook.StyleParameterDescription)] string? controlStyle = null)
     {
         var answer = await GenerateViAsync(aiXmlFilePath, viPath, openVI, measurePane, panePattern,
                                            timeoutSeconds, ct, measureDiagram, backend, cleanUpDiagram,
-                                           cleanUpPanel, icon);
+                                           cleanUpPanel, icon, controlStyle);
         return verbose ? answer : CompactGenerateAnswer(answer);
     }
 
@@ -131,7 +132,7 @@ internal sealed class BulkTools(LvaiConnection connection)
         string aiXmlFilePath, string viPath, bool openVI = false, bool measurePane = true,
         int? panePattern = null, int timeoutSeconds = 300, CancellationToken ct = default,
         bool measureDiagram = true, string? backend = null, bool? cleanUpDiagram = null,
-        bool? cleanUpPanel = null, string? icon = null)
+        bool? cleanUpPanel = null, string? icon = null, string? controlStyle = null)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_generate_vi", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
@@ -139,16 +140,24 @@ internal sealed class BulkTools(LvaiConnection connection)
         if (xnodeRefusal is not null)
             return AixmlTools.WithBackend(Json.Error("xnodeCallRefused", xnodeRefusal,
                 new { aiXmlFilePath, nothingWritten = true }), choice);
+        var (looked, look) = ControlLookPlan(source, controlStyle);
+        if (look?.Refusal is { } lookRefusal)
+        {
+            if (source != aiXmlFilePath && File.Exists(source)) File.Delete(source);
+            return AixmlTools.WithBackend(Json.Error("controlLookRefused", lookRefusal,
+                new { aiXmlFilePath, nothingWritten = true }), choice);
+        }
         var cleanDiagram = cleanUpDiagram ?? measureDiagram;
         string answer;
         try
         {
             answer = AixmlTools.WithBackend(await GenerateViCoreAsync(
-                source, viPath, openVI, measurePane, panePattern, timeoutSeconds, measureDiagram,
-                choice, cleanDiagram, cleanUpPanel ?? cleanDiagram, ct), choice);
+                looked, viPath, openVI, measurePane, panePattern, timeoutSeconds, measureDiagram,
+                choice, cleanDiagram, cleanUpPanel ?? cleanDiagram, ct, look), choice);
         }
         finally
         {
+            if (looked != source && File.Exists(looked)) File.Delete(looked);
             if (source != aiXmlFilePath && File.Exists(source)) File.Delete(source);
         }
         answer = choice.Name == AixmlBackend.PyLabview ? WithUnmeasuredExecutability(answer)
@@ -228,6 +237,28 @@ internal sealed class BulkTools(LvaiConnection connection)
                     "the pylabview backend skips NI's validation, and executability was not read - " +
                     unmeasured;
         return o.ToJsonString(Indented);
+    }
+
+    /// <summary>
+    /// The document to compose when it asks for custom controls (a <c>ctl</c> attribute, or
+    /// <paramref name="controlStyle"/>): a copy beside it with every ctl attribute removed - NI's
+    /// schema is closed and the composer knows none - and the replacements to make afterwards
+    /// (issue #139, <see cref="ControlLook"/>). Neither asked: the document itself and no plan.
+    /// </summary>
+    internal static (string Source, ControlLook.Plan? Plan) ControlLookPlan(string aiXmlFilePath, string? controlStyle)
+    {
+        string text;
+        try { text = File.ReadAllText(aiXmlFilePath); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return (aiXmlFilePath, null); }
+        if (string.IsNullOrWhiteSpace(controlStyle)
+            && !System.Text.RegularExpressions.Regex.IsMatch(text, @"<(Control|Indicator)\b[^>]*\sctl\s*="))
+            return (aiXmlFilePath, null);
+        var plan = ControlLook.Rewrite(text, controlStyle, LabViewContext.Resolve(aiXmlFilePath).Root);
+        if (plan.Refusal is not null || plan.Aixml == text) return (aiXmlFilePath, plan);
+        var copy = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(aiXmlFilePath))!,
+                                Path.GetFileNameWithoutExtension(aiXmlFilePath) + $".ctl-standin-{Guid.NewGuid():N}.xml");
+        File.WriteAllText(copy, plan.Aixml);
+        return (copy, plan);
     }
 
     /// <summary>
@@ -345,7 +376,7 @@ internal sealed class BulkTools(LvaiConnection connection)
     private async Task<string> GenerateViCoreAsync(
         string aiXmlFilePath, string viPath, bool openVI, bool measurePane, int? panePattern,
         int timeoutSeconds, bool measureDiagram, AixmlBackend.Choice choice, bool cleanUp,
-        bool cleanUpPanel, CancellationToken ct) =>
+        bool cleanUpPanel, CancellationToken ct, ControlLook.Plan? look = null) =>
         await Rpc.GuardAsync(async () =>
         {
             var total = Stopwatch.StartNew();
@@ -702,6 +733,18 @@ internal sealed class BulkTools(LvaiConnection connection)
                 if (placed["ok"]?.GetValue<bool>() != true)
                     cleanNote += " The Image Display was NOT placed - the control is a plain IMAQ Image " +
                                  "refnum: " + placed["note"]?.GetValue<string>();
+            }
+            // CUSTOM CONTROLS (a ctl attribute, controlStyle "fuse"): replaced from their .ctl in
+            // LabVIEW, before the panel is arranged around their real sizes (issue #139)
+            if (look is { Replacements.Count: > 0 } || look?.Skipped.Count > 0)
+            {
+                var looked = await ControlLook.RunAsync(connection, viPath, choice.Name, look!.Replacements,
+                                                        timeoutSeconds, ct);
+                if (look.Skipped.Count > 0)
+                    looked["skipped"] = new JsonArray([.. look.Skipped.Select(s => (JsonNode)s.DeepClone())]);
+                steps.Add(looked);
+                if (looked["ok"]?.GetValue<bool>() != true)
+                    cleanNote += " The custom controls were NOT all placed: " + looked["note"]?.GetValue<string>();
             }
             if (measureDiagram && !openVI)
             {
@@ -1261,10 +1304,11 @@ internal sealed class BulkTools(LvaiConnection connection)
         [Description("Local budget in seconds, per VI")] int timeoutSeconds = 300,
         [Description(AixmlBackend.ParameterDescription)] string? backend = null,
         CancellationToken ct = default,
-        [Description("Return every step's full answer even on success")] bool verbose = false)
+        [Description("Return every step's full answer even on success")] bool verbose = false,
+        [Description(ControlLook.StyleParameterDescription)] string? controlStyle = null)
     {
         var answer = await GenerateVisAsync(pairsJson, openVI, measurePane, keepAixml, timeoutSeconds,
-                                            backend, ct);
+                                            backend, ct, controlStyle);
         return verbose ? answer : CompactGenerateVisAnswer(answer);
     }
 
@@ -1275,18 +1319,19 @@ internal sealed class BulkTools(LvaiConnection connection)
     /// </summary>
     public async Task<string> GenerateVisAsync(
         string pairsJson, bool openVI = false, bool measurePane = true, bool keepAixml = false,
-        int timeoutSeconds = 300, string? backend = null, CancellationToken ct = default)
+        int timeoutSeconds = 300, string? backend = null, CancellationToken ct = default,
+        string? controlStyle = null)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_generate_vis", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
         return AixmlTools.WithBackend(
             await GenerateVisCoreAsync(pairsJson, openVI, measurePane, keepAixml, timeoutSeconds,
-                                       choice, ct), choice);
+                                       choice, ct, controlStyle), choice);
     }
 
     private async Task<string> GenerateVisCoreAsync(
         string pairsJson, bool openVI, bool measurePane, bool keepAixml, int timeoutSeconds,
-        AixmlBackend.Choice choice, CancellationToken ct) =>
+        AixmlBackend.Choice choice, CancellationToken ct, string? controlStyle = null) =>
         await Rpc.GuardAsync(async () =>
         {
             List<GenerationRequest> requests;
@@ -1331,7 +1376,7 @@ internal sealed class BulkTools(LvaiConnection connection)
 
                 var answer = await GenerateViAsync(request.Aixml, request.Vi, openVI, measurePane,
                                                    request.PanePattern, timeoutSeconds, ct: ct,
-                                                   backend: choice.Name);
+                                                   backend: choice.Name, controlStyle: controlStyle);
                 var parsed = Parse(answer);
                 // THE SUB-ANSWER'S OWN VERDICT, NOT `viExistsNow`. That field is true for a file
                 // some EARLIER run left behind, so a batch over targets that already existed

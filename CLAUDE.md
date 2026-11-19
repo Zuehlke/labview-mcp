@@ -516,6 +516,7 @@ document; `experiments/` does not ship.
 | Diagram size; layout | `docs/diagram-size.md`, `docs/diagram-layout.md` | `lvai_layout_diagram` |
 | Diagram comments; rendering | `docs/diagram-comments.md` | `lvai_render_diagrams` |
 | Keep a supplied front panel | `docs/keep-supplied-front-panel.md` | `lvai_graft_diagram`, `lvai_bind_control_references` |
+| Custom controls; Fuse Design System (NXG) look | `docs/custom-controls.md` | `controlStyle`, AIXML `ctl=`, `lvai_replace_controls` |
 | Control references | `docs/control-reference-binding.md` | — |
 | Event structures, user events, `.vit` templates | `docs/labview-vit-templates.md`, `scripts/aixml-skeletons/user-event-two-loops.md` | `lvai_generate_vi_with_events`, `lvai_wire_dynamic_events`, `lvai_set_event_data_fields` |
 | Malleable VIs | `docs/malleable-vis.md` | `lvai_make_malleable` |

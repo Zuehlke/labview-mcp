@@ -1,0 +1,11 @@
+<VI _name="SetInt.vi" description="Set and map constants whose element is wider than the harvested donor's - the object, its array, cluster, pane and their frames grow with it.">
+  <FreeLabel comment="Elements wider than the donor" uid="4290" uid_parent="root"/>
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" outputs="value:4291.v" uid="4291" uid_parent="root"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" inputs="value:4291.v" uid="4292" uid_parent="root"/>
+  <Constant _name="ids" type="set{int32}" value="" outputs="value:4205.v" uid="4205" uid_parent="root"/>
+  <Indicator _name="ids out" type="set{int32}" value="" inputs="value:4205.v" uid="4206" uid_parent="root"/>
+  <Constant _name="paths" type="set{path}" value="" outputs="value:4207.v" uid="4207" uid_parent="root"/>
+  <Indicator _name="paths out" type="set{path}" value="" inputs="value:4207.v" uid="4208" uid_parent="root"/>
+  <Constant _name="limits" type="map{string.name,double.limit}" value="" outputs="value:4209.v" uid="4209" uid_parent="root"/>
+  <Indicator _name="limits out" type="map{string.name,double.limit}" value="" inputs="value:4209.v" uid="4210" uid_parent="root"/>
+</VI>

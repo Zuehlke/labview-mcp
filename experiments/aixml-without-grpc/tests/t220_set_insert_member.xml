@@ -1,0 +1,19 @@
+<VI _name="SetInsertMember.vi" description="Collects a list of words into a set and asks whether one word is in it - set constant, set wires through a shift register, Insert Into Set and Element of Set? (issue 140, the set sibling).">
+  <FreeLabel comment="Collect the words in a set" uid="4200" uid_parent="root"/>
+  <Control _name="words" conIdx="0" connection="recommended" type="array{string}" value="[a,b,a]" outputs="value:4210.a" uid="4201" uid_parent="root"/>
+  <Control _name="word" conIdx="5" connection="recommended" type="string" value="a" outputs="value:4202.v" uid="4202" uid_parent="root"/>
+  <Control _name="error in" conIdx="11" connection="required" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" outputs="value:4209.v" uid="4209" uid_parent="root"/>
+  <Constant _name="no words" type="set{string}" value="" outputs="value:4205.v" uid="4205" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4220" uid_parent="root" label="Insert each word into the set">
+    <Tunnel _id="In1" inputs="value:4210.a" mode="index" outputs="value:4221.w" uid="4221" uid_parent="4220"/>
+    <ShiftReg uid="4225" uid_parent="4220">
+      <Left inputs="value:4205.v" outputs="value:4222.s" uid="4222" uid_parent="4225"/>
+      <Right inputs="value:4226.s" outputs="value:4227.s" uid="4227" uid_parent="4225"/>
+    </ShiftReg>
+    <Node _name="Insert Into Set" inputs="set in:4222.s,element:4221.w" outputs="set out:4226.s,already included?:" uid="4226" uid_parent="4220"/>
+  </Structure>
+  <Node _name="Element of Set?" inputs="set:4227.s,element:4202.v" outputs="found?:4230.f" uid="4230" uid_parent="root"/>
+  <Indicator _name="found?" conIdx="4" connection="recommended" type="bool" value="false" inputs="value:4230.f" uid="4240" uid_parent="root"/>
+  <Indicator _name="unique words" conIdx="6" connection="recommended" type="set{string}" value="" inputs="value:4227.s" uid="4241" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" inputs="value:4209.v" uid="4290" uid_parent="root"/>
+</VI>

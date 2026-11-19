@@ -1,0 +1,11 @@
+<VI _name="MapProbe.vi" description="Pass a map and a cluster holding a map through.">
+  <FreeLabel comment="Pass the maps through" uid="4200" uid_parent="root"/>
+  <Control _name="attributes" conIdx="4" connection="required" type="map{string.Name,variant.Value}" value="" outputs="value:4201.v" uid="4201" uid_parent="root"/>
+  <Indicator _name="attributes out" conIdx="2" connection="recommended" type="map{string.Name,variant.Value}" value="" inputs="value:4201.v" uid="4202" uid_parent="root"/>
+  <Control _name="record" conIdx="5" connection="recommended" type="cluster{string.id,map{string.Name,variant.Value}.Attributes}" value="" outputs="value:4203.v" uid="4203" uid_parent="root"/>
+  <Indicator _name="record out" conIdx="3" connection="recommended" type="cluster{string.id,map{string.Name,variant.Value}.Attributes}" value="" inputs="value:4203.v" uid="4204" uid_parent="root"/>
+  <Constant _name="counts" type="map{string.word,uint64.count}" value="" outputs="value:4205.v" uid="4205" uid_parent="root"/>
+  <Indicator _name="counts out" conIdx="1" connection="recommended" type="map{string.word,uint64.count}" value="" inputs="value:4205.v" uid="4206" uid_parent="root"/>
+  <Control _name="error in" conIdx="8" connection="required" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" outputs="value:4209.v" uid="4209" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" inputs="value:4209.v" uid="4210" uid_parent="root"/>
+</VI>

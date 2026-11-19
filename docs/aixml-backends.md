@@ -2777,8 +2777,10 @@ primResIDs for the composer), a 3D Index Array's `index (page)`, and SET and MAP
 keeps those raw (0x73/0x74); their bytes are the element's index into the flat type list - a map
 a count, then the key's and the value's - and a Pascal label. `lvheap.Bundle(...,
 collections=True)` rewrites them as `Set`/`Map` with TypeID children, so they inline like any
-container: `set{string}`, `map{string.word,uint64.count}`. Only the READER asks for that - the
-composer copies a callee's types as they stand, and a rewritten set would not serialize.
+container: `set{string}`, `map{string.word,uint64.count}`. This paragraph said "only the READER
+asks for that - the composer copies a callee's types as they stand"; that copying WAS issue #140's
+crash, and since 2026-11-19 the composer reads callees the same way and writes maps itself - "Maps
+and sets" below.
 
 **The fifth round**: an OPTIONAL connector-pane slot - flags 0, which the reader skipped as
 unassigned; a slot is assigned when it has a TypeID - so a control there now carries its conIdx
@@ -3230,6 +3232,116 @@ Picture constants 82, a case tunnel no typed wire reaches 79, `?Refnum.LVObjCtl`
 nodes of an unnamed class 62, fixed point 83 (`fixed` 42, `FixedConst` 41), unnamed primResIDs 49.
 The selftest suite passed except t136 (application events), which fails the same way with the
 composer of the commit before - a station state, not these changes.
+
+## Maps and sets (issue #140, 2026-11-19)
+
+**The symptom.** A caller of a subVI whose pane carries a map (a cluster with a
+`map<string, variant>` field) died in the rebuild with a Python traceback,
+`FileNotFoundError: ...\<Callee>_VCTP_td0006_0006.bin`; a map control or constant was refused as
+`not composable yet`. Reproduced with the unchanged composer of `4a8cc923` on a LabVIEW-saved
+callee before the fix.
+
+**The cause.** pylabview cannot parse type codes 0x74 (map) and 0x73 (set) and keeps them RAW: a
+`TypeDesc Type="116" Format="bin" File="<base>_VCTP_tdNNNN_NNNN.bin"`. The composer read callees
+with `lvheap.Bundle` WITHOUT the reader's collections pass and copied that element into the
+caller's VCTP as it stood - with a sidecar file of the CALLEE's extraction folder, and with bytes
+that name flat ids of the callee's type list.
+
+**The descriptor, measured on NI's Map and Set Collection examples:** a map is u16 `2`, the key's
+flat id, the value's flat id (big-endian u16 each); a set is the element's flat id alone; a
+labelled one follows with a Pascal label padded to an even length (`0002 0004 0005` +
+`20 "Map of word to occurrence count:" 00`). `HasLabel="1"` marks the label.
+
+**The fix:**
+- `lvheap.Bundle` reads every bundle with the collections pass (`collections=True` is the
+  default now), so a callee's map is a `Map` tree like any container;
+- `TypeTable` writes a `Map`/`Set` tree back as its raw descriptor with THIS VI's flat ids and
+  `vctp_section(out_dir, base)` writes the sidecar - byte-identical to NI's for "map constant";
+- any OTHER raw type is refused as `UNSUPPORTED: type N 'label' (from <callee>.vi) is stored raw
+  by pylabview ...` instead of a traceback (`lvheap.RawTypeError`, which is now also the
+  composer's `Unsupported`);
+- `map{K.k,V.v}` and `set{T}` parse in the type grammar;
+- a map CONTROL, INDICATOR and CONSTANT come from the harvested `Class0186` parts (NI's Map
+  Collection - Comparing Test Results.vi). pylabview had stored those parts' own map type as
+  `ByteStream`, so every typeDesc of the four containers - fPDCO/constant and map object = the
+  map, indArr = `array{cluster{K,V}}`, the key/value cluster - is set from the requested type, and
+  the donor's key and value objects are rebuilt for the requested types. Only an EMPTY map
+  literal composes (flattened `00000000`, the constant `0000000000`); one with entries is refused;
+- `unverified_wire_type` accepts a map whose key and value it accepts.
+
+**Measured, LabVIEW 2026 32-bit, no insanity:** t215 (`Insert Into Map` -> `Look In Map` on a
+map constant: alpha -> 42, beta `key not found?`), t216 (map control, indicator, constant,
+`cluster{string,map{string,variant}}`), t217 (a caller wiring maps into and out of a LabVIEW-saved
+subVI, `tests/map_callee/Map Attributes.vi`) - all executable and run. The reader writes an empty
+map's value as `0`, which the composer accepts, so a map VI round-trips.
+
+**How a map is DRAWN - the demo the user opened, 2026-11-19.** Everything above ran and loaded
+clean, and still the map CONSTANTS were drawn as a large orange frame with an empty white box over
+the diagram, and every map's key/value rows were missing on the panel. Nothing reported it:
+validation, execState, a run and LabVIEW's log were all clean - only the picture showed it. A map
+object (Class0186) holds an indArr of the key/value cluster, and three things in it are tied to
+WHERE the map sits, which the part carried from NI's donor:
+
+- the array's ANCHOR (nRC/oRC). `set_array_anchors` skipped an array inside another data object,
+  so the pair was stripped and never written. NI's "empty map" at (342, 708), array at (38, 4),
+  87 x 44: nRC (-755, -401), oRC (-755, -402) = -(712 + 43, 380 + 21) and -(.. , 380 + 22) - nRC
+  one pixel above the centre, oRC at it. With both at nRC's value (what every other array gets)
+  the rows were drawn one row too high, over the "Size" header: the only difference left between
+  NI's constant and ours placed at its exact spot, found by diffing the two heaps;
+- the key/value cluster's DOCUMENT coordinates - docBounds, savedSize, the pane's own objects and,
+  on a diagram constant, the pane origin and minPaneSize - are -(the array's place). They are moved
+  by the negated distance from the donor's place (`_place_map_documents`);
+- that place (`_map_frame`) is the map's top-left plus every structure around it, or for a map
+  that is a cluster's FIELD, its place in that cluster's document (own - cluster docBounds + pane
+  top-left). NI's converter (backend grpc) built the same probe and gave the reference for the
+  panel: a cluster at (469, 400) carries docBounds (-469, -400), its map field at (-446, -400) has
+  the key/value fields at -(76, 7). The composer's own panel clusters do not keep docBounds equal
+  to -(their place), so on a panel the cluster's PLACE stands in for its docBounds - three other
+  candidates (the docBounds as written, the place added to it, the map's raw bounds) all left the
+  rows undrawn.
+
+t219 composes a map control, indicator and constant, a map in a cluster control and in a cluster
+constant, and a map constant in a For Loop; rendered, each matches NI's look (constant: "Size: 0"
+above two greyed key -> value rows; panel: the rows under the header), and t215-t219, t74 and t163
+pass on a fresh LabVIEW log. NOT measured: a map inside an array, or a map field of a nested
+cluster on a panel. A map indicator's VALUE still cannot be read over ActiveX.
+
+**Sets, checked the same way (2026-11-19, the user's question).** Sets never CRASHED: a set on a
+callee's pane already went through the collections pass and TypeTable. But nothing else worked -
+a set control, indicator or constant was refused ("no fpdco part for a set"), and a set wire as
+unverified; the refusal even claimed sets composed "on wires". The set object is the map's
+construction with ONE field: Class0185 around an indArr of cluster{T} (NI's Set Collection - Word
+Counting.vi; parts `fpdco/Class0185/ind/115` and `const/Class0185/115` were already harvested), and
+the same values are tied to its place - the element at -(set + array place), (-270, -417) for NI's
+constant at (249, 414) with its array at (21, 3). So `_build_map_ddo` builds both (`SET_PARTS`),
+and the document and anchor rules apply to both (`COLLECTION_CLASSES`). One difference: NI's set
+part carries its anchor pair both AT the centre ((-427, -290) twice, 21 x 40), so the map's
+one-pixel nRC rule stays the map's - though NI's example's own, resized set constant (52 x 44)
+carries (-707, -223)/(-707, -224), the map's pattern; both draw. Measured: t220 (`Insert Into Set`
+through a shift register, `Element of Set?`: a, b found, zz not), t221 (a caller wiring a set and
+a cluster holding one into and out of a LabVIEW-saved subVI, `tests/set_callee`), t222 (a set in
+every place, rendered: the constant "Size: 0" over a greyed element row, the panel's element rows,
+also inside a cluster) - all pass on a fresh LabVIEW log. A set constant with elements is refused
+like a map's; a set's VALUE cannot be read over ActiveX either.
+
+**An element wider than the donor's** (the set demo, same day): a `set{int32}` constant drew its
+numeric clipped to a 21 px strip. The builder grew the object, its array, cluster and pane, but
+not the frame decorations INSIDE them nor the pane's docBounds, so the array's own frame stayed at
+the string donor's width. Now a decoration spanning its owner widens, one at the far edge (a second
+column's or row's cell) moves along, the index display's frame (left of the array) stays, and
+docBounds widens with the pane. t223: a `set{int32}`, a `set{path}` and a `map{string,double}`
+constant, rendered whole.
+
+**The issue's own shape, t218 (2026-11-19, through the server):** `lvai_create_typedef` built
+`Record.ctl` = `cluster{string.Id,map{string.Name,variant.Value}.Attributes}` (its carrier VI is
+composed, so that too needed the fix); a callee generated with that cluster on its pane was bound
+to the typedef by `lvai_replace_controls` and saved by LabVIEW - `TypeDef` links to Record.ctl
+and a raw 0x74 in its VCTP; a caller bundling an id with an empty map constant, calling it and
+unbundling `Id` composed through `lvai_generate_vi`, executable, `sensor-7` in and out.
+
+**Not done:** a map or set inside an array (refused); a map literal with entries; reading a map VALUE back over ActiveX -
+`lvai_run_vi_and_read_values` answers `DISP_E_TYPEMISMATCH` for a map indicator, so a test reads
+what a map holds through `Look In Map`.
 
 ## Not covered, and not measured
 

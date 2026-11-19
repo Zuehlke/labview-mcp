@@ -130,8 +130,9 @@ INT_FMT = {"NumInt8": ">b", "NumInt16": ">h", "NumInt32": ">i", "NumInt64": ">q"
            "NumUInt8": ">B", "NumUInt16": ">H", "NumUInt32": ">I", "NumUInt64": ">Q"}
 
 
-class Unsupported(Exception):
-    pass
+# lvheap's: a type its TypeTable cannot write (a raw descriptor a callee carries) is refused by the
+# same name as everything else the composer cannot build (issue #140)
+Unsupported = lvheap.RawTypeError
 
 
 # The notes vi2aixml.py writes into an export when it LOST STRUCTURE: a diagram node it does not
@@ -395,6 +396,19 @@ def type_tree(aixml_type, label=None, constant=False, _top=True):
             ET.SubElement(el, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
         t, lab = split_field(m.group(3))
         el.append(type_tree(t, lab, _top=False))
+    elif m and m.group(1) in ("map", "set") and m.group(2) is None:
+        # a MAP or SET: map{<key type>.<label>,<value type>.<label>}, set{<element type>}, as the
+        # reader writes them (lvheap.Bundle's collections). VCTP holds them RAW - TypeTable
+        # writes the descriptor (issue #140); nested in a cluster or an array they compose too
+        items = split_top(m.group(3))
+        kind = "Map" if m.group(1) == "map" else "Set"
+        if len(items) != (2 if kind == "Map" else 1):
+            raise Unsupported("type %r: a %s takes %s" % (aixml_type, m.group(1),
+                              "a key and a value type" if kind == "Map" else "one element type"))
+        el = ET.Element("TypeDesc", {"Type": kind, "Format": "inline"})
+        for item in items:
+            t, lab = split_field(item)
+            el.append(type_tree(t, lab, _top=False))
     elif m and m.group(1) == "function" and m.group(2) is None and "{" in m.group(3):
         # a CONNECTOR PANE, NI's literal for Call By Reference's type= and a strictly typed VI
         # refnum: function{<pattern>,<flags per slot>{<type.label per slot>}}, hex, `void` for an
@@ -791,7 +805,12 @@ def unverified_wire_type(tree):
         # executable. That last VI's FATAL "Insane Wire" had been blamed on the typedef and was
         # out_key's shared terminal; no .ctl link is written, and NI's converter writes none.
         return unverified_wire_type(typedef_inner(tree))
-    if t in ("Cluster", "Array"):
+    if t in ("Cluster", "Array", "Map", "Set"):
+        # MAP: judged by its key and value. Measured 2026-11-19 (issue #140): map{string,variant}
+        # and a cluster holding one, wired control -> indicator, into and out of a LabVIEW-saved
+        # subVI, and map{string,int32} through Insert Into Map -> Look In Map (alpha -> 42, beta
+        # not found) - all executable, no insanity. SET likewise, by its element: t220, a set
+        # through Insert Into Set -> Element of Set? and a set constant into an indicator
         for f in fields(tree):
             bad = unverified_wire_type(f)
             if bad:
@@ -1047,6 +1066,8 @@ def _pair_values(c):
 # reaching to it; one far BELOW it (a donor's pair left at a new place) is "Insane Array Constant
 # {graphics} (0x80)" (2026-10-09).
 ANCHOR_K = "_anchor_k"
+COLLECTION_CLASSES = ("Class0185", "Class0186")   # the set and the map object
+MAP_DOC_K = "_map_doc"     # a map key/value cluster: where the donor array sat (_place_map_documents)
 ANCHOR_K_SANE = ((0, 200), (0, 120))
 
 
@@ -1388,6 +1409,14 @@ def _flat(tree, value):
     array{int32} [1,2,3] = 00000003 00000001 00000002 00000003; cluster{int32,bool} [7,true] =
     00000007 01)."""
     t = tree.get("Type")
+    if t in ("Map", "Set"):
+        # an EMPTY map or set flattens to its int32 count, 0 - NI's "empty map" constant carries
+        # 0000000000 (Map Collection - Comparing Test Results.vi), the count plus the zero byte
+        # const_value adds to all-zero data. A literal with entries is not measured yet
+        if value in (None, "", "[]", "{}", "0") or value == []:
+            return "00000000"
+        raise Unsupported("a %s value with entries is not composable yet - leave it empty and "
+                          "fill it on the diagram (Insert Into Map, Insert Into Set)" % t.lower())
     if t == "Cluster":
         vals = parse_literal(value) if isinstance(value, str) else value
         if not isinstance(vals, list):
@@ -1539,7 +1568,7 @@ def _int_literal(value):
 
 def _const_value(tree, value):
     t = tree.get("Type")
-    if t in ("Cluster", "Array") or t in ENUM_BASE.values():
+    if t in ("Cluster", "Array", "Map", "Set") or t in ENUM_BASE.values():
         return _flat(tree, value)
     if isinstance(value, list):
         raise _bad_literal(tree, value, "a list where a scalar belongs")
@@ -2065,6 +2094,121 @@ class Composer:
             return holder.find("dco/ddo")
         return holder
 
+    # the harvested map parts (NI's Map Collection - Comparing Test Results.vi): an indicator and a
+    # diagram constant. pylabview kept their own map type as `ByteStream`, so every type in them is
+    # set here from the tree asked for, never from the donor's list (issue #140)
+    MAP_PARTS = {"fpdco": "fpdco/Class0186/ind/116", "const": "const/Class0186/116"}
+    # a SET is the same construction with one field, the element (NI's Set Collection - Word
+    # Counting.vi): Class0185 around an indArr of cluster{T} (issue #140's sibling, 2026-11-19)
+    SET_PARTS = {"fpdco": "fpdco/Class0185/ind/115", "const": "const/Class0185/115"}
+
+    def _build_map_ddo(self, tree, is_ind, prefix, tag, in_array):
+        """A MAP control, indicator or constant: LabVIEW's map object (Class0186) holds an indArr
+        of the key/value CLUSTER, whose two objects - key, then value, with the arrow decorations
+        between them - display one entry. The donor's key and value objects are replaced by ones
+        built for the requested types, at the donor's places (the value moved right when the key
+        is wider), and every typeDesc of the four containers is set from `tree`: the fPDCO/
+        constant and the map object to the map, the indArr to array{cluster{K,V}}, the cluster to
+        cluster{K,V}. The array's index display keeps the donor's own uint32."""
+        kind = "set" if tree.get("Type") == "Set" else "map"
+        parts = self.SET_PARTS if kind == "set" else self.MAP_PARTS
+        if in_array or prefix not in parts or self.parts.get(parts[prefix]) is None:
+            raise Unsupported("no %s part for a %s%s" % (prefix, kind, " inside an array" if in_array else ""))
+        kv = [c for c in tree if c.tag == "TypeDesc"]
+        holder, donor_types, src = self.instantiate(parts[prefix])
+        for i, e in enumerate(lvheap.typeid_elements(holder)):
+            e.set("_t", str(i))
+        ddo = self._ddo_of(holder)
+        arr = next((p for p in ddo.find("partsList") if p.get("class") == "indArr"), None)
+        clust = arr.find("ddo") if arr is not None else None
+        if clust is None or clust.get("class") != "stdClust":
+            raise Unsupported("the %s part has no element cluster - re-harvest it" % kind)
+        # where the DONOR's key/value array sat: its cluster's document coordinates are tied to
+        # it, and are moved with the map once its place is final (_place_map_documents)
+        dt, dl = lvheap.parse_bounds(ddo.findtext("bounds"))[:2]
+        at, al = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+        clust.set(MAP_DOC_K, "%d,%d,%d" % (dt + at, dl + al, 1 if prefix == "const" else 0))
+        z = clust.find("paneHierarchy/zPlaneList")
+        dl = clust.find("ddoList")
+        by_uid = {c.get("uid"): c for c in z}
+        olds = [by_uid.get(e.get("uid")) for e in dl]
+        if len(olds) != len(kv) or None in olds:
+            raise Unsupported("the %s part's cluster does not hold %d field(s) - re-harvest it" % (kind, len(kv)))
+        kids = []
+        right = None
+        for old, f in zip(olds, kv):
+            child, _, h, w = self.build_ddo(f, is_ind, prefix, "SL__arrayElement", True)
+            ot, ol = lvheap.parse_bounds(old.find("bounds").text)[:2]
+            if right is not None:
+                ol = max(ol, right + 12)
+            place_obj(child, ot, ol)
+            right = lvheap.parse_bounds(child.find("bounds").text)[3]
+            z.insert(list(z).index(old), child)
+            z.remove(old)
+            for e in dl:
+                if e.get("uid") == old.get("uid"):
+                    e.set("uid", child.get("uid"))
+            kids.append(child)
+        # the cluster, its pane, the array and the map object grow by what the pair outgrew
+        tops = [lvheap.parse_bounds(c.find("bounds").text) for c in kids]
+        need_h = max(b[2] for b in tops) - min(b[0] for b in tops)
+        need_w = max(b[3] for b in tops) - min(b[1] for b in tops)
+        pane = clust.find("paneHierarchy")
+        pb = lvheap.parse_bounds(pane.find("bounds").text)
+        dh, dw = max(0, need_h - (pb[2] - pb[0])), max(0, need_w - (pb[3] - pb[1]))
+        if dh or dw:
+            # the decorations INSIDE the array, the cluster and the pane follow: one that spans
+            # its owner (the frame, a cell) widens, one at its far edge (a second column's or
+            # row's cell) moves along - otherwise a set{int32}'s numeric, wider than NI's string
+            # donor, was drawn clipped to the donor's 21 px frame (set demo, 2026-11-19). The
+            # pane's document widens with it
+            for o in (arr, clust, pane):
+                ot, ol, ob, orr = lvheap.parse_bounds(o.find("bounds").text)
+                w0, h0 = orr - ol, ob - ot
+                for part in (o.find("partsList") if o.find("partsList") is not None else []):
+                    if part.get("class") != "cosm" or part.find("bounds") is None:
+                        continue
+                    t, l, b, r = lvheap.parse_bounds(part.find("bounds").text)
+                    if r <= 0 or b <= 0:
+                        continue        # outside to the left or above: the index display's frame
+                    l2, r2 = (l + dw, r + dw) if l >= w0 // 2 else (l, r + dw)
+                    t2, b2 = (t + dh, b + dh) if t >= h0 // 2 else (t, b + dh)
+                    part.find("bounds").text = lvheap.fmt_bounds((t2, l2, b2, r2))
+            doc = pane.find("docBounds")
+            if doc is not None and doc.text:
+                t, l, b, r = lvheap.parse_bounds(doc.text)
+                doc.text = lvheap.fmt_bounds((t, l, b + dh, r + dw))
+            for o in (pane, clust, arr, ddo):
+                b = lvheap.parse_bounds(o.find("bounds").text)
+                o.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[2] + dh, b[3] + dw))
+            for part in ddo.find("partsList"):
+                # the frame around the array and the header label span the array's width
+                if (part.get("class") in ("cosm", "label") and part.findtext("masterPart") in ("8025", "9")
+                        and part.findtext("partID") != "16" and part.find("bounds") is not None):
+                    b = lvheap.parse_bounds(part.find("bounds").text)
+                    part.find("bounds").text = lvheap.fmt_bounds(
+                        (b[0], b[1], b[2] + (dh if part.get("class") == "cosm" else 0), b[3] + dw))
+        pair = ET.Element("TypeDesc", {"Type": "Cluster", "Format": "inline"})
+        for f in kv:
+            pair.append(copy.deepcopy(f))
+        array = ET.Element("TypeDesc", {"Type": "Array", "Format": "inline"})
+        ET.SubElement(array, "Dimension", {"Flags": "0x00FF", "FixedSize": "0xFFFFFF"})
+        array.append(copy.deepcopy(pair))
+        own = [(e, tree) for e in (holder.find("typeDesc"), holder.find("dco/typeDesc"), ddo.find("typeDesc"))
+               if e is not None]
+        own += [(arr.find("typeDesc"), array), (clust.find("typeDesc"), pair)]
+        for e, t in own:
+            e.text = "TypeID(%d)" % self.heap_tid(t)
+            e.attrib.pop("_t", None)
+        if prefix == "fpdco" and is_ind is not None:
+            for o in (ddo, arr, clust):
+                self._direction(o, is_ind)
+        self._typed_donor(holder, donor_types, kids)
+        self._set_label(ddo, tree.get("Label") or "")
+        ddo = self._retag(ddo, tag)
+        h, w = lvheap.size_of(ddo)
+        return (holder if tag is None else ddo), src, h, w
+
     def build_ddo(self, tree, is_ind, prefix="fpdco", tag="ddo", in_array=False, force_class=None):
         """One data object for `tree` (labelled: the label is the object's name), composed from
         parts. A cluster is a stdClust whose paneHierarchy holds one object per field (ddoList
@@ -2074,6 +2218,8 @@ class Composer:
         their own kind. Returns (ddo, source, height, width)."""
         t = tree.get("Type")
         name = tree.get("Label") or ""
+        if t in ("Map", "Set") and not force_class:
+            return self._build_map_ddo(tree, is_ind, prefix, tag, in_array)
         want, other = ("ind", "ctl") if is_ind else ("ctl", "ind")
         if prefix == "const":
             want = other = None
@@ -11347,6 +11493,7 @@ class Composer:
             for t in hidden.find("termList"):
                 _shift_bounds(t.find("dco/termBounds"), t1 - t0, l1 - l0)
         self.set_array_anchors()
+        self._place_map_documents()
         if os.environ.get("AIXML2VI_GENERIC_WIRES") != "1":
             # REAL wire geometry, now every position is final: each two-ended wire whose ends the
             # heap locates gets the route between their hotpoints, where it used to get the
@@ -11384,6 +11531,78 @@ class Composer:
             if all(d is not None and d.get("class") == "flatSeqTun" for d in dcos):
                 s.find("compressedWireTable").text = "01"
 
+    def _map_frame(self, mapo, parent, heap):
+        """Where a MAP object sits in the frame that draws it, (v, h): at the top of a diagram its
+        own top-left plus every structure's around it (a panel adds none); as a FIELD of a cluster
+        its place in that cluster's document - own top-left minus the pane's docBounds plus the
+        pane's top-left, the rule a cluster's array field is anchored by (set_array_anchors)."""
+        v, h = lvheap.parse_bounds(mapo.findtext("bounds"))[:2]
+        e = mapo
+        while e in parent:
+            e = parent[e]
+            if e.get("class") == "stdClust":
+                doc = e.find("paneHierarchy/docBounds")
+                if doc is None:
+                    return None
+                dt, dl = lvheap.parse_bounds(doc.text)[:2]
+                pt, pl = lvheap.parse_bounds(e.findtext("paneHierarchy/bounds") or "(0, 0, 0, 0)")[:2]
+                if heap is self.fp:
+                    # ON A PANEL the cluster's docBounds is -(its own place) in LabVIEW's files
+                    # (NI's converter: a cluster at (469, 400) carries (-469, -400), its map field
+                    # at (-446, -400) has the key/value fields at -(76, 7) = -(23 + 19 + 34, 0 + 4
+                    # + 3)). The composer's own panel clusters do not keep that equality, so their
+                    # PLACE stands in for it - with their docBounds the rows were not drawn
+                    dt, dl = (-x for x in lvheap.parse_bounds(e.findtext("bounds"))[:2])
+                return (v - dt + pt, h - dl + pl)
+            if e.get("class") in ("indArr",) + COLLECTION_CLASSES:
+                return None         # a map inside an array or a map: not measured
+            if heap is self.bd and e.find("diagramList") is not None and e.find("bounds") is not None:
+                st, sl = lvheap.parse_bounds(e.findtext("bounds"))[:2]
+                v, h = v + st, h + sl
+        return (v, h)
+
+    def _place_map_documents(self):
+        """A MAP's key/value cluster keeps its fields in DOCUMENT coordinates tied to where the
+        map sits - the negated absolute place, as a cluster constant's docBounds is: NI's front-
+        panel map at (41, 640) with its array at (38, 3) has fields at (-79, -643), its "empty
+        map" constant at (342, 708) with the array at (38, 4) has them at (-380, -712). Left at
+        the donor's values, LabVIEW drew the key/value row off-screen - an empty white box in the
+        constant (issue #140 demo, 2026-11-19). So docBounds, savedSize and the pane's own
+        objects move by the negated distance the array moved from the donor's place, and on a
+        diagram constant also the pane origin and minPaneSize, which carry the same tie there
+        ((-751, -395)); a front-panel map's origin is a plain (-4, -4) and stays. The new place is
+        absolute (_map_frame): the map's top-left, the array's, and every structure around on a
+        diagram - or, for a map that is a cluster's FIELD, its place in that cluster's document."""
+        for heap in (self.bd, self.fp):
+            if heap is None:
+                continue
+            parent = {c: p for p in heap.iter() for c in p}
+            for clust in [e for e in heap.iter() if e.get(MAP_DOC_K) is not None]:
+                v0, h0, const = (int(x) for x in clust.attrib.pop(MAP_DOC_K).split(","))
+                arr = parent.get(clust)
+                mapo = parent.get(parent.get(arr)) if arr is not None else None
+                if arr is None or mapo is None or mapo.get("class") not in COLLECTION_CLASSES:
+                    continue
+                frame = self._map_frame(mapo, parent, heap)
+                if frame is None:
+                    continue
+                at, al = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+                v, h = frame[0] + at, frame[1] + al
+                dv, dh = -(v - v0), -(h - h0)
+                if not (dv or dh):
+                    continue
+                pane = clust.find("paneHierarchy")
+                for o in [pane.find("docBounds"), clust.find("savedSize")] + \
+                        [c.find("bounds") for c in (pane.find("zPlaneList") if pane is not None else [])]:
+                    if o is not None and o.text:
+                        _shift_bounds(o, dv, dh)
+                if const and pane is not None:
+                    for tag in ("origin", "minPaneSize"):       # (h, v) pairs
+                        o = pane.find(tag)
+                        if o is not None and o.text:
+                            ph, pv = (int(x) for x in o.text.strip("() ").split(",")[:2])
+                            o.text = "(%d, %d)" % (ph + dh, pv + dv)
+
     def set_array_anchors(self):
         """Give every array constant its nRC/oRC anchor now that every position is final (see
         ANCHOR_K): on the diagram, -(absolute top-left + k), the absolute place summing the
@@ -11404,6 +11623,7 @@ class Composer:
                 # 51 x 23 field is the same rule. The donor's offset (or index + 23, 11) left the
                 # pump station's constants drawn with rows of greyed elements beside them.
                 k = ((r - l) // 2, (b - t) // 2)
+                k_old = k               # oRC's offset - nRC's, except in a map (below)
                 frame, e = None, arr
                 while e in parent:
                     e = parent[e]
@@ -11420,6 +11640,28 @@ class Composer:
                         pt, pl = lvheap.parse_bounds(e.findtext("paneHierarchy/bounds") or "(0, 0, 0, 0)")[:2]
                         frame = (t - dt + pt, l - dl + pl)
                         break
+                    if cls in COLLECTION_CLASSES and heap is self.bd:
+                        # THE KEY/VALUE ARRAY OF A MAP CONSTANT: anchored at its ABSOLUTE place,
+                        # the map object's top-left plus its own, plus every structure around -
+                        # with k one pixel above the centre. NI's "empty map" (Map Collection -
+                        # Comparing Test Results.vi): map at (342, 708), array at (38, 4), 87 x 44,
+                        # nRC (-755, -401) = -(712 + 43, 380 + 21). Without a pair LabVIEW drew
+                        # the constant as a large greyed grid over the diagram (issue #140 demo,
+                        # 2026-11-19)
+                        mframe = self._map_frame(e, parent, heap)
+                        if mframe is None:
+                            break
+                        frame = (mframe[0] + t, mframe[1] + l)
+                        # nRC one pixel ABOVE the centre, oRC AT it: NI's pair is (-755, -401)
+                        # and (-755, -402). Both at nRC's value drew the key/value rows one row
+                        # too high, over the "Size" header - the one difference left between
+                        # NI's constant and ours placed at its spot (2026-11-19)
+                        # A SET's pair is both AT the centre: NI's set constant at (249, 414),
+                        # array at (21, 3), 21 x 40, carries (-427, -290) twice = -(417 + 10,
+                        # 270 + 20)
+                        if cls == "Class0186":
+                            k = (k[0], max(0, k[1] - 1))
+                        break
                     if e.tag == "ddo" or cls in ("stdMeasureData", "indArr"):
                         break               # inside another data object: no measured frame
                     if cls == "bDConstDCO":
@@ -11435,9 +11677,9 @@ class Composer:
                     continue
                 pos = arr.find("FpgaImplementation")
                 at = list(arr).index(pos) if pos is not None else len(arr)
-                for i, tag in enumerate(("nRC", "oRC")):
+                for i, (tag, kk) in enumerate((("nRC", k), ("oRC", k_old))):
                     c = ET.Element(tag)
-                    c.text = "(%d, %d)" % (-(frame[1] + k[0]), -(frame[0] + k[1]))
+                    c.text = "(%d, %d)" % (-(frame[1] + kk[0]), -(frame[0] + kk[1]))
                     arr.insert(at + i, c)
 
     def _set_cluster_frames(self, heap, parent):
@@ -11737,7 +11979,7 @@ class Composer:
         m.find("CPC2/Section/TypeDesc").set("TypeID", "2")
         vctp = m.find("VCTP")
         vctp.remove(vctp.find("Section"))
-        vctp.append(self.types.vctp_section())
+        vctp.append(self.types.vctp_section(out_dir, base))
         # The password hash is salted with the terminal counts of the CPC2 interface, which BDPW
         # names by its FLAT type id - the skeleton's 2 named whatever landed there. LabVIEW 2026
         # let that pass on its own 26 files; a 25-stamped VI with a pane was "Another user tampered

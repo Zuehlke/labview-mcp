@@ -2444,5 +2444,126 @@
     }
    }
   ]
+ },
+ "t215_map_insert_look": {
+  "cases": [
+   {
+    "inputs": "key=alpha;value=42;lookup=alpha",
+    "outputs": {
+     "found": "42",
+     "key not found?": "False",
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "key=alpha;value=42;lookup=beta",
+    "outputs": {
+     "found": "0",
+     "key not found?": "True",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t216_map_controls": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t217_map_callee_pane": {
+  "search": [
+   "map_callee"
+  ],
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t218_map_typedef_callee": {
+  "search": [
+   "map_callee"
+  ],
+  "cases": [
+   {
+    "inputs": "id=sensor-7",
+    "outputs": {
+     "id out": "sensor-7",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t219_map_places": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t220_set_insert_member": {
+  "cases": [
+   {
+    "inputs": "word=a",
+    "outputs": {
+     "found?": "True",
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "word=zz",
+    "outputs": {
+     "found?": "False",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t221_set_callee_pane": {
+  "search": [
+   "set_callee"
+  ],
+  "cases": [
+   {
+    "inputs": "id=dev1;channel=3",
+    "outputs": {
+     "found?": "True",
+     "already included?": "False",
+     "id out": "dev1",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t222_set_places": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t223_collection_wide_element": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

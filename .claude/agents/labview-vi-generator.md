@@ -442,7 +442,12 @@ instance's `Call` with `instance` and `adapt="true"`. NI Vision's `.llb` VIs hav
 `target="IMAQ Create"`. **To SHOW an IMAQ image on the panel** give its control or indicator
 `style="Image Display"` (type `ref{GenClassTagFlatten.IMAQImage.IMAQImage}`, pylabview backend);
 `lvai_generate_vi` places NI Vision's Image Display (step `imageDisplay`). Draw boxes and text
-into the image with the IMAQ Overlay VIs - never a 2D Picture as a stand-in.
+into the image with the IMAQ Overlay VIs - never a 2D Picture as a stand-in. **FUSE DESIGN SYSTEM / NXG
+controls** (the user asks for Fuse, NXG style, or a named custom `.ctl`): pass `controlStyle:
+"fuse"` to `lvai_generate_vi` - every terminal is replaced from `vi.lib\NXG_controls` by type and
+direction (step `controlLook`; arrays and clusters keep LabVIEW's look, listed under `skipped`) -
+or put `ctl="<path to .ctl>"` on one Control/Indicator. Never hand-write the replacement and never
+bind an NXG control as a typedef: they are plain custom controls. Read `controlLook`'s `typeKept`.
 
 ### Phase 3 — Take the template
 
