@@ -867,7 +867,7 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         {
             foreach (var net in Pairs(e.Attribute("inputs")?.Value).Select(p => p.Net))
                 if (net.Length > 0) read.Add(net);
-            foreach (var name in new[] { "cond", "selectin" })
+            foreach (var name in new[] { "cond", "selectin", "timeoutin" })
                 if (e.Attribute(name)?.Value is { Length: > 0 } v) read.Add(v);
         }
         int nodes = 0, series = 0;

@@ -262,8 +262,9 @@ frames are not touched. `docs/cold-build-carwash-pc.md`.
 were found by a field user rebuilding a VI with a Web Browser control, and both cost a redesign
 there; written down so the next build plans for them instead of discovering them.
 
-- **A Timeout frame has no terminal in AIXML**, so a frame that reads its own timeout or polls on
-  it cannot be authored. The measured replacement is a second loop paced by `Wait on
+- **A Timeout frame has no terminal in NI's AIXML** (grpc). On pylabview `timeoutin="<net>"` wires
+  it (2026-11-19, `docs/aixml-reference.md` "Event Structure"); before that this said it could not
+  be authored at all. The replacement measured on both backends is a second loop paced by `Wait on
   Notification` with a timeout and stopped by the notifier -
   `scripts/aixml-skeletons/web-browser-title-poll.xml`.
 - **The event chain registers `Value Change` and nothing else.** Measured 2026-10-03: a frame

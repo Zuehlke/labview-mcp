@@ -1119,7 +1119,7 @@ INT_MIN, INT_MAX = -2 ** 31, 2 ** 31 - 1
 # internal until 2026-11-06)
 # the LVSR Execution attributes carried after </VI> (`exec`) and set back by the composer
 EXEC_KEPT = ("IsReentrant", "PooledReentrancy", "IsSubroutine", "Priority", "PrefExecSyst", "SaveParallel")
-INTERNAL_TERMS = {"#cond", "#count", "#maxin", "#maxout", "#selectin", "#selectout"}
+INTERNAL_TERMS = {"#cond", "#count", "#maxin", "#maxout", "#selectin", "#selectout", "#timeoutin"}
 IGNORED, MISSING = object(), object()     # term_owner sentinels: an end AIXML has no terminal for
 
 
@@ -3136,14 +3136,11 @@ class Reader:
                         self.term_owner[t.get("uid")] = IGNORED
                 continue
             if dc == "eventTimeOut":
-                # the TIMEOUT input: NI's export carries no attribute for it (154 of 154 Event
-                # Structures) and drops that wire end; unregistered, the reader dropped the WHOLE
-                # wire, the tunnel it also fed included (Wait Message Loop.vi, 2026-11-06). The end
-                # is left out as NI leaves it, and SAID when wired, so the composer refuses rather
-                # than build a structure that never times out
-                self.term_owner[term.get("uid")] = IGNORED
-                self.event_timeouts = getattr(self, "event_timeouts", [])
-                self.event_timeouts.append((term.get("uid"), node.get("uid"), "Event Structure"))
+                # the TIMEOUT input. NI's export carries no attribute for it (154 of 154 Event
+                # Structures) and drops that wire end; this reader writes it as `timeoutin="<net>"`,
+                # like a Case Structure's `selectin`, which the composer wires (2026-11-19). Until
+                # then the end was dropped and SAID, so the composer refused the export
+                self.term_owner[term.get("uid")] = (el, "#timeoutin", True)
                 continue
             if dc == "caseSel":
                 # SNAPSHOT: the frames' selector values are item NUMBERS of the type as saved
@@ -4531,6 +4528,8 @@ class Reader:
                         el.set("maxin", net)
                     elif term == "#selectin":
                         el.set("selectin", net)
+                    elif term == "#timeoutin":
+                        el.set("timeoutin", net)
                     elif term == "#cond":
                         el.set("cond", net)
                     else:
@@ -4556,6 +4555,8 @@ class Reader:
             for el, term, sink in ends:
                 if term == "#selectin":
                     el.set("selectin", net)
+                elif term == "#timeoutin":
+                    el.set("timeoutin", net)
                 elif term == "#maxin":
                     el.set("maxin", net)
                 elif term == "#cond":

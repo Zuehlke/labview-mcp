@@ -89,6 +89,11 @@ user event, no extra control, and no race between the two loops over who release
 
 ## 4. AIXML CANNOT EXPRESS AN EVENT STRUCTURE'S TIMEOUT — AND THE QUEUE MAKES THAT FREE
 
+> **Since 2026-11-19 this holds for NI's format and the grpc backend only.** The pylabview
+> composer wires the timeout through our own attribute `timeoutin="<net>"`
+> (`docs/aixml-reference.md`, "Event Structure"). The queue's timeout below is still the better
+> inactivity timer for a producer/consumer.
+
 The spec wants a ten-second inactivity timeout. The obvious construction is a `Timeout` frame with
 10000 wired to the structure's timeout terminal. **That terminal does not exist in the format.**
 Measured over the export cache: 79 `<Structure _name="Event Structure">` elements, and every single

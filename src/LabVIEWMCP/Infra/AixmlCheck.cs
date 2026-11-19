@@ -142,6 +142,7 @@ internal static class AixmlCheck
         CheckNetAttributes(root, findings);
         CheckTimestampValues(root, findings);
         CheckNonFiniteConstants(root, findings);
+        CheckEventTimeoutInput(root, findings);
         CheckCommentLength(root, findings);
         CheckControlReadBeforeWait(root, findings);
         CheckWebBrowserReference(root, findings);
@@ -923,6 +924,40 @@ internal static class AixmlCheck
                 + "spelling (nan, NAN, Inf) although its own export writes value=\"nan\". The "
                 + "pylabview backend composes it and the VI runs NaN; on grpc, compose this VI on "
                 + "pylabview or produce the value on the diagram (0/0 gives NaN).",
+                (string?)element.Attribute("uid")));
+        }
+    }
+
+    /// <summary>
+    /// <c>timeoutin="&lt;net&gt;"</c> on an Event Structure wires its TIMEOUT terminal, like a Case
+    /// Structure's <c>selectin</c>. It is OUR attribute: NI's format has none for that terminal
+    /// (154 of 154 Event Structures in NI's exports), so NI's ValidateAIXML refuses the document
+    /// (<c>Error -2628</c>, closed schema) while the pylabview composer wires it - measured
+    /// 2026-11-19, a 50 ms timeout handled three times in 186 ms. A WARNING on an Event
+    /// Structure; an ERROR anywhere else, where no backend reads it.
+    /// </summary>
+    private static void CheckEventTimeoutInput(XElement root, List<Finding> findings)
+    {
+        foreach (var element in root.DescendantsAndSelf())
+        {
+            if ((string?)element.Attribute("timeoutin") is not { } net) continue;
+            var isEvent = element.Name.LocalName == "Structure"
+                && (string?)element.Attribute("_name") == "Event Structure";
+            if (!isEvent)
+            {
+                findings.Add(new Finding(Severity.Error, "timeoutinNotOnEventStructure",
+                    $"timeoutin=\"{net}\" sits on a {element.Name.LocalName} "
+                    + $"\"{element.Attribute("_name")?.Value}\"; only an Event Structure has a timeout "
+                    + "terminal, and no backend reads the attribute anywhere else.",
+                    (string?)element.Attribute("uid")));
+                continue;
+            }
+            if (net.Length == 0) continue;
+            findings.Add(new Finding(Severity.Warning, "eventTimeoutPylabviewOnly",
+                $"The Event Structure's timeout is wired (timeoutin=\"{net}\"). The pylabview backend "
+                + "composes it; NI's format has no attribute for that terminal, so on grpc the whole "
+                + "document is refused (Error -2628). Generate this VI on pylabview, or on grpc time "
+                + "out through a Dequeue Element or Wait on Notification timeout instead.",
                 (string?)element.Attribute("uid")));
         }
     }

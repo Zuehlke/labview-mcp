@@ -44,8 +44,10 @@ Phase 2 export:
 
 Measured facts that each cost minutes when found at run time. Plan around them from the start.
 
-- **AIXML has no Event Structure timeout terminal** (NI's exporter drops it too, so an existing
-  Timeout frame's value is lost in the export). An inactivity timeout is the consumer's
+- **An Event Structure's timeout is `timeoutin="<net>"` - pylabview backend ONLY.** NI's export
+  drops it (an existing VI exported on grpc loses its timeout wire); the pylabview reader writes
+  `timeoutin` and the composer wires it back (2026-11-19), so on pylabview a regeneration keeps it.
+  On grpc it is `Error -2628`. `docs/aixml-reference.md` "Event Structure". Otherwise an inactivity timeout is the consumer's
   `Dequeue Element` `timeout in ms` on a shift register; a poll is a second While Loop paced by
   `Wait on Notification`. `docs/cold-build-atm-cld.md` §4,
   `scripts/aixml-skeletons/web-browser-title-poll.xml`.
@@ -644,8 +646,8 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    `Navigation History Methods.vi`) as well as `ExecuteJavaScript` - and one bind reconnects all
    of its sinks. At run time `Execute JavaScript` needs the panel open in the running instance and may
    answer `Error 53` right after `FP.Open`, so the program opens its own panel (`FP.Open` on an
-   unwired `{LV.VI}` reference) and POLLS - not in an Event Structure Timeout frame, which AIXML
-   cannot author, but in a second loop paced by `Wait on Notification`, as
+   unwired `{LV.VI}` reference) and POLLS - not in an Event Structure Timeout frame, which starves
+   under events and cannot be wired on grpc, but in a second loop paced by `Wait on Notification`, as
    `scripts/aixml-skeletons/web-browser-title-poll.xml` does. `lvai_run_vi_and_read_values` closes
    a panel the run left open (`panelClosedAfterRun`), which keeps the next regeneration from
    answering `Error 1357`. `docs/keep-supplied-front-panel.md` §6g.

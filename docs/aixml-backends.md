@@ -2796,6 +2796,9 @@ composer refuses on, so no VI that times out is built as one that never does) - 
 later elements of an Array Index / Replace Elements pair, and Build Map (Class018B). Still behind
 dropped wires: Express VI data nodes (xDataNode), the Timed Loop and Timed Sequence, the External
 Node, the dynamic shared-variable open, and the Stacked Sequence.
+(2026-11-19: the Event Structure's timeout is no longer dropped - the reader writes it as
+`timeoutin="<net>"` and the composer wires it, flagged 0x8040 as LabVIEW saves a wired one;
+`docs/aixml-reference.md`, "Event Structure". The note above is no longer emitted for it.)
 
 **The seventh round**: the TIMED LOOP, read by the loop reader (its heap is a While Loop's plus
 timing terminals and data nodes): `Timed Loop` with count, Condition, tunnels and registers, the

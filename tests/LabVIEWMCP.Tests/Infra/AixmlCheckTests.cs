@@ -263,6 +263,33 @@ public sealed class AixmlCheckTests
             f => f.Code == "nonFiniteConstantRefusedByNi");
     }
 
+    private const string EventTimeoutWired = """
+        <VI _name="Probe.vi" description="x">
+          <Constant _name="t" type="int32" value="100" uid="4200" uid_parent="root" outputs="value:4200.value"/>
+          <Structure _name="Event Structure" timeoutin="4200.value" uid="4210" uid_parent="root">
+            <CaseFrame selector=" Timeout " uid="4211" uid_parent="4210"/>
+          </Structure>
+        </VI>
+        """;
+
+    /// <summary>
+    /// timeoutin wires an Event Structure's timeout on pylabview (measured 2026-11-19); NI's closed
+    /// schema has no such attribute, so a warning that names the backend - and an error on any
+    /// other element, where nothing reads it.
+    /// </summary>
+    [Fact]
+    public void AWiredEventTimeoutIsAPylabviewOnlyWarning()
+    {
+        var findings = AixmlCheck.Check(EventTimeoutWired);
+        var f = Assert.Single(findings, x => x.Code == "eventTimeoutPylabviewOnly");
+        Assert.Equal(AixmlCheck.Severity.Warning, f.Severity);
+        Assert.DoesNotContain(findings, x => x.Code == "timeoutinNotOnEventStructure");
+
+        var misplaced = AixmlCheck.Check(EventTimeoutWired.Replace("Event Structure", "Case Structure"));
+        Assert.Contains(misplaced, x => x.Code == "timeoutinNotOnEventStructure"
+            && x.Severity == AixmlCheck.Severity.Error);
+    }
+
     private const string TimestampWithAValue = """
         <VI _name="Probe.vi">
           <Constant _name="t" type="timestamp" value="3800000000" uid="4200" uid_parent="root" outputs="value:4200.value"/>
