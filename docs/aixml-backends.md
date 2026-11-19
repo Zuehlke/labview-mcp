@@ -3275,6 +3275,37 @@ map constant: alpha -> 42, beta `key not found?`), t216 (map control, indicator,
 subVI, `tests/map_callee/Map Attributes.vi`) - all executable and run. The reader writes an empty
 map's value as `0`, which the composer accepts, so a map VI round-trips.
 
+**How a map is DRAWN - the demo the user opened, 2026-11-19.** Everything above ran and loaded
+clean, and still the map CONSTANTS were drawn as a large orange frame with an empty white box over
+the diagram, and every map's key/value rows were missing on the panel. Nothing reported it:
+validation, execState, a run and LabVIEW's log were all clean - only the picture showed it. A map
+object (Class0186) holds an indArr of the key/value cluster, and three things in it are tied to
+WHERE the map sits, which the part carried from NI's donor:
+
+- the array's ANCHOR (nRC/oRC). `set_array_anchors` skipped an array inside another data object,
+  so the pair was stripped and never written. NI's "empty map" at (342, 708), array at (38, 4),
+  87 x 44: nRC (-755, -401), oRC (-755, -402) = -(712 + 43, 380 + 21) and -(.. , 380 + 22) - nRC
+  one pixel above the centre, oRC at it. With both at nRC's value (what every other array gets)
+  the rows were drawn one row too high, over the "Size" header: the only difference left between
+  NI's constant and ours placed at its exact spot, found by diffing the two heaps;
+- the key/value cluster's DOCUMENT coordinates - docBounds, savedSize, the pane's own objects and,
+  on a diagram constant, the pane origin and minPaneSize - are -(the array's place). They are moved
+  by the negated distance from the donor's place (`_place_map_documents`);
+- that place (`_map_frame`) is the map's top-left plus every structure around it, or for a map
+  that is a cluster's FIELD, its place in that cluster's document (own - cluster docBounds + pane
+  top-left). NI's converter (backend grpc) built the same probe and gave the reference for the
+  panel: a cluster at (469, 400) carries docBounds (-469, -400), its map field at (-446, -400) has
+  the key/value fields at -(76, 7). The composer's own panel clusters do not keep docBounds equal
+  to -(their place), so on a panel the cluster's PLACE stands in for its docBounds - three other
+  candidates (the docBounds as written, the place added to it, the map's raw bounds) all left the
+  rows undrawn.
+
+t219 composes a map control, indicator and constant, a map in a cluster control and in a cluster
+constant, and a map constant in a For Loop; rendered, each matches NI's look (constant: "Size: 0"
+above two greyed key -> value rows; panel: the rows under the header), and t215-t219, t74 and t163
+pass on a fresh LabVIEW log. NOT measured: a map inside an array, or a map field of a nested
+cluster on a panel. A map indicator's VALUE still cannot be read over ActiveX.
+
 **The issue's own shape, t218 (2026-11-19, through the server):** `lvai_create_typedef` built
 `Record.ctl` = `cluster{string.Id,map{string.Name,variant.Value}.Attributes}` (its carrier VI is
 composed, so that too needed the fix); a callee generated with that cluster on its pane was bound

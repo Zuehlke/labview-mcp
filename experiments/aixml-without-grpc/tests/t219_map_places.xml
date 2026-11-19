@@ -1,0 +1,19 @@
+<VI _name="MapPlaces.vi" description="A map control, indicator, constant, inside a cluster control and a cluster constant, and inside a For Loop - each drawn as LabVIEW draws one (issue 140).">
+  <FreeLabel comment="Maps in every place" uid="4290" uid_parent="root"/>
+  <Control _name="error in" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" outputs="value:4291.v" uid="4291" uid_parent="root"/>
+  <Indicator _name="error out" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" inputs="value:4291.v" uid="4292" uid_parent="root"/>
+  <Control _name="attributes" type="map{string.Name,variant.Value}" value="" outputs="value:4201.v" uid="4201" uid_parent="root"/>
+  <Indicator _name="attributes out" type="map{string.Name,variant.Value}" value="" inputs="value:4201.v" uid="4202" uid_parent="root"/>
+  <Control _name="record" type="cluster{string.id,map{string.Name,variant.Value}.Attributes}" value="" outputs="value:4203.v" uid="4203" uid_parent="root"/>
+  <Indicator _name="record out" type="cluster{string.id,map{string.Name,variant.Value}.Attributes}" value="" inputs="value:4203.v" uid="4204" uid_parent="root"/>
+  <Constant _name="counts" type="map{string.word,int32.count}" value="" outputs="value:4205.v" uid="4205" uid_parent="root"/>
+  <Indicator _name="counts out" type="map{string.word,int32.count}" value="" inputs="value:4205.v" uid="4206" uid_parent="root"/>
+  <Constant _name="rec const" type="cluster{string.id,map{string.Name,variant.Value}.Attributes}" value="" outputs="value:4207.v" uid="4207" uid_parent="root"/>
+  <Indicator _name="rec const out" type="cluster{string.id,map{string.Name,variant.Value}.Attributes}" value="" inputs="value:4207.v" uid="4208" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="4225.v" maxout="" uid="4220" uid_parent="root" label="One empty map per iteration">
+    <Constant _name="loop map" type="map{string.k,int32.v}" value="" outputs="value:4221.v" uid="4221" uid_parent="4220"/>
+    <Tunnel _id="Out1" inputs="value:4221.v" outputs="value:4222.v" uid="4222" uid_parent="4220"/>
+  </Structure>
+  <Constant _name="n" type="int32" value="2" outputs="value:4225.v" uid="4225" uid_parent="root"/>
+  <Indicator _name="loop out" type="map{string.k,int32.v}" value="" inputs="value:4222.v" uid="4223" uid_parent="root"/>
+</VI>

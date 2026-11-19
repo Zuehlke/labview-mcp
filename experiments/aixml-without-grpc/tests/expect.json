@@ -2501,5 +2501,15 @@
     }
    }
   ]
+ },
+ "t219_map_places": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

@@ -1065,6 +1065,7 @@ def _pair_values(c):
 # reaching to it; one far BELOW it (a donor's pair left at a new place) is "Insane Array Constant
 # {graphics} (0x80)" (2026-10-09).
 ANCHOR_K = "_anchor_k"
+MAP_DOC_K = "_map_doc"     # a map key/value cluster: where the donor array sat (_place_map_documents)
 ANCHOR_K_SANE = ((0, 200), (0, 120))
 
 
@@ -2115,6 +2116,11 @@ class Composer:
         clust = arr.find("ddo") if arr is not None else None
         if clust is None or clust.get("class") != "stdClust":
             raise Unsupported("the map part has no key/value cluster - re-harvest it")
+        # where the DONOR's key/value array sat: its cluster's document coordinates are tied to
+        # it, and are moved with the map once its place is final (_place_map_documents)
+        dt, dl = lvheap.parse_bounds(ddo.findtext("bounds"))[:2]
+        at, al = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+        clust.set(MAP_DOC_K, "%d,%d,%d" % (dt + at, dl + al, 1 if prefix == "const" else 0))
         z = clust.find("paneHierarchy/zPlaneList")
         dl = clust.find("ddoList")
         by_uid = {c.get("uid"): c for c in z}
@@ -11462,6 +11468,7 @@ class Composer:
             for t in hidden.find("termList"):
                 _shift_bounds(t.find("dco/termBounds"), t1 - t0, l1 - l0)
         self.set_array_anchors()
+        self._place_map_documents()
         if os.environ.get("AIXML2VI_GENERIC_WIRES") != "1":
             # REAL wire geometry, now every position is final: each two-ended wire whose ends the
             # heap locates gets the route between their hotpoints, where it used to get the
@@ -11499,6 +11506,78 @@ class Composer:
             if all(d is not None and d.get("class") == "flatSeqTun" for d in dcos):
                 s.find("compressedWireTable").text = "01"
 
+    def _map_frame(self, mapo, parent, heap):
+        """Where a MAP object sits in the frame that draws it, (v, h): at the top of a diagram its
+        own top-left plus every structure's around it (a panel adds none); as a FIELD of a cluster
+        its place in that cluster's document - own top-left minus the pane's docBounds plus the
+        pane's top-left, the rule a cluster's array field is anchored by (set_array_anchors)."""
+        v, h = lvheap.parse_bounds(mapo.findtext("bounds"))[:2]
+        e = mapo
+        while e in parent:
+            e = parent[e]
+            if e.get("class") == "stdClust":
+                doc = e.find("paneHierarchy/docBounds")
+                if doc is None:
+                    return None
+                dt, dl = lvheap.parse_bounds(doc.text)[:2]
+                pt, pl = lvheap.parse_bounds(e.findtext("paneHierarchy/bounds") or "(0, 0, 0, 0)")[:2]
+                if heap is self.fp:
+                    # ON A PANEL the cluster's docBounds is -(its own place) in LabVIEW's files
+                    # (NI's converter: a cluster at (469, 400) carries (-469, -400), its map field
+                    # at (-446, -400) has the key/value fields at -(76, 7) = -(23 + 19 + 34, 0 + 4
+                    # + 3)). The composer's own panel clusters do not keep that equality, so their
+                    # PLACE stands in for it - with their docBounds the rows were not drawn
+                    dt, dl = (-x for x in lvheap.parse_bounds(e.findtext("bounds"))[:2])
+                return (v - dt + pt, h - dl + pl)
+            if e.get("class") in ("indArr", "Class0186"):
+                return None         # a map inside an array or a map: not measured
+            if heap is self.bd and e.find("diagramList") is not None and e.find("bounds") is not None:
+                st, sl = lvheap.parse_bounds(e.findtext("bounds"))[:2]
+                v, h = v + st, h + sl
+        return (v, h)
+
+    def _place_map_documents(self):
+        """A MAP's key/value cluster keeps its fields in DOCUMENT coordinates tied to where the
+        map sits - the negated absolute place, as a cluster constant's docBounds is: NI's front-
+        panel map at (41, 640) with its array at (38, 3) has fields at (-79, -643), its "empty
+        map" constant at (342, 708) with the array at (38, 4) has them at (-380, -712). Left at
+        the donor's values, LabVIEW drew the key/value row off-screen - an empty white box in the
+        constant (issue #140 demo, 2026-11-19). So docBounds, savedSize and the pane's own
+        objects move by the negated distance the array moved from the donor's place, and on a
+        diagram constant also the pane origin and minPaneSize, which carry the same tie there
+        ((-751, -395)); a front-panel map's origin is a plain (-4, -4) and stays. The new place is
+        absolute (_map_frame): the map's top-left, the array's, and every structure around on a
+        diagram - or, for a map that is a cluster's FIELD, its place in that cluster's document."""
+        for heap in (self.bd, self.fp):
+            if heap is None:
+                continue
+            parent = {c: p for p in heap.iter() for c in p}
+            for clust in [e for e in heap.iter() if e.get(MAP_DOC_K) is not None]:
+                v0, h0, const = (int(x) for x in clust.attrib.pop(MAP_DOC_K).split(","))
+                arr = parent.get(clust)
+                mapo = parent.get(parent.get(arr)) if arr is not None else None
+                if arr is None or mapo is None or mapo.get("class") != "Class0186":
+                    continue
+                frame = self._map_frame(mapo, parent, heap)
+                if frame is None:
+                    continue
+                at, al = lvheap.parse_bounds(arr.findtext("bounds"))[:2]
+                v, h = frame[0] + at, frame[1] + al
+                dv, dh = -(v - v0), -(h - h0)
+                if not (dv or dh):
+                    continue
+                pane = clust.find("paneHierarchy")
+                for o in [pane.find("docBounds"), clust.find("savedSize")] + \
+                        [c.find("bounds") for c in (pane.find("zPlaneList") if pane is not None else [])]:
+                    if o is not None and o.text:
+                        _shift_bounds(o, dv, dh)
+                if const and pane is not None:
+                    for tag in ("origin", "minPaneSize"):       # (h, v) pairs
+                        o = pane.find(tag)
+                        if o is not None and o.text:
+                            ph, pv = (int(x) for x in o.text.strip("() ").split(",")[:2])
+                            o.text = "(%d, %d)" % (ph + dh, pv + dv)
+
     def set_array_anchors(self):
         """Give every array constant its nRC/oRC anchor now that every position is final (see
         ANCHOR_K): on the diagram, -(absolute top-left + k), the absolute place summing the
@@ -11519,6 +11598,7 @@ class Composer:
                 # 51 x 23 field is the same rule. The donor's offset (or index + 23, 11) left the
                 # pump station's constants drawn with rows of greyed elements beside them.
                 k = ((r - l) // 2, (b - t) // 2)
+                k_old = k               # oRC's offset - nRC's, except in a map (below)
                 frame, e = None, arr
                 while e in parent:
                     e = parent[e]
@@ -11535,6 +11615,24 @@ class Composer:
                         pt, pl = lvheap.parse_bounds(e.findtext("paneHierarchy/bounds") or "(0, 0, 0, 0)")[:2]
                         frame = (t - dt + pt, l - dl + pl)
                         break
+                    if cls == "Class0186" and heap is self.bd:
+                        # THE KEY/VALUE ARRAY OF A MAP CONSTANT: anchored at its ABSOLUTE place,
+                        # the map object's top-left plus its own, plus every structure around -
+                        # with k one pixel above the centre. NI's "empty map" (Map Collection -
+                        # Comparing Test Results.vi): map at (342, 708), array at (38, 4), 87 x 44,
+                        # nRC (-755, -401) = -(712 + 43, 380 + 21). Without a pair LabVIEW drew
+                        # the constant as a large greyed grid over the diagram (issue #140 demo,
+                        # 2026-11-19)
+                        mframe = self._map_frame(e, parent, heap)
+                        if mframe is None:
+                            break
+                        frame = (mframe[0] + t, mframe[1] + l)
+                        # nRC one pixel ABOVE the centre, oRC AT it: NI's pair is (-755, -401)
+                        # and (-755, -402). Both at nRC's value drew the key/value rows one row
+                        # too high, over the "Size" header - the one difference left between
+                        # NI's constant and ours placed at its spot (2026-11-19)
+                        k = (k[0], max(0, k[1] - 1))
+                        break
                     if e.tag == "ddo" or cls in ("stdMeasureData", "indArr"):
                         break               # inside another data object: no measured frame
                     if cls == "bDConstDCO":
@@ -11550,9 +11648,9 @@ class Composer:
                     continue
                 pos = arr.find("FpgaImplementation")
                 at = list(arr).index(pos) if pos is not None else len(arr)
-                for i, tag in enumerate(("nRC", "oRC")):
+                for i, (tag, kk) in enumerate((("nRC", k), ("oRC", k_old))):
                     c = ET.Element(tag)
-                    c.text = "(%d, %d)" % (-(frame[1] + k[0]), -(frame[0] + k[1]))
+                    c.text = "(%d, %d)" % (-(frame[1] + kk[0]), -(frame[0] + kk[1]))
                     arr.insert(at + i, c)
 
     def _set_cluster_frames(self, heap, parent):
