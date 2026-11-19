@@ -1109,7 +1109,9 @@ def label_text(ddo):
             # pylabview writes an unquoted [NULL] for a label with no text at all, and a NUL
             # BYTE as the literal text `&#x00;` - NI's export of DW Test Change Info.vi has an
             # empty label there
-            return "" if t in (None, "[NULL]") else t.replace("&#x00;", "")
+            # in CP1252, as LabVIEW wrote it (lvheap.pylv_to_text) - `Code Größe` came back as
+            # `Code Grˆﬂe` until 2026-11-19
+            return "" if t in (None, "[NULL]") else lvheap.pylv_to_text(t.replace("&#x00;", ""))
     return ""
 
 
@@ -1133,7 +1135,7 @@ def sublabel_text(diag):
             t = o.findtext("textRec/text")
             if t and len(t) > 1 and t.startswith('"') and t.endswith('"'):
                 t = t[1:-1]
-            return "" if t in (None, "[NULL]") else t.replace("&#x00;", "")
+            return "" if t in (None, "[NULL]") else lvheap.pylv_to_text(t.replace("&#x00;", ""))
     return None
 
 
@@ -1747,6 +1749,11 @@ class Reader:
                 self._ring(el, ring, t)
             elif cls == "tableControl":
                 el.set("style", "Table")
+            elif cls == "stdComboBox":
+                # a COMBO BOX: NI's export writes a plain string and loses the items; the style
+                # and items keep it a combo box through a round trip (aixml2vi._set_combo_box,
+                # 2026-11-19). Its own values (Values Match Items off) are not read
+                self._combo_box(el, ddo)
             elif cls == "plugInDDO" and bytes.fromhex(ddo.findtext("className") or "").startswith(b"ImageControl"):
                 # NI Vision's IMAGE DISPLAY (a plug-in object of nivision.dll): NI's export writes
                 # it as a plain IMAQ Image refnum; the style keeps it an Image Display through a
@@ -2071,6 +2078,16 @@ class Reader:
         return self.stored_value(tree, snap, out.hex(), what) or ""
 
     @staticmethod
+    def _combo_box(el, ddo):
+        """A combo box's style and items: the strings of the listbox inside it
+        (baseListboxItemStrings), in the station's code page, a comma escaped as in a ring."""
+        el.set("style", "Combo Box")
+        elems = ddo.find(".//baseListboxItemStrings/multiDimArrayElems")
+        labels = [heap_text(x.text) for x in (elems if elems is not None else [])]
+        if labels:
+            el.set("items", ",".join(escape(x).replace(",", "\\2C") for x in labels))
+
+    @staticmethod
     def _ring(el, ring, t):
         """A RING's items and, where they are not 0..n-1, its values, as NI's export writes them on
         a control, an indicator and a diagram constant alike: `style="Ring" items="a,b"
@@ -2079,7 +2096,9 @@ class Reader:
         plain number (83 over NI's shipping examples) and no ring carried its values (42)."""
         buf = next((p.findtext("buf") for p in ring.iter("SL__arrayElement")
                     if p.get("class") == "multiLabel" and p.find("buf") is not None), None)
-        labels = re.findall(r'"([^"]*)"', buf or "")
+        # the items in the station's code page, as heap_text reads every other heap string: an en
+        # dash came out `Ð` until 2026-11-19
+        labels = [heap_text('"%s"' % x) for x in re.findall(r'"([^"]*)"', buf or "")]
         if not labels:
             # a ring with NO items is written as its plain number (Simple Polar Plot.vi, Change
             # Cursor Icon.vi, 2026-11-06)
@@ -2088,12 +2107,18 @@ class Reader:
         el.set("style", "Ring")
         sparse = ring.find("ringSparseValues")
         if sparse is not None and len(sparse):
-            bits = {"int8": 8, "int16": 16, "int32": 32, "int64": 64}.get(t)
+            # each value a SIGNED heap integer of as few bytes as hold it (`FF` is -1); an
+            # unsigned ring's value is that integer in the type's width (`FF` on a uint32 ring is
+            # 4294967295 - read as 255 until 2026-11-19)
+            ubits = {"uint8": 8, "uint16": 16, "uint32": 32, "uint64": 64}.get(t)
             vals = []
             for x in sparse:
-                v = int((x.text or "0").strip() or "0", 16)
-                if bits and v >= 1 << (bits - 1):
-                    v -= 1 << bits
+                hx = (x.text or "0").strip() or "0"
+                v = int(hx, 16)
+                if v >= 1 << (4 * len(hx) - 1):
+                    v -= 1 << (4 * len(hx))
+                if ubits and v < 0:
+                    v += 1 << ubits
                 vals.append(str(v))
             el.set("values", "[%s]" % ",".join(vals))
 
@@ -2912,7 +2937,7 @@ class Reader:
                 pl = x.find("partsList")
                 for part in pl if pl is not None else []:
                     if part.get("class") == "label" and part.findtext("partID") == "16" and part.findtext("textRec/text"):
-                        lab = unquote(part.findtext("textRec/text")).replace("&#x00;", "").strip()
+                        lab = lvheap.pylv_to_text(unquote(part.findtext("textRec/text")).replace("&#x00;", "").strip())
                         return lab if lab and lab != "[NULL]" else None
                 return None
             for e in self.b.fp.iter():
@@ -2979,7 +3004,7 @@ class Reader:
                 for sp in pl:
                     if sp.get("class") != "stdSubPanel" or not sp.get("uid"):
                         continue
-                    lab = next((unquote(p.findtext("textRec/text") or "").replace("&#x00;", "").strip()
+                    lab = next((lvheap.pylv_to_text(unquote(p.findtext("textRec/text") or "").replace("&#x00;", "").strip())
                                 for p in (sp.find("partsList") if sp.find("partsList") is not None else [])
                                 if p.get("class") == "label"), "") or "Subpanel"
                     self._subpanels[sp.get("uid")] = (lab, g.findtext("bounds") or "")
@@ -2993,7 +3018,7 @@ class Reader:
                 if e.get("class") == "pane" and e.get("uid"):
                     for part in e.find("partsList") if e.find("partsList") is not None else []:
                         if part.get("class") == "label" and part.findtext("textRec/text"):
-                            lab = unquote(part.findtext("textRec/text")).replace("&#x00;", "").strip()
+                            lab = lvheap.pylv_to_text(unquote(part.findtext("textRec/text")).replace("&#x00;", "").strip())
                             if lab and lab != "[NULL]":
                                 self._panes[e.get("uid")] = lab
                             break
@@ -4309,7 +4334,7 @@ class Reader:
                 el.set("element", ctl.get("_name") if ctl is not None else "?")   # escaped, as NI writes it
                 name = label_of(ctl.get("_name")) if ctl is not None else "?"
         else:
-            name = unquote(node.findtext("label/textRec/text") or "This VI")
+            name = lvheap.pylv_to_text(unquote(node.findtext("label/textRec/text") or "This VI"))
             tree = self.tid_tree(node.find("termList/SL__arrayElement"))
             cls = ref_class_name(tree.get("CtlFlags")) if tree is not None else None
             el.set("type", "{%s}" % (cls or "LV.VI"))
@@ -4367,7 +4392,7 @@ class Reader:
 
     def expr(self, node, parent_uid):
         el = self._node_el(node, parent_uid, "Expression Node",
-                           text=unquote(node.findtext("textNodeLabel/textRec/text") or ""))
+                           text=lvheap.pylv_to_text(unquote(node.findtext("textNodeLabel/textRec/text") or "")))
         terms = list(node.find("termList"))
         for t in terms:
             self.term_owner[t.get("uid")] = (el, "output" if self._is_out(t) else "input", not self._is_out(t))
@@ -4582,8 +4607,11 @@ class Reader:
         if sec.get("Format") == "bin" and sec.get("File"):
             data = open(os.path.join(self.b.dir, sec.get("File")), "rb").read()
             n = int.from_bytes(data[:4], "big") if len(data) >= 4 else 0
-            return data[4:4 + n].decode("mac_roman")
-        return string_block_text(sec.find("String"))
+            return lvheap.value_text(data[4:4 + n])
+        # in the station's code page, as LabVIEW wrote it: `Ring repro – Größe` was read back
+        # as written in MacRoman until 2026-11-19 - right only for a VI the composer had
+        # mis-encoded the same way
+        return lvheap.pylv_to_text(string_block_text(sec.find("String")))
 
     def pane_flags(self):
         """conIdx (as text) -> connection, read off the pane's Function type.

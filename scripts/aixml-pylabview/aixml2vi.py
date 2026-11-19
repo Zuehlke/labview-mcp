@@ -97,6 +97,8 @@ SCALARS = {
 # .ctl through {LV.Control} Replace in LabVIEW - which gives exactly the object LabVIEW drops from
 # the Vision palette. Measured: Replace + Save.Instrument on a composed VI, panel object plugInDDO
 # typed IMAQ Image.ctl, still source-only, executable, runs.
+# a combo box's style as the composer reads it - NI's AIXML has none (_set_combo_box)
+COMBO_BOX_STYLES = ("Combo Box", "ComboBox")
 IMAGE_DISPLAY_STYLES = {
     "Image Display": "Image Display.ctl",
     "Image Display (Classic)": "Image Display (Classic).ctl",
@@ -676,6 +678,10 @@ def control_ref_type(ctl_tree, label=None, style=None):
     t = ctl_tree.get("Type") or ""
     if style in GRAPH_STYLE_CLASS:
         flags, inner = GRAPH_STYLE_CLASS[style], True
+    elif style == "Combo Box":
+        # a combo box's reference: ComboBox 0x001D, untyped - NI's Pulse Generation (178x Smart
+        # Camera).vi writes its Strings [] through exactly this (parts/refnum-classes.tsv agrees)
+        flags, inner = "0x001D", False
     elif style == "Ring":
         # LabVIEW's save of a ring of uint16's Operate Menu Dismissed: Ring 0x0022, the data type
         # inside - where the data type alone gave Digital 0x0012 (2026-10-11)
@@ -1497,6 +1503,10 @@ def mac_roman_text(s):
     return "".join(out)
 
 
+# authored text as pylabview has to be handed it - lvheap.lv_text says why
+lv_text = lvheap.lv_text
+
+
 def fit_heap_text(root):
     """Every quoted string of a heap tree (pylabview writes string content as `"..."`) made
     MacRoman-safe in place."""
@@ -1520,6 +1530,15 @@ def heap_uint(n):
         if n < 1 << (8 * width - 1):
             return "%0*X" % (2 * width, n)
     raise Unsupported("count %d does not fit a heap integer" % n)
+
+
+def heap_int(n):
+    """A SIGNED integer as raw heap content: whole bytes, big-endian two's complement, as few as
+    hold it - a ring's ringSparseValues in NI's parts read `FF` for -1, `00` for 0, `3C8C`."""
+    for width in (1, 2, 4):
+        if -(1 << (8 * width - 1)) <= n < 1 << (8 * width - 1):
+            return "%0*X" % (2 * width, n & ((1 << (8 * width)) - 1))
+    raise Unsupported("integer %d does not fit a heap integer" % n)
 
 
 def _quad(x):
@@ -2586,7 +2605,7 @@ class Composer:
             raise Unsupported("enum item with a quote is not composable yet")
         for part in ddo.iter("SL__arrayElement"):
             if part.get("class") == "multiLabel" and part.find("buf") is not None:
-                part.find("buf").text = "(%d)%s" % (len(labels), "".join('"%s"' % x for x in labels))
+                part.find("buf").text = "(%d)%s" % (len(labels), "".join('"%s"' % lv_text(x) for x in labels))
         mx = {"UnitUInt8": "255", "UnitUInt16": "65535", "UnitUInt32": "4294967295"}.get(tree.get("Type"))
         if mx and ddo.find("StdNumMax") is not None:
             ddo.find("StdNumMax").text = mx
@@ -2596,16 +2615,46 @@ class Composer:
             ddo.find("StdNumInc").text = "0"
 
     @staticmethod
-    def _set_ring(ddo, tree, items):
+    def _set_ring(ddo, tree, items, values=None):
         """A TEXT RING (style="Ring", items="a,b,c"): a stdRing like an enum's, its multiLabel
         `buf` listing the items, but the type stays a plain number - the items live in the
-        control, not in the type (read off an AIXML-generated probe, probes/pstyle.xml)."""
+        control, not in the type (read off an AIXML-generated probe, probes/pstyle.xml).
+        Each item's VALUE (`values="[84082688,84148225]"`, NI's export) is the ddo's
+        ringSparseValues, one signed heap integer per item (`FF` is -1, `3C8C` 15500 - the parts);
+        without `values` they are 0..n-1. Until 2026-11-19 the attribute was dropped and the
+        donor part's own list stayed, so a ring of CANopen abort codes answered 0, 1, 2 (a user's
+        report; NI's converter keeps it)."""
         labels = [unescape(x) for x in split_top(items)] if items else []
         if any('"' in x for x in labels):
             raise Unsupported("ring item with a quote is not composable yet")
         for part in ddo.iter("SL__arrayElement"):
             if part.get("class") == "multiLabel" and part.find("buf") is not None:
-                part.find("buf").text = "(%d)%s" % (len(labels), "".join('"%s"' % x for x in labels))
+                part.find("buf").text = "(%d)%s" % (len(labels), "".join('"%s"' % lv_text(x) for x in labels))
+        vals = list(range(len(labels)))
+        if values not in (None, ""):
+            got = parse_literal(values)
+            if not isinstance(got, list) or len(got) != len(labels):
+                raise Unsupported("ring values %r: %d items need %d values" % (values, len(labels), len(labels)))
+            try:
+                vals = [int(str(v).strip()) for v in got]
+            except ValueError:
+                raise Unsupported("ring values %r: only integer values are composable yet" % values)
+            # a value is held as a 32-bit heap integer: an unsigned one at 2^31 or more as its
+            # two's complement (4294967295 is FF). Written as 8 bytes it left the VI broken,
+            # `Unknown heap` in NI's export (2026-11-19)
+            vals = [v - (1 << 32) if (1 << 31) <= v < (1 << 32) else v for v in vals]
+            if any(not -(1 << 31) <= v < (1 << 31) for v in vals):
+                raise Unsupported("ring values %r: a value outside 32 bits is not composable yet" % values)
+        sparse = ddo.find("ringSparseValues")
+        if sparse is None:
+            sparse = ET.Element("ringSparseValues")
+            dis = ddo.find("ringDisabledIndicies")
+            ddo.insert(list(ddo).index(dis) if dis is not None else len(ddo), sparse)
+        for x in list(sparse):
+            sparse.remove(x)
+        for v in vals:
+            ET.SubElement(sparse, "SL__arrayElement").text = heap_int(v)
+        sparse.set("elements", str(len(vals)))
         # the limits are data of the RING'S type: an int16 ring kept the int32 part's
         # -2147483648 and pylabview refused the VI (`int too big to convert`,
         # niFpgaCommUtilsConvertDataTypeRingToEnum.vi, vi.lib sweep 2026-11-08) - clamped into
@@ -2624,6 +2673,34 @@ class Composer:
                 if not rng[0] <= v <= rng[1]:
                     e.text = str(fallback)
 
+    @staticmethod
+    def _set_combo_box(ddo, items):
+        """A COMBO BOX (style="Combo Box", items="a,b"): the stdComboBox part (cut from NI's Add
+        Actor.vi) keeps its items as the strings of the listbox inside it -
+        baseListboxItemStrings, an n x 1 array - and comboBoxValues empty, which is LabVIEW's
+        "values match items" (the donor: two items, no values). Text in the station's code page
+        (lv_text), a comma in an item `\\2C` as in a ring."""
+        labels = [unescape(x) for x in split_top(items)] if items else []
+        if any('"' in x for x in labels):
+            raise Unsupported("combo box item with a quote is not composable yet")
+        base = ddo.find(".//baseListboxItemStrings")
+        if base is None or base.find("multiDimArraySizes") is None or base.find("multiDimArrayElems") is None:
+            raise Unsupported("the combo box part carries no item list")
+        sz = list(base.find("multiDimArraySizes"))
+        for x, n in zip(sz, [len(labels)] + [1] * (len(sz) - 1)):
+            x.text = str(n)
+        elems = base.find("multiDimArrayElems")
+        for x in list(elems):
+            elems.remove(x)
+        for t in labels:
+            ET.SubElement(elems, "SL__arrayElement").text = '"%s"' % lv_text(t)
+        elems.set("elements", str(len(labels)))
+        vals = ddo.find("comboBoxValues")
+        if vals is not None:
+            for x in list(vals):
+                vals.remove(x)
+            vals.set("elements", "0")
+
     # ---- elements ------------------------------------------------------------------------
     def _set_description(self, ddo, text):
         """A control's or indicator's description (its tip strip and Context Help text): a
@@ -2641,7 +2718,7 @@ class Composer:
         for c in list(d):
             d.remove(c)
         strings = ET.SubElement(d, "strings", {"elements": "1"})
-        ET.SubElement(strings, "SL__arrayElement").text = '"%s"' % text.replace('"', "&#x22;")
+        ET.SubElement(strings, "SL__arrayElement").text = '"%s"' % lv_text(text).replace('"', "&#x22;")
 
     def _set_default(self, fpdco, tree, value, name):
         """A control's DEFAULT VALUE: the fPDCO's last child <DefaultData>, the flattened data
@@ -2678,7 +2755,17 @@ class Composer:
         # without a word, so a latched Stop came out a switch
         style, items = el.get("style"), el.get("items")
         force = None
-        if style == "Ring" or (items is not None and not is_enum(tree)):
+        if style in COMBO_BOX_STYLES:
+            # a COMBO BOX: NI's AIXML has no spelling for one - NI's export writes it as a plain
+            # string and its converter builds a plain string from this (items dropped, measured
+            # 2026-11-19). Our extension: a stdComboBox whose items are the strings of its
+            # embedded listbox (_set_combo_box)
+            if tree.get("Type") != "String":
+                raise Unsupported("%s %r: a combo box holds a string, not %s" % (el.tag, name, tree.get("Type")))
+            if el.get("values") not in (None, ""):
+                raise Unsupported("%s %r: combo box values apart from the items are not composable yet" % (el.tag, name))
+            force = "stdComboBox"
+        elif style == "Ring" or (items is not None and not is_enum(tree)):
             if not tree.get("Type", "").startswith("Num") or tree.get("Type") in ("NumComplex64", "NumComplex128", "NumComplexExt"):
                 raise Unsupported("%s %r: a ring of %s is not composable yet" % (el.tag, name, tree.get("Type")))
             force = "stdRing"
@@ -2748,6 +2835,10 @@ class Composer:
             # a control holding XControl-typed refnums gets VIXC and HXCI in write_xctl_links
             self.xctl_fp = getattr(self, "xctl_fp", [])
             self.xctl_fp.append((fpdco, [x for x in _XCTL_CTX["items"]]))
+        if force == "stdComboBox":
+            # a reference to it is a ComboBox's (0x001D), or `Strings []` is no member of it
+            self.graph_styles = getattr(self, "graph_styles", {})
+            self.graph_styles[name] = "Combo Box"
         if force and (force.startswith("stdGraph") or force == "stdRing"):
             # composed AS a graph or a RING: its control references are of that class, not the
             # data type's (a ring of uint16 is Ring 0x0022, not Digital 0x0012 - LabVIEW's save)
@@ -2755,7 +2846,9 @@ class Composer:
             self.graph_styles[name] = style if force != "stdRing" else "Ring"
         ddo = fpdco.find("ddo")
         if force == "stdRing":
-            self._set_ring(ddo, tree, items or "")
+            self._set_ring(ddo, tree, items or "", el.get("values"))
+        elif force == "stdComboBox":
+            self._set_combo_box(ddo, items or "")
         if style == "latched":
             # mechanical action: bit 0x20000 of the boolean's ddo objFlags, as NI's converter
             # writes "latched" (NI's own Stop buttons carry 0x60000, which the reader also
@@ -4212,7 +4305,8 @@ class Composer:
     # tab control the reader does not recognise as such (no style, no fpclass) arrives as its data
     # type and is composed as one of these.
     PLAIN_FP_CLASS = {"stdNum": "LV.Digital", "stdBool": "LV.Boolean", "stdString": "LV.String",
-                      "stdPath": "LV.Path", "stdClust": "LV.Cluster", "indArr": "LV.Array"}
+                      "stdPath": "LV.Path", "stdClust": "LV.Cluster", "indArr": "LV.Array",
+                      "stdComboBox": "LV.ComboBox"}
 
     def _static_ref_element(self, el):
         """The control whose STATIC reference (a VI Server Reference node) is wired straight into
@@ -6835,7 +6929,7 @@ class Composer:
             e.attrib.pop("_t", None)
         tw = max(20, 6 * len(text))
         lab = node.find("textNodeLabel")
-        lab.find("textRec/text").text = '"%s"' % text
+        lab.find("textRec/text").text = '"%s"' % lv_text(text)
         lab.find("bounds").text = lvheap.fmt_bounds((0, 8, 17, 8 + tw))
         tout.find("dco/termBounds").text = lvheap.fmt_bounds((0, 8 + tw, 17, 16 + tw))
         b = lvheap.parse_bounds(node.find("bounds").text)
@@ -7021,7 +7115,7 @@ class Composer:
         node.find("oMId").text = self._om_id_of(tree)
         lab = node.find("label")
         if lab is not None:
-            lab.find("textRec/text").text = '"%s"' % text
+            lab.find("textRec/text").text = '"%s"' % lv_text(text)
             lb = lvheap.parse_bounds(lab.find("bounds").text)
             lab.find("bounds").text = lvheap.fmt_bounds((lb[0], lb[1], lb[2], lb[1] + max(8, 6 * len(text))))
         if has_element:
@@ -7435,7 +7529,7 @@ class Composer:
         node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + 9 + 16 * nrows + 1, b[3]))
         lab = node.find("label")
         if lab is not None and lab.find("textRec/text") is not None:
-            lab.find("textRec/text").text = '"%s"' % unescape(inst.get("_name"))
+            lab.find("textRec/text").text = '"%s"' % lv_text(unescape(inst.get("_name")))
         for e in node.iter("typeDesc"):
             e.attrib.pop("_t", None)
         self.xctl_bd_nodes = getattr(self, "xctl_bd_nodes", [])
@@ -7491,7 +7585,7 @@ class Composer:
                 continue
             pt, pl, pb, pr = lvheap.parse_bounds(bb.text)
             if part.get("class") == "label":
-                part.find("textRec/text").text = '"%s"' % name.replace('"', "&#x22;")
+                part.find("textRec/text").text = '"%s"' % lv_text(name).replace('"', "&#x22;")
                 bb.text = lvheap.fmt_bounds((pt, pl, pb, pl + max(12, 6 * len(name) + 4)))
                 continue
             # the frame parts keep their offset from the panel's own edges (the donor's 324 x 641)
@@ -7579,7 +7673,7 @@ class Composer:
             for x in list(parent):
                 parent.remove(x)
             for t in strs:
-                ET.SubElement(parent, "SL__arrayElement").text = "[NULL]" if t is None else '"%s"' % t.replace('"', "&#x22;")
+                ET.SubElement(parent, "SL__arrayElement").text = "[NULL]" if t is None else '"%s"' % lv_text(t).replace('"', "&#x22;")
             parent.set("elements", str(len(strs)))
         ch = ddo.find("columnHeaders")
         if ch is not None:
@@ -8446,7 +8540,7 @@ class Composer:
                 continue
             pl = e.find("partsList")
             for part in pl if pl is not None else []:
-                if part.get("class") == "label" and part.findtext("partID") == "16" and                         (part.findtext("textRec/text") or "").strip('"').strip() == name:
+                if part.get("class") == "label" and part.findtext("partID") == "16" and                         (part.findtext("textRec/text") or "").strip('"').strip() == lv_text(name):
                     hits.append(e.get("uid"))
                     break
         types = [f for info in getattr(self, "fp_info", {}).values()
@@ -8464,7 +8558,7 @@ class Composer:
         panes = [e for e in self.fp.iter() if e.get("class") == "pane" and e.get("uid")]
         for e in panes:
             for part in e.find("partsList") if e.find("partsList") is not None else []:
-                if part.get("class") == "label" and (part.findtext("textRec/text") or "").strip('"').strip() == name:
+                if part.get("class") == "label" and (part.findtext("textRec/text") or "").strip('"').strip() == lv_text(name):
                     return e.get("uid")
         if name == "Pane" and panes:
             return panes[0].get("uid")
@@ -8640,7 +8734,7 @@ class Composer:
             # LabVIEW does not regenerate it) - frame 0
             sel = node.find("selString/textRec/text")
             if sel is not None and frames_el:
-                sel.text = '" [0] %s "' % unescape(frames_el[0].get("selector") or "").strip()
+                sel.text = '" [0] %s "' % lv_text(unescape(frames_el[0].get("selector") or "").strip())
 
     def _wire_registration(self, node, el, frames_el):
         """A structure with user-event frames: its DYNAMIC EVENT terminals carry the registration
@@ -9421,7 +9515,7 @@ class Composer:
             # the selector label and dIdx show the frame that runs, as NI's own VIs do
             txt = node.find("selString/textRec/text")
             if txt is not None and sels:
-                txt.text = '" %s "' % sels[active]
+                txt.text = '" %s "' % lv_text(sels[active])
             shown = active
         else:
             shown = 0
@@ -10363,7 +10457,7 @@ class Composer:
                 # RAW between the quotes: pylabview takes everything inside them as the text and
                 # escapes nothing (LVheap's string node) - a \" written here was shown as \" by
                 # LabVIEW, measured on a subdiagram label the same day
-                txt.text = '"%s"' % name
+                txt.text = '"%s"' % lv_text(name)
                 b = part.find("bounds")
                 if name and b is not None:
                     t, l, bt, _ = lvheap.parse_bounds(b.text)
@@ -10887,7 +10981,7 @@ class Composer:
             ET.SubElement(lab, "bgColor").text = "007F7F7F" if sl["grey"] else self.LABEL_COLOUR
             rec = ET.SubElement(lab, "textRec", {"class": "textHair"})
             ET.SubElement(rec, "mode").text = self.SUBLABEL_MODE
-            ET.SubElement(rec, "text").text = '"%s"' % sl["text"]     # pylabview escapes nothing
+            ET.SubElement(rec, "text").text = '"%s"' % lv_text(sl["text"])     # pylabview escapes nothing
             if sl["offset"]:
                 ET.SubElement(rec, "view").text = "(%d, 0, 0, 0)" % sl["offset"]
             ET.SubElement(rec, "bgColor").text = "01000000"
@@ -11050,7 +11144,7 @@ class Composer:
         ET.SubElement(lab, "bgColor").text = self.LABEL_COLOUR
         rec = ET.SubElement(lab, "textRec", {"class": "textHair"})
         ET.SubElement(rec, "mode").text = self.LABEL_MODE
-        ET.SubElement(rec, "text").text = '"%s"' % text
+        ET.SubElement(rec, "text").text = '"%s"' % lv_text(text)
         ET.SubElement(rec, "bgColor").text = self.LABEL_COLOUR
         diag.z.insert(0, lab)                   # z-order runs newest first
         diag.placed.append((lab, el))
@@ -11969,7 +12063,7 @@ class Composer:
                 print("NOTE: a facade's Event Structure without `timeoutin` keeps its timeout at -1: "
                       "wire one (timeoutin=\"<net>\") or end the loop in every XControl event's "
                       "frame, or the facade never returns", file=sys.stderr)
-        m.find("STRG/Section/String").text = self.description
+        m.find("STRG/Section/String").text = lv_text(self.description)
         # The heap slice is fixed BEFORE the link types are added: a callee's pane type is a
         # consolidated type of the VI, not a heap type - LabVIEW's own callers keep it outside
         # the DTHP slice (consolidated index 1 in an AIXML-generated caller).
