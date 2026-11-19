@@ -512,16 +512,18 @@ ref{LV.VI}                                     VI refnum
 ref{UDClassInst}                               reference to a user-defined class instance
 tag{14}                                        IO name control (a DAQmx physical channel)
 map{string.Name,variant.Value}                 MAP: key type, value type (pylabview only)
-set{string}                                    SET: element type (a subVI's pane only)
+set{string}                                    SET: element type (pylabview only)
 {LV.VI} | {LV.Control} | {LV.String}           VI/control class references
 ```
 
 **Maps compose on the pylabview backend since 2026-11-19 (issue #140)**: a map control,
 indicator or EMPTY constant (`value=""`), a map inside a cluster, map wires, `Insert Into Map` /
 `Look In Map`, and a subVI whose pane carries a map. A map literal WITH entries is refused - fill
-it on the diagram. A set composes on a subVI's pane, not yet as a control, constant or wire. VCTP
-holds both raw (0x74, 0x73); the composer writes the descriptor itself - docs/aixml-backends.md,
-"Maps and sets". Measured: t215-t217.
+it on the diagram. Sets compose the same way since the same day: a set control, indicator or EMPTY
+constant, a set in a cluster, set wires, `Insert Into Set` / `Element of Set?`, a subVI whose pane
+carries a set (before, every one of them was refused). VCTP holds both raw (0x74, 0x73); the
+composer writes the descriptor itself - docs/aixml-backends.md, "Maps and sets". Measured:
+t215-t222.
 
 `ref{UDClassInst}` carries no payload in the type string — the class identity is not encoded,
 so two unrelated class references are indistinguishable by type alone. Frameworks that thread

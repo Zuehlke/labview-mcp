@@ -805,11 +805,12 @@ def unverified_wire_type(tree):
         # executable. That last VI's FATAL "Insane Wire" had been blamed on the typedef and was
         # out_key's shared terminal; no .ctl link is written, and NI's converter writes none.
         return unverified_wire_type(typedef_inner(tree))
-    if t in ("Cluster", "Array", "Map"):
+    if t in ("Cluster", "Array", "Map", "Set"):
         # MAP: judged by its key and value. Measured 2026-11-19 (issue #140): map{string,variant}
         # and a cluster holding one, wired control -> indicator, into and out of a LabVIEW-saved
         # subVI, and map{string,int32} through Insert Into Map -> Look In Map (alpha -> 42, beta
-        # not found) - all executable, no insanity. A SET is not measured on a wire yet
+        # not found) - all executable, no insanity. SET likewise, by its element: t220, a set
+        # through Insert Into Set -> Element of Set? and a set constant into an indicator
         for f in fields(tree):
             bad = unverified_wire_type(f)
             if bad:
@@ -1065,6 +1066,7 @@ def _pair_values(c):
 # reaching to it; one far BELOW it (a donor's pair left at a new place) is "Insane Array Constant
 # {graphics} (0x80)" (2026-10-09).
 ANCHOR_K = "_anchor_k"
+COLLECTION_CLASSES = ("Class0185", "Class0186")   # the set and the map object
 MAP_DOC_K = "_map_doc"     # a map key/value cluster: where the donor array sat (_place_map_documents)
 ANCHOR_K_SANE = ((0, 200), (0, 120))
 
@@ -2096,6 +2098,9 @@ class Composer:
     # diagram constant. pylabview kept their own map type as `ByteStream`, so every type in them is
     # set here from the tree asked for, never from the donor's list (issue #140)
     MAP_PARTS = {"fpdco": "fpdco/Class0186/ind/116", "const": "const/Class0186/116"}
+    # a SET is the same construction with one field, the element (NI's Set Collection - Word
+    # Counting.vi): Class0185 around an indArr of cluster{T} (issue #140's sibling, 2026-11-19)
+    SET_PARTS = {"fpdco": "fpdco/Class0185/ind/115", "const": "const/Class0185/115"}
 
     def _build_map_ddo(self, tree, is_ind, prefix, tag, in_array):
         """A MAP control, indicator or constant: LabVIEW's map object (Class0186) holds an indArr
@@ -2105,17 +2110,19 @@ class Composer:
         is wider), and every typeDesc of the four containers is set from `tree`: the fPDCO/
         constant and the map object to the map, the indArr to array{cluster{K,V}}, the cluster to
         cluster{K,V}. The array's index display keeps the donor's own uint32."""
-        if in_array or prefix not in self.MAP_PARTS or self.parts.get(self.MAP_PARTS[prefix]) is None:
-            raise Unsupported("no %s part for a map%s" % (prefix, " inside an array" if in_array else ""))
+        kind = "set" if tree.get("Type") == "Set" else "map"
+        parts = self.SET_PARTS if kind == "set" else self.MAP_PARTS
+        if in_array or prefix not in parts or self.parts.get(parts[prefix]) is None:
+            raise Unsupported("no %s part for a %s%s" % (prefix, kind, " inside an array" if in_array else ""))
         kv = [c for c in tree if c.tag == "TypeDesc"]
-        holder, donor_types, src = self.instantiate(self.MAP_PARTS[prefix])
+        holder, donor_types, src = self.instantiate(parts[prefix])
         for i, e in enumerate(lvheap.typeid_elements(holder)):
             e.set("_t", str(i))
         ddo = self._ddo_of(holder)
         arr = next((p for p in ddo.find("partsList") if p.get("class") == "indArr"), None)
         clust = arr.find("ddo") if arr is not None else None
         if clust is None or clust.get("class") != "stdClust":
-            raise Unsupported("the map part has no key/value cluster - re-harvest it")
+            raise Unsupported("the %s part has no element cluster - re-harvest it" % kind)
         # where the DONOR's key/value array sat: its cluster's document coordinates are tied to
         # it, and are moved with the map once its place is final (_place_map_documents)
         dt, dl = lvheap.parse_bounds(ddo.findtext("bounds"))[:2]
@@ -2125,8 +2132,8 @@ class Composer:
         dl = clust.find("ddoList")
         by_uid = {c.get("uid"): c for c in z}
         olds = [by_uid.get(e.get("uid")) for e in dl]
-        if len(olds) != 2 or None in olds:
-            raise Unsupported("the map part's cluster does not hold one key and one value - re-harvest it")
+        if len(olds) != len(kv) or None in olds:
+            raise Unsupported("the %s part's cluster does not hold %d field(s) - re-harvest it" % (kind, len(kv)))
         kids = []
         right = None
         for old, f in zip(olds, kv):
@@ -2190,11 +2197,8 @@ class Composer:
         their own kind. Returns (ddo, source, height, width)."""
         t = tree.get("Type")
         name = tree.get("Label") or ""
-        if t == "Map" and not force_class:
+        if t in ("Map", "Set") and not force_class:
             return self._build_map_ddo(tree, is_ind, prefix, tag, in_array)
-        if t == "Set" and not force_class:
-            raise Unsupported("no %s part for a set - a set type composes on a subVI's pane and on wires, "
-                              "not yet as a control or constant" % prefix)
         want, other = ("ind", "ctl") if is_ind else ("ctl", "ind")
         if prefix == "const":
             want = other = None
@@ -11529,7 +11533,7 @@ class Composer:
                     # PLACE stands in for it - with their docBounds the rows were not drawn
                     dt, dl = (-x for x in lvheap.parse_bounds(e.findtext("bounds"))[:2])
                 return (v - dt + pt, h - dl + pl)
-            if e.get("class") in ("indArr", "Class0186"):
+            if e.get("class") in ("indArr",) + COLLECTION_CLASSES:
                 return None         # a map inside an array or a map: not measured
             if heap is self.bd and e.find("diagramList") is not None and e.find("bounds") is not None:
                 st, sl = lvheap.parse_bounds(e.findtext("bounds"))[:2]
@@ -11556,7 +11560,7 @@ class Composer:
                 v0, h0, const = (int(x) for x in clust.attrib.pop(MAP_DOC_K).split(","))
                 arr = parent.get(clust)
                 mapo = parent.get(parent.get(arr)) if arr is not None else None
-                if arr is None or mapo is None or mapo.get("class") != "Class0186":
+                if arr is None or mapo is None or mapo.get("class") not in COLLECTION_CLASSES:
                     continue
                 frame = self._map_frame(mapo, parent, heap)
                 if frame is None:
@@ -11615,7 +11619,7 @@ class Composer:
                         pt, pl = lvheap.parse_bounds(e.findtext("paneHierarchy/bounds") or "(0, 0, 0, 0)")[:2]
                         frame = (t - dt + pt, l - dl + pl)
                         break
-                    if cls == "Class0186" and heap is self.bd:
+                    if cls in COLLECTION_CLASSES and heap is self.bd:
                         # THE KEY/VALUE ARRAY OF A MAP CONSTANT: anchored at its ABSOLUTE place,
                         # the map object's top-left plus its own, plus every structure around -
                         # with k one pixel above the centre. NI's "empty map" (Map Collection -
@@ -11631,7 +11635,11 @@ class Composer:
                         # and (-755, -402). Both at nRC's value drew the key/value rows one row
                         # too high, over the "Size" header - the one difference left between
                         # NI's constant and ours placed at its spot (2026-11-19)
-                        k = (k[0], max(0, k[1] - 1))
+                        # A SET's pair is both AT the centre: NI's set constant at (249, 414),
+                        # array at (21, 3), 21 x 40, carries (-427, -290) twice = -(417 + 10,
+                        # 270 + 20)
+                        if cls == "Class0186":
+                            k = (k[0], max(0, k[1] - 1))
                         break
                     if e.tag == "ddo" or cls in ("stdMeasureData", "indArr"):
                         break               # inside another data object: no measured frame

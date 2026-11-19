@@ -1,0 +1,15 @@
+<VI _name="SetCaller.vi" description="Calls a LabVIEW-saved subVI whose pane carries a set and a cluster holding a set, and asks whether the channel is in the returned set.">
+  <FreeLabel comment="Add a channel, then look it up" uid="4200" uid_parent="root"/>
+  <Control _name="id" conIdx="0" connection="recommended" type="string" value="dev1" outputs="value:4201.v" uid="4201" uid_parent="root"/>
+  <Control _name="channel" conIdx="5" connection="recommended" type="int32" value="3" outputs="value:4202.v" uid="4202" uid_parent="root"/>
+  <Control _name="error in" conIdx="11" connection="required" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" outputs="value:4209.v" uid="4209" uid_parent="root"/>
+  <Constant _name="no channels" type="set{int32}" value="" outputs="value:4210.v" uid="4210" uid_parent="root"/>
+  <Node _name="Bundle" inputs="element:4201.v,element:4210.v" outputs="output cluster:4211.c" uid="4211" uid_parent="root"/>
+  <Call _name="Set Channels" target="Set Channels.vi" inputs="record:4211.c,channel:4202.v,error in:4209.v" outputs="record out:4220.r,channels:4220.s,already included?:4220.a,error out:4220.e" uid="4220" uid_parent="root"/>
+  <Node _name="Element of Set?" inputs="set:4220.s,element:4202.v" outputs="found?:4230.f" uid="4230" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="id" inputs="input cluster:4220.r" outputs="id:4231.id" uid="4231" uid_parent="root"/>
+  <Indicator _name="found?" conIdx="4" connection="recommended" type="bool" value="false" inputs="value:4230.f" uid="4240" uid_parent="root"/>
+  <Indicator _name="already included?" conIdx="6" connection="recommended" type="bool" value="false" inputs="value:4220.a" uid="4241" uid_parent="root"/>
+  <Indicator _name="id out" conIdx="8" connection="recommended" type="string" value="" inputs="value:4231.id" uid="4242" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" inputs="value:4220.e" uid="4290" uid_parent="root"/>
+</VI>

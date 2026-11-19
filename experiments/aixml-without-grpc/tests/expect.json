@@ -2511,5 +2511,49 @@
     }
    }
   ]
+ },
+ "t220_set_insert_member": {
+  "cases": [
+   {
+    "inputs": "word=a",
+    "outputs": {
+     "found?": "True",
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "word=zz",
+    "outputs": {
+     "found?": "False",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t221_set_callee_pane": {
+  "search": [
+   "set_callee"
+  ],
+  "cases": [
+   {
+    "inputs": "id=dev1;channel=3",
+    "outputs": {
+     "found?": "True",
+     "already included?": "False",
+     "id out": "dev1",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t222_set_places": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

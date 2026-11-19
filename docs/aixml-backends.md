@@ -3306,6 +3306,24 @@ above two greyed key -> value rows; panel: the rows under the header), and t215-
 pass on a fresh LabVIEW log. NOT measured: a map inside an array, or a map field of a nested
 cluster on a panel. A map indicator's VALUE still cannot be read over ActiveX.
 
+**Sets, checked the same way (2026-11-19, the user's question).** Sets never CRASHED: a set on a
+callee's pane already went through the collections pass and TypeTable. But nothing else worked -
+a set control, indicator or constant was refused ("no fpdco part for a set"), and a set wire as
+unverified; the refusal even claimed sets composed "on wires". The set object is the map's
+construction with ONE field: Class0185 around an indArr of cluster{T} (NI's Set Collection - Word
+Counting.vi; parts `fpdco/Class0185/ind/115` and `const/Class0185/115` were already harvested), and
+the same values are tied to its place - the element at -(set + array place), (-270, -417) for NI's
+constant at (249, 414) with its array at (21, 3). So `_build_map_ddo` builds both (`SET_PARTS`),
+and the document and anchor rules apply to both (`COLLECTION_CLASSES`). One difference: NI's set
+part carries its anchor pair both AT the centre ((-427, -290) twice, 21 x 40), so the map's
+one-pixel nRC rule stays the map's - though NI's example's own, resized set constant (52 x 44)
+carries (-707, -223)/(-707, -224), the map's pattern; both draw. Measured: t220 (`Insert Into Set`
+through a shift register, `Element of Set?`: a, b found, zz not), t221 (a caller wiring a set and
+a cluster holding one into and out of a LabVIEW-saved subVI, `tests/set_callee`), t222 (a set in
+every place, rendered: the constant "Size: 0" over a greyed element row, the panel's element rows,
+also inside a cluster) - all pass on a fresh LabVIEW log. A set constant with elements is refused
+like a map's; a set's VALUE cannot be read over ActiveX either.
+
 **The issue's own shape, t218 (2026-11-19, through the server):** `lvai_create_typedef` built
 `Record.ctl` = `cluster{string.Id,map{string.Name,variant.Value}.Attributes}` (its carrier VI is
 composed, so that too needed the fix); a callee generated with that cluster on its pane was bound
@@ -3313,8 +3331,7 @@ to the typedef by `lvai_replace_controls` and saved by LabVIEW - `TypeDef` links
 and a raw 0x74 in its VCTP; a caller bundling an id with an empty map constant, calling it and
 unbundling `Id` composed through `lvai_generate_vi`, executable, `sensor-7` in and out.
 
-**Not done:** a set as a control, constant or wire (no part harvested, nothing measured); a map
-inside an array (refused); a map literal with entries; reading a map VALUE back over ActiveX -
+**Not done:** a map or set inside an array (refused); a map literal with entries; reading a map VALUE back over ActiveX -
 `lvai_run_vi_and_read_values` answers `DISP_E_TYPEMISMATCH` for a map indicator, so a test reads
 what a map holds through `Look In Map`.
 
