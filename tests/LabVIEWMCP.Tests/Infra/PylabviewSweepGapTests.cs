@@ -238,19 +238,22 @@ public sealed class PylabviewSweepGapTests
     }
 
     [Fact]
-    public async Task A_character_MacRoman_lacks_is_replaced_not_fatal()
+    public async Task A_character_the_code_page_lacks_is_replaced_not_fatal()
     {
-        // a soft hyphen in a comment and a multiplication sign: pylabview refused the whole VI
+        // a soft hyphen in a comment and a multiplication sign: pylabview refused the whole VI.
+        // Both are CP1252 characters, so since 2026-11-19 (text written in the station's code
+        // page, lvheap.lv_text) they are KEPT - this test expected `x` for the sign until then;
+        // a minus sign (U+2212), which CP1252 lacks, is the one still replaced
         if (!ComposerHere()) return;
         const string aixml = """
             <VI _name="Gap.vi" description="Text probe.">
-              <FreeLabel comment="3 &#xD7; 4 is twelve&#xAD;" uid="4200" uid_parent="root"/>
+              <FreeLabel comment="3 &#xD7; 4 &#x2212; 0 is twelve&#xAD;" uid="4200" uid_parent="root"/>
               <Constant _name="lit" type="int32" value="12" outputs="value:4201.value" uid="4201" uid_parent="root"/>
               <Indicator _name="out" type="int32" value="" inputs="value:4201.value" uid="4202" uid_parent="root"/>
             </VI>
             """;
         var (code, message, read) = await RoundTripAsync(aixml);
         Assert.True(code == 0, message);
-        Assert.Contains("3 x 4 is twelve", read!.ToString());
+        Assert.Contains("3 × 4 - 0 is twelve", read!.ToString());
     }
 }

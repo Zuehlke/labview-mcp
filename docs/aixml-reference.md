@@ -2568,6 +2568,33 @@ Note the difference from an enum, which encodes its labels inside the *type*
 (`uint8{Label A,Label B}`, §5): a Ring keeps `type` plain and lists the labels separately,
 because its values need not be consecutive.
 
+A comma INSIDE an item is `\2C` (`items="0504 0001h \2C comma"`) - never replace it with another
+character. Both backends keep the item text and `values` as written, any character of the
+station's code page included (pylabview since 2026-11-19; `docs/aixml-backends.md`, "Text in the
+station's code page"). A pylabview ring value must fit 32 bits; a uint32 one may use all of them.
+
+### A combo box: `style="Combo Box"` (pylabview only)
+
+NI's AIXML has no combo box: NI's export writes one as a plain `type="string"` control and NI's
+converter builds a plain string control from the spelling below, dropping the items WITHOUT an
+error (measured 2026-11-19). The pylabview composer builds a real combo box from it, and its
+reader writes it back the same way:
+
+```xml
+<Control _name="Abort Code" style="Combo Box" type="string"
+         items="0503 0000h – Toggle bit not alternated.,0607 0010h – Data type does not match\2C length too high."
+         value="0503 0000h – Toggle bit not alternated." outputs="value:4200.value" uid="4200" uid_parent="root"/>
+```
+
+- The type is `string`; `items` as in a ring, a comma inside an item `\2C`. The value is the
+  TEXT, and free text is accepted as in any combo box.
+- An Indicator takes the style too.
+- `values` (Values Match Items off) is refused by name - the items are the values.
+- A reference to it (`link=`, `VI Server Reference`) is `{LV.ComboBox}`, so `Strings []` can be
+  read or written at run time - NI's Pulse Generation (178x Smart Camera).vi fills its combo
+  boxes that way.
+- Never generate it with `backend="grpc"`: the result is a plain string control.
+
 ### An IMAQ Image that SHOWS the image: `style="Image Display"`
 
 An IMAQ Image control or indicator, `type="ref{GenClassTagFlatten.IMAQImage.IMAQImage}"`, is by

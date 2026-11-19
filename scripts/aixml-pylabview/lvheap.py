@@ -90,6 +90,48 @@ def value_bytes(s):
         return b"".join(bytes([ord(c)]) if ord(c) in _CP1252_HOLES else c.encode("cp1252") for c in s)
 
 
+def lv_text(s):
+    """Authored TEXT as pylabview has to be handed it so that LabVIEW on Windows shows `s`.
+    pylabview encodes heap text as MacRoman (the skeleton's Encoding), LabVIEW reads the bytes in
+    the station's code page, 1252 - so `s` goes to CP1252 bytes first and those bytes are handed
+    over as the MacRoman characters that encode to them. Until 2026-11-19 the text went in as it
+    was: a ring item `0503 0000h – Toggle bit` showed as `0503 0000h Ð Toggle bit` (the en dash is
+    MacRoman 0xD0, CP1252 `Ð`), `Größe 5 °C` as `Grš§e 5 ¡C` - measured by NI's own export of a
+    composed ring, a user's report. The reader undoes the same mapping (vi2aixml.heap_text). A
+    character CP1252 lacks keeps its compatibility form (NFKD), else becomes `?`. Only for text
+    from the document: a donor part's quoted string is already in this form (and may be binary)."""
+    if not s:
+        return s
+    try:
+        return value_bytes(s).decode("mac_roman")
+    except UnicodeEncodeError:
+        pass
+    import unicodedata
+    out = []
+    for ch in s:
+        alt = ch
+        for cand in (ch, {"−": "-"}.get(ch) or unicodedata.normalize("NFKD", ch), "?"):
+            try:
+                value_bytes(cand)
+                alt = cand
+                break
+            except UnicodeEncodeError:
+                continue
+        out.append(alt)
+    return value_bytes("".join(out)).decode("mac_roman")
+
+
+def pylv_to_text(s):
+    """The inverse of lv_text: text pylabview rendered as MacRoman, read as the CP1252 LabVIEW on
+    Windows wrote. A string MacRoman cannot hold is returned as it is."""
+    if not s:
+        return s
+    try:
+        return value_text(s.encode("mac_roman"))
+    except UnicodeEncodeError:
+        return s
+
+
 def _pylabview_argv():
     """How to start pylabview. The bundle's own python.exe on readRSRC.py, exactly what
     pylabview.cmd runs - NOT through `cmd /c`: cmd.exe re-parses the command line, so a path
@@ -166,6 +208,15 @@ class Bundle:
         self.bd = self._heap("BDHb")
         vctp = self.main.find("VCTP/Section")
         self.flat = [td for td in vctp if td.tag == "TypeDesc"]
+        for td in self.flat:
+            # labels and enum items as LabVIEW wrote them (CP1252), not as pylabview rendered the
+            # bytes (MacRoman) - the inverse of lv_text, which vctp_section applies when a type
+            # goes back out. Before the collections, which decode their raw label themselves.
+            for e in td.iter():
+                if e.get("Label"):
+                    e.set("Label", pylv_to_text(e.get("Label")))
+                if e.tag == "EnumLabel" and e.text:
+                    e.text = pylv_to_text(e.text)
         if collections:
             # the reader's view AND the composer's since issue #140: TypeTable writes a Map or Set
             # back as its raw descriptor with the ids of the VI being composed. Until then the
@@ -376,6 +427,15 @@ class TypeTable:
                 # pylabview reads File before HasLabel - keep its own attribute order
                 if el.attrib.pop("HasLabel", None):
                     el.set("HasLabel", "1")
+            else:
+                # a label or an enum item is authored text: pylabview writes it as MacRoman,
+                # LabVIEW reads it in CP1252 (lv_text) - `Code Größe` was `Code Grš§e`
+                # until 2026-11-19. A raw type carries its label as CP1252 bytes already.
+                for e in el.iter():
+                    if e.get("Label"):
+                        e.set("Label", lv_text(e.get("Label")))
+                    if e.tag == "EnumLabel" and e.text:
+                        e.text = lv_text(e.text)
             sec.append(el)
         top = ET.SubElement(sec, "TopLevel")
         for i, fid in enumerate(self.toplevel, 1):

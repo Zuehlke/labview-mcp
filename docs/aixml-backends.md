@@ -1546,8 +1546,9 @@ are. Re-run over the same 865 VIs, the cache still untouched:
   `Ñ` and 0xFF as `ÿ`, cp1252's own characters occur, and the five undefined bytes appear as
   U+0081/8D/8F/90/9D. `lvheap.value_text`/`value_bytes` hold the rule, and the COMPOSER uses
   `value_bytes` for string and path constants and case-selector strings too - it wrote MacRoman,
-  so a constant `Ñ` reached LabVIEW as byte 0x84 (`„`). Labels and names are not affected by this
-  change and were not measured.
+  so a constant `Ñ` reached LabVIEW as byte 0x84 (`„`). Labels and names were left out of this
+  change and unmeasured here; they were measured on 2026-11-19 and were wrong the same way - see
+  "Text in the station's code page" below.
 - **`nan`, `-nan`, `inf`, `-inf`** in lower case, the sign of a NaN kept - NI's spelling, 26 of 26.
 
 **Result:** facts-identical VIs 427 → **457** (209 identical in every attribute), VIs with
@@ -1559,6 +1560,70 @@ worse - except the two LabVIEW 9.0 VIs whose DEFAULT constants (`0`, `false`) we
 accident before and are now reported undecoded with the rest. `ReaderShiftRegisterAndConstantTests`
 pins one case of each against NI's export, every assertion checked to fail on the old reader's
 output.
+
+## Text in the station's code page; ring values (2026-11-19)
+
+**The symptom** (a user's report): a text ring built from a table of CANopen abort codes showed
+`0503 0000h Ð Toggle bit not alternated.` - the agent had replaced each `,` of the descriptions
+with an en dash (a comma in `items=` is a separator; `\2C` is the escape), and the composer
+mis-encoded the dash. Reproduced on LabVIEW 2026 with one ring and NI's export (grpc) of it:
+
+| authored | composed on pylabview, NI's export | composed on grpc |
+|---|---|---|
+| `0503 0000h – Toggle bit` | `0503 0000h Ð Toggle bit` | as authored |
+| `0504 0001h \2C comma\2C here` | as authored | as authored |
+| `Größe 5 °C µs` | `Grš§e 5 ¡C µs` | as authored |
+| `values="[84082688,84148225,1,2]"` | **gone**; the ring answered 0, 1, 2, 3 | as authored |
+
+**Text.** pylabview writes heap and type text as MacRoman (the skeleton's `Encoding`); LabVIEW on
+Windows reads those bytes as CP1252. The en dash is MacRoman 0xD0, which CP1252 reads as `Ð`. The
+composer now hands every text from the DOCUMENT to pylabview through `lvheap.lv_text` (CP1252
+bytes, spelled as the MacRoman characters that encode to them): ring and enum items, control
+labels, control and VI descriptions, free comments, subdiagram labels, case selector captions,
+listbox strings, expression text, and every `Label`/`EnumLabel` of the type table
+(`TypeTable.vctp_section` - the control NAME lives there, which is why `Code Größe` was
+`Code Grš§e`). A donor part's quoted strings are NOT converted: they are already in that form and
+some are binary. The reader applies the inverse, `lvheap.pylv_to_text`, to the type table on load
+(`Bundle`), to labels, subdiagram labels, ring items and the VI description. Before, composer and
+reader made the same mistake in opposite directions, so OUR round trip read the broken VI back as
+authored and only NI's export showed it.
+
+**Ring values.** `_set_ring` dropped `values=` and kept the donor part's `ringSparseValues`. They
+are now written: one SIGNED heap integer per item, as few bytes as hold it (`FF` -1, `3C8C` - the
+parts), and an unsigned value at 2^31 or more as its 32-bit two's complement: LabVIEW's own save
+of `4294967295` on a uint32 ring is `FF` (the fixture below). Written as 8 bytes it left the VI
+broken, `Error 47 Unknown heap` in NI's export. A value beyond 32 bits, or a non-integer one, is
+refused by name. The reader read `FF` on a uint32 ring as 255 and on an int16 ring as 255; it
+reads the integer by its own width now and then in the type's.
+
+`PylabviewRingTextTests` pins the reader to `Fixtures/reader/ring-cp1252/Ring CP1252.vi`, generated
+by NI's converter and SAVED BY LABVIEW, and checks the composer by a round trip through that
+reader. Not covered yet: a ring CONSTANT on the diagram (the composer builds rings on the panel
+only), and the qualified names in a subVI's link are still encoded as MacRoman bytes - a subVI
+whose name holds a non-ASCII character is unmeasured.
+
+## Combo boxes (2026-11-19)
+
+Asked for after the ring fix above: does a combo box work? Measured on LabVIEW 2026 with
+`style="Combo Box" items="..."` on a string control:
+
+- **grpc**: no error, and a plain `stdString` control (read with `pylv_extract`); the items are
+  gone, only the default text remains. NI's export of a VI WITH a combo box writes it as a plain
+  `type="string"` (NI's Pulse Generation (178x Smart Camera).vi, `Pulse Selector`), so AIXML has
+  no spelling for one at all.
+- **pylabview**: refused - `items` on a non-numeric made it a ring (`a ring of String is not
+  composable yet`).
+
+The composer now builds the stdComboBox part (cut from NI's Add Actor.vi, `harvest_parts.py`):
+its items are the strings of the listbox embedded in it (`baseListboxItemStrings`, n x 1) and
+`comboBoxValues` stays empty - LabVIEW's "Values Match Items", as in the donor. The items go
+through `lv_text`. A reference to the control is ComboBox `0x001D`, untyped - NI's Pulse
+Generation reads it that way and `parts/refnum-classes.tsv` agrees; as a String reference
+`Strings []` would be no member of it. The reader writes `style="Combo Box"` and the items back.
+LabVIEW's own `{LV.ComboBox} Strings []`, read inside a composed VI, answered the three authored
+items exactly (en dash, comma, umlauts, degree sign), free text passed through, and a combo box
+INDICATOR works too (the control part with its direction flipped). `values` is refused by name.
+`PylabviewComboBoxTests` pins it on `Fixtures/reader/combo-box/Combo Box Probe.vi`.
 
 ## Diagram comments on the reader (2026-10-21)
 
