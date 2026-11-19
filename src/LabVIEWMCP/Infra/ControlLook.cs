@@ -247,6 +247,15 @@ internal static class ControlLook
         {
             var label = entry["control"]!.GetValue<string>();
             var ctl = entry["ctl"]!.GetValue<string>();
+            if (entry["replaced"]?.GetValue<bool>() != true)
+            {
+                // nothing to verify on a control that was not replaced - its type and the .ctl's
+                // colours (present through OTHER controls) said "kept" and "5/5" for a label the
+                // panel does not have (live check, 2026-11-19)
+                if (typesBefore is not null && !typesBefore.ContainsKey(label))
+                    entry["reason"] = "the panel has no control labelled '" + label + "'";
+                continue;
+            }
             if (typesBefore is not null && typesAfter is not null)
             {
                 var before = typesBefore.GetValueOrDefault(label);
@@ -274,13 +283,16 @@ internal static class ControlLook
         if (!compiledBefore && BulkTools.ContainsCompiledCode(full))
             step["compiledCodeStripped"] = await new DiagramCleanup(connection).StripCompiledAsync(full, timeoutSeconds, ct);
 
+        var problems = new List<string>();
         if (failed > 0)
-            return Fail(step, $"{failed} of {replacements.Count} control(s) were NOT replaced and keep LabVIEW's " +
-                              "default look - read `replacements` (a label the panel does not carry is the usual cause).");
+            problems.Add($"{failed} of {replacements.Count} control(s) were NOT replaced and keep LabVIEW's " +
+                         "default look (`replaced: false`; a label the panel does not carry is the usual cause)");
         if (typeChanged > 0)
-            return Fail(step, $"{typeChanged} replaced control(s) CHANGED DATA TYPE (`typeKept: false`): the .ctl " +
-                              "holds another type, and wires to that terminal may now be broken. Choose a .ctl of " +
-                              "the control's own type, or regenerate the VI without it.");
+            problems.Add($"{typeChanged} replaced control(s) CHANGED DATA TYPE (`typeKept: false`): the .ctl " +
+                         "holds another type, and wires to that terminal may now be broken - choose a .ctl of " +
+                         "the control's own type, or regenerate the VI without it");
+        if (problems.Count > 0)
+            return Fail(step, string.Join(". ", problems) + ". Read `replacements`.");
         if (BulkTools.ContainsCompiledCode(full) && !compiledBefore)
             return Fail(step, "The controls were replaced and LabVIEW's save wrote COMPILED CODE; stripping it " +
                               "again failed. Read compiledCodeStripped.");

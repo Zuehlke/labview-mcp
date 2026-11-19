@@ -3275,6 +3275,13 @@ map constant: alpha -> 42, beta `key not found?`), t216 (map control, indicator,
 subVI, `tests/map_callee/Map Attributes.vi`) - all executable and run. The reader writes an empty
 map's value as `0`, which the composer accepts, so a map VI round-trips.
 
+**The issue's own shape, t218 (2026-11-19, through the server):** `lvai_create_typedef` built
+`Record.ctl` = `cluster{string.Id,map{string.Name,variant.Value}.Attributes}` (its carrier VI is
+composed, so that too needed the fix); a callee generated with that cluster on its pane was bound
+to the typedef by `lvai_replace_controls` and saved by LabVIEW - `TypeDef` links to Record.ctl
+and a raw 0x74 in its VCTP; a caller bundling an id with an empty map constant, calling it and
+unbundling `Id` composed through `lvai_generate_vi`, executable, `sensor-7` in and out.
+
 **Not done:** a set as a control, constant or wire (no part harvested, nothing measured); a map
 inside an array (refused); a map literal with entries; reading a map VALUE back over ActiveX -
 `lvai_run_vi_and_read_values` answers `DISP_E_TYPEMISMATCH` for a map indicator, so a test reads

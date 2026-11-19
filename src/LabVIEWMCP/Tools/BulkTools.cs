@@ -251,7 +251,7 @@ internal sealed class BulkTools(LvaiConnection connection)
         try { text = File.ReadAllText(aiXmlFilePath); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return (aiXmlFilePath, null); }
         if (string.IsNullOrWhiteSpace(controlStyle)
-            && !System.Text.RegularExpressions.Regex.IsMatch(text, @"<(Control|Indicator)[^>]*\sctl\s*="))
+            && !System.Text.RegularExpressions.Regex.IsMatch(text, @"<(Control|Indicator)\b[^>]*\sctl\s*="))
             return (aiXmlFilePath, null);
         var plan = ControlLook.Rewrite(text, controlStyle, LabViewContext.Resolve(aiXmlFilePath).Root);
         if (plan.Refusal is not null || plan.Aixml == text) return (aiXmlFilePath, plan);

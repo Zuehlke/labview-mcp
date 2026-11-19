@@ -83,7 +83,8 @@ internal sealed class ControlLookTools(LvaiConnection connection)
                 var plan = ControlLook.Rewrite(text, controlStyle, root);
                 if (plan.Refusal is not null) return Json.Error("controlLookRefused", plan.Refusal);
                 wanted.AddRange(plan.Replacements.Where(r => !wanted.Any(w => w.Label == r.Label)));
-                skipped.AddRange(plan.Skipped);
+                // a control the caller named explicitly is not "skipped" by the style
+                skipped.AddRange(plan.Skipped.Where(s => !wanted.Any(w => w.Label == s["control"]?.GetValue<string>())));
             }
 
             var step = await ControlLook.RunAsync(connection, vi, BackendRoute.Current, wanted, timeoutSeconds, ct);

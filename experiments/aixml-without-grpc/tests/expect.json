@@ -2487,5 +2487,19 @@
     }
    }
   ]
+ },
+ "t218_map_typedef_callee": {
+  "search": [
+   "map_callee"
+  ],
+  "cases": [
+   {
+    "inputs": "id=sensor-7",
+    "outputs": {
+     "id out": "sensor-7",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

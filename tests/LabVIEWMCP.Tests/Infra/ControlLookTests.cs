@@ -87,6 +87,30 @@ public sealed class ControlLookTests : IDisposable
     }
 
     [Fact]
+    public void Generate_detects_a_ctl_attribute_without_any_controlStyle()
+    {
+        // the live check of 2026-11-19 found this path dead: the detection regex lvai_generate_vi
+        // runs BEFORE Rewrite carried a backspace character where \b belonged, so a document with
+        // only a ctl attribute was composed without its replacement and with no controlLook step
+        var ctl = Path.Combine(root, "vi.lib", "NXG_controls", "String", "String Control NI_NXG.ctl");
+        var file = Path.Combine(root, "ctl-only.xml");
+        File.WriteAllText(file, Doc.Replace("""<Control _name="count" type="int32" """,
+                                            $"""<Control _name="count" ctl="{ctl.Replace("\\", "\\5C")}" type="int32" """));
+
+        var (source, plan) = BulkTools.ControlLookPlan(file, controlStyle: null);
+
+        Assert.NotNull(plan);
+        Assert.Null(plan.Refusal);
+        Assert.Equal("count", Assert.Single(plan.Replacements).Label);
+        Assert.NotEqual(file, source);
+        Assert.DoesNotContain("ctl=", File.ReadAllText(source));
+        var missing = Path.Combine(root, "missing.xml");
+        var (same, none) = BulkTools.ControlLookPlan(missing, null);
+        Assert.Equal(missing, same);
+        Assert.Null(none);
+    }
+
+    [Fact]
     public void A_ctl_that_does_not_exist_refuses_the_whole_document()
     {
         var doc = Doc.Replace("""<Control _name="count" type="int32" """,

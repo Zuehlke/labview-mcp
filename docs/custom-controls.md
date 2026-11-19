@@ -54,5 +54,22 @@ the pylabview reader before and after, a change refused; `lookColoursArrived` - 
 colours that the VI did not have before, counted in the saved panel
 (`scripts\aixml-pylabview\panel_colours.py`). Compiled code a LabVIEW save brought in is stripped.
 
-**Not measured:** a class member's pane (the issue's `create.vi`); the graph, chart, listbox,
-table and IO controls of the palette; LabVIEW 2020-2025's NXG folders.
+## Checked live through the server (2026-11-19, after the client restart)
+
+- `lvai_generate_vi controlStyle=fuse` on a probe of eleven terminals: ten replaced, every
+  `typeKept: true`, every `.ctl` colour present (`5/5`, `6/6` ...), the two `array{int32}`
+  terminals under `skipped`; the VI executable and run with unchanged outputs.
+- `lvai_replace_controls` on an existing VI, style plus `replacementsJson`: a Combo Box on a
+  string control kept `string`; `Array - Numeric NI_NXG.ctl` named explicitly on `array{int32}`
+  was caught as `typeKept: false`, `typeBefore: array{int32}`; a label the panel lacks answered
+  Error 1055 per control and `ok: false`.
+- **The issue's case, a CLASS MEMBER's `error in`/`error out`** (the fixture class `Gauge`,
+  `Write Gain.vi`, no project open): both replaced with the NXG error controls, types kept, the
+  colours read from the SAVED file (4 of 5 and 5 of 6), the member executable.
+- The live check found the `ctl=`-only path dead: the regex that detects a `ctl` attribute before
+  any `controlStyle` carried a BACKSPACE where `\b` belonged (an edit made through a shell
+  heredoc), so such a document composed with no replacement and no `controlLook` step. Fixed,
+  and pinned by `Generate_detects_a_ctl_attribute_without_any_controlStyle`.
+
+**Not measured:** the graph, chart, listbox, table and IO controls of the palette; LabVIEW
+2020-2025's NXG folders.
