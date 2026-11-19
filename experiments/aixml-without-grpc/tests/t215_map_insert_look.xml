@@ -1,0 +1,14 @@
+<VI _name="MapInsertLook.vi" description="Insert one key into an empty map and look it up again.">
+  <FreeLabel comment="Insert then look up one entry" uid="4200" uid_parent="root"/>
+  <Control _name="key" conIdx="4" connection="required" type="string" value="" outputs="value:4201.v" uid="4201" uid_parent="root"/>
+  <Control _name="value" conIdx="5" connection="recommended" type="int32" value="0" outputs="value:4202.v" uid="4202" uid_parent="root"/>
+  <Control _name="lookup" conIdx="6" connection="recommended" type="string" value="" outputs="value:4203.v" uid="4203" uid_parent="root"/>
+  <Constant _name="empty" type="map{string.key,int32.value}" value="" outputs="value:4205.v" uid="4205" uid_parent="root"/>
+  <Node _name="Insert Into Map" inputs="map in:4205.v,key:4201.v,value:4202.v" outputs="map out:4210.m,key already included?:,value unchanged?:" uid="4210" uid_parent="root"/>
+  <Node _name="Look In Map" inputs="map:4210.m,key:4203.v,default value:" outputs="value:4220.v,key not found?:4220.n" uid="4220" uid_parent="root"/>
+  <Indicator _name="found" conIdx="2" connection="recommended" type="int32" value="0" inputs="value:4220.v" uid="4230" uid_parent="root"/>
+  <Indicator _name="key not found?" conIdx="3" connection="recommended" type="bool" value="false" inputs="value:4220.n" uid="4231" uid_parent="root"/>
+  <Indicator _name="map" conIdx="1" connection="recommended" type="map{string.key,int32.value}" value="" inputs="value:4210.m" uid="4232" uid_parent="root"/>
+  <Control _name="error in" conIdx="8" connection="required" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" outputs="value:4209.v" uid="4209" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" inputs="value:4209.v" uid="4290" uid_parent="root"/>
+</VI>

@@ -1,0 +1,11 @@
+<VI _name="MapCaller2.vi" description="Calls a subVI that has maps on its connector pane and wires them.">
+  <FreeLabel comment="Call the map subVI" uid="4200" uid_parent="root"/>
+  <Control _name="error in" conIdx="8" connection="required" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" outputs="value:4209.v" uid="4209" uid_parent="root"/>
+  <Control _name="record" conIdx="5" connection="recommended" type="cluster{string.id,map{string.Name,variant.Value}.Attributes}" value="" outputs="value:4203.v" uid="4203" uid_parent="root"/>
+  <Constant _name="attributes" type="map{string.Name,variant.Value}" value="" outputs="value:4205.v" uid="4205" uid_parent="root"/>
+  <Call _name="Map Attributes" target="Map Attributes.vi" inputs="attributes:4205.v,record:4203.v,error in:4209.v" outputs="attributes out:4220.a,record out:4220.r,counts out:4220.c,error out:4220.e" uid="4220" uid_parent="root"/>
+  <Indicator _name="attributes out" conIdx="2" connection="recommended" type="map{string.Name,variant.Value}" value="" inputs="value:4220.a" uid="4202" uid_parent="root"/>
+  <Indicator _name="record out" conIdx="3" connection="recommended" type="cluster{string.id,map{string.Name,variant.Value}.Attributes}" value="" inputs="value:4220.r" uid="4204" uid_parent="root"/>
+  <Indicator _name="counts out" conIdx="1" connection="recommended" type="map{string.word,uint64.count}" value="" inputs="value:4220.c" uid="4206" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" type="cluster{bool.status,int32.code,string.source}" value="[false,0,]" inputs="value:4220.e" uid="4210" uid_parent="root"/>
+</VI>

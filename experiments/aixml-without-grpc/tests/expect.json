@@ -2444,5 +2444,48 @@
     }
    }
   ]
+ },
+ "t215_map_insert_look": {
+  "cases": [
+   {
+    "inputs": "key=alpha;value=42;lookup=alpha",
+    "outputs": {
+     "found": "42",
+     "key not found?": "False",
+     "error out": "[False,0,]"
+    }
+   },
+   {
+    "inputs": "key=alpha;value=42;lookup=beta",
+    "outputs": {
+     "found": "0",
+     "key not found?": "True",
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t216_map_controls": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t217_map_callee_pane": {
+  "search": [
+   "map_callee"
+  ],
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
  }
 }

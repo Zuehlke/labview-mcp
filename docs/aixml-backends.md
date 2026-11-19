@@ -2777,8 +2777,10 @@ primResIDs for the composer), a 3D Index Array's `index (page)`, and SET and MAP
 keeps those raw (0x73/0x74); their bytes are the element's index into the flat type list - a map
 a count, then the key's and the value's - and a Pascal label. `lvheap.Bundle(...,
 collections=True)` rewrites them as `Set`/`Map` with TypeID children, so they inline like any
-container: `set{string}`, `map{string.word,uint64.count}`. Only the READER asks for that - the
-composer copies a callee's types as they stand, and a rewritten set would not serialize.
+container: `set{string}`, `map{string.word,uint64.count}`. This paragraph said "only the READER
+asks for that - the composer copies a callee's types as they stand"; that copying WAS issue #140's
+crash, and since 2026-11-19 the composer reads callees the same way and writes maps itself - "Maps
+and sets" below.
 
 **The fifth round**: an OPTIONAL connector-pane slot - flags 0, which the reader skipped as
 unassigned; a slot is assigned when it has a TypeID - so a control there now carries its conIdx
@@ -3230,6 +3232,53 @@ Picture constants 82, a case tunnel no typed wire reaches 79, `?Refnum.LVObjCtl`
 nodes of an unnamed class 62, fixed point 83 (`fixed` 42, `FixedConst` 41), unnamed primResIDs 49.
 The selftest suite passed except t136 (application events), which fails the same way with the
 composer of the commit before - a station state, not these changes.
+
+## Maps and sets (issue #140, 2026-11-19)
+
+**The symptom.** A caller of a subVI whose pane carries a map (a cluster with a
+`map<string, variant>` field) died in the rebuild with a Python traceback,
+`FileNotFoundError: ...\<Callee>_VCTP_td0006_0006.bin`; a map control or constant was refused as
+`not composable yet`. Reproduced with the unchanged composer of `4a8cc923` on a LabVIEW-saved
+callee before the fix.
+
+**The cause.** pylabview cannot parse type codes 0x74 (map) and 0x73 (set) and keeps them RAW: a
+`TypeDesc Type="116" Format="bin" File="<base>_VCTP_tdNNNN_NNNN.bin"`. The composer read callees
+with `lvheap.Bundle` WITHOUT the reader's collections pass and copied that element into the
+caller's VCTP as it stood - with a sidecar file of the CALLEE's extraction folder, and with bytes
+that name flat ids of the callee's type list.
+
+**The descriptor, measured on NI's Map and Set Collection examples:** a map is u16 `2`, the key's
+flat id, the value's flat id (big-endian u16 each); a set is the element's flat id alone; a
+labelled one follows with a Pascal label padded to an even length (`0002 0004 0005` +
+`20 "Map of word to occurrence count:" 00`). `HasLabel="1"` marks the label.
+
+**The fix:**
+- `lvheap.Bundle` reads every bundle with the collections pass (`collections=True` is the
+  default now), so a callee's map is a `Map` tree like any container;
+- `TypeTable` writes a `Map`/`Set` tree back as its raw descriptor with THIS VI's flat ids and
+  `vctp_section(out_dir, base)` writes the sidecar - byte-identical to NI's for "map constant";
+- any OTHER raw type is refused as `UNSUPPORTED: type N 'label' (from <callee>.vi) is stored raw
+  by pylabview ...` instead of a traceback (`lvheap.RawTypeError`, which is now also the
+  composer's `Unsupported`);
+- `map{K.k,V.v}` and `set{T}` parse in the type grammar;
+- a map CONTROL, INDICATOR and CONSTANT come from the harvested `Class0186` parts (NI's Map
+  Collection - Comparing Test Results.vi). pylabview had stored those parts' own map type as
+  `ByteStream`, so every typeDesc of the four containers - fPDCO/constant and map object = the
+  map, indArr = `array{cluster{K,V}}`, the key/value cluster - is set from the requested type, and
+  the donor's key and value objects are rebuilt for the requested types. Only an EMPTY map
+  literal composes (flattened `00000000`, the constant `0000000000`); one with entries is refused;
+- `unverified_wire_type` accepts a map whose key and value it accepts.
+
+**Measured, LabVIEW 2026 32-bit, no insanity:** t215 (`Insert Into Map` -> `Look In Map` on a
+map constant: alpha -> 42, beta `key not found?`), t216 (map control, indicator, constant,
+`cluster{string,map{string,variant}}`), t217 (a caller wiring maps into and out of a LabVIEW-saved
+subVI, `tests/map_callee/Map Attributes.vi`) - all executable and run. The reader writes an empty
+map's value as `0`, which the composer accepts, so a map VI round-trips.
+
+**Not done:** a set as a control, constant or wire (no part harvested, nothing measured); a map
+inside an array (refused); a map literal with entries; reading a map VALUE back over ActiveX -
+`lvai_run_vi_and_read_values` answers `DISP_E_TYPEMISMATCH` for a map indicator, so a test reads
+what a map holds through `Look In Map`.
 
 ## Not covered, and not measured
 

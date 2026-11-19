@@ -12,6 +12,7 @@ self-contained element so a part can travel between VIs; `TypeTable` does the re
 is composed.
 """
 import copy
+import struct
 import os
 import re
 import subprocess
@@ -157,7 +158,7 @@ def rebuild(main_xml, vi_path):
 class Bundle:
     """Read-only view of an extracted bundle: main tree, both heaps, the type chain."""
 
-    def __init__(self, main_xml, collections=False):
+    def __init__(self, main_xml, collections=True):
         self.main_xml = main_xml
         self.dir = os.path.dirname(main_xml)
         self.main = ET.parse(main_xml).getroot()
@@ -166,9 +167,16 @@ class Bundle:
         vctp = self.main.find("VCTP/Section")
         self.flat = [td for td in vctp if td.tag == "TypeDesc"]
         if collections:
-            # the READER's view only: the composer copies a callee's types as they stand, and a
-            # rewritten set would no longer serialize
+            # the reader's view AND the composer's since issue #140: TypeTable writes a Map or Set
+            # back as its raw descriptor with the ids of the VI being composed. Until then the
+            # composer copied a callee's map as it stood - a sidecar File of the CALLEE's bundle -
+            # and the rebuild died with FileNotFoundError on <callee>_VCTP_td*.bin
             self._collections()
+        for td in self.flat:
+            # a type still RAW names the file it came from, so a composer that cannot carry it
+            # into another VI says WHICH callee (issue #140)
+            if td.get("Format") == "bin" and td.get("File"):
+                td.set("_origin", os.path.basename(main_xml)[:-4] + ".vi")
         self.toplevel = {int(t.get("Index")): int(t.get("FlatTypeID"))
                          for t in vctp.find("TopLevel")}
         dthp = self.main.find("DTHP/Section/TypeDescSlice")
@@ -262,6 +270,14 @@ class Bundle:
         return self.tree(self.flat_of_heap(heap_tid), snapshot)
 
 
+class RawTypeError(Exception):
+    """A type the composer cannot write into a VI's type table; aixml2vi reports it as UNSUPPORTED."""
+
+
+# Map and Set, as lvheap.Bundle(collections=True) names them, -> the raw type code VCTP holds
+COLLECTION_CODES = {"Map": "116", "Set": "115"}
+
+
 class TypeTable:
     """Builds VCTP for a composed VI: flat types deduplicated, one TopLevel index per use."""
 
@@ -285,6 +301,15 @@ class TypeTable:
         return self.add_flat(self._flat_form(tree))
 
     def _flat_form(self, tree):
+        if tree.get("Type") in COLLECTION_CODES:
+            return self._collection_form(tree)
+        if tree.get("Format") == "bin" and tree.get("File"):
+            # a type pylabview keeps RAW, copied from a callee's bundle: its bytes name flat ids of
+            # THAT file and its sidecar is not in this one - written as it stood, the rebuild died
+            # with FileNotFoundError on <callee>_VCTP_td*.bin (issue #140)
+            raise RawTypeError("type %s%s%s is stored raw by pylabview and cannot be carried into another VI"
+                               % (tree.get("Type"), " %r" % tree.get("Label") if tree.get("Label") else "",
+                                  " (from %s)" % tree.get("_origin") if tree.get("_origin") else ""))
         el = ET.Element("TypeDesc", {k: v for k, v in tree.attrib.items()
                                      if not k.startswith("ref.")})
         if "Format" not in el.attrib:
@@ -306,15 +331,52 @@ class TypeTable:
                 el.append(copy.deepcopy(child))
         return el
 
+    def _collection_form(self, tree):
+        """A MAP or SET as VCTP holds it: pylabview cannot parse 0x74/0x73, so the descriptor is a
+        raw sidecar - a map u16 2, then the key's and the value's FLAT ids, a set the element's -
+        and, when labelled, a Pascal label padded to an even length. Measured on NI's Map and Set
+        Collection examples (Word Counting: 0002 0004 0005 + "Map of word to occurrence count:" + 00).
+        The bytes stay on the element as `_raw` until vctp_section writes them out."""
+        kids = [c for c in tree if c.tag == "TypeDesc"]
+        want = 2 if tree.get("Type") == "Map" else 1
+        if len(kids) != want:
+            raise RawTypeError("a %s type needs %d element type(s), found %d" % (tree.get("Type"), want, len(kids)))
+        ids = [self.register(k) for k in kids]
+        raw = (struct.pack(">H", 2) if want == 2 else b"") + b"".join(struct.pack(">H", i) for i in ids)
+        el = ET.Element("TypeDesc", {"Type": COLLECTION_CODES[tree.get("Type")], "Format": "bin"})
+        label = tree.get("Label")
+        if label:
+            b = label.encode("cp1252", "replace")[:255]
+            raw += bytes([len(b)]) + b
+            if len(raw) % 2:
+                raw += b"\0"
+            el.set("HasLabel", "1")
+        el.set("_raw", raw.hex())
+        return el
+
     def use(self, flat_id):
         """A new consolidated index pointing at flat_id; returns the consolidated index."""
         self.toplevel.append(flat_id)
         return len(self.toplevel)
 
-    def vctp_section(self):
+    def vctp_section(self, out_dir=None, base=None):
+        """VCTP's section. A raw type (a map or set) is written as its sidecar <base>_VCTP_tdNNNN.bin
+        into `out_dir`, which a VI with one requires."""
         sec = ET.Element("Section", {"Index": "0", "Format": "inline"})
-        for el in self.flat:
-            sec.append(copy.deepcopy(el))
+        for i, el in enumerate(self.flat):
+            el = copy.deepcopy(el)
+            raw = el.attrib.pop("_raw", None)
+            if raw is not None:
+                if out_dir is None:
+                    raise RawTypeError("a map or set type needs the output folder to write its descriptor")
+                fn = "%s_VCTP_td%04d_%04d.bin" % (base, i, i)
+                with open(os.path.join(out_dir, fn), "wb") as f:
+                    f.write(bytes.fromhex(raw))
+                el.set("File", fn)
+                # pylabview reads File before HasLabel - keep its own attribute order
+                if el.attrib.pop("HasLabel", None):
+                    el.set("HasLabel", "1")
+            sec.append(el)
         top = ET.SubElement(sec, "TopLevel")
         for i, fid in enumerate(self.toplevel, 1):
             ET.SubElement(top, "TypeDesc", {"Index": str(i), "FlatTypeID": str(fid)})
