@@ -667,8 +667,10 @@ from `parts/static-events.json`, a survey of every static event NI's cached VIs 
 check every event kind passes before it is trusted: compose, load, compare with LabVIEW's own save
 (LabVIEW recomputes event data on load) and have NI's exporter NAME each frame's events from that
 save - a wrong type number comes back as another event's name, shown with a negative control.
-Filter events (`Panel Close?`), VI and application events are still refused by name. FINDINGS §7a,
-"Static events".
+FINDINGS §7a, "Static events". (This paragraph went on "Filter events (`Panel Close?`), VI and
+application events are still refused by name" until 2026-11-20 - true when it was written, and
+contradicted by the paragraphs below, which compose and RUN them; a model reading only this line
+gave up on `Panel Close?`.)
 
 **GRAPHS compose by default since 2026-10-11, and their events with them** - waveform graph, chart,
 XY graph and intensity graph, each for the data types a part exists for (otherwise the plain control

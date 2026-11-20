@@ -31,6 +31,7 @@ internal sealed class KnowledgeTools
     private const string ViServerResourceName = "vi-server-reference.md";
     private const string MethodsResourceName = "vi-server-methods.tsv";
     private const string PropertiesResourceName = "vi-server-properties.tsv";
+    private const string SubObjectsResourceName = "vi-server-subobjects.tsv";
 
     /// <summary>
     /// Rows returned when a query matches more than this. A deliberate cap: the two
@@ -336,6 +337,8 @@ internal sealed class KnowledgeTools
         No arguments: usage plus the class list. query and/or cls: matching rows only - several
         names in one call, comma-separated (query='Callees,Icon,Print'). A row with a `source`
         field was not harvested; a `lvserver.rsc` row is a candidate name, not a validated one.
+        A query also answers NESTED fields: a graph's plot, cursor or scale property is written
+        on the graph's node as `Plot.Plot Name`, `Y Scale.Range:Maximum` - ask for 'Plot Name'.
         """)]
     public static string ViServerReference(
         [Description("Substring of the method or property name, e.g. 'To HTML'; several " +
@@ -393,6 +396,29 @@ internal sealed class KnowledgeTools
             sb.AppendLine(rows.Count == 0 ? "  (no match)" : string.Join(Environment.NewLine, rows));
             if (count > rows.Count)
                 sb.AppendLine($"  ... {count - rows.Count} more property rows match; narrow the query or raise limit");
+
+            // A sub-object's property is listed under the sub-object's class ({LV.Plot} Plot Name)
+            // and written on the OWNER's node with the owner's property in front (Plot.Plot Name
+            // on {LV.WaveformGraph}) - the join no row says, and the one a model asked for "the
+            // plot name" got wrong (2026-11-20). Printed only when a query is given: a class alone
+            // would list every label field of every control.
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var (nested, nestedCount) = Match(NestedProperties(), query, cls, limit);
+                total += nestedCount;
+                if (nested.Count > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("NESTED PROPERTIES  (a SUB-OBJECT's property, written on the owner's "
+                                  + "node with the dotted name as the field AND the terminal, e.g. "
+                                  + "fields=\"write+Active Plot,write+Plot.Plot Name\"; a plot's or "
+                                  + "cursor's field acts on the active one, so write Active Plot / "
+                                  + "Active Cursor first in the same node. ':' is \\3A in AIXML)");
+                    sb.AppendLine(string.Join(Environment.NewLine, nested));
+                    if (nestedCount > nested.Count)
+                        sb.AppendLine($"  ... {nestedCount - nested.Count} more nested rows match; pass cls or raise limit");
+                }
+            }
         }
 
         if (total == 0)
@@ -490,6 +516,52 @@ internal sealed class KnowledgeTools
             if (rows.Count < limit) rows.Add("  " + line);
         }
         return (rows, total);
+    }
+
+    private static string? _nestedProperties;
+
+    /// <summary>
+    /// The catalogue rows of every sub-object, re-keyed to their owners: `{LV.Plot} Plot Name`
+    /// becomes `{LV.WaveformGraph} Plot.Plot Name (via {LV.Plot})` for each owner that reaches a
+    /// plot (vi-server-subobjects.tsv). Shaped like the catalogue (class, name, ...) so
+    /// <see cref="Match"/> filters it the same way. Built once.
+    /// </summary>
+    internal static string NestedProperties()
+    {
+        if (_nestedProperties is not null) return _nestedProperties;
+        var byClass = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var line in Load(PropertiesResourceName).Replace("\r\n", "\n").Split('\n').Skip(1))
+        {
+            var f = line.Split('\t');
+            if (f.Length < 2) continue;
+            if (!byClass.TryGetValue(f[0], out var names)) byClass[f[0]] = names = [];
+            if (!names.Contains(f[1])) names.Add(f[1]);
+        }
+        var subs = new Dictionary<string, List<(string Property, string Object)>>(StringComparer.Ordinal);
+        foreach (var line in Load(SubObjectsResourceName).Replace("\r\n", "\n").Split('\n').Skip(1))
+        {
+            var f = line.Split('\t');
+            if (f.Length < 3) continue;
+            if (!subs.TryGetValue(f[0], out var list)) subs[f[0]] = list = [];
+            list.Add((f[1], f[2]));
+        }
+        var sb = new StringBuilder("class\tfield\tvia\n");
+        void Emit(string owner, string prefix, string obj, int depth)
+        {
+            if (byClass.TryGetValue(obj, out var props))
+                foreach (var p in props)
+                    sb.Append(owner).Append('\t').Append(prefix).Append('.').Append(p)
+                      .Append("\tvia ").Append(obj).Append('\n');
+            // a sub-object's own sub-objects: a scale's name label, `Y Scale.Name Label.Text`
+            // (measured running 2026-11-20); two levels are what NI's exports and the runs show
+            if (depth < 2 && subs.TryGetValue(obj, out var deeper))
+                foreach (var (q, o2) in deeper)
+                    Emit(owner, prefix + "." + q, o2, depth + 1);
+        }
+        foreach (var (owner, list) in subs)
+            foreach (var (p, o) in list)
+                Emit(owner, p, o, 1);
+        return _nestedProperties = sb.ToString();
     }
 
     /// <summary>Accept 'LV.VI', '{LV.VI}' and 'lv.vi' alike; null when no filter was given.</summary>

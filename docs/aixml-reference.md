@@ -1133,7 +1133,7 @@ trailing spaces as part of the string**. Three distinct forms occur:
 |---|---|
 | `&quot;<Control>&quot;\3A Value Change` | static front-panel control event |
 | `&lt;<RegRef>.<Field>&gt;\3A User Event` | **dynamic** user event from a registration refnum |
-| `Panel Close?` | filter event — no control, no payload reference |
+| `Panel Close?` | filter event — no control, no payload reference; with an `Event Filter Node` (`Discard?`). **pylabview backend only**: NI's converter refuses the frame (`One or more event cases have no events defined`, 2026-11-20). Skeleton: `scripts/aixml-skeletons/panel-close-event.xml` |
 
 The dynamic form is the one that is easy to miss: the angle brackets are XML-escaped, the
 name inside is `<registration terminal>.<cluster field>`, and the trailing text is literally
@@ -1172,11 +1172,58 @@ Until 2026-11-19 this section said nothing and the rest of these documents said 
 | `Bundle By Name` | `Field A,Field B` | which fields to replace |
 | `Event Data Node` | `NewVal` | event data items |
 | `Property Node` | `write+Disabled` | property, `write+` prefix = write access |
-| `Property Node` | `write+Front Panel Window\3ACloseable` | nested property class |
+| `Property Node` | `read+Value` | property, `read+` prefix = read access |
+| `Property Node` | `write+Front Panel Window\3ACloseable` | property with a CATEGORY (`:` written `\3A`) |
+| `Property Node` | `write+Active Plot,write+Plot.Plot Name` | a SUB-OBJECT's property: owner property, dot, the sub-object's property |
 
-A `Property Node` without the `write+` prefix reads. `Index Array` with two `index:`
+**Write `read+` or `write+` on EVERY field.** This said "a `Property Node` without the `write+`
+prefix reads" until 2026-11-20; NI's exports always carry the prefix, and the pylabview composer
+(the default backend) refuses a bare field: `Property Node 4336: field 'Plot.Plot Name' is not
+read+/write+`. `Index Array` with two `index:`
 entries in `inputs` returns two `element` outputs — repeated terminal names are how
 expandable nodes are described.
+
+### Sub-object properties: a graph's plots, scales and cursors
+
+A graph's plot, axis or cursor - and any control's label or caption - is a SUB-OBJECT with its own
+class, and the catalogue lists its properties under that class: `{LV.Plot} Plot Name`,
+`{LV.GraphScale} Range:Maximum`, `{LV.Text} Text`. On the graph's node the field is the owner's
+property, a DOT, and the sub-object's property; the terminal carries the same name:
+
+```xml
+<Node _name="Property Node" fields="write+Active Plot,write+Plot.Plot Name,write+Y Scale.Range\3AMaximum"
+      inputs="reference:4206.Graph,error in (no error):,Active Plot:4310.value,Plot.Plot Name:4311.value,Y Scale.Range\3AMaximum:4312.value"
+      outputs="reference out:,error out:4316.error out" type="{LV.WaveformGraph}" uid="4316" uid_parent="4300"/>
+```
+
+- `lvai_vi_server_reference query='Plot Name' cls='LV.WaveformGraph'` answers the dotted field
+  under NESTED PROPERTIES; `lvai_check_aixml` names it for a bare `Plot Name`
+  (`propertyOnSubObject`), and `fix` / `lvai_generate_vi` write it when only one sub-object fits
+  (`Range:Maximum` fits both scales and stays a warning naming both). The join comes from
+  `docs/vi-server-subobjects.tsv` (`scripts/harvest_nested_vi_server_properties.py`).
+- **A plot's or cursor's field acts on the ACTIVE one**: write `Active Plot` (`Active Cursor`)
+  first, in the same node - fields run top to bottom. Renaming every plot is one loop over the names,
+  the iteration counter into `Active Plot` and the name into `Plot.Plot Name`
+  (`scripts/aixml-skeletons/graph-plot-names.xml`).
+- Two levels nest the same way: `Y Scale.Name Label.Text` (the axis caption).
+
+**Measured 2026-11-20** (`experiments/graph-property-sweep/`): every nested field of the waveform
+graph, waveform chart, XY graph and intensity graph - Plot, Cursor, X/Y/Z Scale, Label, Caption, 21
+to 52 fields each, 952 in 23 VIs - composed on pylabview into one node per sub-object and loaded
+executable; NI's exporter (grpc) read all 952 back, field for field. The catalogue is what was
+harvested, so a sub-object's list is not complete (21 `{LV.Cursor}` properties). Written and read back at run time: plot
+name, line width, colour, visibility and point style, a scale's range and its name label, on all
+four. What LabVIEW itself refuses at RUN time, each seen once:
+
+| field | error | why |
+|---|---|---|
+| `Active Plot` past the last plot | 1077 | a graph with no data has plot 0 only |
+| `Label.Text` | 1073 | writable in EDIT mode only; use `Caption.Text` at run time |
+| `Caption.Text` | 1320 | the object has no caption - make it visible first (`Caption Visible`) |
+
+A chart has no cursors, so `Cursor.*` is not offered on `{LV.WaveformChart}`. The XY, digital and
+mixed-signal graphs were missing from the catalogue; they carry their parent's rows since
+2026-11-20 (`source` says so), and their OWN properties beyond the parent's are not listed.
 
 **BUT NOT EVERY EXPANDABLE NODE EXPANDS FROM AIXML, and `Format Into String` is the one that
 matters.** Read as a general rule this sentence cost a session about 330 s of wall clock, so the
@@ -1251,6 +1298,7 @@ catalogue holds display names and misses half of our own working helpers' names 
 | `propertyNameUnknown` (ERROR) | unknown, and a known name of the class is `Category:` + it | `lvai_convert_aixml_to_vi` and `lvai_validate_aixml` REFUSE the document before any RPC (`errorKind: propertyNameWouldCrashLabview`, override `allowUnknownPropertyNames`); `fix` and `lvai_generate_vi` write the full name into `fields` and the terminal when only ONE fits. `Version Number` fits two — `Operating System:Version Number` is the other, a different value — so it stays an error naming both |
 | `propertyNameNotKnown`, `methodNameNotKnown` (WARNING) | unknown, no such match | the nearest known name is offered; both lists are incomplete, so verify by exporting a VI that uses the name |
 | `viServerClassUnknown` (WARNING) | an `{LV.*}` type outside LabVIEW's 296 classes | — |
+| `propertyOnSubObject` (WARNING) | a sub-object's property written bare on its owner, `Plot Name` on a graph | names `Plot.Plot Name`; `fix` and `lvai_generate_vi` write it when only one sub-object fits (§8, "Sub-object properties") |
 
 A nested property written with a dot (`Label.Text`) passes when its head (`Label`) is a known
 property — that is the working form, measured 2026-09-09. `scripts/aixml_lint.py` runs the same

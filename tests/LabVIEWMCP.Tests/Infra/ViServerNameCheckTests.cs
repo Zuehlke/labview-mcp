@@ -139,6 +139,57 @@ public sealed class ViServerNameCheckTests
         Assert.DoesNotContain(AixmlCheck.Fix(xml).Repairs, r => r.Code == AixmlCheck.CrashingPropertyName);
     }
 
+    /// <summary>
+    /// The plot-names probe of 2026-11-20, its write node verbatim - the shape that loaded and read
+    /// back ["Delta","Echo","Foxtrot"] - with the field written as a model writes it before it
+    /// knows the join: `Plot Name` on the graph instead of `Plot.Plot Name`.
+    /// </summary>
+    private const string PlotNameWrittenBare = """
+        <VI _name="Plot Names Probe.vi" description="d">
+          <Indicator _name="Graph" inputs="value:" style="graph21703" type="array.2{double}" uid="4205" uid_parent="root" value="[]"/>
+          <Node _name="VI Server Reference" element="Graph" outputs="Graph:4206.Graph" uid="4206" uid_parent="root"/>
+          <Constant outputs="value:4310.value" type="int32" uid="4310" uid_parent="root" value="0"/>
+          <Constant outputs="value:4311.value" type="string" uid="4311" uid_parent="root" value="Alpha"/>
+          <Node _name="Property Node" fields="write+Active Plot,write+Plot Name" inputs="reference:4206.Graph,error in (no error):,Active Plot:4310.value,Plot Name:4311.value" outputs="reference out:,error out:4316.error out" type="{LV.WaveformGraph}" uid="4316" uid_parent="root"/>
+        </VI>
+        """;
+
+    [Fact]
+    public void A_sub_objects_property_written_bare_names_the_dotted_field_and_Fix_writes_it()
+    {
+        var finding = Assert.Single(AixmlCheck.Check(PlotNameWrittenBare),
+                                    f => f.Code == AixmlCheck.SubObjectPropertyName);
+        Assert.Equal("4316", finding.Uid);
+        Assert.Contains("\"Plot.Plot Name\"", finding.Message);
+        Assert.Contains("Active Plot", finding.Message);
+        Assert.Empty(NameFindings(PlotNameWrittenBare));   // not reported twice as unknown
+
+        var fixedDoc = AixmlCheck.Fix(PlotNameWrittenBare);
+        Assert.Single(fixedDoc.Repairs, r => r.Code == AixmlCheck.SubObjectPropertyName);
+        Assert.Contains("fields=\"write+Active Plot,write+Plot.Plot Name\"", fixedDoc.Xml);
+        Assert.Contains(",Plot.Plot Name:4311.value\"", fixedDoc.Xml);
+        Assert.DoesNotContain(fixedDoc.Remaining, f => f.Code == AixmlCheck.SubObjectPropertyName);
+    }
+
+    /// <summary>
+    /// `Range:Maximum` is a property of BOTH scales - choosing one would be a guess, so the
+    /// finding names both and Fix leaves the field alone. And the XY graph, which the harvest never
+    /// saw, has the same sub-objects through its parent (rows inherited 2026-11-20).
+    /// </summary>
+    [Fact]
+    public void Two_fitting_sub_objects_are_both_named_and_not_repaired_also_on_an_XY_graph()
+    {
+        var xml = PlotNameWrittenBare
+            .Replace("write+Plot Name", "write+Range\\3AMaximum", StringComparison.Ordinal)
+            .Replace("Plot Name:4311.value", "Range\\3AMaximum:4311.value", StringComparison.Ordinal)
+            .Replace("{LV.WaveformGraph}", "{LV.XYGraph}", StringComparison.Ordinal);
+
+        var finding = Assert.Single(AixmlCheck.Check(xml), f => f.Code == AixmlCheck.SubObjectPropertyName);
+        Assert.Contains("\"X Scale.Range:Maximum\"", finding.Message);
+        Assert.Contains("\"Y Scale.Range:Maximum\"", finding.Message);
+        Assert.DoesNotContain(AixmlCheck.Fix(xml).Repairs, r => r.Code == AixmlCheck.SubObjectPropertyName);
+    }
+
     /// <summary>LabVIEW accepts a method's dotted and spaced spelling alike; so does the check.</summary>
     [Fact]
     public void Both_spellings_of_a_method_are_known_and_an_invented_one_is_a_WARNING()
@@ -184,9 +235,11 @@ public sealed class ViServerNameCheckTests
     {
         var lint = File.ReadAllText(Path.Combine(RepoTree.Root, "scripts", "aixml_lint.py"));
         foreach (var table in new[] { "vi-server-properties.tsv", "vi-server-methods.tsv",
-                                      "vi-server-classes.tsv", "vi-server-aixml-names.tsv" })
+                                      "vi-server-classes.tsv", "vi-server-aixml-names.tsv",
+                                      "vi-server-subobjects.tsv" })
             Assert.Contains(table, lint);
         Assert.Contains("property-name-unknown", lint);
+        Assert.Contains("property-on-sub-object", lint);
     }
 
     // ------------------------------------------------- the RPC tools refuse BEFORE the RPC

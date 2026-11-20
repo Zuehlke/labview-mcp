@@ -19,6 +19,7 @@ public sealed class AixmlSkeletonTests
         "cluster-array-loop", "text-table-read", "text-table-write",
         "find-by-key", "control-group-disable", "string-command-queue",
         "record-update", "path-beside-vi", "log-append", "error-case",
+        "graph-plot-names", "panel-close-event",
     ];
 
     public static TheoryData<string> AddedSkeletons => new(Added);
@@ -61,7 +62,8 @@ public sealed class AixmlSkeletonTests
         // every output on the pane is recommended, every terminal says its connection
         Assert.All(vi.Elements().Where(e => e.Attribute("conIdx") is not null),
                    e => Assert.NotNull(e.Attribute("connection")));
-        Assert.All(vi.Elements("Indicator"), i => Assert.Equal("recommended", i.Attribute("connection")!.Value));
+        Assert.All(vi.Elements("Indicator").Where(i => i.Attribute("conIdx") is not null),
+                   i => Assert.Equal("recommended", i.Attribute("connection")!.Value));
 
         // one diagram comment, short enough for its box
         var comment = vi.Elements("FreeLabel").Single().Attribute("comment")!.Value;
@@ -92,6 +94,39 @@ public sealed class AixmlSkeletonTests
         var outTunnels = consumer.Elements("Tunnel").Where(t => t.Attribute("_id")!.Value.StartsWith("Out"))
                                  .Select(t => t.Attribute("uid")!.Value);
         Assert.Contains(outTunnels, uid => queueIntoRelease == $"queue:{uid}.value");
+    }
+
+    /// <summary>
+    /// Measured 2026-11-20: with the data wired to the graph's TERMINAL, the pylabview build ran the
+    /// naming loop first and `Active Plot` 1 answered Error 1077 on a one-plot graph. The data goes
+    /// in through `write+Value` on the error chain, before any Active Plot, and every plot field is
+    /// the dotted sub-object field with its access prefix.
+    /// </summary>
+    [Fact]
+    public void ThePlotsExistBeforeTheyAreNamed_and_every_plot_field_is_dotted()
+    {
+        var vi = XDocument.Parse(Text("graph-plot-names")).Root!;
+        var graph = vi.Elements("Indicator").Single(i => i.Attribute("_name")!.Value == "Graph");
+        Assert.Equal("value:", graph.Attribute("inputs")!.Value);
+
+        var nodes = vi.Descendants("Node").Where(n => n.Attribute("_name")!.Value == "Property Node").ToList();
+        var first = nodes.Single(n => n.Parent == vi);
+        Assert.StartsWith("write+Value,", first.Attribute("fields")!.Value);
+
+        var fields = nodes.SelectMany(n => n.Attribute("fields")!.Value.Split(',')).ToList();
+        Assert.All(fields, f => Assert.Matches("^(read|write)\\+", f));
+        Assert.DoesNotContain(fields, f => f.EndsWith("+Plot Name", StringComparison.Ordinal));
+        Assert.All(nodes.Where(n => n.Attribute("fields")!.Value.Contains("Plot.Plot Name")),
+                   n => Assert.StartsWith("write+Active Plot,", n.Attribute("fields")!.Value));
+    }
+
+    [Fact]
+    public void PanelClose_is_the_VIs_own_filter_event_with_its_filter_node()
+    {
+        var vi = XDocument.Parse(Text("panel-close-event")).Root!;
+        var frame = vi.Descendants("CaseFrame").Single(f => f.Attribute("selector")!.Value == " Panel Close? ");
+        var filter = frame.Elements("Node").Single(n => n.Attribute("_name")!.Value == "Event Filter Node");
+        Assert.Equal("Discard?", filter.Attribute("fields")!.Value);
     }
 
     [Fact]

@@ -1797,6 +1797,99 @@ class	property	access	source
 {LV.Diagram}	Total Bounds Rect	read
 {LV.Diagram}	Visible Bounds	read
 {LV.Diagram}	Wires[]	read
+{LV.DigitalGraph}	Active Cursor	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Active Plot	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Active X Scale	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Active Y Scale	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Auto-Update From Typedef	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Bit Accurate Data Size	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Blinking	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Bounds	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Bounds:Area Height	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Bounds:Area Width	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Caption	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Class ID	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Class Name	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Control Reference Nodes[]	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Cursor	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Cursor Legend Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	DataSocket:Enabled	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	DataSocket:LED Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	DataSocket:Mode	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	DataSocket:Status	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	DataSocket:URL	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Default Value	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Description	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Disabled	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Focus Key Binding	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Graph Flavor	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Grid Colors	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Grid Colors:X Color	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Grid Colors:Y Color	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Group Member Refs[]	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Grouped	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Has Caption	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Ignore Attributes	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Ignore Timestamp	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Indicator	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Invoke Nodes[]	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Is On Block Diagram?	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Is On Connector Pane	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Is Typedef?	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Key Focus	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Label	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Latch Value	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Legend:Autosize	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Legend:Plots Shown	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Legend:Position	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Legend:Position:Left	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Legend:Position:Top	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Legend:Size	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Legend:Size:Height	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Legend:Size:Width	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Legend:Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Local Variables[]	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Locked	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Master Bounds Rect	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Modified	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Old Cursor List	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Owner (Deprecated)	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Owning VI	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Palette:Active Tool	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Palette:Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Plot	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Plot Area Bounds	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Plot Area:Colors	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Plot Area:Colors:BG Color	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Plot Area:Colors:FG Color	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Plot Area:Position	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Plot Area:Position:Left	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Plot Area:Position:Top	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Plot Area:Size	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Position	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Position:Left	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Position:Top	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Property Nodes[]	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Scale Legend:Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Selected	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Selected Cursors	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Skip When Tabbing	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Smooth Update	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Synchronous Display	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Terminal	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Tip Strip	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Total Bounds Rect	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Transpose Array	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Type Descriptor	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Typedef:Path	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Typedef:VI	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Value	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Value (Signaling)	write	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Wizard Data	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	X Scale	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	X Scrollbar Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.DigitalGraph}	Y Scale	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
 {LV.DigitalNumericConstant}	Auto-Update From Typedef	read
 {LV.DigitalNumericConstant}	Bounds	read
 {LV.DigitalNumericConstant}	Bounds:Area Height	read
@@ -3466,6 +3559,80 @@ class	property	access	source
 {LV.Loop}	Terminals[]	read
 {LV.Loop}	Total Bounds Rect	read
 {LV.Loop}	Tunnels[]	read
+{LV.MixedSignalGraph}	Active X Scale	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Active Y Scale	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Auto-Update From Typedef	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Bit Accurate Data Size	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Blinking	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Bounds	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Bounds:Area Height	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Bounds:Area Width	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Caption	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Class ID	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Class Name	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Control Reference Nodes[]	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	DataSocket:Enabled	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	DataSocket:LED Visible	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	DataSocket:Mode	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	DataSocket:Status	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	DataSocket:URL	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Default Value	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Description	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Disabled	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Focus Key Binding	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Graph Flavor	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Grid Colors	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Grid Colors:X Color	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Grid Colors:Y Color	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Group Member Refs[]	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Grouped	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Has Caption	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Indicator	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Invoke Nodes[]	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Is On Block Diagram?	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Is On Connector Pane	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Is Typedef?	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Key Focus	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Label	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Latch Value	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Local Variables[]	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Locked	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Master Bounds Rect	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Modified	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Owner (Deprecated)	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Owning VI	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Palette:Active Tool	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Palette:Visible	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Plot Area Bounds	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Plot Area:Colors	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Plot Area:Colors:BG Color	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Plot Area:Colors:FG Color	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Plot Area:Position	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Plot Area:Position:Left	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Plot Area:Position:Top	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Plot Area:Size	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Position	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Position:Left	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Position:Top	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Property Nodes[]	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Scale Legend:Visible	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Selected	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Skip When Tabbing	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Synchronous Display	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Terminal	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Tip Strip	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Total Bounds Rect	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Transpose Array	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Type Descriptor	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Typedef:Path	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Typedef:VI	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Value	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Value (Signaling)	write	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Visible	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Wizard Data	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	X Scale	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	X Scrollbar Visible	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.MixedSignalGraph}	Y Scale	read	inherited from {LV.GraphChart} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
 {LV.MultiFrameStructure}	AutoSize To Fit Contents?	read
 {LV.MultiFrameStructure}	Bounds	read
 {LV.MultiFrameStructure}	Bounds:Area Height	read
@@ -6452,3 +6619,96 @@ class	property	access	source
 {LV.Wire}	Source Addressing Mode	read
 {LV.Wire}	Terminals[]	read
 {LV.Wire}	Total Bounds Rect	read
+{LV.XYGraph}	Active Cursor	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Active Plot	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Active X Scale	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Active Y Scale	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Auto-Update From Typedef	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Bit Accurate Data Size	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Blinking	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Bounds	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Bounds:Area Height	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Bounds:Area Width	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Caption	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Class ID	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Class Name	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Control Reference Nodes[]	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Cursor	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Cursor Legend Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	DataSocket:Enabled	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	DataSocket:LED Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	DataSocket:Mode	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	DataSocket:Status	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	DataSocket:URL	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Default Value	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Description	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Disabled	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Focus Key Binding	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Graph Flavor	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Grid Colors	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Grid Colors:X Color	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Grid Colors:Y Color	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Group Member Refs[]	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Grouped	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Has Caption	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Ignore Attributes	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Ignore Timestamp	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Indicator	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Invoke Nodes[]	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Is On Block Diagram?	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Is On Connector Pane	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Is Typedef?	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Key Focus	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Label	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Latch Value	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Legend:Autosize	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Legend:Plots Shown	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Legend:Position	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Legend:Position:Left	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Legend:Position:Top	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Legend:Size	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Legend:Size:Height	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Legend:Size:Width	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Legend:Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Local Variables[]	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Locked	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Master Bounds Rect	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Modified	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Old Cursor List	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Owner (Deprecated)	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Owning VI	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Palette:Active Tool	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Palette:Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Plot	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Plot Area Bounds	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Plot Area:Colors	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Plot Area:Colors:BG Color	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Plot Area:Colors:FG Color	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Plot Area:Position	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Plot Area:Position:Left	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Plot Area:Position:Top	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Plot Area:Size	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Position	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Position:Left	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Position:Top	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Property Nodes[]	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Scale Legend:Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Selected	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Selected Cursors	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Skip When Tabbing	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Smooth Update	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Synchronous Display	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Terminal	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Tip Strip	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Total Bounds Rect	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Transpose Array	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Type Descriptor	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Typedef:Path	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Typedef:VI	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Value	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Value (Signaling)	write	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Wizard Data	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	X Scale	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	X Scrollbar Visible	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested
+{LV.XYGraph}	Y Scale	read	inherited from {LV.WaveformGraph} (parent class id in vi-server-classes.tsv), 2026-11-20; own properties not harvested

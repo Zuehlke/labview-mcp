@@ -25,6 +25,8 @@ most were `Merge Errors` (122 calls, 60 agents), `Select` (114), `Unbundle By Na
 | accumulate blocks across iterations | `accumulate-across-a-loop.xml` (+ `.md`) | `maxin` For Loop, seed/append/keep case pair |
 | two loops joined by a user event with data | `user-event-two-loops.xml` (+ `.md`) | Event Structure, user event payload |
 | a Web Browser control | `web-browser-title-poll.xml` (+ `.md`), `web-browser-read-page-title.xml` | `ref{LV.…}` stand-ins, polling |
+| name a graph's plots, its axis, any plot/scale/cursor property | `graph-plot-names.xml` | `VI Server Reference` on a graph, `write+Value` FIRST, `write+Active Plot,write+Plot.Plot Name` in a For Loop, `read+Plot.Plot Name`, `Y Scale.Name Label.Text` |
+| end an event loop when the user closes the panel | `panel-close-event.xml` | ` Panel Close? ` frame (no source), `Event Filter Node` `Discard?`, a latched Stop, `Or` on the error cluster - **pylabview only** |
 
 ## What every one of these ten shows
 
@@ -48,6 +50,14 @@ most were `Merge Errors` (122 calls, 60 agents), `Select` (114), `Unbundle By Na
   String` each, joined by `Concatenate Strings`.
 - **A case tunnel is written twice**: once on the `Structure` for the wire outside, once in
   EVERY `CaseFrame` for the wire inside (`string-command-queue.xml`).
+- **A graph's data wired to its TERMINAL races the Property Node** (`graph-plot-names.xml`,
+  2026-11-20): nothing orders the terminal write before the node, the pylabview build ran the
+  node first, and `Active Plot` 1 on a graph that still had one plot answered Error 1077; the grpc
+  build of the same document happened to run the other way. The data goes in through `write+Value`
+  on the error chain instead. `Active Plot` past the last plot is 1077 in any case.
+- **A plot's field is written bare** (`Plot Name`) by anyone who reads the catalogue row
+  `{LV.Plot} Plot Name`; on the graph's node it is `Plot.Plot Name`, and every field needs its
+  `read+`/`write+`. `lvai_check_aixml` names and repairs the first (`propertyOnSubObject`).
 
 ## What was measured, exactly
 
@@ -70,6 +80,16 @@ both builds: totals 2 / 15.5 for three items at minimum 5; the table written and
 `Beta` found at index 1 and `beta` not; three `Add` handled before `Exit`, one after it ignored.
 `control-group-disable` was run with an EMPTY group only - its property write is the shape of
 `Set Controls Disabled.vi`, which 60 generated callers used, but no control was disabled here.
+
+The two added 2026-11-20, LabVIEW 2026 (32-bit). `graph-plot-names` on pylabview AND grpc,
+executable, within budget, run: `[Delta,Echo,Foxtrot]` read back as written on both; four names
+for three plots gave Error 1077 at `Active Plot` with nothing read back (the negative control).
+`panel-close-event` is the one skeleton that is NOT built on both: NI's grpc converter refuses
+the frame (`Event Structure: One or more event cases have no events defined`, validation), and the
+pylabview composer builds it. Run there with the panel open (`lv-com.ps1 -OpenPanel -Post
+sysclose`): the close box ended the loop after 1 556 ms and `Discard?` TRUE kept the panel open;
+without the message the VI ran until it was aborted at 3 s. `lvai_run_vi_and_read_values` cannot
+fire a window event, so an agent verifies such a VI by executability and an export only.
 
 A skeleton is a frozen measurement. Terminal names of a node NOT in this table still come from
 `lvai_aixml_reference` (all of them in one call) or `lvai_vi_terminals`.

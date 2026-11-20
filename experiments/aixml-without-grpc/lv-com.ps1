@@ -25,6 +25,8 @@ param(
     # to fire the VI's Panel Close? and Key Down? as a person would. Prints whether the panel is
     # still open after the run, which is what Panel Close?'s Discard? decides
     [string]$Post = '',
+    # open the VI's front panel before the run (OpenFrontPanel, activated, standard state)
+    [switch]$OpenPanel,
     [int]$PostAfterMs = 1000
 )
 Add-Type -AssemblyName Microsoft.VisualBasic
@@ -189,6 +191,9 @@ foreach ($p in $ViPath) {
             catch { Write-Output ('  set ' + $k + ' FAILED: ' + (Inner $_.Exception)) }
         }
         try {
+            # -OpenPanel: a VI's own window events (Panel Close?) need its panel open, and a run
+            # over COM does not open it - a skeleton cannot carry the probe's own FP.Open
+            if ($OpenPanel) { try { [void](Call-M $vi 'OpenFrontPanel' ([object[]]@($true, 1))) } catch { Write-Output ('  OpenFrontPanel FAILED: ' + (Inner $_.Exception)) } }
             [void](Call-M $vi 'Run' ([object[]]@($true)))
             $sw = [Diagnostics.Stopwatch]::StartNew()
             if ($Post) {

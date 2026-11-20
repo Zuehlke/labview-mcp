@@ -169,7 +169,9 @@ public class ViServerKnowledgeTests
     public void EveryRowWithASourceBelongsToTheHandAddedClasses()
     {
         string[] added = ["{LV.Project}", "{LV.ProjectItem}", "{LV.Library}", "{LV.LVClassLibrary}",
-                          "{LV.Application}", "{LV.VI}"];   // the last two: harvested, plus single hand-added rows
+                          "{LV.Application}", "{LV.VI}",   // these two: harvested, plus single hand-added rows
+                          // inherited from their parent class, 2026-11-20 (every row has a source)
+                          "{LV.XYGraph}", "{LV.DigitalGraph}", "{LV.MixedSignalGraph}"];
         foreach (var (resource, width) in new[] { ("vi-server-methods.tsv", 5), ("vi-server-properties.tsv", 4) })
         {
             var lines = KnowledgeTools.Load(resource).Replace("\r\n", "\n").Split('\n');
@@ -183,6 +185,40 @@ public class ViServerKnowledgeTests
                     Assert.Contains(fields[0], added);
             }
         }
+    }
+
+    /// <summary>
+    /// "Plot Name" is a row of {LV.Plot}; on a graph's node it is written `Plot.Plot Name`. The
+    /// plot-names probe of 2026-11-20 found that spelling only in NI's export cache - this lookup
+    /// answered nothing for the graph.
+    /// </summary>
+    [Fact]
+    public void A_sub_objects_property_is_answered_with_the_dotted_field_on_its_owner()
+    {
+        var text = KnowledgeTools.ViServerReference(query: "Plot Name", cls: "LV.WaveformGraph");
+        Assert.Contains("NESTED PROPERTIES", text);
+        Assert.Contains("{LV.WaveformGraph}\tPlot.Plot Name\tvia {LV.Plot}", text);
+        Assert.Contains("Active Plot", text);   // the selector that comes first
+
+        // two levels: a scale's name label, measured reading back "Volts"
+        var label = KnowledgeTools.ViServerReference(query: "Name Label.Text", cls: "LV.WaveformGraph");
+        Assert.Contains("Y Scale.Name Label.Text", label);
+    }
+
+    [Fact]
+    public void The_XY_graph_answers_through_its_parents_rows()
+    {
+        var text = KnowledgeTools.ViServerReference(query: "Active Plot,Plot Color", cls: "LV.XYGraph");
+        Assert.Contains("{LV.XYGraph}\tActive Plot", text);
+        Assert.Contains("inherited from {LV.WaveformGraph}", text);
+        Assert.Contains("{LV.XYGraph}\tPlot.Plot Color", text);
+    }
+
+    [Fact]
+    public void A_class_without_a_query_lists_no_nested_rows()
+    {
+        var text = KnowledgeTools.ViServerReference(cls: "LV.WaveformGraph", kind: "properties", limit: 400);
+        Assert.DoesNotContain("NESTED PROPERTIES", text);
     }
 
     [Fact]

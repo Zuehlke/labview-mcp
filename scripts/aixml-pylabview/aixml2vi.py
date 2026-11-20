@@ -4340,6 +4340,21 @@ class Composer:
             row = table.get(cls, {}).get(alias)
             if row is not None:
                 return row
+        # the nearest ANCESTOR's row: a subclass inherits its parent's property with its code.
+        # LV.XYGraph has no harvested Label, and the borrowing below refuses it because Label is
+        # tabled with more than one type across the classes - so an XY graph's `Label.Text` did
+        # not compose while the waveform graph's did (2026-11-20). The parent map is LabVIEW's own
+        # (class id -> parent id, vi-server-classes.tsv, as control_events() carries it).
+        control_events()
+        parents = (_CONTROL_EVENTS or {}).get("parents", {})
+        line, c = [cls], cls
+        # Value and Disabled are redeclared per class with their own code (see above): never inherited
+        while name not in ("Value", "Value (Signaling)", "Disabled") and c in parents and parents[c] not in line:
+            c = parents[c]
+            line.append(c)
+            row = table.get(c, {}).get(name)
+            if row is not None and (cls, name) in self._catalogue():
+                return dict(row, declaredBy=cls)
         seen = [other[name] for other in table.values() if name in other]
         if not seen or len({r["code"] for r in seen}) != 1 or len({r["type"] for r in seen}) != 1:
             return None
