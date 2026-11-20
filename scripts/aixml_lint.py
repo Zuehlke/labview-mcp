@@ -996,12 +996,36 @@ def _load_vocabulary():
     return props, methods, classes
 
 
+def _load_subobjects():
+    """class -> [(property, object class)] from vi-server-subobjects.tsv - the properties that
+    lead into a sub-object (a graph's Plot, X Scale, Cursor; a Label), as AixmlCheck.cs embeds it."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "docs", "vi-server-subobjects.tsv")
+    subs: dict[str, list[tuple[str, str]]] = {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            next(fh, None)
+            for line in fh:
+                r = line.rstrip("\r\n").split("\t")
+                if len(r) >= 3:
+                    subs.setdefault(r[0], []).append((r[1], r[2]))
+    except OSError:
+        pass
+    return subs
+
+
 def _fold_method(name: str) -> str:
     """A method's dotted and spaced spellings are one name; LabVIEW accepts either."""
     return " ".join(name.replace(".", " ").split())
 
 
 _VOCAB_PROPS, _VOCAB_METHODS, _VOCAB_CLASSES = _load_vocabulary()
+_VOCAB_SUBOBJECTS = _load_subobjects()
+
+
+def _nested_spellings(cls: str, name: str) -> list[str]:
+    """`Plot Name` on {LV.WaveformGraph} -> ['Plot.Plot Name']: the dotted fields of the class
+    whose sub-object has that property (AixmlCheck: ViServerVocabulary.NestedSpellings)."""
+    return [p + "." + name for p, obj in _VOCAB_SUBOBJECTS.get(cls, ()) if name in _VOCAB_PROPS.get(obj, ())]
 
 
 def _nearest_name(name: str, known) -> str | None:
@@ -1036,6 +1060,8 @@ def check_vi_server_names(elements: list[_El]) -> list[Finding]:
       warning property-name-not-known   unknown otherwise (both lists are incomplete)
       warning method-name-not-known     an Invoke target nobody lists
       warning vi-server-class-unknown   an {LV.*} type that is not one of the 296 classes
+      warning property-on-sub-object    a sub-object's property written bare (`Plot Name` for
+                                        `Plot.Plot Name`; docs/vi-server-subobjects.tsv)
     A dotted nested property (`Label.Text`) is accepted when its head is a known property.
     """
     findings: list[Finding] = []
@@ -1062,6 +1088,15 @@ def check_vi_server_names(elements: list[_El]) -> list[Finding]:
                     continue
                 name = unescape(entry.split("+", 1)[1])
                 if not name or name in known or ("." in name and name.split(".", 1)[0] in known):
+                    continue
+                nested = _nested_spellings(cls, name)
+                if nested:
+                    findings.append(Finding(
+                        "warning", "property-on-sub-object", e.uid, e.label(), e.path,
+                        f'"{name}" is a property of a sub-object of {cls}; write '
+                        + " or ".join(f'"{n}"' for n in nested)
+                        + " (field and terminal). A plot's or cursor's field acts on the active "
+                          "one: write Active Plot / Active Cursor first in the same node."))
                     continue
                 full = sorted((k for k in known if k.lower().endswith(":" + name.lower())), key=len)
                 if full:

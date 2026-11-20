@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<VI _name="graph-plot-names.vi" description="Skeleton. Names the plots of a waveform graph and its Y axis through the graph's own Property Node, then reads the plot names back. A plot's property is a SUB-OBJECT field: Active Plot selects the plot, Plot.Plot Name names it, both in one node, Active Plot first. The data goes in through the Value property on the same error chain, so the plots exist before they are named. Copy the shapes, not the file.">
+  <Control _name="Plot Names" conIdx="0" connection="recommended" description="One name per plot, plot 0 first. A name past the graph's last plot is Error 1077." outputs="value:4200.value" type="array{string}" uid="4200" uid_parent="root" value="[Alpha,Beta,Gamma]"/>
+  <Control _name="Y Axis Name" conIdx="5" connection="recommended" description="Text of the Y scale's name label." outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value="Volts"/>
+  <Control _name="error in" conIdx="11" connection="required" description="Error from earlier code; with an error nothing is named." outputs="value:4202.value" type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Data first: a plot must exist to be named" uid="4290" uid_parent="root"/>
+  <Constant _name="Graph Data" outputs="value:4203.value" type="array.2{double}" uid="4203" uid_parent="root" value="[[1,2,3],[2,3,4],[3,4,5]]"/>
+  <Indicator _name="Graph" description="Three plots, one per row." inputs="value:" style="graph21703" type="array.2{double}" uid="4204" uid_parent="root" value="[]"/>
+  <Node _name="VI Server Reference" element="Graph" outputs="Graph:4205.Graph" uid="4205" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Value,write+Y Scale.Name Label.Text" inputs="reference:4205.Graph,error in (no error):4202.value,Value:4203.value,Y Scale.Name Label.Text:4201.value" outputs="reference out:,error out:4206.error out" type="{LV.WaveformGraph}" uid="4206" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="4220.value" maxin="" maxout="" uid="4220" uid_parent="root" label="Plot i gets element i">
+    <Tunnel _id="In1" inputs="value:4200.value" mode="index" outputs="value:4221.value" uid="4221" uid_parent="4220"/>
+    <Tunnel _id="In2" inputs="value:4205.Graph" outputs="value:4222.value" uid="4222" uid_parent="4220"/>
+    <ShiftReg uid="4223" uid_parent="4220">
+      <Left inputs="value:4206.error out" outputs="value:4224.value" uid="4224" uid_parent="4223"/>
+      <Right inputs="value:4226.error out" outputs="value:4225.value" uid="4225" uid_parent="4223"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="write+Active Plot,write+Plot.Plot Name" inputs="reference:4222.value,error in (no error):4224.value,Active Plot:4220.value,Plot.Plot Name:4221.value" outputs="reference out:,error out:4226.error out" type="{LV.WaveformGraph}" uid="4226" uid_parent="4220"/>
+  </Structure>
+
+  <Node _name="Array Size" inputs="array:4200.value" outputs="size(s):4230.size(s)" uid="4230" uid_parent="root"/>
+  <Structure _name="For Loop" count="4240.value" maxin="4230.size(s)" maxout="" uid="4240" uid_parent="root" label="Read plot i's name">
+    <Tunnel _id="In1" inputs="value:4205.Graph" outputs="value:4241.value" uid="4241" uid_parent="4240"/>
+    <ShiftReg uid="4243" uid_parent="4240">
+      <Left inputs="value:4225.value" outputs="value:4244.value" uid="4244" uid_parent="4243"/>
+      <Right inputs="value:4246.error out" outputs="value:4245.value" uid="4245" uid_parent="4243"/>
+    </ShiftReg>
+    <Node _name="Property Node" fields="write+Active Plot,read+Plot.Plot Name" inputs="reference:4241.value,error in (no error):4244.value,Active Plot:4240.value" outputs="Plot.Plot Name:4246.Plot.Plot Name,reference out:,error out:4246.error out" type="{LV.WaveformGraph}" uid="4246" uid_parent="4240"/>
+    <Tunnel _id="Out1" inputs="value:4246.Plot.Plot Name" mode="index" outputs="value:4247.value" uid="4247" uid_parent="4240"/>
+  </Structure>
+  <Indicator _name="Names Read Back" conIdx="4" connection="recommended" description="The plot names as the graph reports them." inputs="value:4247.value" type="array{string}" uid="4250" uid_parent="root" value="[]"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" description="error in, or the first error of this VI." inputs="value:4245.value" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+</VI>

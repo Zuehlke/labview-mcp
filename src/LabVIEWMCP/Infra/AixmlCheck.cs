@@ -160,6 +160,9 @@ internal static class AixmlCheck
     /// <summary>The finding that KILLS LabVIEW inside ConvertAIXMLToVI; the RPC tools refuse it.</summary>
     internal const string CrashingPropertyName = "propertyNameUnknown";
 
+    /// <summary>A sub-object's property written bare on its owner: `Plot Name` for `Plot.Plot Name`.</summary>
+    internal const string SubObjectPropertyName = "propertyOnSubObject";
+
     /// <summary>
     /// Property Node fields and Invoke Node targets whose names no source knows.
     ///
@@ -216,6 +219,21 @@ internal static class AixmlCheck
                     if (name.Length == 0 || known.Contains(name)) continue;
                     var dot = name.IndexOf('.');
                     if (dot > 0 && known.Contains(name[..dot])) continue;
+
+                    var nested = ViServerVocabulary.NestedSpellings(cls, name);
+                    if (nested.Count > 0)
+                    {
+                        findings.Add(new Finding(Severity.Warning, SubObjectPropertyName,
+                            $"Property \"{name}\" is not {cls}'s own: it belongs to a sub-object and "
+                            + "is written with the sub-object's property in front - "
+                            + string.Join(" or ", nested.Select(n => $"\"{n}\" (written {EscapeColons(n)})"))
+                            + ". The terminal carries the same dotted name. Measured 2026-11-20 on "
+                            + "waveform graph, chart, XY and intensity graph: written that way it loads, "
+                            + "and a write reads back. A plot's or cursor's field acts on the ACTIVE one: "
+                            + "write `Active Plot` (or `Active Cursor`) first in the same node."
+                            + (nested.Count == 1 ? " Fix repairs it." : " Several fit; name the one you mean."), uid));
+                        continue;
+                    }
 
                     var full = known.Where(k => k.EndsWith(":" + name, StringComparison.OrdinalIgnoreCase))
                                     .OrderBy(k => k.Length).ToList();
@@ -287,7 +305,12 @@ internal static class AixmlCheck
                 if (name.Length == 0 || known.Contains(name)) continue;
                 var dot = name.IndexOf('.');
                 if (dot > 0 && known.Contains(name[..dot])) continue;
-                var full = known.Where(k => k.EndsWith(":" + name, StringComparison.OrdinalIgnoreCase)).ToList();
+                // a sub-object's property first (`Plot Name` on a graph is `Plot.Plot Name`), then
+                // a dropped category - the order CheckViServerNames reports them in
+                var nested = ViServerVocabulary.NestedSpellings(cls, name);
+                var full = nested.Count > 0
+                    ? nested.ToList()
+                    : known.Where(k => k.EndsWith(":" + name, StringComparison.OrdinalIgnoreCase)).ToList();
                 if (full.Count != 1) continue;
 
                 var replacement = EscapeColons(full[0]);
@@ -301,11 +324,17 @@ internal static class AixmlCheck
                             : entry)));
                 }
                 changed = true;
-                repairs.Add(new Repair(CrashingPropertyName,
-                    $"Property \"{name}\" on {cls} renamed to \"{full[0]}\" (in fields and in its "
-                    + "terminal name). The short form was measured killing LabVIEW inside "
-                    + "ConvertAIXMLToVI.",
-                    (string?)node.Attribute("uid")));
+                repairs.Add(nested.Count > 0
+                    ? new Repair(SubObjectPropertyName,
+                        $"Property \"{name}\" on {cls} renamed to \"{full[0]}\" (in fields and in its "
+                        + "terminal name): it is a property of the sub-object, written with the "
+                        + "sub-object's property in front.",
+                        (string?)node.Attribute("uid"))
+                    : new Repair(CrashingPropertyName,
+                        $"Property \"{name}\" on {cls} renamed to \"{full[0]}\" (in fields and in its "
+                        + "terminal name). The short form was measured killing LabVIEW inside "
+                        + "ConvertAIXMLToVI.",
+                        (string?)node.Attribute("uid")));
             }
             if (changed) node.SetAttributeValue("fields", string.Join(",", fields));
         }

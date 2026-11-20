@@ -507,6 +507,7 @@ document; `experiments/` does not ship.
 | Where tokens and time go | `docs/token-economy.md`, `docs/workflow-economics.md`, `docs/ideen-schneller-und-weniger-tokens.md` | — |
 | Tool descriptions before shortening; this file before the rewrite | `docs/tool-descriptions-archive.md`, `docs/claude-md-archive.md` | — |
 | VI Server properties and methods | `docs/vi-server-reference.md` | `lvai_vi_server_reference` |
+| A graph's plots, scales, cursors (`Plot.Plot Name`, sub-object fields) | `docs/aixml-reference.md` §8, `scripts/aixml-skeletons/graph-plot-names.xml` | `lvai_vi_server_reference query=`, `lvai_check_aixml` |
 | Call targets; NI examples | `docs/example-corpus.md` | `lvai_palette_index`, `lvai_example_index` |
 | Terminal names; pane positions | `docs/aixml-reference.md` §2/§8 | `lvai_vi_terminals`, `lvai_connector_pane` |
 | Calling loaded project code | `docs/aixml-call-loaded-vi.md` | `lvai_generate_vi` |

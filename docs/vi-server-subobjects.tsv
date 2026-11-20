@@ -1,0 +1,234 @@
+class	property	object	fields
+{LV.AbsTime}	Caption	{LV.Text}	44
+{LV.AbsTime}	Label	{LV.Text}	44
+{LV.AbsTime}	Numeric Text	{LV.NumericText}	48
+{LV.AbsTimeConstant}	Label	{LV.Text}	44
+{LV.AbsTimeConstant}	Numeric Text	{LV.NumericText}	48
+{LV.ActiveXContainer}	Caption	{LV.Text}	44
+{LV.ActiveXContainer}	Label	{LV.Text}	44
+{LV.Array}	Caption	{LV.Text}	44
+{LV.Array}	Label	{LV.Text}	44
+{LV.ArrayConstant}	Label	{LV.Text}	44
+{LV.ArrayToCluster}	Label	{LV.Text}	44
+{LV.Boolean}	Boolean Text	{LV.Text}	44
+{LV.Boolean}	Caption	{LV.Text}	44
+{LV.Boolean}	Label	{LV.Text}	44
+{LV.BooleanConstant}	Label	{LV.Text}	44
+{LV.BuildArray}	Label	{LV.Text}	44
+{LV.BuildClusterArray}	Label	{LV.Text}	44
+{LV.Bundler}	Label	{LV.Text}	44
+{LV.CIN}	Label	{LV.Text}	44
+{LV.CallByRef}	Label	{LV.Text}	44
+{LV.CallLibrary}	Label	{LV.Text}	44
+{LV.CaseStructure}	Label	{LV.Text}	44
+{LV.ClassSpecifierConstant}	Label	{LV.Text}	44
+{LV.Cluster}	Caption	{LV.Text}	44
+{LV.Cluster}	Label	{LV.Text}	44
+{LV.ClusterConstant}	Label	{LV.Text}	44
+{LV.ColorBox}	Caption	{LV.Text}	44
+{LV.ColorBox}	Label	{LV.Text}	44
+{LV.ColorBoxConstant}	Label	{LV.Text}	44
+{LV.ColorGraphScale}	Marker	{LV.Text}	44
+{LV.ColorGraphScale}	Name Label	{LV.Text}	44
+{LV.ColorGraphScale}	Unit Label	{LV.Text}	44
+{LV.ColorRamp}	Caption	{LV.Text}	44
+{LV.ColorRamp}	Digital Display	{LV.NumericText}	48
+{LV.ColorRamp}	Label	{LV.Text}	44
+{LV.ColorRamp}	Scale	{LV.ColorScale}	45
+{LV.ColorRamp}	Unit Label	{LV.Text}	44
+{LV.ColorScale}	Marker	{LV.Text}	44
+{LV.ComboBox}	Caption	{LV.Text}	44
+{LV.ComboBox}	Label	{LV.Text}	44
+{LV.ComboBox}	Text	{LV.Text}	44
+{LV.ComboBoxConstant}	Label	{LV.Text}	44
+{LV.Comparison}	Label	{LV.Text}	44
+{LV.CompoundArithmetic}	Label	{LV.Text}	44
+{LV.ConfNode}	Label	{LV.Text}	44
+{LV.Constant}	Label	{LV.Text}	44
+{LV.Control}	Caption	{LV.Text}	44
+{LV.Control}	Label	{LV.Text}	44
+{LV.ControlReferenceConstant}	Label	{LV.Text}	44
+{LV.ControlTerminal}	Label	{LV.Text}	44
+{LV.DAQChannelName}	Caption	{LV.Text}	44
+{LV.DAQChannelName}	Label	{LV.Text}	44
+{LV.DAQChannelName}	Text	{LV.Text}	44
+{LV.DAQChannelNameConstant}	Label	{LV.Text}	44
+{LV.DAQmxName}	Caption	{LV.Text}	44
+{LV.DAQmxName}	Label	{LV.Text}	44
+{LV.DAQmxName}	Text	{LV.Text}	44
+{LV.DAQmxNameConstant}	Label	{LV.Text}	44
+{LV.DSCTagConstant}	Label	{LV.Text}	44
+{LV.Digital}	Caption	{LV.Text}	44
+{LV.Digital}	Label	{LV.Text}	44
+{LV.Digital}	Numeric Text	{LV.NumericText}	48
+{LV.Digital}	Unit Label	{LV.Text}	44
+{LV.DigitalGraph}	Caption	{LV.Text}	44
+{LV.DigitalGraph}	Cursor	{LV.Cursor}	21
+{LV.DigitalGraph}	Label	{LV.Text}	44
+{LV.DigitalGraph}	Plot	{LV.Plot}	23
+{LV.DigitalGraph}	X Scale	{LV.GraphScale}	52
+{LV.DigitalGraph}	Y Scale	{LV.GraphScale}	52
+{LV.DigitalNumericConstant}	Label	{LV.Text}	44
+{LV.DigitalNumericConstant}	Numeric Text	{LV.NumericText}	48
+{LV.DigitalNumericConstant}	Unit Label	{LV.Text}	44
+{LV.DigitalTable}	Caption	{LV.Text}	44
+{LV.DigitalTable}	Label	{LV.Text}	44
+{LV.Enum}	Caption	{LV.Text}	44
+{LV.Enum}	Digital Display	{LV.NumericText}	48
+{LV.Enum}	Label	{LV.Text}	44
+{LV.Enum}	Ring Text	{LV.Text}	44
+{LV.Enum}	Unit Label	{LV.Text}	44
+{LV.EnumConstant}	Digital Display	{LV.NumericText}	48
+{LV.EnumConstant}	Label	{LV.Text}	44
+{LV.EventStructure}	Label	{LV.Text}	44
+{LV.ExternalNode}	Label	{LV.Text}	44
+{LV.FixedConstant}	Label	{LV.Text}	44
+{LV.FlatSequence}	Label	{LV.Text}	44
+{LV.FlattenUnflattenString}	Label	{LV.Text}	44
+{LV.ForLoop}	Label	{LV.Text}	44
+{LV.FormatScanString}	Label	{LV.Text}	44
+{LV.Formula}	Label	{LV.Text}	44
+{LV.Function}	Label	{LV.Text}	44
+{LV.GPIBReadWrite}	Label	{LV.Text}	44
+{LV.Global}	Label	{LV.Text}	44
+{LV.GraphChart}	Caption	{LV.Text}	44
+{LV.GraphChart}	Label	{LV.Text}	44
+{LV.GraphChart}	X Scale	{LV.GraphScale}	52
+{LV.GraphChart}	Y Scale	{LV.GraphScale}	52
+{LV.GraphScale}	Marker	{LV.Text}	44
+{LV.GraphScale}	Name Label	{LV.Text}	44
+{LV.GraphScale}	Unit Label	{LV.Text}	44
+{LV.GrowableFunction}	Label	{LV.Text}	44
+{LV.IOName}	Caption	{LV.Text}	44
+{LV.IOName}	Label	{LV.Text}	44
+{LV.IOName}	Text	{LV.Text}	44
+{LV.IONameConstant}	Label	{LV.Text}	44
+{LV.IVILogicalName}	Caption	{LV.Text}	44
+{LV.IVILogicalName}	Label	{LV.Text}	44
+{LV.IVILogicalName}	Text	{LV.Text}	44
+{LV.IVILogicalNameConstant}	Label	{LV.Text}	44
+{LV.IndexArray}	Label	{LV.Text}	44
+{LV.IntensityChart}	Caption	{LV.Text}	44
+{LV.IntensityChart}	Label	{LV.Text}	44
+{LV.IntensityChart}	X Scale	{LV.GraphScale}	52
+{LV.IntensityChart}	Y Scale	{LV.GraphScale}	52
+{LV.IntensityChart}	Z Scale	{LV.ColorGraphScale}	52
+{LV.IntensityGraph}	Caption	{LV.Text}	44
+{LV.IntensityGraph}	Cursor	{LV.Cursor}	21
+{LV.IntensityGraph}	Label	{LV.Text}	44
+{LV.IntensityGraph}	X Scale	{LV.GraphScale}	52
+{LV.IntensityGraph}	Y Scale	{LV.GraphScale}	52
+{LV.IntensityGraph}	Z Scale	{LV.ColorGraphScale}	52
+{LV.Invoke}	Label	{LV.Text}	44
+{LV.Knob}	Caption	{LV.Text}	44
+{LV.Knob}	Label	{LV.Text}	44
+{LV.Knob}	Scale	{LV.RotaryColorScale}	48
+{LV.Knob}	Unit Label	{LV.Text}	44
+{LV.LVVariant}	Caption	{LV.Text}	44
+{LV.LVVariant}	Label	{LV.Text}	44
+{LV.ListBox}	Caption	{LV.Text}	44
+{LV.ListBox}	Label	{LV.Text}	44
+{LV.Local}	Label	{LV.Text}	44
+{LV.Loop}	Label	{LV.Text}	44
+{LV.MixedSignalGraph}	Caption	{LV.Text}	44
+{LV.MixedSignalGraph}	Label	{LV.Text}	44
+{LV.MixedSignalGraph}	X Scale	{LV.GraphScale}	52
+{LV.MixedSignalGraph}	Y Scale	{LV.GraphScale}	52
+{LV.MultiFrameStructure}	Label	{LV.Text}	44
+{LV.MulticolumnListbox}	Caption	{LV.Text}	44
+{LV.MulticolumnListbox}	Label	{LV.Text}	44
+{LV.NamedBundler}	Label	{LV.Text}	44
+{LV.NamedNumeric}	Caption	{LV.Text}	44
+{LV.NamedNumeric}	Digital Display	{LV.NumericText}	48
+{LV.NamedNumeric}	Label	{LV.Text}	44
+{LV.NamedNumeric}	Ring Text	{LV.Text}	44
+{LV.NamedNumeric}	Unit Label	{LV.Text}	44
+{LV.NamedNumericConstant}	Digital Display	{LV.NumericText}	48
+{LV.NamedNumericConstant}	Label	{LV.Text}	44
+{LV.NamedUnbundler}	Label	{LV.Text}	44
+{LV.Node}	Label	{LV.Text}	44
+{LV.Numeric}	Caption	{LV.Text}	44
+{LV.Numeric}	Label	{LV.Text}	44
+{LV.Numeric}	Unit Label	{LV.Text}	44
+{LV.NumericConstant}	Label	{LV.Text}	44
+{LV.NumericWithScale}	Caption	{LV.Text}	44
+{LV.NumericWithScale}	Label	{LV.Text}	44
+{LV.NumericWithScale}	Unit Label	{LV.Text}	44
+{LV.ObjectFunction}	Label	{LV.Text}	44
+{LV.PageSelector}	Caption	{LV.Text}	44
+{LV.PageSelector}	Label	{LV.Text}	44
+{LV.Path}	Caption	{LV.Text}	44
+{LV.Path}	Label	{LV.Text}	44
+{LV.Path}	Path Text	{LV.Text}	44
+{LV.PathConstant}	Label	{LV.Text}	44
+{LV.Picture}	Caption	{LV.Text}	44
+{LV.Picture}	Label	{LV.Text}	44
+{LV.PolymorphicSubVI}	Label	{LV.Text}	44
+{LV.Property}	Label	{LV.Text}	44
+{LV.RadioButtonsControl}	Caption	{LV.Text}	44
+{LV.RadioButtonsControl}	Label	{LV.Text}	44
+{LV.ReadWriteFile}	Label	{LV.Text}	44
+{LV.RefNum}	Caption	{LV.Text}	44
+{LV.RefNum}	Label	{LV.Text}	44
+{LV.Ring}	Caption	{LV.Text}	44
+{LV.Ring}	Digital Display	{LV.NumericText}	48
+{LV.Ring}	Label	{LV.Text}	44
+{LV.Ring}	Ring Text	{LV.Text}	44
+{LV.Ring}	Unit Label	{LV.Text}	44
+{LV.RingConstant}	Digital Display	{LV.NumericText}	48
+{LV.RingConstant}	Label	{LV.Text}	44
+{LV.RotaryColorScale}	Marker	{LV.Text}	44
+{LV.Scale}	Marker	{LV.Text}	44
+{LV.ScriptNode}	Label	{LV.Text}	44
+{LV.Sequence}	Label	{LV.Text}	44
+{LV.SimulationNode}	Label	{LV.Text}	44
+{LV.Slide}	Caption	{LV.Text}	44
+{LV.Slide}	Label	{LV.Text}	44
+{LV.Slide}	Scale	{LV.SlideScale}	41
+{LV.Slide}	Unit Label	{LV.Text}	44
+{LV.SlideScale}	Marker	{LV.Text}	44
+{LV.StaticVIReference}	Label	{LV.Text}	44
+{LV.String}	Caption	{LV.Text}	44
+{LV.String}	Label	{LV.Text}	44
+{LV.String}	Text	{LV.Text}	44
+{LV.StringConstant}	Label	{LV.Text}	44
+{LV.Structure}	Label	{LV.Text}	44
+{LV.SubPanel}	Caption	{LV.Text}	44
+{LV.SubPanel}	Label	{LV.Text}	44
+{LV.SubVI}	Label	{LV.Text}	44
+{LV.TabControl}	Caption	{LV.Text}	44
+{LV.TabControl}	Label	{LV.Text}	44
+{LV.Table}	Caption	{LV.Text}	44
+{LV.Table}	Label	{LV.Text}	44
+{LV.TimedLoop}	Label	{LV.Text}	44
+{LV.TreeControl}	Caption	{LV.Text}	44
+{LV.TreeControl}	Label	{LV.Text}	44
+{LV.TypeCast}	Label	{LV.Text}	44
+{LV.TypedRefNum}	Caption	{LV.Text}	44
+{LV.TypedRefNum}	Label	{LV.Text}	44
+{LV.Unbundler}	Label	{LV.Text}	44
+{LV.UnitCast}	Label	{LV.Text}	44
+{LV.VISAResourceName}	Caption	{LV.Text}	44
+{LV.VISAResourceName}	Label	{LV.Text}	44
+{LV.VISAResourceName}	Text	{LV.Text}	44
+{LV.VISAResourceNameConstant}	Label	{LV.Text}	44
+{LV.WaveformChart}	Caption	{LV.Text}	44
+{LV.WaveformChart}	Label	{LV.Text}	44
+{LV.WaveformChart}	Plot	{LV.Plot}	23
+{LV.WaveformChart}	X Scale	{LV.GraphScale}	52
+{LV.WaveformChart}	Y Scale	{LV.GraphScale}	52
+{LV.WaveformData}	Caption	{LV.Text}	44
+{LV.WaveformData}	Label	{LV.Text}	44
+{LV.WaveformGraph}	Caption	{LV.Text}	44
+{LV.WaveformGraph}	Cursor	{LV.Cursor}	21
+{LV.WaveformGraph}	Label	{LV.Text}	44
+{LV.WaveformGraph}	Plot	{LV.Plot}	23
+{LV.WaveformGraph}	X Scale	{LV.GraphScale}	52
+{LV.WaveformGraph}	Y Scale	{LV.GraphScale}	52
+{LV.WhileLoop}	Label	{LV.Text}	44
+{LV.XYGraph}	Caption	{LV.Text}	44
+{LV.XYGraph}	Cursor	{LV.Cursor}	21
+{LV.XYGraph}	Label	{LV.Text}	44
+{LV.XYGraph}	Plot	{LV.Plot}	23
+{LV.XYGraph}	X Scale	{LV.GraphScale}	52
+{LV.XYGraph}	Y Scale	{LV.GraphScale}	52

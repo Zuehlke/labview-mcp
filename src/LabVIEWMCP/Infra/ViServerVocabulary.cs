@@ -25,7 +25,8 @@ internal static class ViServerVocabulary
     private sealed record Tables(
         Dictionary<string, HashSet<string>> Properties,
         Dictionary<string, HashSet<string>> Methods,
-        HashSet<string> Classes);
+        HashSet<string> Classes,
+        Dictionary<string, List<(string Property, string Object)>> SubObjects);
 
     private static readonly Lazy<Tables> Data = new(Build);
 
@@ -60,6 +61,27 @@ internal static class ViServerVocabulary
     internal static string FoldMethod(string name) =>
         name.Replace('.', ' ').Replace("  ", " ", StringComparison.Ordinal).Trim();
 
+    /// <summary>
+    /// The properties of <paramref name="cls"/> that lead into a SUB-OBJECT - a graph's
+    /// <c>Plot</c> ({LV.Plot}), <c>X Scale</c> ({LV.GraphScale}), a control's <c>Label</c>
+    /// ({LV.Text}) - from <c>vi-server-subobjects.tsv</c> (scripts/harvest_nested_vi_server_properties.py).
+    /// A field of the sub-object is written <c>&lt;property&gt;.&lt;its property&gt;</c> on the
+    /// owner's node: <c>Plot.Plot Name</c>, <c>Y Scale.Range:Minimum</c>.
+    /// </summary>
+    internal static IReadOnlyList<(string Property, string Object)> SubObjectsOf(string cls) =>
+        Data.Value.SubObjects.TryGetValue(cls, out var list) ? list : [];
+
+    /// <summary>
+    /// The dotted fields of <paramref name="cls"/> that end in <paramref name="name"/>: "Plot Name"
+    /// on {LV.WaveformGraph} is <c>Plot.Plot Name</c>, "Range:Maximum" both <c>X Scale.Range:Maximum</c>
+    /// and <c>Y Scale.Range:Maximum</c>. Empty when no sub-object of the class has that property.
+    /// </summary>
+    internal static IReadOnlyList<string> NestedSpellings(string cls, string name) =>
+        SubObjectsOf(cls)
+            .Where(s => PropertiesOf(s.Object) is { } props && props.Contains(name))
+            .Select(s => s.Property + "." + name)
+            .ToList();
+
     private static Tables Build()
     {
         var properties = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
@@ -86,7 +108,15 @@ internal static class ViServerVocabulary
         foreach (var row in Rows("vi-server-classes.tsv"))
             if (row.Length >= 1 && row[0].Length > 0) classes.Add(row[0]);
 
-        return new Tables(properties, methods, classes);
+        var subObjects = new Dictionary<string, List<(string, string)>>(StringComparer.Ordinal);
+        foreach (var row in Rows("vi-server-subobjects.tsv"))
+        {
+            if (row.Length < 3) continue;
+            if (!subObjects.TryGetValue(row[0], out var list)) subObjects[row[0]] = list = [];
+            list.Add((row[1], row[2]));
+        }
+
+        return new Tables(properties, methods, classes, subObjects);
     }
 
     /// <summary>The data rows of an embedded TSV, header skipped; none when it is not embedded.</summary>
