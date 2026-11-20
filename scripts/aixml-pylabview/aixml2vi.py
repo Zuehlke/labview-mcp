@@ -664,6 +664,19 @@ CONTROL_REF_CLASS = {"Boolean": ("0x0008", True), "String": ("0x001B", False), "
 # tests/t129_graph_events.xml wrote these where the composer had written Array 0x000E, Digital
 # 0x0012 and Cluster 0x001E (2026-10-11). The first three match parts/refnum-classes.tsv; XY Graph
 # is not in it and was read off that save.
+# Front-panel objects AIXML writes as their plain data type - a slide or a knob as a double, a tab
+# control as its enum, a tree as a string, a Web Browser as a string - whose CLASS the reader names
+# after </VI> (`fpclass`), with the CtlFlags of a reference to one (parts/refnum-classes.tsv) and
+# whether that reference carries the data type inside. Composed plain, a node bound to one read
+# `Pages` off an LV.Enum or `Fill Color` off an LV.Digital and was refused (palette sweep,
+# 2026-11-19: 16 NI examples)
+# A TAB CONTROL is not among them: its pages are panel objects of their own, holding the controls
+# placed on them, and a harvested part carries its donor's pages - composed from one, a two-page
+# tab answered `Cannot load front panel` (1013) on its own (2026-11-19). It stays its enum.
+FPCLASS_REF = {"stdSlide": ("0x0015", True), "stdKnob": ("0x0020", True),
+               "treeControl": ("0x0042", False), "htmlControl": ("0x008B", False)}
+FPCLASS_PLAIN_DATA = tuple(FPCLASS_REF)
+
 GRAPH_STYLE_CLASS = {"graph21703": "0x0018",    # Waveform Graph
                      "graph21717": "0x0017",    # Waveform Chart
                      "graph21716": "0x0053",    # XY Graph
@@ -678,6 +691,8 @@ def control_ref_type(ctl_tree, label=None, style=None):
     t = ctl_tree.get("Type") or ""
     if style in GRAPH_STYLE_CLASS:
         flags, inner = GRAPH_STYLE_CLASS[style], True
+    elif (style or "").startswith("fpclass:") and style[8:] in FPCLASS_REF:
+        flags, inner = FPCLASS_REF[style[8:]]
     elif style == "Combo Box":
         # a combo box's reference: ComboBox 0x001D, untyped - NI's Pulse Generation (178x Smart
         # Camera).vi writes its Strings [] through exactly this (parts/refnum-classes.tsv agrees)
@@ -861,9 +876,13 @@ def unverified_wire_type(tree):
         if tree.get("RefType") in ("DataValueRef", "DataLog") and not fields(tree):
             # only the CONTAINER form is measured; a bare one stays refused
             return "Refnum.%s (no element type)" % tree.get("RefType")
+        # Occurrence: Generate Occurrence -> Set Occurrence -> Wait on Occurrence (100 ms) read
+        # `timed out` false, no insanity (t226, 2026-11-19)
+        # TCPNetConn: TCP Open Connection to a closed local port -> TCP Close Connection carried the
+        # refnum and error 56 through, no insanity (t227, 2026-11-19)
         if tree.get("RefType") not in ("LVObjCtl", "VisaRef", "IVIRef", "UsrDefndTag", "UsrDefTagFlt", "TDMSFile", "UDClassInst",
                                        "UserEvent", "EventReg", "Menu", "Queue", "ByteStream", "NotifierRef",
-                                       "DataValueRef", "DataLog"):
+                                       "DataValueRef", "DataLog", "Occurrence", "TCPNetConn"):
             # UsrDefined is a family of unrelated classes; only NI-TClk's session reference is
             # measured - niRFSA Get Session Reference -> Build Array -> niTClk Configure For
             # Homogeneous Triggers -> niTClk Synchronize answered NI's own build's error, no
@@ -873,8 +892,15 @@ def unverified_wire_type(tree):
             # insanity (t205, 2026-11-08)
             # Storage (TDM/DIAdem): _openDataStorage.vi -> CloseDataStorageRefnum.vi created and
             # closed a .tdm file, twice over the same file, no insanity (t206, 2026-11-08)
+            # AdaptiveFilters (Adaptive Filter Toolkit): AFT Create FIR LMS (Real) -> AFT Destroy
+            # Adaptive Filter ran with no error and no insanity (t224, 2026-11-19)
+            # NOT nisysapi (NI System Configuration's Filter and Hardware): t225 - Initialize Session,
+            # Create Filter, Find Hardware, Close (Resources) - ended LabVIEW without a word in its
+            # log, and a shorter Create Filter -> Close (Filter) was still running after 90 s, while
+            # Initialize Session -> Close (System) alone ran clean in 12 s. Unresolved, so refused
             if not (tree.get("RefType") == "UsrDefined" and (tree.get("Ident") == "sessionReferenceClass"
-                                                            or tree.get("TypeName") in ("DOMUserDefRef", "Storage"))):
+                                                            or tree.get("TypeName") in ("DOMUserDefRef", "Storage",
+                                                                                        "AdaptiveFilters"))):
                 return "Refnum." + (tree.get("RefType") or "?")
         if tree.get("RefType") == "LVObjCtl" and [f.get("Type") for f in fields(tree)] == ["Function"]:
             # a strictly typed VI reference: its pane is the callee's own (t103)
@@ -1043,7 +1069,9 @@ def internal_shift(o, dy, dx):
         pane = o.find("paneHierarchy")
         _shift_bounds(pane.find("docBounds"), dy, dx)
         for f in pane.find("zPlaneList"):
-            move_obj(f, dy, dx)
+            # a compensating move inside the pane's own frame: the field stays where it was on the
+            # panel, so its ABSOLUTE scale ends stay too
+            move_obj(f, dy, dx, scales=False)
     elif cls == "indArr" and o.find("ddo") is not None:
         internal_shift(o.find("ddo"), dy, dx)   # the element itself sits relative to the array
 
@@ -1116,12 +1144,64 @@ def _anchor_k(arr, frame=None):
     return (il + 23, 12)           # NI's arrays with the index at x 2: k = (25, 12)
 
 
-def move_obj(o, dy, dx):
+def shift_scale_ends(o, dy, dx):
+    """A SCALE's end points are ABSOLUTE panel pixels, not relative to the object it belongs to:
+    `scaleRMin32`/`scaleRMax32` of a vertical slide cut at panel top 169 read 371/204 (169 +
+    202/35), a waveform chart's x axis at left 43 read 119/676. Moved without them, a slide drew
+    its scale, fill and pointer below its housing and a graph its plot area beside its frame (the
+    demo project of 2026-11-20). A scale is horizontal when its dynBounds are wider than tall -
+    its ends then move with x, else with y. A knob's scale has none (it is circular)."""
+    for rect in o.iter("scaleRect"):
+        # a graph's GraphScaleData keeps each axis' rectangle ABSOLUTE as well - a chart's x axis
+        # at relative (145, 54) under a frame at (125, 43) reads (270, 97); left behind, the plot
+        # area was drawn beside the frame
+        _shift_bounds(rect, dy, dx)
+    for s in o.iter("SL__arrayElement"):
+        lo, hi = s.find("scaleRMin32"), s.find("scaleRMax32")
+        if lo is None or hi is None:
+            continue
+        box = s.findtext("dynBounds") or s.findtext("bounds")
+        if not box:
+            continue
+        t, l, b, r = lvheap.parse_bounds(box)
+        d = dx if (r - l) > (b - t) else dy
+        for e in (lo, hi):
+            try:
+                e.text = str(int(e.text) + d)
+            except (TypeError, ValueError):
+                pass
+
+
+def shift_picc(hx, donor, dy, dx, margin=8):
+    """A PICC picture (12 bytes: a 4-byte header, then two (y, x) points as signed 16-bit
+    big-endian - a line from one to the other; every PICC in the parts has this shape) moved by
+    (dy, dx) when BOTH its points lie on `donor`, the object's bounds on the donor's panel (with
+    a margin for a tick drawn on the edge). Anything else comes back unchanged."""
+    if len(hx) != 24:
+        return hx
+    raw = bytes.fromhex(hx)
+    pts = struct.unpack(">4h", raw[4:])
+    if donor is not None:
+        t, l, b, r = donor
+        inside = all(t - margin <= pts[i] <= b + margin and l - margin <= pts[i + 1] <= r + margin for i in (0, 2))
+        if not inside:
+            return hx
+    moved = (pts[0] + dy, pts[1] + dx, pts[2] + dy, pts[3] + dx)
+    if any(not -32768 <= v <= 32767 for v in moved):
+        return hx
+    return (raw[:4] + struct.pack(">4h", *moved)).hex().upper()
+
+
+def move_obj(o, dy, dx, scales=True):
     """Move an object by (dy, dx) and keep a cluster's or array's insides consistent with it:
     moving a cluster constant without them was `Insane Array Constant {graphics}` on an array
     field (and a field outside the pane). An array's anchor pair is set once every position is
-    final (Composer.set_array_anchors)."""
+    final (Composer.set_array_anchors). `scales`: also move the absolute scale ends inside it
+    (shift_scale_ends) - not for internal_shift's compensating moves, which leave a field where
+    it is on the panel."""
     _shift_bounds(o.find("bounds"), dy, dx)
+    if scales and (dy or dx):
+        shift_scale_ends(o, dy, dx)
     if o.get("class") in ("fBox", "scriptNode"):
         # a Formula / script node's code box is ABSOLUTE, 8 px inside its bounds (prep.vi)
         _shift_bounds(o.find("contRect"), dy, dx)
@@ -1193,6 +1273,23 @@ def tag_class(tree, node_name=None):
     if tree.get("Ident"):
         return "GenClassTag.%s.%s" % (tree.get("Ident"), tree.get("TypeName"))
     return "GenClassTag.%s.%s" % (node_name, tree.get("TypeName")) if node_name else None
+
+
+def session_class(tree):
+    """The class NI's export writes on a property node whose reference is a VISA session -
+    `Visa.<Ident>` (`Visa.Instr`, `Visa.USB Raw`) - or a user-defined refnum -
+    `GenClass.<Ident>.<TypeName>` (`GenClass.nisysapiHardware.nisysapi`), as vi2aixml.py's
+    _vi_server_class names them. None for any other refnum. Both were refused as `class ... is
+    not composable yet` (palette sweep, 2026-11-19: 11 + 9 NI examples)."""
+    while tree is not None and tree.get("Type") == "TypeDef":
+        tree = next((c for c in tree if c.tag == "TypeDesc"), None)
+    if tree is None or tree.get("Type") != "Refnum":
+        return None
+    if tree.get("RefType") == "VisaRef":
+        return "Visa.%s" % (tree.get("Ident") or "Instr")
+    if tree.get("RefType") == "UsrDefined" and tree.get("Ident") and tree.get("TypeName"):
+        return "GenClass.%s.%s" % (tree.get("Ident"), tree.get("TypeName"))
+    return None
 
 
 def prim_res_id(node):
@@ -2819,6 +2916,19 @@ class Composer:
         elif getattr(self, "fpclass_given", {}).get(el.get("uid")):
             # a LISTBOX: its own object class, its value the int32 AIXML carries
             force = self.fpclass_given[el.get("uid")]
+            if force in FPCLASS_REF:
+                # a slide, knob, tab control, tree or Web Browser: its own class where a part of
+                # it holds exactly this data type, else the plain control as before (reported)
+                got = None
+                for d in (("ind", "ctl") if is_ind else ("ctl", "ind")):
+                    got = got or self.parts.get("fpdco/%s/%s/%s" % (force, d, lvheap.type_key(tree)))
+                if got is None or type_sig(got[1][0]) != type_sig(tree):
+                    self.report.append("class %s of %r not composed (no part for this type) - shown as a plain %s"
+                                       % (force, name, tree.get("Type")))
+                    force = None
+                else:
+                    self.graph_styles = getattr(self, "graph_styles", {})
+                    self.graph_styles[name] = "fpclass:" + force
         self._listbox_rsrc = getattr(self, "fpclass_rsrc", {}).get(el.get("uid"))
         fpdco, src, h, _ = self.build_ddo(tree, is_ind, "fpdco", None, force_class=force)
         self._listbox_rsrc = None
@@ -2933,6 +3043,10 @@ class Composer:
         # stacked per column by real height: a cluster or array is taller than a numeric
         self.fp_y = getattr(self, "fp_y", {0: 16, 1: 16})
         self.fp_y.setdefault(col, 16)
+        # where the part sat on its DONOR's panel: its pictures (PICC) are drawn in those
+        # absolute coordinates and follow the object in renumber_piccs
+        if ddo.findtext("bounds"):
+            ddo.set("_donor_bounds", ddo.findtext("bounds"))
         place_obj(ddo, self.fp_y[col], 16 + 300 * col)
         self.fp_y[col] += max(lvheap.size_of(ddo)[0], 24) + 32
         # z-order lists run NEWEST FIRST in LabVIEW's own files (ddoList and termList run
@@ -4173,7 +4287,8 @@ class Composer:
 
     @staticmethod
     def _vi_server_class(el):
-        m = re.fullmatch(r"\{(LV\.[A-Za-z0-9]+|GenClassTag\.[^.{}]+\.[^{}]+|IVI\.[^.{}]+)\}", (el.get("type") or "").strip())
+        m = re.fullmatch(r"\{(LV\.[A-Za-z0-9]+|GenClassTag\.[^.{}]+\.[^{}]+|IVI\.[^.{}]+|Visa\.[^{}]+"
+                         r"|GenClass\.[^.{}]+\.[^{}]+)\}", (el.get("type") or "").strip())
         if not m:
             raise Unsupported("%s %s: class %r is not composable yet" % (el.get("_name"), el.get("uid"), el.get("type")))
         return m.group(1)
@@ -4401,7 +4516,8 @@ class Composer:
         self.check_attrs(el, ("fields", "type", "link"))
         cls = self._vi_server_class(el)
         # an IVI session is a class named by its refnum too, and composed the same way
-        tag = cls.startswith(("GenClassTag.", "IVI."))
+        tag = cls.startswith(("GenClassTag.", "IVI.", "Visa.", "GenClass."))
+        session = cls.startswith(("Visa.", "GenClass."))
         if tag:
             self._tag_reference_names(el)
         table = self._vi_server_table()
@@ -4499,8 +4615,21 @@ class Composer:
             # a TAG refnum's node is typed with the refnum WIRED into it, which carries more than
             # the class - a Network Stream endpoint holds its data type in NI_VAR_DATATYPE - and
             # NI's node there reads objFlags 131584 (Simple Network Streams - Host.vi, issue #96)
-            if wired_ref is not None and wired_ref.get("RefType") in ("UsrDefndTag", "IVIRef"):
+            if wired_ref is not None and wired_ref.get("RefType") in ("UsrDefndTag", "IVIRef", "VisaRef", "UsrDefined"):
                 ref_tree = lvheap.strip_label(wired_ref)
+                while ref_tree.get("Type") == "TypeDef" and session:
+                    ref_tree = next((c for c in ref_tree if c.tag == "TypeDesc"), ref_tree)
+                if cls.startswith("Visa.") and ref_tree.get("RefType") == "VisaRef":
+                    # a VISA node is of the NODE's class, whatever session is wired in: NI's USB
+                    # RAW - Interrupt.vi wires an Instr session into a {Visa.USB Raw} node, and typed
+                    # with the wired Instr its `reference out` was "Wire: Class conflict" downstream
+                    ref_tree = copy.deepcopy(ref_tree)
+                    ref_tree.set("Ident", cls[len("Visa."):])
+            elif session:
+                # a VISA or user-defined session node is typed by its session refnum: with
+                # nothing wired there is no refnum to type it with
+                raise Unsupported("Property Node %s: a %s node needs its session wired into `reference`"
+                                  % (el.get("uid"), cls))
             elif cls.endswith(".NIDAQ"):
                 # DAQmx's class names the NODE, not the refnum (a Task's Timing properties): with
                 # nothing wired there is no task refnum to type the node with
@@ -4519,6 +4648,11 @@ class Composer:
                                                  "TypeName": "NIDAQ", "Format": "inline"})
             class_tree.append(_void_variant())
             node.find("objFlags").text = "4608"
+        elif session:
+            # a VISA or user-defined session: the node typed and named by the wired session, its
+            # objFlags as the donor read (0x10280 on Set Serial Break Event.vi's VISA node)
+            class_tree = ref_tree
+            node.find("objFlags").text = str(crow.get("objFlags") or 66176)
         elif tag and cls.startswith("IVI."):
             # an IVI session: the node typed and named by the wired session (the plain class
             # refnum when nothing is wired), objFlags 512, each item named by the AIXML field
@@ -7274,15 +7408,76 @@ class Composer:
         identical pictures share one section, and a composed graph VI then logged "bad mutex
         verifier in ThMutexDestroy" on load (2026-10-10)."""
         piccs = getattr(self, "piccs", None)
+        circular = self._circular_scale_moves()     # a knob's centre moves with or without pictures
         if not piccs:
+            for e in self.fp.iter():
+                e.attrib.pop("_donor_bounds", None)
             return
         refs = [e for heap in (self.fp, self.bd) for e in heap.iter("ImageInternalsResID")
                 if (e.text or "").strip().isdigit() and int(e.text) in piccs]
+        moved = self._picc_moves()
+        moved.update(circular)
         fresh = {}
         for n, e in enumerate(refs, start=2):
-            fresh[n] = piccs[int(e.text)]
+            fresh[n] = shift_picc(piccs[int(e.text)], *moved[id(e)]) if id(e) in moved else piccs[int(e.text)]
             e.text = str(n)
         self.piccs = fresh
+        for e in self.fp.iter():
+            e.attrib.pop("_donor_bounds", None)
+
+    def _picc_moves(self):
+        """For each picture reference inside a front-panel object placed away from where its part
+        sat on the donor's panel: (donor bounds, dy, dx). A PICC picture - a scale's tick, a
+        graph's axis line - is drawn in ABSOLUTE panel coordinates (a slide indicator cut at
+        (283, 247) draws its tick at (317, 247..251)), so it has to move as far as the object
+        did; left behind, a slide drew its ticks 70 px beside its bar (the demo project of
+        2026-11-20). Only a picture whose points lie on the donor object is moved: a scrollbar's
+        pictures are relative, and a knob cut from a control inside a container draws in that
+        container's frame."""
+        out = {}
+        for ddo in self.fp.iter():
+            donor = ddo.get("_donor_bounds")
+            if not donor or not ddo.findtext("bounds"):
+                continue
+            dt, dl, db, dr = lvheap.parse_bounds(donor)
+            t, l = lvheap.parse_bounds(ddo.findtext("bounds"))[:2]
+            if (t, l) == (dt, dl):
+                continue
+            for e in ddo.iter("ImageInternalsResID"):
+                out[id(e)] = ((dt, dl, db, dr), t - dt, l - dl)
+        return out
+
+    def _circular_scale_moves(self):
+        """A KNOB's (or dial's) round scale keeps its centre ABSOLUTE (`scaleCenter`, hex y then x)
+        - and in the frame of whatever held the donor's knob: Pulse Demo.vi's knob, at (197, 42)
+        in its container, has its centre at (354, 110), the middle of its body (part 1, (26..86,
+        33..95)) once the container's (101, 4) is added. Composed elsewhere the scale, its labels
+        and its pointer were drawn 60 px above and 30 px beside the knob (the demo project of
+        2026-11-20). The centre is set to the middle of the body where the object now sits, and
+        the object's pictures move as far as the centre did - their frame is the centre's, so no
+        on-the-donor test applies. Returns {id(ImageInternalsResID): (None, dy, dx)}."""
+        out = {}
+        for ddo in self.fp.iter():
+            if not ddo.get("_donor_bounds") or not ddo.findtext("bounds"):
+                continue
+            centres = [s for s in ddo.iter("scaleCenter") if re.fullmatch(r"[0-9A-Fa-f]{8}", (s.text or "").strip())]
+            body = next((p for p in (ddo.find("partsList") if ddo.find("partsList") is not None else [])
+                         if p.findtext("partID") == "1" and p.findtext("bounds")), None)
+            if not centres or body is None:
+                continue
+            t, l = lvheap.parse_bounds(ddo.findtext("bounds"))[:2]
+            bt, bl, bb, br = lvheap.parse_bounds(body.findtext("bounds"))
+            cy, cx = t + (bt + bb) // 2, l + (bl + br) // 2
+            oy, ox = struct.unpack(">2h", bytes.fromhex(centres[0].text.strip()))
+            dy, dx = cy - oy, cx - ox
+            if not (dy or dx):
+                continue
+            for s in centres:
+                y, x = struct.unpack(">2h", bytes.fromhex(s.text.strip()))
+                s.text = struct.pack(">2h", y + dy, x + dx).hex().upper()
+            for e in ddo.iter("ImageInternalsResID"):
+                out[id(e)] = (None, dy, dx)
+        return out
 
     @staticmethod
     def _class_version(lvclass):
@@ -11253,6 +11448,40 @@ class Composer:
             return "Facade" if item.get("Type") == "Ability VI" and "Facade" in names else "Standard"
         return "Facade" if "facade" in member.lower() else "Standard"
 
+    def _inline_xnodes(self, vi, tail):
+        """Put the code an XNODE generated in the place of its Call: vi2aixml.py writes it after
+        </VI> as a one-frame Flat Sequence (`<?lvmcp xnodeinline?>`), each tunnel naming the Call
+        terminal it stands for (`xterm`). An input tunnel takes the net the Call's terminal takes,
+        an output tunnel becomes the source of the net the Call's terminal fed - so every wire
+        outside stays as the document wrote it. The xNode itself cannot be composed (it was broken
+        without its image and killed LabVIEW with it), and its generated code runs the same: NI's
+        Check Color Table Size.vi, three Error Rings set to error 1, answered exactly as the
+        original for five inputs (palette sweep, 2026-11-19). Skipped under AIXML2VI_TRY_XNODE=1,
+        which composes the xNode itself."""
+        if os.environ.get("AIXML2VI_TRY_XNODE") == "1":
+            return
+        frames = {m.group(1): html.unescape(m.group(2)) for m in re.finditer(
+            r'<\?lvmcp\s+xnodeinline\s+uid="([^"]*)"\s+frame="([^"]*)"\s*\?>', tail)}
+        if not frames:
+            return
+        parent = {c: p for p in vi.iter() for c in p}
+        for call in [e for e in vi.iter("Call") if e.get("uid") in frames]:
+            frame = ET.fromstring(frames[call.get("uid")])
+            ins, outs = dict(pairs(call.get("inputs"))), dict(pairs(call.get("outputs")))
+            for tun in frame.findall("Tunnel"):
+                term = unescape(tun.attrib.pop("xterm", "") or "")
+                if (tun.get("_id") or "").startswith("Out"):
+                    net = next((n for t, n in outs.items() if unescape(t) == term), "")
+                    tun.set("outputs", "value:%s" % net)
+                else:
+                    net = next((n for t, n in ins.items() if unescape(t) == term), "")
+                    tun.set("inputs", "value:%s" % net)
+            frame.set("uid_parent", call.get("uid_parent") or "root")
+            p = parent[call]
+            p.insert(list(p).index(call), frame)
+            p.remove(call)
+            self.report.append("XNode %s (uid %s) composed as the code it generated" % (call.get("target"), call.get("uid")))
+
     def compose(self, aixml_path):
         vi = ET.parse(aixml_path).getroot()
         self.doc = vi
@@ -11280,6 +11509,7 @@ class Composer:
         me = re.search(r'<\?lvmcp\s+exec\s+([^?]*)\?>', tail[1]) if len(tail) == 2 else None
         if me:
             self.exec_given = dict(re.findall(r'(\w+)="([^"]*)"', me.group(1)))
+        self._inline_xnodes(vi, tail[1] if len(tail) == 2 else "")
         self.class_names = {}
         for mc in re.finditer(r'<\?lvmcp\s+classes\s+uid="([^"]*)"\s+names="([^"]*)"\s*\?>', tail[1] if len(tail) == 2 else ""):
             self.class_names[mc.group(1)] = html.unescape(mc.group(2)).split("|")

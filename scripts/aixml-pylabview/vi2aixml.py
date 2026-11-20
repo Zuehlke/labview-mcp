@@ -1223,6 +1223,12 @@ def escape_illegal_xml_chars(root):
     return hits
 
 
+# XNodes read as the code they generated (xnode_inline) - on by default; LABVIEWMCP_INLINE_XNODES=0
+# writes NI's form, a Call of the .xnode, which the composer refuses. XNodes lvai_generate_vi puts
+# in place itself through {LV.SubVI} Replace (XNodeCalls.cs) keep that Call
+INLINE_XNODES = os.environ.get("LABVIEWMCP_INLINE_XNODES", "1").strip() not in ("0", "false", "off", "no")
+XNODE_REPLACE_ROUTES = {"Match Regular Expression.xnode"}
+
 # heap class of a fixed-shape node -> its AIXML name; the terminal names come from the
 # composer's template parts (parts/tnode__*.xml), which name every terminal (harvest_templates.py)
 TEMPLATE_CLASSES = {"aDelete": "Delete From Array", "aInit": "Initialize Array", "aInsert": "Insert Into Array",
@@ -1765,13 +1771,13 @@ class Reader:
                 # which .xctl it is goes after </VI> (`xcontrol`), read off the panel's XCXI link
                 self.xcontrol_fp = getattr(self, "xcontrol_fp", [])
                 self.xcontrol_fp.append((el, ddo.get("uid")))
-            elif cls in ("listbox", "mcListbox", "scenegraphdisplay"):
+            elif cls in ("listbox", "mcListbox", "scenegraphdisplay") + aixml2vi.FPCLASS_PLAIN_DATA:
                 # a LISTBOX is an int32 in AIXML too, a 3D PICTURE CONTROL a plain scene refnum; the
                 # object class goes after </VI> (`fpclass`) - its control reference is typed by it
                 self.fp_classes = getattr(self, "fp_classes", [])
                 annex = next((p for p in (ddo.find("partsList") if ddo.find("partsList") is not None else [])
                               if p.get("class") == "annex"), None)
-                self.fp_classes.append((el, cls, self._listbox_strings(ddo) if cls != "scenegraphdisplay" else None,
+                self.fp_classes.append((el, cls, self._listbox_strings(ddo) if cls in ("listbox", "mcListbox") else None,
                                         annex.findtext("rsrcID") if annex is not None else None))
             elif cls == "stdGraph":
                 rid = next((pt.findtext("rsrcID") for pt in (ddo.find("partsList") if ddo.find("partsList") is not None else [])
@@ -2508,6 +2514,7 @@ class Reader:
         target = next((v for v in recs.values() if v and v.lower().endswith(".xnode")), None) or \
             next(iter(recs.values()), None) or "?.xnode"
         el = ET.Element("Call", {"uid": node.get("uid"), "uid_parent": parent_uid, "target": target})
+        names = {}
         for t in node.find("termList"):
             d = t.find("dco")
             if d is None or d.get("class") != "xTunnel":
@@ -2523,6 +2530,12 @@ class Reader:
                     name = "?"
             out = bool(int(d.findtext("objFlags") or 0) & 1)
             self.term_owner[t.get("uid")] = (el, name, not out)
+            names[t.get("uid")] = name
+        if INLINE_XNODES and target.split(":")[-1] not in XNODE_REPLACE_ROUTES \
+                and node.find("diagramList/SL__arrayElement") is not None:
+            # and the code it GENERATED, for the composer to put in its place (<?lvmcp xnodeinline?>)
+            self.xnode_inlines = getattr(self, "xnode_inlines", [])
+            self.xnode_inlines.append((el, self.xnode_inline(node, parent_uid, target, names)))
         # the node ITSELF - its generated code, state and links - goes after </VI> (<?lvmcp xnode?>);
         # its DSIM images are read NOW, while the extracted files still exist (main() removes them
         # before the payload is written)
@@ -2545,6 +2558,80 @@ class Reader:
                         self.xnode_images.setdefault(node.get("uid"), {})[int(sec.get("Index"))] = f.read().hex().upper()
         self.xnode_nodes = getattr(self, "xnode_nodes", [])
         self.xnode_nodes.append((el, node))
+        return el
+
+    def _wired_terms(self):
+        """uids of every terminal a wire (heap `signal`) ends at, anywhere on the diagram."""
+        w = getattr(self, "_wired", None)
+        if w is None:
+            w = set()
+            for s in self.b.bd.iter("SL__arrayElement"):
+                if s.get("class") == "signal" and s.find("termList") is not None:
+                    w.update(t.get("uid") for t in s.find("termList") if t.get("uid"))
+            self._wired = w
+        return w
+
+    def xnode_inline(self, node, parent_uid, target, names):
+        """An XNODE read as the code it GENERATED: a one-frame Flat Sequence holding the xNode's
+        own diagram, each xTunnel a tunnel of that frame, labelled with the .xnode it came from.
+        The xNode cannot be composed (its state, image and links: docs/aixml-backends.md, "XNodes:
+        carried, NOT composed"), and LabVIEW's {LV.SubVI} Replace builds one only in its DEFAULT
+        state - an Error Ring would lose the error it names. The generated code is what the node
+        RUNS, for exactly the types and the configuration it was saved with, so a VI holding one
+        round-trips with the same behaviour, the XNode drawn as its code (palette sweep,
+        2026-11-19: 24 NI examples refused on an XNode call). Built as flatseq builds a frame:
+        the xTunnel's inner half is a term of the diagram's sRN naming the same dco. The Call stays
+        what NI's export writes and owns the OUTER terms; this frame is DETACHED, each tunnel naming
+        the Call terminal it stands for (`xterm`), and goes after </VI> - the composer swaps it in
+        where it would refuse the XNode, so the reader's parity with NI's export is kept."""
+        el = ET.Element("Structure", {"_name": "Flat Sequence Frame", "uid": node.get("uid"), "uid_parent": parent_uid,
+                                      "label": target.split(":")[-1].replace(",", "\\2C").replace(":", "\\3A")})
+        diag = node.find("diagramList/SL__arrayElement")
+        owner = node.get("uid")
+        srn = next((n for n in self.node_defs(diag) if n.get("class") == "sRN"), None)
+        inner = {}
+        for t in (srn.find("termList") if srn is not None else []):
+            d = t.find("dco")
+            if d is not None:
+                inner.setdefault(d.get("uid"), []).append(t)
+        n_in = n_out = 0
+        tunnels = []
+        for term in node.find("termList"):
+            d = term.find("dco")
+            if d is None or d.get("class") != "xTunnel":
+                continue
+            out = int(d.findtext("objFlags") or 0) & 1
+            xterm = names.get(term.get("uid"))
+            if not out and term.get("uid") not in self._wired_terms():
+                # an input left UNWIRED outside that the generated code still reads (Database
+                # Delete.vi's DB Tools Delete Data): a tunnel no wire reaches has no type, so the
+                # value the code sees - the xTunnel's own default - becomes a constant inside
+                tree = self.tid_tree(term)
+                t = aixml_type(tree) if tree is not None else None
+                v = self.default_value(tree, d.findtext("DefaultData"), self.tid_tree(term, True),
+                                       "XNode input %s" % d.get("uid")) if t else None
+                if t and v is not None:
+                    c = ET.Element("Constant", {"type": t, "uid": d.get("uid"), "uid_parent": owner, "value": v})
+                    for it in inner.get(d.get("uid"), []):
+                        self.term_owner[it.get("uid")] = (c, "value", False)
+                    el.append(c)
+                    continue
+            if out:
+                n_out += 1
+            else:
+                n_in += 1
+            tun = ET.Element("Tunnel", {"_id": ("Out%d" % n_out) if out else ("In%d" % n_in),
+                                        "uid": d.get("uid"), "uid_parent": owner, "xterm": xterm or ""})
+            for t in inner.get(d.get("uid"), []):
+                self.term_owner[t.get("uid")] = (tun, "value", bool(out))
+            # the inner half may also be listed on the xTunnel itself (its termList: inner, outer)
+            for ref in (d.find("termList") if d.find("termList") is not None else []):
+                if ref.get("uid") and ref.get("uid") != term.get("uid"):
+                    self.term_owner.setdefault(ref.get("uid"), (tun, "value", bool(out)))
+            tunnels.append(tun)
+        self.walk(diag, owner, el)
+        for t in tunnels:
+            el.append(t)
         return el
 
     # heap fields holding a type as a hex heap integer, not TypeID(n)
@@ -4120,7 +4207,30 @@ class Reader:
                     return "GenClass.%s.%s" % (tree.get("Ident"), tree.get("TypeName"))
                 return {"AutoRef": "ActiveX", "DotNet": "DotNet", "39": "DotNetCore"}.get(rt)
         # no reference input: an implicit node on a control, This VI, the application
-        return learned.get("nodeNames", {}).get(node_name.replace(" (strict)", ""))
+        short = node_name.replace(" (strict)", "")
+        return learned.get("nodeNames", {}).get(short) or self.class_by_node_name().get(short)
+
+    _CLASS_BY_NODE_NAME = None
+
+    @classmethod
+    def class_by_node_name(cls):
+        """The VI Server class whose property node carries this nodeName, read off the harvested
+        table (vi-server-props.json: every LV.* class with its nodeName - unique per class), plus
+        the two short forms a node bound to a control writes that the table spells longer (`Arr`,
+        `Clust`). class-ids-learned.json knew 11 names; the other implicit nodes of the NI examples
+        - `Bool` 166 times, `DigNum` 37, `Str` 12, `IntChart`, `Pict`, `LstBox`, `SubPnl`, `Enum`,
+        `XYGraph` - were written type="{?}" and refused (palette sweep, 2026-11-19)."""
+        if cls._CLASS_BY_NODE_NAME is None:
+            p = os.path.join(aixml2vi.OWN_PARTS, "vi-server-props.json")
+            table = json.load(open(p, encoding="utf-8")).get("classes", {}) if os.path.exists(p) else {}
+            seen = {}
+            for c, row in table.items():
+                if c.startswith("LV.") and row.get("nodeName"):
+                    seen.setdefault(row["nodeName"].replace(" (strict)", ""), []).append(c)
+            out = {n: cs[0] for n, cs in seen.items() if len(cs) == 1}
+            out.update({"Arr": "LV.Array", "Clust": "LV.Cluster"})
+            cls._CLASS_BY_NODE_NAME = out
+        return cls._CLASS_BY_NODE_NAME
 
     _PROP_NAMES = None
     _EXPORT_PROP_NAMES = None
@@ -4785,6 +4895,12 @@ def main(argv):
         if el.get("uid"):
             text += '\n<?lvmcp xnode uid="%s" node="%s"?>' % (
                 el.get("uid"), html.escape(reader.xnode_payload(el, node), quote=True))
+    for el, frame in getattr(reader, "xnode_inlines", []):
+        # the code an XNODE generated, as a one-frame Flat Sequence the composer puts in the Call's
+        # place (Reader.xnode_inline); its tunnels name the Call terminals they stand for (xterm)
+        if el.get("uid"):
+            text += '\n<?lvmcp xnodeinline uid="%s" frame="%s"?>' % (
+                el.get("uid"), html.escape(ET.tostring(frame, encoding="unicode"), quote=True))
     for el, node, nexf in getattr(reader, "clfn_nodes", []):
         # a CALL LIBRARY FUNCTION NODE's configuration - library, function, signature, calling
         # convention, thread - which AIXML has no attribute for (Reader.clfn_payload)

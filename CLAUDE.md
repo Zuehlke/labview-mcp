@@ -501,6 +501,7 @@ document; `experiments/` does not ship.
 | Read or write AIXML | `docs/aixml-reference.md` | `lvai_aixml_reference` |
 | Whole VIs to copy shapes from | `scripts/aixml-skeletons/README.md` | — |
 | What validation does NOT catch; lint with no LabVIEW | `docs/aixml-reference.md`, `docs/aixml-lint.md` | `lvai_check_aixml`, `scripts/aixml_lint.py` |
+| What the pylabview composer cannot build yet, ranked by use | `docs/pylabview-palette-coverage.md` | `experiments/palette-sweep/` |
 | AIXML without NI's service; which LabVIEW and INI the server uses | `docs/aixml-backends.md` | `backend`, `lvai_list_labview_installations` |
 | A multi-VI build by several agents | `docs/build-contract.md` | `lvai_check_build_contract` |
 | Where tokens and time go | `docs/token-economy.md`, `docs/workflow-economics.md`, `docs/ideen-schneller-und-weniger-tokens.md` | — |

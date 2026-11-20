@@ -390,6 +390,10 @@ class Harvester:
         cl = self.props["classes"].setdefault(cname, {})
         if not cl:
             cl.update({"oMId": node.findtext("oMId"), "nodeName": (node.findtext("nodeName") or "").strip('"')})
+            if cname.startswith(("Visa.", "GenClass.")):
+                # a VISA or user-defined session node's own flags (0x10280 on a VISA Instr node,
+                # Set Serial Break Event.vi) - the composer writes them as read
+                cl["objFlags"] = int(node.findtext("objFlags") or 0)
             self.props_new += 1
         names = getattr(self, "_export_names", None)
         if names is None:
@@ -439,7 +443,7 @@ class Harvester:
         rt = resolve_types(b, ref)
         cname = ref_class(rt[0] if rt else None)
         if cname is None and rt and node.get("class") == "propNode":
-            cname = aixml2vi.tag_class(rt[0], node.findtext("nodeName"))
+            cname = aixml2vi.tag_class(rt[0], node.findtext("nodeName")) or aixml2vi.session_class(rt[0])
             if cname is not None and cname.startswith("IVI."):
                 # an IVI session's rows are keyed by every name NI uses for a code and carry no
                 # item flags, as NI's converter writes them - learn_ivi_props.py learns them

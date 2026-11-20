@@ -1774,3 +1774,20 @@ The helper DWarns in the same log ("Wiring insanity found and fixed ... forgot t
 loading `lvai_swap_subvis.vi` and `lvbd_layout_apply.vi`) are older than both crashes. They are on
 another thread and are not a cause. They do show that the composer writes wire joints LabVIEW has to
 repair on load.
+
+## `DAbort 0x1A7102DF: Fatal insanities(0x00000020)` loading an NI DAQmx example subVI (2026-11-19)
+
+**Symptom.** A batch `lvai_exec_state` over composed DAQmx examples timed out in the client;
+LabVIEW stayed busy with no dialog and answered nothing more until it was ended. NI's log:
+`Insane (470..475) in BDHP of "Update Open Thermocouple Status Table.vi": {owner } (0x20):
+owner=Diagram(3)` - five `kPiccImage` objects - then `DAbort 0x1A7102DF ... fpsane.cpp(560)` with
+a minidump.
+
+**Cause, measured.** NI's own file - `<LVAddons>\nidaqmx\1\examples\DAQmx\Analog Input\SubVIs\
+Update Open Thermocouple Status Table.vi`, read-only, dated 2026-07-05 - does the same when
+`lvai_exec_state` loads it ALONE on a fresh LabVIEW 2026 Q3 (26.3.1f1). Nothing composed is
+involved. A composed caller of it (the open-thermocouple DAQmx example) loads it as a callee and
+hangs LabVIEW the same way.
+
+**What to do.** Leave the VI and its callers out of load checks on this LabVIEW; end the hung
+LabVIEW (`Stop-Process`) - the log is already written - and restart it with `lvai_ensure_labview`.

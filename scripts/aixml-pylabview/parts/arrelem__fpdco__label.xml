@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="arrelem" key="arrelem/fpdco/label" source="Arbitrary Shape Lowpass Filter Design.vi"><types /><heap><SL__arrayElement class="label" uid="1021">
+                              <objFlags>1507335</objFlags>
+                              <bounds>(-246, 385, -229, 419)</bounds>
+                              <image class="Image">
+                                <ImageResID>-9</ImageResID>
+                                </image>
+                              <fgColor>01000000</fgColor>
+                              <bgColor>01000000</bgColor>
+                              <textRec class="textHair">
+                                <flags>1536</flags>
+                                <mode>17412</mode>
+                                <text>"phase"</text>
+                                <bgColor>01000000</bgColor>
+                                </textRec>
+                              </SL__arrayElement>
+                            </heap></part>
