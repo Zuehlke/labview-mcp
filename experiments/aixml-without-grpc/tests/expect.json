@@ -2565,5 +2565,35 @@
     }
    }
   ]
+ },
+ "t224_adaptive_filter_refnum": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "error out": "[False,0,]"
+    }
+   }
+  ]
+ },
+ "t226_occurrence_refnum": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "timed out": "False"
+    }
+   }
+  ]
+ },
+ "t227_tcp_connection_refnum": {
+  "cases": [
+   {
+    "inputs": "",
+    "outputs": {
+     "code": "56"
+    }
+   }
+  ]
  }
 }

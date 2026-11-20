@@ -3288,6 +3288,56 @@ runs; NI's export of it is the Call again). Wires move by slot, so each XNode ne
 terminal mapping (`XNodeCalls.cs`); only Match Regular Expression has one so far, without its grown
 capture-group outputs. docs/aixml-reference.md section 9.
 
+**XNodes composed as the code they generated (2026-11-19).** The reader still writes NI's form,
+a `Call` of the `.xnode` (parity with NI's export, `lvai_vi_terminals`, the Replace route above),
+and now ALSO, after `</VI>`, the xNode's own diagram as a one-frame Flat Sequence labelled with
+the `.xnode` (`<?lvmcp xnodeinline uid frame?>`): its xTunnels are the frame's tunnels, each naming
+the Call terminal it stands for (`xterm`); an input the outside leaves unwired but the code reads
+becomes a constant of the xTunnel's default inside. `Composer._inline_xnodes` swaps the frame into
+the Call's place, an input tunnel taking the net the Call's terminal took, an output tunnel
+becoming the source of the net the terminal fed. The generated code is what the node RUNS for
+the configuration and types it was saved with, so the Error Ring keeps its error: NI's Check
+Color Table Size.vi (three Error Rings set to error 1) answered error 1 for depth 0, 1, 4 and 8
+and none for 24, as the original did. 18 of the 24 NI examples the sweep refused on an XNode
+compose and load executable (Database Variant To Data, DFD FXP Simulation, AFT, Error Ring); the
+other six stop at a later blocker (fixed point, an Express VI, nisysapi). A VI written fresh with
+`<Call target="X.xnode">` has no generated code and still needs the Replace route.
+
+### Front-panel parts carry ABSOLUTE coordinates (2026-11-20)
+
+**Symptom.** In the palette-coverage demo project every composed slide drew its scale, fill and
+pointer below or beside its housing, a knob its scale and pointer 60 px above the dial, and the
+waveform chart and XY graph their plot area beside their frame - the VIs ran, only the panel was
+wrong. The parts' own `bounds` were right: every part sat where the part file put it relative
+to its object.
+
+**Cause, measured on the parts.** Four things in a front-panel part are in the DONOR's absolute
+panel coordinates, not relative to the object, and the composer moved none of them when it
+placed the object:
+- a scale's `scaleRMin32`/`scaleRMax32` - the pixel of each end: a vertical slide cut at panel
+  top 169 reads 371/204 (169 + 202/35), a chart's x axis at left 43 reads 119/676;
+- a graph's `GraphScaleData/ScaleData/scaleRect` - each axis' rectangle (relative (145, 54)
+  under a frame at (125, 43) reads (270, 97));
+- its PICC pictures - 12 bytes, a 4-byte header and two (y, x) int16 points, the ticks and axis
+  lines: a slide indicator cut at (283, 247) draws a tick at (317, 247..251);
+- a knob's `scaleCenter` (hex y, x) - in the frame of whatever held the donor's knob: Pulse
+  Demo.vi's knob at (197, 42) in its container has its centre at (354, 110), the middle of its
+  body (part 1) once the container's (101, 4) is added.
+
+**Fix.** `move_obj` moves scale ends and `scaleRect` with the object (`shift_scale_ends`; not on
+`internal_shift`'s compensating moves, which leave a cluster field where it is on the panel).
+`add_fp` notes where the part sat on the donor (`_donor_bounds`), and `renumber_piccs` - once each
+reference has its own PICC copy - moves every picture whose points lie on the donor object by as
+far as the object moved (`shift_picc`; a scrollbar's relative pictures are left), and sets a
+knob's centre to the middle of its body where it now sits, moving its pictures with it. Checked
+by rendering the panels (Print.VI To HTML writes `<name>p.png` beside the diagram): slides,
+knobs, chart, XY graph and the 3500-series graphs drawn whole; the panel and graph selftests
+(t107, t110, t129, t130, t140, t146, t161, t163, t166, t185, t186, t189, t200) pass on a fresh
+LabVIEW with no insanity logged.
+
+**Not fixed: a part draws its DONOR's scale range.** AIXML carries no scale range, so a knob cut
+from a 0..1 control shows 0..1 with a value of 22 413 pegged at its end.
+
 ### The sweep after the CLFN, the Stacked Sequence and the VISA refusal (2026-11-08)
 
 The same stride-3 sample of 10 878 vi.lib/add-on VIs: **8 635 compose (79.4 %), 2 243 refused** -

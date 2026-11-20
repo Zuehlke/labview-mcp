@@ -1,0 +1,9 @@
+<VI _name="T227 TCP Connection Refnum.vi" description="A TCP connection refnum on a wire: TCP Open Connection to a closed local port fails, and TCP Close Connection takes the refnum and the error.">
+  <Constant _name="address" outputs="value:4201.value" type="string" uid="4201" uid_parent="root" value="localhost"/>
+  <Constant _name="port" outputs="value:4202.value" type="uint16" uid="4202" uid_parent="root" value="1"/>
+  <Constant _name="timeout" outputs="value:4203.value" type="int32" uid="4203" uid_parent="root" value="500"/>
+  <Node _name="TCP Open Connection" uid="4210" uid_parent="root" inputs="address:4201.value,remote port or service name:4202.value,timeout ms (60000):4203.value,error in (no error):,local port:" outputs="connection ID:4210.connection ID,error out:4210.error out"/>
+  <Node _name="TCP Close Connection" uid="4220" uid_parent="root" inputs="connection ID:4210.connection ID,abort (F):,error in (no error):4210.error out" outputs="connection ID out:,error out:4220.error out"/>
+  <Node _name="Unbundle By Name" uid="4230" uid_parent="root" fields="code" inputs="input cluster:4220.error out" outputs="code:4230.code"/>
+  <Indicator _name="code" inputs="value:4230.code" type="int32" uid="4350" uid_parent="root" value="0"/>
+</VI>

@@ -1,20 +1,43 @@
 # pylabview palette coverage: what the composer cannot build yet
 
-Measured 2026-11-19 on LabVIEW 2026 Q3 (32-bit), composer at `cfe6c5e1`, by composing EVERY palette
-item and EVERY NI shipping example with the pylabview composer (`scripts/aixml-pylabview/aixml2vi.py`)
-and recording each refusal. The list below is the backlog, ranked by how often the gap is hit in
-real code. Re-run it after a composer change (*How to re-run*) and replace the numbers.
+Measured 2026-11-19 on LabVIEW 2026 Q3 (32-bit) by composing EVERY palette item and EVERY NI
+shipping example with the pylabview composer (`scripts/aixml-pylabview/aixml2vi.py`) and recording
+each refusal. The list below is the backlog, ranked by how often the gap is hit in real code.
+Re-run it after a composer change (*How to re-run*) and replace the numbers.
 
 ## Result in one paragraph
 
 Of **3 667 palette VIs**, 3 503 compose as a `Call` (95.5 %); 140 more are palette entries whose
-file is not installed on this station (OpenG and Bundle Magic `.mnu` files without their VIs), and
+file is not installed on this station (`.mnu` files of OpenG and of a third-party scripting add-on without their VIs), and
 24 are real gaps. Of **449 primitive and node names**, 383 compose alone; about 30 are real gaps,
-the rest need a wire to be typed (an artefact of composing them alone). Of **1 024 NI example VIs**,
-602 (59 %) compose with **no refusal at all**, and a sample of 40 of those loaded in LabVIEW was
-39 times executable - the one broken VI calls a private library member from outside its library,
-which is the sweep's placement, not the composer. The remaining 422 examples are blocked by the
-48 gaps below; the first ten account for about 60 % of them.
+the rest need a wire to be typed (an artefact of composing them alone). Of **1 013 NI example VIs**,
+read afresh by the reader, **754 (74 %) compose with no refusal at all** - 602 at the first
+measurement, 676 once the sweep's own fault (below) was fixed, 754 after the work of the same day.
+Loaded in LabVIEW, 17 of a random 18 of the newly composing examples were executable; the 18th
+(`USB RAW - Interrupt.vi`) is broken on a `Wire: Class conflict` in its VISA event chain, which no
+earlier composition reached. The remaining 259 examples are blocked by the gaps ranked below.
+
+## Closed on 2026-11-19
+
+The ten gaps the first measurement ranked highest, and what became of each:
+
+| Was | Gap | Now | How |
+|---:|---|---|---|
+| 1 | Class control/indicator on the panel | **was never a gap** | the sweep rewrote each export with ElementTree, which dropped the reader's `<?lvmcp ...?>` lines after `</VI>` - the class names among them. Composed with them, class controls compose. `sweep.py` keeps the tail since |
+| 2 | Express VI instance | **open** (#1 below) | the caller embeds a configured instance VI per Express VI; neither the reader nor the composer carries it |
+| 3 | Control style lost (tree, slide, knob, tab ...) | **closed** but tab controls | the reader names slides, knobs, trees and Web Browsers after `</VI>` (`fpclass`); the composer uses the class's part where one holds the data type (`FPCLASS_REF`), and types references with its CtlFlags. 24 parts harvested before MNGI images were read carried no images and loaded as `Cannot load front panel` (1013) - re-cut from their donors (`reharvest_images.py`). A TAB CONTROL stays its enum: its pages are panel objects of their own, and a two-page tab from a part did not load |
+| 4 | Refnum wires never composed | **partly** | measured and admitted: Occurrence (t226), TCPNetConn (t227), the Adaptive Filter Toolkit's UsrDefined refnum (t224). NI System Configuration (nisysapi) stays refused: the measurement ended LabVIEW without a word in its log, and a shorter chain was still running after 90 s while the session alone ran in 12 s |
+| 5 | XNode call | **closed for existing VIs** | the reader writes NI's Call AND, after `</VI>`, the code the XNode generated as a one-frame Flat Sequence (`<?lvmcp xnodeinline?>`); the composer swaps it in. 18 of the 24 refused examples compose and load executable; Check Color Table Size.vi's three Error Rings answer as the original for five inputs. docs/aixml-backends.md, "XNodes" |
+| 6 | DAQmx property not harvested | **closed** | `harvest_parts.py --props` over every example: 58 rows, 6 classes (DAQmx Export Signal, Real-Time, Write, DigitalGraph, MixedSignalGraph, TimeFlatSequence) |
+| 7 | Other property or class not harvested | **partly** | the same harvest, plus VISA (`Visa.<Ident>`) and user-defined (`GenClass.<Ident>.<TypeName>`) session nodes in harvester and composer, typed by the wired session (a VISA node by its own class) |
+| 8 | Reader writes class `{?}` | **closed** | an implicit node's class by its nodeName, read off the property table (`Bool` -> LV.Boolean, 166 nodes in the examples) |
+| 9 | Graph style or cursor property | **partly** | 13 graph parts (style x data type) from the full harvest, all loaded and run; cursor properties from the property harvest. A graph whose data type matches no part EXACTLY is still composed plain (#3 below) - parts are keyed by a coarser type key than they are used by |
+| 10 | Refnum types without a part | **partly** | the nisyscfg session control. DataFinder controls are typedefs in every donor, ActiveX needs its class (AIXML writes `ref{ActiveX}` without one), no DataLog constant was found |
+
+Found on the way: NI's own `Update Open Thermocouple Status Table.vi` (DAQmx examples, SubVIs)
+makes LabVIEW 2026 abort on load (`DAbort 0x1A7102DF: Fatal insanities(0x00000020)` in
+fpsane.cpp) - alone, with no composed caller; LabVIEW then hangs and must be ended. A load check
+over the composed DAQmx examples has to leave its callers out.
 
 ## Method
 
@@ -22,7 +45,9 @@ which is the sweep's placement, not the composer. The remaining 422 examples are
    example (`%USERPROFILE%\.labviewmcp\cache\aixml`, 1 024 VIs, 976 read by our reader, 37 by NI's
    service) is counted per element - Node name, Call target, Structure, panel style, type. `usage`
    below is the number of example VIs that contain the element.
-2. **Examples sweep** (`sweep.py examples`): each export is composed. On a refusal the element the
+2. **Examples sweep** (`sweep.py examples --fresh`): each example of the server's example index is
+   read by the CURRENT reader and composed (without `--fresh` the cached export, which a reader
+   change makes stale - the server empties the cache then). On a refusal the element the
    message names is CUT (with its subtree and every wire end on it) and the rest composed again,
    up to 25 times, so one gap does not hide the next.
 3. **Isolated sweep** (`sweep.py calls` / `nodes`): one VI per palette VI (an unwired `Call` of its
@@ -45,57 +70,47 @@ which is the sweep's placement, not the composer. The remaining 422 examples are
 
 ## The ranked list
 
+From the fresh sweep of 2026-11-19 (`out2`), after the work above.
+
 | # | Gap | Layer | Blocks | In any step | Usage | Elements (first seen) | Composer says |
 |---|---|---|---:|---:|---:|---|---|
-| 1 | Class control/indicator on the panel (ref{UDClassInst}) | composer | 77 | 78 | 52 | ref{UDClassInst}, array{ref{UDClassInst}.3D Plot Datatype.lvclass}, array{ref{UDClassInst} | `type 'ref{UDClassInst}' is not composable yet` |
-| 2 | Express VI instance: terminals depend on its configuration | composer | 31 | 33 | 23 | Ex_Inst_Simulate Signal.vi, TimeFrequencyDualWindow Source.vi, Ex_Inst_Write LabVIEW Measu | `Call 'DFD Filter Analysis Source.vi' has no output 'magnitude' on its pane (has: error in (no error), error ou` |
-| 3 | Control style lost in the export (Tree, Listbox, Tab, Slide, ...): node bound to a plain control | reader | 24 | 36 | 352 | Property Node, Invoke Node | `Property Node 224: bound to 'Event Data', which is composed as a plain LV.Digital (the export names no style o` |
-| 4 | Refnum wires never composed yet (UsrDefined, AutoRef, Occurrence, TCP, DataSocket, Python session) | composer | 23 | 32 | 0 | Empty Collection?, Read Map Max & Min Keys | `net '196.adaptive filter out' carries a Refnum.UsrDefined, which no composed wire has carried yet` |
-| 5 | XNode call | composer | 22 | 26 | 10 | Database Variant To Data.xnode, DFD FXP Simulation.xnode, AFT Simulate Fixed-Point FIR LMS | `Call 391: AFT Simulate Fixed-Point FIR LMS.xnode is an XNode - not composable yet` |
-| 6 | Property Node: DAQmx property not in the harvested table | composer | 22 | 25 | 352 | Property Node | `Property Node 4238: no property node on GenClassTag.DAQmx Real-Time.NIDAQ harvested yet` |
-| 7 | Property Node: other property or class not harvested | composer | 18 | 34 | 352 | Property Node, Invoke Node | `Property Node 5507: no property node on LV.DigitalGraph harvested yet` |
-| 8 | Property Node bound to a control: the reader writes class {?} | reader | 17 | 24 | 352 | Property Node, Invoke Node | `Property Node 93: class '{?}' is not composable yet` |
-| 9 | Graph style or graph cursor property | composer | 15 | 17 | 559 | VI Server Reference, graph | `a VI Server node is bound to 'Signal', whose style 'graph21717' has no part here - it would be composed as a p` |
-| 10 | Refnum types without a part (DataLog, DataFinder, TDMS, EventReg) | composer | 12 | 12 | 0 | cluster{array{path.appended path}.Image File Paths,ref{GenClass.IMAQAVI.IMAQAVI}.AVI Ref,r | `type 'ref{TDMSFile}' is not composable yet` |
-| 11 | Property/Invoke Node on a VISA class | composer | 11 | 11 | 352 | Property Node | `Property Node 1345: class '{Visa.USB Raw}' is not composable yet` |
-| 12 | Digital waveform / digital table type | composer | 10 | 10 | 559 | graph, digitaltable, digitalwaveform | `type 'digitalwaveform' is not composable yet` |
-| 13 | Property Node on NI System Configuration (nisysapi) | composer | 9 | 10 | 352 | Property Node | `Property Node 499: class '{GenClass.nisysapiFilter.nisysapi}' is not composable yet` |
-| 14 | Property Node linked to a control the export does not carry | reader | 7 | 28 | 352 | Property Node, Invoke Node | `Property Node 1091: no control 'Signal' to link to` |
-| 15 | Stacked Sequence in NI's export form (one frame) | composer | 7 | 7 | 17 | Stacked Sequence Structure | `Stacked Sequence 89: no frames - NI's export writes them as one; only vi2aixml's frame-by-frame form is compos` |
-| 16 | Timed Loop | composer | 7 | 7 | 7 | Timed Loop | `structure 'Timed Loop' is not composable yet` |
-| 17 | Picture type (control or constant) | composer | 7 | 7 | 2 | Empty Picture | `no constant encoding for Picture` |
-| 18 | Feedback Node inside a case/sequence (not directly in a loop) | composer | 6 | 12 | 44 | Feedback Node | `Feedback Node 2851: only at the top level or directly in a loop` |
-| 19 | Expression Node | composer | 6 | 7 | 24 | Expression Node | `Expression Node 5059: needs a numeric wire into input` |
-| 20 | Python Node | composer | 6 | 6 | 8 | Python Node | `Node 'Python Node' is not a primitive this prototype knows` |
-| 21 | Asynchronous call (Start/Wait On Asynchronous Call) | composer | 5 | 8 | 8 | Start Asynchronous Call, Wait On Asynchronous Call | `Node 'Start Asynchronous Call' is not a primitive this prototype knows` |
-| 22 | Constructor Node (.NET) | composer | 5 | 5 | 5 | Constructor Node | `Node 'Constructor Node' is not a primitive this prototype knows` |
-| 23 | VI Server Reference to a SubPanel / Web Browser control | composer | 4 | 15 | 424 | VI Server Reference, CaseFrame | `VI Server Reference 714: '{LV.SubPanel}' is not composable yet` |
-| 24 | Property/Invoke Node on an ActiveX/.NET class or ActiveX refnum | composer | 4 | 5 | 352 | Property Node, Invoke Node, ref{ActiveX} | `Invoke Node 581: class '{DotNet}' is not composable yet` |
-| 25 | In Place Element: Array Split/Replace Subarrays, Array Index/Replace | composer | 4 | 5 | 7 | Array Split / Replace Subarrays, Array Index / Replace Elements | `Node 'Array Split / Replace Subarrays' is not a primitive this prototype knows` |
-| 26 | Waveform Unbundle/Bundle Elements, Build Cluster Array | composer | 4 | 4 | 2 | Waveform Unbundle / Bundle Elements, Build Cluster Array | `Node 'Build Cluster Array' is not a primitive this prototype knows` |
-| 27 | Register For Events on a non-user-event source | composer | 3 | 7 | 13 | Register For Events | `Register For Events 714: event source 'event source' is neither a user event nor a VI Server reference` |
-| 28 | Primitive unknown by name (unresolved ?primResID) | reader | 3 | 6 | 4 | ?primResID 3916, ?primResID 3917, ?primResID 3918 | `Node '?primResID 3916' is not a primitive this prototype knows` |
-| 29 | Numeric with physical unit (double{m}) | composer | 3 | 3 | 559 | double{m}, double{m^-3 kg}, map{string.name,double{m^-3 kg}.amount} | `type 'double{s}' is not composable yet` |
-| 30 | Waveform/MeasureData constant | composer | 3 | 3 | 0 |  | `no constant encoding for MeasureData` |
-| 31 | Fixed-point type | composer | 2 | 3 | 3 | fixed, fixed | `type 'fixed' is not composable yet` |
-| 32 | Other primitives without a part (Sinc, Inverse Tangent (2 Input)) | composer | 2 | 2 | 2 | Sinc, Inverse Tangent (2 Input) | `Node 'Sinc' (primResID 1227) has no harvested part` |
-| 33 | Class constant inside an array or cluster | composer | 1 | 6 | 0 | ref{UDClassInst}, array{ref{UDClassInst}.Nested Actor's Enqueuer}, cluster{ref{UDClassInst | `type 'ref{UDClassInst}' is not composable yet` |
-| 34 | Event structure: an event the control type does not have | composer | 1 | 4 | 424 | CaseFrame | `Event Structure 1184: 'Double Click' is an event of a listbox only - 'Example List' is a stdNum, and LabVIEW b` |
-| 35 | MATLAB script / Call MATLAB Function | composer | 1 | 4 | 2 | Call MATLAB Function, MATLAB script | `Node 'Call MATLAB Function' is not a primitive this prototype knows` |
-| 36 | Map and Set primitives | composer | 1 | 2 | 1 | Map Get / Replace Value, Build Map, Remove From Set | `Node 'Build Map' is not a primitive this prototype knows` |
-| 37 | Conditional Disable Structure with a target condition | composer | 1 | 1 | 24 | Conditional Disable Structure | `Conditional Disable 805: condition 'VISION_TARGET_TYPE==ISC, Default' is not composable yet` |
-| 38 | File I/O: Format Into File / Scan From File | composer | 1 | 1 | 1 | Format Into File, Scan From File | `Node 'Format Into File' is not a primitive this prototype knows` |
-| 39 | Call Library Function Node from NI's export | composer | 1 | 1 | 1 | Call Library Function Node | `Call Library Function Node 1587: its library, function and parameters are not in this document - NI's AIXML ha` |
-| 40 | Channel wire (Tag, Stream, ...) | composer | 1 | 1 | 1 | High Speed Stream.lvlib:Write.vi, High Speed Stream.lvlib:Read.vi, Tag.lvlib:Write.vi | `Call 730: High Speed Stream.lvlib is a CHANNEL template (C:\Program Files (x86)\National Instruments\LabVIEW 2` |
-| 41 | Merge Signals | composer | 0 | 6 | 9 | Merge Signals | `Node 'Merge Signals' is not a primitive this prototype knows` |
-| 42 | Composer crash | composer | 0 | 2 | 352 | Property Node, PORT IO Uninstall Driver__ogtk.vi, PORT IO Disable Range__ogtk.vi | `CRASH AttributeError: 'NoneType' object has no attribute 'attrib' @ lvheap.py:481` |
-| 43 | Primitive whose terminal names the table lacks | composer | 0 | 2 | 4 | Generate User-Defined Trace Event, Get Notifier Status, Insert Into Array | `Node 'Generate User-Defined Trace Event' has no terminal 'trace string' (known: ?parm1, ?parm2)` |
-| 44 | Call By Reference without a typed refnum | composer | 0 | 0 | 6 | Call By Reference | `Call By Reference 4200: no connector pane (type= or a strictly typed VI refnum into reference)` |
-| 45 | Library member the .lvlib does not list (licensed toolkit) | composer | 0 | 0 | 1 | NI_DigFilterLicensed.lvlib:DFD_Disable First Time Running Warning.vi, NI_AdvSigProcTSA.lvl | `Call 4200: NI_DigFilterLicensed.lvlib lists no member 'DFD_Disable First Time Running Warning.vi'` |
-| 46 | Network primitives without a part (UDP, Bluetooth, IrDA, DataSocket, Shared Variable) | composer | 0 | 0 | 0 | Bluetooth Create Listener, Bluetooth Discover, Bluetooth Open Connection | `Node 'Bluetooth Create Listener' (primResID 9151) has no harvested part` |
-| 47 | Dynamic-dispatch method called by bare name (VI Tester, ...) | composer | 0 | 0 | 0 | failIf.vi, SetTests.vi, addTest.vi | `Call 4200: 'failIf.vi' is a dynamic-dispatch method this composer cannot link (not found as a member of a .lvc` |
-| 48 | Callee unreadable (pylabview timeout) | composer | 0 | 0 | 0 | Caraya.lvlib:Assert.lvclass:Assert Almost Equal_Float.vi | `callee Assert Almost Equal_Float.vi cannot be read: pylabview timed out after 30 s: -x -i C:\Program Files (x8` |
+| 1 | Express VI instance: terminals depend on its configuration | composer | 32 | 33 | 23 | Ex_Inst_Simulate Signal.vi, TimeFrequencyDualWindow Source.vi, Ex_Inst_Filter.vi | `Call 'Ex_Inst_Simulate Signal.vi' has no input 'Offset' on its pane (has: Signal, error in (no error), error o` |
+| 2 | Property Node: other property or class not harvested | composer | 19 | 25 | 352 | Property Node, Invoke Node | `Invoke Node 1888: no invoke node GenClass.XML_Document.DOMUserDefRef.DUXCreateElement harvested yet` |
+| 3 | Graph style or graph cursor property | composer | 18 | 20 | 559 | graph, VI Server Reference, int32 | `a VI Server node is bound to 'Movement Data', whose style 'graph21717' has no part here - it would be composed` |
+| 4 | Refnum wires never composed yet (UsrDefined, AutoRef, Occurrence, TCP, DataSocket, Python session) | composer | 16 | 21 | 0 | Empty Collection?, Read Map Max & Min Keys | `net '1310.stream session' carries a Refnum.UsrDefined, which no composed wire has carried yet` |
+| 5 | VI Server Reference to a SubPanel / Web Browser control | composer | 12 | 15 | 424 | VI Server Reference, CaseFrame | `VI Server Reference 197: '{LV.SubPanel}' is not composable yet` |
+| 6 | Refnum types without a part (DataLog, DataFinder, TDMS, EventReg) | composer | 12 | 12 | 0 | cluster{array{path.appended path}.Image File Paths,ref{GenClass.IMAQAVI.IMAQAVI}.AVI Ref,r | `type 'ref{TDMSFile}' is not composable yet` |
+| 7 | Callee unreadable (pylabview timeout) | composer | 11 | 11 | 0 | Caraya.lvlib:Assert.lvclass:Assert Almost Equal_Float.vi | `callee Helper SubVI - TimeCepstrum Data.vi cannot be read: pylabview timed out after 30 s: -x -i C:\Program Fi` |
+| 8 | Feedback Node inside a case/sequence (not directly in a loop) | composer | 10 | 12 | 44 | Feedback Node | `Feedback Node 23: only at the top level or directly in a loop` |
+| 9 | Digital waveform / digital table type | composer | 10 | 10 | 559 | graph, digitaltable, digitalwaveform | `type 'digitaltable' is not composable yet` |
+| 10 | Expression Node | composer | 7 | 7 | 24 | Expression Node | `Expression Node 5059: needs a numeric wire into input` |
+| 11 | Python Node | composer | 6 | 6 | 8 | Python Node | `Node 'Python Node' is not a primitive this prototype knows` |
+| 12 | Timed Loop | composer | 6 | 6 | 7 | Timed Loop | `structure 'Timed Loop' is not composable yet` |
+| 13 | Picture type (control or constant) | composer | 6 | 6 | 0 |  | `no constant encoding for Picture` |
+| 14 | Asynchronous call (Start/Wait On Asynchronous Call) | composer | 5 | 8 | 8 | Start Asynchronous Call, Wait On Asynchronous Call | `Node 'Start Asynchronous Call' is not a primitive this prototype knows` |
+| 15 | Primitive unknown by name (unresolved ?primResID) | reader | 5 | 8 | 4 | ?primResID 3916, ?primResID 3917, ?primResID 3918 | `Node '?primResID 3916' is not a primitive this prototype knows` |
+| 16 | Constructor Node (.NET) | composer | 5 | 5 | 5 | Constructor Node | `Node 'Constructor Node' is not a primitive this prototype knows` |
+| 17 | Property/Invoke Node on an ActiveX/.NET class or ActiveX refnum | composer | 4 | 5 | 352 | Property Node, Invoke Node, ref{ActiveX} | `Invoke Node 581: class '{DotNet}' is not composable yet` |
+| 18 | In Place Element: Array Split/Replace Subarrays, Array Index/Replace | composer | 4 | 5 | 7 | Array Split / Replace Subarrays, Array Index / Replace Elements | `net '3716.value' ends at index#2 3269 of Array Index / Replace Elements, which is not composable yet` |
+| 19 | Fixed-point type | composer | 4 | 4 | 3 | fixed, fixed | `type 'fixed' is not composable yet` |
+| 20 | Waveform Unbundle/Bundle Elements, Build Cluster Array | composer | 4 | 4 | 2 | Waveform Unbundle / Bundle Elements, Build Cluster Array | `Node 'Waveform Unbundle / Bundle Elements' is not a primitive this prototype knows` |
+| 21 | Register For Events on a non-user-event source | composer | 3 | 7 | 13 | Register For Events | `Register For Events 745: event source 'event source' is neither a user event nor a VI Server reference` |
+| 22 | MATLAB script / Call MATLAB Function | composer | 3 | 4 | 2 | Call MATLAB Function, MATLAB script | `Node 'Call MATLAB Function' is not a primitive this prototype knows` |
+| 23 | Numeric with physical unit (double{m}) | composer | 3 | 3 | 559 | double{m}, double{m^-3 kg}, map{string.name,double{m^-3 kg}.amount} | `type 'double{m^-3 kg}' is not composable yet` |
+| 24 | Waveform/MeasureData constant | composer | 3 | 3 | 0 |  | `no constant encoding for MeasureData` |
+| 25 | Property Node bound to a control: the reader writes class {?} | reader | 2 | 3 | 352 | Property Node, Invoke Node | `Property Node 868: class '{?}' is not composable yet` |
+| 26 | Control style lost in the export (Tree, Listbox, Tab, Slide, ...): node bound to a plain control | reader | 1 | 2 | 352 | Property Node | `Property Node 1362: bound to 'Tab Control', which is composed as a plain LV.Enum (the export names no style or` |
+| 27 | Primitive whose terminal names the table lacks | composer | 1 | 2 | 4 | Insert Into Array | `Node 'Insert Into Array': no template with terminals array, index (col), new element/subarray, output array, d` |
+| 28 | Map and Set primitives | composer | 1 | 2 | 1 | Map Get / Replace Value, Build Map, Remove From Set | `Node 'Build Map' is not a primitive this prototype knows` |
+| 29 | Library member the .lvlib does not list (licensed toolkit) | composer | 1 | 1 | 1 | Example Actor.lvlib:Example Actor.lvclass:Write Actor Label.vi, NI_DigFilterLicensed.lvlib | `Call 724: Example Actor.lvclass lists no member 'Write Actor Label.vi'` |
+| 30 | File I/O: Format Into File / Scan From File | composer | 1 | 1 | 1 | Format Into File, Scan From File | `Node 'Format Into File' is not a primitive this prototype knows` |
+| 31 | Property Node linked to a control the export does not carry | reader | 0 | 18 | 352 | Property Node | `Property Node 231: no control 'Movement Data' to link to` |
+| 32 | Merge Signals | composer | 0 | 6 | 9 | Merge Signals | `Node 'Merge Signals' is not a primitive this prototype knows` |
+| 33 | Composer crash | composer | 0 | 2 | 352 | Property Node, PORT IO Uninstall Driver__ogtk.vi, PORT IO Disable Range__ogtk.vi | `CRASH AttributeError: 'NoneType' object has no attribute 'attrib' @ lvheap.py:481` |
 
+Notes on the top of the list: #3 (graph) is the exact-type rule - the part found is used only
+for exactly its data type; #7 (callee unreadable) is `dfd_FXP Simu.vi`, whose read takes 22 s alone
+against a 30 s deadline and does not finish under a parallel sweep.
 
 ## Gaps seen only when composing the item alone
 
@@ -115,8 +130,8 @@ user is to reach for them:
 
 ## Not gaps
 
-- **Not installed on this station**: 140 palette VIs (OpenG `functions_oglib_*`, Bundle Magic
-  `BM_*`) and 9 examples needing a driver that is absent (niRFSG, NI Vision Development Module).
+- **Not installed on this station**: 140 palette VIs (OpenG `functions_oglib_*`, a third-party scripting
+  add-on) and 9 examples needing a driver that is absent (niRFSG, NI Vision Development Module).
   The palette index lists them with `Target: null`; the composer rightly answers "neither near the
   caller nor in the installation".
 - **Artefacts of composing a node alone** (18 nodes): Build Array, Bundle, Index Array, Unbundle By
@@ -129,12 +144,14 @@ user is to reach for them:
 ## Limits
 
 - The corpus is NI's examples. Customer code uses classes, DQMH and Actor Framework far more,
-  so gaps 1 (class control on the panel) and the refnum wires weigh more there than here.
+  so the refnum wires and the class-typed paths weigh more there than here.
 - A primitive that occurs neither in the examples nor in the 817-VI harvest behind
   `primitive-names.tsv` was not tried: the palette `.mnu` files carry display labels, not AIXML node
   names (`PaletteIndex` excludes primitives for that reason).
-- The load check covers a sample (40 of 602 composed examples); a second sample of 60 timed out in
-  the MCP client while LabVIEW was still loading its callees.
+- The load check covers samples: 40 of the first 602 composed examples (39 executable, the 40th a
+  private library member called from outside its library - the sweep's placement), and 18 of the
+  82 that compose newly after the work of 2026-11-19 (17 executable). Large batches time out in
+  the MCP client while LabVIEW loads their callees.
 - Cutting changes the VI: refusals after the first may be consequences of a cut (`case tunnel ...:
   no typed wire reaches it`), which is why **Blocks** ranks.
 
@@ -144,9 +161,12 @@ user is to reach for them:
 cd C:\Projects\LabVIEWMCP\experiments\palette-sweep
 python census.py census.json
 # 6 shards each, about 15 minutes on 16 cores; <bundle> = the server's pylabview directory (pylv_status)
-& <bundle>\python.exe sweep.py examples out --shard 0/6   # ... 5/6, and calls likewise
+& <bundle>\python.exe sweep.py examples out --fresh --shard 0/6   # ... 5/6, and calls likewise
 & <bundle>\python.exe sweep.py nodes out
 python topics.py out census.json topics.json
 ```
 
-The example exports must be warm first (`pylv_status` `exportCache.state` = `warm`).
+`census.py` reads the cached exports, so it needs them warm (`pylv_status` `exportCache.state` =
+`warm`); the sweep reads the example index. `rt.py <dir> <name>...` re-reads and composes single
+examples for a quick check of a fix; `harvest_props.py <dir> [shards] [--all]` harvests rows (or
+every part kind) from all examples into copies and `--apply` merges only the new keys.

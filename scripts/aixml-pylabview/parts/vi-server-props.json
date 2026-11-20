@@ -1,12 +1,45 @@
 {
  "classes": {
+  "GenClass.XML_Document.DOMUserDefRef": {
+   "nodeName": "Document",
+   "oMId": "000F",
+   "objFlags": 512
+  },
+  "GenClass.XML_NodeList.DOMUserDefRef": {
+   "nodeName": "NodeList",
+   "oMId": "000E",
+   "objFlags": 512
+  },
+  "GenClass.nip2pStream.P2PStream": {
+   "nodeName": "niP2P Stream",
+   "oMId": "0005",
+   "objFlags": 4608
+  },
+  "GenClass.nisysapiFilter.nisysapi": {
+   "nodeName": "System Filter",
+   "oMId": "000F",
+   "objFlags": 66048
+  },
+  "GenClass.nisysapiHardware.nisysapi": {
+   "nodeName": "System Hardware",
+   "oMId": "000E",
+   "objFlags": 512
+  },
   "GenClassTag.DAQmx Channel.NIDAQ": {
    "nodeName": "DAQmx Channel",
    "oMId": "0018"
   },
+  "GenClassTag.DAQmx Export Signal.NIDAQ": {
+   "nodeName": "DAQmx Export Signal",
+   "oMId": "000F"
+  },
   "GenClassTag.DAQmx Read.NIDAQ": {
    "nodeName": "DAQmx Read",
    "oMId": "0012"
+  },
+  "GenClassTag.DAQmx Real-Time.NIDAQ": {
+   "nodeName": "DAQmx Real-Time",
+   "oMId": "0011"
   },
   "GenClassTag.DAQmx Task.NIDAQ": {
    "nodeName": "DAQmx Task",
@@ -19,6 +52,10 @@
   "GenClassTag.DAQmx Trigger.NIDAQ": {
    "nodeName": "DAQmx Trigger",
    "oMId": "0019"
+  },
+  "GenClassTag.DAQmx Write.NIDAQ": {
+   "nodeName": "DAQmx Write",
+   "oMId": "0016"
   },
   "GenClassTag.IMAQdx.IMAQdx": {
    "nodeName": "IMAQdx",
@@ -216,6 +253,10 @@
    "nodeName": "DigNum (strict)",
    "oMId": "0009"
   },
+  "LV.DigitalGraph": {
+   "nodeName": "DigitalGraph (strict)",
+   "oMId": "0008"
+  },
   "LV.DigitalNumericConstant": {
    "nodeName": "DigCnst",
    "oMId": "001C"
@@ -403,6 +444,10 @@
   "LV.MixedCheckbox": {
    "nodeName": "MixedCheckbox (strict)",
    "oMId": "001B"
+  },
+  "LV.MixedSignalGraph": {
+   "nodeName": "MixedSignalGraph (strict)",
+   "oMId": "0004"
   },
   "LV.MultiFrameStructure": {
    "nodeName": "MFStruct",
@@ -672,6 +717,10 @@
    "nodeName": "Txt",
    "oMId": "000A"
   },
+  "LV.TimeFlatSequence": {
+   "nodeName": "TimeFlatSeq",
+   "oMId": "0005"
+  },
   "LV.TimedLoop": {
    "nodeName": "TLoop",
    "oMId": "0004"
@@ -743,6 +792,21 @@
   "LV.XYGraph": {
    "nodeName": "XYGraph (strict)",
    "oMId": "0009"
+  },
+  "Visa.Instr": {
+   "nodeName": "Instr",
+   "oMId": "0004",
+   "objFlags": 2163328
+  },
+  "Visa.PXI Backplane": {
+   "nodeName": "PXI Backplane",
+   "oMId": "0005",
+   "objFlags": 2163328
+  },
+  "Visa.USB Raw": {
+   "nodeName": "USB Raw",
+   "oMId": "0004",
+   "objFlags": 640
   }
  },
  "methods": {
@@ -15070,7 +15134,615 @@
   }
  },
  "props": {
+  "GenClass.XML_Document.DOMUserDefRef": {
+   "Document Element": {
+    "access": "r",
+    "code": 9986,
+    "declaredBy": "GenClass.XML_Document.DOMUserDefRef",
+    "label": "DocumentElement",
+    "source": "<labview>\\examples\\File IO\\XML\\Parse XML\\Load XML with Parser API.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"UsrDefined\" Ident=\"XML_Element\" FirstClient=\"0\" TypeName=\"DOMUserDefRef\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   }
+  },
+  "GenClass.XML_NodeList.DOMUserDefRef": {
+   "Array Of Nodes": {
+    "access": "r",
+    "code": 9473,
+    "declaredBy": "GenClass.XML_NodeList.DOMUserDefRef",
+    "label": "ArrayOfNodes",
+    "source": "<labview>\\examples\\File IO\\XML\\Parse XML\\Load XML with Parser API.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"UsrDefined\" Ident=\"XML_Node\" FirstClient=\"0\" TypeName=\"DOMUserDefRef\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc></TypeDesc>"
+   }
+  },
+  "GenClass.nip2pStream.P2PStream": {
+   "Reader:Number of Elements for Reading": {
+    "access": "r",
+    "code": 536870912,
+    "declaredBy": "GenClass.nip2pStream.P2PStream",
+    "heapName": "Reader.Num Elements for Reading",
+    "label": "Reader.Num Elements for Reading",
+    "source": "RFSA Peer-to-Peer Continuous Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Reader:Underflow": {
+    "access": "r",
+    "code": 536870914,
+    "declaredBy": "GenClass.nip2pStream.P2PStream",
+    "heapName": "Reader.Underflow",
+    "label": "Reader.Underflow",
+    "source": "RFSA Peer-to-Peer Continuous Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "State": {
+    "access": "r",
+    "code": 0,
+    "dataType": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt32\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"niP2P State\"><EnumLabel>Unlinked</EnumLabel>\n          <EnumLabel>Disabled</EnumLabel>\n          <EnumLabel>Enabled</EnumLabel>\n          <EnumLabel>Flushing</EnumLabel>\n          </TypeDesc><Label Text=\"niP2PState.ctl\" />\n        </TypeDesc>",
+    "declaredBy": "GenClass.nip2pStream.P2PStream",
+    "label": "",
+    "source": "RFSA Peer-to-Peer Continuous Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt32\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"State\"><EnumLabel>Unlinked</EnumLabel>\n          <EnumLabel>Disabled</EnumLabel>\n          <EnumLabel>Enabled</EnumLabel>\n          <EnumLabel>Flushing</EnumLabel>\n          </TypeDesc><Label Text=\"niP2PState.ctl\" />\n        </TypeDesc>"
+   },
+   "Writer:Number of Elements for Writing": {
+    "access": "r",
+    "code": 268435456,
+    "declaredBy": "GenClass.nip2pStream.P2PStream",
+    "heapName": "Writer.Num Elements for Writing",
+    "label": "Writer.Num Elements for Writing",
+    "source": "RFSA Peer-to-Peer Continuous Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Writer:Overflow": {
+    "access": "r",
+    "code": 268435458,
+    "declaredBy": "GenClass.nip2pStream.P2PStream",
+    "heapName": "Writer.Overflow",
+    "label": "Writer.Overflow",
+    "source": "RFSA Peer-to-Peer Continuous Streaming with RFSG.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "GenClass.nisysapiFilter.nisysapi": {
+   "Devices & Chassis:Is Present": {
+    "access": "w",
+    "code": 16924672,
+    "declaredBy": "GenClass.nisysapiFilter.nisysapi",
+    "heapName": "IsPresent",
+    "label": "IsPresent",
+    "source": "Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Devices & Chassis:Is Simulated": {
+    "access": "w",
+    "code": 16814080,
+    "declaredBy": "GenClass.nisysapiFilter.nisysapi",
+    "heapName": "IsSim",
+    "label": "IsSim",
+    "source": "Board Temperature Monitor.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Devices & Chassis:Provides Bus Type": {
+    "access": "w",
+    "code": 16932864,
+    "declaredBy": "GenClass.nisysapiFilter.nisysapi",
+    "heapName": "ProvBusType",
+    "label": "ProvBusType",
+    "source": "PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Devices & Chassis:Supports Calibration": {
+    "access": "w",
+    "code": 16908288,
+    "declaredBy": "GenClass.nisysapiFilter.nisysapi",
+    "heapName": "CalSupp",
+    "label": "CalSupp",
+    "source": "Board Temperature Monitor.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Is Chassis": {
+    "access": "w",
+    "code": 16941056,
+    "declaredBy": "GenClass.nisysapiFilter.nisysapi",
+    "heapName": "IsChassis",
+    "label": "IsChassis",
+    "source": "PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Is Device": {
+    "access": "w",
+    "code": 16781312,
+    "declaredBy": "GenClass.nisysapiFilter.nisysapi",
+    "heapName": "IsDev",
+    "label": "IsDev",
+    "source": "Board Temperature Monitor.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Service Type": {
+    "access": "w",
+    "code": 17014784,
+    "declaredBy": "GenClass.nisysapiFilter.nisysapi",
+    "heapName": "ServiceType",
+    "label": "ServiceType",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "GenClass.nisysapiHardware.nisysapi": {
+   "Devices & Chassis:Current Temp": {
+    "access": "r",
+    "code": 16965632,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "CurrTemp",
+    "infoFlags": 4096,
+    "label": "CurrTemp",
+    "source": "Board Temperature Monitor.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Devices & Chassis:External Calibration:External Calibration Date": {
+    "access": "r",
+    "code": 16863253,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "ExtCalDate",
+    "label": "ExtCalDate",
+    "source": "Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"MeasureData\" Flavor=\"TimeStamp\" Format=\"inline\" />"
+   },
+   "Devices & Chassis:External Calibration:External Calibration Temperature": {
+    "access": "r",
+    "code": 16867328,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "ExtCalTemp",
+    "label": "ExtCalTemp",
+    "source": "Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Devices & Chassis:External Calibration:Recommended Calibration Interval": {
+    "access": "r",
+    "code": 17207296,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "CalInterval",
+    "label": "CalInterval",
+    "source": "Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Devices & Chassis:Internal Calibration:Internal Calibration Dates": {
+    "access": "r",
+    "code": 16847027,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "IntCalDates",
+    "label": "IntCalDates",
+    "source": "Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"MeasureData\" Flavor=\"TimeStamp\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Devices & Chassis:Internal Calibration:Internal Calibration Temperatures": {
+    "access": "r",
+    "code": 16851123,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "IntCalTemps",
+    "label": "IntCalTemps",
+    "source": "Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Devices & Chassis:Internal Calibration:Supports Internal Calibration": {
+    "access": "r",
+    "code": 16842752,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "IntCalSupp",
+    "label": "IntCalSupp",
+    "source": "Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Devices & Chassis:Product Name": {
+    "access": "r",
+    "code": 16801792,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "ProdName",
+    "label": "ProdName",
+    "source": "Board Temperature Monitor.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Devices & Chassis:Serial Number": {
+    "access": "r",
+    "code": 16805888,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "SerialNum",
+    "label": "SerialNum",
+    "source": "Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Expert Info:Expert Name": {
+    "access": "r",
+    "code": 16900096,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "Expert",
+    "label": "Expert",
+    "source": "Show All Hardware.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Expert Info:Resource Name": {
+    "access": "r",
+    "code": 16896000,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "Resource",
+    "label": "Resource",
+    "source": "Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Expert Info:User Alias": {
+    "access": "r",
+    "code": 16904192,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "Alias",
+    "label": "Alias",
+    "source": "Calibration Audit.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Network Adapters:Adapter Mode": {
+    "access": "r",
+    "code": 219160576,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "AdapterMode",
+    "label": "AdapterMode",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:Adapter Type": {
+    "access": "r",
+    "code": 219332608,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "AdapterType",
+    "label": "AdapterType",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:EtherCAT:Master ID": {
+    "access": "r",
+    "code": 219250688,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "EtherCATMasterID",
+    "label": "EtherCATMasterID",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:Is Primary Adapter": {
+    "access": "r",
+    "code": 219308032,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "IsPrimary",
+    "label": "IsPrimary",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Network Adapters:MAC Address": {
+    "access": "r",
+    "code": 219168768,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "MACAddr",
+    "label": "MACAddr",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Network Adapters:TCP/IP:DNS Server": {
+    "access": "r",
+    "code": 219197440,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "DNSServer",
+    "label": "DNSServer",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Network Adapters:TCP/IP:Gateway": {
+    "access": "r",
+    "code": 219193344,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "Gateway",
+    "label": "Gateway",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Network Adapters:TCP/IP:IP Address": {
+    "access": "r",
+    "code": 219181056,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "IPAddr",
+    "label": "IPAddr",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Network Adapters:TCP/IP:IP Address Request Mode": {
+    "access": "r",
+    "code": 219172864,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "IPAddrMode",
+    "label": "IPAddrMode",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:TCP/IP:Packet Detection": {
+    "access": "r",
+    "code": 219258880,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "TCPIPPacketDetection",
+    "infoFlags": 4096,
+    "label": "PacketDetection",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:TCP/IP:Polling Interval": {
+    "access": "r",
+    "code": 219262976,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "PollingInterval",
+    "label": "PollingInterval",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:TCP/IP:Subnet Mask": {
+    "access": "r",
+    "code": 219189248,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "SubnetMask",
+    "label": "SubnetMask",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Network Adapters:Wireless:Authentication Type": {
+    "access": "r",
+    "code": 219389952,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "AuthenticationType",
+    "label": "AuthenticationType",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:Wireless:BSSID": {
+    "access": "r",
+    "code": 219398144,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "BSSID",
+    "label": "BSSID",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Network Adapters:Wireless:Channel Number": {
+    "access": "r",
+    "code": 219410432,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "ChannelNumber",
+    "label": "ChannelNumber",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:Wireless:Connection Type": {
+    "access": "r",
+    "code": 219381760,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "ConnectionType",
+    "label": "ConnectionType",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:Wireless:Country Code": {
+    "access": "r",
+    "code": 219406336,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "CountryCode",
+    "label": "CountryCode",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:Wireless:Discovered Access Points": {
+    "access": "r",
+    "code": 219365376,
+    "dataType": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"software\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"title\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"description\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"version\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"ID\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"ID 2\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"version 2\" /></TypeDesc><Label Text=\"Access Point.ctl\" />\n        </TypeDesc></TypeDesc>",
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "AccessPoints",
+    "label": "AccessPoints",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"access point\"><TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"wireless network\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"SSID\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"connection type\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"security type\" /></TypeDesc><Label Text=\"nisyscfg.lvlib\" />\n        <Label Text=\"Wireless Network.ctl\" />\n        </TypeDesc><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"BSSID\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"link quality\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"channel number\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"link speed\" /></TypeDesc><Label Text=\"Access Point.ctl\" />\n        </TypeDesc></TypeDesc>"
+   },
+   "Network Adapters:Wireless:Link Quality": {
+    "access": "r",
+    "code": 219394048,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "LinkQuality",
+    "label": "LinkQuality",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Network Adapters:Wireless:SSID": {
+    "access": "r",
+    "code": 219377664,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "SSID",
+    "label": "SSID",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Network Adapters:Wireless:Security Type": {
+    "access": "r",
+    "code": 219385856,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "SecurityType",
+    "label": "SecurityType",
+    "source": "Network Settings Viewer.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "System Resources:CPUs:CPU Logical Processor Count": {
+    "access": "r",
+    "code": 17137664,
+    "dataType": "<TypeDesc Type=\"Void\" Format=\"inline\" />",
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "CpuCount",
+    "infoFlags": 4096,
+    "label": "CpuProcCount",
+    "source": "Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "System Resources:CPUs:Interrupt Load": {
+    "access": "r",
+    "code": 17145944,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "CpuLoadIntr",
+    "infoFlags": 4096,
+    "label": "CpuLoadIntr",
+    "source": "Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "System Resources:CPUs:Total Load": {
+    "access": "r",
+    "code": 17141848,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "CpuLoadTotal",
+    "infoFlags": 4096,
+    "label": "CpuLoadTotal",
+    "source": "Resource Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "System Resources:Fans:Names": {
+    "access": "r",
+    "code": 17178721,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "FanNames",
+    "label": "FanNames",
+    "source": "PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "System Resources:Fans:Readings": {
+    "access": "r",
+    "code": 17182817,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "FanReadings",
+    "label": "FanReadings",
+    "source": "PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "System Resources:Temperature Sensors:Lower Critical": {
+    "access": "r",
+    "code": 17195108,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "TempLowerCrit",
+    "label": "TempLowerCrit",
+    "source": "PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "System Resources:Temperature Sensors:Readings": {
+    "access": "r",
+    "code": 16965732,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "TempReadings",
+    "label": "TempReadings",
+    "source": "PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "System Resources:Temperature Sensors:Upper Critical": {
+    "access": "r",
+    "code": 17199204,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "TempUpperCrit",
+    "label": "TempUpperCrit",
+    "source": "PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "System Resources:Voltage Sensors:Lower Critical": {
+    "access": "r",
+    "code": 17166427,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "VoltLowerCrit",
+    "label": "VoltLowerCrit",
+    "source": "PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "System Resources:Voltage Sensors:Readings": {
+    "access": "r",
+    "code": 17158235,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "VoltReadings",
+    "label": "VoltReadings",
+    "source": "PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "System Resources:Voltage Sensors:Upper Critical": {
+    "access": "r",
+    "code": 17170523,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "VoltUpperCrit",
+    "label": "VoltUpperCrit",
+    "source": "PXI Health Monitor.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" /></TypeDesc>"
+   },
+   "Time:Current Time": {
+    "access": "r",
+    "code": 219279360,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "CurrentTime",
+    "label": "CurrentTime",
+    "source": "Get and Set Time.vi",
+    "type": "<TypeDesc Type=\"MeasureData\" Flavor=\"TimeStamp\" Format=\"inline\" />"
+   },
+   "Time:Time Zone": {
+    "access": "r",
+    "code": 219471872,
+    "declaredBy": "GenClass.nisysapiHardware.nisysapi",
+    "heapName": "TimeZone",
+    "label": "TimeZone",
+    "source": "Get and Set Time.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   }
+  },
   "GenClassTag.DAQmx Channel.NIDAQ": {
+   "AI.Coupling": {
+    "access": "w",
+    "code": 100,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "AI.Coupling",
+    "source": "Online Order Waveform Extraction (DAQmx).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "AI.OpenThrmcplDetectEnable": {
+    "access": "w",
+    "code": 12146,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "infoFlags": 4096,
+    "label": "AI.OpenThrmcplDetectEnable",
+    "source": "Thermocouple (with OTCD) - Continuous Input.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Active Channels": {
+    "access": "w",
+    "code": 17,
+    "dataType": "<TypeDesc Type=\"Refnum\" RefType=\"UsrDefndTag\" Ident=\"Channel\" FirstClient=\"0\" TypeName=\"NIDAQ\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>",
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "infoFlags": 4096,
+    "label": "ActiveChans",
+    "source": "Online Order Waveform Extraction (DAQmx).vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Active Channels (if subset)": {
+    "access": "w",
+    "code": 17,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "infoFlags": 4096,
+    "label": "ActiveChans",
+    "source": "Thermocouple - Continuous Input.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "ActiveChans": {
+    "access": "w",
+    "code": 17,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "ActiveChans",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" />"
+   },
+   "Analog Input:General Properties:Advanced:High Accuracy Settings:Auto Zero Mode": {
+    "access": "w",
+    "code": 5984,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "infoFlags": 4096,
+    "label": "AI.AutoZeroMode",
+    "source": "Thermocouple - SW-Timed Input.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Analog Input:General Properties:Filter:Enable": {
     "access": "w",
     "code": 12659,
@@ -15117,6 +15789,179 @@
     "label": "AI.Filter.Response",
     "source": "Analog Input - Filtering.vi",
     "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Analog Input:General Properties:Input Configuration:Coupling": {
+    "access": "w",
+    "code": 100,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "AI.Coupling",
+    "source": "Online Spectrogram Monitoring (DAQmx).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Analog Input:General Properties:Signal Conditioning:Excitation:Source": {
+    "access": "w",
+    "code": 6132,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "infoFlags": 4096,
+    "label": "AI.Excit.Src",
+    "source": "Online Order Waveform Extraction (DAQmx).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Analog Input:General Properties:Signal Conditioning:Excitation:Value": {
+    "access": "w",
+    "code": 6133,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "infoFlags": 4096,
+    "label": "AI.Excit.Val",
+    "source": "Online Order Waveform Extraction (DAQmx).vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "CI.CountEdges.ActiveEdge": {
+    "access": "w",
+    "code": 1687,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.CountEdges.ActiveEdge",
+    "source": "Counter - Count Edges (Finite Clock).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "CI.CountEdges.CountReset.ActiveEdge": {
+    "access": "w",
+    "code": 12210,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "infoFlags": 4096,
+    "label": "CI.CountEdges.CountReset.ActiveEdge",
+    "source": "Counter - Count Edges (Finite Clock).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "CI.CountEdges.CountReset.Enable": {
+    "access": "w",
+    "code": 12207,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "infoFlags": 4096,
+    "label": "CI.CountEdges.CountReset.Enable",
+    "source": "Counter - Count Edges (Finite Clock).vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "CI.CountEdges.CountReset.Term": {
+    "access": "w",
+    "code": 12209,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "infoFlags": 4096,
+    "label": "CI.CountEdges.CountReset.Term",
+    "source": "Counter - Count Edges (Finite Clock).vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CI.CountEdges.Term": {
+    "access": "w",
+    "code": 6343,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.CountEdges.Term",
+    "source": "Counter - Count Edges (Finite Clock).vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CI.Encoder.AInputTerm": {
+    "access": "w",
+    "code": 8605,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.Encoder.AInputTerm",
+    "source": "Counter - Read Encoder.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CI.Encoder.BInputTerm": {
+    "access": "w",
+    "code": 8606,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.Encoder.BInputTerm",
+    "source": "Counter - Read Encoder.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CI.Encoder.ZInputTerm": {
+    "access": "w",
+    "code": 8607,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.Encoder.ZInputTerm",
+    "source": "Counter - Read Encoder.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CI.Freq.Term": {
+    "access": "w",
+    "code": 6306,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.Freq.Term",
+    "source": "Counter - Read Pulse Width and Frequency (On Demand).vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CI.Period.Term": {
+    "access": "w",
+    "code": 6308,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.Period.Term",
+    "source": "Counter - Read Pulse Width and Frequency (On Demand).vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CI.Pulse.Freq.Term": {
+    "access": "w",
+    "code": 12036,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.Pulse.Freq.Term",
+    "source": "Counter - Read Pulse Duty Cycle and Frequency (Continuous).vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CI.PulseWidth.Term": {
+    "access": "w",
+    "code": 6314,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.PulseWidth.Term",
+    "source": "Counter - Read Pulse Width and Frequency (On Demand).vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CI.TwoEdgeSep.First.Term": {
+    "access": "w",
+    "code": 6317,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.TwoEdgeSep.First.Term",
+    "source": "Counter - Read Pulse Width and Frequency (On Demand).vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CI.TwoEdgeSep.Second.Term": {
+    "access": "w",
+    "code": 6318,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CI.TwoEdgeSep.Second.Term",
+    "source": "Counter - Read Pulse Width and Frequency (On Demand).vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "CO.Pulse.DutyCyc": {
+    "access": "r",
+    "code": 4470,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CO.Pulse.DutyCyc",
+    "source": "Counter - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "CO.Pulse.Freq": {
+    "access": "r",
+    "code": 4472,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CO.Pulse.Freq",
+    "source": "Counter - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "CO.Pulse.Term": {
+    "access": "w",
+    "code": 6369,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "CO.Pulse.Term",
+    "source": "Counter - Single Pulse Output.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "DO.NumLines": {
+    "access": "r",
+    "code": 8569,
+    "declaredBy": "GenClassTag.DAQmx Channel.NIDAQ",
+    "label": "DO.NumLines",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
    "Power Supply:Current:Advanced:Device Scaling Coefficients": {
     "access": "r",
@@ -15192,7 +16037,107 @@
     "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
    }
   },
+  "GenClassTag.DAQmx Export Signal.NIDAQ": {
+   "Clocks:Sample Clock:Output Terminal": {
+    "access": "w",
+    "code": 5731,
+    "declaredBy": "GenClassTag.DAQmx Export Signal.NIDAQ",
+    "infoFlags": 4096,
+    "label": "SampClk.OutputTerm",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "Clocks:Sample Clock:Pulse:Polarity": {
+    "access": "w",
+    "code": 5732,
+    "declaredBy": "GenClassTag.DAQmx Export Signal.NIDAQ",
+    "infoFlags": 4096,
+    "label": "SampClk.Pulse.Polarity",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Events:Data Active Event:Level:Active Level": {
+    "access": "w",
+    "code": 5684,
+    "declaredBy": "GenClassTag.DAQmx Export Signal.NIDAQ",
+    "infoFlags": 4096,
+    "label": "DataActiveEvent.Lvl.ActiveLvl",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Events:Data Active Event:Output Terminal": {
+    "access": "w",
+    "code": 5683,
+    "declaredBy": "GenClassTag.DAQmx Export Signal.NIDAQ",
+    "infoFlags": 4096,
+    "label": "DataActiveEvent.OutputTerm",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "Events:Ready For Transfer Event:Deassert Condition": {
+    "access": "w",
+    "code": 10595,
+    "declaredBy": "GenClassTag.DAQmx Export Signal.NIDAQ",
+    "infoFlags": 4096,
+    "label": "RdyForXferEvent.DeassertCond",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Input.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Events:Ready For Transfer Event:Deassert Condition Custom Threshold": {
+    "access": "w",
+    "code": 10596,
+    "declaredBy": "GenClassTag.DAQmx Export Signal.NIDAQ",
+    "infoFlags": 4096,
+    "label": "RdyForXferEvent.DeassertCondCustomThreshold",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Input.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Events:Ready For Transfer Event:Level:Active Level": {
+    "access": "w",
+    "code": 8886,
+    "declaredBy": "GenClassTag.DAQmx Export Signal.NIDAQ",
+    "infoFlags": 4096,
+    "label": "RdyForXferEvent.Lvl.ActiveLvl",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Input.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Events:Ready For Transfer Event:Output Terminal": {
+    "access": "w",
+    "code": 8885,
+    "declaredBy": "GenClassTag.DAQmx Export Signal.NIDAQ",
+    "infoFlags": 4096,
+    "label": "RdyForXferEvent.OutputTerm",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Input.vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   }
+  },
   "GenClassTag.DAQmx Read.NIDAQ": {
+   "OpenThrmcplChans": {
+    "access": "r",
+    "code": 10903,
+    "declaredBy": "GenClassTag.DAQmx Read.NIDAQ",
+    "infoFlags": 4096,
+    "label": "OpenThrmcplChans",
+    "source": "Thermocouple (with OTCD) - Continuous Input.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" /></TypeDesc>"
+   },
+   "OpenThrmcplChansExist": {
+    "access": "r",
+    "code": 10902,
+    "declaredBy": "GenClassTag.DAQmx Read.NIDAQ",
+    "infoFlags": 4096,
+    "label": "OpenThrmcplChansExist",
+    "source": "Thermocouple (with OTCD) - Continuous Input.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "OverWrite": {
+    "access": "w",
+    "code": 4625,
+    "declaredBy": "GenClassTag.DAQmx Read.NIDAQ",
+    "label": "OverWrite",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Input.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Status:Overtemperature:Overtemperature Channels": {
     "access": "r",
     "code": 12418,
@@ -15212,6 +16157,17 @@
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
    }
   },
+  "GenClassTag.DAQmx Real-Time.NIDAQ": {
+   "Convert Late Errors To Warnings": {
+    "access": "w",
+    "code": 8942,
+    "declaredBy": "GenClassTag.DAQmx Real-Time.NIDAQ",
+    "infoFlags": 4096,
+    "label": "ConvLateErrorsToWarnings",
+    "source": "Voltage - HW-Timed Single Point Input.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
   "GenClassTag.DAQmx Task.NIDAQ": {
    "Channels": {
     "access": "r",
@@ -15220,6 +16176,14 @@
     "label": "Channels",
     "source": "Strain (Rosette) - SW-Timed Input.vi",
     "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"UsrDefndTag\" Ident=\"Channel\" FirstClient=\"0\" TypeName=\"NIDAQ\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc></TypeDesc>"
+   },
+   "NumChans": {
+    "access": "r",
+    "code": 8577,
+    "declaredBy": "GenClassTag.DAQmx Task.NIDAQ",
+    "label": "NumChans",
+    "source": "Voltage (non-regeneration) - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    }
   },
   "GenClassTag.DAQmx Timing.NIDAQ": {
@@ -15316,6 +16280,14 @@
     "source": "Analog Input - Synchronization.vi",
     "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
    },
+   "SampQuant.SampPerChan": {
+    "access": "r",
+    "code": 4880,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "label": "SampQuant.SampPerChan",
+    "source": "Voltage - Finite Output.vi",
+    "type": "<TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" />"
+   },
    "Sample Clock:Rate": {
     "access": "r",
     "code": 4932,
@@ -15334,6 +16306,15 @@
     "label": "SampClk.Timebase.Src",
     "source": "Analog Input - Synchronization.vi",
     "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "Sample Clock:Underflow Behavior": {
+    "access": "w",
+    "code": 10593,
+    "declaredBy": "GenClassTag.DAQmx Timing.NIDAQ",
+    "infoFlags": 4096,
+    "label": "SampClk.UnderflowBehavior",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
    }
   },
   "GenClassTag.DAQmx Trigger.NIDAQ": {
@@ -15345,6 +16326,33 @@
     "infoFlags": 4096,
     "label": "SyncType",
     "source": "Analog Input - Synchronization.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "ArmStart.DigEdge.Edge": {
+    "access": "w",
+    "code": 5141,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "infoFlags": 4096,
+    "label": "ArmStart.DigEdge.Edge",
+    "source": "Counter - Count Edges (Finite Clock).vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "ArmStart.DigEdge.Src": {
+    "access": "w",
+    "code": 5143,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "infoFlags": 4096,
+    "label": "ArmStart.DigEdge.Src",
+    "source": "Counter - Count Edges (Finite Clock).vi",
+    "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   },
+   "ArmStart.TrigType": {
+    "access": "w",
+    "code": 5140,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "infoFlags": 4096,
+    "label": "ArmStart.TrigType",
+    "source": "Counter - Count Edges (Finite Clock).vi",
     "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
    "More:Pause:Analog Level:Level": {
@@ -15405,6 +16413,14 @@
     "source": "Analog Input - Filtering.vi",
     "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
+   "Start.Retriggerable": {
+    "access": "w",
+    "code": 6415,
+    "declaredBy": "GenClassTag.DAQmx Trigger.NIDAQ",
+    "label": "Start.Retriggerable",
+    "source": "Counter - Single Pulse Output.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
    "Start:Analog Edge:Hysteresis": {
     "access": "w",
     "code": 5013,
@@ -15423,6 +16439,25 @@
     "label": "Start.Term",
     "source": "Analog Input - Synchronization.vi",
     "type": "<TypeDesc Type=\"Tag\" Prop1=\"0xFFFFFFFF\" TagType=\"DAQmxTerminal\" Format=\"inline\"><LVVariant Index=\"0\" HasVarItem2=\"1\" VarType2=\"0\" Version=\"auto\">\n          <DataType Index=\"0\" Type=\"Void\" Format=\"inline\" />\n          </LVVariant>\n        </TypeDesc>"
+   }
+  },
+  "GenClassTag.DAQmx Write.NIDAQ": {
+   "RegenMode": {
+    "access": "w",
+    "code": 5203,
+    "declaredBy": "GenClassTag.DAQmx Write.NIDAQ",
+    "label": "RegenMode",
+    "source": "Voltage (non-regeneration) - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Regeneration Mode": {
+    "access": "w",
+    "code": 5203,
+    "declaredBy": "GenClassTag.DAQmx Write.NIDAQ",
+    "infoFlags": 4096,
+    "label": "RegenMode",
+    "source": "Digital (Pipelined Sample Clock) - Continuous Output.vi",
+    "type": "<TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" />"
    }
   },
   "GenClassTag.IMAQdx.IMAQdx": {
@@ -23800,6 +24835,14 @@
     "label": "Typedef VI",
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0002\" HasItem=\"0\" Format=\"inline\" />"
+   },
+   "Val(Sgnl)": {
+    "access": "w",
+    "code": 104013860,
+    "declaredBy": "LV.Cluster",
+    "label": "",
+    "source": "Advanced Remez FIR Filter Design.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0xC5DCEDF3\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"Val(Sgnl)\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"mSRate_Fs\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"mSRate_Version\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"mSRate_Comments\" /><TypeDesc Type=\"TypeDef\" Flag1=\"0xC5DCEDE6\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"mSRate_OrgCoef\"><TypeDesc Type=\"TypeDef\" Flag1=\"0xC1D2E892\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"type\"><EnumLabel>Undefined</EnumLabel>\n          <EnumLabel>FIR Direct Form</EnumLabel>\n          <EnumLabel>FIR Direct Form Transposed</EnumLabel>\n          <EnumLabel>FIR Symmetric</EnumLabel>\n          <EnumLabel>FIR Antisymmetric</EnumLabel>\n          <EnumLabel>IIR Direct Form I</EnumLabel>\n          <EnumLabel>IIR Direct Form I Transposed</EnumLabel>\n          <EnumLabel>IIR Direct Form II</EnumLabel>\n          <EnumLabel>IIR Direct Form II Transposed</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form I</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form I Transposed</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form II</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form II Transposed</EnumLabel>\n          <EnumLabel>Lattice Allpass (basic sections)</EnumLabel>\n          <EnumLabel>Lattice Allpass (one multiplier sections)</EnumLabel>\n          <EnumLabel>Lattice Allpass (normalized sections)</EnumLabel>\n          <EnumLabel>Lattice AR (basic sections)</EnumLabel>\n          <EnumLabel>Lattice AR (one multiplier sections)</EnumLabel>\n          <EnumLabel>Lattice AR (normalized sections)</EnumLabel>\n          <EnumLabel>Lattice MA (minimum phase)</EnumLabel>\n          <EnumLabel>Lattice MA (maximum phase)</EnumLabel>\n          <EnumLabel>Lattice ARMA (basic sections)</EnumLabel>\n          <EnumLabel>Lattice ARMA (one multiplier sections)</EnumLabel>\n          <EnumLabel>Lattice ARMA (normalized sections)</EnumLabel>\n          </TypeDesc><Label Text=\"NI_DigFilterLicensed.lvlib\" />\n        <Label Text=\"DFD Filter Structure Type Selector.ctl\" />\n        </TypeDesc><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"gain\" /><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"coef a (k)\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Numeric\" /></TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"coef b (v)\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Numeric\" /></TypeDesc></TypeDesc><Label Text=\"NI_DigFilterLicensed.lvlib\" />\n        <Label Text=\"DFD Filter Coef.ctl\" />\n        </TypeDesc><TypeDesc Type=\"TypeDef\" Flag1=\"0xC5DCEDE6\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"mSRate_CurCoef\"><TypeDesc Type=\"TypeDef\" Flag1=\"0xC1D2E892\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"type\"><EnumLabel>Undefined</EnumLabel>\n          <EnumLabel>FIR Direct Form</EnumLabel>\n          <EnumLabel>FIR Direct Form Transposed</EnumLabel>\n          <EnumLabel>FIR Symmetric</EnumLabel>\n          <EnumLabel>FIR Antisymmetric</EnumLabel>\n          <EnumLabel>IIR Direct Form I</EnumLabel>\n          <EnumLabel>IIR Direct Form I Transposed</EnumLabel>\n          <EnumLabel>IIR Direct Form II</EnumLabel>\n          <EnumLabel>IIR Direct Form II Transposed</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form I</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form I Transposed</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form II</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form II Transposed</EnumLabel>\n          <EnumLabel>Lattice Allpass (basic sections)</EnumLabel>\n          <EnumLabel>Lattice Allpass (one multiplier sections)</EnumLabel>\n          <EnumLabel>Lattice Allpass (normalized sections)</EnumLabel>\n          <EnumLabel>Lattice AR (basic sections)</EnumLabel>\n          <EnumLabel>Lattice AR (one multiplier sections)</EnumLabel>\n          <EnumLabel>Lattice AR (normalized sections)</EnumLabel>\n          <EnumLabel>Lattice MA (minimum phase)</EnumLabel>\n          <EnumLabel>Lattice MA (maximum phase)</EnumLabel>\n          <EnumLabel>Lattice ARMA (basic sections)</EnumLabel>\n          <EnumLabel>Lattice ARMA (one multiplier sections)</EnumLabel>\n          <EnumLabel>Lattice ARMA (normalized sections)</EnumLabel>\n          </TypeDesc><Label Text=\"NI_DigFilterLicensed.lvlib\" />\n        <Label Text=\"DFD Filter Structure Type Selector.ctl\" />\n        </TypeDesc><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"gain\" /><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"coef a (k)\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Numeric\" /></TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"coef b (v)\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Numeric\" /></TypeDesc></TypeDesc><Label Text=\"NI_DigFilterLicensed.lvlib\" />\n        <Label Text=\"DFD Filter Coef.ctl\" />\n        </TypeDesc><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"mSRate_Quantized?\" /><TypeDesc Type=\"TypeDef\" Flag1=\"0xC5DCEDE6\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"mSRate_QCoef\"><TypeDesc Type=\"TypeDef\" Flag1=\"0xC1D2E892\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"type\"><EnumLabel>Undefined</EnumLabel>\n          <EnumLabel>FIR Direct Form</EnumLabel>\n          <EnumLabel>FIR Direct Form Transposed</EnumLabel>\n          <EnumLabel>FIR Symmetric</EnumLabel>\n          <EnumLabel>FIR Antisymmetric</EnumLabel>\n          <EnumLabel>IIR Direct Form I</EnumLabel>\n          <EnumLabel>IIR Direct Form I Transposed</EnumLabel>\n          <EnumLabel>IIR Direct Form II</EnumLabel>\n          <EnumLabel>IIR Direct Form II Transposed</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form I</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form I Transposed</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form II</EnumLabel>\n          <EnumLabel>IIR Cascaded Second Order Sections Form II Transposed</EnumLabel>\n          <EnumLabel>Lattice Allpass (basic sections)</EnumLabel>\n          <EnumLabel>Lattice Allpass (one multiplier sections)</EnumLabel>\n          <EnumLabel>Lattice Allpass (normalized sections)</EnumLabel>\n          <EnumLabel>Lattice AR (basic sections)</EnumLabel>\n          <EnumLabel>Lattice AR (one multiplier sections)</EnumLabel>\n          <EnumLabel>Lattice AR (normalized sections)</EnumLabel>\n          <EnumLabel>Lattice MA (minimum phase)</EnumLabel>\n          <EnumLabel>Lattice MA (maximum phase)</EnumLabel>\n          <EnumLabel>Lattice ARMA (basic sections)</EnumLabel>\n          <EnumLabel>Lattice ARMA (one multiplier sections)</EnumLabel>\n          <EnumLabel>Lattice ARMA (normalized sections)</EnumLabel>\n          </TypeDesc><Label Text=\"NI_DigFilterLicensed.lvlib\" />\n        <Label Text=\"DFD Filter Structure Type Selector.ctl\" />\n        </TypeDesc><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"gain\" /><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"coef a (k)\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Numeric\" /></TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"coef b (v)\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Numeric\" /></TypeDesc></TypeDesc><Label Text=\"NI_DigFilterLicensed.lvlib\" />\n        <Label Text=\"DFD Filter Coef.ctl\" />\n        </TypeDesc><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"mSRate_QSettings\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"TypeDef\" Flag1=\"0xC5DCEDE8\" Format=\"inline\"><TypeDesc Type=\"Cluster\" Nested=\"True\" Format=\"inline\" Label=\"quantization settings\"><TypeDesc Type=\"TypeDef\" Flag1=\"0xC1D2D856\" Format=\"inline\"><TypeDesc Type=\"NumUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"source\" /><Label Text=\"NI_DigFilterLicensed.lvlib\" />\n        <Label Text=\"dfd_Internal Quantization Srcs.ctl\" />\n        </TypeDesc><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"wl\" /><TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" Label=\"iwl\" /><TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"overflow mode\"><EnumLabel>Saturation</EnumLabel>\n        <EnumLabel>Wrap</EnumLabel>\n        </TypeDesc><TypeDesc Type=\"UnitUInt16\" Prop1=\"0\" Format=\"inline\" Label=\"rounding mode\"><EnumLabel>Nearest</EnumLabel>\n        <EnumLabel>Truncation</EnumLabel>\n        </TypeDesc><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"signed?\" /></TypeDesc><Label Text=\"NI_DigFilterLicensed.lvlib\" />\n        <Label Text=\"dfd_Internal Quantization Settings.ctl\" />\n        </TypeDesc></TypeDesc><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"mSRate_Order\" /><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"mSRate_Scaling\"><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"mSRate_ScaleByPowerOf2?\" /><TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"UnitUInt16\" Nested=\"True\" Prop1=\"0\" Format=\"inline\" Label=\"mSRate_ScaleType\"><EnumLabel>No Norm</EnumLabel>\n          <EnumLabel>Time Domain 1-Norm</EnumLabel>\n          <EnumLabel>Time Domain 2-Norm</EnumLabel>\n          <EnumLabel>Time Domain Inf-Norm</EnumLabel>\n          </TypeDesc><Label Text=\"NI_DigFilterLicensed.lvlib\" />\n        <Label Text=\"DFD Coef Norm Type.ctl\" />\n        </TypeDesc></TypeDesc></TypeDesc><Label Text=\"NI_DigFilterLicensed.lvlib\" />\n        <Label Text=\"DFD Filter Obj.ctl\" />\n        </TypeDesc>"
    },
    "Value": {
     "access": "rw",
@@ -33583,6 +34626,24 @@
     "label": "WizData",
     "source": "All_Properties.vi",
     "type": "<TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Wizard ID\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Wizard Version\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Wizard Data Version\" /><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Wizard Data String\" /></TypeDesc>"
+   }
+  },
+  "LV.DigitalGraph": {
+   "Active Cursor": {
+    "access": "w",
+    "code": 104084485,
+    "declaredBy": "LV.DigitalGraph",
+    "label": "Active Cursor",
+    "source": "<labview>\\examples\\Controls and Indicators\\Graphs and Charts\\Digital Waveform Graph\\Search Digital Data for Pattern.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Cursor": {
+    "access": "r",
+    "code": 104084486,
+    "declaredBy": "LV.DigitalGraph",
+    "label": "Cursor",
+    "source": "<labview>\\examples\\Controls and Indicators\\Graphs and Charts\\Digital Waveform Graph\\Search Digital Data for Pattern.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0026\" HasItem=\"0\" Format=\"inline\" />"
    }
   },
   "LV.DigitalNumericConstant": {
@@ -47893,6 +48954,16 @@
     "label": "Visible",
     "source": "<labview>\\resource\\PropertyPages\\Pages\\PropPage_DataType.vi",
     "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   }
+  },
+  "LV.MixedSignalGraph": {
+   "CrsrList": {
+    "access": "rw",
+    "code": 960400401,
+    "declaredBy": "LV.MixedSignalGraph",
+    "label": "",
+    "source": "<labview>\\examples\\Controls and Indicators\\Graphs and Charts\\Graphs - General\\Graph Cursors.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"CrsrList\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Name\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Color\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Style\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Point Style\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Name Visible\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Allow Drag\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Cursor Mode\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Plot\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Index\" /><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"X Scale\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Y Scale\" /><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Watch Plots\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Watch All Plots\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Plot Area\" /><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Label Offset\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc></TypeDesc></TypeDesc><Label Text=\"LVCursorListTypeDef.ctl\" />\n        </TypeDesc>"
    }
   },
   "LV.MultiFrameStructure": {
@@ -68620,6 +69691,16 @@
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    }
   },
+  "LV.TimeFlatSequence": {
+   "Frames[]": {
+    "access": "r",
+    "code": 897104903,
+    "declaredBy": "LV.TimeFlatSequence",
+    "label": "Frames[]",
+    "source": "<labview>\\examples\\Application Control\\VI Scripting\\Structures\\VI Scripting with Structures - Timed Sequence.vi",
+    "type": "<TypeDesc Type=\"Array\" Format=\"inline\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x405F\" HasItem=\"0\" Format=\"inline\" /></TypeDesc>"
+   }
+  },
   "LV.TimedLoop": {
    "AutoSize To Fit Contents?": {
     "access": "r",
@@ -76810,6 +77891,38 @@
    }
   },
   "LV.XYGraph": {
+   "Active Cursor": {
+    "access": "w",
+    "code": 104084485,
+    "declaredBy": "LV.XYGraph",
+    "label": "Active Cursor",
+    "source": "<labview>\\examples\\Mathematics\\Probability and Statistics\\Display Discrete Probability Distributions.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Active Plot": {
+    "access": "w",
+    "code": 104084483,
+    "declaredBy": "LV.XYGraph",
+    "label": "Active Plot",
+    "source": "<labview>\\examples\\Mathematics\\Geometry\\Contour Line Plot.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "CrsrList": {
+    "access": "r",
+    "code": 104084507,
+    "declaredBy": "LV.XYGraph",
+    "label": "",
+    "source": "<labview>\\examples\\control\\fuzzy\\User-Defined Membership Function\\FuzzyEx User-defined Membership Functions.vi",
+    "type": "<TypeDesc Type=\"TypeDef\" Flag1=\"0x0\" Format=\"inline\"><TypeDesc Type=\"Array\" Nested=\"True\" Format=\"inline\" Label=\"CrsrList\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n          <TypeDesc Type=\"Cluster\" Format=\"inline\"><TypeDesc Type=\"String\" Prop1=\"0xFFFFFFFF\" Format=\"inline\" Label=\"Name\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Color\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Style\" /><TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" Label=\"Point Style\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Name Visible\" /><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Allow Drag\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Cursor Mode\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Plot\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Index\" /><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Position\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"X Scale\" /><TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Y Scale\" /><TypeDesc Type=\"Array\" Format=\"inline\" Label=\"Watch Plots\"><Dimension Flags=\"0x00FF\" FixedSize=\"0xFFFFFF\" />\n        <TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" /></TypeDesc><TypeDesc Type=\"Boolean\" Format=\"inline\" Label=\"Watch All Plots\" /><TypeDesc Type=\"NumInt32\" Prop1=\"0\" Format=\"inline\" Label=\"Plot Area\" /><TypeDesc Type=\"Cluster\" Format=\"inline\" Label=\"Label Offset\"><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"X\" /><TypeDesc Type=\"NumFloat64\" Prop1=\"0\" Format=\"inline\" Label=\"Y\" /></TypeDesc></TypeDesc></TypeDesc><Label Text=\"LVCursorListTypeDef.ctl\" />\n        </TypeDesc>"
+   },
+   "Cursor": {
+    "access": "r",
+    "code": 104084486,
+    "declaredBy": "LV.XYGraph",
+    "label": "Cursor",
+    "source": "<labview>\\examples\\Mathematics\\Probability and Statistics\\Display Discrete Probability Distributions.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0026\" HasItem=\"0\" Format=\"inline\" />"
+   },
    "Disabled": {
     "access": "w",
     "code": 104013885,
@@ -76852,6 +77965,14 @@
     "source": "<labview>\\project\\_Profile Buffer Allocation.vi",
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
    },
+   "Plot": {
+    "access": "r",
+    "code": 104084484,
+    "declaredBy": "LV.XYGraph",
+    "label": "Plot",
+    "source": "<labview>\\examples\\Mathematics\\Geometry\\Contour Line Plot.vi",
+    "type": "<TypeDesc Type=\"Refnum\" RefType=\"LVObjCtl\" CtlFlags=\"0x0025\" HasItem=\"0\" Format=\"inline\" />"
+   },
    "Plot Area Bounds": {
     "access": "r",
     "code": 104078361,
@@ -76893,6 +78014,186 @@
     "label": "Width",
     "source": "<labview>\\project\\_Profile Buffer Allocation.vi",
     "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "Visa.Instr": {
+   "General Settings:Timeout Value": {
+    "access": "w",
+    "code": 1073676314,
+    "declaredBy": "Visa.Instr",
+    "infoFlags": 4096,
+    "label": "Timeout",
+    "source": "<labview>\\examples\\Instrument IO\\GPIB\\GPIB with VISA functions.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Message Based Settings:Send End Enable": {
+    "access": "w",
+    "code": 1073676310,
+    "declaredBy": "Visa.Instr",
+    "infoFlags": 4096,
+    "label": "Send End En",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Continuous Serial Write and Read.vi",
+    "type": "<TypeDesc Type=\"Boolean\" Format=\"inline\" />"
+   },
+   "Message Based Settings:Termination Character": {
+    "access": "w",
+    "code": 1073676312,
+    "declaredBy": "Visa.Instr",
+    "infoFlags": 4096,
+    "label": "TermChar",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Continuous Serial Write and Read.vi",
+    "type": "<TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Break Length": {
+    "access": "w",
+    "code": 1073676733,
+    "declaredBy": "Visa.Instr",
+    "label": "Break Len",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Set Serial Break Event.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:End Mode for Writes": {
+    "access": "w",
+    "code": 1073676468,
+    "declaredBy": "Visa.Instr",
+    "infoFlags": 4096,
+    "label": "ASRL End Out",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Continuous Serial Write and Read.vi",
+    "type": "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Flow Control XOFF Character": {
+    "access": "w",
+    "code": 1073676482,
+    "declaredBy": "Visa.Instr",
+    "infoFlags": 4096,
+    "label": "XOFF Char",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Continuous Serial Write and Read.vi",
+    "type": "<TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Flow Control XON Character": {
+    "access": "w",
+    "code": 1073676481,
+    "declaredBy": "Visa.Instr",
+    "infoFlags": 4096,
+    "label": "XON Char",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Continuous Serial Write and Read.vi",
+    "type": "<TypeDesc Type=\"NumUInt8\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Modem Line Settings:Line CTS State": {
+    "access": "r",
+    "code": 1073676462,
+    "declaredBy": "Visa.Instr",
+    "label": "CTS State",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Serial Port Monitor.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Modem Line Settings:Line DCD State": {
+    "access": "r",
+    "code": 1073676463,
+    "declaredBy": "Visa.Instr",
+    "label": "DCD State",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Serial Port Monitor.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Modem Line Settings:Line DSR State": {
+    "access": "r",
+    "code": 1073676465,
+    "declaredBy": "Visa.Instr",
+    "label": "DSR State",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Serial Port Monitor.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Modem Line Settings:Line DTR State": {
+    "access": "rw",
+    "code": 1073676466,
+    "declaredBy": "Visa.Instr",
+    "label": "DTR State",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\RS-485 Transceiver Control.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Modem Line Settings:Line RI State": {
+    "access": "r",
+    "code": 1073676479,
+    "declaredBy": "Visa.Instr",
+    "label": "RI State",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Serial Port Monitor.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Modem Line Settings:Line RTS State": {
+    "access": "rw",
+    "code": 1073676480,
+    "declaredBy": "Visa.Instr",
+    "label": "RTS State",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Serial Port Monitor.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Number of Bytes at Serial Port": {
+    "access": "r",
+    "code": 1073676460,
+    "declaredBy": "Visa.Instr",
+    "label": "Bytes at Port",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\Simple Serial.vi",
+    "type": "<TypeDesc Type=\"NumUInt32\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "Serial Settings:Wire Mode": {
+    "access": "w",
+    "code": 1073676735,
+    "declaredBy": "Visa.Instr",
+    "label": "Wire Mode",
+    "source": "<labview>\\examples\\Instrument IO\\Serial\\RS-485 Transceiver Control.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "Visa.PXI Backplane": {
+   "General Settings:Trigger Identifier": {
+    "access": "w",
+    "code": 1073676663,
+    "declaredBy": "Visa.PXI Backplane",
+    "heapName": "Trigger Id",
+    "infoFlags": 4096,
+    "label": "Trigger Id",
+    "source": "<labview>\\examples\\Instrument IO\\VISA\\PXI\\PXI - Reserve Trigger.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "PXI/PCI Settings:Destination Trigger Bus Number": {
+    "access": "w",
+    "code": 1073676814,
+    "declaredBy": "Visa.PXI Backplane",
+    "heapName": "Dest Trig Bus",
+    "infoFlags": 4096,
+    "label": "Dest Trig Bus",
+    "source": "<labview>\\examples\\Instrument IO\\VISA\\PXI\\PXI - Route Trigger.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "PXI/PCI Settings:Source Trigger Bus Number": {
+    "access": "w",
+    "code": 1073676813,
+    "declaredBy": "Visa.PXI Backplane",
+    "heapName": "Src Trig Bus",
+    "infoFlags": 4096,
+    "label": "Src Trig Bus",
+    "source": "<labview>\\examples\\Instrument IO\\VISA\\PXI\\PXI - Route Trigger.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   },
+   "PXI/PCI Settings:Trigger Bus Number": {
+    "access": "w",
+    "code": 1073676810,
+    "declaredBy": "Visa.PXI Backplane",
+    "heapName": "Trig Bus",
+    "infoFlags": 4096,
+    "label": "Trig Bus",
+    "source": "<labview>\\examples\\Instrument IO\\VISA\\PXI\\PXI - Reserve Trigger.vi",
+    "type": "<TypeDesc Type=\"NumInt16\" Prop1=\"0\" Format=\"inline\" />"
+   }
+  },
+  "Visa.USB Raw": {
+   "Interface Information:Interface Type": {
+    "access": "r",
+    "code": 1073676657,
+    "declaredBy": "Visa.USB Raw",
+    "label": "Intf Type",
+    "source": "<labview>\\examples\\Instrument IO\\VISA\\USB\\USB RAW - Bulk.vi",
+    "type": "<TypeDesc Type=\"NumUInt16\" Prop1=\"0\" Format=\"inline\" />"
    }
   }
  }

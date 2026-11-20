@@ -131,21 +131,62 @@ def cut(root, el, parent):
     return gone
 
 
+def example_paths():
+    """Every NI example VI, from the server's example index (the export cache is emptied each time
+    the reader's code changes, so it is no list to iterate)."""
+    idx = max(glob.glob(os.path.join(CACHE, "..", "example-index-*.json")), key=os.path.getmtime)
+    rows = json.load(open(idx, encoding="utf-8"))["Index"]["Examples"]
+    return sorted({r["Path"] for r in rows if r.get("Path", "").lower().endswith(".vi") and os.path.exists(r["Path"])})
+
+
 def run_examples(outdir, shard, limit):
-    metas = sorted(glob.glob(os.path.join(CACHE, "*.json")))
-    jobs = []
-    for m in metas:
+    """(cached export or None, VI path) per example; --fresh reads every one anew."""
+    cached = {}
+    for m in glob.glob(os.path.join(CACHE, "*.json")):
         try:
-            d = json.load(open(m, encoding="utf-8"))
+            cached[json.load(open(m, encoding="utf-8")).get("ViPath", "").lower()] = m[:-5] + ".xml"
         except ValueError:
-            continue
-        if "\\examples\\" in d.get("ViPath", "").lower():
-            jobs.append((m[:-5] + ".xml", d["ViPath"]))
+            pass
+    import hashlib
+    jobs = []
+    for p in example_paths():
+        x = cached.get(p.lower())
+        if x is None:
+            # no export cached: a stem of its own, and the reader reads it (FRESH or not)
+            x = os.path.join(CACHE, hashlib.sha1(p.lower().encode("utf-8")).hexdigest()[:16].upper() + ".nocache.xml")
+        jobs.append((x, p))
     return jobs
+
+
+FRESH = "--fresh" in sys.argv
+
+
+def fresh_read(vipath, work):
+    """The example read NOW by the current reader (vi2aixml.py), not the cached export - after a
+    reader change the cache holds the old reader's output."""
+    import vi2aixml
+    out = os.path.join(work, "fresh.xml")
+    err, so = io.StringIO(), io.StringIO()
+    try:
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(so):
+            rc = vi2aixml.main([vipath, out])
+    except SystemExit as ex:
+        rc = ex.code
+    except Exception as ex:
+        return None, "reader %s: %s" % (type(ex).__name__, str(ex)[:300])
+    if rc not in (0, None) or not os.path.exists(out):
+        return None, "reader exit %s: %s" % (rc, err.getvalue().strip()[-300:])
+    return out, None
 
 
 def do_example(job, work):
     xml, vipath = job
+    stem = os.path.splitext(os.path.basename(xml))[0]
+    if FRESH or not os.path.exists(xml):
+        got, why = fresh_read(vipath, work)
+        if got is None:
+            return {"vi": vipath, "steps": [], "ok": False, "unreadable": why, "cuts": 0}
+        xml = got
     rec = {"vi": vipath, "steps": [], "ok": False}
     try:
         tree = ET.parse(xml)
@@ -153,10 +194,15 @@ def do_example(job, work):
         rec["unreadable"] = str(ex)
         return rec
     root = tree.getroot()
-    stem = os.path.splitext(os.path.basename(xml))[0]
+    # the reader's <?lvmcp ...?> lines after </VI> (classes, styles, pane, ...) - ElementTree
+    # drops them, and without them the composer refused what it can build (2026-11-19)
+    raw = open(xml, encoding="utf-8", errors="replace").read()
+    tail = raw.rsplit("</VI>", 1)[1] if "</VI>" in raw else ""
     for i in range(MAX_CUTS + 1):
         src = os.path.join(work, stem + ".xml")
-        tree.write(src, encoding="utf-8")
+        body = ET.tostring(root, encoding="unicode")
+        with open(src, "w", encoding="utf-8") as f:
+            f.write(body + tail)
         out = os.path.join(work, stem + ".vi")
         ok, msg = compose(src, out, [os.path.dirname(vipath)])
         if ok:

@@ -1,0 +1,8 @@
+<VI _name="T226 Occurrence Refnum.vi" description="An occurrence refnum on a wire: Generate Occurrence, Set Occurrence, then Wait on Occurrence with a 100 ms timeout; timed out reads false when the set was seen.">
+  <Constant _name="ignore previous" outputs="value:4201.value" type="bool" uid="4201" uid_parent="root" value="false"/>
+  <Constant _name="ms timeout" outputs="value:4202.value" type="int32" uid="4202" uid_parent="root" value="100"/>
+  <Node _name="Generate Occurrence" uid="4210" uid_parent="root" outputs="occurrence:4210.occurrence"/>
+  <Node _name="Set Occurrence" uid="4220" uid_parent="root" inputs="occurrence:4210.occurrence"/>
+  <Node _name="Wait on Occurrence" uid="4230" uid_parent="root" inputs="ignore previous (T):4201.value,occurrence:4210.occurrence,ms timeout (-1):4202.value" outputs="timed out:4230.timed out"/>
+  <Indicator _name="timed out" inputs="value:4230.timed out" type="bool" uid="4300" uid_parent="root" value="false"/>
+</VI>

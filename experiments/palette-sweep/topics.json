@@ -1,134 +1,34 @@
 {
  "topics": [
   {
-   "topic": "Class control/indicator on the panel (ref{UDClassInst})",
-   "layer": "composer",
-   "blocks": 77,
-   "anywhere": 78,
-   "usage": 52,
-   "isolatedRefused": [],
-   "elements": [
-    "panel:ref{UDClassInst}",
-    "panel:array{ref{UDClassInst}.3D Plot Datatype.lvclass}",
-    "panel:array{ref{UDClassInst}.Base Datatype.lvclass}",
-    "panel:array{ref{UDClassInst}.Data}"
-   ],
-   "sample": "type 'ref{UDClassInst}' is not composable yet",
-   "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\MGI Monitored Actor\\Example\\Example Actor\\Example Actor\\Write Number of children.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Tiered Panel\\Instrument\\Power Supply\\Get Type Name.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\MGI Monitored Actor\\Example\\Example Actor\\Example Actor\\Pre Launch Init.vi"
-   ]
-  },
-  {
    "topic": "Express VI instance: terminals depend on its configuration",
    "layer": "composer",
-   "blocks": 31,
+   "blocks": 32,
    "anywhere": 33,
    "usage": 23,
    "isolatedRefused": [],
    "elements": [
     "call:Ex_Inst_Simulate Signal.vi",
     "call:TimeFrequencyDualWindow Source.vi",
-    "call:Ex_Inst_Write LabVIEW Measurement File.vi",
     "call:Ex_Inst_Filter.vi",
+    "call:Ex_Inst_Write LabVIEW Measurement File.vi",
     "call:DFD Filter Analysis Source.vi",
     "call:MS Office Report Block.vi",
-    "call:MultiresolutionAnalysis 2D Source.vi",
-    "call:Ex_Inst_Sample Compression.vi"
+    "call:Ex_Inst_Statistics.vi",
+    "call:TimeVaryingFilterThreshold Source.vi"
    ],
-   "sample": "Call 'DFD Filter Analysis Source.vi' has no output 'magnitude' on its pane (has: error in (no error), error out, filter in)",
+   "sample": "Call 'Ex_Inst_Simulate Signal.vi' has no input 'Offset' on its pane (has: Signal, error in (no error), error out)",
    "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Digital Filter Design\\Case Studies\\Single-Rate Filter\\Step 1 - Design Lowpass (Lowpass).vi",
-    "C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\examples\\Time Frequency Analysis\\TFAApplications\\Online Noise Reduction.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Express VIs\\Express VI - Append Signals.vi"
-   ]
-  },
-  {
-   "topic": "Control style lost in the export (Tree, Listbox, Tab, Slide, ...): node bound to a plain control",
-   "layer": "reader",
-   "blocks": 24,
-   "anywhere": 36,
-   "usage": 352,
-   "isolatedRefused": [],
-   "elements": [
-    "node:Property Node",
-    "node:Invoke Node"
-   ],
-   "sample": "Property Node 224: bound to 'Event Data', which is composed as a plain LV.Digital (the export names no style or class for it), and LV.Digital has no property 'Item Names'",
-   "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\File IO\\TDMS\\Standard Read and Write\\TDMS Read Events Data.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Web Browser\\Navigation History Methods.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Boolean\\System Mixed Checkbox.vi"
-   ]
-  },
-  {
-   "topic": "Refnum wires never composed yet (UsrDefined, AutoRef, Occurrence, TCP, DataSocket, Python session)",
-   "layer": "composer",
-   "blocks": 23,
-   "anywhere": 32,
-   "usage": 0,
-   "isolatedRefused": [
-    "node:Empty Collection?",
-    "node:Read Map Max & Min Keys"
-   ],
-   "elements": [
-    "node:Empty Collection?",
-    "node:Read Map Max & Min Keys"
-   ],
-   "sample": "net '196.adaptive filter out' carries a Refnum.UsrDefined, which no composed wire has carried yet",
-   "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Adaptive Filters\\Getting Started\\Display the Learning Curve\\Display the Learning Curve.vi",
-    "C:\\Program Files\\NI\\LVAddons\\rgt\\1\\examples\\Report Generation\\Word Reports\\Word Report - Run Macro.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Data Communication\\DataSocket\\DataSocket OPC\\Monitor OPC Items with DataSocket.vi"
-   ]
-  },
-  {
-   "topic": "XNode call",
-   "layer": "composer",
-   "blocks": 22,
-   "anywhere": 26,
-   "usage": 10,
-   "isolatedRefused": [],
-   "elements": [
-    "call:Database Variant To Data.xnode",
-    "call:DFD FXP Simulation.xnode",
-    "call:AFT Simulate Fixed-Point FIR LMS.xnode",
-    "call:Error Ring.xnode",
-    "call:nirviSatArithmetic.xnode",
-    "call:LocalResourceManager.xnode",
-    "call:NI_ExpressFull.lvlib:ExpressSpectralMeasurementsBlockNode.xnode",
-    "call:ExpressFormulaBlockNode.xnode"
-   ],
-   "sample": "Call 391: AFT Simulate Fixed-Point FIR LMS.xnode is an XNode - not composable yet",
-   "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Calibration Audit.vi",
-    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Digital Filter Design\\Fixed-Point Filters\\Single-Rate\\Scale Filter before Targeting to FXP.vi",
-    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Digital Filter Design\\Case Studies\\Notch Filter\\Step 4 - Model and Simulate FXP Notch (Notch).vi"
-   ]
-  },
-  {
-   "topic": "Property Node: DAQmx property not in the harvested table",
-   "layer": "composer",
-   "blocks": 22,
-   "anywhere": 25,
-   "usage": 352,
-   "isolatedRefused": [],
-   "elements": [
-    "node:Property Node"
-   ],
-   "sample": "Property Node 4238: no property node on GenClassTag.DAQmx Real-Time.NIDAQ harvested yet",
-   "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\nidaqmx\\1\\examples\\DAQmx\\Analog Input\\Voltage - HW-Timed Single Point Input.vi",
-    "C:\\Program Files\\NI\\LVAddons\\nidaqmx\\1\\examples\\DAQmx\\Analog Input\\Thermocouple - SW-Timed Input.vi",
-    "C:\\Program Files\\NI\\LVAddons\\nidaqmx\\1\\examples\\DAQmx\\Counter Output\\Counter (Buffered) - Continuous Output.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Express VIs\\Express VI - Statistics.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\File IO\\TDMS\\Express Read and Write\\TDMS Express Write Data (Time Domain).vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Express VIs\\Lissajous with Express VIs.vi"
    ]
   },
   {
    "topic": "Property Node: other property or class not harvested",
    "layer": "composer",
-   "blocks": 18,
-   "anywhere": 34,
+   "blocks": 19,
+   "anywhere": 25,
    "usage": 352,
    "isolatedRefused": [
     "node:Invoke Node",
@@ -138,47 +38,69 @@
     "node:Property Node",
     "node:Invoke Node"
    ],
-   "sample": "Property Node 5507: no property node on LV.DigitalGraph harvested yet",
+   "sample": "Invoke Node 1888: no invoke node GenClass.XML_Document.DOMUserDefRef.DUXCreateElement harvested yet",
    "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Point by Point\\Peak Detector Comparison.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Geometry\\Contour Line Plot.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Waveform Measurements\\Pulse and Transition Measurements.vi"
-   ]
-  },
-  {
-   "topic": "Property Node bound to a control: the reader writes class {?}",
-   "layer": "reader",
-   "blocks": 17,
-   "anywhere": 24,
-   "usage": 352,
-   "isolatedRefused": [],
-   "elements": [
-    "node:Property Node",
-    "node:Invoke Node"
-   ],
-   "sample": "Property Node 93: class '{?}' is not composable yet",
-   "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\examples\\Wavelet Analysis\\WAGettingStarted\\Wavelet Packet - Join Node.vi",
-    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Adaptive Filters\\Applications\\Adaptive Echo Cancellation\\Adaptive Echo Cancellation.vi",
-    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Digital Filter Design\\Floating-Point Filters\\Conventional\\Least Pth Norm Weighting Filter Design.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\File IO\\XML\\Parse XML\\Generate XML String with Parser API.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\control\\PID\\General PID Simulator with Alarm.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Windows\\Window Comparison.vi"
    ]
   },
   {
    "topic": "Graph style or graph cursor property",
    "layer": "composer",
-   "blocks": 15,
-   "anywhere": 17,
+   "blocks": 18,
+   "anywhere": 20,
    "usage": 559,
    "isolatedRefused": [],
    "elements": [
+    "panel:graph",
     "node:VI Server Reference",
-    "panel:graph"
+    "panel:int32"
    ],
-   "sample": "a VI Server node is bound to 'Signal', whose style 'graph21717' has no part here - it would be composed as a plain Array, on which the node's properties and methods are invalid",
+   "sample": "a VI Server node is bound to 'Movement Data', whose style 'graph21717' has no part here - it would be composed as a plain NumInt16, on which the node's properties and methods are invalid",
    "examples": [
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Dialog and User Interface\\Events\\User Event Generation.vi",
     "C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\examples\\Time Frequency Analysis\\TFAFunctions\\Online Spectrogram Monitoring (Simulated).vi",
-    "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Resource Monitor.vi",
-    "C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\examples\\Time Series Analysis\\TSAApplications\\Power Line Monitor.vi"
+    "C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\examples\\Time Frequency Analysis\\TFAFunctions\\Online Spectrogram Monitoring (Sound Card).vi"
+   ]
+  },
+  {
+   "topic": "Refnum wires never composed yet (UsrDefined, AutoRef, Occurrence, TCP, DataSocket, Python session)",
+   "layer": "composer",
+   "blocks": 16,
+   "anywhere": 21,
+   "usage": 0,
+   "isolatedRefused": [
+    "node:Empty Collection?",
+    "node:Read Map Max & Min Keys"
+   ],
+   "elements": [
+    "node:Empty Collection?",
+    "node:Read Map Max & Min Keys"
+   ],
+   "sample": "net '1310.stream session' carries a Refnum.UsrDefined, which no composed wire has carried yet",
+   "examples": [
+    "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Get and Set Time.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Data Communication\\DataSocket\\DataSocket OPC\\Monitor OPC Items with DataSocket.vi",
+    "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Self-Test All Devices.vi"
+   ]
+  },
+  {
+   "topic": "VI Server Reference to a SubPanel / Web Browser control",
+   "layer": "composer",
+   "blocks": 12,
+   "anywhere": 15,
+   "usage": 424,
+   "isolatedRefused": [],
+   "elements": [
+    "node:VI Server Reference",
+    "sub:CaseFrame"
+   ],
+   "sample": "VI Server Reference 197: '{LV.SubPanel}' is not composable yet",
+   "examples": [
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panels\\4. Panel Control.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Description Panel\\Actor Core.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panel Actors\\Tiered Panel\\Instrument\\Actor Core.vi"
    ]
   },
   {
@@ -190,30 +112,49 @@
    "isolatedRefused": [],
    "elements": [
     "const:cluster{array{path.appended path}.Image File Paths,ref{GenClass.IMAQAVI.IMAQAVI}.AVI Ref,ref{TDMSFile}.TDMS Ref,cluster{uint32.Image Type,uint32.Width,uint32.Height,uint32.Pixels per Image,uint32.Total Width,uint32.Left Offset,ref{GenClassTagFlatten.IMAQImage.IMAQImage}.Image}.TDMS Settings}",
-    "const:ref{EventReg}"
+    "const:ref{EventReg}{ref{GenClassTag.IMAQdx.IMAQdx}.Session Out}"
    ],
    "sample": "type 'ref{TDMSFile}' is not composable yet",
    "examples": [
     "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Stream to Disk\\Read Images from File.vi",
-    "C:\\Program Files\\NI\\LVAddons\\dfc\\1\\examples\\DataFinder\\DataFinder_ExecuteQuery.vi",
-    "C:\\Program Files\\NI\\LVAddons\\dct\\1\\examples\\database\\Database Fetching.vi"
+    "C:\\Program Files\\NI\\LVAddons\\dct\\1\\examples\\database\\Database Fetching.vi",
+    "C:\\Program Files\\NI\\LVAddons\\dfc\\1\\examples\\DataFinder\\DataFinder_ExecuteQuery.vi"
    ]
   },
   {
-   "topic": "Property/Invoke Node on a VISA class",
+   "topic": "Callee unreadable (pylabview timeout)",
    "layer": "composer",
    "blocks": 11,
    "anywhere": 11,
-   "usage": 352,
+   "usage": 0,
+   "isolatedRefused": [
+    "call:Caraya.lvlib:Assert.lvclass:Assert Almost Equal_Float.vi"
+   ],
+   "elements": [
+    "call:Caraya.lvlib:Assert.lvclass:Assert Almost Equal_Float.vi"
+   ],
+   "sample": "callee Helper SubVI - TimeCepstrum Data.vi cannot be read: pylabview timed out after 30 s: -x -i C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\examples\\Time Series Analysis\\Support VIs\\Helper SubVI - TimeCepstrum Data.vi -m C:\\Users\\jcm\\AppData\\Local\\Temp\\callee_2v_ojx0a\\Helper SubVI - TimeCepstrum Data.xml",
+   "examples": [
+    "C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\examples\\Time Series Analysis\\TSAApplications\\Bearing Time-Cepstrum Analysis.vi",
+    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Digital Filter Design\\Fixed-Point Filters\\Single-Rate\\Scale Filter before Targeting to FXP.vi",
+    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Digital Filter Design\\Case Studies\\Notch Filter\\Step 6 - Postprocessing (Notch).vi"
+   ]
+  },
+  {
+   "topic": "Feedback Node inside a case/sequence (not directly in a loop)",
+   "layer": "composer",
+   "blocks": 10,
+   "anywhere": 12,
+   "usage": 44,
    "isolatedRefused": [],
    "elements": [
-    "node:Property Node"
+    "node:Feedback Node"
    ],
-   "sample": "Property Node 1345: class '{Visa.USB Raw}' is not composable yet",
+   "sample": "Feedback Node 23: only at the top level or directly in a loop",
    "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Instrument IO\\VISA\\USB\\USB RAW - Bulk.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Instrument IO\\VISA\\USB\\USB RAW - Control.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Instrument IO\\VISA\\PXI\\PXI - Route Trigger.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panels\\2. Window Positioning.vi",
+    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Design Patterns\\Pipelined Processing (Optimized Performance).vi",
+    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Design Patterns\\Pipelined Processing.vi"
    ]
   },
   {
@@ -228,120 +169,17 @@
     "panel:digitaltable",
     "panel:digitalwaveform"
    ],
-   "sample": "type 'digitalwaveform' is not composable yet",
+   "sample": "type 'digitaltable' is not composable yet",
    "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Digital Waveform Graph\\Search Digital Data for Pattern.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Mixed Signal Graph\\Mixed Signal Graph.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Digital Waveform Graph\\Append Digital Data By Sample.vi"
-   ]
-  },
-  {
-   "topic": "Property Node on NI System Configuration (nisysapi)",
-   "layer": "composer",
-   "blocks": 9,
-   "anywhere": 10,
-   "usage": 352,
-   "isolatedRefused": [],
-   "elements": [
-    "node:Property Node"
-   ],
-   "sample": "Property Node 499: class '{GenClass.nisysapiFilter.nisysapi}' is not composable yet",
-   "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Board Temperature Monitor.vi",
-    "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Reset All Devices.vi",
-    "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Self-Calibrate All Devices.vi"
-   ]
-  },
-  {
-   "topic": "Property Node linked to a control the export does not carry",
-   "layer": "reader",
-   "blocks": 7,
-   "anywhere": 28,
-   "usage": 352,
-   "isolatedRefused": [],
-   "elements": [
-    "node:Property Node",
-    "node:Invoke Node"
-   ],
-   "sample": "Property Node 1091: no control 'Signal' to link to",
-   "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Camera Attributes\\Change Configuration Attributes While Acquiring.vi",
-    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Hardware-Specific\\Camera Link\\IMAQdx\\Trigger Each Line From Encoder (Camera Link).vi",
-    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Hardware-Specific\\Camera Link\\IMAQdx\\Triggered Acquisition (Camera Link).vi"
-   ]
-  },
-  {
-   "topic": "Stacked Sequence in NI's export form (one frame)",
-   "layer": "composer",
-   "blocks": 7,
-   "anywhere": 7,
-   "usage": 17,
-   "isolatedRefused": [],
-   "elements": [
-    "struct:Stacked Sequence Structure"
-   ],
-   "sample": "Stacked Sequence 89: no frames - NI's export writes them as one; only vi2aixml's frame-by-frame form is composable",
-   "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Stream to Disk\\Stream to Image Files.vi",
-    "C:\\Program Files\\NI\\LVAddons\\dett\\1\\examples\\Desktop Execution Trace\\Desktop Execution - Generate Trace Events.vi",
-    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Design Patterns\\Parallel Processing.vi"
-   ]
-  },
-  {
-   "topic": "Timed Loop",
-   "layer": "composer",
-   "blocks": 7,
-   "anywhere": 7,
-   "usage": 7,
-   "isolatedRefused": [],
-   "elements": [
-    "struct:Timed Loop"
-   ],
-   "sample": "structure 'Timed Loop' is not composable yet",
-   "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Structures\\Timed Loop\\Timed Loop Offset.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Structures\\Timed Loop\\Timed Loop Mode.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Structures\\Timed Loop\\Timed Loop Abort.vi"
-   ]
-  },
-  {
-   "topic": "Picture type (control or constant)",
-   "layer": "composer",
-   "blocks": 7,
-   "anywhere": 7,
-   "usage": 2,
-   "isolatedRefused": [],
-   "elements": [
-    "call:Empty Picture"
-   ],
-   "sample": "no constant encoding for Picture",
-   "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\Palette Editing API\\Combine Functions and Controls in a Palette File.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Graphs - General\\Plot Images Property.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Graphics and Sound\\2D Picture Control\\Annotating a Picture.vi"
-   ]
-  },
-  {
-   "topic": "Feedback Node inside a case/sequence (not directly in a loop)",
-   "layer": "composer",
-   "blocks": 6,
-   "anywhere": 12,
-   "usage": 44,
-   "isolatedRefused": [],
-   "elements": [
-    "node:Feedback Node"
-   ],
-   "sample": "Feedback Node 2851: only at the top level or directly in a loop",
-   "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Stream to Disk\\Stream to AVI Files.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Signal Operation\\Peak Detection and Display.vi",
-    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Stream to Disk\\Stream to TDMS Files.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Digital Waveform Graph\\Append Digital Data By Sample.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Digital Waveform Graph\\Append Digital Data By Signal.vi",
+    "C:\\Program Files\\NI\\LVAddons\\nidaqmx\\1\\examples\\DAQmx\\Digital Output\\Digital (Pipelined Sample Clock) - Continuous Output.vi"
    ]
   },
   {
    "topic": "Expression Node",
    "layer": "composer",
-   "blocks": 6,
+   "blocks": 7,
    "anywhere": 7,
    "usage": 24,
    "isolatedRefused": [
@@ -353,8 +191,8 @@
    "sample": "Expression Node 5059: needs a numeric wire into input",
    "examples": [
     "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Probability and Statistics\\Statistics Solver.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Transforms\\Generalized Fourier Spectrum.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Fitting\\General Least Squares Fitting.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Probability and Statistics\\Noise Statistics.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Transforms\\Generalized Fourier Spectrum.vi"
    ]
   },
   {
@@ -372,8 +210,40 @@
    "sample": "Node 'Python Node' is not a primitive this prototype knows",
    "examples": [
     "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Python\\PythonNode_ConcatenateTwoStrings.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Python\\PythonNode_AddTwoIntegers.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Python\\PythonNode_NumpyMatmul.vi",
     "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Python\\PythonNode_AppendToIntegerArray.vi"
+   ]
+  },
+  {
+   "topic": "Timed Loop",
+   "layer": "composer",
+   "blocks": 6,
+   "anywhere": 6,
+   "usage": 7,
+   "isolatedRefused": [],
+   "elements": [
+    "struct:Timed Loop"
+   ],
+   "sample": "structure 'Timed Loop' is not composable yet",
+   "examples": [
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Structures\\Timed Loop\\Timed Loop Resettable Source Type.vi",
+    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Adaptive Filters\\Applications\\Online Order Waveform Extraction\\Online Order Waveform Extraction (DAQmx).vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Structures\\Timed Loop\\Timed Loop Mode.vi"
+   ]
+  },
+  {
+   "topic": "Picture type (control or constant)",
+   "layer": "composer",
+   "blocks": 6,
+   "anywhere": 6,
+   "usage": 0,
+   "isolatedRefused": [],
+   "elements": [],
+   "sample": "no constant encoding for Picture",
+   "examples": [
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Graphics and Sound\\2D Picture Control\\Zoom Attribute.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\Palette Editing API\\Combine Functions and Controls in a Palette File.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\Palette Editing API\\Create New Palette.vi"
    ]
   },
   {
@@ -392,9 +262,35 @@
    ],
    "sample": "Node 'Start Asynchronous Call' is not a primitive this prototype knows",
    "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Asynchronous Call By Reference\\Populating the Asynchronous Call Pool.vi",
     "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Asynchronous Call By Reference\\Asynchronous Call and Collect (Using Option 0x40).vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Asynchronous Call By Reference\\Benchmarking Asynchronous Calls.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Asynchronous Call By Reference\\Asynchronous Call and Collect.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Application Control\\VI Server\\Asynchronous Call By Reference\\Asynchronous Call and Forget.vi"
+   ]
+  },
+  {
+   "topic": "Primitive unknown by name (unresolved ?primResID)",
+   "layer": "reader",
+   "blocks": 5,
+   "anywhere": 8,
+   "usage": 4,
+   "isolatedRefused": [
+    "node:?primResID 1814",
+    "node:?primResID 3916",
+    "node:?primResID 3917",
+    "node:?primResID 3918"
+   ],
+   "elements": [
+    "node:?primResID 3916",
+    "node:?primResID 3917",
+    "node:?primResID 3918",
+    "node:?primResID 1814",
+    "fixed:?fixed 07"
+   ],
+   "sample": "Node '?primResID 3916' is not a primitive this prototype knows",
+   "examples": [
+    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Adaptive Filters\\Applications\\Adaptive Echo Cancellation\\Adaptive Echo Cancellation.vi",
+    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Digital Filter Design\\Floating-Point Filters\\Conventional\\Least Pth Norm Complex Approximation-Compensate Channel Distortion.vi",
+    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Digital Filter Design\\AALXMPL\\EquiRipple Filter Design - DFD.vi"
    ]
   },
   {
@@ -411,27 +307,9 @@
    ],
    "sample": "Node 'Constructor Node' is not a primitive this prototype knows",
    "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Dot NET Core\\Calling a .NET Core Assembly.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Dot NET\\Passing Data to a .NET Event Callback.vi",
     "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Dot NET\\Task Monitor Using .NET Objects.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Dot NET\\Passing Data to a .NET Event Callback.vi"
-   ]
-  },
-  {
-   "topic": "VI Server Reference to a SubPanel / Web Browser control",
-   "layer": "composer",
-   "blocks": 4,
-   "anywhere": 15,
-   "usage": 424,
-   "isolatedRefused": [],
-   "elements": [
-    "node:VI Server Reference",
-    "sub:CaseFrame"
-   ],
-   "sample": "VI Server Reference 714: '{LV.SubPanel}' is not composable yet",
-   "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panels\\4. Panel Control.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\Panel Manager\\Basic Panels\\3. Panel Events.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Web Browser\\Video Playback Using JavaScript.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Dot NET Core\\Passing Data to a .NET Core Event Callback.vi"
    ]
   },
   {
@@ -450,8 +328,8 @@
    "sample": "Invoke Node 581: class '{DotNet}' is not composable yet",
    "examples": [
     "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Excel\\Excel - ActiveX Event Callback.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Excel\\Excel - Write Table.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Math Plots - 3D (ActiveX)\\3D Curve Graph (ActiveX).vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Math Plots - 3D (ActiveX)\\3D Curve Graph (ActiveX).vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Excel\\Excel - Macro.vi"
    ]
   },
   {
@@ -467,11 +345,29 @@
     "node:Array Split / Replace Subarrays",
     "node:Array Index / Replace Elements"
    ],
-   "sample": "Node 'Array Split / Replace Subarrays' is not a primitive this prototype knows",
+   "sample": "net '3716.value' ends at index#2 3269 of Array Index / Replace Elements, which is not composable yet",
    "examples": [
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Graphs and Charts\\Graphs - General\\Graph Annotations.vi",
     "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\File IO\\Spreadsheet\\Tab-Delimited Data\\Buffered Stream to Tab-Delimited Text File.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Synchronization\\Queue\\Queue Stack Maze Solver.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Signal Generation\\Colored Gaussian Noise Generation.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Synchronization\\Queue\\Queue Stack Maze Solver.vi"
+   ]
+  },
+  {
+   "topic": "Fixed-point type",
+   "layer": "composer",
+   "blocks": 4,
+   "anywhere": 4,
+   "usage": 3,
+   "isolatedRefused": [],
+   "elements": [
+    "panel:fixed",
+    "const:fixed"
+   ],
+   "sample": "type 'fixed' is not composable yet",
+   "examples": [
+    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Adaptive Filters\\Getting Started\\Simulate Fixed-Point LMS Adaptive Filter\\Simulate Fixed-Point LMS Adaptive Filter.vi",
+    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Adaptive Filters\\Getting Started\\Explore Finite Precision Effects.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Numerics\\Fixed-Point Cast.vi"
    ]
   },
   {
@@ -488,11 +384,11 @@
     "node:Waveform Unbundle / Bundle Elements",
     "node:Build Cluster Array"
    ],
-   "sample": "Node 'Build Cluster Array' is not a primitive this prototype knows",
+   "sample": "Node 'Waveform Unbundle / Bundle Elements' is not a primitive this prototype knows",
    "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Graphics and Sound\\Picture Plots\\Smith Multi Plot with Styles.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Fitting\\Parametric Curve Fit.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Waveform Conditioning\\Align and Subtract two Waveforms (continuous).vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Waveform\\Waveform - Common Mathematical Operations.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Waveform Conditioning\\Align and Subtract two Waveforms (continuous).vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Graphics and Sound\\Picture Plots\\Smith Multi Plot with Styles.vi"
    ]
   },
   {
@@ -507,37 +403,32 @@
    "elements": [
     "node:Register For Events"
    ],
-   "sample": "Register For Events 714: event source 'event source' is neither a user event nor a VI Server reference",
+   "sample": "Register For Events 745: event source 'event source' is neither a user event nor a VI Server reference",
    "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Design Patterns\\Event Structure.vi",
+    "C:\\Program Files\\NI\\LVAddons\\nidaqmx\\1\\examples\\DAQmx\\Analog Input\\Voltage (with Events) - Continuous Input.vi",
     "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Dialog and User Interface\\Events\\Dynamic Event Generation.vi",
-    "C:\\Program Files\\NI\\LVAddons\\nidaqmx\\1\\examples\\DAQmx\\Analog Input\\Voltage (with Events) - Continuous Input.vi"
+    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Design Patterns\\Event Structure.vi"
    ]
   },
   {
-   "topic": "Primitive unknown by name (unresolved ?primResID)",
-   "layer": "reader",
+   "topic": "MATLAB script / Call MATLAB Function",
+   "layer": "composer",
    "blocks": 3,
-   "anywhere": 6,
-   "usage": 4,
+   "anywhere": 4,
+   "usage": 2,
    "isolatedRefused": [
-    "node:?primResID 1814",
-    "node:?primResID 3916",
-    "node:?primResID 3917",
-    "node:?primResID 3918"
+    "node:Call MATLAB Function",
+    "node:MATLAB script"
    ],
    "elements": [
-    "node:?primResID 3916",
-    "node:?primResID 3917",
-    "node:?primResID 3918",
-    "node:?primResID 1814",
-    "fixed:?fixed 07"
+    "node:Call MATLAB Function",
+    "node:MATLAB script"
    ],
-   "sample": "Node '?primResID 3916' is not a primitive this prototype knows",
+   "sample": "Node 'Call MATLAB Function' is not a primitive this prototype knows",
    "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\examples\\Wavelet Analysis\\WAApplications\\Wavelet Packet Signal Compression.vi",
-    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Digital Filter Design\\AALXMPL\\EquiRipple Filter Design - DFD.vi",
-    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Digital Filter Design\\Floating-Point Filters\\Conventional\\Least Pth Norm Complex Approximation-Compensate Channel Distortion.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MATLAB Node\\Lorenz Diff Eq\\MATLAB - Lorenz Diff Eq.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Scripts and Formulas\\MATLAB script node - Fractal.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Scripts and Formulas\\MATLAB script node - Lorenz Diff Eq.vi"
    ]
   },
   {
@@ -551,15 +442,15 @@
     "panel:double{m}",
     "const:double{m^-3 kg}",
     "panel:map{string.name,double{m^-3 kg}.amount}",
+    "const:map{string.name,double{m^-3 kg}.amount}",
     "panel:graph",
     "const:double{s}",
-    "const:map{string.name,double{m^-3 kg}.amount}",
     "const:double{m}"
    ],
-   "sample": "type 'double{s}' is not composable yet",
+   "sample": "type 'double{m^-3 kg}' is not composable yet",
    "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Signal Generation\\Arbitrary Wave Display.vi",
     "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Collections\\Map Collection - Comparing Test Results.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Signal Generation\\Arbitrary Wave Display.vi",
     "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Numeric\\Numeric with Units.vi"
    ]
   },
@@ -573,98 +464,56 @@
    "elements": [],
    "sample": "no constant encoding for MeasureData",
    "examples": [
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Waveform Conditioning\\Resampling a Waveform (single-shot).vi",
     "C:\\Program Files\\NI\\LVAddons\\aspt32\\1\\examples\\Wavelet Analysis\\WAGettingStarted\\Peak Detection in a Signal with Baseline Wandering.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\File IO\\TDMS\\TDMS Delete Data from Channels.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Signal Processing\\Waveform Conditioning\\Resampling a Waveform (single-shot).vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\File IO\\TDMS\\TDMS Delete Data from Channels.vi"
    ]
   },
   {
-   "topic": "Fixed-point type",
-   "layer": "composer",
+   "topic": "Property Node bound to a control: the reader writes class {?}",
+   "layer": "reader",
    "blocks": 2,
    "anywhere": 3,
-   "usage": 3,
+   "usage": 352,
    "isolatedRefused": [],
    "elements": [
-    "panel:fixed",
-    "const:fixed"
+    "node:Property Node",
+    "node:Invoke Node"
    ],
-   "sample": "type 'fixed' is not composable yet",
+   "sample": "Property Node 868: class '{?}' is not composable yet",
    "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\dfdt\\1\\examples\\Adaptive Filters\\Getting Started\\Simulate Fixed-Point LMS Adaptive Filter\\Simulate Fixed-Point LMS Adaptive Filter.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Numerics\\Fixed-Point Cast.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Graphics and Sound\\3D Picture Control\\Clip Plane of Scene.vi",
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Dot NET Core\\Computing Hash Using Static Methods and Properties.vi"
    ]
   },
   {
-   "topic": "Other primitives without a part (Sinc, Inverse Tangent (2 Input))",
-   "layer": "composer",
-   "blocks": 2,
+   "topic": "Control style lost in the export (Tree, Listbox, Tab, Slide, ...): node bound to a plain control",
+   "layer": "reader",
+   "blocks": 1,
    "anywhere": 2,
-   "usage": 2,
-   "isolatedRefused": [
-    "node:Inverse Tangent (2 Input)",
-    "node:Sinc"
-   ],
-   "elements": [
-    "node:Sinc",
-    "node:Inverse Tangent (2 Input)"
-   ],
-   "sample": "Node 'Sinc' (primResID 1227) has no harvested part",
-   "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Graphics and Sound\\Picture Plots\\XY Multi Plot.vi",
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Graphics and Sound\\Picture Plots\\Waveform and XY Plots.vi"
-   ]
-  },
-  {
-   "topic": "Class constant inside an array or cluster",
-   "layer": "composer",
-   "blocks": 1,
-   "anywhere": 6,
-   "usage": 0,
+   "usage": 352,
    "isolatedRefused": [],
    "elements": [
-    "const:ref{UDClassInst}",
-    "const:array{ref{UDClassInst}.Nested Actor's Enqueuer}",
-    "const:cluster{ref{UDClassInst}.Monitor Data,ref{UDClassInst}.Changed Actor Q}",
-    "const:array{ref{UDClassInst}.Changed Actor Q}"
+    "node:Property Node"
    ],
-   "sample": "type 'ref{UDClassInst}' is not composable yet",
+   "sample": "Property Node 1362: bound to 'Tab Control', which is composed as a plain LV.Enum (the export names no style or class for it), and LV.Enum has no property 'Pages'",
    "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\MGI Monitored Actor\\Example\\Example Actor\\Example Actor\\Example Actor.vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Controls and Indicators\\Containers\\Programmatically Manipulate a Tab Control.vi"
    ]
   },
   {
-   "topic": "Event structure: an event the control type does not have",
+   "topic": "Primitive whose terminal names the table lacks",
    "layer": "composer",
    "blocks": 1,
-   "anywhere": 4,
-   "usage": 424,
+   "anywhere": 2,
+   "usage": 4,
    "isolatedRefused": [],
    "elements": [
-    "sub:CaseFrame"
+    "node:Insert Into Array"
    ],
-   "sample": "Event Structure 1184: 'Double Click' is an event of a listbox only - 'Example List' is a stdNum, and LabVIEW breaks the frame (measured)",
+   "sample": "Node 'Insert Into Array': no template with terminals array, index (col), new element/subarray, output array, disabled index (row)",
    "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Connectivity\\Libraries and Executables\\External Code (DLL) Execution.vi"
-   ]
-  },
-  {
-   "topic": "MATLAB script / Call MATLAB Function",
-   "layer": "composer",
-   "blocks": 1,
-   "anywhere": 4,
-   "usage": 2,
-   "isolatedRefused": [
-    "node:Call MATLAB Function",
-    "node:MATLAB script"
-   ],
-   "elements": [
-    "node:Call MATLAB Function",
-    "node:MATLAB script"
-   ],
-   "sample": "Node 'Call MATLAB Function' is not a primitive this prototype knows",
-   "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Mathematics\\Scripts and Formulas\\MATLAB script node - Fractal.vi"
+    "C:\\Program Files\\NI\\LVAddons\\nisyscfg\\1\\examples\\nisyscfg\\Show All Hardware.vi"
    ]
   },
   {
@@ -689,20 +538,29 @@
    ]
   },
   {
-   "topic": "Conditional Disable Structure with a target condition",
+   "topic": "Library member the .lvlib does not list (licensed toolkit)",
    "layer": "composer",
    "blocks": 1,
    "anywhere": 1,
-   "usage": 24,
+   "usage": 1,
    "isolatedRefused": [
-    "node:Conditional Disable Structure"
+    "call:NI_AdvSigProcTSA.lvlib:TSA Auto-Correlation Function.vi",
+    "call:NI_AdvSigProcTSA.lvlib:TSA Cross-Correlation Function.vi",
+    "call:NI_AdvSigProcTSA.lvlib:TSA Scale to EU.vi",
+    "call:NI_AdvSigProcTSA.lvlib:TSA Stochastic State-Space Modeling.vi",
+    "call:NI_DigFilterLicensed.lvlib:DFD_Disable First Time Running Warning.vi"
    ],
    "elements": [
-    "node:Conditional Disable Structure"
+    "call:Example Actor.lvlib:Example Actor.lvclass:Write Actor Label.vi",
+    "call:NI_DigFilterLicensed.lvlib:DFD_Disable First Time Running Warning.vi",
+    "call:NI_AdvSigProcTSA.lvlib:TSA Cross-Correlation Function.vi",
+    "call:NI_AdvSigProcTSA.lvlib:TSA Auto-Correlation Function.vi",
+    "call:NI_AdvSigProcTSA.lvlib:TSA Stochastic State-Space Modeling.vi",
+    "call:NI_AdvSigProcTSA.lvlib:TSA Scale to EU.vi"
    ],
-   "sample": "Conditional Disable 805: condition 'VISION_TARGET_TYPE==ISC, Default' is not composable yet",
+   "sample": "Call 724: Example Actor.lvclass lists no member 'Write Actor Label.vi'",
    "examples": [
-    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Hardware-Specific\\Smart Camera\\Pulse Generation (178x Smart Camera).vi"
+    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\MGI\\MGI Monitored Actor\\Example\\Example Actor\\Example Actor\\Update Label.vi"
    ]
   },
   {
@@ -725,39 +583,17 @@
    ]
   },
   {
-   "topic": "Call Library Function Node from NI's export",
-   "layer": "composer",
-   "blocks": 1,
-   "anywhere": 1,
-   "usage": 1,
-   "isolatedRefused": [
-    "node:Call Library Function Node"
-   ],
-   "elements": [
-    "node:Call Library Function Node"
-   ],
-   "sample": "Call Library Function Node 1587: its library, function and parameters are not in this document - NI's AIXML has no attribute for them; only vi2aixml's <?lvmcp clfn?> after </VI> carries them",
-   "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\File IO\\TDMS\\Check TDMS File for Fragmentation.vi"
-   ]
-  },
-  {
-   "topic": "Channel wire (Tag, Stream, ...)",
-   "layer": "composer",
-   "blocks": 1,
-   "anywhere": 1,
-   "usage": 1,
+   "topic": "Property Node linked to a control the export does not carry",
+   "layer": "reader",
+   "blocks": 0,
+   "anywhere": 18,
+   "usage": 352,
    "isolatedRefused": [],
    "elements": [
-    "call:High Speed Stream.lvlib:Write.vi",
-    "call:High Speed Stream.lvlib:Read.vi",
-    "call:Tag.lvlib:Write.vi",
-    "call:Tag.lvlib:Read.vi"
+    "node:Property Node"
    ],
-   "sample": "Call 730: High Speed Stream.lvlib is a CHANNEL template (C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\resource\\Channels\\High Speed Stream\\High Speed Stream.lvlib): a channel wire's call needs the typed instance LabVIEW generates for it, which the composer does not make",
-   "examples": [
-    "C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\examples\\Channels\\Basics Quiz\\Channels Quiz - High Speed Streams and Tags.vi"
-   ]
+   "sample": "Property Node 231: no control 'Movement Data' to link to",
+   "examples": []
   },
   {
    "topic": "Merge Signals",
@@ -803,18 +639,18 @@
    "examples": []
   },
   {
-   "topic": "Primitive whose terminal names the table lacks",
+   "topic": "Conditional Disable Structure with a target condition",
    "layer": "composer",
    "blocks": 0,
-   "anywhere": 2,
-   "usage": 4,
-   "isolatedRefused": [],
-   "elements": [
-    "node:Generate User-Defined Trace Event",
-    "node:Get Notifier Status",
-    "node:Insert Into Array"
+   "anywhere": 0,
+   "usage": 24,
+   "isolatedRefused": [
+    "node:Conditional Disable Structure"
    ],
-   "sample": "Node 'Generate User-Defined Trace Event' has no terminal 'trace string' (known: ?parm1, ?parm2)",
+   "elements": [
+    "node:Conditional Disable Structure"
+   ],
+   "sample": "CRASH ValueError: max() iterable argument is empty @ aixml2vi.py:11012",
    "examples": []
   },
   {
@@ -833,26 +669,35 @@
    "examples": []
   },
   {
-   "topic": "Library member the .lvlib does not list (licensed toolkit)",
+   "topic": "Other primitives without a part (Sinc, Inverse Tangent (2 Input))",
+   "layer": "composer",
+   "blocks": 0,
+   "anywhere": 0,
+   "usage": 2,
+   "isolatedRefused": [
+    "node:Inverse Tangent (2 Input)",
+    "node:Sinc"
+   ],
+   "elements": [
+    "node:Inverse Tangent (2 Input)",
+    "node:Sinc"
+   ],
+   "sample": "Node 'Inverse Tangent (2 Input)' (primResID 1228) has no harvested part",
+   "examples": []
+  },
+  {
+   "topic": "Call Library Function Node from NI's export",
    "layer": "composer",
    "blocks": 0,
    "anywhere": 0,
    "usage": 1,
    "isolatedRefused": [
-    "call:NI_AdvSigProcTSA.lvlib:TSA Auto-Correlation Function.vi",
-    "call:NI_AdvSigProcTSA.lvlib:TSA Cross-Correlation Function.vi",
-    "call:NI_AdvSigProcTSA.lvlib:TSA Scale to EU.vi",
-    "call:NI_AdvSigProcTSA.lvlib:TSA Stochastic State-Space Modeling.vi",
-    "call:NI_DigFilterLicensed.lvlib:DFD_Disable First Time Running Warning.vi"
+    "node:Call Library Function Node"
    ],
    "elements": [
-    "call:NI_DigFilterLicensed.lvlib:DFD_Disable First Time Running Warning.vi",
-    "call:NI_AdvSigProcTSA.lvlib:TSA Cross-Correlation Function.vi",
-    "call:NI_AdvSigProcTSA.lvlib:TSA Auto-Correlation Function.vi",
-    "call:NI_AdvSigProcTSA.lvlib:TSA Stochastic State-Space Modeling.vi",
-    "call:NI_AdvSigProcTSA.lvlib:TSA Scale to EU.vi"
+    "node:Call Library Function Node"
    ],
-   "sample": "Call 4200: NI_DigFilterLicensed.lvlib lists no member 'DFD_Disable First Time Running Warning.vi'",
+   "sample": "Call Library Function Node 4200: its library, function and parameters are not in this document - NI's AIXML has no attribute for them; only vi2aixml's <?lvmcp clfn?> after </VI> carries them",
    "examples": []
   },
   {
@@ -922,25 +767,10 @@
    "examples": []
   },
   {
-   "topic": "Callee unreadable (pylabview timeout)",
-   "layer": "composer",
-   "blocks": 0,
-   "anywhere": 0,
-   "usage": 0,
-   "isolatedRefused": [
-    "call:Caraya.lvlib:Assert.lvclass:Assert Almost Equal_Float.vi"
-   ],
-   "elements": [
-    "call:Caraya.lvlib:Assert.lvclass:Assert Almost Equal_Float.vi"
-   ],
-   "sample": "callee Assert Almost Equal_Float.vi cannot be read: pylabview timed out after 30 s: -x -i C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\vi.lib\\addons\\_JKI Toolkits\\Caraya\\classes\\Assert\\Assert Almost Equal_Float.vi -m C:\\Users\\jcm\\AppData\\Local\\Temp\\callee_f3v2zytu\\Assert Almost Equal_Float.xml",
-   "examples": []
-  },
-  {
    "topic": "Not installed on this station",
    "layer": "station",
-   "blocks": 9,
-   "anywhere": 9,
+   "blocks": 8,
+   "anywhere": 8,
    "usage": 7,
    "isolatedRefused": [
     "call:Adapt To Type.vim",
@@ -1097,18 +927,26 @@
    "sample": "Call 178: 'niRFSG Initialize.vi' is neither near the caller nor in the installation",
    "examples": [
     "C:\\Program Files\\NI\\LVAddons\\nirfsa\\1\\examples\\instr\\niRFSA\\Application Examples\\RFSA Peer-to-Peer Finite Streaming with RFSG.vi",
-    "C:\\Program Files\\NI\\LVAddons\\nirfsa\\1\\examples\\instr\\niRFSA\\RFSA In-band Retuning with External LO.vi",
-    "C:\\Program Files\\NI\\LVAddons\\nirfsa\\1\\examples\\instr\\niRFSA\\Application Examples\\RFSA List Mode Open Loop Synchronization with RFSG (Multiple Waveforms).vi"
+    "C:\\Program Files\\NI\\LVAddons\\niimaqdx\\1\\examples\\Vision Acquisition\\NI-IMAQdx\\Design Patterns\\Rolling Image Average.vi",
+    "C:\\Program Files\\NI\\LVAddons\\nirfsa\\1\\examples\\instr\\niRFSA\\Application Examples\\RFSA Peer-to-Peer Streaming with RFSG (5673E).vi"
    ]
   }
  ],
  "unmatchedFirstRefusals": [
   [
-   "case tunnel In#: no typed wire reaches it",
-   6
+   "Event Data Node #: no registration carries the user event 'Actor.Stopped'",
+   4
   ],
   [
    "net '#.value' crosses a diagram boundary without a tunnel",
+   4
+  ],
+  [
+   "Event Data Node #: no registration carries the user event 'Stop Event'",
+   3
+  ],
+  [
+   "case tunnel In#: no typed wire reaches it",
    3
   ],
   [
@@ -1116,27 +954,15 @@
    2
   ],
   [
-   "Constant 'Special Monitor.lvclass' #: a class constant (ref{UDClassInst}) must feed a class terminal of a Call, which names its class",
-   1
+   "Node #: Example Actor.lvlib:Example Actor.lvclass names no parent class",
+   2
   ],
   [
-   "enum item with a quote is not composable yet",
-   1
+   "Event Data Node #: no control None",
+   2
   ],
   [
-   "Call 'Compare Two Paths.vi' has no input 'error in (no error)' on its pane (has: Common path, Path #, Path #, Path # Relative to Path #?, Re",
-   1
-  ],
-  [
-   "Tunnel #: the type of None is not known",
-   1
-  ],
-  [
-   "Tunnel #: the type of '#.EnumStrings[]' is not known",
-   1
-  ],
-  [
-   "Unbundle By Name #: the type of the cluster ('#.value') is not known",
+   "Tunnel #: a concatenating output needs an array inside",
    1
   ],
   [
@@ -1144,15 +970,7 @@
    1
   ],
   [
-   "Tunnel #: a concatenating output needs an array inside",
-   1
-  ],
-  [
-   "Case Structure #: enum selectors on a Cluster wire",
-   1
-  ],
-  [
-   "Index Array #: a String input is not composable yet",
+   "Tunnel #: cond='#..not. x?' on a out indexing tunnel is not composable yet",
    1
   ],
   [
@@ -1160,7 +978,27 @@
    1
   ],
   [
-   "Constant 'Static out' #: a class constant (ref{UDClassInst}) must feed a class terminal of a Call, which names its class",
+   "Event Data Node #: no registration carries the user event 'Panel.Pnl Events.My Panel'",
+   1
+  ],
+  [
+   "Bundle #: the type of an element ('#.Locations') is not known",
+   1
+  ],
+  [
+   "Event Data Node #: CtlRef of a Array control is not measured yet",
+   1
+  ],
+  [
+   "Unbundle By Name #: the type of the cluster ('#.value') is not known",
+   1
+  ],
+  [
+   "Unbundle By Name #: no output 'Polarity##'",
+   1
+  ],
+  [
+   "Create User Event #: the datatype needs a LABELLED source - the label names the event",
    1
   ],
   [
@@ -1168,11 +1006,23 @@
    1
   ],
   [
-   "Tunnel #: cond='#.value' on a out tunnel is not composable yet",
+   "Tunnel #: the type of '#.error out' is not known",
    1
   ],
   [
-   "no fpdco part for stdMeasureData (MeasureData)",
+   "Index Array #: a String input is not composable yet",
+   1
+  ],
+  [
+   "Case Structure #: enum selectors on a Cluster wire",
+   1
+  ],
+  [
+   "enum item with a quote is not composable yet",
+   1
+  ],
+  [
+   "Tunnel #: the type of None is not known",
    1
   ],
   [
