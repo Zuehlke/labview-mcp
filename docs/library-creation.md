@@ -78,3 +78,27 @@ PRIVATE. Existing code is not moved into or out of a library unasked.
 - **Folders** come from `lvai_move_to_folder`, which handles a plain `.lvlib` and creates the folder
   at the root - `lvai_add_to_library`'s `folder` refuses one that does not exist yet.
 - After both, `lvai_exec_state` over the members: membership changes every member's qualified name.
+
+## 5. Regenerating a library member keeps it a member (2026-11-21)
+
+**The symptom.** An agent regenerated `Sample Logger.vi`, the public member of
+`Sample Logger.lvlib` that calls the library-private `Process Command.vi`, from AIXML whose
+`<VI _name>` was the bare `Sample Logger.vi`. The composer wrote the file with NO `LIBN` block: it
+was no longer a member, LabVIEW refused its call ("This VI cannot access the referenced item in
+private scope") and it read execState 0. The agent put `Sample Logger.lvlib\3ASample Logger.vi` in
+`_name` by hand. Reproduced on copies of the application folder with the composer alone: bare name,
+no `LIBN`, execState 0; qualified name, `LIBN` written, execState 1.
+
+**The rule, on the pylabview backend** (`LibraryMembership`, in the convert step every
+`lvai_generate_vi` goes through): before composing onto an EXISTING file, the owners that file names
+for itself (its `LIBN` block) decide the name -
+
+- a bare `_name` is qualified with them, in a copy of the document - the caller's AIXML is not
+  edited - and the answer says so under `libraryMembership` (`nameRewritten`, `composedAs`);
+- a `_name` already qualified with the same owners is left alone;
+- a `_name` qualified with OTHER owners is refused as `libraryOwnerMismatch`: moving a VI between
+  libraries is `lvai_add_to_library`'s job;
+- a loose file, a new path and a CLASS member (an owner chain with a `.lvclass` in it) change
+  nothing - the class tools give their members their class themselves.
+
+`LibraryMembershipTests`. The grpc route is unchanged and was not measured for this.

@@ -1010,7 +1010,13 @@ internal sealed class AixmlTools(LvaiConnection connection)
 
         var existedBefore = File.Exists(viPath);
         var symbolic = SymbolicUids.Prepare(aixmlPath);
-        var result = await AixmlComposer.ComposeAsync(setup, symbolic.PathForLabview, viPath,
+        // A LIBRARY MEMBER STAYS ONE: a bare _name is qualified with the owners the file it
+        // replaces names for itself, in a copy of the document (LibraryMembership)
+        var membership = LibraryMembership.Prepare(symbolic.PathForLabview, viPath);
+        if (membership.Decision?.Refusal is { } ownerMismatch)
+            return Json.Error("libraryOwnerMismatch", ownerMismatch,
+                              new { viPath = Path.GetFullPath(viPath), owners = membership.Decision.Owners });
+        var result = await AixmlComposer.ComposeAsync(setup, membership.PathForComposer, viPath,
                                                       SearchFolders(aixmlPath, viPath), timeoutSeconds, ct);
 
         // EXECUTABILITY NEEDS LabVIEW, and today the only road to it is NI's service. So it is
@@ -1066,6 +1072,7 @@ internal sealed class AixmlTools(LvaiConnection connection)
             [.. SymbolicFacts(symbolic),
              ("viPath", JsonValue.Create(Path.GetFullPath(viPath))),
              ("viExisted", JsonValue.Create(existedBefore)),
+             ("libraryMembership", membership.Fact()),
              ("viExistsNow", JsonValue.Create(File.Exists(viPath))),
              ("viBytes", JsonValue.Create(File.Exists(viPath) ? new FileInfo(viPath).Length : 0)),
              ("sourceOnly", result.Written ? JsonValue.Create(!compiled) : null),
