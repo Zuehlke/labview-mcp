@@ -216,6 +216,7 @@
  "eventRegNode/eventRegItem",
  "eventRegNode/eventRegItem/4",
  "eventStruct/eventDynDCO/0",
+ "eventStruct/eventTimeOut",
  "eventStruct/selTun",
  "eventStruct/selTun/3",
  "eventStruct/selTun/4",

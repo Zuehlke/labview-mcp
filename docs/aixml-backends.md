@@ -403,6 +403,15 @@ the path's text as LabVIEW XML). Both answers still said `ok: true`. Measured on
   after the helper had focused the button. Fronted right after it is opened, before the helper
   sets any focus: 3 of 3, four runs in a row (`PanelKeys.BringToFront`). A real keystroke (`keybd_event`) worked too,
   but goes to whatever has the focus, so the key is posted to the window instead.
+- **And it is fronted WITHOUT a keystroke.** The Alt press that lets a process take the foreground
+  wedged LabVIEW: when its release arrived after the panel was in front, LabVIEW entered its
+  menu-bar loop, the helper's `Key Focus` property node waited on the UI thread, the run was
+  aborted after 118 s and LabVIEW sat in "Resetting VI: lvai_run_for_ms.vi" until it was killed -
+  two of four test runs, found by the gate. Joining the input of the window in front instead
+  (`AttachThreadInput`, then `SetForegroundWindow`): no hang in 15 runs, 3-4 s each; one of the
+  first five lost one press. The answer now says whether the panel was in front before the helper
+  focused anything (`signals.panelInFront`); a press on a panel that comes to the front later can be
+  lost, because activation resets the key focus.
 - A path control takes its text (`String To Path`).
 - **A signal that fails now makes `ok` false**, on both backends, and `signals.latchedPressed`
   counts the presses; a press with no panel window to post to is `latchedNotPressed` and fails too.
@@ -959,11 +968,23 @@ the load-time repairs went **19 -> 0**, LabVIEW's save keeping all 9 changed tab
 - **A conditional indexing tunnel's condition terminal** (`inner:lpTunConditionDCO`) was in no
   table, so a fan-out into one stayed generic. It sits on the base rule: 9 of 9 LabVIEW fan-outs
   through it at (0, 0). Added to `hotpoints_exact.json`.
-- **Still not decoded: tables whose SECOND byte is 01 or 02** instead of 00 (`03 01 00 08 02 55
-  74`), 297 of the 19 653 corpus fan-outs; one is in the application's main VI. In the samples
-  read, code `02` is a terminal passed on a straight run (`03 01 00 08 02 55 74` reaches sinks at
-  85 and 85 + 116 px east of the source) and the second byte counts bytes to skip before the start
-  mask, but that does not account for every sample, so the decoders still answer None.
+- **A table whose SECOND byte is 1 marks a joint a terminal sits on** (decoded 2026-11-21, read
+  as "still not decoded" until then): `[n] [k] [k marks] [start mask] [n-2 codes] [n-1 lengths]`,
+  the common table being k = 0. With k = 1 the mark is the index of a joint (0 = the first after
+  the source) where a sink sits ON the wire - passed on a straight run, which is the new code `02`
+  (straight on), or at a bend - besides the ends the walk reaches: `03 01 00 08 02 55 74` has sinks
+  at 85 and 85 + 116 px east of the source. 223 of the 223 such tables of LabVIEW's own saves whose
+  ends are all exact read that way; k > 1 (11 tables) does not, and is still refused. A two-ended
+  table that starts north (`01`) shares that second byte and is told apart by its lengths adding
+  up - all 184 369 two-ended corpus tables decode exactly as before. Walkable corpus fan-outs
+  19 356 -> 19 625 of 19 653 (`wire_tree.parse`, `lvbd_backward_wires`, `lvbd_wire_metrics`).
+- **The Event Structure's timeout terminal** (`eventStruct/eventTimeOut`, wired since the
+  composer writes `timeoutin`) was in no table either, so the fan-out of a timeout shift register
+  stayed generic. On the base rule in every LabVIEW wire that shows it (1 fan-out, both axes; 3
+  two-ended, the one axis each fixes); added to `hotpoints_exact.json`. A second application built
+  by agents the same day (`C:\temp\UserHints1`, a producer/consumer with a user event and a
+  timeout) then composed with no generic wire, and its five VIs loaded with **23 -> 0** repairs
+  against the tables of the morning, LabVIEW's save keeping all 6 changed tables.
 - The layout step of `lvai_generate_vi` runs `CleanUpWire` on every wire and saves, so the tables
   in a DELIVERED VI are LabVIEW's; what the router changes there is what LabVIEW meets when it
   loads the composed file before the layout - repairs, and the risk that comes with them.

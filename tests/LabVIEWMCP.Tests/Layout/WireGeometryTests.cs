@@ -48,6 +48,15 @@ public sealed class WireGeometryTests
         assert wt.walk(t) == [(-54, 34), (58, 35), (0, 38)], wt.walk(t)
         assert wt.starting(0x09) == [N, E] and wt.starting(0x06) == [W, S] and wt.starting(0x10) is None
 
+        # [n] [k=1] [joint] [mask]: a terminal sits on the marked joint, code 02 is straight on -
+        # LabVIEW's own table in a generated VI of 2026-11-21: sinks 22 and 22+391 px east
+        t = "030100080216FF0187"
+        assert wt.walk(t) == [(0, 22), (0, 413)], wt.walk(t)
+        assert [d for d, _ in bw.segments(t)] == [E, E], bw.segments(t)
+        assert wt.parse("0502020008050003233B3F3F") is None        # k > 1 is not decoded
+        # a TWO-ended table that starts north shares that second byte and stays two-ended
+        assert [d for d, _ in bw.segments("040101012601")] == [N, W, N], bw.segments("040101012601")
+
         # where nothing doubles back the codes stay absolute
         assert wt.leaving(0x04, E) == [N, S, E] and wt.leaving(0x05, S) == [S, E]
         assert wt.leaving(0x04, S) == [W, S, E] and wt.leaving(0x06, W) == [N, N]

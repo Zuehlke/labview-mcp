@@ -46,12 +46,23 @@ def starting(mask):
 
 
 def parse(hexs):
+    """-> (n joints, codes, lengths, start mask, marked joints) or None.
+
+    [n] [k] [k marks] [start mask] [n-2 codes] [n-1 lengths]: k is 0 in the common table. With
+    k = 1 the mark is the index of a joint (0 = the first after the source) where a terminal sits
+    ON the wire - a sink it passes on a straight run (code 02, straight on) or at a bend - besides
+    the ends the walk reaches. Measured 2026-11-21: 223 of the 223 such tables of LabVIEW's own saves
+    whose ends are all exact read that way; k > 1 (11 of them) does not, and is refused."""
     b = bytes.fromhex(hexs)
-    n = b[0]
-    if n < 3 or b[1] != 0x00 or starting(b[2]) is None:
+    if len(b) < 3:
         return None
-    codes = list(b[3:3 + n - 2])
-    rest = b[3 + n - 2:]
+    n, k = b[0], b[1]
+    if n < 3 or k > 1 or len(b) < 3 + k or starting(b[2 + k]) is None:
+        return None
+    marks = list(b[2:2 + k])
+    o = 3 + k
+    codes = list(b[o:o + n - 2])
+    rest = b[o + n - 2:]
     lens, i = [], 0
     while i < len(rest):
         if rest[i] == 0xFF:
@@ -60,7 +71,7 @@ def parse(hexs):
         else:
             lens.append(rest[i])
             i += 1
-    return n, codes, lens if len(lens) == n - 1 else None
+    return n, codes, lens if len(lens) == n - 1 else None, b[2 + k], marks
 
 
 def walk(hexs):
@@ -68,19 +79,23 @@ def walk(hexs):
     p = parse(hexs)
     if not p or p[2] is None:
         return None
-    n, codes, lens = p
-    first = starting(bytes.fromhex(hexs)[2])
+    n, codes, lens, mask, marks = p
+    first = starting(mask)
     pos, d = (0, 0), first[0]
     stack = [((0, 0), first[1:])] if len(first) > 1 else []   # (position, remaining directions) of branch points
     ends = []
     li = 0
-    for code in codes + [None]:
+    for joint, code in enumerate(codes + [None]):
         # the segment into this joint
         if li >= len(lens):
             return None
         L = lens[li]
         li += 1
         pos = (pos[0] + d[0] * L, pos[1] + d[1] * L)
+        if code is not None and joint in marks:
+            ends.append(pos)                # a terminal the wire passes through
+        if code == 0x02:
+            continue                        # straight on
         if code is None or code == 0x03:
             ends.append(pos)
             if code is None:
