@@ -846,6 +846,65 @@ for those kinds all came out zero. An In Place structure's element pair is one n
 border, and a Feedback Node's hidden half keeps diagram coordinates, leaves its output WEST and takes
 its initializer from BELOW. FINDINGS §7a, "In Place element pairs, the Feedback Node".
 
+**What the learned table really holds (measured 2026-11-21; the code follows it since the same day,
+see "One offset per primitive" below).**
+The corpus was rebuilt from NI's examples (1 792 VIs, 4 579 fan-outs, 42 239 two-ended wires; all
+saved by 26.3) and every fan-out with one source and no constant end, 3 857 of them, was tested
+against the table it carries:
+
+- **Away from primitives the base rule needs no table.** Centre of the terminal's rectangle plus
+  the DCO's own `<termHotPoint>`, nothing learned: 1 806 of the 1 830 fan-outs that touch no
+  primitive, exactly what the shipped table reaches there. The misses are mostly flat-sequence
+  tunnels.
+- **A primitive is stored as a 32 x 32 cell whatever its real size** - 11 933 of 11 933 primitive
+  ends - and its terminals span a smaller box (21 x 21 for the arithmetic family) that sits inside
+  the cell. So the base rule alone fits 281 of the 1 844 fan-outs through table-known primitives,
+  the table 1 809.
+- **The correction is ONE offset per primitive, not one per terminal**: on the wires the table
+  reproduces, all terminals of a primitive share it, 159 primitives of 159. `hotpoints.json` keys
+  it by (primResID, position) and treats a position it never saw as unknown (`_family` guesses);
+  keyed by primResID alone, an unseen terminal of a known primitive is exact.
+- **The offset is not the box centred in the cell**: that fits 84 % of the 3 857 and is 1 px off
+  on the rest (a 21 px box sits 6 down in one primitive and 5 in another), which a fan-out's table
+  does not forgive. It has to stay a measured value.
+- **The EXACT gate is narrower than the model**: `route_heap` would route 3 479 of the 3 857, the
+  shipped offsets reproduce 3 760.
+- `<termHotPoint>` and bit 0x1 of the DCO's `objFlags` are independent here: 886 ends carry a
+  hotpoint without the bit, 978 with it, and 24 410 carry the bit without a hotpoint. The bit is
+  the output flag `is_source` reads.
+
+**A branch point that would send a branch straight back along the trunk turns it instead**
+(measured the same day). `wire_tree.BRANCH` reads the codes 04-07 as absolute directions. Read
+with one exception - a branch pointing exactly against the heading the trunk arrives with goes
+NORTH off a horizontal trunk and WEST off a vertical one - the two readings place the ends
+differently on 110 of 17 940 walkable fan-outs (the examples and every fourth VI of `vi.lib`). Of
+the 96 among them with no constant end, 82 fit only with the turn, none only without it, 14 with
+neither - so it is not the whole rule, but the absolute reading never wins. `wire_tree.walk`
+(`leaving`) and the second decoder in `scripts/lvbd_backward_wires.py` read it that way now. It is
+the only way a tree carries a branch WEST; the ENCODER still writes eastward combs only.
+
+**One offset per primitive (in the code since 2026-11-21).** `parts/hotpoints.json` and
+`parts/hotpoints_exact.json` carry a key that is the primResID alone, 172 of them, written by
+`experiments/aixml-without-grpc/learn_prim_origins.py` from the two fan-out corpora above (it adds
+those keys and touches nothing else in either file). `Hotpoints.of` uses a (primResID, position)
+key only where that position is itself exact and the primitive's key otherwise; `Hotpoints.exact`
+is true for every terminal of such a primitive. What the router does with LabVIEW's own fan-outs,
+no constant end, before and after:
+
+| corpus | routed and right | routed and wrong | left generic |
+|---|---|---|---|
+| NI's examples, 3 857 | 3 479 -> 3 702 | 0 -> 0 | 378 -> 155 |
+| `vi.lib`, every fourth VI, 12 528 | 10 900 -> 12 174 | 10 -> 11 | 1 618 -> 343 |
+
+Those numbers are in-sample (the keys were learned from both). Learned from the examples ALONE,
+102 keys, and measured on `vi.lib`, which that learner never saw: 10 900 -> 11 600 right, 10 -> 11
+wrong. The ten wrong ones were there before and none has a primitive end; the eleventh is a wire
+through `1051`/`1110` that used to stay generic. `String Subset` (1503), `String To Byte Array`
+(1608) and `Read from Text File` (8070), the three the cold builds left generic, have a key now.
+**Not measured: LabVIEW itself.** That LabVIEW keeps the additionally routed tables on load is
+what `validate_routes.py` over the suite shows, and that run is still owed.
+`WireGeometryTests`.
+
 **A WHOLE CLD EXAM WENT THROUGH THE COMPOSER the same night** - the ATM: 21 application VIs (an
 Event Structure producer, a queue consumer, a state machine, file I/O, panel helpers driving
 control references), 18 Caraya test VIs and two runners, every one composed and run over ActiveX,
@@ -2018,7 +2077,9 @@ warnings and scoped to the measured case, a double Constant.
   are left to LabVIEW, which repairs them on load - non-fatal, the VIs run. The remedy is data, not
   code: LabVIEW-saved fan-outs through those terminals fed to `learn_hotpoints_fanout.py
   --write` (the suite's LabVIEW-routed saves via `suite_corpus.py` are the source that carries the
-  composer's own terminal kinds).
+  composer's own terminal kinds). **Closed by data on 2026-11-21**: a primitive needs ONE offset,
+  not one per terminal, so any fan-out through any of its terminals teaches it - all three have a
+  key now ("One offset per primitive" above). The load in LabVIEW is not re-measured.
 
 ## An IVI instrument session (`ref{IVI.niRFSA}`) had no type, no part and no wire (fixed 2026-10-30)
 

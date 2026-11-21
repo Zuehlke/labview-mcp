@@ -10,11 +10,26 @@ direction bytes), a BRANCH POINT the absolute directions leaving it (04 up+down+
 down+right, 06 up+right, 07 up+down), explored in the order up, down, right; 03 ends a branch at a
 terminal and the walk returns to the last branch point with a direction left. The lengths are the
 segments in walk order, >= 255 written FF + 16 bit; the last joint is the last terminal's.
+
+A branch never runs straight back along the segment that reached its branch point: a direction
+that is the exact reverse of the heading the walk arrives with is taken NORTH off a horizontal
+segment and WEST off a vertical one (`leaving`). Measured 2026-11-21 over NI's examples and a
+quarter of vi.lib: the two readings place the ends differently on 10 fan-outs of about 6 500, 9
+fit only with the turn, none only without. It is how a tree carries a branch west.
 """
 
 E, S, W, N = (0, 1), (1, 0), (0, -1), (-1, 0)      # (dy, dx)
 BRANCH = {0x04: [N, S, E], 0x05: [S, E], 0x06: [N, E], 0x07: [N, S]}
 CODE_OF = {tuple(v): k for k, v in BRANCH.items()}
+REVERSE = {E: W, W: E, N: S, S: N}
+
+
+def leaving(code, heading):
+    """The directions leaving a branch point with this code, in walk order, for a walk that
+    arrives with `heading`: the code's absolute directions, the one that would double back turned
+    north (horizontal arrival) or west (vertical arrival)."""
+    turned = N if heading in (E, W) else W
+    return [turned if d == REVERSE[heading] else d for d in BRANCH[code]]
 # the direction of the FIRST segment: east almost always; a Feedback Node's output leaves west
 # (02, as in a two-ended table) or north (01)
 START = {0x08: E, 0x02: W, 0x01: N, 0x04: S}
@@ -66,7 +81,7 @@ def walk(hexs):
             pos, dirs = stack[-1]
             d = dirs.pop(0)
         elif code in BRANCH:
-            dirs = list(BRANCH[code])
+            dirs = leaving(code, d)
             d = dirs.pop(0)
             stack.append((pos, dirs))
         elif code in (0x00, 0x01):

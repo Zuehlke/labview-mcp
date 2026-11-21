@@ -87,7 +87,11 @@ def segments(hexs):
                     return None
                 d = stack[-1].pop(0)
             elif code in BRANCH:
-                dirs = list(BRANCH[code])
+                # a branch never doubles back on the segment that reached it: that direction is
+                # taken north off a horizontal segment, west off a vertical one (wire_tree.leaving)
+                back = (-d[0], -d[1])
+                turned = N if d in (E, W) else W
+                dirs = [turned if x == back else x for x in BRANCH[code]]
                 d = dirs.pop(0)
                 stack.append(dirs)
             elif code in (0x00, 0x01):

@@ -239,8 +239,9 @@ def route_heap(bd, hotpoints, source_first=True, absolute_owners=()):
 class Hotpoints:
     """Where a terminal attaches: the base rule (the rectangle's centre; a constant's distance from
     its right edge) plus a learned (dy, dx) per terminal kind, and which kinds are known EXACTLY in
-    both axes. A kind is looked up from its finest key: a primitive's (primResID, position), another
-    node's (owner, DCO class, position) then (owner, DCO class), else the kind itself."""
+    both axes. A kind is looked up from its finest key: a primitive's (primResID, position) where
+    that position is exact, else the primitive's own offset (primResID - learn_prim_origins.py);
+    another node's (owner, DCO class, position) then (owner, DCO class), else the kind itself."""
 
     # a COMPOSED constant's output: vertically centred, this many px left of its right edge -
     # const_calibrate.py on LabVIEW's own saves, which keep a composed constant's size (2026-10-11),
@@ -302,6 +303,17 @@ class Hotpoints:
             return y, x
         if hot:
             x, y = x + hot[0], y + hot[1]
+        if prim is not None:
+            # a primitive is stored as a 32 x 32 cell and its terminals span a smaller box inside
+            # it: ONE offset for all of its terminals (159 primitives of 159 on NI's examples,
+            # 2026-11-21), keyed by the primResID alone. A position measured exactly on its own
+            # keeps its key; any other terminal - one the corpora never showed in a fan-out, or
+            # saw along one axis only - takes the primitive's.
+            fine = "%s/%s" % (prim, pos)
+            for k in ([fine] if fine in self.exact_keys else []) + [str(prim)]:
+                if k in self.corr:
+                    dy, dx = self.corr[k]
+                    return y + dy, x + dx
         for k in self.keys(prim, pos, kind):
             if k in self.corr:
                 dy, dx = self.corr[k]
@@ -328,6 +340,8 @@ class Hotpoints:
         constant by the calibration above."""
         if kind and kind.startswith("const:"):
             return kind[6:] in self.CONST_EXACT or (kind[6:] == "stdClust" and isinstance(hot, int))
+        if prim is not None and str(prim) in self.exact_keys:
+            return True                 # the primitive's one offset places every terminal of it
         for k in self.keys(prim, pos, kind):
             if k in self.exact_keys:
                 return True
