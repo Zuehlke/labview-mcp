@@ -87,7 +87,7 @@ internal sealed class GraftTools(LvaiConnection connection)
         bool allowNewControls = false,
         [Description("Empty the supplied diagram first when it already holds code - the old code is DISCARDED in the output, every control is kept")]
         bool replaceDiagram = false,
-        [Description("Boolean controls to set to Switch When Pressed, ONE LABEL PER LINE - latched buttons a test must signal (Error 1193 otherwise)")]
+        [Description("Boolean controls to set to Switch When Pressed, ONE LABEL PER LINE - latched buttons a test must signal over grpc (Error 1193 otherwise; pylabview presses a latched button)")]
         string? switchActionControls = null,
         [Description("Absolute path of the .lvproj to make active before the graft when it is not; empty requires an active project")]
         string? projectPath = null,

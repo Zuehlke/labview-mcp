@@ -34,8 +34,10 @@ Measured facts that each cost minutes when found at run time. Plan around them f
   character. `docs/aixml-backends.md`, "Compound literals".
 - **A test VI has the 1920 x 1080 budget too**: plan about THREE cases per test VI and list them
   all in one runner; `diagramSize.withinBudget: false` means split it. `docs/diagram-size.md` §5.
-- **A latched boolean cannot be driven through `signalsJson`** (`Error 1193`). Test what it
-  triggers through the handler subVI it calls, and say so. `docs/cold-build-atm-agents-7.md` §4.
+- **A latched boolean IS driven through `signalsJson` on the pylabview backend** (the default):
+  the button gets the key focus and a space bar is posted to its panel (`signals.latchedPressed`
+  counts the presses, since 2026-11-21). Only on grpc is it `Error 1193` - there, test what it
+  triggers through the handler subVI it calls, and say so. `docs/aixml-backends.md`.
 - **`Format Into String` `%g` prints 50 as `50.000000`**; `%d`, `%.0f` and `%#g` print `50`
   (measured by running, LabVIEW 2026, 2026-11-05). Derive an expected string from the format the
   subject actually uses.

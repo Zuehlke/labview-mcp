@@ -60,9 +60,11 @@ Measured facts that each cost minutes when found at run time. Plan around them f
 - **Check the 1920 x 1080 budget BEFORE generating**: `lvai_check_aixml` `diagramChain`
   (10 stages). Fold a sequential stretch into a subVI while the AIXML is text - one ATM main VI came
   out 5 983 px wide and was regenerated four times. `docs/diagram-size.md` §3-§4.
-- **A latched boolean cannot be driven through `signalsJson`** (`Error 1193`). Cover what it
-  triggers with the handler's unit test and say so; on a grafted VI drive a test copy
-  (`switchActionControls`). `docs/cold-build-atm-agents-7.md` §4.
+- **A latched boolean IS driven through `signalsJson` on the pylabview backend** (the default):
+  it is pressed by key focus and a posted space bar (`signals.latchedPressed`, since 2026-11-21),
+  so drive the VI as it is, grafted or not. Only on grpc is it `Error 1193` - then cover what it
+  triggers with the handler's unit test, or drive a grafted test copy (`switchActionControls`).
+  `docs/aixml-backends.md`.
 - **`Format Into String` `%g` prints 50 as `50.000000`**; `%d`, `%.0f` and `%#g` print `50`
   (measured by running, LabVIEW 2026, 2026-11-05). Use `%d`/`%.0f` for whole numbers.
 - **Compound literals on pylabview**: an array or cluster value needs brackets (`[true,false]`,
@@ -633,7 +635,9 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    (`events.projectReopened`) - and a run
    unloads the hierarchy, so before REGENERATING a scaffold that calls a project-local subVI,
    open that subVI again (`lvai_open_file` with `viPaths`), or the convert answers `Error 53`
-   naming it. Latched buttons a test must signal: graft a SECOND, test-only copy
+   naming it. Latched buttons a test must signal: on the pylabview backend (the default) drive
+   the delivered VI as it is - `signalsJson` presses them (`signals.latchedPressed`) - and make no
+   test copy. Only on grpc: graft a SECOND, test-only copy
    (`<name> Test.vi`) with `switchActionControls` naming ONLY the buttons the test drives, bind it
    too and drive that one (include `Stop` when the test must end the program and read a real
    `error out`; re-bind after every re-graft of it); the deliverable keeps the user's mechanical actions, because a switched
