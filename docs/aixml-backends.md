@@ -901,8 +901,12 @@ Those numbers are in-sample (the keys were learned from both). Learned from the 
 wrong. The ten wrong ones were there before and none has a primitive end; the eleventh is a wire
 through `1051`/`1110` that used to stay generic. `String Subset` (1503), `String To Byte Array`
 (1608) and `Read from Text File` (8070), the three the cold builds left generic, have a key now.
-**Not measured: LabVIEW itself.** That LabVIEW keeps the additionally routed tables on load is
-what `validate_routes.py` over the suite shows, and that run is still owed.
+**In LabVIEW, the same day:** every suite test composed twice, with the tables before and after
+(no LabVIEW needed for that), changed 28 wire tables in 17 tests (14 of them fan-outs); the rest
+composed identically, 8 with callees, an XControl or a stamp left out. Each pair loaded on a fresh
+LabVIEW 2026: load-time repairs ("Wiring insanity found and fixed") **86 -> 33**, ExecState and
+`Insane` lines unchanged on all 17, no DWarn of any other kind, and LabVIEW's own save KEPT all 28
+changed tables. The 17 then ran with their expected values in `selftest.py`: 17 of 17 PASS.
 `WireGeometryTests`.
 
 **A WHOLE CLD EXAM WENT THROUGH THE COMPOSER the same night** - the ATM: 21 application VIs (an
