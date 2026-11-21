@@ -23,7 +23,9 @@ EXACT - a fan-out's table spells out every length, so the router routes a fan-ou
 its ends are exact (wire_route.route_heap).
 
 --write merges the offsets into parts/hotpoints.json (a fan-out's both axes replace the two-ended
-learner's one) and writes the exact kinds to parts/hotpoints_exact.json.
+learner's one) and writes the exact kinds to parts/hotpoints_exact.json. Run
+learn_prim_origins.py --write after it: primitives take ONE offset each since 2026-11-21, and that
+script also drops the per-terminal keys this one writes back.
 """
 import collections
 import json

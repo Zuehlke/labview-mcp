@@ -885,8 +885,13 @@ the only way a tree carries a branch WEST; the ENCODER still writes eastward com
 
 **One offset per primitive (in the code since 2026-11-21).** `parts/hotpoints.json` and
 `parts/hotpoints_exact.json` carry a key that is the primResID alone, 172 of them, written by
-`experiments/aixml-without-grpc/learn_prim_origins.py` from the two fan-out corpora above (it adds
-those keys and touches nothing else in either file). `Hotpoints.of` uses a (primResID, position)
+`experiments/aixml-without-grpc/learn_prim_origins.py` from the two fan-out corpora above. It
+also drops what those keys and the base rule make redundant: `hotpoints.json` went from 480 keys
+to 201, `hotpoints_exact.json` from 430 to 288, and over 310 364 distinct terminal ends of both
+corpora the router answers the same point and the same exactness with either; the whole suite
+composes byte-identical wire tables. Every per-terminal offset of a node that is NOT a primitive
+was (0, 0) - centre plus the DCO's `<termHotPoint>` - so for those kinds the file only says WHICH
+are exact, and keeps a non-exact one as a stop for `Hotpoints.exact`. `Hotpoints.of` uses a (primResID, position)
 key only where that position is itself exact and the primitive's key otherwise; `Hotpoints.exact`
 is true for every terminal of such a primitive. What the router does with LabVIEW's own fan-outs,
 no constant end, before and after:

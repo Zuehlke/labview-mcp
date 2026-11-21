@@ -19,8 +19,15 @@ Three steps:
    are reproduced.
 
 --write adds the survivors to parts/hotpoints.json and parts/hotpoints_exact.json under the key
-"<primResID>". Nothing else in either file is touched: the per-terminal keys and the kinds learned
-from the suite's own saves stay as they are.
+"<primResID>", and then drops what they make redundant - nothing the router answers changes:
+
+- a (primResID, position) key of a primitive that has its own key, where the position is not
+  exact (Hotpoints.of never reads it then) or carries the primitive's own offset;
+- an EXACT key of any other kind whose offset is (0, 0): the base rule gives the same point, and
+  hotpoints_exact.json still says it is exact. A NON-exact key stays even at (0, 0) - Hotpoints.exact
+  stops at it instead of falling back to a coarser exact key.
+
+The kinds learned from the suite's own saves stay as they are otherwise.
 """
 import collections
 import json
@@ -38,6 +45,24 @@ import wire_route  # noqa: E402
 import wire_tree as wt  # noqa: E402
 
 MIN_WIRES, SHARE = 3, 0.9
+
+
+def prune(corr, exact):
+    """-> (corr, exact) without the keys the per-primitive ones and the base rule make redundant
+    (module docstring); wire_route.Hotpoints answers the same for every terminal."""
+    corr = {k: tuple(v) for k, v in corr.items()}
+    exact = set(exact)
+    prims = {k for k in corr if k.isdigit()}
+    for k in list(corr):
+        head = k.split("/")[0]
+        if "/" in k and head in prims:
+            if k not in exact or corr[k] == corr[head]:
+                del corr[k]
+                if head in exact:
+                    exact.discard(k)
+        elif not k.isdigit() and k in exact and corr[k] == (0, 0):
+            del corr[k]
+    return {k: list(v) for k, v in corr.items()}, exact
 
 
 def prim_of(e):
@@ -152,11 +177,14 @@ def main(argv):
         cur = json.load(open(p, encoding="utf-8"))
         cur = {k: v for k, v in cur.items() if "/" in k or not k.isdigit()}
         cur.update({k: list(v) for k, v in keep.items()})
-        json.dump(cur, open(p, "w", encoding="utf-8"), indent=1, sort_keys=True)
         ex = os.path.join(COMPOSER, "parts", "hotpoints_exact.json")
         exact = set(k for k in json.load(open(ex, encoding="utf-8")) if "/" in k or not k.isdigit()) | set(keep)
+        n_corr, n_exact = len(cur), len(exact)
+        cur, exact = prune(cur, exact)
+        json.dump(cur, open(p, "w", encoding="utf-8"), indent=1, sort_keys=True)
         json.dump(sorted(exact), open(ex, "w", encoding="utf-8"), indent=1)
-        print("wrote %d per-primitive keys into parts/hotpoints.json and parts/hotpoints_exact.json" % len(keep))
+        print("wrote %d per-primitive keys; hotpoints.json %d -> %d keys, hotpoints_exact.json %d -> %d"
+              % (len(keep), n_corr, len(cur), n_exact, len(exact)))
     else:
         print("offsets by number of primitives: %s" % collections.Counter(keep.values()).most_common(12))
 
