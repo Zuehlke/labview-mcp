@@ -57,24 +57,29 @@ def segments(hexs):
     if len(b) < 2:
         return None
     n = b[0]
-    if b[1] in START:                                   # two-ended
+    if b[1] in START and len(lengths(b[2 + n - 2:])) == n - 2:     # two-ended
         d = START[b[1]]
         dirs = list(b[2:2 + n - 2])
         lens = lengths(b[2 + n - 2:])
-        if len(lens) != n - 2:
-            return None
         segs = []
         for k in range(n - 1):                          # n joints, n-1 segments
             if k > 0:
                 d = turn(d, dirs[k - 1]) if k - 1 < len(dirs) else d
             segs.append((d, lens[k] if k < len(lens) else None))
         return segs
-    if b[1] == 0x00 and len(b) > 2 and b[2] in START:  # fan-out tree
-        codes = list(b[3:3 + n - 2])
-        lens = lengths(b[3 + n - 2:])
+    # fan-out tree: [n] [k] [k marks] [start mask] - k = 1 marks a joint a terminal sits on, the
+    # rest as k = 0 (wire_tree.parse); a two-ended table with start 01 (north) shares the second
+    # byte, so it is told apart by its lengths adding up (above)
+    k = b[1]
+    m = b[2 + k] if k <= 1 and len(b) > 2 + k else 0
+    first = [START[bit] for bit in (0x01, 0x02, 0x04, 0x08) if m & bit]
+    if k <= 1 and first and not m & ~0x0F:              # the start byte is a bit mask, several
+        # bits a branch point at the source, walked in rising bit order (wire_tree.starting)
+        codes = list(b[3 + k:3 + k + n - 2])
+        lens = lengths(b[3 + k + n - 2:])
         if len(lens) != n - 1:
             return None
-        d, stack, segs, li = START[b[2]], [], [], 0
+        d, stack, segs, li = first[0], ([list(first[1:])] if len(first) > 1 else []), [], 0
         for code in codes + [None]:
             segs.append((d, lens[li]))
             li += 1
@@ -87,11 +92,17 @@ def segments(hexs):
                     return None
                 d = stack[-1].pop(0)
             elif code in BRANCH:
-                dirs = list(BRANCH[code])
+                # a branch never doubles back on the segment that reached it: that direction is
+                # taken north off a horizontal segment, west off a vertical one (wire_tree.leaving)
+                back = (-d[0], -d[1])
+                turned = N if d in (E, W) else W
+                dirs = [turned if x == back else x for x in BRANCH[code]]
                 d = dirs.pop(0)
                 stack.append(dirs)
             elif code in (0x00, 0x01):
                 d = turn(d, code)
+            elif code == 0x02:
+                pass                                    # straight on, past a terminal
             else:
                 return None
         return segs

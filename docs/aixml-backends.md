@@ -380,6 +380,45 @@ by file instead of opening callees, treat `composerRefused` as a composer gap an
 call on `grpc` only when NI's service is up. `signalsJson` works over ActiveX since 2026-10-15.
 `PluginAgentTests.EveryAgentCarriesTheBackendRuleAndMayReadTheBackend` keeps it in all eight.
 
+**A LATCHED button and a PATH control are driven by `signalsJson` since 2026-11-21** (pylabview).
+Found by an agent verifying the event-driven GUI of a nine-VI build (`C:	emp\Hint_Projext`): its
+Load, Save Report and Stop are latched, the first signal to one stopped every signal with Error 1193,
+and it built a test copy without the latch; a path signal stopped with Error 1103 (the helper read
+the path's text as LabVIEW XML). Both answers still said `ok: true`. Measured on `t231`:
+
+- **Value (Signaling) refuses a latched Boolean (1193), and so does a change of its Mechanical
+  Action while the VI runs** (Error 1073, "not writable when VI is running"). Changing it before the
+  run would edit the user's VI in memory and leave it modified - the road to a modal save prompt.
+- **What works is what a person does**: the timed helper gives the button the key focus (`Key
+  Focus`, writable at run time) and counts it in `key presses`; the C# side polls that indicator
+  while the helper runs and POSTS a space bar to the target's panel window (`PanelKeys`), which it
+  opened for the run and closes again. Three presses counted three, with space and with Enter, on a
+  freshly opened panel and on one in front; the latch resets as it does for a click.
+- **The window is fronted only when it is not in front.** The Alt press that lets a process take
+  the foreground, sent again to a panel already in front, opened LabVIEW's menu bar and swallowed
+  every press after the first (one of three counted).
+- **And it is fronted BEFORE the helper runs.** Activating a panel resets its key focus: called from
+  the client with the client's window in front, the first of three presses was lost every time (the
+  first live run after the build counted Loads 1 of 2), because the panel was fronted at that press,
+  after the helper had focused the button. Fronted right after it is opened, before the helper
+  sets any focus: 3 of 3, four runs in a row (`PanelKeys.BringToFront`). A real keystroke (`keybd_event`) worked too,
+  but goes to whatever has the focus, so the key is posted to the window instead.
+- **And it is fronted WITHOUT a keystroke.** The Alt press that lets a process take the foreground
+  wedged LabVIEW: when its release arrived after the panel was in front, LabVIEW entered its
+  menu-bar loop, the helper's `Key Focus` property node waited on the UI thread, the run was
+  aborted after 118 s and LabVIEW sat in "Resetting VI: lvai_run_for_ms.vi" until it was killed -
+  two of four test runs, found by the gate. Joining the input of the window in front instead
+  (`AttachThreadInput`, then `SetForegroundWindow`): no hang in 15 runs, 3-4 s each; one of the
+  first five lost one press. The answer now says whether the panel was in front before the helper
+  focused anything (`signals.panelInFront`); a press on a panel that comes to the front later can be
+  lost, because activation resets the key focus.
+- A path control takes its text (`String To Path`).
+- **A signal that fails now makes `ok` false**, on both backends, and `signals.latchedPressed`
+  counts the presses; a press with no panel window to post to is `latchedNotPressed` and fails too.
+- The gRPC route runs the helper in ONE call of NI's service, with nobody to press the key: there a
+  latched Boolean is still Error 1193 (`press latched by key` is left empty), and the note says to
+  use `backend: pylabview`. `SignalLatchedTests` drives `t231` end to end when LabVIEW runs.
+
 ## Where the pylabview pieces are found
 
 | piece | search order |
@@ -845,6 +884,110 @@ the structure to the text and wraps beyond 600 px. FINDINGS, "Subdiagram labels"
 for those kinds all came out zero. An In Place structure's element pair is one node straddling the
 border, and a Feedback Node's hidden half keeps diagram coordinates, leaves its output WEST and takes
 its initializer from BELOW. FINDINGS §7a, "In Place element pairs, the Feedback Node".
+
+**What the learned table really holds (measured 2026-11-21; the code follows it since the same day,
+see "One offset per primitive" below).**
+The corpus was rebuilt from NI's examples (1 792 VIs, 4 579 fan-outs, 42 239 two-ended wires; all
+saved by 26.3) and every fan-out with one source and no constant end, 3 857 of them, was tested
+against the table it carries:
+
+- **Away from primitives the base rule needs no table.** Centre of the terminal's rectangle plus
+  the DCO's own `<termHotPoint>`, nothing learned: 1 806 of the 1 830 fan-outs that touch no
+  primitive, exactly what the shipped table reaches there. The misses are mostly flat-sequence
+  tunnels.
+- **A primitive is stored as a 32 x 32 cell whatever its real size** - 11 933 of 11 933 primitive
+  ends - and its terminals span a smaller box (21 x 21 for the arithmetic family) that sits inside
+  the cell. So the base rule alone fits 281 of the 1 844 fan-outs through table-known primitives,
+  the table 1 809.
+- **The correction is ONE offset per primitive, not one per terminal**: on the wires the table
+  reproduces, all terminals of a primitive share it, 159 primitives of 159. `hotpoints.json` keys
+  it by (primResID, position) and treats a position it never saw as unknown (`_family` guesses);
+  keyed by primResID alone, an unseen terminal of a known primitive is exact.
+- **The offset is not the box centred in the cell**: that fits 84 % of the 3 857 and is 1 px off
+  on the rest (a 21 px box sits 6 down in one primitive and 5 in another), which a fan-out's table
+  does not forgive. It has to stay a measured value.
+- **The EXACT gate is narrower than the model**: `route_heap` would route 3 479 of the 3 857, the
+  shipped offsets reproduce 3 760.
+- `<termHotPoint>` and bit 0x1 of the DCO's `objFlags` are independent here: 886 ends carry a
+  hotpoint without the bit, 978 with it, and 24 410 carry the bit without a hotpoint. The bit is
+  the output flag `is_source` reads.
+
+**A branch point that would send a branch straight back along the trunk turns it instead**
+(measured the same day). `wire_tree.BRANCH` reads the codes 04-07 as absolute directions. Read
+with one exception - a branch pointing exactly against the heading the trunk arrives with goes
+NORTH off a horizontal trunk and WEST off a vertical one - the two readings place the ends
+differently on 110 of 17 940 walkable fan-outs (the examples and every fourth VI of `vi.lib`). Of
+the 96 among them with no constant end, 82 fit only with the turn, none only without it, 14 with
+neither - so it is not the whole rule, but the absolute reading never wins. `wire_tree.walk`
+(`leaving`) and the second decoder in `scripts/lvbd_backward_wires.py` read it that way now. It is
+the only way a tree carries a branch WEST; the ENCODER still writes eastward combs only.
+
+**One offset per primitive (in the code since 2026-11-21).** `parts/hotpoints.json` and
+`parts/hotpoints_exact.json` carry a key that is the primResID alone, 172 of them, written by
+`experiments/aixml-without-grpc/learn_prim_origins.py` from the two fan-out corpora above. It
+also drops what those keys and the base rule make redundant: `hotpoints.json` went from 480 keys
+to 201, `hotpoints_exact.json` from 430 to 288, and over 310 364 distinct terminal ends of both
+corpora the router answers the same point and the same exactness with either; the whole suite
+composes byte-identical wire tables. Every per-terminal offset of a node that is NOT a primitive
+was (0, 0) - centre plus the DCO's `<termHotPoint>` - so for those kinds the file only says WHICH
+are exact, and keeps a non-exact one as a stop for `Hotpoints.exact`. `Hotpoints.of` uses a (primResID, position)
+key only where that position is itself exact and the primitive's key otherwise; `Hotpoints.exact`
+is true for every terminal of such a primitive. What the router does with LabVIEW's own fan-outs,
+no constant end, before and after:
+
+| corpus | routed and right | routed and wrong | left generic |
+|---|---|---|---|
+| NI's examples, 3 857 | 3 479 -> 3 702 | 0 -> 0 | 378 -> 155 |
+| `vi.lib`, every fourth VI, 12 528 | 10 900 -> 12 174 | 10 -> 11 | 1 618 -> 343 |
+
+Those numbers are in-sample (the keys were learned from both). Learned from the examples ALONE,
+102 keys, and measured on `vi.lib`, which that learner never saw: 10 900 -> 11 600 right, 10 -> 11
+wrong. The ten wrong ones were there before and none has a primitive end; the eleventh is a wire
+through `1051`/`1110` that used to stay generic. `String Subset` (1503), `String To Byte Array`
+(1608) and `Read from Text File` (8070), the three the cold builds left generic, have a key now.
+**In LabVIEW, the same day:** every suite test composed twice, with the tables before and after
+(no LabVIEW needed for that), changed 28 wire tables in 17 tests (14 of them fan-outs); the rest
+composed identically, 8 with callees, an XControl or a stamp left out. Each pair loaded on a fresh
+LabVIEW 2026: load-time repairs ("Wiring insanity found and fixed") **86 -> 33**, ExecState and
+`Insane` lines unchanged on all 17, no DWarn of any other kind, and LabVIEW's own save KEPT all 28
+changed tables. The 17 then ran with their expected values in `selftest.py`: 17 of 17 PASS.
+`WireGeometryTests`.
+
+**A nine-VI application built by agents, the same day** (`C:\temp\Hint_Projext`, a batch
+statistics tool: line parser, statistics, limit checks, report, event-driven GUI). Its nine AIXML
+sources composed with the tables before and after: generic wires 4 -> 0, and on a fresh LabVIEW
+the load-time repairs went **19 -> 0**, LabVIEW's save keeping all 9 changed tables. What it found:
+
+- **A fan-out's start byte is a bit MASK** (01 north, 02 west, 04 south, 08 east). With several
+  bits the source is itself a branch point, walked in rising bit order. 163 fan-outs of LabVIEW's
+  own saves start with 03, 05, 06, 09, 0A, 0C or 0D; the decoders refused them (one was in the
+  application's Parse Measurement Line.vi as LabVIEW's layout save left it). Read as a mask, the
+  93 of them whose ends are all exact land on the hotpoints - in rising bit order and no other.
+  `wire_tree.starting`, and `lvbd_backward_wires.segments` / `lvbd_wire_metrics` likewise:
+  walkable corpus fan-outs 19 193 -> 19 356 of 19 653.
+- **A conditional indexing tunnel's condition terminal** (`inner:lpTunConditionDCO`) was in no
+  table, so a fan-out into one stayed generic. It sits on the base rule: 9 of 9 LabVIEW fan-outs
+  through it at (0, 0). Added to `hotpoints_exact.json`.
+- **A table whose SECOND byte is 1 marks a joint a terminal sits on** (decoded 2026-11-21, read
+  as "still not decoded" until then): `[n] [k] [k marks] [start mask] [n-2 codes] [n-1 lengths]`,
+  the common table being k = 0. With k = 1 the mark is the index of a joint (0 = the first after
+  the source) where a sink sits ON the wire - passed on a straight run, which is the new code `02`
+  (straight on), or at a bend - besides the ends the walk reaches: `03 01 00 08 02 55 74` has sinks
+  at 85 and 85 + 116 px east of the source. 223 of the 223 such tables of LabVIEW's own saves whose
+  ends are all exact read that way; k > 1 (11 tables) does not, and is still refused. A two-ended
+  table that starts north (`01`) shares that second byte and is told apart by its lengths adding
+  up - all 184 369 two-ended corpus tables decode exactly as before. Walkable corpus fan-outs
+  19 356 -> 19 625 of 19 653 (`wire_tree.parse`, `lvbd_backward_wires`, `lvbd_wire_metrics`).
+- **The Event Structure's timeout terminal** (`eventStruct/eventTimeOut`, wired since the
+  composer writes `timeoutin`) was in no table either, so the fan-out of a timeout shift register
+  stayed generic. On the base rule in every LabVIEW wire that shows it (1 fan-out, both axes; 3
+  two-ended, the one axis each fixes); added to `hotpoints_exact.json`. A second application built
+  by agents the same day (`C:\temp\UserHints1`, a producer/consumer with a user event and a
+  timeout) then composed with no generic wire, and its five VIs loaded with **23 -> 0** repairs
+  against the tables of the morning, LabVIEW's save keeping all 6 changed tables.
+- The layout step of `lvai_generate_vi` runs `CleanUpWire` on every wire and saves, so the tables
+  in a DELIVERED VI are LabVIEW's; what the router changes there is what LabVIEW meets when it
+  loads the composed file before the layout - repairs, and the risk that comes with them.
 
 **A WHOLE CLD EXAM WENT THROUGH THE COMPOSER the same night** - the ATM: 21 application VIs (an
 Event Structure producer, a queue consumer, a state machine, file I/O, panel helpers driving
@@ -2018,7 +2161,9 @@ warnings and scoped to the measured case, a double Constant.
   are left to LabVIEW, which repairs them on load - non-fatal, the VIs run. The remedy is data, not
   code: LabVIEW-saved fan-outs through those terminals fed to `learn_hotpoints_fanout.py
   --write` (the suite's LabVIEW-routed saves via `suite_corpus.py` are the source that carries the
-  composer's own terminal kinds).
+  composer's own terminal kinds). **Closed by data on 2026-11-21**: a primitive needs ONE offset,
+  not one per terminal, so any fan-out through any of its terminals teaches it - all three have a
+  key now ("One offset per primitive" above). The load in LabVIEW is not re-measured.
 
 ## An IVI instrument session (`ref{IVI.niRFSA}`) had no type, no part and no wire (fixed 2026-10-30)
 

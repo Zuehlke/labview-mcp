@@ -45,9 +45,11 @@ Measured facts that each cost minutes when found at run time. Plan around them f
 - **Check the 1920 x 1080 budget BEFORE generating**: `lvai_check_aixml` `diagramChain`
   (10 stages). Fold a sequential stretch into a subVI while the AIXML is text - one ATM main VI came
   out 5 983 px wide and was regenerated four times. `docs/diagram-size.md` §3-§4.
-- **A latched boolean cannot be driven through `signalsJson`** (`Error 1193`). Cover what it
-  triggers with the handler's unit test and say so; on a grafted VI drive a test copy
-  (Phase 6g, `switchActionControls`). `docs/cold-build-atm-agents-7.md` §4.
+- **A latched boolean IS driven through `signalsJson` on the pylabview backend** (the default):
+  it is pressed by key focus and a posted space bar (`signals.latchedPressed`, since 2026-11-21),
+  so drive the VI as it is, grafted or not - build NO test copy without the latch. Only on grpc is
+  it `Error 1193` - then cover what it triggers with the handler's unit test, or drive a grafted
+  test copy (Phase 6g, `switchActionControls`). `docs/aixml-backends.md`.
 - **`Format Into String` `%g` prints 50 as `50.000000`**; `%d`, `%.0f` and `%#g` print `50`
   (measured by running, LabVIEW 2026, 2026-11-05). Use `%d`/`%.0f` for whole numbers.
 - **Compound literals on pylabview**: an array or cluster value needs brackets (`[true,false]`,
@@ -616,9 +618,10 @@ impossible.
    state. A snapshot with no signals proves only that start-up ran. Measured 2026-09-26 on the
    seventh ATM build: validation, `execState 1`, 58 unit tests and a start-up snapshot were all
    green while the consumer read `User Input` before the user had typed, and the user found it by
-   pressing the buttons. A LATCHED boolean (an `Enter` button) cannot be signalled - Error 1193,
-   reported under `signals` - so what it triggers is covered by the handler's unit test, and the
-   report says that this one step was not driven.
+   pressing the buttons. A LATCHED boolean (an `Enter` button) is pressed by `signalsJson` on the
+   pylabview backend (`signals.latchedPressed`); only on grpc is it Error 1193, reported under
+   `signals` - then what it triggers is covered by the handler's unit test, and the report says
+   that this one step was not driven.
 
 **AND A VALUE THE CONSUMER NEEDS TRAVELS WITH THE COMMAND.** In a producer/consumer, read a
 control in the PRODUCER's event frame and put its value into the queue element (`Enter=23456`, or a
@@ -858,7 +861,9 @@ supplied subVI panel exists, unless the user explicitly asks to keep that panel.
    (`lvai_open_file` with the project and `viPaths`): the graft closes the project and a run
    unloads the hierarchy, so the convert answers `Error 53` naming the subVI rather than 1357 -
    measured 2026-10-02; the answer's unsupported-subVI list names exactly what to open.
-   **Latched buttons a test must signal** (a latched boolean refuses `Value (Signaling)`, Error
+   **Latched buttons a test must signal**: on the pylabview backend (the default) drive the
+   delivered VI as it is - `signalsJson` presses a latched button (`signals.latchedPressed`) - and
+   make NO test copy. Only on grpc, where a latched boolean refuses `Value (Signaling)` (Error
    1193): graft a SECOND, test-only copy for that - same scaffold, `outputViPath=<name> Test.vi`,
    `switchActionControls` naming ONLY the buttons your test drives - bind it like the deliverable,
    and drive that copy. The deliverable keeps the supplied mechanical actions. A graft is

@@ -37,10 +37,13 @@ def bends_of(hexs):
     if len(b) < 2:
         return None
     n = b[0]
-    if b[1] in bw.START:                                   # two-ended: every inner joint turns
+    segs = bw.segments(hexs)
+    if segs is None:
+        return None
+    if b[1] in bw.START and len(bw.lengths(b[2 + n - 2:])) == n - 2:   # two-ended: every inner joint turns
         return max(0, n - 2)
-    if b[1] == 0x00 and len(b) > 2 and b[2] in bw.START:  # fan-out tree: 00/01 codes turn
-        return sum(1 for c in b[3:3 + n - 2] if c in (0x00, 0x01))
+    k = b[1]                                               # fan-out tree, [n] [k] [k marks] [mask]: 00/01 codes turn
+    return sum(1 for c in b[3 + k:3 + k + n - 2] if c in (0x00, 0x01))
     return None
 
 

@@ -10,23 +10,59 @@ direction bytes), a BRANCH POINT the absolute directions leaving it (04 up+down+
 down+right, 06 up+right, 07 up+down), explored in the order up, down, right; 03 ends a branch at a
 terminal and the walk returns to the last branch point with a direction left. The lengths are the
 segments in walk order, >= 255 written FF + 16 bit; the last joint is the last terminal's.
+
+A branch never runs straight back along the segment that reached its branch point: a direction
+that is the exact reverse of the heading the walk arrives with is taken NORTH off a horizontal
+segment and WEST off a vertical one (`leaving`). Measured 2026-11-21 over NI's examples and a
+quarter of vi.lib: the two readings place the ends differently on 10 fan-outs of about 6 500, 9
+fit only with the turn, none only without. It is how a tree carries a branch west.
 """
 
 E, S, W, N = (0, 1), (1, 0), (0, -1), (-1, 0)      # (dy, dx)
 BRANCH = {0x04: [N, S, E], 0x05: [S, E], 0x06: [N, E], 0x07: [N, S]}
 CODE_OF = {tuple(v): k for k, v in BRANCH.items()}
+REVERSE = {E: W, W: E, N: S, S: N}
+
+
+def leaving(code, heading):
+    """The directions leaving a branch point with this code, in walk order, for a walk that
+    arrives with `heading`: the code's absolute directions, the one that would double back turned
+    north (horizontal arrival) or west (vertical arrival)."""
+    turned = N if heading in (E, W) else W
+    return [turned if d == REVERSE[heading] else d for d in BRANCH[code]]
 # the direction of the FIRST segment: east almost always; a Feedback Node's output leaves west
 # (02, as in a two-ended table) or north (01)
 START = {0x08: E, 0x02: W, 0x01: N, 0x04: S}
 
 
+def starting(mask):
+    """The directions leaving the SOURCE, in walk order, or None. The start byte is a bit mask
+    (01 north, 02 west, 04 south, 08 east); with several bits the source is itself a branch point,
+    and the walk takes its directions in rising bit order. Measured 2026-11-21: 163 fan-outs of
+    LabVIEW's own saves start with 03, 05, 06, 09, 0A, 0C or 0D, and that reading puts every end of
+    the 93 of them whose ends are all exact where the hotpoints are - the only order that does."""
+    dirs = [START[bit] for bit in (0x01, 0x02, 0x04, 0x08) if mask & bit]
+    return dirs if dirs and not mask & ~0x0F else None
+
+
 def parse(hexs):
+    """-> (n joints, codes, lengths, start mask, marked joints) or None.
+
+    [n] [k] [k marks] [start mask] [n-2 codes] [n-1 lengths]: k is 0 in the common table. With
+    k = 1 the mark is the index of a joint (0 = the first after the source) where a terminal sits
+    ON the wire - a sink it passes on a straight run (code 02, straight on) or at a bend - besides
+    the ends the walk reaches. Measured 2026-11-21: 223 of the 223 such tables of LabVIEW's own saves
+    whose ends are all exact read that way; k > 1 (11 of them) does not, and is refused."""
     b = bytes.fromhex(hexs)
-    n = b[0]
-    if n < 3 or b[1] != 0x00 or b[2] not in START:
+    if len(b) < 3:
         return None
-    codes = list(b[3:3 + n - 2])
-    rest = b[3 + n - 2:]
+    n, k = b[0], b[1]
+    if n < 3 or k > 1 or len(b) < 3 + k or starting(b[2 + k]) is None:
+        return None
+    marks = list(b[2:2 + k])
+    o = 3 + k
+    codes = list(b[o:o + n - 2])
+    rest = b[o + n - 2:]
     lens, i = [], 0
     while i < len(rest):
         if rest[i] == 0xFF:
@@ -35,7 +71,7 @@ def parse(hexs):
         else:
             lens.append(rest[i])
             i += 1
-    return n, codes, lens if len(lens) == n - 1 else None
+    return n, codes, lens if len(lens) == n - 1 else None, b[2 + k], marks
 
 
 def walk(hexs):
@@ -43,18 +79,23 @@ def walk(hexs):
     p = parse(hexs)
     if not p or p[2] is None:
         return None
-    n, codes, lens = p
-    pos, d = (0, 0), START[bytes.fromhex(hexs)[2]]
-    stack = []          # (position, remaining directions) of branch points
+    n, codes, lens, mask, marks = p
+    first = starting(mask)
+    pos, d = (0, 0), first[0]
+    stack = [((0, 0), first[1:])] if len(first) > 1 else []   # (position, remaining directions) of branch points
     ends = []
     li = 0
-    for code in codes + [None]:
+    for joint, code in enumerate(codes + [None]):
         # the segment into this joint
         if li >= len(lens):
             return None
         L = lens[li]
         li += 1
         pos = (pos[0] + d[0] * L, pos[1] + d[1] * L)
+        if code is not None and joint in marks:
+            ends.append(pos)                # a terminal the wire passes through
+        if code == 0x02:
+            continue                        # straight on
         if code is None or code == 0x03:
             ends.append(pos)
             if code is None:
@@ -66,7 +107,7 @@ def walk(hexs):
             pos, dirs = stack[-1]
             d = dirs.pop(0)
         elif code in BRANCH:
-            dirs = list(BRANCH[code])
+            dirs = leaving(code, d)
             d = dirs.pop(0)
             stack.append((pos, dirs))
         elif code in (0x00, 0x01):
