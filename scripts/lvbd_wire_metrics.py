@@ -39,7 +39,7 @@ def bends_of(hexs):
     n = b[0]
     if b[1] in bw.START:                                   # two-ended: every inner joint turns
         return max(0, n - 2)
-    if b[1] == 0x00 and len(b) > 2 and b[2] in bw.START:  # fan-out tree: 00/01 codes turn
+    if b[1] == 0x00 and len(b) > 2 and 0 < b[2] <= 0x0F:  # fan-out tree (start byte a bit mask): 00/01 codes turn
         return sum(1 for c in b[3:3 + n - 2] if c in (0x00, 0x01))
     return None
 

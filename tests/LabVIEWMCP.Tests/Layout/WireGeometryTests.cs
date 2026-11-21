@@ -39,6 +39,15 @@ public sealed class WireGeometryTests
         assert wt.walk(t) == [(10, -20), (-12, -20)], wt.walk(t)
         assert [d for d, _ in bw.segments(t)] == [W, S, N], bw.segments(t)
 
+        # a start byte with several bits: the source is a branch point, walked in rising bit order
+        # (01 N, 02 W, 04 S, 08 E) - 0C: south 45, east 14 to the first end; then east 86
+        assert wt.walk("04000C00032D0E56") == [(45, 14), (0, 86)], wt.walk("04000C00032D0E56")
+        assert [d for d, _ in bw.segments("04000C00032D0E56")] == [S, E, E]
+        # 09 (north + east), as LabVIEW saved it in a generated VI of 2026-11-21
+        t = "070009000305000336221A3A090C"
+        assert wt.walk(t) == [(-54, 34), (58, 35), (0, 38)], wt.walk(t)
+        assert wt.starting(0x09) == [N, E] and wt.starting(0x06) == [W, S] and wt.starting(0x10) is None
+
         # where nothing doubles back the codes stay absolute
         assert wt.leaving(0x04, E) == [N, S, E] and wt.leaving(0x05, S) == [S, E]
         assert wt.leaving(0x04, S) == [W, S, E] and wt.leaving(0x06, W) == [N, N]

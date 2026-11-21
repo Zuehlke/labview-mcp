@@ -69,12 +69,14 @@ def segments(hexs):
                 d = turn(d, dirs[k - 1]) if k - 1 < len(dirs) else d
             segs.append((d, lens[k] if k < len(lens) else None))
         return segs
-    if b[1] == 0x00 and len(b) > 2 and b[2] in START:  # fan-out tree
+    first = [START[bit] for bit in (0x01, 0x02, 0x04, 0x08) if len(b) > 2 and b[2] & bit]
+    if b[1] == 0x00 and first and not b[2] & ~0x0F:     # fan-out tree; the start byte is a bit
+        # mask, several bits a branch point at the source, walked in rising bit order (wire_tree.starting)
         codes = list(b[3:3 + n - 2])
         lens = lengths(b[3 + n - 2:])
         if len(lens) != n - 1:
             return None
-        d, stack, segs, li = START[b[2]], [], [], 0
+        d, stack, segs, li = first[0], ([list(first[1:])] if len(first) > 1 else []), [], 0
         for code in codes + [None]:
             segs.append((d, lens[li]))
             li += 1

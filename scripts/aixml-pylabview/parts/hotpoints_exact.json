@@ -243,6 +243,7 @@
  "inner:lSR",
  "inner:lTst",
  "inner:lpTun",
+ "inner:lpTunConditionDCO",
  "inner:rSR",
  "inner:selTun",
  "inner:seqTun",

@@ -35,10 +35,20 @@ def leaving(code, heading):
 START = {0x08: E, 0x02: W, 0x01: N, 0x04: S}
 
 
+def starting(mask):
+    """The directions leaving the SOURCE, in walk order, or None. The start byte is a bit mask
+    (01 north, 02 west, 04 south, 08 east); with several bits the source is itself a branch point,
+    and the walk takes its directions in rising bit order. Measured 2026-11-21: 163 fan-outs of
+    LabVIEW's own saves start with 03, 05, 06, 09, 0A, 0C or 0D, and that reading puts every end of
+    the 93 of them whose ends are all exact where the hotpoints are - the only order that does."""
+    dirs = [START[bit] for bit in (0x01, 0x02, 0x04, 0x08) if mask & bit]
+    return dirs if dirs and not mask & ~0x0F else None
+
+
 def parse(hexs):
     b = bytes.fromhex(hexs)
     n = b[0]
-    if n < 3 or b[1] != 0x00 or b[2] not in START:
+    if n < 3 or b[1] != 0x00 or starting(b[2]) is None:
         return None
     codes = list(b[3:3 + n - 2])
     rest = b[3 + n - 2:]
@@ -59,8 +69,9 @@ def walk(hexs):
     if not p or p[2] is None:
         return None
     n, codes, lens = p
-    pos, d = (0, 0), START[bytes.fromhex(hexs)[2]]
-    stack = []          # (position, remaining directions) of branch points
+    first = starting(bytes.fromhex(hexs)[2])
+    pos, d = (0, 0), first[0]
+    stack = [((0, 0), first[1:])] if len(first) > 1 else []   # (position, remaining directions) of branch points
     ends = []
     li = 0
     for code in codes + [None]:
