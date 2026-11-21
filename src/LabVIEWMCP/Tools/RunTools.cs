@@ -540,6 +540,9 @@ internal sealed class RunTools(LvaiConnection connection)
         var signalErrorXml = run.Outputs.GetValueOrDefault("signal error xml");
         var signalsAnswer = SignalsAnswer(signals, signalGapMs, signalErrorXml);
         signalsAnswer["latchedPressed"] = run.KeyPresses;
+        // whether the panel was in front before the helper focused anything - a press on a panel
+        // that comes to the front later can be lost, as activation resets the key focus
+        signalsAnswer["panelInFront"] = run.PanelInFront;
         if (run.KeyPressesWithoutPanel > 0)
         {
             signalsAnswer["latchedNotPressed"] = run.KeyPressesWithoutPanel;

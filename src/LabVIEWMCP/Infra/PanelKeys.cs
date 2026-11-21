@@ -15,16 +15,17 @@ namespace LabVIEWMcp.Infra;
 /// three, with space and with Enter, on a panel freshly opened and on one already in front.
 ///
 /// The key is POSTED to the panel window, never typed: a real keystroke goes to whatever window
-/// has the focus, which may be the user's. The window is brought to the front only when it is not
-/// there already - the Alt press that makes Windows allow it, repeated on a window already in
-/// front, opened LabVIEW's menu bar and swallowed every press after the first (measured) - and
-/// before the first key focus is set (<see cref="BringToFront"/>).
+/// has the focus, which may be the user's. The window is brought to the front before the first key
+/// focus is set (<see cref="BringToFront"/>), by joining the input of the window in front
+/// (AttachThreadInput) - NO keystroke. The usual Alt press for that put LabVIEW into its menu-bar
+/// loop when the release arrived after the panel was in front: the helper's Key Focus property node
+/// then waited on the UI thread until the run was aborted, and LabVIEW sat in "Resetting VI" (two of
+/// four test runs, measured 2026-11-21).
 /// </summary>
 internal static class PanelKeys
 {
     private const uint WM_KEYDOWN = 0x0100, WM_KEYUP = 0x0101;
-    private const byte VK_SPACE = 0x20, VK_MENU = 0x12;
-    private const uint KEYEVENTF_KEYUP = 0x2;
+    private const byte VK_SPACE = 0x20;
     private const int SW_RESTORE = 9;
 
     /// <summary>
@@ -53,21 +54,33 @@ internal static class PanelKeys
     /// (the client app, when the tool is called) the first of three presses went missing every
     /// time, and fronting the panel first made it three of three (measured 2026-11-21).
     /// </summary>
-    internal static void BringToFront(string viPath)
+    internal static bool BringToFront(string viPath)
     {
-        if (!OperatingSystem.IsWindows()) return;
-        foreach (var window in PanelWindows(Path.GetFileName(viPath))) Front(window);
+        if (!OperatingSystem.IsWindows()) return false;
+        var windows = PanelWindows(Path.GetFileName(viPath));
+        foreach (var window in windows) Front(window);
+        return windows.Count > 0 && windows.Contains(GetForegroundWindow());
     }
 
     /// <summary>Front one window, and wait (up to a second) until Windows says it is in front.</summary>
     private static void Front(nint window)
     {
-        if (GetForegroundWindow() == window) return;
-        keybd_event(VK_MENU, 0, 0, 0);
-        keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
-        ShowWindow(window, SW_RESTORE);
-        BringWindowToTop(window);
-        SetForegroundWindow(window);
+        var front = GetForegroundWindow();
+        if (front == window) return;
+        // Windows lets a thread take the foreground when it shares the input of the one in front
+        var me = GetCurrentThreadId();
+        var theirs = front == 0 ? 0u : GetWindowThreadProcessId(front, out _);
+        var attached = theirs != 0 && theirs != me && AttachThreadInput(me, theirs, true);
+        try
+        {
+            if (IsIconic(window)) ShowWindow(window, SW_RESTORE);
+            BringWindowToTop(window);
+            SetForegroundWindow(window);
+        }
+        finally
+        {
+            if (attached) AttachThreadInput(me, theirs, false);
+        }
         var clock = Stopwatch.StartNew();
         while (GetForegroundWindow() != window && clock.ElapsedMilliseconds < 1000) Thread.Sleep(20);
     }
@@ -118,5 +131,7 @@ internal static class PanelKeys
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(nint window);
     [DllImport("user32.dll")] private static extern bool BringWindowToTop(nint window);
     [DllImport("user32.dll")] private static extern bool ShowWindow(nint window, int command);
-    [DllImport("user32.dll")] private static extern void keybd_event(byte key, byte scan, uint flags, nuint extra);
+    [DllImport("user32.dll")] private static extern bool AttachThreadInput(uint attach, uint attachTo, bool on);
+    [DllImport("user32.dll")] private static extern bool IsIconic(nint window);
+    [DllImport("kernel32.dll")] private static extern uint GetCurrentThreadId();
 }

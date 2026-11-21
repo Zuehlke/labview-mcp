@@ -67,7 +67,7 @@ public sealed class SignalLatchedTests
             Assert.True(answer["ok"]!.GetValue<bool>(), answer.ToJsonString());
             Assert.Equal(0, answer["signals"]!["errorCode"]?.GetValue<int>() ?? 0);
             Assert.Equal(3, answer["signals"]!["latchedPressed"]!.GetValue<int>());
-            Assert.Equal(2, answer["values"]!["Loads"]!["value"]!.GetValue<int>());
+            Assert.True(answer["values"]!["Loads"]!["value"]!.GetValue<int>() == 2, answer.ToJsonString());
             Assert.Equal(seen, answer["values"]!["Seen Path"]!["value"]!.GetValue<string>());
             Assert.True(answer["targetEndedBeforeAbort"]!.GetValue<bool>(), "Stop did not end the VI");
         }

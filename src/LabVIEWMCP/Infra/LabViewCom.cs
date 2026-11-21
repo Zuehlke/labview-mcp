@@ -470,7 +470,8 @@ internal static class LabViewCom
     internal sealed record HelperRun(int TargetExecState, bool Finished, long RunMs,
                                      IReadOnlyList<string> SetProblems,
                                      IReadOnlyDictionary<string, string?> Outputs,
-                                     int KeyPresses = 0, int KeyPressesWithoutPanel = 0);
+                                     int KeyPresses = 0, int KeyPressesWithoutPanel = 0,
+                                     bool? PanelInFront = null);
 
     /// <summary>
     /// Set <paramref name="targetInputs"/> on the target, then run a HELPER VI that drives it -
@@ -510,7 +511,7 @@ internal static class LabViewCom
                     Set(target, "FPWinOpen", true);
                     openedPanel = true;
                 }
-                if (keyPressCounter is not null) PanelKeys.BringToFront(targetPath);
+                bool? panelInFront = keyPressCounter is null ? null : PanelKeys.BringToFront(targetPath);
                 var clock = Stopwatch.StartNew();
                 Call(helper, "Run", true);
                 var finished = false;
@@ -552,7 +553,7 @@ internal static class LabViewCom
                     try { Set(target, "FPWinOpen", false); }
                     catch (Exception e) when (e is TargetInvocationException or COMException) { }
                 }
-                return new HelperRun(state, finished, runMs, [], outputs, presses, withoutPanel);
+                return new HelperRun(state, finished, runMs, [], outputs, presses, withoutPanel, panelInFront);
             });
         }), timeoutSeconds, ct);
 
