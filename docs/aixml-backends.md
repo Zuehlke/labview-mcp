@@ -380,6 +380,36 @@ by file instead of opening callees, treat `composerRefused` as a composer gap an
 call on `grpc` only when NI's service is up. `signalsJson` works over ActiveX since 2026-10-15.
 `PluginAgentTests.EveryAgentCarriesTheBackendRuleAndMayReadTheBackend` keeps it in all eight.
 
+**A LATCHED button and a PATH control are driven by `signalsJson` since 2026-11-21** (pylabview).
+Found by an agent verifying the event-driven GUI of a nine-VI build (`C:	emp\Hint_Projext`): its
+Load, Save Report and Stop are latched, the first signal to one stopped every signal with Error 1193,
+and it built a test copy without the latch; a path signal stopped with Error 1103 (the helper read
+the path's text as LabVIEW XML). Both answers still said `ok: true`. Measured on `t231`:
+
+- **Value (Signaling) refuses a latched Boolean (1193), and so does a change of its Mechanical
+  Action while the VI runs** (Error 1073, "not writable when VI is running"). Changing it before the
+  run would edit the user's VI in memory and leave it modified - the road to a modal save prompt.
+- **What works is what a person does**: the timed helper gives the button the key focus (`Key
+  Focus`, writable at run time) and counts it in `key presses`; the C# side polls that indicator
+  while the helper runs and POSTS a space bar to the target's panel window (`PanelKeys`), which it
+  opened for the run and closes again. Three presses counted three, with space and with Enter, on a
+  freshly opened panel and on one in front; the latch resets as it does for a click.
+- **The window is fronted only when it is not in front.** The Alt press that lets a process take
+  the foreground, sent again to a panel already in front, opened LabVIEW's menu bar and swallowed
+  every press after the first (one of three counted).
+- **And it is fronted BEFORE the helper runs.** Activating a panel resets its key focus: called from
+  the client with the client's window in front, the first of three presses was lost every time (the
+  first live run after the build counted Loads 1 of 2), because the panel was fronted at that press,
+  after the helper had focused the button. Fronted right after it is opened, before the helper
+  sets any focus: 3 of 3, four runs in a row (`PanelKeys.BringToFront`). A real keystroke (`keybd_event`) worked too,
+  but goes to whatever has the focus, so the key is posted to the window instead.
+- A path control takes its text (`String To Path`).
+- **A signal that fails now makes `ok` false**, on both backends, and `signals.latchedPressed`
+  counts the presses; a press with no panel window to post to is `latchedNotPressed` and fails too.
+- The gRPC route runs the helper in ONE call of NI's service, with nobody to press the key: there a
+  latched Boolean is still Error 1193 (`press latched by key` is left empty), and the note says to
+  use `backend: pylabview`. `SignalLatchedTests` drives `t231` end to end when LabVIEW runs.
+
 ## Where the pylabview pieces are found
 
 | piece | search order |
@@ -913,6 +943,30 @@ LabVIEW 2026: load-time repairs ("Wiring insanity found and fixed") **86 -> 33**
 `Insane` lines unchanged on all 17, no DWarn of any other kind, and LabVIEW's own save KEPT all 28
 changed tables. The 17 then ran with their expected values in `selftest.py`: 17 of 17 PASS.
 `WireGeometryTests`.
+
+**A nine-VI application built by agents, the same day** (`C:\temp\Hint_Projext`, a batch
+statistics tool: line parser, statistics, limit checks, report, event-driven GUI). Its nine AIXML
+sources composed with the tables before and after: generic wires 4 -> 0, and on a fresh LabVIEW
+the load-time repairs went **19 -> 0**, LabVIEW's save keeping all 9 changed tables. What it found:
+
+- **A fan-out's start byte is a bit MASK** (01 north, 02 west, 04 south, 08 east). With several
+  bits the source is itself a branch point, walked in rising bit order. 163 fan-outs of LabVIEW's
+  own saves start with 03, 05, 06, 09, 0A, 0C or 0D; the decoders refused them (one was in the
+  application's Parse Measurement Line.vi as LabVIEW's layout save left it). Read as a mask, the
+  93 of them whose ends are all exact land on the hotpoints - in rising bit order and no other.
+  `wire_tree.starting`, and `lvbd_backward_wires.segments` / `lvbd_wire_metrics` likewise:
+  walkable corpus fan-outs 19 193 -> 19 356 of 19 653.
+- **A conditional indexing tunnel's condition terminal** (`inner:lpTunConditionDCO`) was in no
+  table, so a fan-out into one stayed generic. It sits on the base rule: 9 of 9 LabVIEW fan-outs
+  through it at (0, 0). Added to `hotpoints_exact.json`.
+- **Still not decoded: tables whose SECOND byte is 01 or 02** instead of 00 (`03 01 00 08 02 55
+  74`), 297 of the 19 653 corpus fan-outs; one is in the application's main VI. In the samples
+  read, code `02` is a terminal passed on a straight run (`03 01 00 08 02 55 74` reaches sinks at
+  85 and 85 + 116 px east of the source) and the second byte counts bytes to skip before the start
+  mask, but that does not account for every sample, so the decoders still answer None.
+- The layout step of `lvai_generate_vi` runs `CleanUpWire` on every wire and saves, so the tables
+  in a DELIVERED VI are LabVIEW's; what the router changes there is what LabVIEW meets when it
+  loads the composed file before the layout - repairs, and the risk that comes with them.
 
 **A WHOLE CLD EXAM WENT THROUGH THE COMPOSER the same night** - the ATM: 21 application VIs (an
 Event Structure producer, a queue consumer, a state machine, file I/O, panel helpers driving

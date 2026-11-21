@@ -469,7 +469,8 @@ internal static class LabViewCom
 
     internal sealed record HelperRun(int TargetExecState, bool Finished, long RunMs,
                                      IReadOnlyList<string> SetProblems,
-                                     IReadOnlyDictionary<string, string?> Outputs);
+                                     IReadOnlyDictionary<string, string?> Outputs,
+                                     int KeyPresses = 0, int KeyPressesWithoutPanel = 0);
 
     /// <summary>
     /// Set <paramref name="targetInputs"/> on the target, then run a HELPER VI that drives it -
@@ -484,7 +485,8 @@ internal static class LabViewCom
                                                          IReadOnlyDictionary<string, string> helperInputs,
                                                          IReadOnlyList<string> helperOutputs,
                                                          int timeoutSeconds, CancellationToken ct,
-                                                         string? namedSetHelper = null) =>
+                                                         string? namedSetHelper = null,
+                                                         string? keyPressCounter = null) =>
         WithLabViewAsync(app => WithVi(app, targetPath, target =>
         {
             var state = Convert.ToInt32(Get(target, "ExecState"), CultureInfo.InvariantCulture);
@@ -499,13 +501,38 @@ internal static class LabViewCom
                 foreach (var (name, value) in helperInputs)
                     Call(helper, "SetControlValue", name, value);
                 var deadline = Math.Max(1000, timeoutSeconds * 1000 - 2000);
+                // a key press needs the target's panel window open (PanelKeys); one this run
+                // opened is closed again below, or the VI stays in memory and a later generate onto
+                // its path answers Error 1357
+                var openedPanel = false;
+                if (keyPressCounter is not null && Get(target, "FPWinOpen") is not true)
+                {
+                    Set(target, "FPWinOpen", true);
+                    openedPanel = true;
+                }
+                if (keyPressCounter is not null) PanelKeys.BringToFront(targetPath);
                 var clock = Stopwatch.StartNew();
                 Call(helper, "Run", true);
                 var finished = false;
+                int presses = 0, withoutPanel = 0;
                 while (clock.ElapsedMilliseconds < deadline)
                 {
                     var now = Convert.ToInt32(Get(helper, "ExecState"), CultureInfo.InvariantCulture);
                     if (now is not (2 or 3)) { finished = true; break; }
+                    if (keyPressCounter is not null)
+                    {
+                        // the helper counts each latched Boolean it has given the key focus; every
+                        // increase is one press of the space bar on the target's panel, inside the
+                        // helper's signal gap that follows
+                        var asked = 0;
+                        try { asked = Convert.ToInt32(Call(helper, "GetControlValue", keyPressCounter), CultureInfo.InvariantCulture); }
+                        catch (Exception e) when (e is TargetInvocationException or COMException or InvalidCastException or FormatException) { }
+                        while (presses + withoutPanel < asked)
+                        {
+                            Thread.Sleep(30);
+                            if (PanelKeys.PressSpace(targetPath) > 0) presses++; else withoutPanel++;
+                        }
+                    }
                     Thread.Sleep(20);
                 }
                 var runMs = clock.ElapsedMilliseconds;
@@ -520,7 +547,12 @@ internal static class LabViewCom
                     try { outputs[name] = Call(helper, "GetControlValue", name) as string; }
                     catch (Exception e) when (e is TargetInvocationException or COMException) { outputs[name] = null; }
                 }
-                return new HelperRun(state, finished, runMs, [], outputs);
+                if (openedPanel)
+                {
+                    try { Set(target, "FPWinOpen", false); }
+                    catch (Exception e) when (e is TargetInvocationException or COMException) { }
+                }
+                return new HelperRun(state, finished, runMs, [], outputs, presses, withoutPanel);
             });
         }), timeoutSeconds, ct);
 
@@ -605,6 +637,10 @@ internal static class LabViewCom
 
     private static object? Get(object target, string name) =>
         target.GetType().InvokeMember(name, BindingFlags.GetProperty, null, target, null,
+                                      CultureInfo.InvariantCulture);
+
+    private static void Set(object target, string name, object? value) =>
+        target.GetType().InvokeMember(name, BindingFlags.SetProperty, null, target, [value],
                                       CultureInfo.InvariantCulture);
 
     private static object? Call(object target, string name, params object?[] args) =>

@@ -291,7 +291,9 @@ Three findings of `docs/cold-build-carwash-pc.md` became code the same day:
   (`switchActionNotABooleanControl`); the answer carries `switchActions`, read from the export
   (`style` no longer `latched`), and gates `ok`. Accepted on `C:\Temp\GraftSwitchAccept`:
   `ok: true` in 3.0 s, `switchActions {stop: true}`, and a `signalsJson` run then signalled `stop`
-  - which `Error 1193` had refused on the latched original.
+  - which `Error 1193` had refused on the latched original. **Since 2026-11-21 the pylabview
+  backend drives a latched button as it is** (key focus plus a posted space bar,
+  `docs/aixml-backends.md`), so `switchActionControls` is needed only to drive one over grpc.
 
 **Scope, the user's rule of the same day: the graft is for the MAIN GUI only.** The call is
 seconds; the route around it is minutes, and a subVI's panel is not worth them.

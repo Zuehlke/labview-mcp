@@ -105,7 +105,9 @@ internal sealed class RunTools(LvaiConnection connection)
             Events to fire, with runForMs only: a JSON array in order, e.g.
             [{"control":"Card Simulator","value":"true"},{"control":"User Input","value":"23456"}].
             Each is written with Value (Signaling) after runForMs, signalGapMs apart; the snapshot
-            follows the last. A LATCHED boolean is refused (Error 1193, under `signals`).
+            follows the last. A LATCHED boolean is PRESSED (key focus + space bar on its panel) on
+            pylabview; on grpc it is refused (Error 1193). A path takes its text. A failed signal makes
+            `ok` false (`signals.errorCode`).
             """)]
         string? signalsJson = null,
         [Description("Wait after each signal, so the target handles it before the next")]
@@ -419,6 +421,9 @@ internal sealed class RunTools(LvaiConnection connection)
             {
                 response.Outputs.TryGetValue("signal error xml", out var signalErrorXml);
                 payload["signals"] = SignalsAnswer(signals, signalGapMs, signalErrorXml);
+                // a signal that failed is a failed drive: the values after it are not the answer
+                // to the question asked (2026-11-21, a run reporting ok with every signal refused)
+                if (HelperErrorCode(signalErrorXml) is { } sc && sc != 0) payload["ok"] = false;
             }
             if (helperOverriddenBecause is { } why) payload["helperOverridden"] = JsonValue.Create(why);
             payload["panelClosedAfterRun"] = panelClose;
@@ -498,6 +503,7 @@ internal sealed class RunTools(LvaiConnection connection)
             [SignalNamesControlName] = string.Join("\n", signals.Select(s => s.Key)),
             ["Signal Values"] = string.Join("\n", signals.Select(s => s.Value)),
             ["signal gap ms"] = Math.Max(0, signalGapMs).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            [PressLatchedControlName] = "TRUE",
         };
         string[] outputs = ["values xml", "error xml", "disabled labels xml", "disabled xml", "signal error xml"];
 
@@ -506,7 +512,8 @@ internal sealed class RunTools(LvaiConnection connection)
         try
         {
             run = await LabViewCom.RunHelperOnTargetAsync(target, inputs, helper, helperInputs, outputs,
-                                                          timeoutSeconds, ct, namedSetHelper);
+                                                          timeoutSeconds, ct, namedSetHelper,
+                                                          KeyPressesIndicatorName);
         }
         catch (LabViewCom.ComException e)
         {
@@ -530,9 +537,20 @@ internal sealed class RunTools(LvaiConnection connection)
         var rawHelperCode = HelperErrorCode(errorXml);
         var endedOnItsOwn = TargetEndedBeforeAbort(true, rawHelperCode, errorXml);
         var helperCode = endedOnItsOwn ? 0 : rawHelperCode;
+        var signalErrorXml = run.Outputs.GetValueOrDefault("signal error xml");
+        var signalsAnswer = SignalsAnswer(signals, signalGapMs, signalErrorXml);
+        signalsAnswer["latchedPressed"] = run.KeyPresses;
+        if (run.KeyPressesWithoutPanel > 0)
+        {
+            signalsAnswer["latchedNotPressed"] = run.KeyPressesWithoutPanel;
+            signalsAnswer["note"] = $"{run.KeyPressesWithoutPanel} latched Boolean(s) were NOT pressed: " +
+                                    "no front-panel window of the VI was found to press the space bar on. " +
+                                    signalsAnswer["note"]!.GetValue<string>();
+        }
         return new JsonObject
         {
-            ["ok"] = run.Finished && helperCode is null or 0,
+            ["ok"] = run.Finished && helperCode is null or 0
+                     && HelperErrorCode(signalErrorXml) is null or 0 && run.KeyPressesWithoutPanel == 0,
             ["viPath"] = target,
             ["via"] = "ActiveX, composed helper",
             ["values"] = LvValuesXml.ToJson(values, nativeValues, includeXml),
@@ -550,7 +568,7 @@ internal sealed class RunTools(LvaiConnection connection)
             ["runForMs"] = runForMs,
             ["disabled"] = DisabledStates(run.Outputs.GetValueOrDefault("disabled labels xml"),
                                           run.Outputs.GetValueOrDefault("disabled xml")),
-            ["signals"] = SignalsAnswer(signals, signalGapMs, run.Outputs.GetValueOrDefault("signal error xml")),
+            ["signals"] = signalsAnswer,
             ["note"] = (run.Finished ? "" : "THE HELPER DID NOT FINISH within the budget and was aborted, " +
                                             "the target with it - raise timeoutSeconds. ") +
                        (endedOnItsOwn
@@ -581,8 +599,12 @@ internal sealed class RunTools(LvaiConnection connection)
             {
                 null or 0 => "Every signal was written; the snapshot was taken after the last gap.",
                 1193 => "Error 1193: a LATCHED boolean cannot be written with Value (Signaling). " +
-                        "The signals after it were NOT sent; the snapshot was still taken. Test " +
-                        "what that button triggers through the handler's own unit test instead.",
+                        "The signals after it were NOT sent; the snapshot was still taken. The " +
+                        "pylabview backend presses one instead (key focus and the space bar on its " +
+                        "panel) - run with backend pylabview, or test what the button triggers " +
+                        "through the handler's own unit test.",
+                1073 => "Error 1073: a property LabVIEW does not write while the VI runs. The " +
+                        "signals from there on were NOT sent; the snapshot was still taken.",
                 1055 or 1026 => $"Error {signalCode}: a signal names no control on the target's panel. " +
                                 "The signals from there on were NOT sent; the snapshot was still taken.",
                 _ => $"Error {signalCode} stopped the signals at that point; the snapshot was " +
@@ -1071,6 +1093,18 @@ internal sealed class RunTools(LvaiConnection connection)
 
     /// <summary>The control the timed runner takes its budget on; its presence is the test.</summary>
     internal const string RunForMsControlName = "run for ms";
+
+    /// <summary>
+    /// The timed helper's switch for latched Booleans: "TRUE" makes it give such a control the key
+    /// focus and count it in <see cref="KeyPressesIndicatorName"/> instead of writing it with
+    /// Value (Signaling), and the pylabview route presses the space bar on the target's panel for
+    /// every count (<see cref="PanelKeys"/>). The gRPC route leaves it empty: NI's service runs the
+    /// helper in one call, with nobody to press the key.
+    /// </summary>
+    internal const string PressLatchedControlName = "press latched by key";
+
+    /// <summary>The timed helper's count of latched Booleans it has focused for a key press.</summary>
+    internal const string KeyPressesIndicatorName = "key presses";
 
     /// <summary>
     /// The helper call. <paramref name="runForMs"/> above zero is written into the timed helper's
