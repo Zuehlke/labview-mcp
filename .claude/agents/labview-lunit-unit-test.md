@@ -337,7 +337,7 @@ your answer.
 
 ## The AIXML backend - grpc or pylabview - a standing rule
 
-The server converts AIXML two ways: NI's gRPC service (`grpc`, the default) and our own pylabview
+The server converts AIXML two ways: NI's gRPC service (`grpc`) and our own pylabview
 composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAULT
 (pylabview unless `LABVIEWMCP_AIXML_BACKEND` or `--aixml-backend` names another); you do not pick one on your own. **A LabVIEW
 OLDER than 2026 in use makes `pylabview` the default by itself** - and there every compose WARNS

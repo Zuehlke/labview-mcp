@@ -903,9 +903,8 @@ internal sealed class ClassTools(LvaiConnection connection)
         string interfacePath, IReadOnlyList<string> parents, int timeoutSeconds,
         CancellationToken ct, string? backend = null)
     {
-        // unset means the route's own choice - inherited when the calling tool runs on
-        // pylabview, grpc otherwise
-        backend ??= AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc;
+        // unset means the route's own choice, else the server default (pylabview)
+        backend ??= AixmlBackend.InEffect;
         var aixml = StatusTools.ScriptsDirectory() is { } scripts
             ? Path.Combine(scripts, CreateInterfaceHelperAixmlFileName) : null;
         if (aixml is null || !File.Exists(aixml))
@@ -1593,9 +1592,8 @@ internal sealed class ClassTools(LvaiConnection connection)
         IReadOnlyList<string> parentInterfaces, int timeoutSeconds,
         CancellationToken ct, string? backend = null)
     {
-        // unset means the route's own choice - inherited when the calling tool runs on
-        // pylabview, grpc otherwise
-        backend ??= AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc;
+        // unset means the route's own choice, else the server default (pylabview)
+        backend ??= AixmlBackend.InEffect;
         var aixml = StatusTools.ScriptsDirectory() is { } scripts
             ? Path.Combine(scripts, CreateClassHelperAixmlFileName) : null;
         if (aixml is null || !File.Exists(aixml))
@@ -2417,9 +2415,8 @@ internal sealed class ClassTools(LvaiConnection connection)
         string verdict, string lvclassPath, string helperVi, string? projectPath,
         bool closeProject, int timeoutSeconds, CancellationToken ct, string? backend = null)
     {
-        // unset means the route's own choice - inherited when the calling tool runs on
-        // pylabview, grpc otherwise
-        backend ??= AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc;
+        // unset means the route's own choice, else the server default (pylabview)
+        backend ??= AixmlBackend.InEffect;
         // NOT BY DEFAULT, and the reason is measured. Saving and closing the project immediately
         // after an accessor run KILLED LabVIEW on 2026-08-26: eight
         // `BadLinkerObjs.cpp(276) … LinkIdentity "Bus.lvclass:Bus.ctl" … is NOT a bad subObj`

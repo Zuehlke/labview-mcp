@@ -400,7 +400,9 @@ can carry a default (`double.Gain=1`) and may be a `path`. `docs/typedef-disconn
 
 **The AIXML tools have two backends**, NI's gRPC service and our pylabview composer, chosen by
 the call's `backend`, `--aixml-backend` or `LABVIEWMCP_AIXML_BACKEND`; with none of them,
-**pylabview** (the user's decision of 2026-11-05; it was grpc, pylabview only below LabVIEW 2026).
+**pylabview** (the user's decision of 2026-11-05; it was grpc, pylabview only below LabVIEW 2026) -
+ALWAYS, for a tool's internal calls too (the user's rule of 2026-11-22; they fell back to grpc
+before). A test against the fake gRPC service says so with `FakeGrpcBackend.Use()`.
 `"aixmlBackend"` in `%USERPROFILE%\.labviewmcp\settings.json` chooses NOTHING any more (removed
 2026-11-17; the server strips both retired keys from an old file at start, `.bak` kept); that
 file is optional and holds only `labviewExe`/`labviewPref`. The composer writes the file version of the LabVIEW in use. What needs a running LabVIEW goes over ActiveX there, which

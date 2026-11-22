@@ -17,6 +17,8 @@ namespace LabVIEWMcp.Tests.Tools;
 /// </summary>
 public sealed class CompactAnswerTests
 {
+    public CompactAnswerTests() => FakeGrpcBackend.Use();
+
     private const string Vi = @"C:\fixtures\Out.vi";
     private const string Generated = "Generated, and the connector pane follows NI's style guide.";
 

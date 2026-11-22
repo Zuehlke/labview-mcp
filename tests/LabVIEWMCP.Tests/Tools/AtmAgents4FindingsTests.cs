@@ -16,6 +16,8 @@ namespace LabVIEWMcp.Tests.Tools;
 /// </summary>
 public sealed class AtmAgents4FindingsTests
 {
+    public AtmAgents4FindingsTests() => FakeGrpcBackend.Use();
+
     private const string Err = "cluster{bool.status,int32.code,string.source}";
 
     // ------------------------------------------------------------------ 2. nesting beats uid_parent

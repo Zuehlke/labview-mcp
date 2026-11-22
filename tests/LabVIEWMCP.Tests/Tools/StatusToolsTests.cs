@@ -14,7 +14,7 @@ public class StatusToolsStatusTests
         await using var server = await LvaiTestServer.StartAsync();
         server.Service.Language = "German";
 
-        var result = await new StatusTools(server.Connection).StatusAsync();
+        var result = await new StatusTools(server.Connection).StatusAsync(backend: "grpc");
 
         Assert.True(Res.Bool(result, "ok"));
         Assert.Equal(server.Port, Res.Int(result, "port"));
@@ -32,7 +32,7 @@ public class StatusToolsStatusTests
         // Reflection is a nice-to-have; losing it must not make the status tool fail.
         await using var server = await LvaiTestServer.StartAsync(withReflection: false);
 
-        var result = await new StatusTools(server.Connection).StatusAsync();
+        var result = await new StatusTools(server.Connection).StatusAsync(backend: "grpc");
 
         Assert.True(Res.Bool(result, "ok"));
         Assert.Empty(Res.Arr(result, "services"));
@@ -47,7 +47,7 @@ public class StatusToolsStatusTests
             Grpc.PortDiscoveryTests.FindFreePort());
         await using var _ = connection;
 
-        var result = await new StatusTools(connection).StatusAsync();
+        var result = await new StatusTools(connection).StatusAsync(backend: "grpc");
 
         Assert.False(Res.Bool(result, "ok"));
         Assert.Equal("InvalidOperationException", Res.Str(result, "errorKind"));

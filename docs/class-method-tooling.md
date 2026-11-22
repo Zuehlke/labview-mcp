@@ -1884,3 +1884,40 @@ accessors - which is exactly the gap a class without accessors leaves for its te
 
 **Consequence**: the agent creates accessors only when asked, authors such a method itself through
 the direct route, and hands off to tests saying which fields have no accessors.
+
+### 4t.1 The run-time value, measured (2026-11-22, `C:\temp\IPE-Tests`, pylabview backend)
+
+The gap §4t left open is closed. Plain VIs, generated in one `lvai_generate_vis` call (9.6 s, all
+`execState 1`) and run with `lvai_run_vi_and_read_values`:
+
+| VI | In Place border node | runs |
+|---|---|---|
+| `IPE Increment Field` | `Unbundle / Bundle Elements`, one field | 0 -> 1, 41 -> 42, Name kept |
+| `IPE Two Fields` | one pair, `Count` and `Weight` | Increment + Multiply in one pass; int32 max wraps to min; Label kept |
+| `IPE Array Element` | `Array Index / Replace Elements` | index 0 and 2 change; index 5 and -1 leave the array unchanged, no error |
+| `IPE In Loop` | the pair inside a For Loop on a shift register | N = 0, 1, 5, 1000 give start + N |
+
+Class `Orchard` (`uint64.Fruits,double.Weight,string.Name`), five methods authored against the
+private data cluster and added in ONE `lvai_add_class_method` call (15.8 s): `Increment Fruits`,
+`Harvest` (two fields, two pane inputs), `Append Name` (string), `Increment Fruits N Times` (the
+class wire on a shift register, the IPE inside the loop), `Get Fruits` (`Unbundle By Name`, a
+returned value). R/W accessors were added for the TESTS only, since a test outside the class
+cannot reach a field otherwise. Three Caraya suites by `lvai_generate_method_test`, all on the
+direct route: 9 assertions on the changed and the untouched fields all pass (41 -> 42 with Weight
+and Name kept, 10 + 5, N = 0 keeps 7, 4 + 3 and 1.5 x 2, "Apple" + " tree", Get Fruits 9), and a
+negative-control suite with two deliberately wrong expectations fails 2 of 2.
+
+Two findings on the way, neither in the In Place Element itself:
+
+- **`lvai_run_vi_and_read_values` on pylabview loses large `uint64`/`int64` inputs.**
+  `ComValues.Integer` sends anything past int32 as `VT_R8`, which is exact only to 2^53: inputs
+  9223372036854775806, ...807 and ...808 all reached the VI as 2^63, and 18446744073709551614 and
+  ...615 dropped the WHOLE cluster input silently (the VI ran on its defaults, `ok: true`).
+- **`lvai_add_class_method` answered 102 130 characters for five methods** (about 13 k per method):
+  it returned every step's full answer on success too - a large share of the context a class
+  request cost. FIXED the same day (`ClassMethodTools.CompactMethods`): a successful method now
+  carries its decision fields (`terminalsRetyped`, `dynamicDispatchTerminals`, `verifiedOnDisk`,
+  `classTypedTerminals`, `pathStandInsLeft`, `listedInClassFile`, `sourceOnly`, a short
+  `badWireCleanup`) and `stepsRun`, the step names; a failed method, or one whose cleanup lost a
+  connection, keeps every step. `verbose: true` returns everything, as before.
+  `ClassMethodCompactAnswerTests` pins it.

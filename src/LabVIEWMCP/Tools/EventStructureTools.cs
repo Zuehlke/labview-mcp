@@ -368,7 +368,7 @@ internal sealed class EventStructureTools(LvaiConnection connection)
             //    Only on an executable VI: one still waiting for lvai_wire_dynamic_events returned
             //    above, and that tool cleans up when it has finished the frames.
             var cleaned = await new DiagramCleanup(connection).RunAsync(
-                viPath, AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc, timeoutSeconds, ct);
+                viPath, AixmlBackend.InEffect, timeoutSeconds, ct);
             steps.Add(cleaned);
             var cleanNote = cleaned["ok"]?.GetValue<bool>() == true ? ""
                 : " The block diagram was NOT cleaned up: " + cleaned["note"]?.GetValue<string>();

@@ -11,6 +11,8 @@ namespace LabVIEWMcp.Tests.Cli;
 /// </summary>
 public class SelfTestRunTests
 {
+    public SelfTestRunTests() => FakeGrpcBackend.Use();
+
     [Fact]
     public async Task Succeeds_against_a_responsive_server_and_probes_every_read_only_tool()
     {

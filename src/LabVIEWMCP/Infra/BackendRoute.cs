@@ -17,10 +17,10 @@ namespace LabVIEWMcp.Infra;
 internal static class BackendRoute
 {
     /// <summary>Whether this call runs without NI's service.</summary>
-    public static bool OnPyLabview => AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview;
+    public static bool OnPyLabview => AixmlBackend.InEffect == AixmlBackend.PyLabview;
 
     /// <summary>The backend name in force, for an inner call that takes one.</summary>
-    public static string Current => OnPyLabview ? AixmlBackend.PyLabview : AixmlBackend.Grpc;
+    public static string Current => AixmlBackend.InEffect;
 
     /// <summary>
     /// A tool's body under the backend it resolved - the call's own `backend`, else the server
@@ -33,9 +33,9 @@ internal static class BackendRoute
             return AixmlBackend.Refusal(bad);
         // EXPLICIT IN BOTH DIRECTIONS: TryResolve only ever sets the inherited choice, so a call
         // naming grpc inside a flow that already carried pylabview would otherwise stay on it.
-        AixmlBackend.Inherited.Value = choice.Name == AixmlBackend.PyLabview
-            ? AixmlBackend.Inherited.Value ?? new AixmlBackend.Choice(AixmlBackend.PyLabview, $"inherited from {tool}")
-            : null;
+        AixmlBackend.Inherited.Value = AixmlBackend.Inherited.Value?.Name == choice.Name
+            ? AixmlBackend.Inherited.Value
+            : new AixmlBackend.Choice(choice.Name, $"inherited from {tool}");
         return AixmlTools.WithBackend(await Routed(body), choice);
     }
 

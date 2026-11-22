@@ -31,7 +31,7 @@ internal static class SelfTest
         Console.WriteLine();
 
         // --- connection first: everything else is pointless without it ---
-        var connectRow = await Measure("lvai_status", () => status.StatusAsync());
+        var connectRow = await Measure("lvai_status", () => status.GrpcStatusAsync());
         results.Add(connectRow);
         if (!connectRow.Ok)
         {

@@ -11,6 +11,8 @@ namespace LabVIEWMcp.Tests.Tools;
 
 public class AixmlConvertViToAixmlTests
 {
+    public AixmlConvertViToAixmlTests() => FakeGrpcBackend.Use();
+
     private const string Xml =
         """<VI _name="My.vi"><Node _name="Add" uid="143"/></VI>""";
 
@@ -512,6 +514,8 @@ public class AixmlBatchExportTests : IDisposable
 
 public class AixmlValidateTests
 {
+    public AixmlValidateTests() => FakeGrpcBackend.Use();
+
     [Fact]
     public async Task Maps_the_file_path()
     {
@@ -550,6 +554,8 @@ public class AixmlValidateTests
 
 public class AixmlConvertAixmlToViTests
 {
+    public AixmlConvertAixmlToViTests() => FakeGrpcBackend.Use();
+
     [Fact]
     public async Task Maps_all_three_request_fields()
     {

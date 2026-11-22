@@ -15,6 +15,8 @@ namespace LabVIEWMcp.Tests.Tools;
 /// </summary>
 public sealed class IconToolsTests : IDisposable
 {
+    public IconToolsTests() => FakeGrpcBackend.Use();
+
     private readonly string _dir = Directory.CreateTempSubdirectory("lvai-icon-tests").FullName;
 
     public void Dispose()

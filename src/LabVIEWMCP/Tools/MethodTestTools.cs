@@ -744,7 +744,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         //    - and every setup VI with it, in the same call. ON PYLABVIEW NOTHING IS LOADED: the
         //    composer resolves members and setup VIs by FILE, so their folders are searched
         //    instead (2026-10-11)
-        var composed = AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview;
+        var composed = AixmlBackend.InEffect == AixmlBackend.PyLabview;
         if (composed)
         {
             AixmlComposer.ExtraSearch.Value =

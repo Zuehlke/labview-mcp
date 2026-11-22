@@ -1,3 +1,4 @@
+using LabVIEWMcp.Infra;
 using LabVIEWMcp.Grpc;
 using LabVIEWMcp.Tests.Fakes;
 using LabVIEWMcp.Tests.Support;
@@ -21,7 +22,7 @@ public class StatusWithoutServiceTests
     {
         await using var connection = DeadConnection();
 
-        var result = await new StatusTools(connection).StatusAsync();
+        var result = await new StatusTools(connection).StatusAsync(backend: "grpc");
 
         Assert.False(Res.Bool(result, "ok"));
         // the old error shape stays, so a caller reading errorKind is not broken
@@ -31,6 +32,48 @@ public class StatusWithoutServiceTests
         Assert.False(string.IsNullOrEmpty(Res.Str(result, "serverVersion")));
         Assert.True(Res.Has(result, "labviewHealth"));
         Assert.Contains("pylv_status", Res.Str(result, "note"));
+    }
+
+    /// <summary>
+    /// The user's request of 2026-11-22: on pylabview, lvai_status answers what pylv_status
+    /// answers, so nobody reads NI's service as the state of the station by habit.
+    /// </summary>
+    [Fact]
+    public async Task Lvai_status_on_pylabview_is_the_pylv_status_answer()
+    {
+        await using var connection = DeadConnection();
+
+        var result = await new StatusTools(connection).StatusAsync(backend: "pylabview");
+
+        Assert.Equal("lvai_status", Res.Str(result, "redirectedFrom"));
+        Assert.Equal("pylabview", Res.Str(result, "backend"));
+        Assert.True(Res.Has(result, "scriptsDirectory"));
+        // the gRPC branch's own fields are absent: no port was asked for
+        Assert.False(Res.Has(result, "discoveredVia"));
+        if (!Res.Bool(result, "ok")) return;   // no bundle provisioned in this checkout
+        Assert.False(Res.Obj(result)["grpcService"]!["reachable"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public async Task Lvai_status_with_no_backend_follows_the_server_default()
+    {
+        await using var connection = DeadConnection();
+
+        var result = await new StatusTools(connection).StatusAsync();
+
+        Assert.Equal(AixmlBackend.ServerDefault().Name, Res.Str(result, "backend"));
+        if (AixmlBackend.ServerDefault().Name == AixmlBackend.PyLabview)
+            Assert.Equal("lvai_status", Res.Str(result, "redirectedFrom"));
+    }
+
+    [Fact]
+    public async Task Lvai_status_refuses_an_unknown_backend()
+    {
+        await using var connection = DeadConnection();
+
+        var result = await new StatusTools(connection).StatusAsync(backend: "nigel");
+
+        Assert.Equal("unknownBackend", Res.Str(result, "errorKind"));
     }
 
     [Fact]

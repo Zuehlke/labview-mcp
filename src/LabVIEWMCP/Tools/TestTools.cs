@@ -200,7 +200,7 @@ internal sealed class TestTools(LvaiConnection connection)
             // THE GRPC PLACEHOLDER ROUTE ENDS IN A PYLABVIEW RETARGET, which closes the active
             // project first (stale compiled code otherwise) - exactly what leaveProjectOpen
             // forbids. Refused here, before anything is written; pylabview swaps instead.
-            if (leaveProjectOpen && AixmlBackend.Inherited.Value?.Name != AixmlBackend.PyLabview)
+            if (leaveProjectOpen && AixmlBackend.InEffect != AixmlBackend.PyLabview)
                 return Outcome(false, "placeholder", steps, total, testViPath, null,
                     "leaveProjectOpen, and the direct route did not run, so the placeholder route " +
                     "would end in a pylabview retarget that CLOSES the active project. Nothing was " +
@@ -255,7 +255,7 @@ internal sealed class TestTools(LvaiConnection connection)
             // gRPC never meets it because its direct route names the subject; pylabview has no
             // direct route, and {LV.SubVI} Replace run over ActiveX - in LabVIEW's main instance,
             // with no project needed - is what the class and method tests already swap with.
-            if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
+            if (AixmlBackend.InEffect == AixmlBackend.PyLabview)
             {
                 // ONE CALL PER NODE: every case calls the same stub, and a swap replaces one node
                 // per call (measured to N=3, CLAUDE.md) - so repeat until no socket is left, and
@@ -441,10 +441,10 @@ internal sealed class TestTools(LvaiConnection connection)
         // `route: direct` names the CALL (a static subVI call, no placeholder); HOW the subject was
         // found is said beside it - "direct" read as "opened through its project" on pylabview,
         // where nothing is opened (the pump-station cold build, 2026-11-01)
-        route["subjectResolvedBy"] = AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview
+        route["subjectResolvedBy"] = AixmlBackend.InEffect == AixmlBackend.PyLabview
             ? "file (pylabview composer; nothing opened)"
             : "project (opened through it, then released)";
-        if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
+        if (AixmlBackend.InEffect == AixmlBackend.PyLabview)
         {
             AixmlComposer.ExtraSearch.Value =
                 [.. new[] { viPath }.Concat(setups.Keys)
@@ -940,7 +940,7 @@ internal sealed class TestTools(LvaiConnection connection)
         // 3. load the class through its project - one member is enough for all of them. ON
         //    PYLABVIEW NOTHING IS LOADED: the composer resolves the accessors by FILE, so the
         //    class's folder is named as a search folder instead (2026-10-11)
-        var composed = AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview;
+        var composed = AixmlBackend.InEffect == AixmlBackend.PyLabview;
         if (composed)
         {
             AixmlComposer.ExtraSearch.Value = [Path.GetDirectoryName(Path.GetFullPath(lvclassPath))!];
@@ -1628,7 +1628,7 @@ internal sealed class TestTools(LvaiConnection connection)
     private async Task<string?> KeepActiveProjectAsync(string project, int timeoutSeconds,
                                                       CancellationToken ct)
     {
-        var backend = AixmlBackend.Inherited.Value?.Name;
+        var backend = AixmlBackend.InEffect;
         if (backend != AixmlBackend.PyLabview) return null;
         var (active, _, activePath) = await new ActionTools(connection)
             .ProjectIsActiveAsync(timeoutSeconds, ct, AixmlBackend.PyLabview);
