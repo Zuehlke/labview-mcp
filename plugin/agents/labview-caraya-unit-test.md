@@ -410,8 +410,15 @@ shapes — and both came out of a measured run rather than a design:
   object the METHOD returned**. That is what proves the class wire threads the method instead of
   being dropped and rebuilt, and it is the assertion a dispatch mistake fails.
 
-**A method that errors is not a failing test.** The tool feeds the method's `error in` a `no error`
-constant and never chains its `error out` into Caraya's chain, because a method under test is
+- **`errorIn`** feeds the METHOD's error input a given cluster instead of `no error` -
+  `{"method":"Increment Fruits","errorIn":"[true,5000,upstream]","expectErrorCode":5000}` is the
+  "an incoming error passes through" case. It needs no accessor, so on a class WITHOUT accessors
+  (the class agent creates none unasked) it is often, with the method's own error code, all there
+  is to assert. Never hand-edit AIXML for it: before 2026-11-22 there was no key, and a run did.
+  Not together with `setup`.
+
+**A method that errors is not a failing test.** Without `errorIn` the tool feeds the method's
+`error in` a `no error` constant and never chains its `error out` into Caraya's chain, because a method under test is
 expected to fail without hardware and chaining it would fail every assertion after it.
 
 **An error-code case will FAIL BY DESIGN the day the hardware appears.** Say so in your report —

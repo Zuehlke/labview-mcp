@@ -1919,6 +1919,10 @@ Two findings on the way, neither in the In Place Element itself:
   overflow past int32. Measured over COM against the same VI first: `VT_I8` and `VT_UI8`
   arrive exactly (18446744073709551614 + 1 = 18446744073709551615, u64 max + 1 wraps to 0), only
   `VT_R8` rounded. `ComValuesTests` pins the conversion.
+  Reproduced through the tool afterwards (`C:	emp\Demo-Anpassungen\BigNumbers`, a VI adding one
+  to a U64, an I64, a U64 array and a U64 record field): 18446744073709551614 came back as
+  ...615 in every shape, the array `[..614, ..615]` as `[..615, 0]` - the typed `ulong[]` is
+  accepted by LabVIEW - and I64 min + 1 exactly.
 - **`lvai_add_class_method` answered 102 130 characters for five methods** (about 13 k per method):
   it returned every step's full answer on success too - a large share of the context a class
   request cost. FIXED the same day (`ClassMethodTools.CompactMethods`): a successful method now
