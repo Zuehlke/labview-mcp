@@ -1,0 +1,145 @@
+# Offline audit of saved LabVIEW files (`lvai_audit_files`)
+
+`lvai_audit_files` reads SAVED LabVIEW files with NO LabVIEW (about 20 ms a file). It checks the
+house rules a file carries. The method was ported from wirelint and measured on 2026-11-21.
+
+## Upstream
+
+Ported from: felipefoz/wirelint v0.2.0 280d621d0846f2307b2ab4325fdf60ab0b1f287c (2026-11-20)
+
+The same line is `LvFileAudit.UpstreamBaseline`, and `LvFileAuditTests` keeps the two equal. When
+wirelint releases a new version:
+
+1. diff its readers and rules against the baseline, and port what changed:
+
+   ```
+   git diff v0.2.0..<new> -- src/formats src/rules.rs
+   ```
+
+2. re-run the cross-check below;
+3. move both lines.
+
+| wirelint file | ours |
+|---|---|
+| `src/formats/rsrc.rs`: LVSR, STRG, BDPW, LIvi/PTH0 | `LvFileAudit.ReadBinary`, `OwnerLink` |
+| `src/formats/heap.rs`: BDHb, `fPTerm` `objFlags` | `LvFileAudit.Terminals` |
+| `src/formats/connector.rs`: CONP to VCTP to pattern | `LvFileAudit.ConnectorPane` |
+| `src/formats/xml.rs`: owner properties, library items | `LvFileAudit.ReadXml` |
+| `src/rules.rs` | `LvFileAudit.Rules`, `Check` |
+
+**Where we deviate on purpose (each one measured):**
+
+- **A polymorphic VI** (its CONP names `PolyVI`, 0xF2; 39 of 1532 `vi.lib` files) and **a global
+  VI** (a Cluster, 0x50; 4 of them) have no connector pane, and that is no error. wirelint aborts
+  each such file with an analysis error.
+- **A PTH0 relative path is relative to the FILE, and an empty component means "up one".**
+  - `Close Module.vi` beside its library stores `['', 'Wash Station.lvlib']`.
+  - `Lib\LibVi.vi` stores `['', '', 'HkLibG.lvlib']`.
+
+  wirelint pushes the empty component as nothing.
+- **The info header is the one the FIRST RSRC header names.** It is not reached by following the
+  header chain, because our icon fixtures have a second header that does not point at itself
+  (`RsrcMap.Blocks`).
+- **Classes count as owners too.** A class member's VILB names its `.lvclass`.
+- **Rules not ported**, because they do not concern our output: password, breakpoints, saved
+  version, debugging and class mutation history. The breakpoint bit (`InStBit29`) is also
+  unconfirmed: it was clear in all 2150 files.
+
+## Rules
+
+| id | severity | what |
+|---|---|---|
+| `compiled-code` | error | VI or `.ctl` with source-only off, or with a VICD block in its own map |
+| `automatic-error-handling` | error | VI with Enable automatic error handling on. Not checked on a polymorphic or global VI, which runs no diagram of its own (29 of the 43 in `vi.lib` carry the bit, `Write To Spreadsheet File.vi` among them) |
+| `orphaned-vi` | error | the `.lvlib`/`.lvclass` a VI or `.ctl` names as owner (scanned too) does not list it. A typedef carries the same VILB link (`Broadcast Events--cluster.ctl`: `['', 'Wash Station.lvlib']`) |
+| `description` | warning | VI, `.ctl`, `.lvlib` or `.lvclass` without a description |
+| `terminal-style` | warning | VI with a panel terminal shown as an icon |
+| `source-only-default` | warning | `.lvproj`/`.lvlib`/`.lvclass` without `NI.LV.All.SourceOnly` true |
+
+`ok` is false on any error finding and on any file the reader could not parse. An unread file is
+never a pass.
+
+## Reliability, measured 2026-11-21
+
+### Corpus
+
+- **Ours, 618 files:** 520 VIs, 68 controls and 30 XML files from
+  `C:\Projects\{Gold_Hunter, Niko_Wall_of_confusion, Paul_Pensionierung}` and
+  `C:\Temp\{ATM_20261118_kalt2, CarWash_DQMH_Cold, ATM_DQMH_Cold_10, Bausteine}`.
+- **NI, 1532 files:** every 15th file of `vi.lib`, LabVIEW 2026 (32-bit).
+
+### Results
+
+1. **A Python port of wirelint against pylabview's full parse:** 480 of 480 fields agreed, in 60
+   random VIs. The fields were source-only, debugging, automatic error handling, `InStBit29`,
+   description, pattern, and icon and data-type terminals. The port is
+   `experiments/offline-audit-2026-11-21/wl_port.py`.
+2. **The C# reader against that port, on all 2150 files:** every field agreed. The only
+   differences are the 43 polymorphic and global VIs, which the port, like wirelint, could not
+   read. The C# reader had 0 read errors.
+3. **Orphan check:**
+   - over 421 VIs with an owner link in our builds, no false finding;
+   - positive control: the real `GH_Render.lvlib` with one `<Item>` removed, which gave exactly
+     one finding for that VI.
+4. **Semantics:**
+   - **Confirmed by LabVIEW earlier:** source-only, Allow debugging and automatic error handling
+     (`docs/vi-execution-settings.md`, 2026-11-11). The automatic error handling bit is pylabview's
+     `Execution2.DefaultErrorHandling`.
+   - **Pattern:** the shift by 3 is from our own `docs/connector-pane-patterns.tsv`.
+   - **Not confirmed by toggling it in LabVIEW:** the terminal-style bit (`fPTerm` `objFlags` bit
+     26). The distribution fits: all 520 of our VIs read data-type, as our layout draws them, and
+     82 NI VIs have icon terminals.
+
+## Case matrix, 2026-11-21
+
+One folder per case, each holding real files (copies). `AuditTools.AuditFiles` was run over each.
+
+| Case | Real file | Found |
+|---|---|---|
+| compiled code, VI | `ActorFW_first\Aquarium\Append To Log.vi` | yes |
+| compiled code, `.ctl` | `CarWash_DQMH_Cold\...\Broadcast Events--cluster.ctl` | yes |
+| automatic error handling | grafted `Automatic Teller Machine (ATM).vi` | yes |
+| orphaned VI | `Image_Load.vi`, with its `<Item>` cut from `GH_Render.lvlib` | yes |
+| orphaned typedef | `Ofenprofil.ctl`, with its `<Item>` cut from `Ofen.lvlib` | yes |
+| description, VI / `.ctl` / `.lvlib` | `Read Attributes.vi`, `Car Wash Indicators.ctl`, `Aquarium.lvlib` | yes, yes, yes |
+| terminal style | `ActorFW_first\Giraffe\Giraffe\Actor Core.vi` | yes |
+| source-only default | `ActorFW_first.lvproj` | yes |
+| unreadable file | the ATM VI cut to 3000 bytes | yes, as an analysis error, `ok: false` |
+
+The negative controls gave no error finding:
+
+- a clean library member;
+- a clean typedef in its library;
+- a polymorphic VI and a global VI from `vi.lib`;
+- the whole Gold_Hunter application (65 files).
+
+The run found one false alarm and it is fixed. NI's polymorphic `Write To Spreadsheet File.vi`
+really does carry automatic error handling, but such a VI runs no diagram of its own, so the rule
+now skips polymorphic and global VIs.
+
+The additional findings in the cases are real: the September Actor Framework build carries
+compiled code, and those libraries have no description.
+
+## What it found in our builds
+
+| Finding | Count | Cause |
+|---|---|---|
+| automatic error handling ON | 3 main VIs (12 with test and scratch copies) | Every main VI grafted into a supplied exam panel: ATM 2026-11-18, ATM DQMH 2026-11-07 and Car Wash 2026-11-05. The template from 2026-03-25 has the setting on, and the graft kept it. |
+| compiled code | 54 | Only `CarWash_DQMH_Cold` (2026-11-05): the members of `Wash Station.lvlib` that Delacor's scripter wrote. The later `ATM_DQMH_Cold_10` is clean. |
+| description missing | 6 (a further 8 `.lvproj`) | Typedefs, test and scratch VIs, `.lvlib` |
+
+None of these files went through `lvai_generate_vi`, whose own checks cover only the VI it
+writes. `lvai_check_aixml` sees AIXML before generation, not the saved file. The audit therefore
+complements both and replaces neither.
+
+## The graft now clears automatic error handling
+
+`lvai_graft_diagram` reads the flag from the copy before its pylabview pass. When the flag is on
+(as in every exam template), the same pass that writes the event registrations back sets
+`Execution2.DefaultErrorHandling` to 0. With no Event Structure, the pass now runs for that alone.
+
+- The answer carries `automaticErrorHandling` with `supplied`, `output` and `kept`.
+- `ok` requires `output: false` unless `keepAutomaticErrorHandling` is set.
+- **Verified offline:** a copy of the real grafted ATM VI was extracted, patched, stripped and
+  rebuilt, and the result read `automaticErrorHandling: false`. Every other fact was unchanged.
+- **Not yet run in LabVIEW:** the full graft with this change.

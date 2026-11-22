@@ -46,6 +46,12 @@ orchestrator does it after the last wave: `lvai_create_library` with the API VIs
 function folder (never flat), then `lvai_exec_state` over the members. The VI agents search the
 PROJECT's own VIs before the palette. `docs/orchestrator-brief.md`.
 
+**A BUILD ENDS WITH `lvai_audit_files` OVER ITS FOLDER** (2026-11-21): no LabVIEW, the SAVED files
+against the house rules. Files written outside `lvai_generate_vi` - the graft, Delacor's scripters,
+NI's providers - were checked by nothing: 3 grafted main VIs had automatic error handling ON, 54
+DQMH files compiled code. Ported from wirelint; its upstream version is pinned in
+`docs/offline-audit-evaluation.md`.
+
 **LOGIC INSIDE A DQMH MODULE KEEPS ITS STATE IN THE MODULE'S DATA CLUSTER, NEVER IN AN FGV**
 (user feedback of 2026-11-12, the Hampel Soft DQMH conventions). Fields are added with
 `lvai_dqmh_add_module_data` (in place - an overwritten `.ctl` leaves the library and breaks
@@ -514,6 +520,7 @@ document; `experiments/` does not ship.
 | Generate one or many VIs | `docs/bulk-operations.md` | `lvai_generate_vi`, `lvai_generate_vis` |
 | Run a VI and read every value; drive events | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
 | Is a VI broken, and why | `docs/error-list.md` | `lvai_exec_state`, `lvai_error_list` |
+| House rules of SAVED files, no LabVIEW; wirelint upstream version | `docs/offline-audit-evaluation.md` | `lvai_audit_files` |
 | LabVIEW's outside state; VIs in memory | `docs/labview-state.md` | `lvai_labview_state`, `lvai_vis_in_memory` |
 | Diagram size; layout | `docs/diagram-size.md`, `docs/diagram-layout.md` | `lvai_layout_diagram` |
 | Diagram comments; rendering | `docs/diagram-comments.md` | `lvai_render_diagrams` |

@@ -186,6 +186,14 @@ The recommendation above was carried out. Helpers `scripts/lvbd_graft_paste.xml`
 `GraftToolsTests.cs` against the three exports of the §2 run (`tests/.../Fixtures/graft/`), each
 check with a control arm that must fail.
 
+**Automatic error handling is cleared in the output (2026-11-21).** The CLD templates carry
+Enable automatic error handling ON, and the copy kept it. `lvai_audit_files` found the setting on
+in every grafted main VI of the ATM and Car Wash builds. The pylabview pass after the rewire, which
+writes the event registrations back, now also sets `Execution2.DefaultErrorHandling` to 0. With no
+Event Structure, the pass runs for that alone. The answer's `automaticErrorHandling` shows the
+supplied value, the output's value and `kept`. `keepAutomaticErrorHandling` leaves the setting as
+supplied. `docs/offline-audit-evaluation.md`.
+
 ### What §4 became
 
 | §4 item | now |
