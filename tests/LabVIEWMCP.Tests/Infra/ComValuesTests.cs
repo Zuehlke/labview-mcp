@@ -314,4 +314,45 @@ public sealed class ComValuesTests
         Assert.Contains("2 <Dimsize>", Refusal(xml.Replace("<Dimsize>2</Dimsize><Dimsize>2</Dimsize>", "<Dimsize>4</Dimsize>"),
                                                "array.2{string}"));
     }
+
+    /// <summary>
+    /// 64-bit integers cross EXACTLY (2026-11-22). Above int32 the value went as VT_R8, exact only
+    /// to 2^53: on the IPE test VI (C:	emp\IPE-Tests) 9223372036854775806 reached a U64 field
+    /// as 2^63, and 18446744073709551614 dropped the whole cluster, the run answering ok. Measured
+    /// over COM the same day: VT_I8 (long) and VT_UI8 (ulong) arrive exactly, u64 max included.
+    /// </summary>
+    [Theory]
+    [InlineData("41", "uint64", typeof(int))]
+    [InlineData("2147483648", "int64", typeof(long))]
+    [InlineData("9223372036854775806", "uint64", typeof(long))]
+    [InlineData("9223372036854775808", "uint64", typeof(ulong))]
+    [InlineData("18446744073709551615", "uint64", typeof(ulong))]
+    [InlineData("-9223372036854775808", "int64", typeof(long))]
+    [InlineData("4294967295", "uint32", typeof(long))]
+    public void A_64_bit_integer_crosses_as_an_exact_integer_variant(string text, string type, Type clr)
+    {
+        var value = Convert(text, type);
+        Assert.IsType(clr, value);
+        Assert.Equal(text, System.Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public void A_64_bit_integer_in_a_cluster_or_array_keeps_every_digit()
+    {
+        var record = Assert.IsType<object?[]>(Convert("[18446744073709551614,Max-1]", "cluster{uint64.Fruits,string.Name}"));
+        Assert.Equal(18446744073709551614UL, record[0]);
+        Assert.Equal("Max-1", record[1]);
+
+        Assert.Equal(new ulong[] { 1, 9223372036854775807UL, 18446744073709551615UL },
+                     Convert("[1,9223372036854775807,18446744073709551615]", "array{uint64}"));
+        Assert.Equal(new long[] { -9223372036854775808L, 5 }, Convert("[-9223372036854775808,5]", "array{int64}"));
+        Assert.Equal(new int[] { 1, 2 }, Convert("[1,2]", "array{int32}"));
+
+        Assert.Equal(new ulong[,] { { 1, 18446744073709551615UL } }, Convert("[[1,18446744073709551615]]", "array.2{uint64}"));
+        Assert.Equal(new long[,] { { -1, 9223372036854775807L } }, Convert("[[-1,9223372036854775807]]", "array.2{int64}"));
+        Assert.Equal(new long[,] { { 4294967295L } }, Convert("[[4294967295]]", "array.2{uint32}"));
+
+        Assert.Contains("does not fit", Refusal("18446744073709551616", "uint64"));
+        Assert.Contains("does not fit", Refusal("-1", "uint64"));
+    }
 }

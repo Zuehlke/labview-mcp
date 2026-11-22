@@ -1913,6 +1913,12 @@ Two findings on the way, neither in the In Place Element itself:
   `ComValues.Integer` sends anything past int32 as `VT_R8`, which is exact only to 2^53: inputs
   9223372036854775806, ...807 and ...808 all reached the VI as 2^63, and 18446744073709551614 and
   ...615 dropped the WHOLE cluster input silently (the VI ran on its defaults, `ok: true`).
+  FIXED the same day (`ComValues.IntegerVariant`): an integer past int32 crosses as `VT_I8`
+  (long), past long as `VT_UI8` (ulong), and an array of `int64`/`uint32` as `long[]`/`long[,]`,
+  of `uint64` as `ulong[]`/`ulong[,]` - a 1D or 2D integer array was `int[]`, which threw an
+  overflow past int32. Measured over COM against the same VI first: `VT_I8` and `VT_UI8`
+  arrive exactly (18446744073709551614 + 1 = 18446744073709551615, u64 max + 1 wraps to 0), only
+  `VT_R8` rounded. `ComValuesTests` pins the conversion.
 - **`lvai_add_class_method` answered 102 130 characters for five methods** (about 13 k per method):
   it returned every step's full answer on success too - a large share of the context a class
   request cost. FIXED the same day (`ClassMethodTools.CompactMethods`): a successful method now

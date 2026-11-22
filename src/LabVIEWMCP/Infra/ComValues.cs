@@ -137,10 +137,20 @@ internal static class ComValues
             problem = $"{text} does not fit {type}";
             return null;
         }
-        // VT_I4 where it fits and VT_R8 above it: LabVIEW coerces a numeric variant into the
-        // control's own representation, so the variant only has to carry the value exactly.
-        return value is >= int.MinValue and <= int.MaxValue ? (object)(int)value : (double)value;
+        // VT_I4 where it fits, VT_I8 to long's edge, VT_UI8 above it: LabVIEW coerces a numeric
+        // variant into the control's own representation, so the variant only has to carry the
+        // value EXACTLY. It was VT_R8 above int32 until 2026-11-22, which is exact only to 2^53:
+        // 9223372036854775806 reached a U64 control as 2^63, and 18446744073709551614 dropped the
+        // whole cluster it was in, with the run answering ok. Measured over COM the same day:
+        // VT_I8 and VT_UI8 arrive exactly, u64 max included.
+        return IntegerVariant(value);
     }
+
+    /// <summary>The narrowest exact COM integer variant for <paramref name="value"/>: int, long, else ulong.</summary>
+    internal static object IntegerVariant(decimal value) =>
+        value is >= int.MinValue and <= int.MaxValue ? (int)value
+        : value is >= long.MinValue and <= long.MaxValue ? (long)value
+        : (ulong)value;
 
     private static object? ArrayFromText(string text, string element, out string? problem)
     {
@@ -167,6 +177,9 @@ internal static class ComValues
             "string" or "path" => values.Cast<string>().ToArray(),
             "bool" => values.Cast<bool>().ToArray(),
             _ when Floats.Contains(element) => values.Select(v => Convert.ToDouble(v, Invariant)).ToArray(),
+            // the widest the representation needs: an int[] overflowed past int32 (2026-11-22)
+            "int64" or "uint32" => values.Select(v => Convert.ToInt64(v, Invariant)).ToArray(),
+            "uint64" => values.Select(v => Convert.ToUInt64(v, Invariant)).ToArray(),
             _ when Integers.ContainsKey(element) => values.Select(v => Convert.ToInt32(v, Invariant)).ToArray(),
             // AN ARRAY OF CLUSTERS crosses as object[] of object[] - the shape the XML route below
             // already built. Measured 2026-11-01 on the tank monitor's Write Alarm Log.vi: two
@@ -202,6 +215,9 @@ internal static class ComValues
         "string" or "path" => typeof(string),
         "bool" => typeof(bool),
         _ when Floats.Contains(element) => typeof(double),
+        // a rectangular array has ONE element type, so it is the widest the representation needs
+        "int64" or "uint32" => typeof(long),
+        "uint64" => typeof(ulong),
         _ when Integers.ContainsKey(element) => typeof(int),
         _ => null,
     };
@@ -220,7 +236,9 @@ internal static class ComValues
         foreach (var value in flat)
         {
             grid.SetValue(clr == typeof(double) ? Convert.ToDouble(value, Invariant)
-                          : clr == typeof(int) ? Convert.ToInt32(value, Invariant) : value, index);
+                          : clr == typeof(int) ? Convert.ToInt32(value, Invariant)
+                          : clr == typeof(long) ? Convert.ToInt64(value, Invariant)
+                          : clr == typeof(ulong) ? Convert.ToUInt64(value, Invariant) : value, index);
             for (var d = dims.Length - 1; d >= 0; d--)
             {
                 if (++index[d] < dims[d]) break;
