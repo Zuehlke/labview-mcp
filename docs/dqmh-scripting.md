@@ -1432,6 +1432,12 @@ left. The same replay found a race the unit tests had not: the answer's write co
 collection removed the file, and the next same call on a fresh process was handed that old answer.
 The write and the removal now share one lock (`A_collected_answer_never_stays_on_disk`).
 
+Verified through the real Claude client after a restart (same day): `lvai_exec_state` over 260
+`vi.lib\Utility` VIs answered `stillRunning` at 50.1 s - the client's log reads `completed
+successfully in 50s`, no `Request timed out`, no `Connection closed` - and the same call 100 s
+later collected all 260 (`executableVis` 260, `answeredFromEarlierCall: true`) in 14 ms. No new
+server process appeared and no job file was left.
+
 **A MODULE FROM A TEMPLATE FAILED WITH 56003 - beside the module the template was made from.**
 `Script New Module.vi` opens the template's library by path (`{LV.Application}` `Library.Open`),
 and with a library of the same NAME already in memory that open answers 56003. Measured as an A/B:
