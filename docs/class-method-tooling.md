@@ -1855,3 +1855,32 @@ methods). **Unmeasured on a class member**: `Save.Instrument` alone does not com
 with `lvai_exec_state` after a run that removed something. Also unmeasured: that a terminal
 reference recorded before `BD.Remove Bad Wires` still answers `Connected Wire` after it - if it does
 not, the sinks land in `inputsUnchecked`, which gates nothing.
+
+## 4t. A method on its own fields needs no accessors - In Place Element, 2026-11-22
+
+**Symptom** (a user report): "create a .lvclass named Tree with field Fruits of U64 and a member VI
+that increments Fruits using an In Place Element Structure" took minutes, filled the caller's
+context, and produced public Read/Write accessors nobody asked for. Two causes, both in what we
+wrote, not in a tool:
+
+1. `labview-class-generator` ran its accessor phase unconditionally and, for a method reading its
+   own fields, preferred the SOCKET route - which clones an accessor's pane and therefore needs one.
+2. Its test hand-off is unconditional, and `lvai_generate_method_test` observes a field only through
+   `Write <field>.vi` / `Read <field>.vi` (`accessorMissing` otherwise), so the tests needed them too.
+
+**Measurement** (`C:\temp\TreeIPE`, pylabview backend, LabVIEW 2026 32-bit): `lvai_create_class`
+`fields=uint64.Fruits` (9.5 s); one AIXML with `Tree in`/`Tree out` typed `cluster{uint64.Fruits}`
+on 4815 (11/3), an In Place Element Structure with the `Unbundle / Bundle Elements` pair around
+`Increment`; `lvai_check_aixml` clean; ONE `lvai_add_class_method` with both terminals as class and
+dispatch terminals: `ok`, 20.5 s, `terminalsRetyped 2`, `classTypedTerminals 2`, `pathStandInsLeft
+0`, member listed. `lvai_exec_state`: 1. The reader's export shows both terminals
+`ref{UDClassInst}` `connection="dynamic"` and the class wire going straight into the border node -
+the cluster stand-in's `Replace` rebinds the In Place pair to the private data, as it was measured to
+do for `Unbundle By Name` (`docs/lvclass-interfaces.md`). The class has no accessor at all.
+
+**Not measured**: the incremented value at run time. `lvai_run_vi_and_read_values` reads a class
+indicator as `E_INVALIDARG` over ActiveX, and a Caraya method test cannot observe the field without
+accessors - which is exactly the gap a class without accessors leaves for its tests.
+
+**Consequence**: the agent creates accessors only when asked, authors such a method itself through
+the direct route, and hands off to tests saying which fields have no accessors.
