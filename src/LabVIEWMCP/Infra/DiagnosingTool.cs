@@ -110,15 +110,23 @@ internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerT
 
         // Every top-level call is counted, so that overlapping calls - several agents on one
         // LabVIEW - are seen; a project open or close is refused while they are (ParallelCalls).
-        using var counted = ParallelCalls.Shared.Enter(name);
+        // Handed to LateCalls, which releases it when the WORK ends: a call that answered
+        // `stillRunning` still drives LabVIEW and must still count.
+        var counted = ParallelCalls.Shared.Enter(name);
         if (ParallelCalls.ChangesProject(name, supplied)
             && ParallelCalls.Shared.ProjectChangeRefusal(name) is { } why)
+        {
+            counted.Dispose();
             return Failure(ParallelCalls.RefusalJson(name, why));
+        }
 
         var startUtc = DateTime.UtcNow;
         try
         {
-            return WithAudit(name, await base.InvokeAsync(request, cancellationToken), startUtc);
+            // Answers before the client's 60 s ceiling, whatever the tool (LateCalls has why).
+            return await LateCalls.RunAsync(name, LateCalls.Key(name, supplied),
+                async token => WithAudit(name, await base.InvokeAsync(request, token), startUtc),
+                counted, cancellationToken);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {

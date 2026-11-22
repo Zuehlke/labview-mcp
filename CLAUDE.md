@@ -478,6 +478,12 @@ the argument, so defaults are folded into descriptions. **A new parameter cannot
 session that added it**: the client fetched the tool list at session start.
 `docs/tool-argument-errors.md`.
 
+**NO CALL MAY REACH THE CLIENT'S 60 s**: past it the client drops the connection, every call in
+flight fails with `Connection closed`, and a NEW server process takes over (measured 2026-11-22).
+So every tool answers `stillRunning` after 50 s (`LateCalls`) and the SAME call collects it; jobs
+go to disk (`JobStore`) so the next process can hand them out, and a server waits for its jobs
+before it exits. `docs/dqmh-scripting.md` §9g.
+
 **Write down what was measured and leave the "cannot" out** - an impossibility stated as fact stops
 anyone looking again. When a description explains a mechanism, check the mechanism.
 

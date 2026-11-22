@@ -248,7 +248,15 @@ _ = ReaderPrewarm.RunAsync(LoggerFactory.Create(b =>
     b.SetMinimumLevel(LogLevel.Information);
 }).CreateLogger("reader-prewarm"));
 
-await builder.Build().RunAsync();
+// Not RunAsync: it disposes the services the moment the client closes stdin. A job that outlived
+// its request must first finish and write its answer for the process that replaces this one
+// (JobStore; measured 2026-11-22: a closed stdin ended the server in under a second, job and all).
+using (var host = builder.Build())
+{
+    await host.StartAsync();
+    await host.WaitForShutdownAsync();
+    await JobStore.DrainAsync(TimeSpan.FromMinutes(10));
+}
 return 0;
 
 static async Task<int> DumpSchemaAsync(int? port, string? outputPath)
