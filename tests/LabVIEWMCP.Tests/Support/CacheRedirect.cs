@@ -32,5 +32,13 @@ internal static class CacheRedirect
         // reads a settings file that does not exist unless a test points the variable at its own.
         Environment.SetEnvironmentVariable(ServerSettings.PathVariable,
                                            Path.Combine(directory, "no-settings", "settings.json"));
+
+        // Jobs that outlive their request go to disk for the NEXT server process (JobStore). The
+        // suite must neither leave its jobs in the real folder - a live server would see them - nor
+        // find an earlier run's: posed as "another process", an uncollected `t3|a` of the previous
+        // run was handed to this run's same call. So this one is PER RUN, unlike the cache.
+        var jobs = Path.Combine(Path.GetTempPath(), "lvmcp-test-jobs");
+        try { Directory.Delete(jobs, recursive: true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+        JobStore.Folder = Path.Combine(jobs, Environment.ProcessId.ToString());
     }
 }

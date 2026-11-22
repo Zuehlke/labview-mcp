@@ -15,6 +15,10 @@ namespace LabVIEWMcp.Infra;
 /// itself was never the problem; the transport was. So the job runs detached from the request's
 /// cancellation, the call waits at most <c>answerWithin</c>, and a later call with the same key
 /// waits on the SAME job instead of starting a second one into the same LabVIEW.
+///
+/// Since 2026-11-22 a job is on disk too (<see cref="JobStore"/>): the client REPLACES the server
+/// process after a request timeout, and the same call on the new process attaches to the old
+/// process's job or collects its answer instead of running the work again.
 /// </summary>
 internal static class ResumableCall
 {
@@ -45,7 +49,8 @@ internal static class ResumableCall
         string? label = null)
     {
         var fullKey = family + "|" + key;
-        Job job;
+        var budget = answerWithin <= TimeSpan.Zero ? TimeSpan.FromSeconds(1) : answerWithin;
+        Job? job;
         bool attached;
         lock (Gate)
         {
@@ -54,31 +59,41 @@ internal static class ResumableCall
                 && !string.Equals(j.Key, fullKey, StringComparison.OrdinalIgnoreCase)
                 && !j.Work.IsCompleted);
             if (other is not null)
-            {
                 // the job's own label, never its whole key: a layout batch's key is every VI path,
                 // and the refusal named 57 of them twice (DQMH_Retest, 2026-11-12)
-                var running = Describe(other.Label ?? other.Key[(family.Length + 1)..]);
-                return Json.Error("anotherCallStillRunning",
-                    $"An earlier call ({running}) is still running in this " +
-                    $"server since {other.Clock.Elapsed.TotalSeconds:F0} s and scripts the same " +
-                    "LabVIEW. Call again with ITS arguments to collect its answer first.",
-                    new { runningCall = running });
-            }
-            attached = Jobs.TryGetValue(fullKey, out var existing);
-            // a FINISHED job nobody collected is not this call's answer when LabVIEW restarted after
-            // it began, or when it finished long ago. Measured 2026-10-30: a module call whose
-            // client was stopped failed when LabVIEW was killed, and the same call on the fresh
-            // LabVIEW minutes later was handed that "no port serving lvai.LVAI" as its answer
-            if (existing is not null && IsStale(existing, DateTimeOffset.Now, NewestLabviewStart()))
-            {
-                existing = null;
-                attached = false;
-            }
-            job = existing ?? Start(fullKey, work, progress, label);
-            Jobs[fullKey] = job;
+                return Refusal(Describe(other.Label ?? other.Key[(family.Length + 1)..]),
+                    other.Clock.Elapsed, null);
+            job = Existing(fullKey);
+            attached = job is not null;
         }
 
-        var budget = answerWithin <= TimeSpan.Zero ? TimeSpan.FromSeconds(1) : answerWithin;
+        if (job is null)
+        {
+            // A job ANOTHER server process started - the client replaced the process after a
+            // request timeout, and the old one is still at work (JobStore has the measurement).
+            var otherFamily = JobStore.OfFamily(family).FirstOrDefault(e =>
+                !JobStore.IsOwn(e) && e.Answer is null
+                && !string.Equals(e.Key, fullKey, StringComparison.OrdinalIgnoreCase) && JobStore.IsAlive(e));
+            if (otherFamily is not null)
+                return Refusal(Describe(otherFamily.Label ?? otherFamily.Key[(family.Length + 1)..]),
+                    DateTimeOffset.Now - otherFamily.Started, otherFamily.Pid);
+
+            var (entry, collected) = await JobStore.FromOtherProcessAsync(fullKey, budget, ct, NewestLabviewStart());
+            if (collected is not null)
+                return AnnotateFromProcess(collected, entry!);
+            if (entry is not null)
+                return StillRunning(retryHint, DateTimeOffset.Now - entry.Started, entry.Started, true, null,
+                    entry.Pid);
+
+            lock (Gate)
+            {
+                job = Existing(fullKey);
+                attached = job is not null;
+                job ??= Start(family, fullKey, work, progress, label);
+                Jobs[fullKey] = job;
+            }
+        }
+
         try
         {
             await Task.WhenAny(job.Work, Task.Delay(budget, ct));
@@ -89,41 +104,103 @@ internal static class ResumableCall
         }
 
         if (!job.Work.IsCompleted)
-        {
-            var running = new JsonObject
-            {
-                ["ok"] = false,
-                ["errorKind"] = "stillRunning",
-                ["error"] = "The work is still running in the server; nothing has failed. " + retryHint,
-                ["runningForSeconds"] = Math.Round(job.Clock.Elapsed.TotalSeconds, 1),
-                ["startedAt"] = job.Started.ToString("HH:mm:ss"),
-                ["attachedToEarlierCall"] = attached,
-            };
-            try
-            {
-                if (job.Progress?.Invoke() is { } p) running["progress"] = p;
-            }
-            catch (Exception e) when (e is InvalidOperationException or ArgumentException)
-            {
-                // progress is a courtesy; the answer stands without it
-            }
-            return Indent(running);
-        }
+            return StillRunning(retryHint, job.Clock.Elapsed, job.Started, attached, job.Progress, null);
 
-        Jobs.TryRemove(new KeyValuePair<string, Job>(fullKey, job));
-        var answer = job.Work.IsCompletedSuccessfully
-            ? job.Work.Result
-            : Json.Error("exception", job.Work.Exception?.GetBaseException().Message ?? "The job failed.");
+        // under the gate, like the write in Start: a write landing after this removal would leave a
+        // collected answer on disk, handed to the next same call (measured live, 2026-11-22)
+        lock (Gate)
+        {
+            Jobs.TryRemove(new KeyValuePair<string, Job>(fullKey, job));
+            JobStore.Remove(fullKey);
+        }
+        var answer = AnswerOf(job.Work);
         return attached ? Annotate(answer, job) : answer;
     }
 
-    // the clock stops when the work does, so it says how long the work RAN
-    private static Job Start(string key, Func<Task<string>> work, Func<JsonObject?>? progress, string? label)
+    /// <summary>The uncollected, still fresh job under the key, or null. Called under <see cref="Gate"/>.</summary>
+    private static Job? Existing(string fullKey)
+    {
+        // a FINISHED job nobody collected is not this call's answer when LabVIEW restarted after
+        // it began, or when it finished long ago. Measured 2026-10-30: a module call whose
+        // client was stopped failed when LabVIEW was killed, and the same call on the fresh
+        // LabVIEW minutes later was handed that "no port serving lvai.LVAI" as its answer
+        if (!Jobs.TryGetValue(fullKey, out var existing)) return null;
+        return IsStale(existing, DateTimeOffset.Now, NewestLabviewStart()) ? null : existing;
+    }
+
+    private static string AnswerOf(Task<string> work) =>
+        work.IsCompletedSuccessfully
+            ? work.Result
+            : Json.Error("exception", work.Exception?.GetBaseException().Message ?? "The job failed.");
+
+    private static string Refusal(string running, TimeSpan since, int? otherProcess) =>
+        Json.Error("anotherCallStillRunning",
+            $"An earlier call ({running}) is still running " +
+            (otherProcess is { } pid ? $"in an earlier server process ({pid}) " : "in this server ") +
+            $"since {since.TotalSeconds:F0} s and scripts the same " +
+            "LabVIEW. Call again with ITS arguments to collect its answer first.",
+            new { runningCall = running });
+
+    private static string StillRunning(string retryHint, TimeSpan ranFor, DateTimeOffset started, bool attached,
+                                       Func<JsonObject?>? progress, int? otherProcess)
+    {
+        var running = new JsonObject
+        {
+            ["ok"] = false,
+            ["errorKind"] = "stillRunning",
+            ["error"] = "The work is still running in the server; nothing has failed. " + retryHint,
+            ["runningForSeconds"] = Math.Round(ranFor.TotalSeconds, 1),
+            ["startedAt"] = started.ToString("HH:mm:ss"),
+            ["attachedToEarlierCall"] = attached,
+        };
+        if (otherProcess is { } pid) running["runningInEarlierServerProcess"] = pid;
+        try
+        {
+            if (progress?.Invoke() is { } p) running["progress"] = p;
+        }
+        catch (Exception e) when (e is InvalidOperationException or ArgumentException)
+        {
+            // progress is a courtesy; the answer stands without it
+        }
+        return Indent(running);
+    }
+
+    // the clock stops when the work does, so it says how long the work RAN; the answer goes to
+    // disk too, for a server process that replaces this one before the answer is collected
+    private static Job Start(string family, string key, Func<Task<string>> work, Func<JsonObject?>? progress,
+                             string? label)
     {
         var clock = Stopwatch.StartNew();
+        var started = DateTimeOffset.Now;
+        JobStore.Running(key, family, started, label);
         var task = Task.Run(work);
-        _ = task.ContinueWith(_ => clock.Stop(), TaskScheduler.Default);
-        return new Job(key, task, clock, DateTimeOffset.Now, progress, label);
+        _ = task.ContinueWith(t =>
+        {
+            clock.Stop();
+            lock (Gate)
+                if (Jobs.TryGetValue(key, out var mine) && ReferenceEquals(mine.Work, t))
+                    JobStore.Finished(key, family, started, label, AnswerOf(t), clock.Elapsed);
+        }, TaskScheduler.Default);
+        return new Job(key, task, clock, started, progress, label);
+    }
+
+    /// <summary>An answer collected from another server process says so.</summary>
+    private static string AnnotateFromProcess(string answer, JobStore.Entry entry)
+    {
+        try
+        {
+            if (JsonNode.Parse(answer) is JsonObject o)
+            {
+                o["answeredFromEarlierCall"] = true;
+                o["answeredFromEarlierServerProcess"] = entry.Pid;
+                o["jobStartedAt"] = entry.Started.ToString("HH:mm:ss");
+                return Indent(o);
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+        }
+        return answer;
     }
 
     /// <summary>How long a finished, uncollected answer is kept for the call that collects it.</summary>
@@ -182,8 +259,16 @@ internal static class ResumableCall
         return answer;
     }
 
+    /// <summary>The work of every job still running, for the shutdown drain (JobStore.DrainAsync).</summary>
+    internal static Task[] Unfinished() =>
+        Jobs.Values.Where(j => !j.Work.IsCompleted).Select(Task (j) => j.Work).ToArray();
+
     /// <summary>For tests: forget every job.</summary>
-    internal static void Reset() => Jobs.Clear();
+    internal static void Reset()
+    {
+        foreach (var key in Jobs.Keys) JobStore.Remove(key);
+        Jobs.Clear();
+    }
 
     private static string Indent(JsonNode node) =>
         node.ToJsonString(Json.Answer);

@@ -9,6 +9,7 @@ namespace LabVIEWMcp.Tests.Infra;
 /// call times taken from the subagents' transcripts: the guard has to refuse the project open at
 /// 10:18:26 UTC that preceded the crash.
 /// </summary>
+[Collection("DeferredSourceOnly")]
 public sealed class ParallelCallsTests
 {
     private sealed class Clock
@@ -61,6 +62,27 @@ public sealed class ParallelCallsTests
         var c = calls.Enter("lvai_check_aixml");
         clock.At(18, 11);
         a.Dispose(); b.Dispose(); c.Dispose();
+
+        clock.At(18, 12);
+        using var close = calls.Enter("lvai_close_active_project");
+        Assert.Null(calls.ProjectChangeRefusal("lvai_close_active_project"));
+    }
+
+    /// <summary>
+    /// ATM build, 2026-11-22: the orchestrator ran the closing lvai_audit_files beside lvai_exec_state,
+    /// and its project close was refused for 60 s. The audit reads saved files only.
+    /// </summary>
+    [Fact]
+    public void The_offline_audit_beside_an_exec_state_does_not_block_the_close()
+    {
+        var clock = new Clock();
+        var calls = new ParallelCalls(() => clock.Now);
+
+        clock.At(18, 10);
+        var exec = calls.Enter("lvai_exec_state");
+        var audit = calls.Enter("lvai_audit_files");
+        clock.At(18, 11);
+        audit.Dispose(); exec.Dispose();
 
         clock.At(18, 12);
         using var close = calls.Enter("lvai_close_active_project");

@@ -32,6 +32,12 @@ internal static class DeferredSourceOnly
         }
     }
 
+    /// <summary>Whether this VI's strip is still pending - its compiled code is expected, for now.</summary>
+    internal static bool IsPending(string viPath)
+    {
+        lock (Gate) return Pending.ContainsKey(Path.GetFullPath(viPath));
+    }
+
     /// <summary>For tests: forget everything.</summary>
     internal static void Clear()
     {

@@ -1386,6 +1386,58 @@ answer. A finished job is dropped instead of handed out when LabVIEW restarted a
 when it finished more than ten minutes ago - a killed LabVIEW's "no port" failure was once handed
 to the same call on the next instance.
 
+**The restart that loses the answer is caused by ANOTHER tool's timeout - measured 2026-11-22.**
+Both ATM DQMH builds of that day (`C:\Temp\ATM_linted`, `C:\Temp\ATM_linted2`) lost the module
+answer the same way, read from the client's own log
+(`%LOCALAPPDATA%\claude-cli-nodejs\Cache\<project>\mcp-logs-labview\`):
+
+| | build 1 | build 2 (cold) |
+|---|---|---|
+| module call, `stillRunning` at 45 s | 09:24:08 | 09:56:08 |
+| a PARALLEL agent's `lvai_generate_vi` hits the 60 s ceiling: `Request timed out` | 09:25:26.9 | 09:57:41.0 |
+| every call still in flight on that connection: `Connection closed` | 09:25:34.1 (the module retry itself) | 09:57:46.0 (a `generate_vis`) |
+| the next module call, same arguments | `moduleExists` | `moduleExists` after 3 s |
+
+The client answers a request timeout by dropping the stdio connection and starting a NEW server
+process; the old one is orphaned, not ended (three `LabVIEWMCP.exe` alive afterwards, one started
+at the second drop's second, 10:59:11 local). `ResumableCall`'s jobs live in the OLD process's
+memory, which finishes the module on disk - so the new process has no job under the key and the
+retry runs the creation again, into a folder that already holds it. The module tool did nothing
+wrong; its retry protocol cannot survive a process change. The `generate_vi` that triggered it
+waited behind Delacor's scripting for one LabVIEW: any tool can pass 60 s while a long DQMH run
+holds the instance.
+
+**Fixed the same day, in three parts:**
+- **No call reaches 60 s any more** (`Infra/LateCalls.cs`, in `DiagnosingTool`): every tool that has
+  not finished after 50 s answers `stillRunning` and goes on in the server; the SAME call (same
+  tool, same arguments) collects it. A call in time is untouched - result, exceptions,
+  cancellation. Unlike `ResumableCall` there is no one-job-per-tool rule, so two agents'
+  `generate_vi` still run side by side, and a late call keeps its place in `ParallelCalls` until
+  its work ends.
+- **A job outlives its process** (`Infra/JobStore.cs`): `ResumableCall` jobs from their start, late
+  calls once late, are written to `%TEMP%\LabVIEWMCP\jobs` with the owner's pid and start time.
+  A new process attaches to a job its live predecessor still runs (`runningInEarlierServerProcess`)
+  and hands out its answer (`answeredFromEarlierServerProcess`); a dead owner without an answer
+  means the work runs again.
+- **The server waits for its jobs at shutdown** (`Program.cs`, `JobStore.DrainAsync`, at most
+  10 min). Measured over raw stdio: with stdin closed, the server ended in under a second and took
+  a running job with it - the handover would only have worked for a client that never closes
+  stdin.
+
+Verified over raw stdio (`LABVIEWMCP_ANSWER_WITHIN_SECONDS=2`, `lvai_exec_state` over the 71 VIs of
+`ATM_linted2`, about 17 s): server A answered `stillRunning` at 2.1 s, its stdin was closed, A stayed
+alive; server B answered `stillRunning` with `runningInEarlierServerProcess` six times and then the
+full answer with `answeredFromEarlierServerProcess`; the work ran once, A exited, no job file was
+left. The same replay found a race the unit tests had not: the answer's write could land after its
+collection removed the file, and the next same call on a fresh process was handed that old answer.
+The write and the removal now share one lock (`A_collected_answer_never_stays_on_disk`).
+
+Verified through the real Claude client after a restart (same day): `lvai_exec_state` over 260
+`vi.lib\Utility` VIs answered `stillRunning` at 50.1 s - the client's log reads `completed
+successfully in 50s`, no `Request timed out`, no `Connection closed` - and the same call 100 s
+later collected all 260 (`executableVis` 260, `answeredFromEarlierCall: true`) in 14 ms. No new
+server process appeared and no job file was left.
+
 **A MODULE FROM A TEMPLATE FAILED WITH 56003 - beside the module the template was made from.**
 `Script New Module.vi` opens the template's library by path (`{LV.Application}` `Library.Open`),
 and with a library of the same NAME already in memory that open answers 56003. Measured as an A/B:

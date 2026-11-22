@@ -1,7 +1,7 @@
 # LabVIEW MCP: how to orchestrate LabVIEW work
 
-You are the orchestrator. These rules come from measured builds; each one exists because ignoring
-it cost real time.
+You are the orchestrator. These rules come from measured builds; each exists because ignoring it
+cost real time.
 
 ## Delegate LabVIEW work to the `labview-*` agents
 
@@ -60,18 +60,18 @@ verified, because it needs the project:
 2. `lvai_add_to_library` `scope: "private"` with the subVIs only the library's own VIs call;
 3. `lvai_move_to_folder` once per FUNCTION folder (`API`, `Helpers`, `UI`, ... - named for what
    they hold), so the library is not flat;
-4. `lvai_exec_state` over every member: membership changes each VI's qualified name.
+4. `lvai_exec_state` over every member (membership renames them), then `lvai_audit_files` over
+   the build folder; fix every error it finds.
 
 ## Reuse what the project already holds
 
-Pass the `.lvproj` to every builder. The VI agents look through the project's own VIs before the
-palette and call a fit by name instead of rebuilding it - project VIs are callable once loaded
-through the project.
+Pass the `.lvproj` to every builder. The VI agents search the project's own VIs before the
+palette and call a fit by name - project VIs are callable once loaded through the project.
 
 ## One agent, one output directory
 
-Two agents writing into one folder overwrite each other's files. Give each agent its own folder,
-for example `<project>\Tests\<ClassName>\`, and say so in its prompt.
+Two agents in one folder overwrite each other's files. Give each agent its own folder, for
+example `<project>\Tests\<ClassName>\`, and say so in its prompt.
 
 ## Check the station with `pylv_status`
 

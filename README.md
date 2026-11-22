@@ -105,7 +105,7 @@ local translator, and the translator talks to LabVIEW.
                │  what it can do.
                ▼
  ┌────────────────────────────┐
- │       LabVIEW MCP          │  LabVIEWMCP.exe, one Windows executable with 122 tools.
+ │       LabVIEW MCP          │  LabVIEWMCP.exe, one Windows executable with 123 tools.
  │                            │  This is where the knowledge lives: the AIXML dialect,
  │      the translator        │  the palette and example indexes, the VI Server catalogue.
  └──────┬──────────────┬──────┘
@@ -328,6 +328,22 @@ it is applied to the assembled copy through `tools\pylabview\patches\patches.jso
 `vendor\`. `tools\pylabview\VENDOR.md` has the provenance and the reasoning.
 
 If you use this server's editing tools, you are using their code. Please star their repository.
+
+### wirelint
+
+`lvai_audit_files`, the offline check of saved VIs, controls, libraries and projects, is a C# port
+of the method in **[wirelint](https://github.com/felipefoz/wirelint)**, static analysis for
+LabVIEW code. It showed which resource blocks carry source-only, automatic error handling, the
+terminal style and the owning library. We checked its readings against pylabview and added two
+measured corrections: polymorphic and global VIs, and relative owner paths.
+
+| | |
+|---|---|
+| Project | [felipefoz/wirelint](https://github.com/felipefoz/wirelint) |
+| Authors | WireLint contributors, as the licence names them |
+| Licence | MIT. The notice is in `src\LabVIEWMCP\Infra\LvFileAudit.cs` |
+| Ported from | `v0.2.0`, commit `280d621d0846f2307b2ab4325fdf60ab0b1f287c` (2026-11-20) |
+| Local changes | Ported, not vendored. Every deviation is listed in [`docs/offline-audit-evaluation.md`](docs/offline-audit-evaluation.md) |
 
 ### NI's grpc-labview
 
