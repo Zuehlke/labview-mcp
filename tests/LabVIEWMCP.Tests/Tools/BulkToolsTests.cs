@@ -19,6 +19,8 @@ namespace LabVIEWMcp.Tests.Tools;
 /// </summary>
 public class BulkGenerateViTests
 {
+    public BulkGenerateViTests() => FakeGrpcBackend.Use();
+
     [Fact]
     public async Task A_refused_validation_stops_before_anything_is_generated()
     {

@@ -356,7 +356,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
             if (payload["ok"]?.GetValue<bool>() == true)
             {
                 var cleaned = await new DiagramCleanup(connection).RunAsync(
-                    viPath, AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc, timeoutSeconds, ct);
+                    viPath, AixmlBackend.InEffect, timeoutSeconds, ct);
                 payload["cleanUpDiagram"] = cleaned;
                 if (cleaned["ok"]?.GetValue<bool>() != true)
                     payload["note"] = JsonValue.Create($"{payload["note"]?.GetValue<string>()} The block " +
@@ -368,7 +368,7 @@ internal sealed class WireEventTools(LvaiConnection connection)
                 // LayoutCheck, 2026-10-16). The chain needs the AIXML, which this tool never sees.
                 var size = await new BulkTools(connection).DiagramSizeStepAsync(
                     null, viPath, timeoutSeconds, ct,
-                    overCom: AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview);
+                    overCom: AixmlBackend.InEffect == AixmlBackend.PyLabview);
                 payload["diagramSize"] = size;
                 if (size["note"]?.GetValue<string>() is { Length: > 0 } sizeNote)
                     payload["note"] = JsonValue.Create($"{payload["note"]?.GetValue<string>()}{sizeNote}");

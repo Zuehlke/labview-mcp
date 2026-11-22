@@ -872,7 +872,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         // helper against 20 ms direct on an intact caller (grpc: 68 ms), and 178 ms against 119 ms
         // on one whose subVI was missing (grpc: 171 ms) - where the cause is what a route needs.
         // Composing the helper costs about 1.1 s, once per parts change.
-        if (AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview)
+        if (AixmlBackend.InEffect == AixmlBackend.PyLabview)
         {
             try
             {

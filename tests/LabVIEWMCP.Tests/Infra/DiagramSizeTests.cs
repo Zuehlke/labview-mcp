@@ -16,6 +16,8 @@ namespace LabVIEWMcp.Tests.Infra;
 /// </summary>
 public sealed class DiagramSizeTests
 {
+    public DiagramSizeTests() => FakeGrpcBackend.Use();
+
     private static string Fixture(string name) =>
         File.ReadAllText(Path.Combine(RepoTree.Root, "tests", "LabVIEWMCP.Tests", "Fixtures", "diagram-size", name));
 

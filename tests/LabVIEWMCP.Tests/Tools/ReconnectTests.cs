@@ -18,6 +18,8 @@ namespace LabVIEWMcp.Tests.Tools;
 /// </summary>
 public class ReconnectTests
 {
+    public ReconnectTests() => FakeGrpcBackend.Use();
+
     private static void FailFirstCallWithUnavailable(FakeLvaiService service, string method)
     {
         service.FailWith = StatusCode.Unavailable;

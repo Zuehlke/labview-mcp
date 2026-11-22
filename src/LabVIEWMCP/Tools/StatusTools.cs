@@ -17,19 +17,45 @@ internal sealed class StatusTools(LvaiConnection connection)
 {
     private static readonly JsonSerializerOptions Indented = Json.Answer;
 
-    [McpServerTool(Name = "lvai_status", ReadOnly = true, Title = "NI's gRPC service status")]
+    [McpServerTool(Name = "lvai_status", ReadOnly = true, Title = "Server status (pylv_status on pylabview)")]
     [Description("""
-        Status of NI's AI gRPC service inside LabVIEW: the discovered port (re-discovered on every
-        LabVIEW restart), how it was found, the reflected service list. On the pylabview backend
-        (the default) START WITH pylv_status instead - it answers without NI's service and says
-        whether the service is up (`grpcService`). With the service down this answers `ok: false`
-        and STILL carries the fields that need no service: `scriptsDirectory`, `serverVersion`,
+        Status. On the pylabview backend (the default) this IS pylv_status - the same answer, with
+        `redirectedFrom: lvai_status` - so a call made out of habit never reads NI's service as the
+        state of the station; `grpcService` in it says whether that service is up anyway. Only on
+        grpc (`backend: "grpc"`, or the server set to it) it reports NI's AI gRPC service inside
+        LabVIEW: the discovered port (re-discovered on every LabVIEW restart), how it was found,
+        the reflected service list. With the service down that answers `ok: false` and STILL
+        carries the fields that need no service: `scriptsDirectory`, `serverVersion`,
         `labviewHealth`. `labviewHealth` counts DWarn EVENTS in NI's crash log for this LabVIEW
         (`dwarnCountedBy` names the rule) - read it AFTER a failure, never as a gate. An
         `Unavailable` status is explained in the Nigel service log under
         %ProgramData%\National Instruments\AIAssistants\Logs.
         """)]
-    public async Task<string> StatusAsync(CancellationToken ct = default) =>
+    public async Task<string> StatusAsync(
+        CancellationToken ct = default,
+        [Description(AixmlBackend.ParameterDescription + """
+             On pylabview the answer is pylv_status's; "grpc" asks NI's service.
+            """)]
+        string? backend = null)
+    {
+        // The user's request of 2026-11-22: on pylabview lvai_status must not lead anyone to read
+        // NI's service as the state of the station - it answers what pylv_status answers.
+        if (!AixmlBackend.TryResolve(backend, "lvai_status", out var choice, out var bad))
+            return AixmlBackend.Refusal(bad);
+        if (choice.Name == AixmlBackend.PyLabview)
+        {
+            var redirected = await new PyLabviewTools(connection).StatusAsync(ct);
+            if (JsonNode.Parse(redirected) is not JsonObject o) return redirected;
+            o["redirectedFrom"] = "lvai_status";
+            o["redirectNote"] = "The pylabview backend is in force, so lvai_status answered as pylv_status. " +
+                                "NI's service is a side fact here (`grpcService`); backend: \"grpc\" asks it directly.";
+            return AixmlTools.WithBackend(o.ToJsonString(Indented), choice);
+        }
+        return AixmlTools.WithBackend(await GrpcStatusAsync(ct), choice);
+    }
+
+    /// <summary>NI's gRPC service status - lvai_status on the grpc backend.</summary>
+    internal async Task<string> GrpcStatusAsync(CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
             // Through InvokeAsync, never GetClientAsync. This tool's own description promises

@@ -219,18 +219,23 @@ flag) — falling back to grpc would answer a question nobody asked. `pylv_statu
 LabVIEW, reports the server default under `aixmlBackend` and whether the composer and its parts were
 found.
 
-**The server default reaches only a tool the CLIENT called.** About forty places in this server
-call `lvai_generate_vi` or the convert tools from C# — the class tools, the test generators, the
-malleable route, the graft — and they depend on what only NI's converter does: class wires it
-writes past validation, subVIs it resolves because they are loaded. A server-wide `pylabview` must
-not reroute those in silence, so for them an omitted backend stays `grpc` and the answer says
-`backendSource: internal call …`. `DiagnosingTool` records which tool the client invoked; an
-explicit `backend` argument still reaches any tool. There is deliberately **no tool that switches
+**PYLABVIEW IS ALWAYS THE DEFAULT, for an internal call too** (the user's rule of 2026-11-22,
+"Default soll IMMER pylabview sein"). Until then this paragraph said "the server default reaches
+only a tool the CLIENT called": about forty places call `lvai_generate_vi` or the convert tools
+from C#, and an inner call that inherited no route choice fell back to `grpc`
+(`backendSource: internal call …`), on the reasoning that the class tools needed NI's converter.
+The whole class route - class, a method with an In Place Element on its private data, Caraya
+tests - has since run on pylabview alone (`docs/class-method-tooling.md` §4t). Now an inner call
+takes the route's choice in BOTH directions (`AixmlBackend.Inherited` holds `grpc` too), and with
+none it follows the same flag / variable / default chain as a client call (`AixmlBackend.InEffect`).
+An explicit `backend` argument still reaches any tool. The unit tests that drive tools against the
+FAKE of NI's service (`LvaiTestServer`) say so explicitly with `FakeGrpcBackend.Use()` - 81 of them
+had leaned on the old fallback. There is deliberately **no tool that switches
 the backend at run time**: parallel agents share one server, and one agent would switch it under
 the others.
 
-**A ROUTE TOOL HANDS ITS CHOICE DOWN** (since 2026-10-11). A tool that runs a whole route - the class
-tools, the test generators, the swap, the runner - and resolves to `pylabview` sets
+**A ROUTE TOOL HANDS ITS CHOICE DOWN** (since 2026-10-11; either backend since 2026-11-22). A tool
+that runs a whole route - the class tools, the test generators, the swap, the runner - and resolves to `pylabview` sets
 `AixmlBackend.Inherited`, and every call it makes inside that route with no `backend` of its own
 inherits it (`backendSource: inherited from <tool>`). Without that, a route promised to avoid NI's
 service had to pass `backend` to some thirty inner calls by hand, and one forgotten call would reach

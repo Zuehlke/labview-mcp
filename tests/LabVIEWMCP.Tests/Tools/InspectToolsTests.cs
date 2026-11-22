@@ -26,6 +26,8 @@ namespace LabVIEWMcp.Tests.Tools;
 /// </summary>
 public sealed class InspectToolsTests : IDisposable
 {
+    public InspectToolsTests() => FakeGrpcBackend.Use();
+
     private readonly string _dir = Directory.CreateTempSubdirectory("lvai-terminals").FullName;
 
     public void Dispose()
@@ -107,7 +109,7 @@ public sealed class InspectToolsTests : IDisposable
         var result = await new InspectTools(server.Connection).ViTerminalsAsync(WriteVi());
 
         var lines = result.TrimEnd().Split(Environment.NewLine);
-        Assert.StartsWith("backend: grpc - backendSource: internal call", lines[^1]);
+        Assert.StartsWith("backend: grpc - backendSource: test: fake gRPC service", lines[^1]);
         Assert.EndsWith("cannot see.", lines[^3]);
         Assert.True(result.IndexOf("<Call ", StringComparison.Ordinal) <
                     result.IndexOf("Exported from LabVIEW", StringComparison.Ordinal));

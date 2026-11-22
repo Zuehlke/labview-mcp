@@ -15,6 +15,8 @@ namespace LabVIEWMcp.Tests.Tools;
 /// </summary>
 public sealed class RunToolsTests : IDisposable
 {
+    public RunToolsTests() => FakeGrpcBackend.Use();
+
     private readonly string _dir = Directory.CreateTempSubdirectory("lvai-run-tests").FullName;
 
     public void Dispose()

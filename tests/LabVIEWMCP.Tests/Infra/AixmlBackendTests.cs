@@ -61,18 +61,19 @@ public sealed class AixmlBackendTests
     }
 
     /// <summary>
-    /// The class tools call lvai_generate_vi from C# and depend on what only NI's converter does,
-    /// so a server-wide pylabview must not reach them. Only an explicit argument does.
+    /// The user's rule of 2026-11-22, "Default soll IMMER pylabview sein": an internal call with no
+    /// route choice follows the same chain as a client call - it used to fall back to grpc.
     /// </summary>
     [Fact]
-    public void The_server_default_reaches_only_the_tool_the_client_invoked()
+    public void An_internal_call_takes_the_server_default_never_grpc_by_omission()
     {
-        var nested = Resolve(null, clientTool: "lvai_create_class", environment: "pylabview");
-        Assert.Equal("grpc", nested.Name);
-        Assert.StartsWith("internal call", nested.Source);
-
-        Assert.Equal("pylabview", Resolve("pylabview", clientTool: "lvai_create_class").Name);
-        Assert.Equal("grpc", Resolve(null, clientTool: null, flag: "pylabview").Name);
+        Assert.Equal(new AixmlBackend.Choice("pylabview", "default"),
+                     Resolve(null, clientTool: "lvai_create_class"));
+        Assert.Equal(new AixmlBackend.Choice("pylabview", "default"), Resolve(null, clientTool: null));
+        Assert.Equal(new AixmlBackend.Choice("pylabview", AixmlBackend.Variable),
+                     Resolve(null, clientTool: "lvai_create_class", environment: "pylabview"));
+        Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Flag),
+                     Resolve(null, clientTool: null, flag: "grpc"));
     }
 
     private static AixmlBackend.Choice ResolveWith(int? labviewInUse, string? perCall = null,
@@ -87,7 +88,7 @@ public sealed class AixmlBackendTests
     /// <summary>
     /// The user's decision of 2026-11-05: pylabview is the default on EVERY LabVIEW - it replaced
     /// "grpc, except pylabview on a LabVIEW older than 2026". An explicit grpc anywhere above still
-    /// wins, and an internal call still stays grpc.
+    /// wins; an internal call takes the default too (2026-11-22).
     /// </summary>
     [Fact]
     public void Pylabview_is_the_default_on_every_LabVIEW()
@@ -98,7 +99,7 @@ public sealed class AixmlBackendTests
         Assert.Equal(new AixmlBackend.Choice("grpc", "call"), ResolveWith(2026, perCall: "grpc"));
         Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Flag), ResolveWith(2026, flag: "grpc"));
         Assert.Equal(new AixmlBackend.Choice("grpc", AixmlBackend.Variable), ResolveWith(2026, environment: "grpc"));
-        Assert.Equal("grpc", ResolveWith(2026, clientTool: "lvai_create_class").Name);
+        Assert.Equal("pylabview", ResolveWith(2026, clientTool: "lvai_create_class").Name);
     }
 
     /// <summary>
@@ -220,12 +221,7 @@ public sealed class AixmlBackendTests
         Assert.Equal("grpc", Res.Str(named, "backend"));
         Assert.Equal("call", Res.Str(named, "backendSource"));
 
-        // From C#, as every internal caller reaches it: no client tool, so never the server default.
-        var internalCall = await tools.ValidateAixmlAsync(xml);
-        Assert.Equal("grpc", Res.Str(internalCall, "backend"));
-        Assert.StartsWith("internal call", Res.Str(internalCall, "backendSource"));
-
-        Assert.Equal(2, server.Service.CountOf("ValidateAIXML"));
+        Assert.Equal(1, server.Service.CountOf("ValidateAIXML"));
     }
 
     // ------------------------------------------------------------ the tools, pylabview side

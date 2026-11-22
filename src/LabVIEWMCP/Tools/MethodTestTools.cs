@@ -66,18 +66,23 @@ internal sealed class MethodTestTools(LvaiConnection connection)
           {"method":"Zero","writeField":"Reading","value":"12.5","expectFieldValue":"0"}
           {"method":"Read Value","seed":{"Current":"3","Gain":"2"},"expectOutput":"reading","expectValue":"6"}
           {"method":"Add Value","inputs":{"Value":"2.5"},"seed":{"Sum":"1.5"},"expectFields":{"Sum":"4"}}
+          {"method":"Increment","errorIn":"[true,5000,upstream]","expectErrorCode":5000}
         - expectOutput+expectValue: a RETURNED value; type read off the method (`outputType`
           overrides); an undeclared terminal is refused; "" is a legal value.
         - expectErrorCode: an unquoted NUMBER (a quoted one is refused).
         - writeField+value: asserts the field SURVIVED the call unchanged (read off the returned
           object; `readField` if different). For a method that CHANGES it add expectFieldValue.
         - seed: writes fields without asserting; expectFields: one case per field.
+        - errorIn: the error cluster fed into the METHOD's error input instead of `no error`,
+          "[status,code,source]" - the "an incoming error passes through" case, needing no
+          accessor. Not with setup (its chain feeds that input); a method with no error input
+          refuses it.
         - setup: other VIs called first, as in lvai_generate_test (direct route only). Cases of one
           test VI RUN IN PARALLEL, so a fixture path shared between cases is refused.
         - inputs: ANY input terminal; required ones are always wired, a type with no honest
           default (refnum, IO name, variant) must be given. Refused: an undeclared name
-          (`inputTerminalNotFound`), the class or error input (`inputNotSettable`), a panel object
-          with no conIdx (`terminalNotOnPane`).
+          (`inputTerminalNotFound`), the class or error input (`inputNotSettable` - use errorIn
+          for the latter), a panel object with no conIdx (`terminalNotOnPane`).
         An UNKNOWN case key is refused by name. The method's error is never chained into the
         assertions. An expectValue you measured pins OBSERVED behaviour, not the spec - say which.
         A client timeout does not mean failure: check the file before retrying. Read the JUnit
@@ -90,7 +95,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         string lvclassPath,
         [Description("JSON array of cases: method, plus expectOutput+expectValue, " +
                      "expectErrorCode, writeField+value[+expectFieldValue], seed, expectFields, " +
-                     "inputs, setup, label")]
+                     "inputs, setup, errorIn, label")]
         string casesJson,
         [Description(@"Absolute path of the test .vi - WILL BE OVERWRITTEN. Defaults to
                        'Test <Class> Methods.vi' beside the class.")]
@@ -323,7 +328,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                          request.ExpectErrorCode, seed, required!,
                                          request.ExpectOutput, request.ExpectValue,
                                          outputType, outputConIdx,
-                                         request.ExpectFieldValue, seedWrites, request.Setup));
+                                         request.ExpectFieldValue, seedWrites, request.Setup,
+                                         request.ErrorIn));
                 methodShapes.Add(DirectMethodCall.From(terminals!,
                     TestTools.DirectAccessorCall.Target(lvclassPath, methodVi)));
             }
@@ -708,6 +714,12 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 ? Json.Error("badArguments", setupWhy!)
                 : Outcome(false, "setup", steps, total, testViPath, null, setupWhy!,
                           route: Direct(route)), null);
+        var errorInWithoutInput = cases.Where((c, i) => c.ErrorIn is not null && methods[i].ErrorIn is null)
+                                       .Select(c => c.Method).Distinct().ToList();
+        if (errorInWithoutInput.Count > 0)
+            return (Json.Error("badArguments",
+                $"{string.Join(", ", errorInWithoutInput)} has no error input, so a case's " +
+                "\"errorIn\" has nothing to feed."), null);
         if (setups.Count > 0)
         {
             // the method's error in is what orders the setup before the call
@@ -744,7 +756,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         //    - and every setup VI with it, in the same call. ON PYLABVIEW NOTHING IS LOADED: the
         //    composer resolves members and setup VIs by FILE, so their folders are searched
         //    instead (2026-10-11)
-        var composed = AixmlBackend.Inherited.Value?.Name == AixmlBackend.PyLabview;
+        var composed = AixmlBackend.InEffect == AixmlBackend.PyLabview;
         if (composed)
         {
             AixmlComposer.ExtraSearch.Value =
@@ -1224,8 +1236,9 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             if (setupChain is null && (method is null || method.ErrorIn is not null))
             {
                 noError = uid++;
-                sb.AppendLine(TestTools.Constant(noError, ErrorCluster, "[false,0,]",
-                                                 $"no error {test.Slot}"));
+                sb.AppendLine(test.ErrorIn is { } incoming
+                    ? TestTools.Constant(noError, ErrorCluster, incoming, $"error in {test.Slot}")
+                    : TestTools.Constant(noError, ErrorCluster, "[false,0,]", $"no error {test.Slot}"));
             }
 
             // A constant per required input. Leaving one out is what made this tool's first real
@@ -1678,7 +1691,8 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                       int? OutputConIdx = null,
                                       string? ExpectFieldValue = null,
                                       IReadOnlyList<SeedWrite>? SeedWrites = null,
-                                      IReadOnlyList<TestTools.SetupCall>? SetupCalls = null)
+                                      IReadOnlyList<TestTools.SetupCall>? SetupCalls = null,
+                                      string? ErrorIn = null)
     {
         public IReadOnlyList<SeedWrite> Seeds => SeedWrites ?? [];
         public IReadOnlyList<TestTools.SetupCall> Calls => SetupCalls ?? [];
@@ -1708,6 +1722,29 @@ internal sealed class MethodTestTools(LvaiConnection connection)
         && !File.Exists(Path.Combine(folder, $"{method}.vi"))
         && File.Exists(Path.Combine(folder, method));
 
+    /// <summary>
+    /// An error cluster literal in its canonical spelling, `[true,5000,upstream]`, or null when
+    /// <paramref name="text"/> is not one: status true/false, a whole-number code, and the source
+    /// text (which may hold commas - everything after the second comma is the source).
+    /// </summary>
+    internal static string? ErrorInLiteral(string text)
+    {
+        var t = text.Trim();
+        if (t.Length < 2 || t[0] != '[' || t[^1] != ']') return null;
+        var body = t[1..^1];
+        var first = body.IndexOf(',');
+        if (first < 0) return null;
+        var second = body.IndexOf(',', first + 1);
+        if (second < 0) return null;
+        var status = body[..first].Trim().ToLowerInvariant();
+        if (status is not ("true" or "false")) return null;
+        if (!int.TryParse(body[(first + 1)..second].Trim(), System.Globalization.NumberStyles.Integer,
+                          System.Globalization.CultureInfo.InvariantCulture, out var code)) return null;
+        // a comma inside the source is structure in an AIXML value - write it as \2C
+        var source = body[(second + 1)..].Replace(",", "\\2C");
+        return $"[{status},{code},{source}]";
+    }
+
     internal sealed record MethodCaseRequest(string Method, string? WriteField, string? ReadField,
                                              string? Value, string? Type, int? ExpectErrorCode,
                                              string? Label,
@@ -1717,14 +1754,15 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                              string? OutputType = null,
                                              string? ExpectFieldValue = null,
                                              IReadOnlyDictionary<string, string>? Seeds = null,
-                                             IReadOnlyList<TestTools.SetupCall>? Setup = null)
+                                             IReadOnlyList<TestTools.SetupCall>? Setup = null,
+                                             string? ErrorIn = null)
     {
         /// <summary>Every key a case may carry. Anything else is refused by name.</summary>
         private static readonly HashSet<string> Accepted = new(StringComparer.Ordinal)
         {
             "method", "writeField", "readField", "value", "expectFieldValue", "type",
             "expectErrorCode", "label", "inputs", "expectOutput", "expectValue", "outputType",
-            "seed", "setup", "expectFields",
+            "seed", "setup", "expectFields", "errorIn",
         };
 
         /// <summary>
@@ -1748,6 +1786,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
             ["seed"] = JsonValueKind.Object,
             ["setup"] = JsonValueKind.Array,
             ["expectFields"] = JsonValueKind.Object,
+            ["errorIn"] = JsonValueKind.String,
         };
 
         private const string UnknownKeyHint =
@@ -1995,6 +2034,26 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                 // not reset the fixture file before a Deposit.
                 var setup = TestTools.Case.SetupOf(o["setup"] as JsonArray, all.Count);
 
+                // `errorIn`: the error cluster fed into the METHOD's own error input instead of
+                // `no error` - the case "an incoming error passes through". Added 2026-11-22: a
+                // class without accessors can only be tested on what its pane shows, and this case
+                // could not be generated at all (`inputs` refuses the error input, and
+                // lvai_generate_test cannot feed a class constant to a dispatch input) - a test
+                // agent hand-edited the AIXML instead.
+                string? errorIn = null;
+                if (o["errorIn"]?.GetValue<string>() is { } errorText)
+                {
+                    errorIn = ErrorInLiteral(errorText)
+                        ?? throw new ArgumentException(
+                            $"Case for '{method}': \"errorIn\" '{errorText}' is not an error cluster " +
+                            "literal - write [status,code,source], e.g. \"[true,5000,upstream]\".");
+                    if (setup.Count > 0)
+                        throw new ArgumentException(
+                            $"Case for '{method}' gives \"errorIn\" AND \"setup\". The setup chain " +
+                            "is what feeds the method's error input, so the two cannot both do it - " +
+                            "drop one.");
+                }
+
                 all.Add(new MethodCaseRequest(method, writeField,
                                               o["readField"]?.GetValue<string>(), value,
                                               o["type"]?.GetValue<string>(), expect,
@@ -2002,7 +2061,7 @@ internal sealed class MethodTestTools(LvaiConnection connection)
                                               expectOutput, expectValue,
                                               o["outputType"]?.GetValue<string>(),
                                               expectFieldValue, seedFields,
-                                              setup.Count > 0 ? setup : null));
+                                              setup.Count > 0 ? setup : null, errorIn));
             }
 
             return all;

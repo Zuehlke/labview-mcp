@@ -10,6 +10,8 @@ namespace LabVIEWMcp.Tests.Tools;
 
 public class ActionRunViTests
 {
+    public ActionRunViTests() => FakeGrpcBackend.Use();
+
     [Fact]
     public async Task Maps_the_vi_path_and_the_input_map()
     {
@@ -178,6 +180,8 @@ internal sealed class TempOpenFiles : IDisposable
 
 public class ActionOpenFileTests
 {
+    public ActionOpenFileTests() => FakeGrpcBackend.Use();
+
     /// <summary>
     /// A .lvproj handed to viPath is refused HERE, before LabVIEW gets to answer it, because
     /// LabVIEW's answer is actively misleading: `Error 7, File not found` about a file that plainly

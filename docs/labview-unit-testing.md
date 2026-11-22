@@ -745,6 +745,33 @@ same broken subject: **3 tests, 2 failures**, which is the arithmetically correc
 **An all-green first run proves very little.** This defect was only visible because the subject was
 deliberately broken and the expected failure count was known in advance.
 
+### 3e. An incoming error through a class method: `errorIn` (2026-11-22)
+
+**Symptom.** The Tree demo (`C:	emp\Demo-Anpassungen`, a class with one method and no accessors,
+since the class agent creates none unasked) needed the case "an incoming error passes through". No
+generator could build it: `lvai_generate_method_test` refused the error input in `inputs`
+(`inputNotSettable`), and `lvai_generate_test` could not feed a class constant into a dispatch
+input ("required input 'Tree in' is not wired"). The test agent hand-edited the kept AIXML and
+generated it with `lvai_generate_vi`.
+
+**Now** a case takes `errorIn`, the cluster the METHOD's error input gets instead of `no error`:
+
+```json
+{"method":"Increment Fruits","errorIn":"[true,5000,upstream]","expectErrorCode":5000}
+```
+
+The literal is `[status,code,source]`; a comma in the source is written `C` for the AIXML value.
+Refused: a value that is not that literal, `errorIn` beside `setup` (the setup chain is what feeds
+the method's error input), and a method with no error input. `MethodTestErrorInTests` pins the
+parsing, the refusals and the wiring - the constant named `error in <slot>` feeds the method's
+error input, a case without the key keeps `no error <slot>`.
+
+Measured live the same day against the Tree demo (no accessors, direct route, pylabview): three
+cases generated in one call (22.9 s, `execState 1`) - `errorIn [true,5000,upstream]` expecting
+5000, no `errorIn` expecting 0, and a negative control expecting the incoming error to vanish. The
+suite ran 3 tests, 1 failure: exactly the negative control, named by its label.
+`C:	emp\Demo-Anpassungen\Tests\ErrorIn\`.
+
 ## 4. Running the tests and getting a report
 
 `Caraya.lvlib:Run Tests.vi` / instance `Run Test (Scalar Path)` takes the test as a **path** and

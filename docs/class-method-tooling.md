@@ -1855,3 +1855,79 @@ methods). **Unmeasured on a class member**: `Save.Instrument` alone does not com
 with `lvai_exec_state` after a run that removed something. Also unmeasured: that a terminal
 reference recorded before `BD.Remove Bad Wires` still answers `Connected Wire` after it - if it does
 not, the sinks land in `inputsUnchecked`, which gates nothing.
+
+## 4t. A method on its own fields needs no accessors - In Place Element, 2026-11-22
+
+**Symptom** (a user report): "create a .lvclass named Tree with field Fruits of U64 and a member VI
+that increments Fruits using an In Place Element Structure" took minutes, filled the caller's
+context, and produced public Read/Write accessors nobody asked for. Two causes, both in what we
+wrote, not in a tool:
+
+1. `labview-class-generator` ran its accessor phase unconditionally and, for a method reading its
+   own fields, preferred the SOCKET route - which clones an accessor's pane and therefore needs one.
+2. Its test hand-off is unconditional, and `lvai_generate_method_test` observes a field only through
+   `Write <field>.vi` / `Read <field>.vi` (`accessorMissing` otherwise), so the tests needed them too.
+
+**Measurement** (`C:\temp\TreeIPE`, pylabview backend, LabVIEW 2026 32-bit): `lvai_create_class`
+`fields=uint64.Fruits` (9.5 s); one AIXML with `Tree in`/`Tree out` typed `cluster{uint64.Fruits}`
+on 4815 (11/3), an In Place Element Structure with the `Unbundle / Bundle Elements` pair around
+`Increment`; `lvai_check_aixml` clean; ONE `lvai_add_class_method` with both terminals as class and
+dispatch terminals: `ok`, 20.5 s, `terminalsRetyped 2`, `classTypedTerminals 2`, `pathStandInsLeft
+0`, member listed. `lvai_exec_state`: 1. The reader's export shows both terminals
+`ref{UDClassInst}` `connection="dynamic"` and the class wire going straight into the border node -
+the cluster stand-in's `Replace` rebinds the In Place pair to the private data, as it was measured to
+do for `Unbundle By Name` (`docs/lvclass-interfaces.md`). The class has no accessor at all.
+
+**Not measured**: the incremented value at run time. `lvai_run_vi_and_read_values` reads a class
+indicator as `E_INVALIDARG` over ActiveX, and a Caraya method test cannot observe the field without
+accessors - which is exactly the gap a class without accessors leaves for its tests.
+
+**Consequence**: the agent creates accessors only when asked, authors such a method itself through
+the direct route, and hands off to tests saying which fields have no accessors.
+
+### 4t.1 The run-time value, measured (2026-11-22, `C:\temp\IPE-Tests`, pylabview backend)
+
+The gap §4t left open is closed. Plain VIs, generated in one `lvai_generate_vis` call (9.6 s, all
+`execState 1`) and run with `lvai_run_vi_and_read_values`:
+
+| VI | In Place border node | runs |
+|---|---|---|
+| `IPE Increment Field` | `Unbundle / Bundle Elements`, one field | 0 -> 1, 41 -> 42, Name kept |
+| `IPE Two Fields` | one pair, `Count` and `Weight` | Increment + Multiply in one pass; int32 max wraps to min; Label kept |
+| `IPE Array Element` | `Array Index / Replace Elements` | index 0 and 2 change; index 5 and -1 leave the array unchanged, no error |
+| `IPE In Loop` | the pair inside a For Loop on a shift register | N = 0, 1, 5, 1000 give start + N |
+
+Class `Orchard` (`uint64.Fruits,double.Weight,string.Name`), five methods authored against the
+private data cluster and added in ONE `lvai_add_class_method` call (15.8 s): `Increment Fruits`,
+`Harvest` (two fields, two pane inputs), `Append Name` (string), `Increment Fruits N Times` (the
+class wire on a shift register, the IPE inside the loop), `Get Fruits` (`Unbundle By Name`, a
+returned value). R/W accessors were added for the TESTS only, since a test outside the class
+cannot reach a field otherwise. Three Caraya suites by `lvai_generate_method_test`, all on the
+direct route: 9 assertions on the changed and the untouched fields all pass (41 -> 42 with Weight
+and Name kept, 10 + 5, N = 0 keeps 7, 4 + 3 and 1.5 x 2, "Apple" + " tree", Get Fruits 9), and a
+negative-control suite with two deliberately wrong expectations fails 2 of 2.
+
+Two findings on the way, neither in the In Place Element itself:
+
+- **`lvai_run_vi_and_read_values` on pylabview loses large `uint64`/`int64` inputs.**
+  `ComValues.Integer` sends anything past int32 as `VT_R8`, which is exact only to 2^53: inputs
+  9223372036854775806, ...807 and ...808 all reached the VI as 2^63, and 18446744073709551614 and
+  ...615 dropped the WHOLE cluster input silently (the VI ran on its defaults, `ok: true`).
+  FIXED the same day (`ComValues.IntegerVariant`): an integer past int32 crosses as `VT_I8`
+  (long), past long as `VT_UI8` (ulong), and an array of `int64`/`uint32` as `long[]`/`long[,]`,
+  of `uint64` as `ulong[]`/`ulong[,]` - a 1D or 2D integer array was `int[]`, which threw an
+  overflow past int32. Measured over COM against the same VI first: `VT_I8` and `VT_UI8`
+  arrive exactly (18446744073709551614 + 1 = 18446744073709551615, u64 max + 1 wraps to 0), only
+  `VT_R8` rounded. `ComValuesTests` pins the conversion.
+  Reproduced through the tool afterwards (`C:	emp\Demo-Anpassungen\BigNumbers`, a VI adding one
+  to a U64, an I64, a U64 array and a U64 record field): 18446744073709551614 came back as
+  ...615 in every shape, the array `[..614, ..615]` as `[..615, 0]` - the typed `ulong[]` is
+  accepted by LabVIEW - and I64 min + 1 exactly.
+- **`lvai_add_class_method` answered 102 130 characters for five methods** (about 13 k per method):
+  it returned every step's full answer on success too - a large share of the context a class
+  request cost. FIXED the same day (`ClassMethodTools.CompactMethods`): a successful method now
+  carries its decision fields (`terminalsRetyped`, `dynamicDispatchTerminals`, `verifiedOnDisk`,
+  `classTypedTerminals`, `pathStandInsLeft`, `listedInClassFile`, `sourceOnly`, a short
+  `badWireCleanup`) and `stepsRun`, the step names; a failed method, or one whose cleanup lost a
+  connection, keeps every step. `verbose: true` returns everything, as before.
+  `ClassMethodCompactAnswerTests` pins it.

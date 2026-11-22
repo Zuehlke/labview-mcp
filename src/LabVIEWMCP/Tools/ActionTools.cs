@@ -752,9 +752,8 @@ internal sealed class ActionTools(LvaiConnection connection)
     internal async Task<(bool? Active, string Note, string? Path)> ProjectIsActiveAsync(
         int timeoutSeconds, CancellationToken ct, string? backend = null)
     {
-        // unset means the route's own choice - inherited when the calling tool runs on
-        // pylabview, grpc otherwise
-        backend ??= AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc;
+        // unset means the route's own choice, else the server default (pylabview)
+        backend ??= AixmlBackend.InEffect;
         if (backend == AixmlBackend.PyLabview)
             return await ProjectIsActiveOverComAsync(timeoutSeconds, ct);
 

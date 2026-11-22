@@ -20,6 +20,8 @@ namespace LabVIEWMcp.Tests.Infra;
 /// </summary>
 public sealed class ViServerNameCheckTests
 {
+    public ViServerNameCheckTests() => FakeGrpcBackend.Use();
+
     private const string Crashing = """
         <?xml version="1.0" encoding="utf-8"?>
         <VI _name="ppn.vi" description="Probe: property nodes reading and writing, on This VI and on an opened application reference, and an invoke node.">

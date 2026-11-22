@@ -252,6 +252,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         (`badWireCleanup`); a lost connection fails `ok` (`badWireCleanupLostConnection`,
         `methodsWithLostConnections`) - on a class member, read the method cold afterwards.
         A missing interface override leaves EVERY member eBad - check with lvai_exec_state.
+        ANSWER: a successful method carries its decision fields and `stepsRun` (the step names);
+        a failed one keeps every step's answer. `verbose: true` returns all of them.
         """)]
     public async Task<string> AddClassMethodAsync(
         [Description(@"Absolute path to the .lvclass the methods belong to")] string lvclassPath,
@@ -297,7 +299,9 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             """)]
         bool checkLoadedCallers = true,
         [Description("On a re-run, restore each re-added member's access scope and virtual folder (the add makes it public at the root).")]
-        bool keepPlacement = true)
+        bool keepPlacement = true,
+        [Description("Return every step's full answer for SUCCESSFUL methods too; a failed method always keeps them. Default false.")]
+        bool verbose = false)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_add_class_method", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
@@ -960,7 +964,10 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                 ["failedAtStep"] = stoppedAt,
                 ["projectLeftOpen"] = projectPath is { Length: > 0 } && ready.Count > 0,
                 ["prologue"] = prologue,
-                ["methods"] = results,
+                ["methods"] = CompactMethods(results, verbose),
+                ["compactedNote"] = verbose ? null
+                    : "A method that succeeded carries its decision fields and `stepsRun`, the step " +
+                      "names; a failed one keeps every step. verbose: true returns all of them.",
                 ["elapsedMs"] = total.ElapsedMilliseconds,
                 ["note"] = lostConnections.Count > 0
                     ? "Every listed method is a member, but the broken-wire cleanup left an input " +
@@ -976,6 +983,52 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                       "one that failed at `convert` or `conpane` never reached the class at all.",
             });
         }), choice);
+    }
+
+    /// <summary>
+    /// The answer's `methods`, with each SUCCESSFUL method reduced to its decision fields. Measured
+    /// 2026-11-22: five methods on one class answered 102 130 characters, about 13 k per method,
+    /// because every step's full answer - the composer report, the pylabview extract and rebuild,
+    /// the member helper's flattened XML - came back on success too; for a class request that was
+    /// a large share of the caller's context. A failed method, or one whose broken-wire cleanup lost
+    /// a connection, keeps everything: that is when the detail is needed. `verbose` keeps all.
+    /// </summary>
+    internal static JsonArray CompactMethods(JsonArray results, bool verbose)
+    {
+        if (verbose) return results;
+        foreach (var node in results)
+        {
+            if (node is not JsonObject m || m["ok"]?.GetValue<bool>() != true) continue;
+            if (m["steps"] is not JsonArray steps) continue;
+
+            var verify = steps.OfType<JsonObject>()
+                .FirstOrDefault(st => st["step"]?.GetValue<string>() == "verify")?["answer"] as JsonObject;
+            if (verify is not null)
+            {
+                m["classTypedTerminals"] = verify["classTypedTerminals"]?.DeepClone();
+                m["pathStandInsLeft"] = verify["pathStandInsLeft"]?.DeepClone();
+                m["listedInClassFile"] = verify["listedInClassFile"]?.DeepClone();
+            }
+            m["stepsRun"] = new JsonArray([.. steps.OfType<JsonObject>()
+                .Select(st => (JsonNode?)st["step"]?.DeepClone())
+                .Where(name => name is not null)]);
+            m.Remove("steps");
+
+            if (m["badWireCleanup"] is JsonObject cleanup)
+            {
+                var kept = new JsonObject();
+                foreach (var key in new[] { "ran", "skipped", "brokenWires", "brokenWiresRemoved",
+                                            "inputsLeftUnwired", "errorCode" })
+                    if (cleanup[key] is { } value) kept[key] = value.DeepClone();
+                m["badWireCleanup"] = kept;
+            }
+            if (m["pathsInsideClusters"] is JsonValue paths && paths.TryGetValue<int>(out var count) && count == 0)
+            {
+                m.Remove("pathsInsideClusters");
+                m.Remove("pathsInsideClustersNote");
+            }
+        }
+        return results;
     }
 
     // ------------------------------------------------------------------ re-run guards
@@ -1311,9 +1364,8 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
         string viPath, IReadOnlyList<string> names, int timeoutSeconds, CancellationToken ct,
         string? backend = null)
     {
-        // unset means the route's own choice - inherited when the calling tool runs on
-        // pylabview, grpc otherwise
-        backend ??= AixmlBackend.Inherited.Value?.Name ?? AixmlBackend.Grpc;
+        // unset means the route's own choice, else the server default (pylabview)
+        backend ??= AixmlBackend.InEffect;
         var export = Path.Combine(Path.GetTempPath(), "LabVIEWMCP",
             Path.ChangeExtension(Path.GetFileName(viPath), ".conidx.xml"));
         Directory.CreateDirectory(Path.GetDirectoryName(export)!);
