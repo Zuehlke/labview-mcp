@@ -39,13 +39,16 @@ internal sealed class ParallelCalls(Func<DateTime> clock)
     /// Calls that change nothing in LabVIEW and run no VI in it - status reads and the knowledge
     /// tools. They neither count as an overlap nor see one: on 2026-11-12 (Branch_Retest) an agent's
     /// two status calls at the start of its work, run side by side, cost it the 60 s window before
-    /// its own project close, with no other agent anywhere.
+    /// its own project close, with no other agent anywhere. lvai_audit_files reads saved files and
+    /// never reaches LabVIEW: run beside lvai_exec_state at the end of the ATM build of 2026-11-22,
+    /// it cost the orchestrator the same 60 s before the project close.
     /// </summary>
     internal static readonly HashSet<string> NotCounted = new(StringComparer.Ordinal)
     {
         "lvai_status", "pylv_status", "lvai_labview_state", "lvai_list_labview_installations",
         "lvai_aixml_reference", "lvai_vi_server_reference", "lvai_lvproj_reference",
         "lvai_lvlib_reference", "lvai_dqmh_reference", "lvai_check_aixml", "lvai_check_build_contract",
+        "lvai_audit_files",
     };
 
     private sealed class Uncounted : IDisposable

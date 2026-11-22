@@ -82,6 +82,9 @@ condition was that it must not cause more trouble than it saves, so it is delibe
 - **Never on** a read-only tool, `lvai_audit_files` itself or a failed call. Anything the audit
   throws leaves the answer as it was.
 
+`lvai_audit_files` itself is not counted by the parallel-call guard (`ParallelCalls.NotCounted`):
+it reads saved files and never reaches LabVIEW, so it may run beside anything.
+
 Tested in `InlineAuditTests` on the real fixtures. Not yet seen in a live tool answer: the tool
 roster of a running client changes only after a restart.
 

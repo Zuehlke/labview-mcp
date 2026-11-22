@@ -284,3 +284,10 @@ An agent working alone is unaffected: its own call is not counted. Replayed from
 generators, `lvai_wire_dynamic_events`, ...) - they are run by one agent at a time or by the
 orchestrator, and were not seen in a parallel build. Which dialog LabVIEW showed was not captured:
 the user remembers only that it was LabVIEW's and that Discard ended it.
+
+**Calls that never reach LabVIEW do not count as an overlap** (`ParallelCalls.NotCounted`): the
+status reads, the knowledge tools, `lvai_check_aixml`, `lvai_check_build_contract` and, since
+2026-11-22, `lvai_audit_files`. In the ATM build of that day the orchestrator ran the closing
+`lvai_audit_files` beside `lvai_exec_state` with no agent left running, and its own project close
+was refused for the full 60 s window. Replayed in
+`ParallelCallsTests.The_offline_audit_beside_an_exec_state_does_not_block_the_close`.

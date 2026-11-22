@@ -68,6 +68,27 @@ public sealed class ParallelCallsTests
         Assert.Null(calls.ProjectChangeRefusal("lvai_close_active_project"));
     }
 
+    /// <summary>
+    /// ATM build, 2026-11-22: the orchestrator ran the closing lvai_audit_files beside lvai_exec_state,
+    /// and its project close was refused for 60 s. The audit reads saved files only.
+    /// </summary>
+    [Fact]
+    public void The_offline_audit_beside_an_exec_state_does_not_block_the_close()
+    {
+        var clock = new Clock();
+        var calls = new ParallelCalls(() => clock.Now);
+
+        clock.At(18, 10);
+        var exec = calls.Enter("lvai_exec_state");
+        var audit = calls.Enter("lvai_audit_files");
+        clock.At(18, 11);
+        audit.Dispose(); exec.Dispose();
+
+        clock.At(18, 12);
+        using var close = calls.Enter("lvai_close_active_project");
+        Assert.Null(calls.ProjectChangeRefusal("lvai_close_active_project"));
+    }
+
     /// <summary>A status call beside real work is still not the evidence; the work overlapping is.</summary>
     [Fact]
     public void A_status_call_neither_counts_nor_hides_real_overlap()
