@@ -9,6 +9,7 @@ namespace LabVIEWMcp.Tests.Infra;
 /// call times taken from the subagents' transcripts: the guard has to refuse the project open at
 /// 10:18:26 UTC that preceded the crash.
 /// </summary>
+[Collection("DeferredSourceOnly")]
 public sealed class ParallelCallsTests
 {
     private sealed class Clock

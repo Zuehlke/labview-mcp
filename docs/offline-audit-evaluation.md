@@ -59,6 +59,32 @@ wirelint releases a new version:
 `ok` is false on any error finding and on any file the reader could not parse. An unread file is
 never a pass.
 
+## Inline: every writing tool, 2026-11-22
+
+The closing audit finds a defect only at the end of a build. So the server's tool wrapper
+(`DiagnosingTool`) runs the same rules on what ONE call just wrote, in `InlineAudit`. The user's
+condition was that it must not cause more trouble than it saves, so it is deliberately narrow:
+
+- **Report-only.** It adds an `audit` field (`errors`, `findings`, `note`) to the answer. `ok` and
+  every other field stay as the tool wrote them.
+- **Errors only:** compiled code, automatic error handling, orphaned file. A missing description
+  on a DQMH scaffold VI or a placeholder is no news on every call; the closing audit reports it.
+- **Silent when clean.** With no error finding the answer is byte for byte what the tool wrote.
+- **Not about running.** A deliberately unfinished VI - DQMH's scripting leaves several - is no
+  finding as long as it is source-only, has automatic error handling off and is listed by its
+  owner. Runnability stays with `lvai_exec_state`.
+- **A deferred strip is expected.** A VI whose source-only strip waits for the next project close
+  (`DeferredSourceOnly`) is not reported for compiled code.
+- **Which files:** every existing LabVIEW file named in the answer and written since the call began
+  (2 s slack), plus the members of a written `.lvlib`/`.lvclass` written since then. An owner is
+  read even when not written, so the orphan rule can judge. No `.lvproj` (its only rule is a
+  warning), at most 400 files, an unparsable file is skipped.
+- **Never on** a read-only tool, `lvai_audit_files` itself or a failed call. Anything the audit
+  throws leaves the answer as it was.
+
+Tested in `InlineAuditTests` on the real fixtures. Not yet seen in a live tool answer: the tool
+roster of a running client changes only after a restart.
+
 ## Reliability, measured 2026-11-21
 
 ### Corpus

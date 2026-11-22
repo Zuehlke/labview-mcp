@@ -115,9 +115,10 @@ internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerT
             && ParallelCalls.Shared.ProjectChangeRefusal(name) is { } why)
             return Failure(ParallelCalls.RefusalJson(name, why));
 
+        var startUtc = DateTime.UtcNow;
         try
         {
-            return await base.InvokeAsync(request, cancellationToken);
+            return WithAudit(name, await base.InvokeAsync(request, cancellationToken), startUtc);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -137,7 +138,7 @@ internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerT
                 retryParams.Arguments = stringified;
                 try
                 {
-                    return await base.InvokeAsync(request, cancellationToken);
+                    return WithAudit(name, await base.InvokeAsync(request, cancellationToken), startUtc);
                 }
                 catch (Exception second) when (second is not OperationCanceledException)
                 {
@@ -150,6 +151,26 @@ internal sealed class DiagnosingTool(McpServerTool inner) : DelegatingMcpServerT
 
             return Failure(ToolArguments.InvocationProblem(name, schema, received, e));
         }
+    }
+
+    /// <summary>
+    /// The offline audit of what this call wrote, added to its answer when it found an error
+    /// (<see cref="InlineAudit"/>: report-only, errors only, `ok` untouched). Not on a read-only
+    /// tool, not on lvai_audit_files itself, not on a failed call. The audit must never break a
+    /// tool, so anything it throws leaves the answer as it was.
+    /// </summary>
+    private CallToolResult WithAudit(string name, CallToolResult result, DateTime startUtc)
+    {
+        if (result.IsError == true || ProtocolTool.Annotations?.ReadOnlyHint == true || name == "lvai_audit_files")
+            return result;
+        try
+        {
+            for (var i = 0; i < result.Content.Count; i++)
+                if (result.Content[i] is TextContentBlock text && InlineAudit.Annotate(text.Text, startUtc) is { } annotated)
+                    result.Content[i] = new TextContentBlock { Text = annotated };
+        }
+        catch (Exception) { }
+        return result;
     }
 
     /// <summary>
