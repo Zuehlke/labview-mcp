@@ -75,9 +75,9 @@ example `<project>\Tests\<ClassName>\`, and say so in its prompt.
 
 ## Check the station with `pylv_status`
 
-`pylv_status` is the start-up check: it needs no LabVIEW and no NI service, and names the backend
-in force, the running LabVIEWs and whether NI's service answers (`grpcService`). Readiness is
-`lvai_ensure_labview`. `lvai_status` answers as `pylv_status` on pylabview and reports NI's service only on `grpc`.
+`pylv_status` is the start-up check (no LabVIEW, no NI service): backend in force, running
+LabVIEWs, NI's service (`grpcService`); `lvai_status` answers the same on pylabview. Readiness is
+`lvai_ensure_labview`.
 
 ## Only you open and close projects
 

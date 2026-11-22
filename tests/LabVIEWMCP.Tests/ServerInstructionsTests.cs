@@ -66,7 +66,9 @@ public class ServerInstructionsTests
     [Fact]
     public void TheBriefStaysCompact()
     {
-        var length = ServerInstructions.Text.Length;
+        // Counted WITHOUT carriage returns: a CRLF checkout (the CI runner) adds one per line, and
+        // on 2026-11-22 the same brief read 5911 here and 6017 in CI - green locally, red there.
+        var length = ServerInstructions.Text.Replace("\r\n", "\n").Length;
         Assert.True(length is > 1500 and < 6000,
                     $"orchestrator brief is {length} chars; budget about 1.5k tokens (< 6000 chars)");
     }
