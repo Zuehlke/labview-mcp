@@ -17,7 +17,10 @@ namespace LabVIEWMcp.Tests.Infra;
 /// bytes and the same class-link records in the block diagram as LabVIEW's file. The differences
 /// LabVIEW 2025's reference already showed and that load either way are left out: a VIVI LabVIEW
 /// drops from LIvi, `APILinkLibVersion` 1.0.0.0 against the class's own, and the uninitialised
-/// tail byte. SKIPS where the bundled interpreter or the composer is missing.
+/// tail byte. SKIPS where the bundled interpreter or the composer is missing, and where no LabVIEW
+/// installation holds the vi.lib callee - t162 calls `Trim Whitespace (string).vi` in
+/// `vi.lib\Utility\error.llb`, and the release workflow's runner has no LabVIEW at all
+/// (UNSUPPORTED: "neither near the caller nor in the installation", 2026-11-23).
 /// </summary>
 public sealed class ComposerLv2019ReferenceTests : IDisposable
 {
@@ -60,9 +63,20 @@ public sealed class ComposerLv2019ReferenceTests : IDisposable
     private static IEnumerable<string> Versions(XElement main) =>
         main.Descendants("Version").Take(2).Select(v => (string?)v.Attribute("Major") + "." + (string?)v.Attribute("Minor"));
 
+    /// <summary>Does an installed LabVIEW carry the vi.lib callee of t162?</summary>
+    // error.llb is a FOLDER in LabVIEW 2026 and a container file in older releases, so either counts.
+    private static bool ErrorLlbInstalled() =>
+        new[] { Environment.SpecialFolder.ProgramFilesX86, Environment.SpecialFolder.ProgramFiles }
+            .Select(f => Path.Combine(Environment.GetFolderPath(f), "National Instruments"))
+            .Where(Directory.Exists)
+            .SelectMany(ni => Directory.EnumerateDirectories(ni, "LabVIEW 20*"))
+            .Select(lv => Path.Combine(lv, "vi.lib", "Utility", "error.llb"))
+            .Any(llb => File.Exists(Path.Combine(llb, "Trim Whitespace (string).vi")) || File.Exists(llb));
+
     [Fact]
     public async Task Composed_as_19_the_class_links_are_LabVIEWs_own_2019_records()
     {
+        if (!ErrorLlbInstalled()) return;
         if (AixmlComposer.Locate(out _) is not { } setup) return;
         var vi = Path.Combine(_dir, "t162_ten_class_links.vi");
         var compose = await PyLabview.RunAsync(setup.Bundle, Path.Combine(setup.ComposerDirectory, "aixml2vi.py"),
