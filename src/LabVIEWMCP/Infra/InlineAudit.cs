@@ -5,13 +5,13 @@ namespace LabVIEWMcp.Infra;
 
 /// <summary>
 /// The offline audit (<see cref="LvFileAudit"/>) run on what ONE tool call just wrote, so that a
-/// defect shows at the tool that caused it rather than only in the build's closing audit
-/// (the user's decision of 2026-11-22).
+/// defect shows at the tool that caused it (the user's decision of 2026-11-22). Since 2026-11-23
+/// it is THE check of a build: the closing <c>lvai_audit_files</c> is on demand only.
 ///
 /// It must never cost more than it saves, so it is REPORT-ONLY and QUIET:
 /// - only ERROR rules (compiled code, automatic error handling, orphaned file). Warnings - a
 ///   missing description on a DQMH scaffold VI or a placeholder - would be noise on every call;
-///   the closing <c>lvai_audit_files</c> over the build folder reports them;
+///   <c>lvai_audit_files</c>, run on demand, reports them;
 /// - `ok` and every other field of the answer stay as the tool wrote them; an `audit` field is
 ///   added only when there is an error finding, so a clean call's answer is unchanged;
 /// - whether a VI RUNS is not its business. A deliberately unfinished VI (DQMH scripting leaves
@@ -19,7 +19,7 @@ namespace LabVIEWMcp.Infra;
 ///   by its owner; executability stays with <c>lvai_exec_state</c>;
 /// - a VI whose source-only strip is DEFERRED (<see cref="DeferredSourceOnly"/>) is not reported
 ///   for compiled code: the next project close removes it;
-/// - a file it cannot parse is skipped here; the closing audit reports it.
+/// - a file it cannot parse is skipped here; <c>lvai_audit_files</c> reports it.
 ///
 /// Which files: every existing LabVIEW file named anywhere in the answer and written since the call
 /// began, plus the members of a written library or class written since then too (a DQMH module
@@ -54,7 +54,7 @@ internal static class InlineAudit
                 ["message"] = f.Message,
             }).ToArray()),
             ["note"] = "Offline audit of the files this call wrote (errors only; `ok` is not changed by it). " +
-                       "Fix before the build ends - lvai_audit_files over the build folder gates it.",
+                       "Fix it now - no closing audit of the build will report it again.",
         };
         return root.ToJsonString(Json.Answer);
     }

@@ -12,8 +12,9 @@ internal sealed class AuditTools
     [McpServerTool(Name = "lvai_audit_files", ReadOnly = true,
                    Title = "Audit saved LabVIEW files against the house rules, no LabVIEW")]
     [Description("""
-        Check: reads SAVED .vi/.vit/.vim/.ctl/.lvlib/.lvclass/.lvproj files - a build folder after
-        its last wave, or any files - and checks the house rules a file carries, with NO LabVIEW
+        Check, ON DEMAND (no build step - every writing tool already reports its own errors as
+        `audit`): reads SAVED .vi/.vit/.vim/.ctl/.lvlib/.lvclass/.lvproj files - existing or
+        foreign code, a review - and checks the house rules a file carries, with NO LabVIEW
         (about 20 ms a file). Rules: compiled-code (error: source-only off or a VICD block),
         automatic-error-handling (error: on in a VI), orphaned-vi (error: the .lvlib/.lvclass a VI or ctl
         names as owner, scanned too, does not list it), description (warning: VI, ctl, lvlib,

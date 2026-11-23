@@ -46,15 +46,17 @@ orchestrator does it after the last wave: `lvai_create_library` with the API VIs
 function folder (never flat), then `lvai_exec_state` over the members. The VI agents search the
 PROJECT's own VIs before the palette. `docs/orchestrator-brief.md`.
 
-**A BUILD ENDS WITH `lvai_audit_files` OVER ITS FOLDER** (2026-11-21): no LabVIEW, the SAVED files
-against the house rules. Files written outside `lvai_generate_vi` - the graft, Delacor's scripters,
-NI's providers - were checked by nothing: 3 grafted main VIs had automatic error handling ON, 54
-DQMH files compiled code. Ported from wirelint; its upstream version is pinned in
-`docs/offline-audit-evaluation.md`. Every WRITING tool's answer also gets an `audit` field when a
-file it wrote breaks an ERROR rule (the user's decision of 2026-11-22): REPORT-ONLY - `ok` is never
-changed, warnings are left to the closing audit, a clean answer is unchanged, and a deliberately
-unfinished VI is no finding (runnability is `lvai_exec_state`'s). It must help more than it
-disturbs; if it disturbs, narrow it (`InlineAudit`).
+**THE HOUSE RULES OF SAVED FILES ARE CHECKED WHERE A FILE IS WRITTEN, NOT AT THE END OF A BUILD**
+(the user's decision of 2026-11-23). Every WRITING tool's answer gets an `audit` field when a file
+it wrote breaks an ERROR rule - compiled code, automatic error handling, orphaned file (2026-11-22):
+REPORT-ONLY - `ok` is never changed, a clean answer is unchanged, and a deliberately unfinished VI
+is no finding (runnability is `lvai_exec_state`'s). It must help more than it disturbs; if it
+disturbs, narrow it (`InlineAudit`). `lvai_audit_files` (no LabVIEW, ported from wirelint, upstream
+pinned in `docs/offline-audit-evaluation.md`) is ON DEMAND - existing or foreign code, a review -
+and no longer a build's closing step: what it found (3 grafted main VIs with automatic error
+handling, 54 DQMH files with compiled code) is fixed at the source, and its warnings changed no
+result. A build whose tools answered `deferredSourceOnly` ends with `lvai_close_active_project`
+with `projectPath`, which does those strips.
 
 **LOGIC INSIDE A DQMH MODULE KEEPS ITS STATE IN THE MODULE'S DATA CLUSTER, NEVER IN AN FGV**
 (user feedback of 2026-11-12, the Hampel Soft DQMH conventions). Fields are added with

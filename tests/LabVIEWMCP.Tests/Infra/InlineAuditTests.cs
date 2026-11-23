@@ -63,7 +63,7 @@ public sealed class InlineAuditTests : IDisposable
     [Fact]
     public void A_missing_description_is_a_warning_and_not_reported_inline()
     {
-        // Ofenprofil.ctl has no description - the closing audit's business, not every call's.
+        // Ofenprofil.ctl has no description - lvai_audit_files' business, on demand, not every call's.
         Copy(@"ctl\Ofen.lvlib", "audit", "ctl", "Ofen.lvlib");
         var ctl = Copy(@"ctl\Ofenprofil.ctl", "audit", "ctl", "Ofenprofil.ctl");
 
