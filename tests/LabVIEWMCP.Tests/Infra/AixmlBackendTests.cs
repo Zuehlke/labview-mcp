@@ -122,17 +122,48 @@ public sealed class AixmlBackendTests
 
     /// <summary>
     /// LabVIEW 2025 refused every composed VI with Error 1125 until the composer wrote files AS the
-    /// release in use; from 2020 on, the first release whose class-link records it writes.
+    /// release in use; from 2019 on - measured on a LabVIEW 2019 station 2026-11-23 for VIs that
+    /// call no class.
     /// </summary>
     [Theory]
     [InlineData(2025, 2026, 2025)]
     [InlineData(2020, 2026, 2020)]
-    [InlineData(2019, 2026, null)]
+    [InlineData(2019, 2026, 2019)]
+    [InlineData(2018, 2026, null)]
     [InlineData(2026, 2026, null)]
     [InlineData(null, 2026, null)]
     [InlineData(2025, null, null)]
-    public void The_composer_writes_for_an_older_LabVIEW_from_2020_on(int? inUse, int? parts, int? expected) =>
+    public void The_composer_writes_for_an_older_LabVIEW_from_2019_on(int? inUse, int? parts, int? expected) =>
         Assert.Equal(expected, AixmlComposer.TargetRelease(inUse, parts));
+
+    /// <summary>
+    /// LabVIEW 2019 gets the file written as 19, a warning that a class-calling VI cannot be (the
+    /// class-link records start at 20), and no advice to use backend grpc, which 2019 does not have.
+    /// </summary>
+    [Fact]
+    public void The_composer_warns_LabVIEW_2019_about_classes_and_not_to_use_grpc()
+    {
+        var why = AixmlComposer.WarningForOlderLabView(2019, 2026);
+        Assert.NotNull(why);
+        Assert.Contains("written as a LabVIEW 2019 file", why);
+        Assert.Contains("class-link", why);
+        Assert.Contains("no way out", why);
+
+        var newer = AixmlComposer.WarningForOlderLabView(2020, 2026);
+        Assert.NotNull(newer);
+        Assert.DoesNotContain("class-link", newer);
+        Assert.Contains("backend grpc on that station", newer);
+    }
+
+    /// <summary>Below the oldest target the warning says the file keeps the parts' stamp.</summary>
+    [Fact]
+    public void The_composer_warns_a_LabVIEW_older_than_2019_that_the_file_is_refused()
+    {
+        var why = AixmlComposer.WarningForOlderLabView(2018, 2026);
+        Assert.NotNull(why);
+        Assert.Contains("LabVIEW 2019 and later only", why);
+        Assert.Contains("Error 1125", why);
+    }
 
     [Fact]
     public void A_composer_warning_reaches_the_answer_and_the_VI_still_counts_as_written()

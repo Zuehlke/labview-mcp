@@ -92,7 +92,17 @@ of the connector pane's - LabVIEW 2026 let that pass on its own files and called
 with a pane `Another user tampered with the VI password` - and the 8 class-link bytes the
 pylabview patch wrote only from version 26 exist since version 20: composed as 20, 21, 23, 24 and
 25 files a class-calling VI loads and runs with them and is `Memory or data structure corrupt`
-without (19 fails either way). Composed helpers are cached per target release. Measured in
+without (19 fails either way). Composed helpers are cached per target release.
+
+**LabVIEW 2019 IS A TARGET TOO SINCE 2026-11-23, FOR VIs THAT CALL NO CLASS.** On a user's
+LabVIEW 2019 (19.0f2, 32-bit) station the default output was refused with Error 1125, and the
+same AIXML composed with `aixml2vi.py --lv-version 19 --labview-root <LabVIEW 2019>` loaded and ran
+there, and LabVIEW 2019 saved it itself: plain VIs, Case and Event Structures (timeout, Value
+Change, Panel Close?), While and For Loops with shift registers, Formula Node, subVI calls, and
+helper VIs that create and bind `.ctl` typedefs through VI Server. An application of six VIs built
+this way passed its unit and acceptance tests in 2019. `TargetRelease` now starts at 2019, and the
+warning for 2019 says that a class-calling VI cannot be written for it and that NI's gRPC service,
+which 2019 does not have, is no way out. Measured in
 LabVIEW 2026 only; a load in LabVIEW 2025 itself is the user's test. The text below records the
 WARNING stage before that, which was itself replacing a refusal.
 

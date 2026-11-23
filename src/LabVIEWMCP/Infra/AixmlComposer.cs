@@ -172,9 +172,20 @@ internal static class AixmlComposer
     /// 2026-10-12 - so for such a LabVIEW the composer stamps the file as that release
     /// (aixml2vi.py --lv-version: LVSR, vers, the variants' version word) and pylabview writes
     /// the release's own records.
+    /// LabVIEW 2019 is included since 2026-11-23: on a user's LabVIEW 2019 (19.0f2, 32-bit) station
+    /// files composed with --lv-version 19 loaded, ran and were saved by 2019 itself - plain VIs,
+    /// Case and Event Structures, While/For Loops with shift registers, Formula Node, subVI calls.
+    /// A VI that calls a CLASS still fails as 19 (the class-link records exist from 20 on), which
+    /// <see cref="WarningForOlderLabView"/> says.
     /// </summary>
     internal static int? TargetRelease(int? labviewInUse, int? partsRelease) =>
-        labviewInUse is { } lv && partsRelease is { } parts && lv < parts && lv >= 2020 ? lv : null;
+        labviewInUse is { } lv && partsRelease is { } parts && lv < parts && lv >= OldestTargetRelease ? lv : null;
+
+    /// <summary>The oldest LabVIEW the composer writes files for.</summary>
+    internal const int OldestTargetRelease = 2019;
+
+    /// <summary>The first release whose class-link records the composer writes.</summary>
+    internal const int FirstClassLinkRelease = 2020;
 
     private static async Task<Result> ComposeCoreAsync(Setup setup, string aixmlPath, string viPath,
                                                        IReadOnlyList<string> searchFolders,
@@ -252,13 +263,17 @@ internal static class AixmlComposer
     internal static string? WarningForOlderLabView(int? labviewInUse, int? partsRelease) =>
         labviewInUse is { } lv && partsRelease is { } parts && lv < parts
             ? TargetRelease(lv, parts) is null
-                ? $"LabVIEW {lv} is in use and the composer writes files for LabVIEW 2020 and later " +
-                  $"only, so this VI carries the LabVIEW {parts} stamp, which LabVIEW {lv} refuses " +
-                  "(Error 1125). Compose it with backend grpc on that station."
+                ? $"LabVIEW {lv} is in use and the composer writes files for LabVIEW " +
+                  $"{OldestTargetRelease} and later only, so this VI carries the LabVIEW {parts} " +
+                  $"stamp, which LabVIEW {lv} refuses (Error 1125)."
                 : $"LabVIEW {lv} is in use, so the VI was written as a LabVIEW {lv} file - version " +
                   "stamps and version-dependent records rewritten. Its parts were cut from LabVIEW " +
-                  $"{parts} VIs; if LabVIEW {lv} still refuses it, quote its error and compose it " +
-                  "with backend grpc on that station."
+                  $"{parts} VIs; if LabVIEW {lv} still refuses it, quote its error" +
+                  (lv < FirstClassLinkRelease
+                      ? $". A VI that calls a LabVIEW class cannot be written for LabVIEW {lv}: the " +
+                        $"class-link records exist from LabVIEW {FirstClassLinkRelease} on. NI's gRPC " +
+                        $"service does not exist in LabVIEW {lv} either, so backend grpc is no way out."
+                      : " and compose it with backend grpc on that station.")
             : null;
 
     /// <summary>VI -> AIXML, written to <paramref name="aixmlPath"/>.</summary>

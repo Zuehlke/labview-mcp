@@ -231,6 +231,8 @@ load. Worth ten minutes before the first write.
 **You need:** Windows x64, an MCP-capable AI client, and **LabVIEW 2020 or newer** (tested back
 to LabVIEW 2020). On LabVIEW 2026 Q3 the server can also use NI's own gRPC service; on older versions it works
 through the bundled pylabview engine and LabVIEW's ActiveX server instead, and picks that by itself.
+**LabVIEW 2019** works for generated VIs that call no LabVIEW class (measured on 2019 19.0f2 32-bit;
+see [docs/aixml-backends.md](docs/aixml-backends.md)).
 
 ### Installation, with any LLM
 
