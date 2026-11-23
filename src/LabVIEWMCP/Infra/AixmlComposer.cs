@@ -175,8 +175,9 @@ internal static class AixmlComposer
     /// LabVIEW 2019 is included since 2026-11-23: on a user's LabVIEW 2019 (19.0f2, 32-bit) station
     /// files composed with --lv-version 19 loaded, ran and were saved by 2019 itself - plain VIs,
     /// Case and Event Structures, While/For Loops with shift registers, Formula Node, subVI calls.
-    /// A VI that calls a CLASS still fails as 19 (the class-link records exist from 20 on), which
-    /// <see cref="WarningForOlderLabView"/> says.
+    /// VIs that call CLASSES, composed as 19, load and run in LabVIEW 2026 (the class-tests suite,
+    /// 2026-11-23) and carry the class-link records LabVIEW's own 2019 save of the same VI carries;
+    /// loaded in LabVIEW 2019 itself they are not, which <see cref="WarningForOlderLabView"/> says.
     /// </summary>
     internal static int? TargetRelease(int? labviewInUse, int? partsRelease) =>
         labviewInUse is { } lv && partsRelease is { } parts && lv < parts && lv >= OldestTargetRelease ? lv : null;
@@ -184,8 +185,12 @@ internal static class AixmlComposer
     /// <summary>The oldest LabVIEW the composer writes files for.</summary>
     internal const int OldestTargetRelease = 2019;
 
-    /// <summary>The first release whose class-link records the composer writes.</summary>
-    internal const int FirstClassLinkRelease = 2020;
+    /// <summary>
+    /// The first release the 2019 note does not apply to: below it NI's gRPC service does not
+    /// exist (so advising backend grpc leads nowhere), and class-calling VIs were measured only by
+    /// loading them in LabVIEW 2026.
+    /// </summary>
+    internal const int FirstReleaseAfter2019Note = 2020;
 
     private static async Task<Result> ComposeCoreAsync(Setup setup, string aixmlPath, string viPath,
                                                        IReadOnlyList<string> searchFolders,
@@ -269,10 +274,11 @@ internal static class AixmlComposer
                 : $"LabVIEW {lv} is in use, so the VI was written as a LabVIEW {lv} file - version " +
                   "stamps and version-dependent records rewritten. Its parts were cut from LabVIEW " +
                   $"{parts} VIs; if LabVIEW {lv} still refuses it, quote its error" +
-                  (lv < FirstClassLinkRelease
-                      ? $". A VI that calls a LabVIEW class cannot be written for LabVIEW {lv}: the " +
-                        $"class-link records exist from LabVIEW {FirstClassLinkRelease} on. NI's gRPC " +
-                        $"service does not exist in LabVIEW {lv} either, so backend grpc is no way out."
+                  (lv < FirstReleaseAfter2019Note
+                      ? $". A VI that uses a LabVIEW class was verified as a LabVIEW {lv} file by " +
+                        $"running it in LabVIEW {parts} and against LabVIEW's own {lv} save, not yet " +
+                        $"in LabVIEW {lv} itself. NI's " +
+                        $"gRPC service does not exist in LabVIEW {lv}, so backend grpc is no way out."
                       : " and compose it with backend grpc on that station.")
             : null;
 

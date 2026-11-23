@@ -92,16 +92,31 @@ of the connector pane's - LabVIEW 2026 let that pass on its own files and called
 with a pane `Another user tampered with the VI password` - and the 8 class-link bytes the
 pylabview patch wrote only from version 26 exist since version 20: composed as 20, 21, 23, 24 and
 25 files a class-calling VI loads and runs with them and is `Memory or data structure corrupt`
-without (19 fails either way). Composed helpers are cached per target release.
+without. (This said "19 fails either way" until 2026-11-23 - a reading of the 8-byte form; the
+later bracketing in `experiments/aixml-without-grpc/FINDINGS.md` already put the list's start at 20
+with 19 PASSING without it, and see below.) Composed helpers are cached per target release.
 
-**LabVIEW 2019 IS A TARGET TOO SINCE 2026-11-23, FOR VIs THAT CALL NO CLASS.** On a user's
+**LabVIEW 2019 IS A TARGET TOO SINCE 2026-11-23** (issue #149). On a user's
 LabVIEW 2019 (19.0f2, 32-bit) station the default output was refused with Error 1125, and the
 same AIXML composed with `aixml2vi.py --lv-version 19 --labview-root <LabVIEW 2019>` loaded and ran
 there, and LabVIEW 2019 saved it itself: plain VIs, Case and Event Structures (timeout, Value
 Change, Panel Close?), While and For Loops with shift registers, Formula Node, subVI calls, and
 helper VIs that create and bind `.ctl` typedefs through VI Server. An application of six VIs built
-this way passed its unit and acceptance tests in 2019. `TargetRelease` now starts at 2019, and the
-warning for 2019 says that a class-calling VI cannot be written for it and that NI's gRPC service,
+this way passed its unit and acceptance tests in 2019. VIs that USE CLASSES were not tried there.
+Here the class-tests suite - `t128_dynamic_class_call`, `t157_six_dynamic_calls`,
+`t162_ten_class_links` (dynamic dispatch, class constants, two classes, ten links) - composed as 19
+loaded and RAN with the expected values in LabVIEW 2026, pylabview writing the class links without
+the list that starts at 20 (`ComposerOlderReleaseTests`). And it matches what LabVIEW ITSELF
+writes for 2019: t162 saved by LabVIEW 2026's IDE dialog (File > Save for Previous Version > 2019)
+carries the same `LVSR`/`vers` 19.0, byte-identical `VITS` (`19 00 80 00`) and the same eleven
+block-diagram link records - one `IUVI`, eight `DyOM`, two `FPPI`, same contents, same offsets
+(`ComposerLv2019ReferenceTests`, the saved file its fixture). What differs is what LabVIEW 2025's
+reference showed and loads either way: LabVIEW drops the `VIVI` from LIvi, writes
+`APILinkLibVersion` 1.0.0.0, and leaves the tail byte uninitialised. **The ActiveX method
+`SaveForPrevious(path, version)` writes a 25 file for EVERY version string** - "19.0", "2019",
+"20.0", even "2019 SP1", no error - so the "LabVIEW 2026 saves back to 2025 only" below is a
+statement about that method, not the IDE. `TargetRelease` now starts at 2019, and the warning for
+2019 says that a class-using VI was not loaded in LabVIEW 2019 itself and that NI's gRPC service,
 which 2019 does not have, is no way out. Measured in
 LabVIEW 2026 only; a load in LabVIEW 2025 itself is the user's test. The text below records the
 WARNING stage before that, which was itself replacing a refusal.
@@ -131,7 +146,8 @@ things went wrong, each handled now:
   **no `VIPI` records in LIvi at all, no `DDPI`, a `DyOM`'s content is the method's 1-based place
   among the `DyOM`s**, and the 8 cache bytes carry a different fifth byte on every save (`00`,
   `10`, `40`, `58`, `70`, `80`, `a0`, `e0`, `f8` - uninitialised memory, not a field). Asked for
-  2024 or 2020 LabVIEW 2026 wrote the same 25 file. The composer writes that layout for any target
+  2024 or 2020 LabVIEW 2026 wrote the same 25 file - over ActiveX; its IDE dialog writes older
+  files (a 2019 one measured 2026-11-23, above). The composer writes that layout for any target
   below 26 since (`Composer.write_class_links`, the 8 bytes zero): t128, t157 and t162 composed as
   25 files load and run in LabVIEW 2026, and the minimal repro renders there - which the old layout
   did too. **Whether LabVIEW 2025 renders it is the user's test**: `C:\Temp\BR2probe\Tests\`

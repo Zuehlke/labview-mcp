@@ -137,8 +137,8 @@ public sealed class AixmlBackendTests
         Assert.Equal(expected, AixmlComposer.TargetRelease(inUse, parts));
 
     /// <summary>
-    /// LabVIEW 2019 gets the file written as 19, a warning that a class-calling VI cannot be (the
-    /// class-link records start at 20), and no advice to use backend grpc, which 2019 does not have.
+    /// LabVIEW 2019 gets the file written as 19, a note that a class-calling VI was not yet loaded in
+    /// LabVIEW 2019 itself, and no advice to use backend grpc, which 2019 does not have.
     /// </summary>
     [Fact]
     public void The_composer_warns_LabVIEW_2019_about_classes_and_not_to_use_grpc()
@@ -146,12 +146,12 @@ public sealed class AixmlBackendTests
         var why = AixmlComposer.WarningForOlderLabView(2019, 2026);
         Assert.NotNull(why);
         Assert.Contains("written as a LabVIEW 2019 file", why);
-        Assert.Contains("class-link", why);
+        Assert.Contains("LabVIEW class was verified", why);
         Assert.Contains("no way out", why);
 
         var newer = AixmlComposer.WarningForOlderLabView(2020, 2026);
         Assert.NotNull(newer);
-        Assert.DoesNotContain("class-link", newer);
+        Assert.DoesNotContain("LabVIEW class", newer);
         Assert.Contains("backend grpc on that station", newer);
     }
 
