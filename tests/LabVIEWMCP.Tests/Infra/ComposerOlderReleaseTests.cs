@@ -51,9 +51,22 @@ public sealed class ComposerOlderReleaseTests : IDisposable
         return (run.ExitCode, run.StdErr, vi);
     }
 
+    /// <summary>
+    /// Is NI's Actor Framework installed? The class constant names its class through the Call it
+    /// feeds, so without `Actor.lvclass` the composer answers UNSUPPORTED - the CI runner has no
+    /// LabVIEW at all (2026-11-23).
+    /// </summary>
+    private static bool ActorFrameworkInstalled() =>
+        new[] { Environment.SpecialFolder.ProgramFilesX86, Environment.SpecialFolder.ProgramFiles }
+            .Select(f => Path.Combine(Environment.GetFolderPath(f), "National Instruments"))
+            .Where(Directory.Exists)
+            .SelectMany(ni => Directory.EnumerateDirectories(ni, "LabVIEW 20*"))
+            .Any(lv => File.Exists(Path.Combine(lv, "vi.lib", "ActorFramework", "Actor", "Actor.lvclass")));
+
     [Fact]
     public async Task A_VI_that_uses_a_class_is_written_for_LabVIEW_2019()
     {
+        if (!ActorFrameworkInstalled()) return;
         if (await ComposeAsync(ClassCall, 19) is not { } got19) return;
         if (await ComposeAsync(ClassCall, 20) is not { } got20) return;
 
