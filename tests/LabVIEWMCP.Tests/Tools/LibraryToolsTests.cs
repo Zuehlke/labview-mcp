@@ -252,4 +252,52 @@ public class LibraryToolsTests
         Assert.DoesNotContain("Messages",
             answer["detail"]!["itemsAlreadyThere"]!.AsArray().Select(n => n!.GetValue<string>()));
     }
+
+    // ---------------------------------------------------------------- callers outside the items
+
+    /// <summary>
+    /// The real files of the 2026-11-23 reproduction: <c>Cls.lvclass</c> with its static member
+    /// <c>Touch.vi</c>, and <c>C.vi</c> outside it, which calls Touch on a class constant. Adding the
+    /// class to a library with C.vi NOT loaded left C.vi eBad; loading it first and saving it after
+    /// kept it execState 1. <c>A.vi</c> and its caller <c>B.vi</c> are the plain-VI pair.
+    /// </summary>
+    private static string CopyRelinkFixture()
+    {
+        var source = Path.Combine(LabVIEWMcp.Tests.Support.RepoTree.Root,
+            "tests", "LabVIEWMCP.Tests", "Fixtures", "library-relink");
+        var root = Directory.CreateTempSubdirectory("library-relink").FullName;
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(root, Path.GetRelativePath(source, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target);
+        }
+        return root;
+    }
+
+    [Fact]
+    public void AClassItemFindsTheCallerOfItsMemberAndNotTheMember()
+    {
+        var root = CopyRelinkFixture();
+        try
+        {
+            var callers = LibraryTools.OutsideCallers(root, [Path.Combine(root, "Cls", "Cls.lvclass")]);
+            Assert.Equal([Path.Combine(root, "C.vi")], callers);
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
+
+    [Fact]
+    public void AVIItemFindsItsCallerOnly()
+    {
+        var root = CopyRelinkFixture();
+        try
+        {
+            Assert.Equal([Path.Combine(root, "B.vi")],
+                LibraryTools.OutsideCallers(root, [Path.Combine(root, "A.vi")]));
+            // The caller's own file name is linked by nothing.
+            Assert.Empty(LibraryTools.OutsideCallers(root, [Path.Combine(root, "B.vi")]));
+        }
+        finally { Directory.Delete(root, recursive: true); }
+    }
 }

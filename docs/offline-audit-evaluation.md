@@ -61,14 +61,15 @@ never a pass.
 
 ## Inline: every writing tool, 2026-11-22
 
-The closing audit finds a defect only at the end of a build. So the server's tool wrapper
+A closing audit finds a defect only at the end of a build. So the server's tool wrapper
 (`DiagnosingTool`) runs the same rules on what ONE call just wrote, in `InlineAudit`. The user's
 condition was that it must not cause more trouble than it saves, so it is deliberately narrow:
 
 - **Report-only.** It adds an `audit` field (`errors`, `findings`, `note`) to the answer. `ok` and
   every other field stay as the tool wrote them.
 - **Errors only:** compiled code, automatic error handling, orphaned file. A missing description
-  on a DQMH scaffold VI or a placeholder is no news on every call; the closing audit reports it.
+  on a DQMH scaffold VI or a placeholder is no news on every call; `lvai_audit_files` reports it
+  when someone asks.
 - **Silent when clean.** With no error finding the answer is byte for byte what the tool wrote.
 - **Not about running.** A deliberately unfinished VI - DQMH's scripting leaves several - is no
   finding as long as it is source-only, has automatic error handling off and is listed by its
@@ -81,6 +82,28 @@ condition was that it must not cause more trouble than it saves, so it is delibe
   warning), at most 400 files, an unparsable file is skipped.
 - **Never on** a read-only tool, `lvai_audit_files` itself or a failed call. Anything the audit
   throws leaves the answer as it was.
+
+## No closing audit any more, 2026-11-23
+
+From 2026-11-21 a build ENDED with `lvai_audit_files` over its folder, and the brief told the
+orchestrator to fix every error it found. The user's decision of 2026-11-23 made it on demand:
+
+- **Every error it ever found is fixed where it arose.** The graft clears automatic error handling
+  (below). The DQMH tools strip compiled code (`sourceOnly`), and `ATM_DQMH_Cold_10` was clean.
+- **The same error rules already run on every writing tool** (above), at the call that caused the
+  defect. At the end of a build the same finding costs more to fix and says less about its cause.
+- **What it adds is warnings.** Description, terminal style and the `.lvproj` default changed no
+  build's result.
+- **Its cost is turns, not the 20 ms a file.** That is one or two model turns, plus an agent
+  tempted to tidy up warnings. This is estimated, not measured.
+
+The one error the inline audit leaves out on purpose is compiled code whose strip was DEFERRED
+(`DeferredSourceOnly`). The list lives in the server's memory, and `lvai_close_active_project`
+strips its entries. So the brief now says: a build whose tools answered `deferredSourceOnly`
+ends with that close, given `projectPath`.
+
+**Still open:** an `audit` field has not been seen in a live tool answer yet. The next cold build
+is the check. If the field is missing or wrong there, bring the closing audit back.
 
 `lvai_audit_files` itself is not counted by the parallel-call guard (`ParallelCalls.NotCounted`):
 it reads saved files and never reaches LabVIEW, so it may run beside anything.

@@ -25,8 +25,9 @@ open, our own file edits need it closed:
 4. the description through `lvai_set_class_description` (`checkUnsaved=false` - a library made in
    this call has nobody's work in it);
 5. closes the project and writes `<Item Type="Library">` at target level, once;
-6. the members through `lvai_add_to_library` (NI's `AddItem`, which relinks callers), then closes
-   again and takes out any member entry left loose at target level;
+6. the members through `lvai_add_to_library` (NI's `AddItem`, which relinks the callers that are
+   LOADED - and the tool loads and saves the others first, §6), then closes again and takes out
+   any member entry left loose at target level;
 7. verifies from the files: the `.lvlib` is a `<Library>`, its description and members read back,
    the project lists it.
 
@@ -102,3 +103,34 @@ for itself (its `LIBN` block) decide the name -
   nothing - the class tools give their members their class themselves.
 
 `LibraryMembershipTests`. The grpc route is unchanged and was not measured for this.
+
+## 6. Callers outside the items relink only while loaded (2026-11-23)
+
+**Symptom.** A cold build put `Sensor.lvclass` into `ChangeTests.lvlib` after its Caraya tests were
+written. `lvai_create_library` answered `ok`, `Main.vi` (an item too) and every class member read
+`execState 1` - and all four test VIs were eBad: `Missing subVI Sensor.lvclass:Add Reading.vi`, and
+each class constant `Refers to a missing LabVIEW class`. The test VIs sat in the project's `Tests`
+folder, not in the library, and were not loaded when the class was added.
+
+**Measured on a two-file reproduction** (now the fixture `Fixtures/library-relink`):
+
+| item added | caller outside it | caller loaded during the add | caller afterwards, read cold |
+|---|---|---|---|
+| `Cls.lvclass` (static member `Touch.vi`) | `C.vi`: class constant into `Cls.lvclass:Touch.vi` | no | eBad, the two errors above |
+| `Cls.lvclass` | `C.vi` | yes, then saved | execState 1 |
+| `A.vi` (plain VI) | `B.vi` calls `A.vi` | no | execState 1 |
+
+So `Save All This Library.vi` relinks what LabVIEW holds in memory. A plain VI's caller found the
+renamed `Lib.lvlib:A.vi` at its path anyway; a class's qualified name did not resolve. A relink
+also sets no Mods bit, so the caller is saved because it is LISTED, not because it looks modified
+(`lvai_save_modified_vis` saves every listed path).
+
+**What the tool does now** (`relinkCallers`, default true): before the first `AddItem` it scans
+every `.vi`/`.vim` under the project folder for link records naming an item's file name - for a
+class item also each member VI's - leaving out the items and the class's own members
+(`LibraryTools.OutsideCallers`, the `ViFile.Links` heuristic `lvai_add_to_class` uses). It opens
+each through the active project, adds, and saves them; the answer's `callers` lists `found`,
+`saved` and `notSaved`. A caller that does not open stops the call before anything is added
+(`callerOpenFailed`); one that is not saved makes `ok` false. The scan is a heuristic: a same-named
+file elsewhere costs one load and one save, never a missed caller. A caller outside the project
+folder is not found.

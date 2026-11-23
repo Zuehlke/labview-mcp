@@ -88,7 +88,13 @@ internal sealed class LibraryTools(LvaiConnection connection)
             "public" or "private" for every item of this call; omit to leave LabVIEW's default
             (public). Private: a subVI only the library's own VIs call.
             """)]
-        string? scope = null) =>
+        string? scope = null,
+        [Description("""
+            Find the VIs under the project folder that call an item (or a member of an item class),
+            open them through the project before the add and save them after it, so they relink
+            (`callers`). Default true; false leaves an unloaded caller on the old link.
+            """)]
+        bool relinkCallers = true) =>
         await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_add_to_library", async () =>
         {
             if (!File.Exists(libraryPath))
@@ -222,6 +228,50 @@ internal sealed class LibraryTools(LvaiConnection connection)
             var foldersToEmpty = ledgerProject is { Length: > 0 } && File.Exists(ledgerProject)
                 ? ProjectFolderLedger.Record(ledgerProject, items.Select(i => i.Path)) : [];
 
+            // CALLERS OUTSIDE THE ITEMS RELINK ONLY WHILE LOADED. Save All This Library relinks the
+            // callers LabVIEW holds in memory and nothing else: measured 2026-11-23, a VI outside the
+            // library that called a class method stayed eBad ("Missing subVI Cls.lvclass:Touch.vi",
+            // its class constant "Refers to a missing LabVIEW class") when it was not loaded, and
+            // came back execState 1 cold when it was opened through the project first and saved
+            // after. Four Caraya test VIs of a real build broke the same way. So they are found from
+            // the files, opened before the add and saved after it.
+            var callerReport = new JsonObject();
+            List<string> callers = [];
+            string? saveHelperVi = null;
+            var helpers = new HousekeepingHelpers(connection);
+            if (relinkCallers && ledgerProject is { Length: > 0 } && File.Exists(ledgerProject))
+            {
+                callers = OutsideCallers(Path.GetDirectoryName(Path.GetFullPath(ledgerProject))!, items.Select(i => i.Path));
+                callerReport["found"] = new JsonArray([.. callers.Select(c => (JsonNode)c)]);
+                if (callers.Count > 0)
+                {
+                    var (saveVi, _, saveFailure) = await helpers.EnsureAsync(
+                        ClassMembershipTools.SaveHelper, timeoutSeconds, ct);
+                    if (saveFailure is not null) return saveFailure;
+                    saveHelperVi = saveVi;
+
+                    var opened = await helpers.OpenThroughProjectAsync(
+                        callers, Path.GetFullPath(ledgerProject), timeoutSeconds, ct);
+                    steps.Add(new JsonObject { ["step"] = "openCallers", ["opened"] = opened });
+                    var failed = opened.Where(o => o?["errorCode"]?.GetValue<int>() is not 0)
+                        .Select(o => o!["viPath"]!.GetValue<string>()).ToList();
+                    if (failed.Count > 0)
+                        return Json.Error("callerOpenFailed",
+                            "These VIs call an item and could not be opened through the project, so they " +
+                            "would keep the old link: " + string.Join(", ", failed) + ". Nothing was " +
+                            "added. relinkCallers false adds anyway.",
+                            new JsonObject
+                            {
+                                ["callers"] = new JsonArray([.. failed.Select(f => (JsonNode)f)]),
+                                ["steps"] = steps,
+                            });
+                }
+            }
+            else
+                callerReport["skipped"] = relinkCallers
+                    ? "No active project to find callers under."
+                    : "relinkCallers is false.";
+
             // ONE RUN PER ITEM. The helper adds one item and saves the library, which keeps it
             // simple enough to read; the loop lives here so the CALLER still spends one turn.
             var added = new JsonArray();
@@ -266,6 +316,26 @@ internal sealed class LibraryTools(LvaiConnection connection)
                 });
             }
 
+            // SAVE THE RELINKED CALLERS. A relink sets no Mods bit, so the helper saves every listed
+            // path whether or not LabVIEW calls it modified.
+            var callersNotSaved = new List<string>();
+            if (callers.Count > 0 && saveHelperVi is not null)
+            {
+                var (saved, saveError) = await helpers.RunAsync(saveHelperVi, new()
+                {
+                    ["save listed"] = "true",
+                    ["save paths"] = DqmhFrameTools.StringArrayXml("save paths", callers),
+                }, timeoutSeconds, ct);
+                var lines = saved is null ? []
+                    : ClassMembershipTools.ParseLines(HousekeepingHelpers.Strings(saved, "lines"));
+                var savedPaths = lines.Where(l => l.Saved && l.Code == 0).Select(l => l.Path)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                callersNotSaved = callers.Where(c => !savedPaths.Contains(c)).ToList();
+                callerReport["saved"] = new JsonArray([.. callers.Where(savedPaths.Contains).Select(c => (JsonNode)c)]);
+                callerReport["notSaved"] = new JsonArray([.. callersNotSaved.Select(c => (JsonNode)c)]);
+                if (saveError is not null) callerReport["saveError"] = saveError;
+            }
+
             // ASK THE FILE. Every run reporting 0 is also what an AddItem that reached a different
             // copy of the library would produce, so the member list is read back off disk.
             var verify = new JsonObject();
@@ -290,7 +360,8 @@ internal sealed class LibraryTools(LvaiConnection connection)
                     .Where(i => (ReadItemScope(library, i.Name) ?? 1) != scopeCode).Select(i => i.Name).ToArray();
                 verify["scopeWrong"] = new JsonArray([.. scopeWrong.Select(n => (JsonNode)n)]);
 
-                verified = missing.Length == 0 && elsewhere.Length == 0 && scopeWrong.Length == 0;
+                verified = missing.Length == 0 && elsewhere.Length == 0 && scopeWrong.Length == 0
+                           && callersNotSaved.Count == 0;
                 verify["items"] = new JsonArray([.. after.Names.Select(n => (JsonNode)n)]);
                 verify["missing"] = new JsonArray([.. missing.Select(n => (JsonNode)n)]);
                 verify["placedIn"] = new JsonObject([.. items.Select(i =>
@@ -316,6 +387,7 @@ internal sealed class LibraryTools(LvaiConnection connection)
                 ["projectEntriesToRemove"] =
                     new JsonArray([.. items.Select(i => (JsonNode)i.Name)]),
                 ["foldersLeftEmpty"] = new JsonArray([.. foldersToEmpty.Select(f => (JsonNode)f)]),
+                ["callers"] = callerReport,
                 ["steps"] = Json.SlimSteps(steps, keep: !verified),
                 ["note"] = verified
                     ? "Added and verified from the .lvlib. Each item now belongs to the project " +
@@ -323,13 +395,71 @@ internal sealed class LibraryTools(LvaiConnection connection)
                       "with the project CLOSED, or LabVIEW's own save undoes the edit. Check the " +
                       "members with lvai_exec_state afterwards: library membership changes an " +
                       "item's qualified name, and that is exactly what a bad route breaks."
-                    : "Every run reported 0, but the .lvlib does not list every item asked for, or " +
-                      "an item did not land in the folder that was asked for. Treat this as a " +
-                      "failure and read verify.missing and verify.notInRequestedFolder.",
+                    : callersNotSaved.Count > 0
+                        ? "The items were added, but callers.notSaved names VIs outside them that were " +
+                          "relinked in memory and not saved - they keep the old link on disk. Save them, " +
+                          "then check them with lvai_exec_state."
+                        : "Every run reported 0, but the .lvlib does not list every item asked for, or " +
+                          "an item did not land in the folder that was asked for. Treat this as a " +
+                          "failure and read verify.missing and verify.notInRequestedFolder.",
             });
         }));
 
     private sealed record Item(string Path, string Name, string? Type);
+
+    /// <summary>
+    /// VIs under <paramref name="root"/> whose link records name an item - its file name, and for
+    /// a class each member VI's - excluding the items and the members of an item class, which
+    /// relink with it. The same heuristic as lvai_add_to_class (<see cref="ViFile.Links"/>): a
+    /// same-named file elsewhere can match, which costs one load and one save, never a miss.
+    /// </summary>
+    internal static List<string> OutsideCallers(string root, IEnumerable<string> itemPaths)
+    {
+        var items = itemPaths.Select(Path.GetFullPath).ToList();
+        var needles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var ownerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var members = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in items)
+        {
+            needles.Add(Path.GetFileName(item));
+            if (!item.EndsWith(".lvclass", StringComparison.OrdinalIgnoreCase)) continue;
+            ownerNames.Add(Path.GetFileName(item));
+            try
+            {
+                foreach (var m in LvFileAudit.ReadXml(item).Members ?? [])
+                {
+                    members.Add(Path.GetFullPath(m));
+                    needles.Add(Path.GetFileName(m));
+                }
+            }
+            catch (Exception e) when (e is IOException or System.Xml.XmlException or InvalidDataException) { }
+        }
+
+        var hits = new List<string>();
+        IEnumerable<string> files;
+        try
+        {
+            files = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+                .Where(f => f.EndsWith(".vi", StringComparison.OrdinalIgnoreCase)
+                            || f.EndsWith(".vim", StringComparison.OrdinalIgnoreCase))
+                .Take(FileStamps.MaxFiles).ToList();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return hits; }
+
+        foreach (var file in files.Select(Path.GetFullPath))
+        {
+            if (items.Contains(file, StringComparer.OrdinalIgnoreCase) || members.Contains(file)) continue;
+            try
+            {
+                if (!needles.Any(n => ViFile.Links(file, n))) continue;
+                if (ViFile.Owners(file).Any(ownerNames.Contains)) continue;
+                hits.Add(file);
+            }
+            catch (Exception e) when (e is IOException or InvalidDataException or ArgumentException
+                                          or OverflowException) { }
+        }
+        return hits;
+    }
 
     /// <summary>
     /// What the library holds now: its item names, their resolved paths, its virtual FOLDERS, and

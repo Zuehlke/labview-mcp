@@ -60,8 +60,8 @@ verified, because it needs the project:
 2. `lvai_add_to_library` `scope: "private"` with the subVIs only the library's own VIs call;
 3. `lvai_move_to_folder` once per FUNCTION folder (`API`, `Helpers`, `UI`, ... - named for what
    they hold), so the library is not flat;
-4. `lvai_exec_state` over every member (membership renames them), then `lvai_audit_files` over
-   the build folder; fix every error it finds.
+4. `lvai_exec_state` over every member (membership renames them). Fix every `audit` error a
+   tool answered; if one answered `deferredSourceOnly`, close the project with `projectPath`.
 
 ## Reuse what the project already holds
 
