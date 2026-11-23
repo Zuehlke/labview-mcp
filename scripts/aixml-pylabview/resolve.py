@@ -336,6 +336,25 @@ def relative_ref(from_file, to_path):
     return ["" if c == ".." else c for c in rel.split(os.sep)]
 
 
+def link_ref(from_file, to_path):
+    """(PathRef type, components) for a link from the caller FILE to `to_path`: relative ("1")
+    where one exists, ABSOLUTE ("0") where the two sit on different drives - os.path.relpath
+    raises there (`path is on mount 'D:', start on mount 'C:'`: the CI runner's checkout on D:,
+    its temp folder on C:, 2026-11-23). An absolute path's drive goes WITHOUT its colon, as the
+    composer writes a path constant (LabVIEW adds it back)."""
+    try:
+        return "1", relative_ref(from_file, to_path)
+    except ValueError:
+        full = os.path.abspath(to_path)
+        drive, rest = os.path.splitdrive(full)
+        comps = [c for c in rest.split(os.sep) if c]
+        if drive.startswith(os.sep * 2):
+            comps = [c for c in drive.split(os.sep) if c] + comps
+        else:
+            comps = [drive.rstrip(":")] + comps
+        return "0", comps
+
+
 _INSTALL_INDEX = {}            # (roots, stamp) -> (built at, files, owners, llbs)
 INSTALL_INDEX_SECONDS = 600
 
@@ -569,7 +588,7 @@ class Resolver:
         s = self.symbolic(path)
         if s:
             return ("0", [s[0]] + s[1])
-        return ("1", relative_ref(caller_file, path))
+        return link_ref(caller_file, path)
 
     def member_item(self, owner, name, kind=None):
         """The <Item> an owner lists under `name`, at any folder depth, or None."""
@@ -674,7 +693,7 @@ class Resolver:
                 # and the VI is broken (a static reference to NI's "Test - Selection List
                 # Target.vi", composed into another folder)
                 same = caller_file and os.path.normcase(os.path.dirname(os.path.abspath(caller_file))) == os.path.normcase(os.path.abspath(d))
-                ref = ("1", ["", target]) if same or not caller_file else ("1", relative_ref(caller_file, p))
+                ref = ("1", ["", target]) if same or not caller_file else link_ref(caller_file, p)
                 return {"path": p, "qual": [target], "path_ref": ref,
                         "lib_ref": None, "kind": "sibling"}
         # NEAR THE CALLER BEFORE THE INSTALLATION: a project's own `Set Control Value.vi` in
@@ -686,7 +705,7 @@ class Resolver:
             # export finds its callees beside the ORIGINAL (bisect_vi.py --near)
             near = self._near_index(d)[0].get(target.lower(), [])
             if near:
-                return {"path": near[0], "qual": [target], "path_ref": ("1", relative_ref(caller_file, near[0])),
+                return {"path": near[0], "qual": [target], "path_ref": link_ref(caller_file, near[0]),
                         "lib_ref": None, "kind": "near the caller", "ambiguous": len(near) > 1}
         self._index()
         hits = self._files.get(target.lower(), [])
@@ -700,7 +719,7 @@ class Resolver:
         for d in (caller_dirs or []):
             near = self._in_llbs(target, self._near_index(d)[2])
             if near:
-                return {"path": near[0], "qual": [target], "path_ref": ("1", relative_ref(caller_file, near[0])),
+                return {"path": near[0], "qual": [target], "path_ref": link_ref(caller_file, near[0]),
                         "lib_ref": None, "kind": "near the caller", "ambiguous": len(near) > 1}
         hits = self._in_llbs(target, self._llbs)
         for p in hits:
