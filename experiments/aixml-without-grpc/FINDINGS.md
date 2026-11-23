@@ -1350,7 +1350,8 @@ class has a parent. Version bounds bracketed by composing t128 under each stamp 
 LabVIEW 2026, both arms each: tail - 15 PASS without / BROKEN with, 16 BROKEN without / PASS with;
 M - 19 PASS without / BROKEN with, 20 BROKEN without / PASS with; 14 BROKEN both ways (another
 cause). Save for Previous could not help: LabVIEW 2026 saves back to 2025 only, every older version
-string gave the same 2025 file. Result: `class-link-tail-*` and `class-link-tcpi-*` in
+string gave the same 2025 file. (Corrected 2026-11-23: that is the ActiveX `SaveForPrevious`, which
+ignores its version string; the IDE dialog wrote a 2019 file - docs/aixml-backends.md, issue #149.) Result: `class-link-tail-*` and `class-link-tcpi-*` in
 `patches.json`; 497 of 509 examples extract all LI blocks as XML and rebuild them byte-identical
 (the rest are three 8.2 files upstream fails on too); t115/t128/t157/t162 compose byte-identical
 to the old patch's output at stamps 20, 25, 26 (BDPW, LVSR, RTSG differ between any two builds) and
