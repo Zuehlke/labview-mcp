@@ -34,6 +34,13 @@ installed server on the same machine then answered `1059`.
 > need exclusive access to the TestStand COM engine; here the reason is the file lock on the
 > single build artifact. Same mechanism, different cause.
 
+**Focus-dependent tests are left out.** A test marked `[Trait("Category", "Interactive")]` presses
+keys on a LabVIEW panel and needs the keyboard focus, so anything the user does at the same time can
+fail it - `SignalLatchedTests.A_latched_button_is_pressed_and_a_path_is_set` blocked two pushes on
+2026-11-24 while a LabVIEW project was open. The gate runs `dotnet test --filter
+"Category!=Interactive"`; `run-tests.ps1 -IncludeInteractive` runs them too, by hand, with the
+keyboard left alone.
+
 ## Which working tree it tests
 
 **It asks git, not itself.** The gate resolves the tree under test with

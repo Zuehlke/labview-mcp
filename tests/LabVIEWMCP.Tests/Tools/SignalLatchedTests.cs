@@ -39,9 +39,12 @@ public sealed class SignalLatchedTests
     /// <summary>
     /// The measured drive, end to end on a running LabVIEW: a path signal, two presses of a latched
     /// Load, a press of a latched Stop - Loads 2, Seen Path the text sent, the VI ended by Stop.
-    /// SKIPS where the composer or a running LabVIEW is missing.
+    /// SKIPS where the composer or a running LabVIEW is missing. It presses keys on a LabVIEW panel
+    /// and so needs the keyboard focus: anything the user does meanwhile can fail it, which is why
+    /// the pre-push gate leaves it out (Category=Interactive; run-tests.ps1 -IncludeInteractive).
     /// </summary>
     [Fact]
+    [Trait("Category", "Interactive")]
     public async Task A_latched_button_is_pressed_and_a_path_is_set()
     {
         if (AixmlComposer.Locate(out _) is not { } setup || LabViewCom.NotReady() is not null) return;

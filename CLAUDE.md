@@ -595,6 +595,8 @@ powershell -ExecutionPolicy Bypass -File .githooks/run-tests.ps1
 Use the second rather than a bare `dotnet test`: it stops a server running from THIS tree (which
 locks the exe), and after either command the `lvai_*` tools are gone until the client restarts.
 
+- The gate leaves out `[Trait("Category", "Interactive")]` tests - they press keys and need the
+  focus, so the user's own work fails them. `-IncludeInteractive` runs them, hands off the keyboard.
 - `dotnet` needs the per-user SDK (`%USERPROFILE%\.dotnet`) first on `PATH`; the gate finds it.
 - **Never run `dotnet msbuild -t:Compile`** and never build to a redirected output path: both
   produce a DLL without embedded resources. Recovery: delete `obj`/`bin` of both projects and
