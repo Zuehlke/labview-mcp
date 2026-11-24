@@ -2026,6 +2026,29 @@ cold builds of an acceptance VI calling a class method in a For Loop; a reader o
 alone found nothing under "class constant" before then - the route lived only in `CLAUDE.md` and
 the tool descriptions.
 
+### Class property nodes - LVOOP properties (pylabview backend)
+
+A class whose accessors were created with `makeAvailableThroughPropertyNodes` has `Property
+Definition`s, and a Property Node on its wire reads and writes them (issue #153, measured
+2026-11-24 by write-then-read):
+
+```xml
+<Constant _name="motor" type="ref{UDClassInst}" value="" outputs="value:4203.value" uid="4203" uid_parent="root"/>
+<Node _name="Property Node" type="{Motor.lvclass}" fields="write+Speed,write+Name" uid="4204" uid_parent="root"
+      inputs="reference:4203.value,error in (no error):4202.value,Speed:4200.value,Name:4201.value"
+      outputs="reference out:4204.ref,error out:4204.error out"/>
+<Node _name="Property Node" type="{Motor.lvclass}" fields="read+Speed" uid="4205" uid_parent="root"
+      inputs="reference:4204.ref,error in (no error):4204.error out" outputs="error out:4205.error out,Speed:4205.Speed"/>
+```
+
+- `type` names the class (`{Lib.lvlib:Motor.lvclass}` inside a library); NI's export writes
+  `{UDClassInst}` and the class then comes from the wire into `reference`. A class constant needs
+  no swap here: it takes its class from the node it feeds.
+- A field is the property's name, with or without its folder (`Flow`, `Properties\3AFlow`); an
+  unknown one is refused with the class's list of properties.
+- NI's gRPC converter refuses it (`Property Node with type=UDClassInst is not supported`, §9's
+  error table); the default pylabview backend composes it. aixml-backends.md, "Class property nodes".
+
 ### Calling a plain palette VI: the terminals are its front-panel labels
 
 For a primitive `Node` you look the terminal names up in the table above. For a `Call` there is no

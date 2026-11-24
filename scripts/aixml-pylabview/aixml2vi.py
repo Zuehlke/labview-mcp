@@ -7835,19 +7835,13 @@ class Composer:
         name, oMId 000D, the four fixed terminals typed with the class refnum, then one propItem
         row per field - typeDesc the value labelled with the property's full name, omidTypeDesc
         VoidBlock{class refnum}, dataTypeDesc the accessor's value terminal, a
-        udClassPropItemPrivInfo. LabVIEW binds each row by its PNOM link (write_class_links),
-        naming the class and the accessor VI; measured by A/B on NI's own VI (2026-11-24):
-        without the PNOMs it is eBad, while a PropItemCode of -1, a PNOM content of 0, the name
-        without its folder and no VIVI for the accessors all load executable."""
+        udClassPropItemPrivInfo, and oMId the consolidated index of the class refnum type.
+        LabVIEW binds each row by its PNOM link (write_class_links), naming the class and the
+        accessor VI; measured by A/B on NI's own VI (2026-11-24): without the PNOMs it is eBad,
+        while a PropItemCode of -1 and the name without its folder load executable. Composed
+        callers write and read back what they wrote, a folder's property included."""
         self.check_attrs(el, ("fields", "type"))
         uid = el.get("uid")
-        if os.environ.get("LABVIEWMCP_CLASS_PROPNODE") != "1":
-            # what this builds KILLS LabVIEW on load: `Insane PropItem {size} (0x1)`, then DAbort
-            # "Fatal insanities", on every composed VI so far - NI's own node transplanted into a
-            # composed VI too, so the cause is outside the node (2026-11-24, aixml-backends.md
-            # "Class property nodes"). Refused until that is found; the env var is for that search
-            raise Unsupported("Property Node %s: a Property Node on a LabVIEW class (LVOOP property) is not "
-                              "composable yet - call the class's accessor VI instead" % uid)
         if self.target_major is not None and self.target_major < 26:
             raise Unsupported("Property Node %s: a class property node for LabVIEW 20%d is not measured yet"
                               % (uid, self.target_major))
@@ -7976,8 +7970,13 @@ class Composer:
                     self.net_type[net] = lvheap.strip_label(vt)
         dl.set("elements", str(len(dl)))
         tl.set("elements", str(len(tl)))
-        node.find("shortCount").text = str(len(fields_))
-        node.find("nodeName").text = '"%s"' % lv_text(qual[-1].rsplit(".", 1)[0])[:31]
+        # oMId: the CONSOLIDATED type index (hex) of the class refnum, unlabelled - 000D in NI's
+        # SFTP List Directory.vi and 0004 in a VI LabVIEW saved by hand (2026-11-24) both name
+        # it. Kept at the donor's 000D it named this VI's error cluster, and LabVIEW died on load,
+        # `Insane PropItem {size}` (docs/aixml-backends.md, "Class property nodes")
+        node.find("oMId").text = "%04X" % self.types.use(self.types.register(lvheap.strip_label(ref)))
+        # nodeName as LabVIEW 2026 writes it - the class's file name, "Motor.lvclass"
+        node.find("nodeName").text = '"%s"' % lv_text(qual[-1])[:31]
         b = lvheap.parse_bounds(node.find("bounds").text)
         node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + 18 + 16 * len(fields_) + 1, b[3]))
         for e in node.iter("typeDesc"):

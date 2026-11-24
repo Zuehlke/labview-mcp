@@ -613,8 +613,9 @@ overrides in subfolders), which is how the inconsistency was noticed. Pick per-c
    `Property Definition` named after it, holding its Read and Write VI - at the class root, or
    inside the folder `virtualFolderName` names (`Properties`, as NI's SFTP `File Attributes.lvclass`
    does; the property is then `Properties:<field>`). Confirm it in the `.lvclass`: one
-   `Type="Property Definition"` item per field. A caller CANNOT be generated with such a Property
-   Node yet (the pylabview composer does not load it) - a caller calls the accessor VI instead.
+   `Type="Property Definition"` item per field. A caller reaches them with
+   `<Node _name="Property Node" type="{Motor.lvclass}" fields="read+Speed" ...>` on the class wire
+   (pylabview backend; measured by write-then-read, aixml-reference.md "Class property nodes").
 3. Check `membersAfter` after every call. It is the **class file's own count**, not a prediction —
    `2 × fields` when Read and Write both landed.
 4. **On `Request timed out`, JUST CALL AGAIN.** The work is usually done: measured 2026-08-29, a

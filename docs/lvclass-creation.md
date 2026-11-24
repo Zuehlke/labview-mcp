@@ -1516,9 +1516,9 @@ on `Pump` (`Flow`) with `virtualFolderName: "Properties"`. Each field becomes an
 is exactly the shape of NI's `vi.lib\net\SFTP\File Attributes\File Attributes.lvclass`, whose
 properties a caller reads as `Properties:Name`. The accessors are otherwise the same: dynamic
 dispatch, source-only, members of the class (`lvai_describe_class` lists them as before - it walks
-into the Property Definitions). What is NOT measured is a CALLER: AIXML from NI's exporter writes
-such a node `type="{UDClassInst}"` with `fields="read+Name"`, and the pylabview composer's attempt
-at it (aixml-backends.md, "Class property nodes") does not load yet.
+into the Property Definitions). A CALLER is generated on the pylabview backend:
+`<Node _name="Property Node" type="{Motor.lvclass}" fields="write+Speed,read+Name">` on the class
+wire, measured by writing and reading back through it (aixml-backends.md, "Class property nodes").
 
 **What is still unmeasured is how to OBTAIN those three refnums.** The VI Server catalogue has no
 library class and no project-item rows at all - `grep`ped both TSVs - which is the same hole
