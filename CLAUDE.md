@@ -400,6 +400,12 @@ can carry a default (`double.Gain=1`) and may be a `path`. `docs/typedef-disconn
 | a property or method no RPC exposes | a generated VI Server helper - the exception; say which route and why |
 | `.ctl`, icon, layout, decorations, read with no LabVIEW | pylabview (`pylv_*`) |
 
+**PYLABVIEW FIRST; gRPC IS BEING PHASED OUT** (the user's decision of 2026-11-24). Work looks at
+the pylabview backend; NI's gRPC service is not to be supported in the medium term. No compromise
+for gRPC's sake: when an architecture or performance decision has to choose, pylabview wins, and a
+feature is not held back because gRPC cannot do it (LVOOP class property nodes, issue #153, exist
+only there). gRPC code is not removed unasked - it is no longer invested in.
+
 **The AIXML tools have two backends**, NI's gRPC service and our pylabview composer, chosen by
 the call's `backend`, `--aixml-backend` or `LABVIEWMCP_AIXML_BACKEND`; with none of them,
 **pylabview** (the user's decision of 2026-11-05; it was grpc, pylabview only below LabVIEW 2026) -
@@ -589,6 +595,8 @@ powershell -ExecutionPolicy Bypass -File .githooks/run-tests.ps1
 Use the second rather than a bare `dotnet test`: it stops a server running from THIS tree (which
 locks the exe), and after either command the `lvai_*` tools are gone until the client restarts.
 
+- The gate leaves out `[Trait("Category", "Interactive")]` tests - they press keys and need the
+  focus, so the user's own work fails them. `-IncludeInteractive` runs them, hands off the keyboard.
 - `dotnet` needs the per-user SDK (`%USERPROFILE%\.dotnet`) first on `PATH`; the gate finds it.
 - **Never run `dotnet msbuild -t:Compile`** and never build to a redirected output path: both
   produce a DLL without embedded resources. Recovery: delete `obj`/`bin` of both projects and

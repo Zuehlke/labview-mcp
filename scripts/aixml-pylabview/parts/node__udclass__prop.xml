@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='utf-8'?>
+<part kind="node" key="node/udclass/prop" source="&lt;labview&gt;\examples/Data Communication/Protocols/SFTP/SFTP List Directory.vi"><types><TypeDesc Type="Refnum" RefType="UDClassInst" Field0="0x0000" MultiItem="1" Format="inline" Label="file attributes"><Item Text="NI_SFTP.lvlib" />
+        <Item Text="File Attributes.lvclass" />
+        </TypeDesc><TypeDesc Type="Refnum" RefType="UDClassInst" Field0="0x0000" MultiItem="1" Format="inline" Label="file attributes"><Item Text="NI_SFTP.lvlib" />
+        <Item Text="File Attributes.lvclass" />
+        </TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error in (no error)"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="Cluster" Format="inline" Label="error out"><TypeDesc Type="Boolean" Format="inline" Label="status" /><TypeDesc Type="NumInt32" Prop1="0" Format="inline" Label="code" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="source" /></TypeDesc><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Properties:Name" /><TypeDesc Type="String" Prop1="0xFFFFFFFF" Format="inline" Label="Properties:Long Listing" /></types><heap><SL__arrayElement class="propNode" uid="1165">
+                <objFlags>640</objFlags>
+                <termList elements="6">
+                  <SL__arrayElement class="term" uid="1188">
+                    <objFlags>32768</objFlags>
+                    <dco class="hGrowCItem" uid="1189">
+                      <objFlags>65536</objFlags>
+                      <typeDesc>TypeID(72)</typeDesc>
+                      <termBounds>(0, 0, 9, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1191">
+                    <dco class="hGrowCItem" uid="1192">
+                      <objFlags>262145</objFlags>
+                      <typeDesc>TypeID(73)</typeDesc>
+                      <termBounds>(0, 101, 9, 114)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1194">
+                    <objFlags>32768</objFlags>
+                    <dco class="hGrowCItem" uid="1195">
+                      <objFlags>131072</objFlags>
+                      <typeDesc>TypeID(74)</typeDesc>
+                      <termBounds>(9, 0, 18, 13)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1197">
+                    <dco class="hGrowCItem" uid="1198">
+                      <objFlags>524289</objFlags>
+                      <typeDesc>TypeID(75)</typeDesc>
+                      <termBounds>(9, 101, 18, 114)</termBounds>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1200">
+                    <dco class="propItem" uid="1201">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(76)</typeDesc>
+                      <termBounds>(18, 0, 34, 114)</termBounds>
+                      <privDataList elements="1">
+                        <SL__arrayElement class="udClassPropItemPrivInfo" uid="216">
+                          <UDClassItemPropName />
+                          </SL__arrayElement>
+                        </privDataList>
+                      <propList elements="1">
+                        <SL__arrayElement class="propItemInfo" uid="1297">
+                          <omidTypeDesc>TypeID(77)</omidTypeDesc>
+                          <dataTypeDesc>TypeID(78)</dataTypeDesc>
+                          <PropItemName>"Properties:Name"</PropItemName>
+                          <PropItemCode>14</PropItemCode>
+                          </SL__arrayElement>
+                        </propList>
+                      </dco>
+                    </SL__arrayElement>
+                  <SL__arrayElement class="term" uid="1312">
+                    <dco class="propItem" uid="1307">
+                      <objFlags>1</objFlags>
+                      <typeDesc>TypeID(79)</typeDesc>
+                      <termBounds>(34, 0, 50, 114)</termBounds>
+                      <privDataList elements="1">
+                        <SL__arrayElement class="udClassPropItemPrivInfo" uid="265">
+                          <UDClassItemPropName />
+                          </SL__arrayElement>
+                        </privDataList>
+                      <propList elements="1">
+                        <SL__arrayElement class="propItemInfo" uid="1332">
+                          <omidTypeDesc>TypeID(80)</omidTypeDesc>
+                          <dataTypeDesc>TypeID(81)</dataTypeDesc>
+                          <PropItemName>"Properties:Long Listing"</PropItemName>
+                          <PropItemCode>12</PropItemCode>
+                          </SL__arrayElement>
+                        </propList>
+                      </dco>
+                    </SL__arrayElement>
+                  </termList>
+                <bounds>(20, 38, 71, 152)</bounds>
+                <shortCount>2</shortCount>
+                <clumpNum>327683</clumpNum>
+                <dcoList elements="2">
+                  <SL__arrayElement uid="1201" />
+                  <SL__arrayElement uid="1307" />
+                  </dcoList>
+                <permDCOList elements="4">
+                  <SL__arrayElement uid="1189" />
+                  <SL__arrayElement uid="1192" />
+                  <SL__arrayElement uid="1195" />
+                  <SL__arrayElement uid="1198" />
+                  </permDCOList>
+                <nodeName>"File Attributes"</nodeName>
+                <oMId>000D</oMId>
+                </SL__arrayElement>
+              </heap></part>

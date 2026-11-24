@@ -73,7 +73,13 @@ param(
     # Resolve the tree, then print which MCP server processes step 2 WOULD stop, and
     # exit 0 without stopping anything or running the suite. PrePushGateTests uses it
     # to prove that a server outside the tree under test is never on that list.
-    [switch]$ShowStopPlan
+    [switch]$ShowStopPlan,
+
+    # Also run the tests marked [Trait("Category", "Interactive")]. They press keys on a LabVIEW
+    # panel and need the keyboard focus, so whatever the user does meanwhile can fail them
+    # (SignalLatchedTests failed two pushes on 2026-11-24 while a demo project was open). The
+    # gate leaves them out; run them by hand with this switch, hands off the keyboard.
+    [switch]$IncludeInteractive
 )
 
 # Let $LASTEXITCODE — not an exception — carry dotnet's result, even under
@@ -292,7 +298,14 @@ Write-Host ("  test TEMP       : {0}" -f $testTemp) -ForegroundColor DarkGray
 # directory (a nuget.config, a Directory.Build.* probe) belongs to that tree too.
 Push-Location $repoRoot
 try {
-    & $dotnet test $testProj --configuration Debug --nologo
+    $filterArgs = @()
+    if ($IncludeInteractive) {
+        Write-Host '  -> including Category=Interactive tests (keep hands off the keyboard)' -ForegroundColor Yellow
+    } else {
+        $filterArgs = @('--filter', 'Category!=Interactive')
+        Write-Host '  -> leaving out Category=Interactive tests (focus-dependent; -IncludeInteractive runs them)' -ForegroundColor DarkGray
+    }
+    & $dotnet test $testProj --configuration Debug --nologo @filterArgs
     $code = $LASTEXITCODE
 } finally {
     Pop-Location

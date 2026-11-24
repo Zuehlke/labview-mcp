@@ -1507,6 +1507,19 @@ Its inputs, read out of the VCTP with pylabview (no LabVIEW needed):
 
 and it returns `Read VI` and `Write VI` as VI refnums plus `error out`.
 
+**`Make available through Property Nodes` (`makeAvailableThroughPropertyNodes`) - LVOOP
+properties, measured 2026-11-24 (issue #153).** Run on `Motor` (`Speed`, `Name`) with no folder and
+on `Pump` (`Flow`) with `virtualFolderName: "Properties"`. Each field becomes an item
+`Type="Property Definition"` named after the field, carrying `NI.ClassItem.Property.LongName`,
+`ShortName` (both the field name) and `SortKey -1`, with the Read and the Write VI listed INSIDE it
+- at the class root without a folder, inside `<Item Name="Properties" Type="Folder">` with one. That
+is exactly the shape of NI's `vi.lib\net\SFTP\File Attributes\File Attributes.lvclass`, whose
+properties a caller reads as `Properties:Name`. The accessors are otherwise the same: dynamic
+dispatch, source-only, members of the class (`lvai_describe_class` lists them as before - it walks
+into the Property Definitions). A CALLER is generated on the pylabview backend:
+`<Node _name="Property Node" type="{Motor.lvclass}" fields="write+Speed,read+Name">` on the class
+wire, measured by writing and reading back through it (aixml-backends.md, "Class property nodes").
+
 **What is still unmeasured is how to OBTAIN those three refnums.** The VI Server catalogue has no
 library class and no project-item rows at all - `grep`ped both TSVs - which is the same hole
 `{LV.Project}` sat in before it was probed. The technique that closed that one applies here:

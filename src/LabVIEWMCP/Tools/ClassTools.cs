@@ -1859,7 +1859,7 @@ internal sealed class ClassTools(LvaiConnection connection)
         string accessUi = "R/W",
         [Description("Give the accessors error in / error out terminals")]
         bool includeErrorTerminals = true,
-        [Description("Expose the accessors through Property Nodes")]
+        [Description("LVOOP properties: each field becomes a `Property Definition` holding its Read and Write VI\n(in virtualFolderName's folder when given - NI names it `Properties`), so a Property Node on\nthe class wire reads and writes it. Measured 2026-11-24.")]
         bool makeAvailableThroughPropertyNodes = false,
         [Description("Virtual folder inside the class to put them in; empty for the class root")]
         string virtualFolderName = "",

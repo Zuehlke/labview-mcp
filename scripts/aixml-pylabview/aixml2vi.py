@@ -2009,6 +2009,8 @@ class Composer:
         self.dyn_links = {}          # dynamic-dispatch callee path -> resolver result + dynLink uids
         self.class_consts = {}       # .lvclass path -> {"qual", "lib_ref", "uids": [ddo uid]}
         self.tcpi = {}               # .lvclass path -> {"qual", "lib_ref", "uids": [adapted input term uid]}
+        self.class_props = {}        # .lvclass path -> {"qual", "lib_ref", "items": [(VI name, propItem uid, accessor key)]}
+        self.prop_accessors = {}     # accessor VI path -> resolver result + "pane" (its VIVI in LIvi)
         self.target_major = None     # --lv-version: the LabVIEW major to write for (25 for 2025)
 
     # ---- uids and types ------------------------------------------------------------------
@@ -3124,6 +3126,22 @@ class Composer:
                         cls_tree, res = t, r
                         break
         known = (getattr(self, "class_names", {}).get(el.get("uid")) or [None])[0]
+        if (cls_tree is None or not res or not res.get("owner")) and not known:
+            # ...or the class a CLASS PROPERTY NODE it feeds names, type="{Auto.lvclass}" (#153)
+            # ...also through a shift register or a tunnel on the way: a class wire seeded on a
+            # loop's register into a node inside (measured 2026-11-24)
+            reach, todo = set(nets), list(nets)
+            while todo:
+                n = todo.pop()
+                for e in self._elements:
+                    if e.tag in ("Left", "Tunnel") and n in {x for _, x in pairs(e.get("inputs"))}:
+                        for _, o in pairs(e.get("outputs")):
+                            if o and o not in reach:
+                                reach.add(o)
+                                todo.append(o)
+            known = next((self._class_prop_type(e) for e in self._elements
+                          if e.tag == "Node" and unescape(e.get("_name") or "") == "Property Node"
+                          and self._class_prop_type(e) and dict(pairs(e.get("inputs"))).get("reference") in reach), None)
         if (cls_tree is None or not res or not res.get("owner")) and known:
             # the class the READER named after </VI> (`<?lvmcp classes?>`): a constant wired into
             # a Bundle, a cluster or a To More Specific Class, as MGI's Init.vi wires its
@@ -7369,6 +7387,15 @@ class Composer:
                     else:
                         ET.SubElement(rec, "VILSPathRef", {"Ident": "PTH0", "TpVal": "0", "ZeroFill": "True"})
                     ET.SubElement(rec, "IUseStr")
+        for path, link in self.prop_accessors.items():
+            # a class property row's accessor: VIVI only, its pane typed (NI's SFTP List Directory.vi)
+            rec = ET.SubElement(lvin, "VIVI", dict(attrs))
+            qual = ET.SubElement(rec, "LinkSaveQualName")
+            for q in link["qual"]:
+                ET.SubElement(qual, "String").text = q
+            path_ref(rec, "LinkSavePathRef", *link["path_ref"])
+            ET.SubElement(rec, "TypeDesc", {"TypeID": str(self.types.use(self.types.register(link["pane"])))})
+            link["rec"] = rec
         self.write_class_links(lvin, bdhp, path_ref)
         self.write_xctl_links(lvin, path_ref)
         self.write_clfn_links(bdhp, path_ref)
@@ -7554,15 +7581,7 @@ class Composer:
         def path_of(url):
             # a SYMBOLIC URL - `/<vilib>/Math Plots/3D Math Plots/...`, as NI's 3D Surface.xctl
             # lists its property VIs - starts at that installation folder, not at the .xctl
-            parts = [p for p in html.unescape(url).split("/") if p]
-            if parts and parts[0].startswith("<") and parts[0].endswith(">"):
-                if self.resolver is None:
-                    self.resolver = resolve.Resolver()
-                for anchor, d in self.resolver.roots:
-                    p = os.path.join(d, *parts[1:])
-                    if anchor == parts[0] and os.path.exists(p):
-                        return p
-            return os.path.normpath(os.path.join(f, *url.split("/")))
+            return self._lib_item_path(f, url)
         for item in root.iter("Item"):
             if item.get("Type") == "Property Folder":
                 pid = next((p.text for p in item.findall("Property") if p.get("Name") == "NI.LibItem.Prop.Identifier"),
@@ -7749,6 +7768,258 @@ class Composer:
         diag.placed.append((node, el))
         self.report.append("XControl %s %s on %r <- %s" % ("property" if is_prop else "method",
                                                           el.get("fields") or el.get("target"), inst.get("_name"), src))
+
+    CLASS_PROP_TYPE = re.compile(r"\{\s*((?:[^{}:]+\.lvlib:)*[^{}:]+\.lvclass)\s*\}", re.I)
+
+    def _class_prop_type(self, el):
+        """A Property Node on a LabVIEW CLASS wire: None when it is not one, else the qualified
+        class it NAMES ("Lib.lvlib:Auto.lvclass") or "" when it leaves the class to its wire.
+        NI's export writes `type="{UDClassInst}"` and never names the class (SFTP List
+        Directory.vi); an author may write `type="{Auto.lvclass}"`, which also types a class
+        constant wired into its `reference` (add_class_const) - issue #153."""
+        t = (el.get("type") or "").replace(" ", "")
+        if t == "{UDClassInst}":
+            return ""
+        m = self.CLASS_PROP_TYPE.fullmatch(unescape(el.get("type") or "").strip())
+        return m.group(1) if m else None
+
+    def _class_prop_defs(self, owner):
+        """The Property Definitions of a .lvclass: {full name: {"short", "vis": [paths]}}, the
+        full name its folders and its own name joined by ":" as LabVIEW names the property
+        ("Properties:Name" in NI's File Attributes.lvclass), the VIs the accessors listed in it."""
+        root = ET.parse(resolve.materialize(owner) or owner).getroot()
+        out = {}
+
+        def walk(holder, folders):
+            for item in holder.findall("Item"):
+                kind = item.get("Type")
+                if kind == "Folder":
+                    walk(item, folders + [item.get("Name")])
+                elif kind == "Property Definition":
+                    vis = [self._lib_item_path(owner, i.get("URL")) for i in item.iter("Item")
+                           if i.get("Type") == "VI" and i.get("URL")]
+                    out[":".join(folders + [item.get("Name")])] = {"short": item.get("Name"), "vis": vis}
+        walk(root, [])
+        return out
+
+    def _file_class_qual(self, cls_file):
+        """A .lvclass file's qualified name: its containing library (NI.Lib.ContainingLib), if any,
+        then the file name."""
+        try:
+            root = ET.parse(resolve.materialize(cls_file) or cls_file).getroot()
+        except (OSError, ET.ParseError):
+            root = None
+        lib = next(((p.text or "").strip() for p in (root.iter("Property") if root is not None else [])
+                    if p.get("Name") == "NI.Lib.ContainingLib" and (p.text or "").strip()), None)
+        return ([lib] if lib else []) + [os.path.basename(cls_file)]
+
+    def _lib_item_path(self, f, url):
+        """A library item's URL as a path: relative to the library FILE treated as a directory,
+        or SYMBOLIC (`/<vilib>/net/SFTP/...`), starting at that installation folder."""
+        parts = [p for p in html.unescape(url).split("/") if p]
+        if parts and parts[0].startswith("<") and parts[0].endswith(">"):
+            if self.resolver is None:
+                self.resolver = resolve.Resolver()
+            for anchor, d in self.resolver.roots:
+                p = os.path.join(d, *parts[1:])
+                if anchor == parts[0] and os.path.exists(p):
+                    return p
+        return os.path.normpath(os.path.join(f, *url.split("/")))
+
+    def _accessor_value(self, path, read):
+        """(label, type) of the value an accessor reads (its one output beside the class and the
+        error cluster) or writes (its one such input); None when the VI is not that accessor."""
+        vals = [(lab, t) for lab, t, out in self._vi_pane_terms(path)
+                if out == read and not (t.get("Type") == "Refnum" and t.get("RefType") == "UDClassInst")]
+        return vals[0] if len(vals) == 1 else None
+
+    def _accessor_link(self, qual, vi):
+        """The accessor VI a class property row calls, as a VIVI link in LIvi carrying its
+        connector-pane Function type - NI's SFTP List Directory.vi links Read filename.vi and
+        Read longname.vi so, with no IUVI in LIbd (the PNOM names the row). Returns its key."""
+        path = os.path.normcase(os.path.abspath(vi))
+        if path in self.prop_accessors:
+            return path
+        res = self.resolver.resolve(":".join(qual + [os.path.basename(vi)]), self.search_dirs,
+                                    getattr(self, "caller_file", None))
+        if "error" in res:
+            raise Unsupported("class property accessor %s: %s" % (os.path.basename(vi), res["error"]))
+        callee = lvheap.Bundle(_extract_callee(res["path"]))
+        res = self._class_in_library(self._library_qualified(res, callee))
+        conp = int(callee.main.find("CONP/Section/TypeDesc").get("TypeID"))
+        self.prop_accessors[path] = dict(res, pane=callee.tree(callee.flat_of_consolidated(conp)))
+        return path
+
+    def add_class_property_node(self, el):
+        """A Property Node on a CLASS wire - an LVOOP property, which reads or writes a Property
+        Definition of the class through the accessor VI listed in it (issue #153). Composed from
+        node/udclass/prop, cut off NI's SFTP List Directory.vi: a propNode, nodeName the class's
+        name, oMId 000D, the four fixed terminals typed with the class refnum, then one propItem
+        row per field - typeDesc the value labelled with the property's full name, omidTypeDesc
+        VoidBlock{class refnum}, dataTypeDesc the accessor's value terminal, a
+        udClassPropItemPrivInfo, and oMId the consolidated index of the class refnum type.
+        LabVIEW binds each row by its PNOM link (write_class_links), naming the class and the
+        accessor VI; measured by A/B on NI's own VI (2026-11-24): without the PNOMs it is eBad,
+        while a PropItemCode of -1 and the name without its folder load executable. Composed
+        callers write and read back what they wrote, a folder's property included."""
+        self.check_attrs(el, ("fields", "type"))
+        uid = el.get("uid")
+        if self.target_major is not None and self.target_major < 26:
+            raise Unsupported("Property Node %s: a class property node for LabVIEW 20%d is not measured yet"
+                              % (uid, self.target_major))
+        named = self._class_prop_type(el)
+        ins = dict(pairs(el.get("inputs")))
+        qual = named.split(":") if named else self._class_items(self.net_type.get(ins.get("reference")))
+        if not qual:
+            qual = (getattr(self, "class_names", {}).get(uid) or [""])[0].split(":")
+        if not qual or not qual[-1]:
+            raise Unsupported("Property Node %s: the class is not known - wire a class object into its "
+                              "`reference`, or name the class in its type, type=\"{Auto.lvclass}\"" % uid)
+        if self.resolver is None:
+            self.resolver = resolve.Resolver()
+        owners = self.resolver._owner_files(qual[-1], self.search_dirs)
+        if not owners:
+            raise Unsupported("Property Node %s: no %s near the VI or in the installation" % (uid, qual[-1]))
+        owner = owners[0]
+        # a class named WITHOUT its library gets it from the class file: every link names it
+        qual = self._file_class_qual(owner) if len(qual) == 1 else qual
+        defs = self._class_prop_defs(owner)
+        ref = class_ref_type(":".join(qual))
+        got = self.instantiate("node/udclass/prop", own_uid=uid)
+        if got is None:
+            raise Unsupported("no class property node part harvested (node/udclass/prop)")
+        node, donor_types, src = got
+        for e, tree in zip(lvheap.typeid_elements(node), donor_types):
+            e.text = "TypeID(%d)" % self.heap_tid(lvheap.strip_label(tree))
+        diag = self.diag_of(el)
+        tl = node.find("termList")
+        own = [t for t in tl if t.find("dco").get("class") == "hGrowCItem"]
+        rows = [t for t in tl if t not in own]
+        for t in rows:
+            tl.remove(t)
+        roles = {0x10000: ("reference", True), 0x40001: ("reference out", False),
+                 0x20000: ("error in (no error)", True), 0x80001: ("error out", False)}
+        for t in own:
+            name, sink = roles.get(int(t.find("dco").findtext("objFlags") or 0), (None, None))
+            if name in ("reference", "reference out"):
+                labelled = copy.deepcopy(ref)
+                labelled.set("Label", qual[-1].rsplit(".", 1)[0].lower())
+                t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(labelled)
+            elif name == "error in (no error)":
+                t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(
+                    type_tree(self.ERROR_CLUSTER_TYPE, label="error in (no error)"))
+            elif name == "error out":
+                t.find("dco/typeDesc").text = "TypeID(%d)" % self.heap_tid(
+                    type_tree(self.ERROR_CLUSTER_TYPE, label="error out"))
+            if not name:
+                continue
+            if sink:
+                self.ends[(uid, name)] = (t.get("uid"), diag)
+                if name == "error in (no error)":
+                    self.ends[(uid, "error in")] = (t.get("uid"), diag)
+            else:
+                self.ends[(uid, out_key(el, name))] = (t.get("uid"), diag)
+        for n, net in pairs(el.get("outputs")):
+            if net and n == "error out":
+                self.net_type[net] = type_tree(self.ERROR_CLUSTER_TYPE)
+            elif net and n == "reference out":
+                self.net_type[net] = copy.deepcopy(ref)
+        width = lvheap.parse_bounds(node.find("bounds").text)
+        width = width[3] - width[1]
+        dl = node.find("dcoList")
+        for c in list(dl):
+            dl.remove(c)
+        proto = rows[0]
+        # the class and its ANCESTORS, nearest first: a child's wire reaches a property its
+        # parent declares, bound to the class that declares it
+        chain = [(owner, qual, defs)]
+        for anc in self.resolver.class_parents(owner):
+            chain.append((anc, self._file_class_qual(anc), self._class_prop_defs(anc)))
+        fields_ = [x for x in split_top(el.get("fields") or "") if x]
+        if not fields_:
+            raise Unsupported("Property Node %s: no fields" % uid)
+        for r, field in enumerate(fields_):
+            access, _, pid = unescape(field).partition("+")
+            read = access == "read"
+            full = None
+            for d_owner, d_qual, d_defs in chain:
+                if pid in d_defs:
+                    full = pid
+                else:
+                    hits = [k for k, d in d_defs.items() if d["short"] == pid]
+                    if len(hits) > 1:
+                        raise Unsupported("Property Node %s: %s names %r in several folders - write it "
+                                          "with its folder: %s" % (uid, d_qual[-1], pid, ", ".join(hits)))
+                    full = hits[0] if hits else None
+                if full is not None:
+                    break
+            if full is None:
+                every = sorted({k for _, _, d_defs in chain for k in d_defs})
+                raise Unsupported("Property Node %s: %s has no property %r - its properties: %s. An "
+                                  "accessor becomes one with lvai_create_accessors "
+                                  "makeAvailableThroughPropertyNodes" % (uid, qual[-1], pid,
+                                                                         ", ".join(every) or "none"))
+            d_ref = class_ref_type(":".join(d_qual))
+            links = self.class_props.setdefault(d_owner, {"qual": d_qual, "lib_ref": self.resolver.ref(
+                d_owner, getattr(self, "caller_file", None)), "items": []})
+            hit = None
+            for vi in d_defs[full]["vis"]:
+                v = self._accessor_value(vi, read)
+                if v is not None:
+                    hit = (vi, v)
+                    break
+            if hit is None:
+                raise Unsupported("Property Node %s: %s's property %r has no %s accessor"
+                                  % (uid, d_qual[-1], full, "read" if read else "write"))
+            vi, (vlab, vt) = hit
+            item_t = copy.deepcopy(vt)
+            set_label(item_t, full)
+            t = copy.deepcopy(proto)
+            lvheap.renumber(t, self.alloc)
+            d = t.find("dco")
+            d.find("typeDesc").text = "TypeID(%d)" % self.heap_tid(item_t)
+            d.find("objFlags").text = "1" if read else "0"
+            if not read and ins.get(pid):
+                if t.find("objFlags") is None:
+                    t.insert(0, ET.Element("objFlags"))
+                t.find("objFlags").text = "32768"
+            elif t.find("objFlags") is not None:
+                t.remove(t.find("objFlags"))
+            top = 18 + 16 * r
+            d.find("termBounds").text = lvheap.fmt_bounds((top, 0, top + 16, width))
+            pi = d.find("propList/SL__arrayElement")
+            omid = ET.Element("TypeDesc", {"Type": "VoidBlock", "Format": "inline"})
+            omid.append(copy.deepcopy(d_ref))
+            pi.find("omidTypeDesc").text = "TypeID(%d)" % self.heap_tid(omid)
+            val = copy.deepcopy(vt)
+            set_label(val, vlab)
+            pi.find("dataTypeDesc").text = "TypeID(%d)" % self.heap_tid(val)
+            pi.find("PropItemName").text = '"%s"' % lv_text(full)
+            pi.find("PropItemCode").text = "-1"
+            tl.append(t)
+            ET.SubElement(dl, "SL__arrayElement", {"uid": d.get("uid")})
+            links["items"].append((os.path.basename(vi), int(d.get("uid")), self._accessor_link(d_qual, vi)))
+            self.ends[(uid, pid if not read else out_key(el, pid))] = (t.get("uid"), diag)
+            for n, net in pairs(el.get("outputs")):
+                if n == pid and net:
+                    self.net_type[net] = lvheap.strip_label(vt)
+        dl.set("elements", str(len(dl)))
+        tl.set("elements", str(len(tl)))
+        # oMId: the CONSOLIDATED type index (hex) of the class refnum, unlabelled - 000D in NI's
+        # SFTP List Directory.vi and 0004 in a VI LabVIEW saved by hand (2026-11-24) both name
+        # it. Kept at the donor's 000D it named this VI's error cluster, and LabVIEW died on load,
+        # `Insane PropItem {size}` (docs/aixml-backends.md, "Class property nodes")
+        node.find("oMId").text = "%04X" % self.types.use(self.types.register(lvheap.strip_label(ref)))
+        # nodeName as LabVIEW 2026 writes it - the class's file name, "Motor.lvclass"
+        node.find("nodeName").text = '"%s"' % lv_text(qual[-1])[:31]
+        b = lvheap.parse_bounds(node.find("bounds").text)
+        node.find("bounds").text = lvheap.fmt_bounds((b[0], b[1], b[0] + 18 + 16 * len(fields_) + 1, b[3]))
+        for e in node.iter("typeDesc"):
+            e.attrib.pop("_t", None)
+        diag.nodes.append(node)
+        diag.z.insert(0, ET.Element("SL__arrayElement", {"uid": node.get("uid")}))
+        diag.placed.append((node, el))
+        self.report.append("Class property %s on %s <- %s" % (el.get("fields"), ":".join(qual), src))
 
     def _xctl_file(self, name):
         """The .xctl file a qualified XControl name names - beside the VI or in the installation."""
@@ -8009,6 +8280,8 @@ class Composer:
             classes.setdefault(owner, {"qual": c["qual"], "lib_ref": c["lib_ref"]})
         for owner, c in self.tcpi.items():
             classes.setdefault(owner, {"qual": c["qual"], "lib_ref": c["lib_ref"]})
+        for owner, c in self.class_props.items():
+            classes.setdefault(owner, {"qual": c["qual"], "lib_ref": c["lib_ref"]})
         if not classes:
             return
 
@@ -8063,6 +8336,16 @@ class Composer:
             rec.find("APILinkContent").text = self._lit(index.to_bytes(2, "big"))
             record(bdhp, "DyOM", link["owner"], nested, index, heap_tail, cache=link["offsets"],
                    call_parent=2 if link.get("call_parent") else 0)
+        for owner, c in self.class_props.items():
+            # PNOM per row of a CLASS PROPERTY NODE: the class, then the accessor VI's name
+            # nested as 02, length, name; its cache list the propItem. NI's SFTP List
+            # Directory.vi writes the content as an id (3, 4); 0 loads the same (A/B, 2026-11-24)
+            for vi_name, item_uid, key in c["items"]:
+                name = vi_name.encode("mac_roman")
+                vivi = self.prop_accessors[key].get("rec")
+                index = list(lvin).index(vivi) if vivi is not None else 0
+                record(bdhp, "PNOM", owner, self._lit(bytes([2, len(name)])) + vi_name, index, heap_tail,
+                       cache=[item_uid])
         for owner, c in self.class_consts.items():
             # FPPI names the class objects, DDPI the constants holding them - the same uids for
             # a scalar class constant, the element and the array for an array of classes
@@ -11762,6 +12045,8 @@ class Composer:
                     self.add_feedback(e)
                 elif e.tag == "Node" and nm in ("Property Node", "Invoke Node") and self._xctl_instance_of(e):
                     self.add_xctl_node(e, *self._xctl_instance_of(e))
+                elif e.tag == "Node" and nm == "Property Node" and self._class_prop_type(e) is not None:
+                    self.add_class_property_node(e)
                 elif e.tag == "Node" and nm == "Property Node":
                     self.add_property_node(e)
                 elif e.tag == "Node" and nm == "VI Server Reference":
