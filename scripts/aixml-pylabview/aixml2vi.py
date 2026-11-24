@@ -3128,9 +3128,20 @@ class Composer:
         known = (getattr(self, "class_names", {}).get(el.get("uid")) or [None])[0]
         if (cls_tree is None or not res or not res.get("owner")) and not known:
             # ...or the class a CLASS PROPERTY NODE it feeds names, type="{Auto.lvclass}" (#153)
+            # ...also through a shift register or a tunnel on the way: a class wire seeded on a
+            # loop's register into a node inside (measured 2026-11-24)
+            reach, todo = set(nets), list(nets)
+            while todo:
+                n = todo.pop()
+                for e in self._elements:
+                    if e.tag in ("Left", "Tunnel") and n in {x for _, x in pairs(e.get("inputs"))}:
+                        for _, o in pairs(e.get("outputs")):
+                            if o and o not in reach:
+                                reach.add(o)
+                                todo.append(o)
             known = next((self._class_prop_type(e) for e in self._elements
                           if e.tag == "Node" and unescape(e.get("_name") or "") == "Property Node"
-                          and self._class_prop_type(e) and dict(pairs(e.get("inputs"))).get("reference") in nets), None)
+                          and self._class_prop_type(e) and dict(pairs(e.get("inputs"))).get("reference") in reach), None)
         if (cls_tree is None or not res or not res.get("owner")) and known:
             # the class the READER named after </VI> (`<?lvmcp classes?>`): a constant wired into
             # a Bundle, a cluster or a To More Specific Class, as MGI's Init.vi wires its
@@ -7791,6 +7802,17 @@ class Composer:
         walk(root, [])
         return out
 
+    def _file_class_qual(self, cls_file):
+        """A .lvclass file's qualified name: its containing library (NI.Lib.ContainingLib), if any,
+        then the file name."""
+        try:
+            root = ET.parse(resolve.materialize(cls_file) or cls_file).getroot()
+        except (OSError, ET.ParseError):
+            root = None
+        lib = next(((p.text or "").strip() for p in (root.iter("Property") if root is not None else [])
+                    if p.get("Name") == "NI.Lib.ContainingLib" and (p.text or "").strip()), None)
+        return ([lib] if lib else []) + [os.path.basename(cls_file)]
+
     def _lib_item_path(self, f, url):
         """A library item's URL as a path: relative to the library FILE treated as a directory,
         or SYMBOLIC (`/<vilib>/net/SFTP/...`), starting at that installation folder."""
@@ -7859,6 +7881,8 @@ class Composer:
         if not owners:
             raise Unsupported("Property Node %s: no %s near the VI or in the installation" % (uid, qual[-1]))
         owner = owners[0]
+        # a class named WITHOUT its library gets it from the class file: every link names it
+        qual = self._file_class_qual(owner) if len(qual) == 1 else qual
         defs = self._class_prop_defs(owner)
         ref = class_ref_type(":".join(qual))
         got = self.instantiate("node/udclass/prop", own_uid=uid)
@@ -7906,36 +7930,47 @@ class Composer:
         for c in list(dl):
             dl.remove(c)
         proto = rows[0]
-        links = self.class_props.setdefault(owner, {"qual": qual, "lib_ref": self.resolver.ref(
-            owner, getattr(self, "caller_file", None)), "items": []})
+        # the class and its ANCESTORS, nearest first: a child's wire reaches a property its
+        # parent declares, bound to the class that declares it
+        chain = [(owner, qual, defs)]
+        for anc in self.resolver.class_parents(owner):
+            chain.append((anc, self._file_class_qual(anc), self._class_prop_defs(anc)))
         fields_ = [x for x in split_top(el.get("fields") or "") if x]
         if not fields_:
             raise Unsupported("Property Node %s: no fields" % uid)
         for r, field in enumerate(fields_):
             access, _, pid = unescape(field).partition("+")
             read = access == "read"
-            full = pid if pid in defs else None
+            full = None
+            for d_owner, d_qual, d_defs in chain:
+                if pid in d_defs:
+                    full = pid
+                else:
+                    hits = [k for k, d in d_defs.items() if d["short"] == pid]
+                    if len(hits) > 1:
+                        raise Unsupported("Property Node %s: %s names %r in several folders - write it "
+                                          "with its folder: %s" % (uid, d_qual[-1], pid, ", ".join(hits)))
+                    full = hits[0] if hits else None
+                if full is not None:
+                    break
             if full is None:
-                hits = [k for k, d in defs.items() if d["short"] == pid]
-                if len(hits) == 1:
-                    full = hits[0]
-                elif hits:
-                    raise Unsupported("Property Node %s: %s names %r in several folders - write it "
-                                      "with its folder: %s" % (uid, qual[-1], pid, ", ".join(hits)))
-            if full is None:
+                every = sorted({k for _, _, d_defs in chain for k in d_defs})
                 raise Unsupported("Property Node %s: %s has no property %r - its properties: %s. An "
                                   "accessor becomes one with lvai_create_accessors "
                                   "makeAvailableThroughPropertyNodes" % (uid, qual[-1], pid,
-                                                                         ", ".join(sorted(defs)) or "none"))
+                                                                         ", ".join(every) or "none"))
+            d_ref = class_ref_type(":".join(d_qual))
+            links = self.class_props.setdefault(d_owner, {"qual": d_qual, "lib_ref": self.resolver.ref(
+                d_owner, getattr(self, "caller_file", None)), "items": []})
             hit = None
-            for vi in defs[full]["vis"]:
+            for vi in d_defs[full]["vis"]:
                 v = self._accessor_value(vi, read)
                 if v is not None:
                     hit = (vi, v)
                     break
             if hit is None:
                 raise Unsupported("Property Node %s: %s's property %r has no %s accessor"
-                                  % (uid, qual[-1], full, "read" if read else "write"))
+                                  % (uid, d_qual[-1], full, "read" if read else "write"))
             vi, (vlab, vt) = hit
             item_t = copy.deepcopy(vt)
             set_label(item_t, full)
@@ -7954,7 +7989,7 @@ class Composer:
             d.find("termBounds").text = lvheap.fmt_bounds((top, 0, top + 16, width))
             pi = d.find("propList/SL__arrayElement")
             omid = ET.Element("TypeDesc", {"Type": "VoidBlock", "Format": "inline"})
-            omid.append(copy.deepcopy(ref))
+            omid.append(copy.deepcopy(d_ref))
             pi.find("omidTypeDesc").text = "TypeID(%d)" % self.heap_tid(omid)
             val = copy.deepcopy(vt)
             set_label(val, vlab)
@@ -7963,7 +7998,7 @@ class Composer:
             pi.find("PropItemCode").text = "-1"
             tl.append(t)
             ET.SubElement(dl, "SL__arrayElement", {"uid": d.get("uid")})
-            links["items"].append((os.path.basename(vi), int(d.get("uid")), self._accessor_link(qual, vi)))
+            links["items"].append((os.path.basename(vi), int(d.get("uid")), self._accessor_link(d_qual, vi)))
             self.ends[(uid, pid if not read else out_key(el, pid))] = (t.get("uid"), diag)
             for n, net in pairs(el.get("outputs")):
                 if n == pid and net:

@@ -1,4 +1,5 @@
 using LabVIEWMcp.Infra;
+using LabVIEWMcp.Tests.Support;
 using Xunit;
 
 namespace LabVIEWMcp.Tests.Infra;
@@ -96,6 +97,88 @@ public sealed class ComposerClassPropertyNodeTests
             Assert.Contains("UNSUPPORTED", got.run.StdErr);
             Assert.Contains("has no property 'Colour'", got.run.StdErr);
             Assert.Contains("Properties:Name", got.run.StdErr);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, true); } catch (IOException) { }
+        }
+    }
+
+    // Motor.lvclass (Speed, Name as Property Definitions at the class root, made by NI's accessor
+    // wizard) and FastMotor.lvclass, its child with no properties of its own - both LabVIEW's files
+    private static string FixtureCopy()
+    {
+        var src = Path.Combine(RepoTree.Root, "tests", "LabVIEWMCP.Tests", "Fixtures", "classprop");
+        var dir = Path.Combine(Path.GetTempPath(), "classprop-" + Guid.NewGuid().ToString("n")[..8]);
+        foreach (var f in Directory.EnumerateFiles(src, "*", SearchOption.AllDirectories))
+        {
+            var to = Path.Combine(dir, Path.GetRelativePath(src, f));
+            Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+            File.Copy(f, to);
+        }
+        return dir;
+    }
+
+    private static async Task<(PyLabview.Run run, string main)?> ComposeInAsync(string dir, string document)
+    {
+        var setup = AixmlComposer.Locate(out _);
+        if (setup is null) return null;
+        var xml = Path.Combine(dir, "probe.xml");
+        await File.WriteAllTextAsync(xml, document);
+        var bundle = Path.Combine(dir, "bundle");
+        var run = await PyLabview.RunAsync(setup.Bundle, Path.Combine(setup.ComposerDirectory, "aixml2vi.py"),
+            [xml, Path.Combine(dir, "Probe.vi"), "--keep", bundle], 300, default);
+        var main = Path.Combine(bundle, "Probe.xml");
+        return (run, File.Exists(main) ? await File.ReadAllTextAsync(main) : "");
+    }
+
+    [Fact]
+    public async Task A_child_wire_reaches_a_property_its_parent_declares()
+    {
+        var dir = FixtureCopy();
+        try
+        {
+            // measured 2026-11-24: written and read back through a Child wire in LabVIEW
+            if (await ComposeInAsync(dir, """
+                <VI _name="Probe.vi" description="x">
+                  <Constant _name="m" type="ref{UDClassInst}" value="" uid="4200" uid_parent="root" outputs="value:4200.value"/>
+                  <Node _name="Property Node" type="{FastMotor.lvclass}" fields="read+Speed" uid="4201" uid_parent="root" inputs="reference:4200.value" outputs="Speed:4201.v"/>
+                  <Indicator _name="v" type="double" value="0" uid="4202" uid_parent="root" inputs="value:4201.v"/>
+                </VI>
+                """) is not { } got) return;
+
+            Assert.True(got.run.ExitCode == 0, got.run.StdErr);
+            // the row is bound to the class that DECLARES the property, through its accessor
+            Assert.Matches(@"<PNOM [^>]*><LinkSaveQualName><String>Motor\.lvclass</String><String>[^<]*Read Speed\.vi</String>", got.main);
+        }
+        finally
+        {
+            try { Directory.Delete(dir, true); } catch (IOException) { }
+        }
+    }
+
+    [Fact]
+    public async Task A_class_constant_seeding_a_shift_register_takes_its_class_from_the_node_inside()
+    {
+        var dir = FixtureCopy();
+        try
+        {
+            if (await ComposeInAsync(dir, """
+                <VI _name="Probe.vi" description="x">
+                  <Constant _name="m" type="ref{UDClassInst}" value="" uid="4200" uid_parent="root" outputs="value:4200.value"/>
+                  <Constant _name="n" type="int32" value="3" uid="4201" uid_parent="root" outputs="value:4201.value"/>
+                  <Structure _name="For Loop" count="" maxin="4201.value" maxout="" uid="4210" uid_parent="root">
+                    <ShiftReg uid="4211" uid_parent="4210">
+                      <Left uid="4212" uid_parent="4211" inputs="value:4200.value" outputs="value:4212.value"/>
+                      <Right uid="4213" uid_parent="4211" inputs="value:4214.ref" outputs="value:4213.value"/>
+                    </ShiftReg>
+                    <Node _name="Property Node" type="{Motor.lvclass}" fields="read+Name" uid="4214" uid_parent="4210" inputs="reference:4212.value" outputs="reference out:4214.ref,Name:4214.v"/>
+                  </Structure>
+                </VI>
+                """) is not { } got) return;
+
+            Assert.True(got.run.ExitCode == 0, got.run.StdErr);
+            Assert.Contains("<FPPI", got.main);
         }
         finally
         {

@@ -2045,7 +2045,10 @@ Definition`s, and a Property Node on its wire reads and writes them (issue #153,
   `{UDClassInst}` and the class then comes from the wire into `reference`. A class constant needs
   no swap here: it takes its class from the node it feeds.
 - A field is the property's name, with or without its folder (`Flow`, `Properties\3AFlow`); an
-  unknown one is refused with the class's list of properties.
+  unknown one is refused with the class's list of properties. A parent class's property works on
+  a child's wire; a class in a library may be written with or without the library.
+- Every value type an accessor carries works: all numerics, string, path, bool, timestamp, and
+  enum, cluster and array typedefs (measured by writing and reading back each).
 - NI's gRPC converter refuses it (`Property Node with type=UDClassInst is not supported`, §9's
   error table); the default pylabview backend composes it. aixml-backends.md, "Class property nodes".
 

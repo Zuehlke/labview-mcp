@@ -3986,6 +3986,27 @@ name with the class's list. The value type is the accessor's own terminal.
 `after layout`; `Pump`'s `Properties:Flow` written 7.25 read 7.25; NI's `SFTP List Directory.vi`
 recomposed from the reader's export loads executable.
 
+**The type matrix, measured the same day** on a class `AllTypes` with 17 fields, all as LVOOP
+properties in the folder `Properties`: `string`, `path`, `bool`, `double`, `single`, `timestamp`,
+`int8`..`int64`, `uint8`..`uint64`, and typedefs of an enum (`uint16{Off,Run,Fault}`), a cluster
+(`{double.Min,double.Max,string.Unit}`) and an array (`array{double}`). One node writes all 17, a
+second reads all 17 back - every value came back exact, extremes included (I8 -128, I16 -32768,
+I32 -2147483648, I64 max, U32 4294967295, U64 18446744073709551615, -1e-300, empty string, path
+and array). Also measured:
+
+| case | result |
+|---|---|
+| `error in` set (code 5000) | no accessor runs, every output its default, the error passed through |
+| write and read in ONE node (`write+Dbl,read+Dbl,read+I32`) | rows run top to bottom - the read returns the value just written |
+| nodes inside a For Loop, the class on a shift register seeded by a class constant | N = 0, 5, 1000 counted exactly |
+| reader export of a composed VI recomposed (`{UDClassInst}`, the class from the wire) | runs as the original |
+| a CHILD class's wire reaching its parent's properties | written and read back; the row binds to the DECLARING class (PNOM, omid), the node to the wire's class |
+| a class inside a library, typed `{Lib153.lvlib\3ALibCls.lvclass}` or just `{LibCls.lvclass}` | both run; every link carries the library (read off `NI.Lib.ContainingLib`) |
+
+Two gaps those cases found, both fixed: a class constant reaching the node through a shift
+register or a tunnel did not find its class (refused by name), and a parent's property on a child
+wire was refused as "has no property".
+
 **What LabVIEW needs, measured by A/B on NI's `SFTP List Directory.vi`** (pylabview extract,
 one change, rebuild, `lvai_exec_state` on a fresh LabVIEW):
 
