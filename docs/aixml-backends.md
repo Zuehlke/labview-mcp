@@ -3964,3 +3964,50 @@ The three exports are the expected text of `ReaderIssue136Tests`.
 **The 144-VI comparison, rerun after all of this:** 135 exports identical to the old reader's
 except for the added `<?lvmcp linkcheck?>` line (77 of them carry one), and the same 9 real drift
 reports in the ATM build as before. No other difference.
+
+## Class property nodes (LVOOP properties): composed, NOT loadable yet (2026-11-24, issue #153)
+
+A Property Node on a CLASS wire reads or writes a `Property Definition` of the class through the
+accessor VI listed in it (`lvai_create_accessors makeAvailableThroughPropertyNodes`,
+lvclass-creation.md). NI's exporter writes one as `type="{UDClassInst}"` with
+`fields="read+Name,read+Long Listing"` and never names the class; the reader drops the folder
+(`Name` for `Properties:Name`).
+
+**What LabVIEW needs, measured by A/B on NI's `SFTP List Directory.vi`** (pylabview extract,
+one change, rebuild, `lvai_exec_state` on a fresh LabVIEW):
+
+| change to NI's file | result |
+|---|---|
+| none (round trip) | executable |
+| `PropItemCode` 14/12 -> `-1` | executable |
+| property name without its folder (`Name`) | executable |
+| both `PNOM` records (LIbd) removed | **eBad**, `VI has an error of type 200` |
+| `PNOM` content 3/4 -> 0, and the accessors' `VIVI` (LIvi) removed | executable |
+| ... and the `VICC` naming `File Attributes.ctl` removed too | executable |
+| ... plus a `VIPI` for the class in LIvi | executable |
+| ... with the composer's font table | executable |
+| ... with the composer's diagram root `objFlags` (18432) and `InStBit4 0` | executable |
+| ... the two `udClassPropItemPrivInfo` uids (216, 265) renumbered | executable |
+
+So one `PNOM` per row is the binding: the class's qualified name plus the accessor VI's name
+nested as `02 <length> <name>`, its cache list the propItem dco. NI writes its content as the
+accessor VIVI's LIvi index + 2 (3, 4).
+
+**The composer** (`add_class_property_node`, part `node/udclass/prop` cut off that VI by
+`experiments/aixml-without-grpc/cut_class_prop_part.py`) writes the node byte-for-byte as NI's
+apart from the codes, the PNOMs, and a VIVI per accessor with its pane type. **Every VI it
+produced KILLED LabVIEW on load**: `Insane PropItem(<uid>) in BDHP: {size } (0x1): owner=Property
+Node`, then `DAbort ... Fatal insanities`. Reproduced on the recomposed SFTP example and on a
+three-node VI (class constant -> property node -> indicator). Ruled out by A/B on the COMPOSED
+side: the class VIPI, short property names, the wires out of the rows, the node defined in
+`zPlaneList` as NI has it - and NI's own node TRANSPLANTED into a composed VI (uids and TypeIDs
+remapped) died the same way. So the cause is in what the composer writes AROUND the node, not in
+the node. Until it is found the composer REFUSES such a node by name; `LABVIEWMCP_CLASS_PROPNODE=1`
+lets it compose, for that search only. The next step: let LabVIEW save a minimal VI with such a
+node (scripting on NI's working file) and diff it against the composed one.
+
+**Found on the way, and fixed:** `lvheap.Bundle._inline` dropped a type REFERENCE's own children,
+so a callee's Function slot lost its `<ThrallSources>` while the Function kept `HasThrall="13"`.
+A composed caller of a class method then made LabVIEW warn *"How could we have read more bytes
+than the size of the thrall map?"* (TDFunction.cpp). The slot's content now travels as
+`ref.ThrallSources` and is written back onto the slot (`REF_CONTENT`); the warning is gone.

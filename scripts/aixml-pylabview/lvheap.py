@@ -307,6 +307,15 @@ class Bundle:
                 for k, v in child.attrib.items():
                     if k != "TypeID":
                         sub.set("ref." + k, v)
+                # the REFERENCE's own content - a connector-pane slot's <ThrallSources>, which a
+                # class method's `obj out` carries beside HasThrall on its Function - belongs to
+                # the slot, not to the type it names: kept as ref.<tag> and written back onto the
+                # slot by TypeTable._flat_form. Dropped, a composed caller's Function said
+                # HasThrall="13" with no sources, and LabVIEW warned "How could we have read more
+                # bytes than the size of the thrall map?" (a class property node, 2026-11-24)
+                for c in child:
+                    if "ref." + c.tag in REF_CONTENT:
+                        sub.set("ref." + c.tag, c.text or "")
                 out.append(sub)
             else:
                 # An INLINE child - a typedef's wrapped type, Nested="True" - has TypeID children
@@ -324,6 +333,9 @@ class Bundle:
 class RawTypeError(Exception):
     """A type the composer cannot write into a VI's type table; aixml2vi reports it as UNSUPPORTED."""
 
+
+# a type REFERENCE's own child elements, carried on the inlined type as ref.<tag> (Bundle._inline)
+REF_CONTENT = ("ref.ThrallSources",)
 
 # Map and Set, as lvheap.Bundle(collections=True) names them, -> the raw type code VCTP holds
 COLLECTION_CODES = {"Map": "116", "Set": "115"}
@@ -370,7 +382,9 @@ class TypeTable:
                 fid = self.register(child)
                 ref = ET.Element("TypeDesc", {"TypeID": str(fid)})
                 for k, v in child.attrib.items():
-                    if k.startswith("ref."):
+                    if k in REF_CONTENT:
+                        ET.SubElement(ref, k[4:]).text = v
+                    elif k.startswith("ref."):
                         ref.set(k[4:], v)
                 el.append(ref)
             elif child.tag == "TypeDesc" and child.get("Nested") == "True":
