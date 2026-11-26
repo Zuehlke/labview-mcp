@@ -273,8 +273,8 @@ specification, not a suggestion:
    comes up with LabVIEW itself, about 45 s after a cold start, no Nigel chat needed (measured
    2026-10-17); call it again, and only if it is still `Unavailable` after about two minutes ask
    the user to open Nigel. `DeadlineExceeded` means LabVIEW is **hung**: confirm with
-   `(Get-Process LabVIEW).Responding` and kill it. On `pylabview` NI's service is NOT needed -
-   `grpcService.reachable: false` is no blocker.
+   `(Get-Process LabVIEW).Responding` and kill it. On `pylabview` NI's service is NOT needed,
+   and `pylv_status` does not ask it (`grpcService.probed: false`).
 2. The `.vi` path comes from the task prompt. If it is missing or several VIs match, that is a
    `NEEDS CLARIFICATION`, not a guess — you would be overwriting the wrong file.
 3. `lvai_describe_vi` on the target → `owningProjectPath`, and the terminals you will have to
@@ -908,9 +908,9 @@ report, and if the VI does not load there while NI's service is up, compose it a
    `errorCode 0` means the composer CAN build the document; executability and a run stay the
    verdict, as always.
 4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
-   with an `UNSUPPORTED: ...` line. Quote it. If `pylv_status` shows `grpcService.reachable: true`, repeat that
-   one call with `backend: "grpc"` and say in your report that you did; otherwise stop and report
-   the line verbatim.
+   with an `UNSUPPORTED: ...` line. Quote it. Repeat that one call ONCE with
+   `backend: "grpc"` (it finds NI's service itself) and say in your report that you did; if it
+   answers that the service is not reachable, stop and report the `UNSUPPORTED` line verbatim.
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be
    running. `signalsJson` works here too since 2026-10-15 - ActiveX has no `Value (Signaling)`,
    so the server runs its timed helper COMPOSED, over ActiveX - and an event-driven VI is driven
