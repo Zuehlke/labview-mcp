@@ -39,8 +39,8 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
         default (`aixmlBackend`), `scriptsDirectory` (absolute path of the shipped helper scripts),
         `serverVersion`, the running LabVIEWs and whether ActiveX may attach (`labview`),
         `labviewHealth` (DWarn events in NI's crash log of the LabVIEW ActiveX reaches - read it
-        AFTER a failure, never as a gate), and `grpcService`: whether NI's service answers, as a
-        side fact (a composerRefused call may be repeated on grpc only while it reads reachable).
+        AFTER a failure, never as a gate). NI's gRPC service is NOT asked (`grpcService.probed`
+        false): finding it scans LabVIEW's TCP listeners, which on pylabview is never done.
         `readerPrewarm`: the background read of the examples into the export cache;
         `exportCache`: how many of those examples the cache covers NOW (`state` warm, partial, cold,
         or unknown while the example index is still being built).
@@ -48,7 +48,10 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
         tools\pylabview\provision.ps1 has run; a binary install carries it.
         """)]
     public Task<string> StatusAsync(CancellationToken ct = default) =>
-        Rpc.GuardAsync(async () =>
+        Rpc.GuardAsync(() => Task.FromResult(Status()));
+
+    private string Status()
+    {
         {
             var bundle = PyLabview.Locate();
             if (bundle is null)
@@ -103,10 +106,12 @@ internal sealed class PyLabviewTools(LvaiConnection connection)
             // The crash log of the LabVIEW ActiveX attaches to - lvai_status matches it by the gRPC
             // port, which this backend does not have.
             answer["labviewHealth"] = StatusTools.Health(target: StatusTools.NewestRunning());
-            // NI's service as a SIDE fact, with a short budget: its absence never fails this answer.
-            answer["grpcService"] = await StatusTools.ProbeServiceAsync(connection, TimeSpan.FromSeconds(3), ct);
+            // NI's service is NOT asked here: finding it means probing every TCP listener of
+            // LabVIEW.exe, and those belong to whatever else runs inside LabVIEW (issue #157).
+            answer["grpcService"] = StatusTools.ServiceNotProbed();
             return answer.ToJsonString(Indented);
-        });
+        }
+    }
 
     /// <summary>
     /// The running LabVIEWs from the process table, and whether the ActiveX route may attach now -

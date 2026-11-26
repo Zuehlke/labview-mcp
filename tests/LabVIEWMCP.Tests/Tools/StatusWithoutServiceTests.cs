@@ -51,7 +51,7 @@ public class StatusWithoutServiceTests
         // the gRPC branch's own fields are absent: no port was asked for
         Assert.False(Res.Has(result, "discoveredVia"));
         if (!Res.Bool(result, "ok")) return;   // no bundle provisioned in this checkout
-        Assert.False(Res.Obj(result)["grpcService"]!["reachable"]!.GetValue<bool>());
+        Assert.False(Res.Obj(result)["grpcService"]!["probed"]!.GetValue<bool>());
     }
 
     [Fact]
@@ -77,34 +77,6 @@ public class StatusWithoutServiceTests
     }
 
     [Fact]
-    public async Task The_service_probe_reports_a_live_service_as_reachable()
-    {
-        await using var server = await LvaiTestServer.StartAsync();
-        server.Service.Language = "German";
-
-        var probe = await StatusTools.ProbeServiceAsync(server.Connection, TimeSpan.FromSeconds(5), default);
-
-        Assert.True(probe["reachable"]!.GetValue<bool>());
-        Assert.Equal(server.Port, probe["port"]!.GetValue<int>());
-        Assert.Equal("German", probe["applicationLanguage"]!.GetValue<string>());
-    }
-
-    [Fact]
-    public async Task The_service_probe_reports_a_dead_service_as_data_with_the_short_reason()
-    {
-        await using var connection = DeadConnection();
-
-        var probe = await StatusTools.ProbeServiceAsync(connection, TimeSpan.FromSeconds(5), default);
-
-        Assert.False(probe["reachable"]!.GetValue<bool>());
-        var why = probe["why"]!.GetValue<string>();
-        Assert.Contains("Could not find a port serving lvai.LVAI", why);
-        // the long advisory text of the discovery failure is cut, the per-port line kept
-        Assert.DoesNotContain("Measured 2026-08-26", why);
-        Assert.Contains("explicit override", why);
-    }
-
-    [Fact]
     public async Task Pylv_status_carries_the_start_up_fields_on_either_branch()
     {
         await using var server = await LvaiTestServer.StartAsync();
@@ -115,9 +87,36 @@ public class StatusWithoutServiceTests
         Assert.False(string.IsNullOrEmpty(Res.Str(result, "serverVersion")));
         if (!Res.Bool(result, "ok")) return;   // no bundle provisioned in this checkout
 
-        var service = Res.Obj(result)["grpcService"]!;
-        Assert.True(service["reachable"]!.GetValue<bool>());
         Assert.True(Res.Has(result, "labviewHealth"));
         Assert.True(Res.Obj(result)["labview"]!["activeXCanAttach"] is not null);
+    }
+
+    /// <summary>
+    /// Issue #157: pylv_status - the first call of every task - sent a gRPC probe to every TCP
+    /// listener of LabVIEW.exe, among them NI GOOP Development Suite's UML Modeller listener. On
+    /// pylabview it asks NI's service nothing, even with a live one waiting.
+    /// </summary>
+    [Fact]
+    public async Task Pylv_status_does_not_ask_nis_service_even_when_one_is_live()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+
+        var result = await new PyLabviewTools(server.Connection).StatusAsync();
+
+        Assert.False(server.Connection.IsConnected);
+        if (!Res.Bool(result, "ok")) return;   // no bundle provisioned in this checkout
+        var service = Res.Obj(result)["grpcService"]!;
+        Assert.False(service["probed"]!.GetValue<bool>());
+        Assert.Null(service["reachable"]);
+    }
+
+    [Fact]
+    public async Task Lvai_status_on_pylabview_does_not_ask_nis_service_either()
+    {
+        await using var server = await LvaiTestServer.StartAsync();
+
+        await new StatusTools(server.Connection).StatusAsync(backend: "pylabview");
+
+        Assert.False(server.Connection.IsConnected);
     }
 }

@@ -364,14 +364,27 @@ Now:
   running LabVIEWs from the process table and whether ActiveX may attach (`LabViewCom.NotReady`,
   no COM call, so the tool still needs no LabVIEW) - and `labviewHealth`, matched to the NEWEST
   running LabVIEW (the one ActiveX attaches to) where `lvai_status` matches it by the gRPC port's
-  owner. `grpcService` probes NI's service with a 3 s budget as a SIDE fact: `reachable`, or
-  `why` with the per-port status codes of the discovery failure (Unavailable = not started yet,
-  DeadlineExceeded = busy or hung). It never fails the answer.
+  owner. `grpcService` is `probed: false`: NI's service is NOT asked (see below).
 - `lvai_status` with the service down answers `ok: false` with its old `errorKind` and the same
   service-independent fields and `labviewHealth`.
 - The agents start with `pylv_status`, then `lvai_ensure_labview` (ready = answers over ActiveX on
   pylabview); `lvai_status` only where the backend in force is `grpc`. A `composerRefused` call is
-  repeated on `grpc` only while `grpcService.reachable` is true.
+  repeated once with `backend: "grpc"`; that call finds NI's service itself or answers why not.
+
+**On pylabview no TCP port is searched (2026-11-26, issue #157).** Until then `pylv_status` asked
+NI's service as a side fact (`grpcService.reachable`, 3 s budget). Finding the service's ephemeral
+port means sending a gRPC call to EVERY TCP listener LabVIEW.exe owns, in ascending port order
+(`PortDiscovery`), and those listeners are not all NI's: NI GOOP Development Suite keeps an HTTP
+listener inside LabVIEW on port 58693 (`resource\Framework\Providers\Open_GDS\SubVIs\
+GOOP_TcpIpListener.vi`) that opens its UML Modeller on a JSON request (`action` `OpenUMLEditor` or
+`OpenFile`). A user reported the Modeller popping up while the MCP worked, in LabVIEW 2026 with
+a GDS error dialog (Error 1 in `Write to Text File` in `UMLEditor Main.vi`). Measured here: with
+NI's service on 60074, 58693 was probed before it on every `pylv_status`. An HTTP/2 preface sent to
+58693 by hand was dropped by GOOP and opened nothing, and a DQMH build with a window and
+connection watcher running showed no Modeller - so the probe is not shown to be the trigger. It
+was removed anyway, because on pylabview it buys nothing. The gRPC tools still search when a call
+asks for `backend: "grpc"`; pin the port with `--port`/`LABVIEW_GRPC_PORT` to skip the search.
+ActiveX opens no TCP connection at all: it is COM to LabVIEW's registered server.
 
 Before either backend: `lvai_check_aixml`'s pre-checks, and the refusal of a property name with its
 category dropped (`propertyNameWouldCrashLabview`) — that document is wrong whichever converter

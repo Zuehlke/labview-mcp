@@ -21,7 +21,7 @@ internal sealed class StatusTools(LvaiConnection connection)
     [Description("""
         Status. On the pylabview backend (the default) this IS pylv_status - the same answer, with
         `redirectedFrom: lvai_status` - so a call made out of habit never reads NI's service as the
-        state of the station; `grpcService` in it says whether that service is up anyway. Only on
+        state of the station, and NI's service is not asked (no port is searched). Only on
         grpc (`backend: "grpc"`, or the server set to it) it reports NI's AI gRPC service inside
         LabVIEW: the discovered port (re-discovered on every LabVIEW restart), how it was found,
         the reflected service list. With the service down that answers `ok: false` and STILL
@@ -48,7 +48,7 @@ internal sealed class StatusTools(LvaiConnection connection)
             if (JsonNode.Parse(redirected) is not JsonObject o) return redirected;
             o["redirectedFrom"] = "lvai_status";
             o["redirectNote"] = "The pylabview backend is in force, so lvai_status answered as pylv_status. " +
-                                "NI's service is a side fact here (`grpcService`); backend: \"grpc\" asks it directly.";
+                                "NI's service was not asked; backend: \"grpc\" asks it directly.";
             return AixmlTools.WithBackend(o.ToJsonString(Indented), choice);
         }
         return AixmlTools.WithBackend(await GrpcStatusAsync(ct), choice);
@@ -147,50 +147,22 @@ internal sealed class StatusTools(LvaiConnection connection)
     }
 
     /// <summary>
-    /// Whether NI's service answers, within <paramref name="budget"/> - for pylv_status, where the
-    /// service is a SIDE fact (may a composerRefused call be repeated on grpc?) and its absence
-    /// must never fail the answer. Only the first line and the per-port lines of a discovery
-    /// failure are kept: the status codes there are what tells "not started yet" (Unavailable)
-    /// from "busy or hung" (DeadlineExceeded).
+    /// pylv_status's `grpcService`: NI's service is deliberately NOT asked. Finding its ephemeral
+    /// port means sending a gRPC call to every TCP listener of LabVIEW.exe, and those listeners
+    /// belong to whatever runs inside LabVIEW - NI GOOP Development Suite keeps an HTTP listener
+    /// there (port 58693) that opens its UML Modeller. Issue #157 reported that window popping up
+    /// while the MCP worked; pylv_status, the first call of every task, probed that port every
+    /// time (2026-11-26). A probe was not shown to open the Modeller, but on pylabview the scan
+    /// buys nothing: a gRPC call is only made when a tool is asked for backend grpc.
     /// </summary>
-    internal static async Task<JsonObject> ProbeServiceAsync(LvaiConnection connection, TimeSpan budget,
-                                                             CancellationToken ct)
+    internal static JsonObject ServiceNotProbed() => new()
     {
-        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        limit.CancelAfter(budget);
-        try
-        {
-            var config = await connection.InvokeAsync((c, t) =>
-                c.GetApplicationConfigurationAsync(new GetApplicationConfigurationRequest(),
-                    deadline: DateTime.UtcNow.Add(budget), cancellationToken: t).ResponseAsync, limit.Token);
-            return new JsonObject
-            {
-                ["reachable"] = true,
-                ["port"] = connection.Port,
-                ["discoveredVia"] = connection.DiscoveredVia,
-                ["applicationLanguage"] = config.Language,
-            };
-        }
-        catch (Exception e) when (!ct.IsCancellationRequested)
-        {
-            var why = e switch
-            {
-                OperationCanceledException => $"no answer within {budget.TotalSeconds:0.#} s",
-                RpcException r => $"{r.StatusCode}: {r.Status.Detail}",
-                _ => string.Join(" ", e.Message.Split(Environment.NewLine)
-                        .Where((line, i) => i == 0 || line.StartsWith("  - ", StringComparison.Ordinal))
-                        .Select(line => line.Trim())),
-            };
-            return new JsonObject
-            {
-                ["reachable"] = false,
-                ["why"] = why,
-                ["note"] = "Not a blocker on the pylabview backend. Repeat a composerRefused call " +
-                           "with backend grpc only while this reads reachable: true. NI's service " +
-                           "comes up about 45 s after a cold LabVIEW start.",
-            };
-        }
-    }
+        ["probed"] = false,
+        ["note"] = "NI's gRPC service is not asked on the pylabview backend, and no port is " +
+                   "searched. lvai_status with backend \"grpc\" asks it; a composerRefused call " +
+                   "may be repeated with backend \"grpc\", which finds the service itself or " +
+                   "answers why not.",
+    };
 
     /// <summary>
     /// What NI's own crash log says about this LabVIEW instance, counted rather than parsed.
