@@ -1090,13 +1090,12 @@ internal sealed class AixmlTools(LvaiConnection connection)
                  ? JsonValue.Create("The VI was WRITTEN but is BROKEN (execState 0). The composer " +
                      "does not type-check wiring; `errors` holds the lines LabVIEW's Error List " +
                      "shows for it, each with its explanation" + (errors is null
-                         ? " - not read this time, so compare with the grpc backend, whose " +
-                           "validation names the node."
+                         ? " - not read this time: ask lvai_exec_state for them."
                          : "."))
                  : unopenable
                      ? JsonValue.Create("The VI was WRITTEN and LabVIEW could NOT OPEN it - " +
                          openError + ". A file LabVIEW refuses to load is broken, not unmeasured; " +
-                         "convert the same document with backend grpc to compare.")
+                         "report it with LabVIEW's message.")
                      : null),
              ("openVINote", openVI
                  ? JsonValue.Create("Not opened: the pylabview backend writes the file and has no " +

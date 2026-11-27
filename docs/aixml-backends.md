@@ -369,7 +369,10 @@ Now:
   service-independent fields and `labviewHealth`.
 - The agents start with `pylv_status`, then `lvai_ensure_labview` (ready = answers over ActiveX on
   pylabview); `lvai_status` only where the backend in force is `grpc`. A `composerRefused` call is
-  repeated once with `backend: "grpc"`; that call finds NI's service itself or answers why not.
+  reported with its `UNSUPPORTED` line and the step stops there. Until 2026-11-27 the agents
+  repeated it once with `backend: "grpc"`, and the tools' own messages advised generating the
+  same document on grpc; both were taken out on the user's decision that NI's service is used
+  only when the user asks for it.
 
 **On pylabview no TCP port is searched (2026-11-26, issue #157).** Until then `pylv_status` asked
 NI's service as a side fact (`grpcService.reachable`, 3 s budget). Finding the service's ephemeral

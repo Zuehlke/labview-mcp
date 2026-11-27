@@ -305,7 +305,7 @@ internal static class AixmlComposer
                         $"running it in LabVIEW {parts} and against LabVIEW's own {lv} save, not yet " +
                         $"in LabVIEW {lv} itself. NI's " +
                         $"gRPC service does not exist in LabVIEW {lv}, so backend grpc is no way out."
-                      : " and compose it with backend grpc on that station.")
+                      : ".")
             : null;
 
     /// <summary>VI -> AIXML, written to <paramref name="aixmlPath"/>.</summary>

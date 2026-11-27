@@ -59,6 +59,8 @@ internal sealed class VITesterTools(LvaiConnection connection)
             var (vi, failure, generated) = await BackendRoute.HelperAsync(aixml, helperVi, regenerate: false,
                 async () =>
                 {
+                    // Runs ONLY when this call is already on grpc (BackendRoute.HelperAsync composes
+                    // the helper itself on pylabview), so the fixed backend below switches nothing.
                     var built = await new BulkTools(connection).GenerateViAsync(
                         aixml, helperVi, openVI: false, measurePane: false, panePattern: null,
                         timeoutSeconds, ct: ct, measureDiagram: false, backend: AixmlBackend.Grpc);

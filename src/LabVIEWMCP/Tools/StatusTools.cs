@@ -159,9 +159,8 @@ internal sealed class StatusTools(LvaiConnection connection)
     {
         ["probed"] = false,
         ["note"] = "NI's gRPC service is not asked on the pylabview backend, and no port is " +
-                   "searched. lvai_status with backend \"grpc\" asks it; a composerRefused call " +
-                   "may be repeated with backend \"grpc\", which finds the service itself or " +
-                   "answers why not.",
+                   "searched. lvai_status with backend \"grpc\" asks it - for a user who wants NI's " +
+                   "service; no call switches to it on its own.",
     };
 
     /// <summary>

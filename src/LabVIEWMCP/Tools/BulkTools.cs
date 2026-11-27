@@ -537,23 +537,22 @@ internal sealed class BulkTools(LvaiConnection connection)
                     ". The composer does not type-check wiring the way NI's validation does: " +
                     (Parsed(convert)?["errors"] is JsonArray
                         ? "`errors` in the convert step holds the Error List's lines with their " +
-                          "explanation - fix those, or generate the same document with backend grpc."
+                          "explanation - fix those."
                         : "the Error List's lines were NOT read (`errorsNotReadBecause` in the " +
-                          "convert step) - ask lvai_exec_state for them, or generate the same " +
-                          "document with backend grpc."));
+                          "convert step) - ask lvai_exec_state for them."));
             if (composed && Failed(convert))
                 return Outcome(false, "convert", steps, total, viPath, null,
                     (Field(convert, "errorKind") == "composerRefused"
                         ? "The pylabview composer REFUSED the document, by name, and wrote nothing: "
                         : "The pylabview composer failed and wrote nothing: ") +
                     Field(convert, "errorMessage") + ". The composer covers a subset of what NI's " +
-                    "converter does (docs/aixml-backends.md); generate the same document with " +
-                    "backend grpc to compare.");
+                    "converter does (docs/aixml-backends.md): report the refusal as it stands. NI's " +
+                    "service is used only when the user asks for it.");
             if (composed && Field(convert, "openError") is { Length: > 0 } openError)
                 return Outcome(false, "convert", steps, total, viPath, null,
                     "THE VI WAS WRITTEN by the pylabview composer and LabVIEW could NOT OPEN it - " +
                     openError + ". A file LabVIEW refuses to load is broken, not unmeasured; " +
-                    "generate the same document with backend grpc to compare.");
+                    "report it with LabVIEW's message.");
             if (Failed(convert) && unresolved is not null &&
                 RouteFailure(ErrorCode(convert), Field(convert, "errorMessage"),
                              unresolved, throwaway!.ValidatedAs) is { } routeNote)
