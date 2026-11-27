@@ -712,6 +712,16 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         if (owner is null)
             return new(null, [], null, [], [],
                 "notAClassMember: no .lvclass beside the VI or up to two folders up lists it.");
+        return await InterfaceOverridesOfClassAsync(owner, paneDispatch);
+    }
+
+    /// <summary>
+    /// The same check for a CLASS rather than for one of its VIs - what lvai_set_class_interfaces
+    /// answers after it linked an interface, when the overrides are exactly what is still owed.
+    /// </summary>
+    internal static async Task<InterfaceOverrideReport> InterfaceOverridesOfClassAsync(
+        LvClass.ClassInfo owner, Func<string, Task<bool?>> paneDispatch)
+    {
         if (owner.IsInterface)
             return new(owner.Path, [], null, [], [],
                 "ownerIsAnInterface: an interface implements nothing, so it overrides nothing.");
@@ -770,7 +780,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
 
             foreach (var member in iface.Members.Where(m => m.Type == "VI"))
             {
-                var memberPath = Path.GetFullPath(Path.Combine(iface.Path, member.Url));
+                var memberPath = LvClass.MemberPath(iface.Path, member.Url)
+                                 ?? Path.GetFullPath(Path.Combine(iface.Path, member.Url));
                 var dynamic = member.DynamicDispatch
                               ?? (File.Exists(memberPath) ? await paneDispatch(memberPath) : null);
                 if (dynamic is null)
@@ -837,8 +848,10 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         ["missingInterfaceOverridesNote"] = report.Missing is { Count: > 0 }
             ? "A MISSING OVERRIDE ALONE BROKE EVERY MEMBER OF ITS CLASS in this repository's " +
               "measurements (docs/cold-build-filterbench.md section 2), and the broken VI does " +
-              "not name it, because the fault is the class's. Write the override " +
-              "(lvai_add_class_method) and read execState again. A candidate, not a verdict: " +
+              "not name it, because the fault is the class's. Create the override with " +
+              "lvai_create_override (parentMethod \"<Interface>.lvclass:<Method>.vi\"; " +
+              "lvai_add_class_method when its body is authored in AIXML) and read execState " +
+              "again. A candidate, not a verdict: " +
               "NI's own Basic Interfaces example has Prying Tool implement Lever without " +
               "overriding Multiply Force.vi; `mustOverride` is the interface's own flag."
             : null,

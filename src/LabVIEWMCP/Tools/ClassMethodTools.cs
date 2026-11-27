@@ -134,7 +134,15 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             var topLevel = terminals
                 .Where(e => (string?)e.Attribute("type") == "path")
                 .Count(e => (string?)e.Attribute("_name") is { } name && !standIns.Contains(name));
+            // NOT THE CLASS TERMINALS THEMSELVES. A class terminal may be authored as a CLUSTER
+            // stand-in - the private data cluster, so the method can read a field
+            // (docs/lvclass-interfaces.md 3.0.2) - and the retype replaces that whole control by
+            // the class, path elements and all. Measured 2026-11-27 on `Store Value.vi`, stand-in
+            // `cluster{double.Last Value,path.Report File}` on both class terminals: 2 paths were
+            // expected, 0 were left, and a correct member answered `ok: false` at verify with its
+            // bad-wire clean-up, layout and icon skipped.
             var inside = terminals
+                .Where(e => (string?)e.Attribute("_name") is not { } name || !standIns.Contains(name))
                 .Select(e => (string?)e.Attribute("type") ?? "")
                 .Where(t => t != "path")
                 .Sum(PathsInTypeLiteral);
@@ -465,8 +473,7 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                                "afresh with no owner and the first-run path makes it a member. " +
                                "This state is what a `vi`-only re-run left behind before 2026-10-12.",
                     });
-            var toRewrite = methods.Where(m => !keptMembers.Contains(Path.GetFullPath(m.Vi))).ToList();
-            var alreadyListed = MembersAlreadyListed(classPath, toRewrite.Select(m => m.Vi));
+            var toRewriteAll = methods.Where(m => !keptMembers.Contains(Path.GetFullPath(m.Vi))).ToList();
             if (keptMembers.Count > 0)
                 prologue.Add(new JsonObject
                 {
@@ -478,7 +485,138 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
                               "it, so the membership is treated as existing instead.",
                 });
 
-            var needsConvert = methods.Any(m => m.Aixml is not null) || panePattern > 0;
+            // EVERYTHING THAT CAN REFUSE A METHOD FROM ITS AIXML ALONE RUNS BEFORE ANYTHING CHANGES.
+            // The pane check and the validation used to run inside the loop below - AFTER a re-run
+            // had dropped the member's class entry. Measured 2026-11-27 on a re-run over
+            // `Parent Actor.lvclass:RX Value.vi`: the entry went, the validation then refused the
+            // document, and the class stood without its override (an interface method - every
+            // member broken) until the next call. A method refused here keeps its entry.
+            //
+            // AND THE CLASS'S OWN FOLDER IS SEARCHED: on pylabview the validation composes into a
+            // scratch folder, where a Call to a member of this very class resolved to nothing
+            // ("no Parent Actor.lvclass in the installation or near the caller") - the refusal
+            // that run got, for a correct document.
+            var preflightSteps = new Dictionary<string, JsonArray>(StringComparer.OrdinalIgnoreCase);
+            var preflightFailed = new Dictionary<string, (string Step, JsonObject? Detail)>(
+                StringComparer.OrdinalIgnoreCase);
+            var searchBefore = AixmlComposer.ExtraSearch.Value;
+            AixmlComposer.ExtraSearch.Value =
+            [
+                .. searchBefore ?? [],
+                Path.GetDirectoryName(classPath)!,
+                .. projectPath is { Length: > 0 } && Path.GetDirectoryName(Path.GetFullPath(projectPath)) is { } home
+                    ? new[] { home } : [],
+            ];
+            try
+            {
+                foreach (var method in methods)
+                {
+                    if (method.Aixml is not { } aixml) continue;
+                    var viPath = Path.GetFullPath(method.Vi);
+                    var steps = new JsonArray();
+                    preflightSteps[viPath] = steps;
+
+                // THE PANE IS CHECKED BEFORE ANYTHING IS WRITTEN. A class member is re-paned
+                // onto `panePattern` further down, so a conIdx that does not exist there is a
+                // fault in the AUTHORING - and it used to surface only after validate and
+                // convert had both passed and the .vi was on disk, as the pylabview script's
+                // stderr `pattern 4815 has no slot [15]`. Measured 2026-09-14: the numbers came
+                // from `lvai_connector_pane` with no argument, which answers the STATION
+                // default (4833 here) and is the right answer for a plain VI and the wrong one
+                // for a class member. Nothing in the chain said which was being authored.
+                if (panePattern > 0 && AuthoredConIdx(aixml) is { Count: > 0 } authored)
+                {
+                    var offPane = ConnectorPane.ConIdxNotOnPattern(authored, panePattern);
+                    if (offPane.Count > 0)
+                    {
+                        steps.Add(new JsonObject
+                        {
+                            ["step"] = "panePreCheck",
+                            ["panePattern"] = panePattern,
+                            ["conIdxNotOnPattern"] = new JsonArray(
+                                [.. offPane.Select(i => (JsonNode)i!)]),
+                            ["why"] = $"A class member is put on pattern {panePattern}, NI's "
+                                + "accessor layout - not on the station default that "
+                                + "lvai_connector_pane answers with no argument. Ask it for "
+                                + $"`pattern: {panePattern}` when authoring a class method.",
+                            ["writeThese"] = PaneAdvice(panePattern),
+                        });
+                        preflightFailed[viPath] = ("panePreCheck", null);
+                        continue;
+                    }
+                }
+
+                // The validator is STRICTER than the generator for a class wire, which is why
+                // this call converts without it. But "stricter" is not "useless": it is also
+                // the only thing that sees an ORDINARY wiring mistake, and skipping it
+                // outright is what let three overrides ship as `ok: true` and then answer
+                // Error 1003 at run time - measured 2026-09-07, with every file-level check
+                // green. So it runs, and its verdict is CLASSIFIED rather than obeyed.
+                if (validateFirst)
+                {
+                    var check = await new AixmlTools(connection).ValidateAixmlAsync(
+                        aixml, timeoutSeconds, backend: choice.Name, ct: ct);
+                    var message = (Read(check) as JsonObject)?["errorMessage"]?
+                        .GetValue<string>() ?? "";
+                    // A COMPOSER refusal is never the class-wire strictness: the composer does
+                    // not type-check wiring at all, it refuses what it cannot BUILD. Measured
+                    // 2026-10-12: `Sensor.lvclass lists no member 'Read Value.vi'` mentions
+                    // `.lvclass`, was waved through as strictness, and the convert then
+                    // refused the same document a second time.
+                    var composerRefused = (Read(check) as JsonObject)?["errorKind"]?
+                        .GetValue<string>() == "composerRefused";
+                    var validatorFailed = Code(check) != 0 && !composerRefused
+                                          && IsValidatorInternalError(message);
+                    var classWire = Code(check) != 0 && !composerRefused && !validatorFailed
+                                    && IsClassTypeComplaint(message);
+                    steps.Add(new JsonObject
+                    {
+                        ["step"] = "preValidate",
+                        ["answer"] = Read(check),
+                        ["verdict"] = Code(check) == 0 ? "clean"
+                            : validatorFailed ? "validatorFailed"
+                            : classWire ? "classWireStrictness" : "realFault",
+                        ["note"] = Code(check) == 0
+                            ? "The AIXML validates on its own, so nothing here is being waved through."
+                            : validatorFailed
+                                ? "NI's validator failed INSIDE itself (an error from its own Get Errors " +
+                                  "call) and gave no verdict on the document. Converting anyway, so " +
+                                  "nothing has checked this method's wiring: run lvai_exec_state on it."
+                            : classWire
+                                ? "Refused for a CLASS-TYPED wire, which is the documented case " +
+                                  "where ValidateAIXML is stricter than ConvertAIXMLToVI. " +
+                                  "Converting anyway - that is what this tool is for."
+                                : "Refused for something that is NOT a class-typed wire, so it " +
+                                  "is an ordinary fault the converter will happily write into a " +
+                                  "broken diagram. Stopped here instead: the measured symptom is " +
+                                  "Error 1003 at run time with every file-level check green.",
+                    });
+
+                    if (Code(check) != 0 && !classWire && !validatorFailed)
+                    {
+                        preflightFailed[viPath] = ("preValidate", new JsonObject
+                        {
+                            ["errorMessage"] = message,
+                            ["hint"] = "Fix the AIXML and call again. If this really is the " +
+                                       "class-wire case and the classifier missed it, pass " +
+                                       "validateFirst: false - and say so, because the " +
+                                       "classifier then needs the message adding to it.",
+                            ["classEntry"] = "left as it was: nothing of this member was changed.",
+                        });
+                        continue;
+                    }
+                }
+                }
+            }
+            finally { AixmlComposer.ExtraSearch.Value = searchBefore; }
+            bool Refused(MethodRequest m) => preflightFailed.ContainsKey(Path.GetFullPath(m.Vi));
+
+            var toRewrite = toRewriteAll.Where(m => !Refused(m)).ToList();
+            var alreadyListed = MembersAlreadyListed(classPath, toRewrite.Select(m => m.Vi));
+            // nothing is converted, closed or opened when every method was refused above
+            var anyToBuild = methods.Any(m => !Refused(m));
+            var needsConvert = anyToBuild &&
+                               (methods.Any(m => m.Aixml is not null && !Refused(m)) || panePattern > 0);
 
             // A RUNNING counter, not three literals. `dropExistingMembers` and `openProject` were
             // both hardcoded `order: 2` - in the one place where the fix's correctness depends on
@@ -598,104 +736,18 @@ internal sealed class ClassMethodTools(LvaiConnection connection)
             foreach (var method in methods)
             {
                 var viPath = Path.GetFullPath(method.Vi);
-                var steps = new JsonArray();
+                var steps = preflightSteps.TryGetValue(viPath, out var early) ? early : new JsonArray();
                 perMethodSteps[viPath] = steps;
+                if (preflightFailed.TryGetValue(viPath, out var refused))
+                {
+                    results.Add(Failed(method, viPath, refused.Step, steps, refused.Detail));
+                    stoppedAt ??= refused.Step;
+                    continue;
+                }
                 Directory.CreateDirectory(Path.GetDirectoryName(viPath)!);
 
                 if (method.Aixml is { } aixml)
                 {
-                    // THE PANE IS CHECKED BEFORE ANYTHING IS WRITTEN. A class member is re-paned
-                    // onto `panePattern` further down, so a conIdx that does not exist there is a
-                    // fault in the AUTHORING - and it used to surface only after validate and
-                    // convert had both passed and the .vi was on disk, as the pylabview script's
-                    // stderr `pattern 4815 has no slot [15]`. Measured 2026-09-14: the numbers came
-                    // from `lvai_connector_pane` with no argument, which answers the STATION
-                    // default (4833 here) and is the right answer for a plain VI and the wrong one
-                    // for a class member. Nothing in the chain said which was being authored.
-                    if (panePattern > 0 && AuthoredConIdx(aixml) is { Count: > 0 } authored)
-                    {
-                        var offPane = ConnectorPane.ConIdxNotOnPattern(authored, panePattern);
-                        if (offPane.Count > 0)
-                        {
-                            steps.Add(new JsonObject
-                            {
-                                ["step"] = "panePreCheck",
-                                ["panePattern"] = panePattern,
-                                ["conIdxNotOnPattern"] = new JsonArray(
-                                    [.. offPane.Select(i => (JsonNode)i!)]),
-                                ["why"] = $"A class member is put on pattern {panePattern}, NI's "
-                                    + "accessor layout - not on the station default that "
-                                    + "lvai_connector_pane answers with no argument. Ask it for "
-                                    + $"`pattern: {panePattern}` when authoring a class method.",
-                                ["writeThese"] = PaneAdvice(panePattern),
-                            });
-                            results.Add(Failed(method, viPath, "panePreCheck", steps, null));
-                            stoppedAt ??= "panePreCheck";
-                            continue;
-                        }
-                    }
-
-                    // The validator is STRICTER than the generator for a class wire, which is why
-                    // this call converts without it. But "stricter" is not "useless": it is also
-                    // the only thing that sees an ORDINARY wiring mistake, and skipping it
-                    // outright is what let three overrides ship as `ok: true` and then answer
-                    // Error 1003 at run time - measured 2026-09-07, with every file-level check
-                    // green. So it runs, and its verdict is CLASSIFIED rather than obeyed.
-                    if (validateFirst)
-                    {
-                        var check = await new AixmlTools(connection).ValidateAixmlAsync(
-                            aixml, timeoutSeconds, backend: choice.Name, ct: ct);
-                        var message = (Read(check) as JsonObject)?["errorMessage"]?
-                            .GetValue<string>() ?? "";
-                        // A COMPOSER refusal is never the class-wire strictness: the composer does
-                        // not type-check wiring at all, it refuses what it cannot BUILD. Measured
-                        // 2026-10-12: `Sensor.lvclass lists no member 'Read Value.vi'` mentions
-                        // `.lvclass`, was waved through as strictness, and the convert then
-                        // refused the same document a second time.
-                        var composerRefused = (Read(check) as JsonObject)?["errorKind"]?
-                            .GetValue<string>() == "composerRefused";
-                        var validatorFailed = Code(check) != 0 && !composerRefused
-                                              && IsValidatorInternalError(message);
-                        var classWire = Code(check) != 0 && !composerRefused && !validatorFailed
-                                        && IsClassTypeComplaint(message);
-                        steps.Add(new JsonObject
-                        {
-                            ["step"] = "preValidate",
-                            ["answer"] = Read(check),
-                            ["verdict"] = Code(check) == 0 ? "clean"
-                                : validatorFailed ? "validatorFailed"
-                                : classWire ? "classWireStrictness" : "realFault",
-                            ["note"] = Code(check) == 0
-                                ? "The AIXML validates on its own, so nothing here is being waved through."
-                                : validatorFailed
-                                    ? "NI's validator failed INSIDE itself (an error from its own Get Errors " +
-                                      "call) and gave no verdict on the document. Converting anyway, so " +
-                                      "nothing has checked this method's wiring: run lvai_exec_state on it."
-                                : classWire
-                                    ? "Refused for a CLASS-TYPED wire, which is the documented case " +
-                                      "where ValidateAIXML is stricter than ConvertAIXMLToVI. " +
-                                      "Converting anyway - that is what this tool is for."
-                                    : "Refused for something that is NOT a class-typed wire, so it " +
-                                      "is an ordinary fault the converter will happily write into a " +
-                                      "broken diagram. Stopped here instead: the measured symptom is " +
-                                      "Error 1003 at run time with every file-level check green.",
-                        });
-
-                        if (Code(check) != 0 && !classWire && !validatorFailed)
-                        {
-                            results.Add(Failed(method, viPath, "preValidate", steps, new JsonObject
-                            {
-                                ["errorMessage"] = message,
-                                ["hint"] = "Fix the AIXML and call again. If this really is the " +
-                                           "class-wire case and the classifier missed it, pass " +
-                                           "validateFirst: false - and say so, because the " +
-                                           "classifier then needs the message adding to it.",
-                            }));
-                            stoppedAt ??= "preValidate";
-                            continue;
-                        }
-                    }
-
                     var convert = await new AixmlTools(connection).ConvertAixmlToViAsync(
                         aixml, viPath, openVI: false, timeoutSeconds, checkExecutable: false,
                         backend: choice.Name, ct: ct);

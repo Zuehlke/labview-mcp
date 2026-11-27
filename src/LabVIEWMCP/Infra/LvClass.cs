@@ -780,24 +780,61 @@ internal static class LvClass
             return System.IO.Path.GetFullPath(
                 System.IO.Path.Combine(lvclassPath, url.Replace('/', '\\')));
 
-        var folder = match.Groups[1].Value.ToLowerInvariant() switch
-        {
-            "vilib" => "vi.lib",
-            "userlib" => "user.lib",
-            "instrlib" => "instr.lib",
-            "resource" => "resource",
-            "lvaddons" => "LVAddons",
-            _ => null,
-        };
+        var folder = AliasFolder(match.Groups[1].Value);
         if (folder is null) return null;
 
-        var install = Grpc.LabViewLocator.Select(Grpc.LabViewLocator.Discover());
-        var root = install is null ? null : System.IO.Path.GetDirectoryName(install.ExePath);
+        // THE CLASS'S OWN INSTALLATION FIRST: a class under <root>\vi.lib names its members and
+        // parents as /<vilib>/..., and those are in the SAME root - not in whichever LabVIEW the
+        // locator would pick on a station with two.
+        var root = InstallRootOf(lvclassPath);
+        if (root is null)
+        {
+            var install = Grpc.LabViewLocator.Select(Grpc.LabViewLocator.Discover());
+            root = install is null ? null : System.IO.Path.GetDirectoryName(install.ExePath);
+        }
         return root is null
             ? null
             : System.IO.Path.GetFullPath(System.IO.Path.Combine(
                   root, folder, match.Groups[2].Value.Replace('/', '\\')));
     }
+
+    private static readonly string[] InstallFolders = ["vi.lib", "user.lib", "instr.lib", "resource", "LVAddons"];
+
+    private static string? AliasFolder(string alias) => alias.ToLowerInvariant() switch
+    {
+        "vilib" => "vi.lib",
+        "userlib" => "user.lib",
+        "instrlib" => "instr.lib",
+        "resource" => "resource",
+        "lvaddons" => "LVAddons",
+        _ => null,
+    };
+
+    /// <summary>
+    /// The LabVIEW folder a file under its <c>vi.lib</c>, <c>user.lib</c>, <c>instr.lib</c>,
+    /// <c>resource</c> or <c>LVAddons</c> belongs to; null for a file anywhere else.
+    /// </summary>
+    internal static string? InstallRootOf(string path)
+    {
+        var full = System.IO.Path.GetFullPath(path);
+        foreach (var folder in InstallFolders)
+        {
+            var at = full.IndexOf($"\\{folder}\\", StringComparison.OrdinalIgnoreCase);
+            if (at > 0) return full[..at];
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The file a MEMBER's <c>URL</c> names. A class of your own writes it relative to the
+    /// <c>.lvclass</c> treated as a directory (<c>../Do.vi</c>); a class in the installation writes
+    /// it SYMBOLICALLY (<c>/&lt;vilib&gt;/ActorFramework/Message/Do.vi</c>). Reading the second form
+    /// as a relative path made every vi.lib class look as if it owned no member (measured
+    /// 2026-11-27: lvai_create_override refused Message.lvclass:Do.vi as `parentMethodNotAMember`).
+    /// Null for an alias this reader does not map.
+    /// </summary>
+    internal static string? MemberPath(string lvclassPath, string url) =>
+        url.Length == 0 ? null : Resolve(System.IO.Path.GetFullPath(lvclassPath), url);
 
     /// <summary>
     /// The ancestor chain, checking both representations in the order the census established:

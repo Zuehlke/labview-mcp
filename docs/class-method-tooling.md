@@ -1931,3 +1931,43 @@ Two findings on the way, neither in the In Place Element itself:
   `badWireCleanup`) and `stepsRun`, the step names; a failed method, or one whose cleanup lost a
   connection, keeps every step. `verbose: true` returns everything, as before.
   `ClassMethodCompactAnswerTests` pins it.
+
+## 4u. Two faults a real build found in `lvai_add_class_method` - 2026-11-27
+
+Both showed while an agent built the Actor Framework interface example
+(`labview-actor-framework.md` section 20) and both are fixed.
+
+### A class terminal authored as a CLUSTER stand-in failed verify
+
+`Parent Actor.lvclass:Store Value.vi` reads and writes its own fields, so its class terminals were
+authored as the private data cluster, `cluster{double.Last Value,path.Report File}`
+(`lvclass-interfaces.md` 3.0.2). The tool answered `ok: false, failedAtStep: verify` for a correct
+member: both terminals class-typed on disk, the VI listed. Bad-wire clean-up, layout and icon were
+skipped.
+
+Cause: the count of `stdPath` objects expected to REMAIN included the path elements of every
+cluster control - the class terminals' stand-ins too. The retype replaces a class terminal whole,
+so 2 were expected and 0 were left. `ExpectedPathObjects` now leaves the class terminals out.
+Reproduced after the fix with the same AIXML as a new member of a copy of the class: `ok: true`,
+`pathStandInsLeft 0`, every step run.
+
+### A refused re-run had already dropped the member
+
+A re-run over `Parent Actor.lvclass:RX Value.vi` (an interface override) dropped the class entry
+in the project-closed window and THEN validated the AIXML. The validation refused it, and the
+class stood without its override - every member broken - until the next call.
+
+Two causes, two changes:
+
+- **The pane check and the validation now run before anything changes** - before the loaded-callers
+  check, the project close and the drop. A method refused there keeps its entry and its file
+  (`classEntry: left as it was`), and when every method is refused no project is closed at all.
+- **The refusal itself was wrong.** On pylabview the validation composes into a scratch folder, and
+  a `Call` to a member of the method's own class resolved to nothing: "no Parent Actor.lvclass in
+  the installation or near the caller". The class's folder and the project's folder are now given
+  to the composer as search folders for that step. The agent had gone round it with
+  `validateFirst: false`; the same re-run with validation ON now answers `ok: true` with
+  `preValidate` among its steps, and the application still returned 42.5 afterwards.
+
+Not changed: a re-run over a member that a LOADED VI calls is still refused
+(`memberHasLoadedCallers`), which is why the first fault was reproduced on a copy.

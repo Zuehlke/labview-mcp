@@ -1463,3 +1463,57 @@ convention system is not adopted here.
   *reported*
 - Two VIs appending to one log file at the same moment overwrite each other's line; give each
   writer its own file in a run that proves an order. *reported*
+
+## 20. Interface messages - a message for a method of an INTERFACE, 2026-11-27
+
+**`lvai_create_message_class` takes an interface as `actorClassPath`.** A nested actor that reports
+to its caller through an interface (NI's recommendation since LabVIEW 2020, section 19g) sends a
+message whose `Do.vi` casts the receiving actor to the interface and calls the interface method;
+the nested actor then depends on the interface and the message, never on the caller's class.
+
+**Until that day the tool refused it**, `notAnActor`: "does not descend from Actor
+Framework.lvlib:Actor.lvclass, so a message for it would have nothing to deliver to". A problem
+report (2026-11-26, LabVIEW 2026 26.3.1f1, server 3.2.0) built its interface message through a
+detour instead - a DONOR actor class with a static method mirroring the interface method's pane,
+`lvai_create_message_class` for the donor, `lvai_swap_subvis` repointing the call and the class
+constant in `Do.vi`, then deleting the donor - and noted that the check was the only obstacle.
+
+Re-measured here, same LabVIEW, pylabview backend: the unchanged helper
+`scripts/lvai_create_message_class.xml` run with `actor class path` = an interface
+(`Probe Caller Interface.lvclass`) and `actor method path` = its dynamic `RX Value.vi` (payload one
+DBL):
+
+| | |
+|---|---|
+| stages | all nine `error out` 0, `payload control count` 1 |
+| saved class | members `Send RX Value.vi`, `Do.vi`; parent `Actor Framework.lvlib:Message.lvclass` |
+| `Do.vi` export | a class constant labelled `Actor in` naming `Probe Caller Interface.lvclass` on both `To More Specific Class` nodes; the call `Probe Caller Interface.lvclass:RX Value.vi`; `Casting Utility For Actors.vim` back to `Actor` |
+| read cold, project closed | `Do.vi` and `Send RX Value.vi` `execState 1` |
+
+That is the diagram the report reached by donor and swap, with no donor: NI's `Message
+Template.lvclass` already has the shape, and `Find and Replace GObj.vi` puts whatever class it is
+handed onto the constant. So the change is the check alone: an interface passes it, and its
+installation is the LabVIEW in use (`LabViewRoots`) because there is no `Actor.lvclass` above an
+interface to walk to. A class that is neither is still `notAnActor`. The answer says
+`targetIsInterface`. The round trip itself - a parent actor implementing the interface receives the
+value a nested actor sends to its caller enqueuer - is the report's measurement (42.5 received,
+with the same `Do.vi`), not repeated here.
+
+**One run saved a broken class with every stage at 0, and `ok` now depends on the member list.**
+The first of three Message Maker runs that day - from a freshly generated copy of the helper, the
+first Message Maker call of the LabVIEW session - saved a class that still listed the template's
+`Send Template.vi` beside a `Send RX Value.vi` on disk; `Do.vi` and the Send VI were eBad
+("Owning library has blocked execution"; "This VI claims to be part of a library, but that library
+does not claim to own this VI"). The next two runs, one on a donor actor through the tool and one
+on the interface, were sound. The cause is OPEN. The tool's `verify` read the member list and did
+not judge it; it now answers `ok: false` with `verify.membersMissing` when `Do.vi` or
+`Send <Method>.vi` is not listed.
+
+**The receiving class** gets the interface at creation (`lvai_create_class parentInterfaces`) or
+afterwards (`lvai_set_class_interfaces`, `lvclass-interfaces.md` section 2.2a), and its override of
+the interface method from `lvai_create_override` with `parentMethod`
+`"<Interface>.lvclass:<Method>.vi"` (`af-override-tools.md` section 2).
+
+**Still open from the report:** `lvai_create_message_class` does not list the new class in the
+`.lvproj` (the project is open while it runs, so the file cannot be written; an entry needs the
+project closed or a VI Server route).

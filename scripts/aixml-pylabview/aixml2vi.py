@@ -3102,6 +3102,42 @@ class Composer:
                 return t, res
         return None, res
 
+    # the casts a class constant TYPES: (node, the input the constant feeds, the output carrying its class)
+    CLASS_CASTS = {"To More Specific Class": ("target class", "specific class reference"),
+                   "Preserve Run-Time Class": ("target object", "object out")}
+
+    def _class_const_sinks(self, nets):
+        """(element, input terminal) of everything a class constant's wire reaches as ITS class:
+        through a loop tunnel or shift register, into a Case/Event frame (the structure's tunnel
+        and the frame tunnels of the same `_id`), and through a cast it is the target of."""
+        reach, todo, sinks = set(nets), list(nets), []
+        elements = self._elements
+        while todo:
+            n = todo.pop()
+            for e in elements:
+                ins = pairs(e.get("inputs"))
+                if not any(net == n for _, net in ins):
+                    continue
+                grown = []
+                if e.tag in ("Left", "Tunnel"):
+                    grown = [o for _, o in pairs(e.get("outputs")) if o]
+                    if e.tag == "Tunnel" and not grown and e.get("_id"):
+                        frames = {f.get("uid") for f in elements if f.get("uid_parent") == e.get("uid_parent")}
+                        for f in elements:
+                            if f.tag == "Tunnel" and f.get("_id") == e.get("_id") and f.get("uid_parent") in frames:
+                                grown += [o for _, o in pairs(f.get("outputs")) if o]
+                elif e.tag == "Node" and unescape(e.get("_name") or "") in self.CLASS_CASTS:
+                    target, out = self.CLASS_CASTS[unescape(e.get("_name") or "")]
+                    if any(t == target and net == n for t, net in ins):
+                        grown = [o for t, o in pairs(e.get("outputs")) if t == out and o]
+                else:
+                    sinks += [(e, t) for t, net in ins if net == n]
+                for o in grown:
+                    if o not in reach:
+                        reach.add(o)
+                        todo.append(o)
+        return sinks
+
     def add_class_const(self, el):
         """A CLASS constant. NI's export writes one as type ref{UDClassInst} and never names the
         class - so, as NI's converter does, the class is the one its wire FEEDS: the class
@@ -3116,8 +3152,23 @@ class Composer:
         name = unescape(el.get("_name") or "")
         nets = {n for _, n in pairs(el.get("outputs")) if n}
         cls_tree, res = None, None
+        # AN AUTHOR NAMES THE CLASS with class="Lib.lvlib:Probe.lvclass" (or the .lvclass path):
+        # the one way to say it when nothing downstream does - the TARGET of a To More Specific
+        # Class whose output is left unwired, an element of a Bundle (2026-11-27). It wins.
+        explicit = unescape(el.get("class") or "").strip()
+        explicit_owner = None
+        if explicit and (os.path.isabs(explicit) or "\\" in explicit or "/" in explicit):
+            explicit_owner = os.path.abspath(explicit)
+            if not os.path.isfile(explicit_owner):
+                raise Unsupported("Constant %r %s: class=%r names no .lvclass file" % (name, el.get("uid"), explicit))
+            try:
+                with open(explicit_owner, encoding="utf-8", errors="replace") as fh:
+                    lib = re.search(r'<Property Name="NI\.Lib\.ContainingLib"[^>]*>([^<]+)<', fh.read())
+            except OSError:
+                lib = None
+            explicit = ":".join(([html.unescape(lib.group(1))] if lib else []) + [os.path.basename(explicit_owner)])
         for e in self._elements:
-            if e.tag != "Call" or cls_tree is not None:
+            if explicit or e.tag != "Call" or cls_tree is not None:
                 continue
             for tname, net in pairs(e.get("inputs")):
                 if net in nets:
@@ -3125,7 +3176,19 @@ class Composer:
                     if t is not None and t.get("RefType") == "UDClassInst":
                         cls_tree, res = t, r
                         break
-        known = (getattr(self, "class_names", {}).get(el.get("uid")) or [None])[0]
+        known = explicit or (getattr(self, "class_names", {}).get(el.get("uid")) or [None])[0]
+        if cls_tree is None and not known:
+            # ...or the class terminal of the Call BEHIND A CAST: the constant is the `target class`
+            # of a To More Specific Class (`target object` of a Preserve Run-Time Class) and the
+            # cast's output feeds the Call - the shape of an Actor Framework message's Do.vi, where
+            # the constant also passes a Case Structure's tunnel on the way (2026-11-27)
+            for e, tname in self._class_const_sinks(nets):
+                if e.tag != "Call":
+                    continue
+                t, r = self._callee_terminal(e, tname)
+                if t is not None and t.get("RefType") == "UDClassInst" and r and r.get("owner"):
+                    cls_tree, res = lvheap.strip_label(copy.deepcopy(t)), r
+                    break
         if (cls_tree is None or not res or not res.get("owner")) and not known:
             # ...or the class a CLASS PROPERTY NODE it feeds names, type="{Auto.lvclass}" (#153)
             # ...also through a shift register or a tunnel on the way: a class wire seeded on a
@@ -3149,13 +3212,19 @@ class Composer:
             parts = known.split(":")
             if self.resolver is None:
                 self.resolver = resolve.Resolver()
-            owners = self.resolver._owner_files(parts[-1], self.search_dirs)
+            owners = [explicit_owner] if explicit_owner else self.resolver._owner_files(parts[-1], self.search_dirs)
             if owners:
                 cls_tree = class_ref_type(known)
                 res = {"owner": owners[0], "lib_ref": self.resolver.ref(owners[0], getattr(self, "caller_file", None))}
+            elif explicit:
+                raise Unsupported("Constant %r %s: class=%r - no such .lvclass in the installation or near "
+                                  "the VI; write the .lvclass path instead" % (name, el.get("uid"), explicit))
         if cls_tree is None or not res or not res.get("owner"):
             raise Unsupported("Constant %r %s: a class constant (ref{UDClassInst}) must feed a "
-                              "class terminal of a Call, which names its class" % (name, el.get("uid")))
+                              "class terminal of a Call, which names its class - directly or through a "
+                              "To More Specific Class / Preserve Run-Time Class whose output feeds one. "
+                              "Otherwise name it on the constant: class=\"Lib.lvlib:Name.lvclass\" or "
+                              "class=\"<path to the .lvclass>\"" % (name, el.get("uid")))
         # A CLASS INSIDE A LIBRARY is its whole qualified name - `Heater.lvlib`, `Heater.lvclass` -
         # in the value (one Pascal string each, as below) AND in every link record. Read off
         # LabVIEW's own saves of two VIs holding a Heater.lvlib:Heater.lvclass constant
