@@ -317,7 +317,7 @@ internal static class FileDescriptions
             ["latched"] = Names(m.Groups[1].Value),
             ["switch"] = Names(m.Groups[2].Value),
             ["note"] = "Mechanical action of every boolean CONTROL, read from the file: `latched` resets " +
-                       "itself after it is read (drive it with lvai_running_vi latchedAsSwitch or a signal), " +
+                       "itself after it is read (lvai_running_vi press and signalsJson press it by key), " +
                        "`switch` keeps its value. Which of the three latch or switch variants is not decoded.",
         };
     }

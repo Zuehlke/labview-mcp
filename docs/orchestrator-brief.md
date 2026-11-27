@@ -102,8 +102,8 @@ still in memory, silently captures a bare-name call.
 ## Do not add work nobody asked for
 
 No negative-control test unless asked. Each round trip is a model turn: batch lookups, and
-drive an app one scenario per `lvai_running_vi` `steps` call (`latchedAsSwitch`; a control's
-state reads as `Name@Disabled`).
+drive an app one scenario per `lvai_running_vi` `steps` call (latched buttons are pressed by
+key; a control's state reads as `Name@Disabled`).
 
 A numeric's type or a same-shape primitive changes IN PLACE (`lvai_set_representation`,
 `lvai_replace_primitive`). `saveVersionCheck` names a file saved newer than the project's

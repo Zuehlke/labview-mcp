@@ -232,9 +232,12 @@ helper blocks the whole gRPC service. An event-driven VI is verified by DRIVING 
 (taken from the JorgenSteen fork, measured here 2026-11-27): `action: steps` runs start, set,
 press, signal, wait, read with `expect`, and stop in one call and checks the expectations itself
 (`expectations`, `firstFailure`); a failed action ends the scenario and a later `stop` still runs.
-`latchedAsSwitch: true` switches the TOP-LEVEL latched booleans in memory for the run and `stop`
-reverts the VI from disk - the file's hash was the same before and after - so no test copy is
-built; a latch inside a cluster is driven by signalling the whole cluster. A read name may be
+A `press` on a TOP-LEVEL LATCHED boolean is a key press - key focus, then a space bar posted to
+the panel window (`pressedByKey`) - so the VI is never changed and no test copy is built; a
+disabled button does not react, and a latch inside a cluster is driven by signalling the whole
+cluster. Until 2026-11-27 the tool switched the latches to switch actions in memory
+(`latchedAsSwitch`, from the fork): run with the VI's project open, LabVIEW went on serving the
+switched actions for that path, in silence. A read name may be
 `Cluster.Element` or `Control@Disabled` / `@Blinking` / `@Visible` / `@Key Focus`. It works over
 ActiveX in LabVIEW's main instance. `lvai_describe_vi` `booleanActions` names which booleans
 latch. `docs/running-vi.md`.

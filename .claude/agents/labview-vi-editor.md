@@ -68,12 +68,15 @@ Measured facts that each cost minutes when found at run time. Plan around them f
 - **Which booleans latch: `lvai_describe_vi` answers `booleanActions`** (`latched` / `switch`,
   a button inside a cluster as `Cluster.Element`) - never read the panel heap for it.
 - **An application that KEEPS RUNNING is driven with `lvai_running_vi`, a whole scenario per
-  call** (`action: steps`), and a latch with `latchedAsSwitch: true` - on the DELIVERED VI, no
-  test copy: the tool switches the top-level latches in memory for the run, a `press` releases
-  them like a latch, and `stop` reverts the VI from disk, so the file never changes. Measured
-  2026-11-27 on a GUI with latched `Fill` and `Stop`: 13 of 13 expectations in one call, the
-  file's hash unchanged. A latched button INSIDE a cluster is driven by signalling the whole
-  cluster. `docs/running-vi.md`.
+  call** (`action: steps`) - on the DELIVERED VI, no test copy. A `press` on a LATCHED button
+  needs nothing special: the tool gives it the key focus and posts a space bar to the panel
+  window, as a person presses it (`pressedByKey`), and the VI is not changed. It brings the
+  panel to the front; a DISABLED button does not react; the press is not confirmed by the tool,
+  so follow it with an expectation of what it should cause. Measured 2026-11-27 on a GUI with
+  latched `Heat` and `Stop`: 9 of 9 expectations in one call, each press counted once, the
+  file's hash unchanged, also with the project open. There is no `latchedAsSwitch` any more. A
+  latched button INSIDE a cluster is driven by signalling the whole cluster.
+  `docs/running-vi.md`.
 - **`Format Into String` `%g` prints 50 as `50.000000`**; `%d`, `%.0f` and `%#g` print `50`
   (measured by running, LabVIEW 2026, 2026-11-05). Use `%d`/`%.0f` for whole numbers.
 - **Compound literals on pylabview**: an array or cluster value needs brackets (`[true,false]`,
@@ -681,7 +684,7 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    open that subVI again (`lvai_open_file` with `viPaths`), or the convert answers `Error 53`
    naming it. Latched buttons a test must signal: on the pylabview backend (the default) drive
    the delivered VI as it is - `signalsJson` presses them (`signals.latchedPressed`), and
-   `lvai_running_vi` drives them with `latchedAsSwitch: true` - and make no test copy. Only on
+   `lvai_running_vi` `press` presses them by key - and make no test copy. Only on
    grpc, where neither can be used: graft a SECOND, test-only copy
    (`<name> Test.vi`) with `switchActionControls` naming ONLY the buttons the test drives, bind it
    too and drive that one (include `Stop` when the test must end the program and read a real

@@ -24,15 +24,17 @@ namespace LabVIEWMcp.Tools;
 internal sealed class RunningViTools
 {
     internal const string SignalHelperFileName = "lvai_signal_running.xml";
-    internal const string LatchHelperFileName = "lvai_latch_switch.xml";
-
     /// <summary>
-    /// VIs whose latched booleans this server switched for a run (start latchedAsSwitch), with the
-    /// labels switched. A press on one of them is released again (a latch's reset); stop reverts
-    /// the VI from disk and forgets it.
+    /// Gives one control the key focus, for a LATCHED boolean: VI Server writes neither its Value nor
+    /// Value (Signaling) (Error 1193), so it is pressed the way a person presses it - key focus, then
+    /// a space bar posted to the panel window (<see cref="PanelKeys"/>), as
+    /// lvai_run_vi_and_read_values does since 2026-11-21. NOTHING of the VI is changed. Until
+    /// 2026-11-27 this tool switched the latches to switch actions in memory instead
+    /// (`latchedAsSwitch`, taken from the JorgenSteen fork) and reverted the VI at stop: run with
+    /// the VI's project open, LabVIEW went on serving the switched actions for that path, in
+    /// silence (docs/running-vi.md).
     /// </summary>
-    private static readonly ConcurrentDictionary<string, IReadOnlyList<string>> SwitchedLatches =
-        new(StringComparer.OrdinalIgnoreCase);
+    internal const string FocusHelperFileName = "lvai_focus_control.xml";
 
     internal static readonly string[] Actions = ["start", "read", "set", "press", "signal", "stop", "steps"];
 
@@ -48,10 +50,11 @@ internal sealed class RunningViTools
         control and indicator of the panel (read from the file).
         set - valuesJson's controls with SetControlValue: NO Value Change event fires.
         press - each boolean in `controls` written TRUE with Value (Signaling): its Value Change
-        event fires. A LATCHED boolean cannot be written by VI Server (error 1193, named) - unless the
-        VI was started with latchedAsSwitch: true, which switches its latched booleans to switch
-        actions IN MEMORY before the run; press then writes TRUE and releases it again like a latch,
-        and stop reverts the VI from disk (Revert VI), so the file never changes.
+        event fires. A LATCHED boolean, which VI Server cannot write (error 1193), is pressed as a
+        person presses it: it gets the key focus and a space bar is posted to the panel window
+        (`pressedByKey`) - the VI is not changed. That needs the panel OPEN (start opens it) and
+        brings it to the front; a button that is disabled does not react, as for a person. Only
+        a TOP-LEVEL latched boolean: one inside a cluster is driven by signalling the whole cluster.
         signal - signalsJson, a JSON array of {"control":..,"value":..} in order, each written with
         Value (Signaling) (a boolean TRUE/1, a numeric its number, a string its text, a cluster or
         array WHOLE as a bracket literal [false,true,false] or LabVIEW XML), signalGapMs between.
@@ -89,9 +92,6 @@ internal sealed class RunningViTools
         [Description("press and signal: wait after each write, in ms (default 200)")] int signalGapMs = 200,
         [Description("Local budget in seconds")] int timeoutSeconds = 60,
         [Description("steps: the scenario, a JSON array of steps (see the description)")] string? stepsJson = null,
-        [Description("start (and a steps start): switch the VI's latched booleans to switch actions in memory " +
-                     "for this run, so press can drive them; stop reverts the VI from disk (default false)")]
-        bool latchedAsSwitch = false,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(async () =>
         {
@@ -108,7 +108,7 @@ internal sealed class RunningViTools
             {
                 return act switch
                 {
-                    "start" => await StartAsync(full, valuesJson, panel, latchedAsSwitch, timeoutSeconds, ct),
+                    "start" => await StartAsync(full, valuesJson, panel, timeoutSeconds, ct),
                     "read" => await ReadAsync(full, controls, timeoutSeconds, ct),
                     "set" => await SetAsync(full, valuesJson, timeoutSeconds, ct),
                     "press" => await SignalAsync(full, act, [.. Lines(controls)
@@ -116,7 +116,7 @@ internal sealed class RunningViTools
                     "signal" => await SignalAsync(full, act, RunTools.ParseSignals(signalsJson),
                                                   signalGapMs, timeoutSeconds, ct),
                     "steps" => await StepsAsync(full, RunningViSteps.Parse(stepsJson), stepsJson!, panel,
-                                                latchedAsSwitch, signalGapMs, timeoutSeconds, ct),
+                                                signalGapMs, timeoutSeconds, ct),
                     _ => await StopAsync(full, stopControl, waitMs, abort, panel, signalGapMs, timeoutSeconds, ct),
                 };
             }
@@ -132,36 +132,17 @@ internal sealed class RunningViTools
 
     // ------------------------------------------------------------------ the actions
 
-    private static async Task<string> StartAsync(string vi, string? valuesJson, bool openPanel, bool latchedAsSwitch,
+    private static async Task<string> StartAsync(string vi, string? valuesJson, bool openPanel,
                                                  int timeoutSeconds, CancellationToken ct)
     {
         var inputs = await TypedInputsAsync(vi, valuesJson, timeoutSeconds, ct);
-        string? latchHelper = null;
-        if (latchedAsSwitch)
-        {
-            var (helper, problem) = await ComposedHelpers.EnsureAsync(LatchHelperFileName, timeoutSeconds, ct);
-            if (helper is null)
-                return Json.Error("helperNotComposed", $"The {LatchHelperFileName} helper could not be composed: {problem}",
-                                  new { viPath = vi });
-            latchHelper = helper;
-        }
-        var start = await LabViewCom.StartAsync(vi, inputs, openPanel, timeoutSeconds, ct, latchHelper: latchHelper);
-        var latchCode = ErrorCode(start.LatchErrorXml);
-        if (start.Switched is { Count: > 0 } switched) SwitchedLatches[vi] = switched;
+        var start = await LabViewCom.StartAsync(vi, inputs, openPanel, timeoutSeconds, ct);
         var running = start.StateAfter is 2 or 3;
-        return Answer(vi, "start", start.StateAfter,
-                      running && start.SetProblems.Count == 0 && latchCode is null or 0, new JsonObject
+        return Answer(vi, "start", start.StateAfter, running && start.SetProblems.Count == 0, new JsonObject
         {
             ["alreadyRunning"] = start.AlreadyRunning,
             ["panelOpen"] = start.PanelOpen,
             ["setProblems"] = Strings(start.SetProblems),
-            ["latchedSwitched"] = start.Switched is null ? null : Strings(start.Switched),
-            ["latchErrorCode"] = latchedAsSwitch ? latchCode : null,
-            ["latchNote"] = start.Switched is { Count: > 0 }
-                ? "These latched booleans run as SWITCHES, in memory only: press writes TRUE and releases it " +
-                  "like a latch. Stop this VI with lvai_running_vi stop - it reverts the VI from disk. Save " +
-                  "nothing of this VI in between."
-                : null,
             ["note"] = start.StateBefore == 0 ? "The VI is broken (execState 0), so it was not run."
                 : start.SetProblems.Count > 0 ? "An input did not take, so the VI was not started."
                 : start.AlreadyRunning ? "The VI was already running; it was left as it is and its inputs were not set."
@@ -300,9 +281,10 @@ internal sealed class RunningViTools
         // each write, inside the helper, as before.
         var gap = Math.Clamp(gapMs, 0, 60_000).ToString(System.Globalization.CultureInfo.InvariantCulture);
         var written = new List<string>();
-        var pressed = new List<string>();
+        var byKey = new List<string>();
+        bool? panelInFront = null;
         int? code = 0;
-        string? failed = null, errorXml = null;
+        string? failed = null, errorXml = null, keyProblem = null;
         foreach (var ((name, value), shown) in signals.Zip(asWritten))
         {
             var outputs = await LabViewCom.RunHelperAsync(helper, new Dictionary<string, string>
@@ -313,6 +295,20 @@ internal sealed class RunningViTools
                 ["signal gap ms"] = gap,
             }, ["error xml"], timeoutSeconds, ct);
             code = ErrorCode(outputs.GetValueOrDefault("error xml"));
+            // A LATCH, asked to become TRUE: pressed by key (see FocusHelperFileName)
+            if (code == 1193 && IsTrue(value))
+            {
+                var (keyCode, inFront, problemHere) = await PressByKeyAsync(vi, name, gapMs, timeoutSeconds, ct);
+                panelInFront ??= inFront;
+                if (keyCode == 0 && problemHere is null)
+                {
+                    code = 0;
+                    written.Add($"{name} = {shown}");
+                    byKey.Add(name);
+                    continue;
+                }
+                keyProblem = problemHere ?? $"giving '{name}' the key focus answered error {keyCode}";
+            }
             if (code != 0)
             {
                 failed = $"{name} = {shown}";
@@ -320,19 +316,6 @@ internal sealed class RunningViTools
                 break;
             }
             written.Add($"{name} = {shown}");
-            pressed.Add(name);
-        }
-        // a switched latch stays TRUE after the write; a latch would reset when read - release it
-        var released = new List<string>();
-        if (act == "press" && SwitchedLatches.TryGetValue(vi, out var switchedHere))
-        {
-            var toRelease = pressed.Where(switchedHere.Contains).ToList();
-            if (toRelease.Count > 0)
-            {
-                await LabViewCom.SetRunningAsync(vi, [.. toRelease.Select(n => new LabViewCom.Input(n, false, "false"))],
-                                                 timeoutSeconds, ct);
-                released.AddRange(toRelease);
-            }
         }
         var notSent = signals.Zip(asWritten).Skip(written.Count + 1).Select(p => $"{p.First.Key} = {p.Second}").ToList();
         var (state, _) = await LabViewCom.ReadRunningAsync(vi, [], timeoutSeconds, ct);
@@ -340,19 +323,26 @@ internal sealed class RunningViTools
         return Answer(vi, act, state, code == 0, new JsonObject
         {
             ["signalled"] = Strings(written),
-            ["releasedAsLatch"] = released.Count == 0 ? null : Strings(released),
+            ["pressedByKey"] = byKey.Count == 0 ? null : Strings(byKey),
+            ["panelInFront"] = byKey.Count == 0 && keyProblem is null ? null : panelInFront,
             ["failed"] = failed,
             ["notSent"] = failed is null ? null : Strings(notSent),
             ["errorCode"] = code,
             ["wasRunning"] = wasRunning,
             ["note"] = code switch
             {
-                0 => "Written with Value (Signaling): each control's Value Change event fired." +
+                0 => (byKey.Count == 0 ? "Written with Value (Signaling): each control's Value Change event fired."
+                        : "`pressedByKey` are LATCHED booleans: each got the key focus and a space bar on the " +
+                          "panel window, as a person presses it - the VI is not changed. A press is not " +
+                          "confirmed by the tool: check what it should have caused with an expectation. A " +
+                          "disabled button does not react.") +
                      (!wasRunning ? " The VI was not running, so nothing handled them."
                       : state is 2 or 3 ? "" : " The VI ENDED after it - it handled the write."),
-                1193 => "Error 1193: `failed` is a LATCHED boolean - its mechanical action is latch, and VI Server " +
-                        "cannot write a latch (Value and Value (Signaling) both refuse). `signalled` took; `notSent` " +
-                        "was not written. Make the control switch-action, or stop the VI with stop.",
+                1193 => "Error 1193: `failed` is a LATCHED boolean, which VI Server cannot write. " +
+                        (keyProblem is null
+                            ? "Only TRUE can be pressed (by key); another value has no route."
+                            : "It was to be pressed by key, and that did not work: " + keyProblem + ".") +
+                        " `signalled` took; `notSent` was not written.",
                 null => "The helper's error could not be read; see its answer. `signalled` took.",
                 _ => $"The helper answered error {code} on `failed`: a name that is not a control on the panel, or " +
                      "a value that does not convert to its type. `signalled` took; `notSent` was not written." +
@@ -365,6 +355,39 @@ internal sealed class RunningViTools
         });
     }
 
+    /// <summary>Whether a signal value asks for TRUE, as the signal helper reads a boolean's.</summary>
+    internal static bool IsTrue(string value) =>
+        value.Trim() is var v && (v.Equals("TRUE", StringComparison.OrdinalIgnoreCase) || v == "1");
+
+    /// <summary>
+    /// Press one latched boolean of the running VI: the panel is brought to the front FIRST
+    /// (activating a panel resets its key focus, so fronting it at the press lost that press -
+    /// measured 2026-11-21, PanelKeys), the helper gives the control the key focus, a space bar is
+    /// posted to the panel window, and the gap is waited so the VI handles it. Answers the
+    /// helper's error code, whether the panel was in front, and what went wrong outside the
+    /// helper (no panel window to post to), if anything.
+    /// </summary>
+    private static async Task<(int? Code, bool InFront, string? Problem)> PressByKeyAsync(
+        string vi, string name, int gapMs, int timeoutSeconds, CancellationToken ct)
+    {
+        var (helper, problem) = await ComposedHelpers.EnsureAsync(FocusHelperFileName, timeoutSeconds, ct);
+        if (helper is null)
+            return (null, false, $"the {FocusHelperFileName} helper could not be composed: {problem}");
+        var inFront = PanelKeys.BringToFront(vi);
+        var outputs = await LabViewCom.RunHelperAsync(helper, new Dictionary<string, string>
+        {
+            ["VI Path"] = vi,
+            ["Control Name"] = name,
+        }, ["error xml"], timeoutSeconds, ct);
+        var code = ErrorCode(outputs.GetValueOrDefault("error xml"));
+        if (code != 0) return (code, inFront, null);
+        if (PanelKeys.PressSpace(vi) == 0)
+            return (0, inFront, $"'{name}' has the key focus, but the VI's front panel window was not found " +
+                                "to post the key to - start the VI with its panel open (panel: true)");
+        await Task.Delay(Math.Clamp(gapMs, 0, 60_000), ct);
+        return (0, inFront, null);
+    }
+
     private static async Task<string> StopAsync(string vi, string? stopControl, int waitMs, bool abort, bool closePanel,
                                                 int gapMs, int timeoutSeconds, CancellationToken ct)
     {
@@ -373,16 +396,8 @@ internal sealed class RunningViTools
         if (stopControl is { Length: > 0 } && stateBefore is 2 or 3)
             pressed = JsonNode.Parse(await SignalAsync(vi, "press", [KeyValuePair.Create(stopControl, "TRUE")],
                                                        gapMs, timeoutSeconds, ct));
-        string? revertHelper = null;
-        if (SwitchedLatches.ContainsKey(vi))
-        {
-            var (helper, _) = await ComposedHelpers.EnsureAsync(LatchHelperFileName, timeoutSeconds, ct);
-            revertHelper = helper;
-        }
         var stop = await LabViewCom.StopAsync(vi, Math.Clamp(waitMs, 0, Math.Max(0, timeoutSeconds * 1000 - 5000)),
-                                              abort, closePanel, timeoutSeconds, ct, revertHelper);
-        var revertCode = ErrorCode(stop.RevertErrorXml);
-        if (stop.Reverted && revertCode is null or 0) SwitchedLatches.TryRemove(vi, out _);
+                                              abort, closePanel, timeoutSeconds, ct);
         var ended = stop.StateAfter is not (2 or 3);
         var wasRunning = stateBefore is 2 or 3;
         return Answer(vi, "stop", stop.StateAfter, ended, new JsonObject
@@ -392,8 +407,6 @@ internal sealed class RunningViTools
             ["aborted"] = stop.Aborted,
             ["waitedMs"] = stop.WaitedMs,
             ["panelClosed"] = stop.PanelClosed,
-            ["revertedLatches"] = revertHelper is null ? null : stop.Reverted && revertCode is null or 0,
-            ["revertErrorCode"] = revertHelper is null ? null : revertCode,
             ["note"] = (!wasRunning ? "The VI was not running."
                 : stop.Aborted ? "The VI did not end within waitMs and was ABORTED: no cleanup it may hold ran."
                 : ended ? (pressed is null ? "The VI ended on its own." : $"The VI ended after '{stopControl}' was pressed.")
@@ -410,15 +423,15 @@ internal sealed class RunningViTools
     /// with waits outlives one answer window, and the caller collects it by calling again.
     /// </summary>
     private static Task<string> StepsAsync(string vi, List<RunningViSteps.Step> steps, string stepsJson, bool panel,
-                                           bool latchedAsSwitch, int gapMs, int timeoutSeconds, CancellationToken ct) =>
-        ResumableCall.RunAsync("lvai_running_vi", $"{vi}|{latchedAsSwitch}|{stepsJson.Trim()}", StepsAnswerWithin,
-            () => RunStepsAsync(vi, steps, panel, latchedAsSwitch, gapMs, timeoutSeconds),
+                                           int gapMs, int timeoutSeconds, CancellationToken ct) =>
+        ResumableCall.RunAsync("lvai_running_vi", $"{vi}|{stepsJson.Trim()}", StepsAnswerWithin,
+            () => RunStepsAsync(vi, steps, panel, gapMs, timeoutSeconds),
             "Call lvai_running_vi again with the SAME arguments to collect the scenario's answer; it attaches " +
             "to this run and never starts a second one.", ct,
             label: $"lvai_running_vi steps on {Path.GetFileName(vi)}");
 
     private static async Task<string> RunStepsAsync(string vi, List<RunningViSteps.Step> steps, bool panel,
-                                                    bool latchedAsSwitch, int gapMs, int timeoutSeconds)
+                                                    int gapMs, int timeoutSeconds)
     {
         var ct = CancellationToken.None;   // the job outlives the call that started it
         var results = new JsonArray();
@@ -434,7 +447,7 @@ internal sealed class RunningViTools
         async Task<JsonObject> Run(RunningViSteps.Step step)
         {
             var clock = System.Diagnostics.Stopwatch.StartNew();
-            var r = await RunStepAsync(vi, step, panel, latchedAsSwitch, gapMs, timeoutSeconds, Panel, ct);
+            var r = await RunStepAsync(vi, step, panel, gapMs, timeoutSeconds, Panel, ct);
             r["ms"] = clock.ElapsedMilliseconds;
             return r;
         }
@@ -529,7 +542,7 @@ internal sealed class RunningViTools
     }
 
     /// <summary>One step, through the single action's code; the answer cut down to what a scenario needs.</summary>
-    private static async Task<JsonObject> RunStepAsync(string vi, RunningViSteps.Step step, bool panel, bool latchedAsSwitch,
+    private static async Task<JsonObject> RunStepAsync(string vi, RunningViSteps.Step step, bool panel,
                                                        int gapMs, int timeoutSeconds,
                                                        Func<Task<List<AixmlComposer.PanelItem>?>> panelItems,
                                                        CancellationToken ct)
@@ -544,7 +557,7 @@ internal sealed class RunningViTools
                     await Task.Delay(step.WaitMs, ct);
                     return new JsonObject { ["step"] = step.Index, ["action"] = "wait", ["ok"] = true, ["waitedMs"] = step.WaitMs };
                 case "start":
-                    answer = await StartAsync(vi, ValuesJson(step.Values), panel, latchedAsSwitch, timeoutSeconds, ct); break;
+                    answer = await StartAsync(vi, ValuesJson(step.Values), panel, timeoutSeconds, ct); break;
                 case "set":
                     answer = await SetAsync(vi, ValuesJson(await ClusterElementsAsWholeAsync(vi, step.Values, panelItems,
                                                                                             timeoutSeconds, ct)),
@@ -590,8 +603,8 @@ internal sealed class RunningViTools
         var slim = new JsonObject { ["step"] = step.Index, ["action"] = step.Kind, ["ok"] = ok };
         // what a scenario reads back; the per-action note only when the step failed
         foreach (var key in new[] { "execState", "values", "problems", "setProblems", "signalled", "failed",
-                                    "errorCode", "aborted", "pressedStop", "latchedSwitched", "latchErrorCode", "releasedAsLatch",
-                                    "revertedLatches", "revertErrorCode", "errorKind", "error" })
+                                    "errorCode", "aborted", "pressedStop", "pressedByKey", "panelInFront",
+                                    "errorKind", "error" })
             if (full[key] is { } v) slim[key] = v.DeepClone();
         if (!ok && full["note"] is { } note) slim["note"] = note.DeepClone();
         return slim;

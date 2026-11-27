@@ -16,7 +16,7 @@ per call:
 | `start` | sets `valuesJson`'s controls, opens the front panel, runs WITHOUT waiting, returns. The open panel keeps the VI in memory after the call lets go of it. A broken VI is not run; one already running is left as it is. |
 | `read` | the execution state and the values; `controls` names them one per line, else every control and indicator of the panel (read from the file by pylabview's reader - ActiveX cannot list them) |
 | `set` | `valuesJson` with `SetControlValue`: NO Value Change event fires |
-| `press` | each boolean in `controls` written TRUE with Value (Signaling): its Value Change event fires |
+| `press` | each boolean in `controls` written TRUE with Value (Signaling): its Value Change event fires. A LATCHED boolean is pressed by key instead (`pressedByKey`, below) |
 | `signal` | `signalsJson`, `[{"control":..,"value":..}]`, each written with Value (Signaling) in order, `signalGapMs` between |
 | `stop` | presses `stopControl` if given, waits up to `waitMs` for the VI to end, then ABORTS it if it still runs (`abort: false` leaves it), and closes its panel |
 | `steps` | a whole scenario in ONE call - see the next section |
@@ -93,7 +93,49 @@ cluster is refused so, as `lvai_set_constant` refuses it. Gives up: one panel re
 (pylabview, no LabVIEW) when a value is a bracket literal. NI's gRPC route of
 `lvai_run_vi_and_read_values` still passes the text (it is being phased out).
 
-## Latched booleans: `latchedAsSwitch` (2026-11-17)
+## Latched booleans are pressed by key (2026-11-27)
+
+A `press` - or a `signal` with TRUE - on a latched boolean first meets Error 1193, as every write
+of a latch through VI Server does. The tool then presses it the way a person does, the route
+`lvai_run_vi_and_read_values` `signalsJson` has used since 2026-11-21 (`docs/aixml-backends.md`):
+
+1. the panel window is brought to the front, BEFORE anything gets the focus (activating a panel
+   resets its key focus);
+2. the composed helper `scripts/lvai_focus_control.xml` gives the control the key focus (`Key
+   Focus` is writable while the VI runs; the helper finds a TOP-LEVEL control by its label);
+3. a space bar is posted to the panel window (`PanelKeys.PressSpace`), and `signalGapMs` is
+   waited.
+
+The answer lists such controls under `pressedByKey`, with `panelInFront`. NOTHING of the VI is
+changed, so there is nothing to revert at `stop` and no state to go stale.
+
+Measured 2026-11-27 on LabVIEW 2026 (26.3.1, 32-bit), `Oven Main.vi` (an Event Structure with the
+latched `Heat` and `Stop`, a 20.0 file in a pinned project):
+
+| case | result |
+|---|---|
+| scenario of 17 steps, four presses of `Heat`, `Stop` at the end | 9 of 9 expectations; each press counted ONCE (`Heat Count` 1, 2, 3); the VI ended through its own `Stop`; 6.6 s |
+| `Heat` pressed while it is disabled and greyed | `pressedByKey: [Heat]`, and `Heat Count` stayed 2 - the button does not react, as for a person |
+| the scenario with the VI's PROJECT OPEN, then the project closed, then again | `pressedByKey` each time; afterwards a `signal` of FALSE to `Heat` still answers 1193, so it is still a latch |
+| the file | the same SHA-256 before and after all of it |
+
+What it gives up, against the switch it replaces:
+
+- **It needs the panel window, in front.** `start` opens the panel; a scenario takes the
+  foreground for each press. A person typing during a scenario can take the key.
+- **The press is not confirmed.** The tool knows the key was posted, not that the VI handled it:
+  the `aixml-backends.md` measurement lost one press in its first five runs and none in the next
+  fifteen. Follow a press with an expectation of what it should cause.
+- **One helper run more per latched press** (the refused write first, then the focus): a press
+  took about 0.5-1.5 s here.
+- **Only a top-level control.** A latched button inside a cluster is still driven by signalling
+  the whole cluster. Only TRUE can be pressed; FALSE to a latch stays Error 1193.
+
+## What it was until 2026-11-27: `latchedAsSwitch` (2026-11-17), kept as the record
+
+The parameter, the helper `scripts/lvai_latch_switch.xml` and the answer fields named below
+(`latchedSwitched`, `releasedAsLatch`, `revertedLatches`) are GONE; the last section of this
+document has why.
 
 **Which booleans latch is in `lvai_describe_vi`'s `booleanActions`, since 2026-11-19** (pylabview
 backend, read from the file): `latched` and `switch`, each a list of control names, a boolean
@@ -164,3 +206,33 @@ field project's latched `OK` answered 1193 with `signalled: ["OK = TRUE"]`.
 
 **A stop that closes the panel lets the VI leave memory**, so a later `read` opens it from disk and
 shows the values saved in the file, not the ones it ended with (measured: `out` 0 after the run above).
+
+## `latchedAsSwitch` with the VI's PROJECT OPEN leaves LabVIEW serving switch actions (measured 2026-11-27)
+
+Symptom: after a build's last edit, a scenario on the delivered `Oven Main.vi` answered
+`latchedSwitched: []` and its presses of the latched `Heat` and `Stop` succeeded with no switch -
+also with `latchedAsSwitch` false, where a latch answers Error 1193. `lvai_describe_vi`
+`booleanActions` still listed both as latched, and the front-panel heap of the file was identical
+to the backups (objFlags 131072 on both buttons).
+
+Reproduced on a copy, LabVIEW 2026 (26.3.1, 32-bit), pylabview backend:
+
+| step | result |
+|---|---|
+| `lvai_set_representation` with `projectPath` (it leaves the project OPEN), close the project, scenario with `latchedAsSwitch` | `latchedSwitched: [Heat, Stop]`, `revertedLatches: true` - as it should be |
+| the same edit, then the scenario with `latchedAsSwitch` WHILE THE PROJECT IS OPEN, then `lvai_close_active_project` | the scenario itself answers as above; the NEXT scenario on that path answers `latchedSwitched: []` and presses the buttons as switches |
+| a byte copy of that file in another folder | latched: `latchedSwitched: [Heat, Stop]` |
+| the file itself after only its write time was changed (`touch`, same SHA-256) | latched again |
+
+So the FILE never changed - Revert VI and the close wrote no switch action - but LabVIEW goes on
+serving the switched state for that path and write time, with nothing listed in memory
+(`lvai_vis_in_memory`: no VI, no project). Which of LabVIEW's caches holds it was not established,
+and whether it survives a LabVIEW restart was not measured. What it costs: every later run in that
+session drives switch-action buttons without saying so, and a later save of the VI through LabVIEW
+may write them into the file (not measured). A path already in that state is brought back by
+changing the file's write time.
+
+Settled the same day by taking the switch out: a latched boolean is pressed by key (above), which
+changes nothing in memory. `docs/aixml-backends.md` had already said so on 2026-11-21 - "Changing
+it before the run would edit the user's VI in memory and leave it modified" - and the fork's
+`latchedAsSwitch` was adopted against that note.
