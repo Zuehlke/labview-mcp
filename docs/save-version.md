@@ -157,6 +157,18 @@ method. The Save for Previous Version method after such a save brings the file b
 save from the IDE's own menu. The composer does write the pinned version (20.0 at the oldest), so the files it
 writes keep it; what LabVIEW re-saves (clean-up, icon, descriptions, graft) does not.
 
+**A save IN THE PROJECT'S INSTANCE kept the pin (measured 2026-11-27, LabVIEW 2026 26.3.1, 32-bit).**
+The heading above says "also with the project active"; this case came out the other way. A
+library member VI already at 20.0 (`lvai_save_for_previous`), in a project pinned to `20.0`:
+`lvai_set_representation` with `projectPath` - which opens the VI in the project's own application
+instance - wrote the file (write time 11:06:06 -> 11:06:25) and it still read 20.0, with no
+`saveVersionCheck` on the answer. The close that followed stamped the `.lvproj` itself 20.0
+(`projectRewrite.lvVersion` 26.0 -> 20.0). In the same session `lvai_layout_diagram` on a 20.0 file
+with NO project open wrote 26.0, as measured above. So what decides is the instance the save runs
+in, not whether a project is merely active. Not measured: the 2026-11-19 case again
+(`lvai_layout_diagram` with the pinned project active), and a file that is newer than the pin
+when the save starts.
+
 ## 6. Save for Previous Version brings a re-saved VI back to the pin (measured 2026-11-20)
 
 The `pin20` fixture of §5 after its 26.0 save (`Boiler.vi` LVSR 26008000; its three typedef `.ctl`
