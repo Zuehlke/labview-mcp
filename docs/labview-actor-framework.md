@@ -470,7 +470,8 @@ tool EDITS; here it is only the project the tool OPENS, because every Message Ma
 LabVIEW through `Project:Active Project`. One name, two meanings, across tools a caller uses in the
 same breath — which is the shape CLAUDE.md records as costing eighteen days when a description
 explains a mechanism that is not the one in play. Until it writes an entry, add the message class to
-the project by hand, with the project CLOSED.
+the project by hand, with the project CLOSED. *(Since 2026-11-27 it writes one: section 20,
+`projectEntry`.)*
 
 ## 8. The AddActor provider: how to create an actor INSIDE a library, 2026-09-17
 
@@ -1505,15 +1506,60 @@ first Message Maker call of the LabVIEW session - saved a class that still liste
 `Send Template.vi` beside a `Send RX Value.vi` on disk; `Do.vi` and the Send VI were eBad
 ("Owning library has blocked execution"; "This VI claims to be part of a library, but that library
 does not claim to own this VI"). The next two runs, one on a donor actor through the tool and one
-on the interface, were sound. The cause is OPEN. The tool's `verify` read the member list and did
-not judge it; it now answers `ok: false` with `verify.membersMissing` when `Do.vi` or
-`Send <Method>.vi` is not listed.
+on the interface, were sound. The tool's `verify` read the member list and did not judge it; it
+now answers `ok: false` with `verify.membersMissing` when `Do.vi` or `Send <Method>.vi` is not
+listed.
+
+**The cause, read off the broken file (follow-up report, server 3.2.6, 2026-11-27).** The report
+got the same broken class every time on LabVIEW 2026 64-bit, retry included. Here, on 32-bit, it
+did not come back in seven runs: warm session, cold LabVIEW, the same class name, the same
+folder. The broken file from the morning says what happened, compared with a sound one from the
+same helper:
+
+| | broken | sound |
+|---|---|---|
+| `NI.Lib.Version` | 1.0.0.1 | 1.0.0.2 |
+| `Send Template.vi` item | still listed, `Flags` 16777219 and `State` 8663056 - the TEMPLATE's own values | renamed `Send RX Value.vi` |
+| `Do.vi` item | changed (`State` 8658944) | changed |
+| `Parent Libraries` block | missing | present |
+
+So the saved file is the class as `Add Member Data` left it, and NOTHING after that reached it -
+neither `Create Send Method`'s rename nor the final save. The helper's diagram explains how: the
+class is in no project and nothing held a reference into it once `Do.vi`'s reference was closed,
+right before `Create Send Method.vi`. A class that leaves memory there is loaded again from disk
+by `Create Send Method`'s `Open VI Reference` (on `Send Template.vi`), takes the Save As rename
+in that copy, leaves memory again when the reference closes - and the final `LVClass.Open` loaded
+the file once more and saved a class with nothing to save. Whether LabVIEW unloads it at that
+point is not deterministic from outside: in the session examined here an instance VI of `Do.vi`
+(`Do.vi:Instance:<guid>.vi`, the `Casting Utility For Actors.vim` instance) was still in memory
+after the run. `Copy Class.vi` does not hold it either: it opens the copy in the DEFAULT
+application instance and closes every reference.
+
+**Fix: the helper holds the class.** `LVClass.Open` now runs right after `Copy Class` and every
+later step follows it in the error chain; the SAME refnum saves the class at the end and is then
+closed - an open class refnum keeps a class in memory (CLAUDE.md). Measured with the changed
+helper: interface message and actor message both `ok`, members `Send RX Value.vi` and `Do.vi`,
+all four VIs `execState 1` read cold with the project closed. That the fix removes the failure on
+the reporter's station is NOT measured here - the failure did not reproduce on this one.
+`MessageClassHelperPinTests` pins the wiring.
 
 **The receiving class** gets the interface at creation (`lvai_create_class parentInterfaces`) or
 afterwards (`lvai_set_class_interfaces`, `lvclass-interfaces.md` section 2.2a), and its override of
 the interface method from `lvai_create_override` with `parentMethod`
 `"<Interface>.lvclass:<Method>.vi"` (`af-override-tools.md` section 2).
 
-**Still open from the report:** `lvai_create_message_class` does not list the new class in the
-`.lvproj` (the project is open while it runs, so the file cannot be written; an entry needs the
-project closed or a VI Server route).
+**The class is listed in the project now** (`projectEntry`, 2026-11-27): after a verified run the
+active project is saved and closed, the entry written into the `.lvproj`, and the project opened
+again - so a following call without `projectPath` still finds it active. While agents share
+LabVIEW nothing is closed and the answer says `notListed`. Until then the class was never listed
+(section 7), and the open project it left behind cost the report an entry: `lvai_create_class`
+wrote its class into the `.lvproj` LabVIEW still held, and the next tool's `reopenRetry` saved
+LabVIEW's older copy over it. `lvai_create_class` and `lvai_create_interface` therefore save and
+close the user's project first when it is the ACTIVE one (`releaseUserProject`); a project loaded
+but inactive is not detected (the by-path close would open and save a project LabVIEW does not
+hold, rewriting a pinned save version).
+
+**`lvai_create_override` strips its compiled code** (`sourceOnly`), as the hook tools have done
+since 2026-11-12: NI's override provider saves the new VI with it (report: a Message `Do.vi` and
+an Actor Core override, audit `compiled-code`). Close, strip, reopen - deferred to the next
+`lvai_close_active_project` with `projectPath` while agents share LabVIEW.

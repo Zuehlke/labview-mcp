@@ -222,6 +222,9 @@ internal sealed class ClassTools(LvaiConnection connection)
                 //        what made `Project:Active Project` answer nothing and the accessor phase
                 //        report Error 1055.
                 //    None of it can happen to a project LabVIEW never sees.
+                if (await ReleaseActiveUserProjectAsync(projectPath, timeoutSeconds, ct, choice.Name)
+                    is { } released)
+                    steps.Add(released);
                 var userProject = EnsureUserProject(projectPath, classPath, parentClassPath,
                                                     stamp.Stamp);
                 var (projectUsed, _, projectStep) =
@@ -742,6 +745,9 @@ internal sealed class ClassTools(LvaiConnection connection)
                 // file on close, and keeps it in memory afterwards. A project LabVIEW never sees
                 // cannot suffer any of it. `parentClassPath` is null throughout - an interface has
                 // no parent class, and NI's provider has no terminal for one.
+                if (await ReleaseActiveUserProjectAsync(projectPath, timeoutSeconds, ct, choice.Name)
+                    is { } released)
+                    steps.Add(released);
                 var userProject = EnsureUserProject(projectPath, interfacePath, null,
                                                     stamp.Stamp);
                 var (projectUsed, _, projectStep) =
@@ -1801,6 +1807,37 @@ internal sealed class ClassTools(LvaiConnection connection)
     /// `Project:Active Project` lookup cannot land on the throwaway project. A guarded exception
     /// (`ok: false`), a raised chain, or an unparseable answer all read as "still open".
     /// </summary>
+    /// <summary>
+    /// "A project LabVIEW never sees" holds only while no EARLIER call left the user's project
+    /// open. lvai_create_message_class leaves it active (it needs it so), and reported 2026-11-27
+    /// (server 3.2.6): the entry this tool then wrote into the .lvproj was lost when the next
+    /// tool's reopenRetry closed the project and saved LabVIEW's older copy over the file. So the
+    /// user's project, when it is the ACTIVE one, is saved and closed BEFORE any file edit.
+    /// A project loaded but inactive is not detected here: the by-path close would open and save
+    /// a project LabVIEW does not hold, rewriting a pinned save version. Null when not active.
+    /// </summary>
+    private async Task<JsonObject?> ReleaseActiveUserProjectAsync(string? userProject, int timeoutSeconds,
+                                                                  CancellationToken ct, string backend)
+    {
+        if (userProject is not { Length: > 0 } || !File.Exists(userProject)) return null;
+        var full = Path.GetFullPath(userProject);
+        var (active, _, activePath) = await new ActionTools(connection).ProjectIsActiveAsync(timeoutSeconds, ct, backend);
+        if (active != true || activePath is not { Length: > 0 }
+            || !string.Equals(Path.GetFullPath(activePath), full, StringComparison.OrdinalIgnoreCase))
+            return null;
+        var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+            projectPath: full, timeoutSeconds: timeoutSeconds, ct: ct, backend: backend);
+        return new JsonObject
+        {
+            ["step"] = "releaseUserProject",
+            ["closed"] = ScratchCloseSucceeded(closed),
+            ["answer"] = Parsed(closed),
+            ["note"] = "Your project was the active one in LabVIEW, so it was saved and closed before " +
+                       "this tool writes its entry into the file - LabVIEW's next save of a copy it " +
+                       "still held would have dropped the entry.",
+        };
+    }
+
     internal static bool ScratchCloseSucceeded(string answer)
     {
         if (Parsed(answer) is not JsonObject o) return false;
