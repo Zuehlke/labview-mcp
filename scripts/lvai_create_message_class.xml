@@ -24,10 +24,14 @@
   <Call target="Message Maker.lvlib\3ACopy Class.vi" inputs="Destination Directory:4220.path,Class Name:4101.value,Template Path:4222.path,AppInst:4210.app,Parent Class Path:4224.path,error in (no error):4210.error out" outputs="New Class Path:4230.newclass,error out:4230.error out" uid="4230" uid_parent="root"/>
   <FreeLabel comment="Hold the class until it is saved" uid="4002" uid_parent="root"/>
   <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4210.app,Path:4230.newclass,error in (no error):4230.error out" outputs="reference out:,error out:4700.err,LVClass.Open:4700.cls" uid="4700" uid_parent="root"/>
-  <Indicator _name="copy class error" inputs="value:4700.err" type="cluster{bool.status,int32.code,string.source}" uid="4500" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Link the parent in this instance" uid="4003" uid_parent="root"/>
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4210.app,Path:4224.path,error in (no error):4700.err" outputs="reference out:,error out:4710.err,LVClass.Open:4710.parent" uid="4710" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Parent Class" type="{LV.LVClassLibrary}" inputs="reference:4700.cls,error in (no error):4710.err,Parent Class:4710.parent" outputs="reference out:,error out:4712.err" uid="4712" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4710.parent,error in (no error):4712.err" outputs="error out:4714.err" uid="4714" uid_parent="root"/>
+  <Indicator _name="copy class error" inputs="value:4714.err" type="cluster{bool.status,int32.code,string.source}" uid="4500" uid_parent="root" value="[false,0,]"/>
   <Node _name="Path To String" inputs="path:4230.newclass" outputs="string:4232.string" uid="4232" uid_parent="root"/>
   <Indicator _name="new class path" inputs="value:4232.string" type="string" uid="4502" uid_parent="root" value=""/>
-  <Call target="Message Maker.lvlib\3ACopy Member Data from Target.vi" inputs="Target Method path:4228.path,AppInst:4210.app,error in (no error):4700.err" outputs="Wiring Rules:4240.rules,Controls[]:4240.controls,Target Method Ref:4240.methodref,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Call target="Message Maker.lvlib\3ACopy Member Data from Target.vi" inputs="Target Method path:4228.path,AppInst:4210.app,error in (no error):4714.err" outputs="Wiring Rules:4240.rules,Controls[]:4240.controls,Target Method Ref:4240.methodref,error out:4240.error out" uid="4240" uid_parent="root"/>
   <Indicator _name="read member data error" inputs="value:4240.error out" type="cluster{bool.status,int32.code,string.source}" uid="4504" uid_parent="root" value="[false,0,]"/>
   <Node _name="Array Size" inputs="array:4240.controls" outputs="size(s):4242.size" uid="4242" uid_parent="root"/>
   <Indicator _name="payload control count" inputs="value:4242.size" type="int32" uid="4506" uid_parent="root" value="0"/>

@@ -323,6 +323,17 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                     string.Equals(m.Name, e, StringComparison.OrdinalIgnoreCase))).ToList();
                 verify["membersMissing"] = new JsonArray([.. unlisted.Select(u => (JsonNode)u)]);
                 if (unlisted.Count > 0) verified = false;
+
+                // THE PARENT MUST BE A LINK, NOT THE GENEOLOGY. Reported 2026-11-27 (server 3.2.9,
+                // LabVIEW 2026 64-bit): an interface message saved with no `Parent Libraries` item,
+                // `inheritsFrom` still read `Message.lvclass` off the decoded Geneology, and the Send
+                // VI was eBad ("Wire: Class conflict") - the class derived from LabVIEW Object.
+                // `inheritsFrom` falls back to the Geneology by design, so the gate reads the
+                // links themselves.
+                var linked = LinksParent(info, parent);
+                verify["parentLinked"] = linked;
+                verify["parentLinks"] = new JsonArray([.. info.ParentLinks.Select(p => (JsonNode)p.Name)]);
+                if (!linked) verified = false;
                 verify["privateDataBytes"] = info.PrivateDataBytes;
 
                 // THE PAYLOAD FIELD IS THE CHECK THAT MATTERS. Its absence is exactly what the
@@ -384,10 +395,24 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                                            newClassPath, name, steps, timeoutSeconds, ct)
                 : null;
 
+            // EVERY FILE-LEVEL CHECK WAS GREEN for the 3.2.9 report's class whose Send VI was eBad,
+            // so `ok` also asks LabVIEW whether both members compile.
+            JsonObject? execState = null;
+            if (verified)
+            {
+                var headless = new DqmhHeadless(connection);
+                var doState = await headless.ExecStateAsync(doPath, timeoutSeconds, ct);
+                int? sendState = sendPath is { Length: > 0 }
+                    ? await headless.ExecStateAsync(sendPath, timeoutSeconds, ct) : null;
+                execState = new JsonObject { ["Do.vi"] = doState, [Path.GetFileName(sendPath ?? "Send")] = sendState };
+                if (doState != 1 || sendState != 1) verified = false;
+            }
+
             return Json.Document(new JsonObject
             {
                 ["ok"] = verified,
                 ["projectEntry"] = projectEntry,
+                ["execState"] = execState,
                 ["compiledCode"] = compiled,
                 ["classPath"] = newClassPath,
                 ["sendMethodPath"] = sendPath,
@@ -406,12 +431,14 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                 ["note"] = verified
                     ? "Created and verified from the class file. The class is SAVED, so it survives " +
                       "the next project close - a run that saved only the VIs was measured leaving " +
-                      "both eBad afterwards. Check the two VIs with lvai_exec_state: every " +
-                      "file-level check here is green for a class whose members do not compile."
+                      "both eBad afterwards. Its parent link, its members and `execState` 1 of " +
+                      "Do.vi and the Send VI (read with the project open) gate `ok`."
                     : File.Exists(newClassPath)
-                        ? "Every stage reported 0 but the saved class does not list both Do.vi and the " +
-                          "Send VI (`verify.membersMissing`) or a VI kept compiled code - the class is " +
-                          "not usable. Delete its folder with the project CLOSED and call again."
+                        ? "Every stage reported 0 but the class is not usable: the saved class does not " +
+                          "list both Do.vi and the Send VI (`verify.membersMissing`), has no parent link " +
+                          "to Message.lvclass (`verify.parentLinked`), a VI kept compiled code, or a " +
+                          "member does not compile (`execState`). Delete its folder with the project " +
+                          "CLOSED and call again."
                         : "Every stage reported 0 but no .lvclass is at the expected path, so nothing " +
                           "can be verified. Treat this as a failure.",
             });
@@ -474,6 +501,16 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
         }
         return entry;
     }
+
+    /// <summary>
+    /// True when the class file links <paramref name="parentPath"/> as its parent CLASS through a
+    /// `Parent Libraries` item that opens to that file. The decoded Geneology does not count: it
+    /// named Message.lvclass in the 3.2.9 report's class that derived from LabVIEW Object.
+    /// </summary>
+    internal static bool LinksParent(LvClass.ClassInfo info, string parentPath) =>
+        info.ParentLinks.Any(p => p.Kind == LvClass.ParentLink.Class && p.ResolvedPath is { } resolved
+            && string.Equals(Path.GetFullPath(resolved), Path.GetFullPath(parentPath),
+                             StringComparison.OrdinalIgnoreCase));
 
     /// <summary>The helper's stages, in the order its diagram runs them.</summary>
     private static readonly (string Indicator, string Label)[] Stages =
