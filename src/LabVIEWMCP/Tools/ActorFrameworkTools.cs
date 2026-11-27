@@ -63,6 +63,8 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
         methods, library, messages; an actor added to a .lvlib afterwards leaves every Do.vi eBad
         and the repair is rebuilding the messages.
         The class is saved at the end; `verify` (`fields`, `members`) is read from the saved file.
+        It is then LISTED in the project (`projectEntry`): the project is saved, closed for the
+        file edit and opened again - not while agents share LabVIEW (`notListed`).
         """)]
     public async Task<string> CreateMessageClassAsync(
         [Description("""
@@ -348,6 +350,7 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
             var sendPath = Scalar(values, "new send method");
             var doPath = Path.Combine(destination, "Do.vi");
             JsonObject? compiled = null;
+            string? closedForStrip = null;
             if (verified)
             {
                 var carrying = new[] { doPath, sendPath }
@@ -360,6 +363,7 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                         projectPath: projectPath is { Length: > 0 } ? Path.GetFullPath(projectPath) : null,
                         timeoutSeconds: timeoutSeconds, ct: ct, backend: BackendRoute.Current);
                     steps.Add(new JsonObject { ["step"] = "closeProjectForStrip", ["answer"] = Read(closed) });
+                    closedForStrip = (Read(closed) as JsonObject)?["projectSweep"]?["projectPath"]?.GetValue<string>();
                     var stripped = new JsonArray();
                     var left = new JsonArray();
                     foreach (var vi in carrying)
@@ -375,9 +379,15 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                 }
             }
 
+            var projectEntry = verified
+                ? await ListInProjectAsync(projectPath is { Length: > 0 } ? projectPath : closedForStrip,
+                                           newClassPath, name, steps, timeoutSeconds, ct)
+                : null;
+
             return Json.Document(new JsonObject
             {
                 ["ok"] = verified,
+                ["projectEntry"] = projectEntry,
                 ["compiledCode"] = compiled,
                 ["classPath"] = newClassPath,
                 ["sendMethodPath"] = sendPath,
@@ -406,6 +416,64 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                           "can be verified. Treat this as a failure.",
             });
         }));
+
+    /// <summary>
+    /// List the new class in its project - a FILE edit, so LabVIEW must not hold the project: the
+    /// active one (projectPath, else whichever the Message Maker ran in) is saved and closed, the
+    /// entry written, and the project opened again, so the next call finds it active as before.
+    /// Until 2026-11-27 the class was never listed (docs/labview-actor-framework.md section 7), and a
+    /// later tool's close then also saved LabVIEW's copy over entries other tools had written.
+    /// While agents share LabVIEW nothing is closed and the answer says the entry is missing.
+    /// </summary>
+    private async Task<JsonObject> ListInProjectAsync(string? projectPath, string classPath, string className,
+                                                      JsonArray steps, int timeoutSeconds, CancellationToken ct)
+    {
+        var actions = new ActionTools(connection);
+        var (active, _, activePath) = await actions.ProjectIsActiveAsync(timeoutSeconds, ct, BackendRoute.Current);
+        var target = projectPath is { Length: > 0 } ? Path.GetFullPath(projectPath)
+            : active == true ? activePath : null;
+        if (target is not { Length: > 0 } || !File.Exists(target))
+            return new JsonObject
+            {
+                ["action"] = "noProject",
+                ["note"] = "No project to list the class in: none was passed and none is active.",
+            };
+
+        var held = active == true && activePath is { Length: > 0 }
+                   && string.Equals(Path.GetFullPath(activePath), target, StringComparison.OrdinalIgnoreCase);
+        if (held)
+        {
+            if (ParallelCalls.Shared.ProjectChangeRefusalFromInside() is { } parallel)
+                return new JsonObject
+                {
+                    ["action"] = "notListed",
+                    ["projectPath"] = target,
+                    ["note"] = "NOT LISTED: the project was not closed for the entry, because " + parallel +
+                               " List the class with lvai_add_vis_to_project once the agents are done.",
+                };
+            var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+                projectPath: target, timeoutSeconds: timeoutSeconds, ct: ct, backend: BackendRoute.Current);
+            steps.Add(new JsonObject { ["step"] = "closeProjectForEntry", ["answer"] = Read(closed) });
+            if (!ClassTools.ScratchCloseSucceeded(closed))
+                return new JsonObject
+                {
+                    ["action"] = "notListed",
+                    ["projectPath"] = target,
+                    ["note"] = "NOT LISTED: the project could not be closed, and an entry written under " +
+                               "a project LabVIEW holds is undone by its next save. Read `steps`.",
+                };
+        }
+
+        var entry = ClassTools.AddClassToProject(target, classPath, className, []);
+        if (held)
+        {
+            var reopened = await actions.OpenFileAsync(viPath: null, viName: null, projectPath: target,
+                projectName: Path.GetFileName(target), checkActive: true, timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "reopenProject", ["answer"] = Read(reopened) });
+            entry["projectReopened"] = (Read(reopened) as JsonObject)?["projectBecameActive"]?.DeepClone();
+        }
+        return entry;
+    }
 
     /// <summary>The helper's stages, in the order its diagram runs them.</summary>
     private static readonly (string Indicator, string Label)[] Stages =

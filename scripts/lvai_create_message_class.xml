@@ -22,10 +22,12 @@
   <Node _name="String To Path" inputs="string:4104.value" outputs="path:4226.path" uid="4226" uid_parent="root"/>
   <Node _name="String To Path" inputs="string:4105.value" outputs="path:4228.path" uid="4228" uid_parent="root"/>
   <Call target="Message Maker.lvlib\3ACopy Class.vi" inputs="Destination Directory:4220.path,Class Name:4101.value,Template Path:4222.path,AppInst:4210.app,Parent Class Path:4224.path,error in (no error):4210.error out" outputs="New Class Path:4230.newclass,error out:4230.error out" uid="4230" uid_parent="root"/>
-  <Indicator _name="copy class error" inputs="value:4230.error out" type="cluster{bool.status,int32.code,string.source}" uid="4500" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel comment="Hold the class until it is saved" uid="4002" uid_parent="root"/>
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4210.app,Path:4230.newclass,error in (no error):4230.error out" outputs="reference out:,error out:4700.err,LVClass.Open:4700.cls" uid="4700" uid_parent="root"/>
+  <Indicator _name="copy class error" inputs="value:4700.err" type="cluster{bool.status,int32.code,string.source}" uid="4500" uid_parent="root" value="[false,0,]"/>
   <Node _name="Path To String" inputs="path:4230.newclass" outputs="string:4232.string" uid="4232" uid_parent="root"/>
   <Indicator _name="new class path" inputs="value:4232.string" type="string" uid="4502" uid_parent="root" value=""/>
-  <Call target="Message Maker.lvlib\3ACopy Member Data from Target.vi" inputs="Target Method path:4228.path,AppInst:4210.app,error in (no error):4230.error out" outputs="Wiring Rules:4240.rules,Controls[]:4240.controls,Target Method Ref:4240.methodref,error out:4240.error out" uid="4240" uid_parent="root"/>
+  <Call target="Message Maker.lvlib\3ACopy Member Data from Target.vi" inputs="Target Method path:4228.path,AppInst:4210.app,error in (no error):4700.err" outputs="Wiring Rules:4240.rules,Controls[]:4240.controls,Target Method Ref:4240.methodref,error out:4240.error out" uid="4240" uid_parent="root"/>
   <Indicator _name="read member data error" inputs="value:4240.error out" type="cluster{bool.status,int32.code,string.source}" uid="4504" uid_parent="root" value="[false,0,]"/>
   <Node _name="Array Size" inputs="array:4240.controls" outputs="size(s):4242.size" uid="4242" uid_parent="root"/>
   <Indicator _name="payload control count" inputs="value:4242.size" type="int32" uid="4506" uid_parent="root" value="0"/>
@@ -111,8 +113,7 @@
   <Call target="Message Maker.lvlib\3AClean Up Panel.vi" inputs="VI Refnum:4484.sendref,Conpane:4484.conpane,error in (no error):4484.error out" outputs="error out:4486.error out" uid="4486" uid_parent="root"/>
   <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4484.sendref,error in (no error):4486.error out,Path to saved file:4410.newsend,Save a Copy:4116.value,Without Diagram:" outputs="reference out:4488.sendref,error out:4488.error out" uid="4488" uid_parent="root"/>
   <Indicator _name="build send error" inputs="value:4488.error out" type="cluster{bool.status,int32.code,string.source}" uid="4520" uid_parent="root" value="[false,0,]"/>
-  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4210.app,Path:4230.newclass,error in (no error):4488.error out" outputs="reference out:,error out:4700.err,LVClass.Open:4700.cls" uid="4700" uid_parent="root"/>
-  <Node _name="Invoke Node" target="Save" type="{LV.LVClassLibrary}" inputs="reference:4700.cls,error in (no error):4700.err" outputs="reference out:,error out:4702.err" uid="4702" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save" type="{LV.LVClassLibrary}" inputs="reference:4700.cls,error in (no error):4488.error out" outputs="reference out:,error out:4702.err" uid="4702" uid_parent="root"/>
   <Indicator _name="save class error" inputs="value:4702.err" type="cluster{bool.status,int32.code,string.source}" uid="4704" uid_parent="root" value="[false,0,]"/>
   <Node _name="Close Reference" inputs="reference:4700.cls,error in (no error):4702.err" outputs="error out:4706.err" uid="4706" uid_parent="root"/>
   <Node _name="Close Reference" inputs="reference:4488.sendref,error in (no error):4706.err" outputs="error out:4490.err" uid="4490" uid_parent="root"/>

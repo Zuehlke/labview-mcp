@@ -805,7 +805,9 @@ actor for it. The receiving actor implements the interface and overrides the met
 (`lvai_create_override`, `parentMethod` `"<Interface>.lvclass:<Method>.vi"`). NEVER author a
 `Do.vi`: a generated override of `Message.lvclass:Do.vi` is eBad whatever its diagram. Check every
 message's `Do.vi` and `Send <Method>.vi` with `lvai_exec_state` - a library added after the
-messages leaves `Do.vi` eBad and only that check sees it. `docs/labview-actor-framework.md`.
+messages leaves `Do.vi` eBad and only that check sees it. The tool lists the message class in the
+project itself (`projectEntry`; it saves, closes and reopens the project for that) - add it by
+hand only when the answer says `notListed`. `docs/labview-actor-framework.md`.
 
 ### Phase 5 — Hand the result over clean
 

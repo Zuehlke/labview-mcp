@@ -132,9 +132,18 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
             var ok = verify["listed"]?.GetValue<bool>() == true
                      && verify["fileOnDisk"]?.GetValue<bool>() == true
                      && verify["dynamicDispatch"]?.GetValue<bool?>() is not false;
+
+            // NO COMPILED CODE IN A WRITTEN VI. NI's override provider saves the new VI from the
+            // project's instance with its compiled code - reported 2026-11-27 (server 3.2.6) for a
+            // Message Do.vi and an Actor Core override, audit `compiled-code`; the hook tools have
+            // stripped the same provider's output since 2026-11-12. Same route as theirs: close,
+            // strip, reopen - or deferred to the next close while agents share LabVIEW.
+            var sourceOnly = ok ? await SourceOnlyAsync(plan.NewViPath, project, null, steps, timeoutSeconds, ct) : null;
+            ok = ok && sourceOnly?["ok"]?.GetValue<bool>() != false;
             return Json.Document(new JsonObject
             {
                 ["ok"] = ok,
+                ["sourceOnly"] = sourceOnly,
                 ["overridePath"] = plan.NewViPath,
                 ["classPath"] = plan.ClassPath,
                 ["parentMethodPath"] = plan.ParentVi,
