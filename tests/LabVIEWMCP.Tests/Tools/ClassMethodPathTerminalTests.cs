@@ -156,6 +156,32 @@ public class ClassMethodPathTerminalTests
         Assert.Equal(2, ClassMethodTools.GenuinePathTerminals(aixml, Terminals("Logger in", "Logger out")));
     }
 
+    /// <summary>
+    /// A class terminal authored as a CLUSTER stand-in (the private data cluster, so the method
+    /// can read a field) is replaced whole by the retype - its path elements are not left behind.
+    /// Measured 2026-11-27 on `Parent Actor.lvclass:Store Value.vi`: 2 were expected, 0 remained,
+    /// and a correct member answered ok: false at verify.
+    /// </summary>
+    [Fact]
+    public void A_path_inside_a_cluster_stand_in_of_the_class_terminal_is_not_expected()
+    {
+        using var doc = new Doc();
+        var aixml = doc.Write("Store Value.xml", """
+            <VI _name="Store Value.vi" description="Stores the value.">
+              <Control _name="Parent Actor in" conIdx="11" connection="required" type="cluster{double.Last Value,path.Report File}" uid="4210" uid_parent="root" value="[0,]" outputs="value:"/>
+              <Control _name="Log" conIdx="10" connection="recommended" type="cluster{path.file}" uid="4211" uid_parent="root" value="[]" outputs="value:"/>
+              <Indicator _name="Parent Actor out" conIdx="3" connection="recommended" type="cluster{double.Last Value,path.Report File}" uid="4270" uid_parent="root" value="[0,]" inputs="value:"/>
+            </VI>
+            """);
+
+        var expected = ClassMethodTools.ExpectedPathObjects(aixml, Terminals("Parent Actor in", "Parent Actor out"));
+
+        Assert.NotNull(expected);
+        Assert.Equal(0, expected.TopLevel);
+        // only the ordinary cluster control's element stays a path
+        Assert.Equal(1, expected.InsideClusters);
+    }
+
     [Theory]
     [InlineData("path", 1)]
     [InlineData("cluster{path.protocol}", 1)]
