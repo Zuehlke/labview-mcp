@@ -482,7 +482,8 @@ internal sealed class RunTools(LvaiConnection connection)
         string target, IReadOnlyList<LabViewCom.Input> inputs, int runForMs,
         IReadOnlyList<KeyValuePair<string, string>> signals, int signalGapMs,
         int timeoutSeconds, CancellationToken ct, string? namedSetHelper = null,
-        bool nativeValues = false, bool includeXml = true)
+        bool nativeValues = false, bool includeXml = true,
+        IReadOnlyList<KeyValuePair<string, string>>? shownSignals = null)
     {
         if (DefaultHelperAixmlPath(timed: true) is not { } aixml || !File.Exists(aixml))
             return Json.Error("helperMissing",
@@ -538,7 +539,7 @@ internal sealed class RunTools(LvaiConnection connection)
         var endedOnItsOwn = TargetEndedBeforeAbort(true, rawHelperCode, errorXml);
         var helperCode = endedOnItsOwn ? 0 : rawHelperCode;
         var signalErrorXml = run.Outputs.GetValueOrDefault("signal error xml");
-        var signalsAnswer = SignalsAnswer(signals, signalGapMs, signalErrorXml);
+        var signalsAnswer = SignalsAnswer(shownSignals ?? signals, signalGapMs, signalErrorXml);
         signalsAnswer["latchedPressed"] = run.KeyPresses;
         // whether the panel was in front before the helper focused anything - a press on a panel
         // that comes to the front later can be lost, as activation resets the key focus
@@ -684,9 +685,12 @@ internal sealed class RunTools(LvaiConnection connection)
             namedSetHelper = helperVi;
         }
 
+        if (SignalLiterals(signals, panel, out var literalProblem) is not { } typedSignals)
+            return Json.Error("signalNotConvertible", literalProblem!, new { viPath = full });
         if (signals.Count > 0)
-            return await RunSignalledOverComAsync(full, inputs, runForMs, signals, signalGapMs,
-                                                  timeoutSeconds, ct, namedSetHelper, nativeValues, includeXml);
+            return await RunSignalledOverComAsync(full, inputs, runForMs, typedSignals, signalGapMs,
+                                                  timeoutSeconds, ct, namedSetHelper, nativeValues, includeXml,
+                                                  shownSignals: signals);
 
         // INDICATORS ONLY, as NI's helper reads them: Ctrl Val.Get All with its default answered
         // the indicators and none of the controls, measured 2026-10-10 on the same VIs. The answer
@@ -714,6 +718,13 @@ internal sealed class RunTools(LvaiConnection connection)
             return Json.Error("inputNotSet",
                 "LabVIEW refused to set: " + string.Join("; ", run.SetProblems) + ". Nothing ran.",
                 new { viPath = full, via = "ActiveX" });
+        if (run.BlockedBy is { } blocked)
+            return Json.Error("blockedByDialog",
+                "The VI did not finish: a modal LabVIEW dialog blocks it (" + blocked + "). It was LEFT " +
+                "RUNNING, not aborted - an abort behind a modal left LabVIEW in 'Resetting VI' for good " +
+                "(measured). lvai_labview_state shows the dialog with a screenshot; once it is answered the " +
+                "VI finishes on its own. Do not call it again before.",
+                new { viPath = full, via = "ActiveX", runMs = run.RunMs });
 
         // THE SAME SHAPE AS THE gRPC HELPER'S: LabVIEW's type tag, the Val text of a scalar, and the
         // value as LabVIEW's flattened XML - generated from the value and its AIXML type, then read
@@ -1074,6 +1085,44 @@ internal sealed class RunTools(LvaiConnection connection)
         }
         return list;
     }
+
+    /// <summary>
+    /// A signal written as an AIXML bracket literal (<c>[false,true,false]</c>) for a CLUSTER or
+    /// ARRAY control, turned into the LvVariant XML the signal helpers unflatten - the form `set`
+    /// and inputsJson already take (<see cref="ComValues.FromText"/>). Until 2026-11-26 the literal
+    /// went through as text and the helper answered Error 1103: three CLD benchmark rounds tried it
+    /// once each, having learnt it from the sibling inputs. Every other value is left as it is, so
+    /// a string control given text that starts with a bracket is untouched. Null, and the reason,
+    /// when a literal does not fit its control's type.
+    /// </summary>
+    internal static List<KeyValuePair<string, string>>? SignalLiterals(
+        IReadOnlyList<KeyValuePair<string, string>> signals, IReadOnlyList<AixmlComposer.PanelItem> panel,
+        out string? problem)
+    {
+        problem = null;
+        var converted = new List<KeyValuePair<string, string>>(signals.Count);
+        foreach (var (name, value) in signals)
+        {
+            var type = IsBracketLiteral(value)
+                ? panel.FirstOrDefault(i => !i.Indicator && i.Name == name)?.Type : null;
+            if (type is null || !LvXmlLiteral.IsCompound(type))
+            {
+                converted.Add(new(name, value));
+                continue;
+            }
+            var (xml, why) = LvXmlLiteral.Build(type, value);
+            if (xml is null)
+            {
+                problem = $"The signal for '{name}' ({type}) is not a value of that type: {(why ?? "").TrimEnd('.')}. Nothing was signalled.";
+                return null;
+            }
+            converted.Add(new(name, xml));
+        }
+        return converted;
+    }
+
+    /// <summary>Whether a signal value is an AIXML bracket literal, the only kind <see cref="SignalLiterals"/> converts.</summary>
+    internal static bool IsBracketLiteral(string value) => value.TrimStart().StartsWith('[');
 
     /// <summary>Whether a helper can fire signals, read from its AIXML like <see cref="CanHonourRunForMs"/>.</summary>
     internal static bool CanSignal(string helperAixmlPath)

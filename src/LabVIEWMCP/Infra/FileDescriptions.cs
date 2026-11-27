@@ -283,6 +283,7 @@ internal static class FileDescriptions
         }
         info["viName"] = (string?)root.Attribute("_name") ?? Path.GetFileName(viPath);
         info["controlsIndicators"] = ControlsIndicators(root);
+        if (BooleanActions(aixml) is { } actions) info["booleanActions"] = actions;
         info["subvisInfo"] = string.Join("\n", root.Descendants("Call")
             .Select(c => (string?)c.Attribute("target") ?? (string?)c.Attribute("_name"))
             .OfType<string>().Distinct(StringComparer.Ordinal));
@@ -294,6 +295,31 @@ internal static class FileDescriptions
         ((JsonArray)info["warnings"]!).Add(
             "viImage is empty: the pylabview backend does not render the panel here (lvai_render_diagrams does).");
         return info;
+    }
+
+    /// <summary>
+    /// Which boolean controls latch and which are switches, from the reader's
+    /// <c>&lt;?lvmcp booleans latched=".." switch=".."?&gt;</c> after <c>&lt;/VI&gt;</c>; a boolean inside a
+    /// cluster is <c>Cluster.Element</c>, the name lvai_running_vi takes. Null when the export
+    /// carries no such line (no boolean control, or NI's own export). Two benchmark builders
+    /// read the front-panel heap by hand to learn this before they could drive a panel.
+    /// </summary>
+    internal static JsonObject? BooleanActions(string aixml)
+    {
+        var m = System.Text.RegularExpressions.Regex.Match(
+            aixml, @"<\?lvmcp\s+booleans\s+latched=""([^""]*)""\s+switch=""([^""]*)""\s*\?>");
+        if (!m.Success) return null;
+        static JsonArray Names(string joined) => new(
+            [.. System.Net.WebUtility.HtmlDecode(joined)
+                .Split('|', StringSplitOptions.RemoveEmptyEntries).Select(n => (JsonNode)n)]);
+        return new JsonObject
+        {
+            ["latched"] = Names(m.Groups[1].Value),
+            ["switch"] = Names(m.Groups[2].Value),
+            ["note"] = "Mechanical action of every boolean CONTROL, read from the file: `latched` resets " +
+                       "itself after it is read (drive it with lvai_running_vi latchedAsSwitch or a signal), " +
+                       "`switch` keeps its value. Which of the three latch or switch variants is not decoded.",
+        };
     }
 
     /// <summary>NI's text form: `Controls:` then `Indicators:`, one label per line, indented.</summary>

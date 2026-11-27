@@ -119,8 +119,11 @@ internal sealed class CloseTools(LvaiConnection connection)
         members from memory. MUTATING. It always saves first (an unsaved close would raise a modal
         prompt that stops the gRPC service); to close without saving, do it by hand in the IDE.
         The save writes LabVIEW's in-memory copy over the .lvproj, so a file edit made while the
-        project was open is lost - read the .lvproj afterwards. The saved file is then swept of
-        adopted strays, each named in `projectSweep`.
+        project was open is lost - read the .lvproj afterwards. `projectRewrite` says what the save
+        changed (entries, Dependencies, build-specification properties - a newer LabVIEW rewrites
+        an older project) and where the file as it was before is kept; `restoreProjectFile` puts
+        it back (opt-in, for a session that changed nothing in the project). The saved file is
+        then swept of adopted strays, each named in `projectSweep`.
         Error 1055 means no project was active - also what a second call answers, which verifies
         the close.
         Refused (`projectChangeWhileParallel`) while tool calls overlap - several agents on one
@@ -149,7 +152,13 @@ internal sealed class CloseTools(LvaiConnection connection)
         [Description(AixmlBackend.ParameterDescription + """
              helperViPath and regenerateHelper apply to the grpc helper only.
             """)]
-        string? backend = null)
+        string? backend = null,
+        [Description("""
+            Put the .lvproj back as it was before LabVIEW's save when the save changed it
+            (`projectRewrite.restored`). OPT-IN, and only for a session that changed nothing in the
+            project on purpose: it also undoes project edits LabVIEW held in memory.
+            """)]
+        bool restoreProjectFile = false)
     {
         if (!AixmlBackend.TryResolve(backend, "lvai_close_active_project", out var choice, out var badBackend))
             return AixmlBackend.Refusal(badBackend);
@@ -205,13 +214,19 @@ internal sealed class CloseTools(LvaiConnection connection)
                 }
             }
 
+            // THE FILE AS IT IS BEFORE LabVIEW's SAVE, so the answer can say what the save changed
+            // and the caller can put it back (ProjectRewrite: a 21.0 project closed in LabVIEW 2026
+            // lost its Dependencies and an installer's 64-bit run-time component, 2026-11-13).
+            var before = ProjectRewrite.Take(projectPath);
+
             var answer = await new RunTools(connection).RunViAndReadValuesAsync(
                 helperVi, inputsJson: null, includeRawXml: false, helperViPath: null,
                 helperAixmlPath: null, regenerateHelper: false, timeoutSeconds,
                 backend: choice.Name, ct: ct);
 
             var described = DescribeProjectClose(answer, helperVi, aixml, helperGenerated,
-                                                 wall.ElapsedMilliseconds, projectPath);
+                                                 wall.ElapsedMilliseconds, projectPath, before);
+            if (restoreProjectFile) described = RestoreProjectFile(described, before);
             if (pathFrom is null) return described;
             try
             {
@@ -237,6 +252,45 @@ internal sealed class CloseTools(LvaiConnection connection)
             catch (System.Text.Json.JsonException) { }
             return described;
         }), choice);
+    }
+
+    /// <summary>
+    /// The opt-in restore (N2 of the field-report proposals): a newer or other-bitness LabVIEW
+    /// rewrites an older project on every close - LabVIEW 2026 32-bit emptied a 21.0 64-bit
+    /// project's Dependencies and genericised its installers' run-time component, measured
+    /// 2026-11-13 - and an UNSAVED close would raise a modal that stops every call. So the close
+    /// still saves, and on request the bytes taken before that save go back. Only after a close
+    /// that happened and a save that changed the file; anything else is said, not guessed.
+    /// </summary>
+    internal static string RestoreProjectFile(string described, ProjectRewrite.Snapshot? before)
+    {
+        if (System.Text.Json.Nodes.JsonNode.Parse(described) is not System.Text.Json.Nodes.JsonObject o) return described;
+        var rewrite = o["projectRewrite"] as System.Text.Json.Nodes.JsonObject;
+        if (before is null || rewrite is null)
+        {
+            o["restore"] = "not done: " + (before is null ? "no copy of the file was taken before the close"
+                                                          : "the close did not happen, so nothing was saved");
+            return Json.Document(o);
+        }
+        if (rewrite["changed"]?.GetValue<bool>() is not true)
+        {
+            rewrite["restored"] = false;
+            rewrite["restoreNote"] = "Nothing to restore: the save left the file as it was.";
+            return Json.Document(o);
+        }
+        try
+        {
+            File.WriteAllBytes(before.Path, before.Bytes);
+            rewrite["restored"] = true;
+            rewrite["restoreNote"] = "The .lvproj is back byte for byte as it was before LabVIEW's save " +
+                                     "(the sweep's edits, made to the saved file, are superseded).";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            rewrite["restored"] = false;
+            rewrite["restoreNote"] = "The restore failed: " + e.Message + " - the copy is at backupPath.";
+        }
+        return Json.Document(o);
     }
 
     /// <summary>
@@ -337,7 +391,7 @@ internal sealed class CloseTools(LvaiConnection connection)
     /// </summary>
     internal static string DescribeProjectClose(
         string runnerAnswer, string helperVi, string aixml, bool helperGenerated,
-        long? elapsedMs = null, string? projectPath = null)
+        long? elapsedMs = null, string? projectPath = null, ProjectRewrite.Snapshot? before = null)
     {
         if (Verdict(runnerAnswer) is not { } verdict) return runnerAnswer;
         var (status, code, source) = verdict;
@@ -374,6 +428,16 @@ internal sealed class CloseTools(LvaiConnection connection)
                           "the helper VI generated correctly."
                         : "The chain raised an error, so the project was probably not closed.",
         };
+
+        // WHAT LabVIEW's SAVE CHANGED, compared BEFORE the sweep below edits the file, so the two
+        // reports do not mix: this one is LabVIEW's rewrite, the sweep names its own removals.
+        if (closed && before is not null)
+        {
+            var rewrite = ProjectRewrite.Report(before);
+            result["projectRewrite"] = rewrite;
+            if (rewrite["warning"] is JsonValue warning)
+                result["note"] = (string?)result["note"] + " " + (string?)warning;
+        }
 
         // The sweep is reported ALWAYS, including when it did not run and why. A step that is
         // silent when it is skipped is one the reader assumes happened - the shape

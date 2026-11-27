@@ -36,6 +36,28 @@ internal static class ResumableCall
     private static readonly object Gate = new();
 
     /// <summary>
+    /// A COLLECTED answer's job start, machine-readable. The checks that judge files by "written since
+    /// the call began" (InlineAudit, SaveVersions) read it: the collecting call began AFTER the job
+    /// wrote its files. Measured 2026-11-23: a lvai_dqmh_new_event collected after three
+    /// `stillRunning` answers carried no `audit` at all, while lvai_audit_files found five
+    /// compiled-code errors in the files it wrote.
+    /// </summary>
+    internal const string JobStartedUtcKey = "jobStartedUtc";
+
+    /// <summary>The job start an answer carries (<see cref="JobStartedUtcKey"/>), or null.</summary>
+    internal static DateTime? JobStartedUtc(JsonNode? answer)
+    {
+        try
+        {
+            return answer?[JobStartedUtcKey]?.GetValue<string>() is { } s
+                   && DateTime.TryParse(s, System.Globalization.CultureInfo.InvariantCulture,
+                                        System.Globalization.DateTimeStyles.RoundtripKind, out var t)
+                ? t.ToUniversalTime() : null;
+        }
+        catch (Exception e) when (e is InvalidOperationException or FormatException) { return null; }
+    }
+
+    /// <summary>
     /// Runs <paramref name="work"/> under <paramref name="key"/> or attaches to the job already
     /// running under it, and answers within <paramref name="answerWithin"/>. <paramref name="family"/>
     /// keeps two DIFFERENT jobs of one tool from running at once: they would script the same LabVIEW.
@@ -194,6 +216,7 @@ internal static class ResumableCall
                 o["answeredFromEarlierCall"] = true;
                 o["answeredFromEarlierServerProcess"] = entry.Pid;
                 o["jobStartedAt"] = entry.Started.ToString("HH:mm:ss");
+                o[JobStartedUtcKey] = entry.Started.UtcDateTime.ToString("o");
                 return Indent(o);
             }
         }
@@ -250,6 +273,7 @@ internal static class ResumableCall
             {
                 o["answeredFromEarlierCall"] = true;
                 o["jobStartedAt"] = job.Started.ToString("HH:mm:ss");
+                o[JobStartedUtcKey] = job.Started.UtcDateTime.ToString("o");
                 return Indent(o);
             }
         }

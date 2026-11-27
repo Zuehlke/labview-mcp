@@ -196,6 +196,7 @@ internal static class LateCalls
                 if (JsonNode.Parse(text.Text) is not JsonObject o) continue;
                 o["answeredFromEarlierCall"] = true;
                 o["jobStartedAt"] = started.ToString("HH:mm:ss");
+                o[ResumableCall.JobStartedUtcKey] = started.UtcDateTime.ToString("o");
                 if (process is { } pid) o["answeredFromEarlierServerProcess"] = pid;
                 r.Content[i] = new TextContentBlock { Text = o.ToJsonString(Json.Answer) };
                 break;

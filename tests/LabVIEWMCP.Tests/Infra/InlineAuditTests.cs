@@ -107,6 +107,23 @@ public sealed class InlineAuditTests : IDisposable
         Assert.True(annotated is null || !annotated.Contains("compiled-code"));
     }
 
+    [Fact]
+    public void A_collected_answer_is_judged_from_its_jobs_start_not_the_collecting_call()
+    {
+        // Live, 2026-11-23: lvai_dqmh_new_event collected after three `stillRunning` answers had no
+        // audit - its files were written before the collecting call began.
+        var vi = Copy("Main.vi", "audit", "ATM Grafted.vi");
+        var job = DateTime.UtcNow.AddMinutes(-2);
+        File.SetLastWriteTimeUtc(vi, DateTime.UtcNow.AddSeconds(-30));
+        var collectingCall = DateTime.UtcNow;
+
+        Assert.Null(InlineAudit.Annotate(Answer(new { ok = true, viPath = vi }), collectingCall));
+
+        var collected = Answer(new Dictionary<string, object> { ["ok"] = true, ["viPath"] = vi,
+            [ResumableCall.JobStartedUtcKey] = job.ToString("o") });
+        Assert.Contains("automatic-error-handling", InlineAudit.Annotate(collected, collectingCall));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("not json")]

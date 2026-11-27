@@ -1,4 +1,6 @@
 using System.ComponentModel;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using LabVIEWMcp.Grpc;
 using LabVIEWMcp.Infra;
 using LabVIEWMcp.Lvai;
@@ -31,7 +33,8 @@ internal sealed class InspectTools(LvaiConnection connection)
         int maxContentChars = 0,
         [Description(AixmlBackend.ParameterDescription + """
              On pylabview the answer is read from the FILE in the same shape, with no running
-            LabVIEW; viImage stays empty.
+            LabVIEW; viImage stays empty, and `booleanActions` names the latched and the switch
+            boolean controls (`Cluster.Element` inside a cluster).
             """)]
         string? backend = null,
         CancellationToken ct = default) =>
@@ -231,7 +234,9 @@ internal sealed class InspectTools(LvaiConnection connection)
     [McpServerTool(Name = "lvai_describe_project", ReadOnly = true, Title = "Describe a LabVIEW project")]
     [Description("""
         Inspect: a JSON description of a .lvproj - items, hierarchy, targets, libraries, classes.
-        Use it before describing individual VIs to see what a project contains.
+        Use it before describing individual VIs to see what a project contains. `saveVersion` is the
+        version the project pins (NI.LV.All.SaveVersion, e.g. "21.0") or "Editor version";
+        `projectFileSavedBy` the LabVIEW that last saved the file.
         """)]
     public async Task<string> DescribeProjectAsync(
         [Description(@"Absolute path to the .lvproj file")] string projectPath,
@@ -245,7 +250,30 @@ internal sealed class InspectTools(LvaiConnection connection)
         string? backend = null,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_describe_project", async () =>
+            WithSaveVersion(await DescribeProjectCoreAsync(projectPath, projectName, maxMessages, timeoutSeconds, ct),
+                            projectPath)));
+
+    /// <summary>
+    /// The project's save version, added to the description: what it pins with
+    /// NI.LV.All.SaveVersion ("21.0") or "Editor version", and the LabVIEW that last saved the file.
+    /// Both field reports kept projects for an older LabVIEW, and no tool said so.
+    /// </summary>
+    internal static string WithSaveVersion(string answer, string projectPath)
+    {
+        if (!File.Exists(projectPath)) return answer;
+        try
         {
+            if (JsonNode.Parse(answer) is not JsonObject o) return answer;
+            o["saveVersion"] = SaveVersions.Pinned(projectPath) ?? "Editor version";
+            o["projectFileSavedBy"] = SaveVersions.Of(projectPath);
+            return Json.Document(o);
+        }
+        catch (JsonException) { return answer; }
+    }
+
+    private async Task<string> DescribeProjectCoreAsync(string projectPath, string? projectName, int maxMessages,
+                                                        int timeoutSeconds, CancellationToken ct)
+    {
             if (BackendRoute.OnPyLabview)
                 return File.Exists(projectPath)
                     ? FileDescriptions.Envelope(FileDescriptions.DescribeProject(projectPath), maxMessages)
@@ -264,7 +292,7 @@ internal sealed class InspectTools(LvaiConnection connection)
                     call.ResponseStream, maxMessages, timeoutSeconds, t);
                 return Json.Stream(items, reason, maxMessages);
             }, ct);
-        }));
+    }
 
     [McpServerTool(Name = "lvai_search_info_cache", ReadOnly = true, Title = "Search the LabVIEW info cache")]
     [Description("""

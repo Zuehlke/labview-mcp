@@ -41,6 +41,9 @@ internal static class InlineAudit
         try { root = JsonNode.Parse(answer) as JsonObject ?? throw new JsonException(); }
         catch (JsonException) { return null; }
 
+        // A collected answer: its files were written by the job, before this call began.
+        if (ResumableCall.JobStartedUtc(root) is { } jobStart && jobStart < startUtc) startUtc = jobStart;
+
         var findings = Findings(Written(root, startUtc - Slack));
         if (findings.Count == 0) return null;
 

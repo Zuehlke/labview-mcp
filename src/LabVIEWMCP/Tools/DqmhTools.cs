@@ -600,9 +600,11 @@ internal sealed class DqmhTools(LvaiConnection connection)
     {
         var type = aixmlType is "" or "variant" ? TypeOfValue(raw) : aixmlType;
         var xml = type is null ? null : ComValues.ToLabviewXml(name, type, raw);
+        // the element itself goes along: XElement.ToString() writes a LF inside a text as CRLF, so
+        // the string alone does not give a label's text back exactly (found 2026-11-03)
         return xml is null
             ? new LvValuesXml.Value(name, aixmlType, ComValues.Format(raw), "")
-            : new LvValuesXml.Value(name, xml.Name.LocalName, xml.Element("Val")?.Value, xml.ToString());
+            : new LvValuesXml.Value(name, xml.Name.LocalName, xml.Element("Val")?.Value, xml.ToString(), xml);
     }
 
     /// <summary>The AIXML type a .NET value read over ActiveX carries, or null when it is not plain.</summary>
@@ -626,22 +628,42 @@ internal sealed class DqmhTools(LvaiConnection connection)
         values.FirstOrDefault(v =>
             string.Equals(v.Name, name, StringComparison.OrdinalIgnoreCase)).Scalar;
 
-    /// <summary>Every &lt;Val&gt; of an array indicator, in order.</summary>
+    /// <summary>
+    /// Every element's &lt;Val&gt; of an array indicator, in order, read as XML. This read one LINE
+    /// at a time until 2026-11-03, so an element whose text holds a line break - Delacor's
+    /// `#DQMH_CodeNeeded` label is "#DQMH_CodeNeeded\n1. Configure this Message Case ..." - had its
+    /// `&lt;Val&gt;` and `&lt;/Val&gt;` on different lines and was dropped in silence: the dry run
+    /// "listed no such text" and lvai_dqmh_place_handler answered codeNeededTextsBefore 0 although its
+    /// helper had matched and deleted the label (session-7 report M8). Dimsize is honoured, because
+    /// an EMPTY LabVIEW array still serialises one template element (see LvValuesXml).
+    /// </summary>
     internal static List<string> Strings(IReadOnlyList<LvValuesXml.Value> values, string name)
     {
-        var xml = values.FirstOrDefault(v =>
-            string.Equals(v.Name, name, StringComparison.OrdinalIgnoreCase)).Xml;
+        var value = values.FirstOrDefault(v =>
+            string.Equals(v.Name, name, StringComparison.OrdinalIgnoreCase));
         var result = new List<string>();
-        if (string.IsNullOrEmpty(xml)) return result;
-        foreach (var line in xml.Split('\n'))
+        var array = value.Element;
+        if (array is null)
         {
-            var open = line.IndexOf("<Val>", StringComparison.Ordinal);
-            if (open < 0) continue;
-            var close = line.IndexOf("</Val>", open, StringComparison.Ordinal);
-            if (close < 0) continue;
-            result.Add(System.Net.WebUtility.HtmlDecode(
-                line[(open + 5)..close]));
+            if (string.IsNullOrEmpty(value.Xml)) return result;
+            try { array = LvNativeValue.ParseExact(value.Xml); }
+            catch (System.Xml.XmlException) { return result; }
         }
+
+        // a scalar rather than an array: its own Val is the one string
+        if (array.Element("Val") is { } own)
+        {
+            result.Add(own.Value);
+            return result;
+        }
+
+        var elements = array.Elements()
+            .Where(e => e.Name.LocalName is not ("Name" or "Dimsize")).ToList();
+        if (int.TryParse((string?)array.Element("Dimsize"), out var declared)
+            && declared >= 0 && declared < elements.Count)
+            elements = elements.Take(declared).ToList();
+        foreach (var element in elements)
+            if (element.Element("Val") is { } val) result.Add(val.Value);
         return result;
     }
 

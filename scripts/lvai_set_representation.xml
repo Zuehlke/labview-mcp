@@ -1,0 +1,212 @@
+<VI _name="lvai_set_representation.vi" description="Changes the REPRESENTATION of numerics of an existing VI or .ctl IN PLACE\2C then saves the file\3A front-panel controls and indicators (cluster elements and the fields of a typedef included\2C at any depth) and block diagram constants\2C each found by its LABEL.\0A\0AMEASURED 2026-11-20 on LabVIEW 2026\3A the Representation property of {LV.Numeric} and of {LV.NumericConstant} is WRITABLE in edit mode\2C although the catalogue lists it as read. It is an enum of uint32\3A 0 EXT\2C 1 DBL\2C 2 SGL\2C 3 I32\2C 4 I16\2C 5 I8\2C 6 U32\2C 7 U16\2C 8 U8\2C 9..11 complex\2C 12 I64\2C 13 U64\2C 14 fixed-point. The value and the default survive\2C the wires stay\2C and a sink of the old type gets a coercion dot. A typedef field is written the same way on the .ctl itself\3B the callers follow when they are next loaded and are saved by the caller of this helper.\0A\0AA NUMBER OUT OF RANGE IS NOT REFUSED BY LABVIEW. Writing 99 answered no error and left the control FIXED-POINT with its default gone. The caller sends only the numbers above.\0A\0AWHY TRAVERSE. Traverse for GObjects with class name Numeric returns every numeric of the panel at any depth\2C the elements of a cluster included\2C so a typedef's field is reached without walking Controls[]. On the diagram the class name is NumericConstant.\0A\0AA LABEL MUST MATCH EXACTLY ONE OBJECT. matches reports\2C per requested label and in request order\2C how many numerics carried it\3B only a label with exactly one match is written\2C the shape lvai_swap_subvis uses for constants. The references and labels are collected ONCE before any write.\0A\0AONE ERROR CHAIN\2C SO THE FILE IS ALL OR NOTHING. A write LabVIEW refuses - an enum asked to become a float is error 1077 - leaves its error on the wire\2C the writes after it do not run and Save.Instrument does not save. codes names\2C per request\2C the error at that point of the chain\3A the first nonzero entry is the request that failed. after is the representation read back in the session\2C -1 where nothing was written.\0A\0ATWO RUNS. With save FALSE and no labels the helper only LISTS\3A control labels seen and constant labels seen name every numeric there is\2C and nothing is written - an unchanged file is never re-saved in the running LabVIEW's version for nothing. With no labels and save TRUE it loads and saves the file\2C which is how a typedef's caller is brought up to date. The diagram traverse's own error does not reach the save\3A a .ctl has no block diagram\2C and then no constant is found.\0A\0AThe VI is opened in the instance this helper runs in\2C or\2C with through active project TRUE\2C in the active project's application instance\3A both were measured to save the same file. Lists are pipe separated\2C the way lvai_swap_subvis passes them.">
+  <FreeLabel comment="Representation written in place, then saved" uid="4200" uid_parent="root"/>
+  <Control _name="vi path" description="Absolute path of the .vi or .ctl to edit. It is saved in place." type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.v"/>
+  <Control _name="control labels" description="Labels of the front-panel numerics to change\2C pipe separated. Empty to change none." type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.v"/>
+  <Control _name="control representations" description="The Representation number per control label\2C pipe separated\2C same order." type="string" uid="4203" uid_parent="root" value="" outputs="value:4203.v"/>
+  <Control _name="constant labels" description="Labels of the block diagram numeric constants to change\2C pipe separated. Empty to change none." type="string" uid="4204" uid_parent="root" value="" outputs="value:4204.v"/>
+  <Control _name="constant representations" description="The Representation number per constant label\2C pipe separated\2C same order." type="string" uid="4205" uid_parent="root" value="" outputs="value:4205.v"/>
+  <Control _name="through active project" description="TRUE opens the file in the active project's application instance." type="bool" uid="4206" uid_parent="root" value="false" outputs="value:4206.v"/>
+  <Control _name="save" description="TRUE saves the file in place after the writes. FALSE writes nothing\2C which is the listing run." type="bool" uid="4208" uid_parent="root" value="false" outputs="value:4208.v"/>
+  <Control _name="error in" conIdx="8" connection="recommended" description="Error before this VI runs." type="cluster{bool.status,int32.code,string.source}" uid="4207" uid_parent="root" value="[false,0,]" outputs="value:4207.err"/>
+
+  <Node _name="String To Path" inputs="string:4201.v" outputs="path:4210.path" uid="4210" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4206.v" uid="4250" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4210.path" uid="4251" uid_parent="4250"/>
+    <Tunnel _id="In2" inputs="value:4207.err" uid="4252" uid_parent="4250"/>
+    <CaseFrame selector="True" selectout="" uid="4260" uid_parent="4250" label="Open in the active project's instance">
+      <Tunnel _id="In1" outputs="value:4261.path" uid="4261" uid_parent="4260"/>
+      <Tunnel _id="In2" outputs="value:4262.err" uid="4262" uid_parent="4260"/>
+      <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="reference:,error in (no error):4262.err" outputs="Project\3AActive Project:4263.proj,reference out:,error out:4263.err" uid="4263" uid_parent="4260"/>
+      <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4263.proj,error in (no error):4263.err" outputs="Application:4264.app,reference out:,error out:4264.err" uid="4264" uid_parent="4260"/>
+      <Node _name="Open VI Reference" inputs="application reference (local):4264.app,vi path:4261.path,error in (no error):4264.err" outputs="vi reference:4265.ref,error out:4265.err" uid="4265" uid_parent="4260"/>
+      <Tunnel _id="Out1" inputs="value:4265.ref" uid="4266" uid_parent="4260"/>
+      <Tunnel _id="Out2" inputs="value:4265.err" uid="4267" uid_parent="4260"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="4270" uid_parent="4250" label="Open in the instance this helper runs in">
+      <Tunnel _id="In1" outputs="value:4271.path" uid="4271" uid_parent="4270"/>
+      <Tunnel _id="In2" outputs="value:4272.err" uid="4272" uid_parent="4270"/>
+      <Node _name="Open VI Reference" inputs="vi path:4271.path,error in (no error):4272.err" outputs="vi reference:4273.ref,error out:4273.err" uid="4273" uid_parent="4270"/>
+      <Tunnel _id="Out1" inputs="value:4273.ref" uid="4274" uid_parent="4270"/>
+      <Tunnel _id="Out2" inputs="value:4273.err" uid="4275" uid_parent="4270"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4280.ref" uid="4280" uid_parent="4250"/>
+    <Tunnel _id="Out2" outputs="value:4281.err" uid="4281" uid_parent="4250"/>
+  </Structure>
+
+  <Constant _name="Line Format" type="string" uid="4220" uid_parent="root" value="%s" outputs="value:4220.v"/>
+  <Constant _name="Empty String Array" type="array{string.String}" uid="4221" uid_parent="root" value="[]" outputs="value:4221.v"/>
+  <Constant _name="Separator" type="string" uid="4222" uid_parent="root" value="|" outputs="value:4222.v"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4220.v,spreadsheet string:4202.v,array type (2D Dbl):4221.v,delimiter (Tab):4222.v" outputs="array:4223.array" uid="4223" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4220.v,spreadsheet string:4203.v,array type (2D Dbl):4221.v,delimiter (Tab):4222.v" outputs="array:4224.array" uid="4224" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4220.v,spreadsheet string:4204.v,array type (2D Dbl):4221.v,delimiter (Tab):4222.v" outputs="array:4225.array" uid="4225" uid_parent="root"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4220.v,spreadsheet string:4205.v,array type (2D Dbl):4221.v,delimiter (Tab):4222.v" outputs="array:4226.array" uid="4226" uid_parent="root"/>
+
+  <Constant _name="Numeric Class Name" type="string" uid="4227" uid_parent="root" value="Numeric" outputs="value:4227.v"/>
+  <Constant _name="Front Panel" type="uint16{FP,BD,Other}" uid="4228" uid_parent="root" value="0" outputs="value:4228.v"/>
+  <Constant _name="Numeric Reference" type="ref{LV.Numeric}" uid="4229" uid_parent="root" value="" outputs="value:4229.v"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:4280.ref,Class Name:4227.v,error in (no error):4281.err,Traverse Target:4228.v,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:,References:4230.refs,# of Refs:4230.n,error out:4230.err" uid="4230" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root" label="Label of every numeric on the panel">
+    <Tunnel _id="In1" inputs="value:4230.refs" mode="index" outputs="value:4301.g" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4229.v" outputs="value:4302.cls" uid="4302" uid_parent="4300"/>
+    <Node _name="To More Specific Class" inputs="reference:4301.g,error in:,target class:4302.cls" outputs="specific class reference:4310.num,error out:4310.err" uid="4310" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Label" type="{LV.Numeric}" inputs="reference:4310.num,error in (no error):4310.err" outputs="Label:4311.lbl,reference out:,error out:4311.err" uid="4311" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:4311.lbl,error in (no error):4311.err" outputs="Text:4312.text,reference out:,error out:4312.err" uid="4312" uid_parent="4300"/>
+    <Tunnel _id="Out1" inputs="value:4310.num" mode="index" outputs="value:4320.refs" uid="4320" uid_parent="4300"/>
+    <Tunnel _id="Out2" inputs="value:4312.text" mode="index" outputs="value:4321.labels" uid="4321" uid_parent="4300"/>
+  </Structure>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4400" uid_parent="root" label="One requested control per iteration">
+    <Tunnel _id="In1" inputs="value:4223.array" mode="index" outputs="value:4401.label" uid="4401" uid_parent="4400"/>
+    <Tunnel _id="In2" inputs="value:4224.array" mode="index" outputs="value:4402.rep" uid="4402" uid_parent="4400"/>
+    <Tunnel _id="In3" inputs="value:4321.labels" outputs="value:4403.labels" uid="4403" uid_parent="4400"/>
+    <Tunnel _id="In4" inputs="value:4320.refs" outputs="value:4404.refs" uid="4404" uid_parent="4400"/>
+    <ShiftReg uid="4405" uid_parent="4400">
+      <Left inputs="value:4230.err" outputs="value:4406.err" uid="4406" uid_parent="4405"/>
+      <Right inputs="value:4480.err" outputs="value:4407.err" uid="4407" uid_parent="4405"/>
+    </ShiftReg>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="4410" uid_parent="4400">
+      <Tunnel _id="In1" inputs="value:4403.labels" mode="index" outputs="value:4411.label" uid="4411" uid_parent="4410"/>
+      <Tunnel _id="In2" inputs="value:4404.refs" mode="index" outputs="value:4412.ref" uid="4412" uid_parent="4410"/>
+      <Tunnel _id="In3" inputs="value:4401.label" outputs="value:4413.wanted" uid="4413" uid_parent="4410"/>
+      <Node _name="Equal?" inputs="x:4411.label,y:4413.wanted" outputs="x = y?:4414.hit" uid="4414" uid_parent="4410"/>
+      <Tunnel _id="Out1" cond="4414.hit" inputs="value:4412.ref" mode="index" outputs="value:4415.matches" uid="4415" uid_parent="4410"/>
+    </Structure>
+    <Node _name="Array Size" inputs="array:4415.matches" outputs="size(s):4420.n" uid="4420" uid_parent="4400"/>
+    <Constant _name="exactly one" type="int32" uid="4421" uid_parent="4400" value="1" outputs="value:4421.v"/>
+    <Node _name="Equal?" inputs="x:4420.n,y:4421.v" outputs="x = y?:4422.one" uid="4422" uid_parent="4400"/>
+    <Node _name="Decimal String To Number" inputs="string:4402.rep,offset:,default (0L):" outputs="offset past number:,number:4423.number" uid="4423" uid_parent="4400"/>
+    <Node _name="To Unsigned Long Integer" inputs="number:4423.number" outputs="unsigned 32bit integer:4424.u32" uid="4424" uid_parent="4400"/>
+    <Structure _name="Case Structure" selectin="4422.one" uid="4430" uid_parent="4400">
+      <Tunnel _id="In1" inputs="value:4415.matches" uid="4431" uid_parent="4430"/>
+      <Tunnel _id="In2" inputs="value:4424.u32" uid="4432" uid_parent="4430"/>
+      <Tunnel _id="In3" inputs="value:4406.err" uid="4433" uid_parent="4430"/>
+      <CaseFrame selector="True" selectout="" uid="4440" uid_parent="4430" label="Exactly one numeric carries the label">
+        <Tunnel _id="In1" outputs="value:4441.matches" uid="4441" uid_parent="4440"/>
+        <Tunnel _id="In2" outputs="value:4442.rep" uid="4442" uid_parent="4440"/>
+        <Tunnel _id="In3" outputs="value:4443.err" uid="4443" uid_parent="4440"/>
+        <Constant _name="first match" type="int32" uid="4444" uid_parent="4440" value="0" outputs="value:4444.v"/>
+        <Node _name="Index Array" inputs="array:4441.matches,index:4444.v" outputs="element:4445.num" uid="4445" uid_parent="4440"/>
+        <Node _name="Property Node" fields="write+Representation" type="{LV.Numeric}" inputs="reference:4445.num,error in (no error):4443.err,Representation:4442.rep" outputs="reference out:4446.ref,error out:4446.err" uid="4446" uid_parent="4440"/>
+        <Node _name="Property Node" fields="read+Representation" type="{LV.Numeric}" inputs="reference:4446.ref,error in (no error):4446.err" outputs="Representation:4447.after,reference out:,error out:4447.err" uid="4447" uid_parent="4440"/>
+        <Node _name="To Long Integer" inputs="number:4447.after" outputs="32bit integer:4448.i32" uid="4448" uid_parent="4440"/>
+        <Tunnel _id="Out1" inputs="value:4446.err" uid="4449" uid_parent="4440"/>
+        <Tunnel _id="Out2" inputs="value:4448.i32" uid="4450" uid_parent="4440"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="4460" uid_parent="4430" label="No match, or several: nothing is written">
+        <Tunnel _id="In1" outputs="value:" uid="4461" uid_parent="4460"/>
+        <Tunnel _id="In2" outputs="value:" uid="4462" uid_parent="4460"/>
+        <Tunnel _id="In3" outputs="value:4463.err" uid="4463" uid_parent="4460"/>
+        <Constant _name="not written" type="int32" uid="4464" uid_parent="4460" value="-1" outputs="value:4464.v"/>
+        <Tunnel _id="Out1" inputs="value:4463.err" uid="4465" uid_parent="4460"/>
+        <Tunnel _id="Out2" inputs="value:4464.v" uid="4466" uid_parent="4460"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4480.err" uid="4480" uid_parent="4430"/>
+      <Tunnel _id="Out2" outputs="value:4481.after" uid="4481" uid_parent="4430"/>
+    </Structure>
+    <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4480.err" outputs="code:4485.code" uid="4485" uid_parent="4400"/>
+    <Tunnel _id="Out1" inputs="value:4420.n" mode="index" outputs="value:4490.counts" uid="4490" uid_parent="4400"/>
+    <Tunnel _id="Out2" inputs="value:4485.code" mode="index" outputs="value:4491.codes" uid="4491" uid_parent="4400"/>
+    <Tunnel _id="Out3" inputs="value:4481.after" mode="index" outputs="value:4492.after" uid="4492" uid_parent="4400"/>
+  </Structure>
+
+  <Constant _name="Constant Class Name" type="string" uid="4500" uid_parent="root" value="NumericConstant" outputs="value:4500.v"/>
+  <Constant _name="Block Diagram" type="uint16{FP,BD,Other}" uid="4501" uid_parent="root" value="1" outputs="value:4501.v"/>
+  <Constant _name="Constant Reference" type="ref{LV.NumericConstant}" uid="4502" uid_parent="root" value="" outputs="value:4502.v"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:4280.ref,Class Name:4500.v,error in (no error):4407.err,Traverse Target:4501.v,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:,References:4503.refs,# of Refs:4503.n,error out:4503.err" uid="4503" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4520" uid_parent="root" label="Label of every numeric constant">
+    <Tunnel _id="In1" inputs="value:4503.refs" mode="index" outputs="value:4521.g" uid="4521" uid_parent="4520"/>
+    <Tunnel _id="In2" inputs="value:4502.v" outputs="value:4522.cls" uid="4522" uid_parent="4520"/>
+    <Node _name="To More Specific Class" inputs="reference:4521.g,error in:,target class:4522.cls" outputs="specific class reference:4530.k,error out:4530.err" uid="4530" uid_parent="4520"/>
+    <Node _name="Property Node" fields="read+Label" type="{LV.NumericConstant}" inputs="reference:4530.k,error in (no error):4530.err" outputs="Label:4531.lbl,reference out:,error out:4531.err" uid="4531" uid_parent="4520"/>
+    <Node _name="Property Node" fields="read+Text" type="{LV.Text}" inputs="reference:4531.lbl,error in (no error):4531.err" outputs="Text:4532.text,reference out:,error out:4532.err" uid="4532" uid_parent="4520"/>
+    <Tunnel _id="Out1" inputs="value:4530.k" mode="index" outputs="value:4540.refs" uid="4540" uid_parent="4520"/>
+    <Tunnel _id="Out2" inputs="value:4532.text" mode="index" outputs="value:4541.labels" uid="4541" uid_parent="4520"/>
+  </Structure>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4600" uid_parent="root" label="One requested constant per iteration">
+    <Tunnel _id="In1" inputs="value:4225.array" mode="index" outputs="value:4601.label" uid="4601" uid_parent="4600"/>
+    <Tunnel _id="In2" inputs="value:4226.array" mode="index" outputs="value:4602.rep" uid="4602" uid_parent="4600"/>
+    <Tunnel _id="In3" inputs="value:4541.labels" outputs="value:4603.labels" uid="4603" uid_parent="4600"/>
+    <Tunnel _id="In4" inputs="value:4540.refs" outputs="value:4604.refs" uid="4604" uid_parent="4600"/>
+    <ShiftReg uid="4605" uid_parent="4600">
+      <Left inputs="value:4407.err" outputs="value:4606.err" uid="4606" uid_parent="4605"/>
+      <Right inputs="value:4680.err" outputs="value:4607.err" uid="4607" uid_parent="4605"/>
+    </ShiftReg>
+    <Structure _name="For Loop" count="" maxin="" maxout="" uid="4610" uid_parent="4600">
+      <Tunnel _id="In1" inputs="value:4603.labels" mode="index" outputs="value:4611.label" uid="4611" uid_parent="4610"/>
+      <Tunnel _id="In2" inputs="value:4604.refs" mode="index" outputs="value:4612.ref" uid="4612" uid_parent="4610"/>
+      <Tunnel _id="In3" inputs="value:4601.label" outputs="value:4613.wanted" uid="4613" uid_parent="4610"/>
+      <Node _name="Equal?" inputs="x:4611.label,y:4613.wanted" outputs="x = y?:4614.hit" uid="4614" uid_parent="4610"/>
+      <Tunnel _id="Out1" cond="4614.hit" inputs="value:4612.ref" mode="index" outputs="value:4615.matches" uid="4615" uid_parent="4610"/>
+    </Structure>
+    <Node _name="Array Size" inputs="array:4615.matches" outputs="size(s):4620.n" uid="4620" uid_parent="4600"/>
+    <Constant _name="exactly one constant" type="int32" uid="4621" uid_parent="4600" value="1" outputs="value:4621.v"/>
+    <Node _name="Equal?" inputs="x:4620.n,y:4621.v" outputs="x = y?:4622.one" uid="4622" uid_parent="4600"/>
+    <Node _name="Decimal String To Number" inputs="string:4602.rep,offset:,default (0L):" outputs="offset past number:,number:4623.number" uid="4623" uid_parent="4600"/>
+    <Node _name="To Unsigned Long Integer" inputs="number:4623.number" outputs="unsigned 32bit integer:4624.u32" uid="4624" uid_parent="4600"/>
+    <Structure _name="Case Structure" selectin="4622.one" uid="4630" uid_parent="4600">
+      <Tunnel _id="In1" inputs="value:4615.matches" uid="4631" uid_parent="4630"/>
+      <Tunnel _id="In2" inputs="value:4624.u32" uid="4632" uid_parent="4630"/>
+      <Tunnel _id="In3" inputs="value:4606.err" uid="4633" uid_parent="4630"/>
+      <CaseFrame selector="True" selectout="" uid="4640" uid_parent="4630" label="Exactly one constant carries the label">
+        <Tunnel _id="In1" outputs="value:4641.matches" uid="4641" uid_parent="4640"/>
+        <Tunnel _id="In2" outputs="value:4642.rep" uid="4642" uid_parent="4640"/>
+        <Tunnel _id="In3" outputs="value:4643.err" uid="4643" uid_parent="4640"/>
+        <Constant _name="first constant" type="int32" uid="4644" uid_parent="4640" value="0" outputs="value:4644.v"/>
+        <Node _name="Index Array" inputs="array:4641.matches,index:4644.v" outputs="element:4645.k" uid="4645" uid_parent="4640"/>
+        <Node _name="Property Node" fields="write+Representation" type="{LV.NumericConstant}" inputs="reference:4645.k,error in (no error):4643.err,Representation:4642.rep" outputs="reference out:4646.ref,error out:4646.err" uid="4646" uid_parent="4640"/>
+        <Node _name="Property Node" fields="read+Representation" type="{LV.NumericConstant}" inputs="reference:4646.ref,error in (no error):4646.err" outputs="Representation:4647.after,reference out:,error out:4647.err" uid="4647" uid_parent="4640"/>
+        <Node _name="To Long Integer" inputs="number:4647.after" outputs="32bit integer:4648.i32" uid="4648" uid_parent="4640"/>
+        <Tunnel _id="Out1" inputs="value:4646.err" uid="4649" uid_parent="4640"/>
+        <Tunnel _id="Out2" inputs="value:4648.i32" uid="4650" uid_parent="4640"/>
+      </CaseFrame>
+      <CaseFrame selector="False" selectout="" uid="4660" uid_parent="4630" label="No match, or several: nothing is written">
+        <Tunnel _id="In1" outputs="value:" uid="4661" uid_parent="4660"/>
+        <Tunnel _id="In2" outputs="value:" uid="4662" uid_parent="4660"/>
+        <Tunnel _id="In3" outputs="value:4663.err" uid="4663" uid_parent="4660"/>
+        <Constant _name="constant not written" type="int32" uid="4664" uid_parent="4660" value="-1" outputs="value:4664.v"/>
+        <Tunnel _id="Out1" inputs="value:4663.err" uid="4665" uid_parent="4660"/>
+        <Tunnel _id="Out2" inputs="value:4664.v" uid="4666" uid_parent="4660"/>
+      </CaseFrame>
+      <Tunnel _id="Out1" outputs="value:4680.err" uid="4680" uid_parent="4630"/>
+      <Tunnel _id="Out2" outputs="value:4681.after" uid="4681" uid_parent="4630"/>
+    </Structure>
+    <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4680.err" outputs="code:4685.code" uid="4685" uid_parent="4600"/>
+    <Tunnel _id="Out1" inputs="value:4620.n" mode="index" outputs="value:4690.counts" uid="4690" uid_parent="4600"/>
+    <Tunnel _id="Out2" inputs="value:4685.code" mode="index" outputs="value:4691.codes" uid="4691" uid_parent="4600"/>
+    <Tunnel _id="Out3" inputs="value:4681.after" mode="index" outputs="value:4692.after" uid="4692" uid_parent="4600"/>
+  </Structure>
+
+  <Structure _name="Case Structure" selectin="4208.v" uid="4700" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4280.ref" uid="4701" uid_parent="4700"/>
+    <Tunnel _id="In2" inputs="value:4607.err" uid="4702" uid_parent="4700"/>
+    <CaseFrame selector="True" selectout="" uid="4703" uid_parent="4700" label="Save in place; an error on the wire stops it">
+      <Tunnel _id="In1" outputs="value:4704.ref" uid="4704" uid_parent="4703"/>
+      <Tunnel _id="In2" outputs="value:4705.err" uid="4705" uid_parent="4703"/>
+      <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4704.ref,error in (no error):4705.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4706.err" uid="4706" uid_parent="4703"/>
+      <Tunnel _id="Out1" inputs="value:4706.err" uid="4707" uid_parent="4703"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="4708" uid_parent="4700" label="List only: nothing is written">
+      <Tunnel _id="In1" outputs="value:" uid="4709" uid_parent="4708"/>
+      <Tunnel _id="In2" outputs="value:4711.err" uid="4711" uid_parent="4708"/>
+      <Tunnel _id="Out1" inputs="value:4711.err" uid="4712" uid_parent="4708"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4713.err" uid="4713" uid_parent="4700"/>
+  </Structure>
+  <Node _name="Close Reference" inputs="reference:4280.ref,error in (no error):4713.err" outputs="error out:4710.err" uid="4710" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:4710.err" outputs="code:4720.code,source:4720.source" uid="4720" uid_parent="root"/>
+
+  <Indicator _name="control labels seen" description="The label of every numeric on the front panel\2C at any depth\2C before the write." type="array{string.String}" uid="4800" uid_parent="root" value="[]" inputs="value:4321.labels"/>
+  <Indicator _name="control matches" description="Per requested control label\2C how many numerics carried it. Only exactly one is written." type="array{int32}" uid="4801" uid_parent="root" value="[]" inputs="value:4490.counts"/>
+  <Indicator _name="control codes" description="Per requested control label\2C the error code of the chain after its write." type="array{int32}" uid="4802" uid_parent="root" value="[]" inputs="value:4491.codes"/>
+  <Indicator _name="control after" description="Per requested control label\2C the Representation read back\2C -1 when nothing was written." type="array{int32}" uid="4803" uid_parent="root" value="[]" inputs="value:4492.after"/>
+  <Indicator _name="constant labels seen" description="The label of every numeric constant on the block diagram\2C at any depth." type="array{string.String}" uid="4804" uid_parent="root" value="[]" inputs="value:4541.labels"/>
+  <Indicator _name="constant matches" description="Per requested constant label\2C how many constants carried it. Only exactly one is written." type="array{int32}" uid="4805" uid_parent="root" value="[]" inputs="value:4690.counts"/>
+  <Indicator _name="constant codes" description="Per requested constant label\2C the error code of the chain after its write." type="array{int32}" uid="4806" uid_parent="root" value="[]" inputs="value:4691.codes"/>
+  <Indicator _name="constant after" description="Per requested constant label\2C the Representation read back\2C -1 when nothing was written." type="array{int32}" uid="4807" uid_parent="root" value="[]" inputs="value:4692.after"/>
+  <Indicator _name="code" description="Zero when every write and the save succeeded." type="int32" uid="4808" uid_parent="root" value="0" inputs="value:4720.code"/>
+  <Indicator _name="source" description="Source of the first error." type="string" uid="4809" uid_parent="root" value="" inputs="value:4720.source"/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" description="The error chain\3A open\2C writes\2C save\2C close." type="cluster{bool.status,int32.code,string.source}" uid="4810" uid_parent="root" value="[false,0,]" inputs="value:4710.err"/>
+</VI>
