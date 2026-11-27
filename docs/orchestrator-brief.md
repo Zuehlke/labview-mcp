@@ -60,7 +60,8 @@ needs the project):
 3. `lvai_move_to_folder` once per FUNCTION folder (`API`, `Helpers`, `UI`, ...), never flat;
 4. `lvai_exec_state` over every member (membership renames them). Fix every `audit` error a
    tool answered; if one answered `deferredSourceOnly`, close the project with `projectPath`;
-5. `lvai_bind_pane_typedef` per subVI whose pane carries a typedef (a builder cannot).
+5. `lvai_bind_pane_typedef` per subVI whose pane carries a typedef (a builder cannot);
+6. pinned project: close it, `lvai_save_for_previous` every file a `saveVersionCheck` named.
 
 ## Reuse what the project already holds
 
@@ -74,8 +75,7 @@ Two agents in one folder overwrite each other's files. Give each agent its own f
 
 ## Check the station with `pylv_status`
 
-`pylv_status` is the start-up check (no LabVIEW, no NI service): backend in force, running
-LabVIEWs; `lvai_status` answers the same on pylabview. Readiness is
+`pylv_status` is the start-up check (backend, running LabVIEWs); readiness is
 `lvai_ensure_labview`.
 
 ## Only you open and close projects

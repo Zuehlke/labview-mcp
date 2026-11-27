@@ -51,6 +51,22 @@ internal sealed class ParallelCalls(Func<DateTime> clock)
         "lvai_audit_files",
     };
 
+    /// <summary>
+    /// Calls that READ LabVIEW (a helper VI may run) and write no file of the user's. They take part
+    /// in the in-flight count, but an overlap made ONLY of such calls does not arm the window: on
+    /// 2026-11-27 (DosingLine) the orchestrator ran lvai_exec_state beside lvai_coercion_dots after
+    /// the last agent had finished, and its own project close was refused for 60 s. An overlap
+    /// that includes any other call - a generate, a save - still arms it, and a read still running
+    /// when a project change is asked for still refuses it.
+    /// </summary>
+    internal static readonly HashSet<string> ReadOnly = new(StringComparer.Ordinal)
+    {
+        "lvai_exec_state", "lvai_coercion_dots", "lvai_error_list", "lvai_describe_vi",
+        "lvai_describe_project", "lvai_describe_class", "lvai_describe_ctl", "lvai_vi_terminals",
+        "lvai_connector_pane", "lvai_vis_in_memory", "lvai_palette_index", "lvai_example_index",
+        "lvai_check_links", "lvai_read_icons", "pylv_extract", "pylv_route",
+    };
+
     private sealed class Uncounted : IDisposable
     {
         internal static readonly Uncounted Instance = new();
@@ -64,7 +80,8 @@ internal sealed class ParallelCalls(Func<DateTime> clock)
         lock (_gate)
         {
             var id = ++_next;
-            if (_inFlight.Count > 0)
+            if (_inFlight.Count > 0 &&
+                !(ReadOnly.Contains(tool) && _inFlight.Values.All(ReadOnly.Contains)))
             {
                 _lastOverlap = clock();
                 _lastOverlapTools = [.. _inFlight.Values.Append(tool).Distinct().Order()];

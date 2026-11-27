@@ -518,20 +518,65 @@ internal sealed class LibraryTools(LvaiConnection connection)
     internal const string RemoveHelperAixmlFileName = "lvai_remove_one_from_library.xml";
 
     /// <summary>
-    /// For each VI to remove, the files under the project's folder whose link records name it and
-    /// that do not leave in the same call; VIs nothing else calls are left out. The search is by
-    /// FILE NAME (<see cref="InPlaceEditTools.Callers"/>), so a same-named VI elsewhere counts too.
+    /// For each VI to remove, the files under the project's folder whose link records name it - ALSO
+    /// those that leave in the same call; VIs nothing else calls are left out. The search is by FILE
+    /// NAME (<see cref="InPlaceEditTools.Callers"/>), so a same-named VI elsewhere counts too.
+    ///
+    /// A CALLER LEAVING WITH ITS CALLEE COUNTED AS NO CALLER until 2026-11-27; measured that day on
+    /// a copy of DosingLine (LabVIEW 2026 26.3.1), `Dosing Main.vi` taken out with its three helpers
+    /// in one call: in the given order (caller first) every call answered ok and the caller read
+    /// eBad afterwards, "Missing subVI Dosing Line.lvlib:Scale Flow.vi" - it kept the qualified
+    /// names; with the callees first, the caller was modified in memory and LabVIEW raised the modal
+    /// "Save changes before closing?". Neither order is safe, so such a group is refused.
     /// </summary>
     internal static JsonObject CallersBlockingRemoval(IReadOnlyList<string> vis, string projectPath)
     {
-        var leaving = new HashSet<string>(vis, StringComparer.OrdinalIgnoreCase);
         var blocking = new JsonObject();
         foreach (var vi in vis)
         {
-            var callers = InPlaceEditTools.Callers(vi, projectPath).Where(c => !leaving.Contains(c)).ToList();
+            var callers = InPlaceEditTools.Callers(vi, projectPath)
+                .Where(c => !string.Equals(c, vi, StringComparison.OrdinalIgnoreCase)).ToList();
             if (callers.Count > 0)
                 blocking[vi] = new JsonArray([.. callers.Select(c => (JsonNode)c)]);
         }
+        return blocking;
+    }
+
+    /// <summary>
+    /// The library's PRIVATE items (NI.LibItem.Scope 2) as full paths, at any folder depth.
+    /// </summary>
+    internal static List<string> PrivateMembers(string library)
+    {
+        var root = XDocument.Load(library).Root;
+        if (root is null) return [];
+        var found = new List<string>();
+        foreach (var item in root.Descendants("Item").Where(i => (string?)i.Attribute("Type") != "Folder"))
+        {
+            var scope = item.Elements("Property")
+                .FirstOrDefault(p => (string?)p.Attribute("Name") == "NI.LibItem.Scope")?.Value.Trim();
+            if (scope != "2" || (string?)item.Attribute("URL") is not { Length: > 0 } url || url.Contains('<')) continue;
+            try { found.Add(Path.GetFullPath(Path.Combine(library, url.Replace('/', '\\')))); }
+            catch (ArgumentException) { }
+        }
+        return found;
+    }
+
+    /// <summary>
+    /// For each VI to remove, the PRIVATE members of the library it calls that stay behind: outside
+    /// the library it may not call them, and it is saved broken. Measured 2026-11-27 (DosingLine copy,
+    /// LabVIEW 2026): `Dosing Main.vi` left `Dosing Line.lvlib` with `ok` true and read eBad after,
+    /// "This VI cannot access the referenced item in private scope" for its three private subVIs.
+    /// </summary>
+    internal static JsonObject PrivateCalleesBlockingRemoval(string library, IReadOnlyList<string> vis, string projectPath)
+    {
+        var leaving = new HashSet<string>(vis, StringComparer.OrdinalIgnoreCase);
+        var blocking = new JsonObject();
+        foreach (var member in PrivateMembers(library).Where(m => !leaving.Contains(m)))
+            foreach (var caller in InPlaceEditTools.Callers(member, projectPath).Where(leaving.Contains))
+            {
+                if (blocking[caller] is not JsonArray list) blocking[caller] = list = new JsonArray();
+                list.Add(member);
+            }
         return blocking;
     }
 
@@ -544,10 +589,13 @@ internal sealed class LibraryTools(LvaiConnection connection)
         LabVIEW's own library save keeps listing a disconnected VI (measured). Verified from the
         files: `verify.stillClaimsLibrary` (the VI's own LIBN) and `verify.stillListed` (the
         .lvlib) must be empty. `keepInProject` (default true) lists the VIs at the project's
-        target level. A VI that another file under the project's folder CALLS is refused
-        (`hasCallers`, each caller named) unless the caller leaves in the same call: the
-        disconnect would leave the caller modified and raise a modal save dialog. A
-        library-private VI becomes public. Classes and class members are refused.
+        target level, or in `projectFolder`; a library folder the call empties is removed
+        (`emptyFoldersRemoved`). A VI that another file under the project's folder CALLS is refused
+        (`hasCallers`, each caller named with its library under `callerOwners`;
+        `callersInThisLibrary` are the user's decision), ALSO when the caller leaves in the same call:
+        the disconnect would leave the caller modified and raise a modal save dialog. A VI that
+        CALLS a private member staying behind is refused too (`callsPrivateMembers`): it would
+        leave broken. A library-private VI becomes public. Classes and class members are refused.
         """)]
     public async Task<string> RemoveFromLibraryAsync(
         [Description("Absolute path to the .lvlib the VIs leave")] string libraryPath,
@@ -555,8 +603,12 @@ internal sealed class LibraryTools(LvaiConnection connection)
         string viPaths,
         [Description("The .lvproj the library belongs to - opened and made active, then closed")]
         string projectPath,
-        [Description("List the removed VIs at the project's target level afterwards (default: true)")]
+        [Description("List the removed VIs in the project afterwards (default: true) - at target level, or in projectFolder")]
         bool keepInProject = true,
+        [Description("With keepInProject: the project's virtual folder to list them in, created if missing; omit for target level")]
+        string? projectFolder = null,
+        [Description("Remove a library folder this call left EMPTY (default: true); a folder empty before is kept")]
+        bool removeEmptyFolders = true,
         [Description("Where to keep the generated helper VI")] string? helperViPath = null,
         [Description("Regenerate the helper VI even when it exists")] bool regenerateHelper = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
@@ -599,14 +651,40 @@ internal sealed class LibraryTools(LvaiConnection connection)
             // `Tank Fill.lvlib:Tank Main.vi` calls, left that caller modified in memory, and the
             // helper's close raised the modal "Save changes before closing?" - every call waited
             // behind it (601 s) and nothing was removed. A member nothing calls left in 3.6 s. A
-            // caller that leaves in the same call does not count.
+            // caller that leaves in the same call counts too (CallersBlockingRemoval).
             if (CallersBlockingRemoval(vis, Path.GetFullPath(projectPath)) is { Count: > 0 } blocking)
+            {
+                // WHICH LIBRARY EACH CALLER BELONGS TO decides whether "take the caller out too" is
+                // acceptable: a caller in the SAME library would leave it as well, which the user did
+                // not ask for (2026-11-27, Dosing Main.vi calling Format Flow.vi - the agent read the
+                // membership from the .lvlib itself).
+                var owners = new JsonObject();
+                foreach (var caller in blocking.SelectMany(kv => kv.Value!.AsArray()).Select(c => c!.GetValue<string>())
+                             .Distinct(StringComparer.OrdinalIgnoreCase))
+                    owners[caller] = new JsonArray([.. ViFile.Owners(caller).Select(o => (JsonNode)o)]);
+                var sameLibrary = owners.Where(kv => kv.Value!.AsArray().Any(o =>
+                    string.Equals(o!.GetValue<string>(), Path.GetFileName(library), StringComparison.OrdinalIgnoreCase)))
+                    .Select(kv => kv.Key).ToList();
                 return Json.Error("hasCallers",
-                    "Other files under the project's folder call the VI(s) to remove - `callers` names them per VI. " +
-                    "Disconnecting a called VI modifies its callers in memory, and LabVIEW then asks to save them in a " +
-                    "modal dialog that stops every call. Nothing was changed. Take the callers out in the same call, " +
-                    "or remove the calls first.",
-                    new JsonObject { ["callers"] = blocking });
+                    "Other files under the project's folder call the VI(s) to remove - `callers` names them per VI, " +
+                    "`callerOwners` the library or class each caller belongs to. Disconnecting a called VI modifies its " +
+                    "callers in memory, and LabVIEW then asks to save them in a modal dialog that stops every call. " +
+                    "Nothing was changed - and a caller taken out in the SAME call is refused too (measured: it left broken, or raised the dialog). Remove the calls first" +
+                    (sameLibrary.Count > 0
+                        ? $" - but {string.Join(", ", sameLibrary.Select(Path.GetFileName))} belong(s) to this same library, " +
+                          "so taking them out too changes the library's own API: that is the user's decision, not a fix."
+                        : "."),
+                    new JsonObject { ["callers"] = blocking, ["callerOwners"] = owners,
+                                     ["callersInThisLibrary"] = new JsonArray([.. sameLibrary.Select(c => (JsonNode)c)]) });
+            }
+
+            if (PrivateCalleesBlockingRemoval(library, vis, Path.GetFullPath(projectPath)) is { Count: > 0 } privateCallees)
+                return Json.Error("callsPrivateMembers",
+                    "The VI(s) to remove call PRIVATE members of this library that stay in it - `privateCallees` names " +
+                    "them per VI. Outside the library a VI may not call them, so it would leave BROKEN (measured: " +
+                    "\"cannot access the referenced item in private scope\"). Nothing was changed. Take those members " +
+                    "public first - that changes the library, so it is the user's decision.",
+                    new JsonObject { ["privateCallees"] = privateCallees });
 
             var aixml = StatusTools.ScriptsDirectory() is { } scripts ? Path.Combine(scripts, RemoveHelperAixmlFileName) : null;
             if (aixml is null || !File.Exists(aixml))
@@ -657,13 +735,20 @@ internal sealed class LibraryTools(LvaiConnection connection)
             steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) });
 
             var removedItems = RemoveLibraryItems(library, disconnected);
+            // A FOLDER THIS CALL EMPTIED goes too (removeEmptyFolders); a folder that was empty
+            // before is not this call's. No tool removed one until 2026-11-27, and the DosingLine
+            // library kept an empty `API` folder after its only VI left.
+            var emptiedCandidates = disconnected.Select(v => existing.PlacedIn(Path.GetFileName(v)))
+                .OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var foldersRemoved = removeEmptyFolders ? RemoveEmptyLibraryFolders(library, emptiedCandidates) : [];
 
             JsonNode? listed = null;
             if (keepInProject && disconnected.Count > 0)
             {
+                var toFolder = projectFolder is { Length: > 0 };
                 var added = await new TestTools(connection).AddVisToProjectAsync(
-                    Path.GetFullPath(projectPath), string.Join("\n", disconnected), targetLevel: true,
-                    timeoutSeconds: timeoutSeconds, ct: ct, backend: BackendRoute.Current);
+                    Path.GetFullPath(projectPath), string.Join("\n", disconnected), folderName: toFolder ? projectFolder! : "SubVIs",
+                    targetLevel: !toFolder, timeoutSeconds: timeoutSeconds, ct: ct, backend: BackendRoute.Current);
                 listed = Read(added);
                 steps.Add(new JsonObject { ["step"] = "listInProject", ["answer"] = listed?.DeepClone() });
             }
@@ -682,6 +767,7 @@ internal sealed class LibraryTools(LvaiConnection connection)
                 ["removed"] = new JsonArray([.. disconnected.Except(stillClaims).Except(stillListed).Select(v => (JsonNode)v)]),
                 ["failed"] = failed,
                 ["itemsRemovedFromLibraryFile"] = new JsonArray([.. removedItems.Select(n => (JsonNode)n)]),
+                ["emptyFoldersRemoved"] = new JsonArray([.. foldersRemoved.Select(n => (JsonNode)n)]),
                 ["verify"] = new JsonObject
                 {
                     ["stillClaimsLibrary"] = new JsonArray([.. stillClaims.Select(v => (JsonNode)v)]),
@@ -723,6 +809,29 @@ internal sealed class LibraryTools(LvaiConnection connection)
             var pattern = "\\r?\\n[ \\t]*" + Regex.Escape(head) + "(?:\\s*/>|>.*?</Item>)";
             var before = text;
             text = Regex.Replace(text, pattern, "", RegexOptions.Singleline);
+            if (text != before) removed.Add(name);
+        }
+        if (removed.Count > 0) LvTextFile.Write(library, text, style);
+        return removed;
+    }
+
+    /// <summary>
+    /// Removes the library's virtual folders among <paramref name="candidates"/> that hold no item
+    /// any more - written empty (<c>&lt;Item Name="X" Type="Folder"/&gt;</c>) or open and closed with
+    /// only white space between - keeping LabVIEW's formatting. Only top-level-of-file text is
+    /// touched; the project must be closed (we write the .lvlib). Returns the folder names removed.
+    /// </summary>
+    internal static List<string> RemoveEmptyLibraryFolders(string library, IReadOnlyCollection<string> candidates)
+    {
+        var removed = new List<string>();
+        if (candidates.Count == 0) return removed;
+        var (text, style) = LvTextFile.Read(library);
+        foreach (var name in candidates)
+        {
+            var head = $"<Item Name=\"{System.Security.SecurityElement.Escape(name)}\" Type=\"Folder\"";
+            var pattern = "\\r?\\n[ \\t]*" + Regex.Escape(head) + "(?:\\s*/>|>\\s*</Item>)";
+            var before = text;
+            text = Regex.Replace(text, pattern, "");
             if (text != before) removed.Add(name);
         }
         if (removed.Count > 0) LvTextFile.Write(library, text, style);

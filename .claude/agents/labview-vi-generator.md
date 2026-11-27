@@ -586,7 +586,9 @@ application instance and closing the front panel) is in
 `Save:Instrument`** means the target DIRECTORY does not exist — LabVIEW does not create one.
 `Error 1051` is 1357's sibling and means something else: same *filename*, different path.
 
-Then `lvai_describe_project` — the new VI now appears in `vis` and `missingFiles` is empty.
+Then `lvai_describe_project` — the new VI now appears in `vis` and `missingFiles` is empty. In a
+build where the orchestrator lists the VIs (a build contract, parallel builders), skip this: the
+VI is not listed yet, and that is expected.
 
 **THEN THE ABSOLUTE GATE: `lvai_exec_state` MUST READ `1`. A VI THAT IS NOT EXECUTABLE IS NOT A
 DELIVERABLE.** Call it on the finished `.vi`. `execState 1` (`eIdle`) is the only reading that lets
@@ -1024,7 +1026,10 @@ State, in this order:
 3. **Dependencies** the VI now has (OpenG, MGI, JKI, a toolkit): where it will not open. When the
    project pins an older save version (`lvai_describe_project` `saveVersion`, or a
    `saveVersionCheck` on an answer), run `lvai_check_links` on the VI and report every link the
-   target LabVIEW lacks (`missing`), and the `savedAs` of Phase 7b's `lvai_save_for_previous`
+   target LabVIEW lacks (`missing`). It needs the TARGET LabVIEW installed: `noTargetLabview`
+   means it checked nothing - report "links not checked: LabVIEW <year> not installed" and the
+   `vi.lib`/third-party VIs the VI calls, once, and do not retry. Also the `savedAs` of Phase 7b's
+   `lvai_save_for_previous`
    for every file you wrote. A file still newer than the pin is a blocker, not a caveat.
 4. Paths: the `.vi`, the `.lvproj`, and whether the project was created by this run.
 5. **Verification**: the validate result, and the run — with the actual inputs and outputs, not

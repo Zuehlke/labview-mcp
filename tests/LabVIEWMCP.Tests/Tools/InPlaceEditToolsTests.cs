@@ -445,4 +445,30 @@ public class InPlaceEditToolsTests
 
         Assert.Equal(["{LV.Numeric}", "{LV.NumericConstant}"], writes);
     }
+
+    /// <summary>
+    /// DosingLine, 2026-11-27: four VIs widened U16 -> I32 cost four calls. editsJson takes them in
+    /// one; controls and constants stay JSON objects and reach the per-file parser unchanged.
+    /// </summary>
+    [Fact]
+    public void Several_files_come_from_editsJson_in_order()
+    {
+        var edits = InPlaceEditTools.ParseRepresentationEdits("""
+            [{"filePath":"C:/p/Scale Flow.vi","controls":{"Flow":"I32"}},
+             {"filePath":"C:/p/Main.vi","controls":{"Flow":"I32"},"constants":{"K":"I32"}}]
+            """);
+
+        Assert.Equal(["C:/p/Scale Flow.vi", "C:/p/Main.vi"], edits.Select(e => e.File));
+        Assert.Equal("I32", RepresentationRequest.ParseAll(edits[0].Controls, "controlsJson").Single().Representation.Name);
+        Assert.Null(edits[0].Constants);
+        Assert.Equal("K", RepresentationRequest.ParseAll(edits[1].Constants, "constantsJson").Single().Label);
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("""[{"controls":{"A":"I32"}}]""")]
+    [InlineData("""[{"filePath":"C:/a.vi"}]""")]
+    [InlineData("""[{"filePath":"C:/a.vi","control":{"A":"I32"}}]""")]
+    public void An_edits_entry_that_asks_for_nothing_or_misspells_a_key_is_refused(string json) =>
+        Assert.Throws<ArgumentException>(() => InPlaceEditTools.ParseRepresentationEdits(json));
 }

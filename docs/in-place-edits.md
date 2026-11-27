@@ -351,3 +351,23 @@ wipe directly, but needs a pylabview read of every caller twice and a parser for
 data - a lot of tool for one LabVIEW defect. Callers are NOT re-read for executability after the
 save either: it would not have seen this wipe (the callers stayed executable). The backups make
 the loss recoverable; the description tells the agent to run the callers' tests.
+
+## 9. Several files, and a VI's callers (2026-11-27, DosingLine)
+
+An agent widened `Flow` from U16 to I32 in four VIs of one library (three private subVIs and the
+GUI that calls them), in a project pinned to 20.0. Every file kept 20.0, and the run showed three
+gaps, closed that day:
+
+- **One call per file.** Four VIs cost four model turns, each re-opening the project. `editsJson`
+  takes them in one call: `[{"filePath":..,"controls":{"Flow":"I32"}},..]`; the first failure
+  stops the batch, the files before it stay written, `edits` holds each file's full answer.
+- **A VI's callers were left unsaved.** A changed pane numeric changes the call nodes of the VI's
+  callers in memory; only a `.ctl`'s callers were saved. The agent was safe only because it
+  edited the caller as well - an unsaved VI is what raises the modal "Save changes?" on a close.
+  With `projectPath`, a `.vi` whose FRONT-PANEL numerics change now has its callers saved the same
+  way (`callersSaved`, backed up first); a change of constants only touches no caller.
+- **No version on a clean answer.** Both tools now answer `savedAs`, the saved file's version, so
+  an agent in a pinned project needs no `lvai_save_for_previous dryRun` to see the pin was kept.
+
+Not measured yet against LabVIEW: the batch and the caller save of a `.vi` (unit tests cover the
+argument parsing; the caller save takes the `.ctl` route measured in §3).

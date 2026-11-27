@@ -53,7 +53,9 @@ internal sealed class InPlaceEditTools(LvaiConnection connection)
         (`labelAmbiguous`) is refused BEFORE anything is written, with the labels there are. One error chain: a write LabVIEW refuses leaves the
         file untouched. For a .ctl with `projectPath`, the files under the project's folder that
         link the typedef are loaded and saved (`callersSaved`) - they follow in memory only - each
-        backed up first (`callerBackups`). A VI or caller NOT EXECUTABLE before is refused
+        backed up first (`callerBackups`); the same for a .vi whose front-panel numerics change (its
+        callers' call nodes change with it). `savedAs` is the file's saved version. SEVERAL FILES:
+        `editsJson`, one call. A VI or caller NOT EXECUTABLE before is refused
         (`brokenBefore`) unless `allowBroken`. `execStateBefore`/`execStateAfter`: a VI this call
         BROKE answers ok false with LabVIEW's errors; `backupPath` is the file as it was.
         A TYPEDEF CHANGE EMPTIES A CALLER'S MAP CONSTANT of that typedef, with the caller still
@@ -62,7 +64,7 @@ internal sealed class InPlaceEditTools(LvaiConnection connection)
         build such a map from an array in code. docs/in-place-edits.md.
         """)]
     public async Task<string> SetRepresentationAsync(
-        [Description("Absolute path to the .vi or .ctl - it is saved in place")] string filePath,
+        [Description("Absolute path to the .vi or .ctl - it is saved in place. Omit it when you pass editsJson")] string? filePath = null,
         [Description("""
             Front-panel numerics as a JSON object label -> representation, e.g.
             {"Result":"I32","Max":"I32"}. A cluster element or typedef field is named by its own label
@@ -75,15 +77,86 @@ internal sealed class InPlaceEditTools(LvaiConnection connection)
             instance, and for a .ctl its callers under the project's folder are saved
             """)]
         string? projectPath = null,
-        [Description("For a .ctl with projectPath: load and save the files that link it (default true)")]
+        [Description("With projectPath: load and save the files that link a .ctl, or call a .vi whose panel numerics change (default true)")]
         bool saveCallers = true,
         [Description("Edit and save even when the VI, or a typedef caller, is NOT EXECUTABLE before the call (default false: refused as brokenBefore)")]
         bool allowBroken = false,
         [Description("Local budget in seconds, per step")] int timeoutSeconds = 180,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        [Description("""
+            SEVERAL FILES in one call, in place of filePath/controlsJson/constantsJson:
+            [{"filePath":"C:\\p\\A.vi","controls":{"Flow":"I32"}},{"filePath":"C:\\p\\B.vi","constants":{"K":"I32"}}].
+            projectPath and the flags apply to every file; the files are edited in order and the first
+            failure STOPS the batch (earlier files stay written). The answer has one entry per file under `edits`
+            """)]
+        string? editsJson = null,
         CancellationToken ct = default) =>
         await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_set_representation", async () =>
         {
+            if (editsJson is { Length: > 0 })
+                return await SetRepresentationBatchAsync(editsJson, projectPath, saveCallers, allowBroken, timeoutSeconds, ct);
+            return await SetRepresentationOneAsync(filePath ?? "", controlsJson, constantsJson, projectPath, saveCallers,
+                                                   allowBroken, timeoutSeconds, ct);
+        }));
+
+    /// <summary>
+    /// The batch of lvai_set_representation. One call per file cost an agent four model turns for
+    /// four VIs of one widening (2026-11-27, DosingLine U16 -> I32), each reopening the project.
+    /// </summary>
+    private async Task<string> SetRepresentationBatchAsync(string editsJson, string? projectPath, bool saveCallers,
+                                                           bool allowBroken, int timeoutSeconds, CancellationToken ct)
+    {
+        List<(string File, string? Controls, string? Constants)> edits;
+        try { edits = ParseRepresentationEdits(editsJson); }
+        catch (Exception e) when (e is JsonException or ArgumentException) { return Json.Error("badArguments", e.Message); }
+
+        var answers = new JsonArray();
+        var ok = true;
+        foreach (var (file, controls, constants) in edits)
+        {
+            var answer = JsonNode.Parse(await SetRepresentationOneAsync(file, controls, constants, projectPath,
+                                                                        saveCallers, allowBroken, timeoutSeconds, ct));
+            answers.Add(answer);
+            if (answer?["ok"]?.GetValue<bool>() != true) { ok = false; break; }
+        }
+        return Json.Document(new JsonObject
+        {
+            ["ok"] = ok,
+            ["filesAsked"] = edits.Count,
+            ["filesDone"] = answers.Count(a => a?["ok"]?.GetValue<bool>() == true),
+            ["edits"] = answers,
+            ["note"] = ok
+                ? "Every file was edited and saved; each entry under `edits` is that file's full answer."
+                : "The batch STOPPED at the last entry under `edits`; the files before it are written, the ones after it untouched.",
+        });
+    }
+
+    /// <summary>editsJson: [{filePath, controls?, constants?}], controls and constants as JSON objects.</summary>
+    internal static List<(string File, string? Controls, string? Constants)> ParseRepresentationEdits(string editsJson)
+    {
+        if (JsonNode.Parse(editsJson) is not JsonArray array || array.Count == 0)
+            throw new ArgumentException("editsJson must be a non-empty JSON array of {filePath, controls, constants}.");
+        var known = new HashSet<string>(StringComparer.Ordinal) { "filePath", "controls", "constants" };
+        var edits = new List<(string, string?, string?)>();
+        foreach (var item in array)
+        {
+            if (item is not JsonObject edit)
+                throw new ArgumentException("Every entry of editsJson must be an object {filePath, controls, constants}.");
+            if (edit.Select(kv => kv.Key).FirstOrDefault(k => !known.Contains(k)) is { } unknown)
+                throw new ArgumentException($"editsJson: unknown key '{unknown}' - the keys are filePath, controls, constants.");
+            if (edit["filePath"]?.GetValue<string>() is not { Length: > 0 } file)
+                throw new ArgumentException("Every entry of editsJson needs a filePath.");
+            if (edit["controls"] is null && edit["constants"] is null)
+                throw new ArgumentException($"editsJson: the entry for '{file}' names neither controls nor constants.");
+            edits.Add((file, edit["controls"]?.ToJsonString(), edit["constants"]?.ToJsonString()));
+        }
+        return edits;
+    }
+
+    private async Task<string> SetRepresentationOneAsync(string filePath, string? controlsJson, string? constantsJson,
+                                                         string? projectPath, bool saveCallers, bool allowBroken,
+                                                         int timeoutSeconds, CancellationToken ct)
+    {
             if (Target(filePath, EditableExtensions) is { } bad) return bad;
             var file = Path.GetFullPath(filePath);
             var isCtl = Path.GetExtension(file).ToLowerInvariant() is ".ctl" or ".ctt";
@@ -131,7 +204,11 @@ internal sealed class InPlaceEditTools(LvaiConnection connection)
 
             // A TYPEDEF'S CALLERS are found and read BEFORE the write: a caller that is broken
             // already is refused like a broken target, and each one is compared after its save.
-            var withCallers = isCtl && throughProject && saveCallers;
+            // A VI WHOSE PANE NUMERIC CHANGED changes its callers' call nodes in memory too, and those
+            // callers stay unsaved - an unsaved VI is what raises the modal "Save changes?" on a close.
+            // Until 2026-11-27 only a .ctl's callers were saved; an agent widened four VIs one by one and
+            // was safe only because it edited the caller as well.
+            var withCallers = throughProject && saveCallers && (isCtl || controls.Count > 0);
             List<string> callers = withCallers ? Callers(file, projectPath!) : [];
             var callerStates = new List<SavedFileState>();
             foreach (var caller in callers.Where(IsVi))
@@ -218,10 +295,11 @@ internal sealed class InPlaceEditTools(LvaiConnection connection)
                 ["backupPath"] = backup,
                 ["callerBackups"] = callerBackups > 0 ? Path.Combine(backupFolder, "callers") : null,
                 ["steps"] = steps.Count > 0 ? steps : null,
+                ["savedAs"] = saved ? SaveVersions.Of(file) : null,
                 ["note"] = RepresentationNote(code, saved, allWritten, broke, isCtl, throughProject, saveCallers) +
                            (throughProject ? " The project is left open." : ""),
             });
-        }));
+    }
 
     /// <summary>
     /// One row per request, in the order of the helper's error chain (controls, then constants).
@@ -280,12 +358,12 @@ internal sealed class InPlaceEditTools(LvaiConnection connection)
         : !allWritten
             ? "Saved, but not every request reads back as asked - compare `asked`, `labviewReads` and " +
               "`fileType` per result."
-        : isCtl && !throughProject
-            ? "The typedef is saved. Its CALLERS follow in memory only: each is unchanged on disk until it " +
-              "is loaded and saved - pass projectPath and this call saves the ones under the project's folder."
-        : isCtl && !saveCallers
-            ? "The typedef is saved. Its callers were NOT saved (saveCallers false): each is unchanged on " +
-              "disk until it is loaded and saved."
+        : !throughProject
+            ? $"The {(isCtl ? "typedef" : "file")} is saved. Its CALLERS follow in memory only: each is unchanged on " +
+              "disk until it is loaded and saved - pass projectPath and this call saves the ones under the project's folder."
+        : !saveCallers
+            ? $"The {(isCtl ? "typedef" : "file")} is saved. Its callers were NOT saved (saveCallers false): each is " +
+              "unchanged on disk until it is loaded and saved."
         : (isCtl ? "A MAP constant of this typedef in a caller is EMPTIED by the change while the caller stays " +
                    "executable (measured on LabVIEW 2020; arrays keep their data): run the callers' tests, and " +
                    "restore a caller from callerBackups if one lost data. " : "") +
@@ -506,6 +584,7 @@ internal sealed class InPlaceEditTools(LvaiConnection connection)
                 ["brokenBefore"] = before?.Broken == true ? true : null,
                 ["errors"] = broke || state is { Broken: true } ? ExecStateTools.ErrorsNode(state) : null,
                 ["backupPath"] = backup,
+                ["savedAs"] = saved ? SaveVersions.Of(vi) : null,
                 ["steps"] = steps.Count > 0 ? steps : null,
                 ["note"] = (before?.Broken == true
                     ? "The VI was NOT EXECUTABLE before this call (allowBroken) and is saved as it now is; `errors` " +

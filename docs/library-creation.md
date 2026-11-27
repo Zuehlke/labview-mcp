@@ -157,3 +157,28 @@ caller leaves in the same call. The fork's description said such a caller "relin
 loose VI"; that was not what the second row showed. What it gives up: a called VI cannot be taken
 out alone, and the caller search is by file name (`InPlaceEditTools.Callers`), so a same-named VI
 elsewhere under the folder blocks too. Not measured: removing a caller and its callee in one call.
+
+**Added 2026-11-27 after the DosingLine run**, where the class agent took `Litres To Gallons.vi` out
+of `Dosing Line.lvlib` and was refused for `Format Flow.vi` (called by `Dosing Main.vi`):
+
+- `hasCallers` names each caller's library or class (`callerOwners`, from its LIBN) and lists the
+  callers in the SAME library (`callersInThisLibrary`): taking those out too changes the library's
+  own API, which is the user's decision. The agent had read the membership from the `.lvlib` itself.
+- `projectFolder` lists the removed VI in a project folder in the same call; it was listed at target
+  level and moved with a second `lvai_add_vis_to_project`.
+- A library FOLDER the removal leaves empty is removed with it (`emptyFoldersRemoved`, default on;
+  a folder empty before is kept). The library kept an empty `API` folder, and no tool could remove
+  one. The removal is a text edit of the `.lvlib` with the project closed, like the item's.
+- **A VI that calls PRIVATE members is refused** (`callsPrivateMembers`, the private callees named per
+  VI). Measured the same day on a copy of the project: `Dosing Main.vi`, which calls the three
+  private helpers, left the library with `ok` true and then read eBad - "This VI cannot access the
+  referenced item in private scope" for each helper. `hasCallers` looks at who calls the leaving VI;
+  this looks at what the leaving VI calls.
+- **A caller leaving WITH its callees is refused too** (`hasCallers` counts it since this day; the
+  text above said "unless the caller leaves in the same call" and "Not measured: removing a caller
+  and its callee in one call"). Measured on the copy, `Dosing Main.vi` with its three helpers:
+  caller first, every step answered ok and the caller read eBad - "Missing subVI
+  Dosing Line.lvlib:Scale Flow.vi", it kept the qualified names; callees first, the caller was
+  modified in memory and LabVIEW raised the modal "Save changes before closing?" (answered by
+  hand with Don't Save). No order is safe, so such a group stays in the library until a route
+  that relinks the caller is measured.

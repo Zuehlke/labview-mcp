@@ -110,6 +110,19 @@ internal sealed class HousekeepingHelpers(LvaiConnection connection)
         if (!File.Exists(full))
             return (null, Json.Error("projectMissing", $"No .lvproj at '{full}'.", new { projectPath = full }));
 
+        // AN INTERNAL OPEN OBEYS THE PARALLEL GUARD unless the project is ACTIVE already - then the
+        // open changes nothing. Until 2026-11-27 only lvai_open_file was guarded: an agent ran three
+        // lvai_set_representation calls with projectPath side by side on a closed project and each
+        // opened it (DosingLine), past the rule that projects are the orchestrator's.
+        if (ParallelCalls.Shared.ProjectChangeRefusalFromInside() is { } parallel)
+        {
+            var (active, _, activePath) = await new ActionTools(connection).ProjectIsActiveAsync(timeoutSeconds, ct);
+            if (!(active is true && activePath is { Length: > 0 } && SamePath(activePath, full)))
+                return (null, ParallelCalls.RefusalJson("Opening the project through projectPath", parallel +
+                    " The project is not the active one, so this open would change LabVIEW's state. Open it " +
+                    "once yourself with lvai_open_file before parallel calls, or call one at a time."));
+        }
+
         var opened = await new ActionTools(connection).OpenFileAsync(
             viPath: null, viName: null, projectPath: full, projectName: Path.GetFileName(full),
             checkActive: true, timeoutSeconds, ct: ct);
@@ -120,6 +133,12 @@ internal sealed class HousekeepingHelpers(LvaiConnection connection)
                 "Project:Active Project - every one would answer Error 1055. The measured cause is " +
                 "LabVIEW not having the foreground.", new { open = answer }));
         return (answer, null);
+    }
+
+    private static bool SamePath(string a, string b)
+    {
+        try { return string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase); }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException) { return false; }
     }
 
     /// <summary>Open VIs through the project, so they are loaded in the project's application instance.</summary>

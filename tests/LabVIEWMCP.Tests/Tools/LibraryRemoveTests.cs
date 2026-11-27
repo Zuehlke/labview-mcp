@@ -85,4 +85,41 @@ public sealed class LibraryRemoveTests : IDisposable
         Assert.Equal(7, LibraryTools.ErrorCode(values, "value form"));
         Assert.Null(LibraryTools.ErrorCode(values, "absent"));
     }
+
+    /// <summary>
+    /// experiments/library-2026-11-27/Dosing Line.lvlib: the DosingLine library right after its only
+    /// API member left - LabVIEW's file with the `API` folder written open and closed, now empty.
+    /// </summary>
+    [Fact]
+    public void A_folder_the_removal_emptied_goes_and_a_folder_with_items_stays()
+    {
+        var source = Path.Combine(LabVIEWMcp.Tests.Support.RepoTree.Root, "experiments", "library-2026-11-27", "Dosing Line.lvlib");
+        var lib = Path.Combine(_dir, "Dosing Line.lvlib");
+        File.Copy(source, lib);
+
+        var removed = LibraryTools.RemoveEmptyLibraryFolders(lib, ["API", "Helpers"]);
+
+        Assert.Equal(["API"], removed);
+        var folders = XDocument.Load(lib).Root!.Elements("Item")
+            .Where(i => (string?)i.Attribute("Type") == "Folder").Select(i => (string?)i.Attribute("Name")).ToList();
+        Assert.Equal(["Helpers", "UI"], folders);
+        Assert.Equal(4, XDocument.Load(lib).Root!.Descendants("Item").Count(i => (string?)i.Attribute("Type") == "VI"));
+        Assert.Empty(LibraryTools.RemoveEmptyLibraryFolders(lib, ["UI"]));   // UI holds Dosing Main.vi
+    }
+
+    /// <summary>
+    /// The DosingLine library: Format Flow, High Flow and Scale Flow are private (NI.LibItem.Scope 2),
+    /// Dosing Main.vi is public. PrivateMembers reads them from LabVIEW's own file at folder depth.
+    /// </summary>
+    [Fact]
+    public void Private_members_are_read_at_any_folder_depth()
+    {
+        var source = Path.Combine(LabVIEWMcp.Tests.Support.RepoTree.Root, "experiments", "library-2026-11-27", "Dosing Line.lvlib");
+        var lib = Path.Combine(_dir, "Dosing Line.lvlib");
+        File.Copy(source, lib);
+
+        var names = LibraryTools.PrivateMembers(lib).Select(Path.GetFileName).Order().ToList();
+
+        Assert.Equal(["Format Flow.vi", "High Flow.vi", "Scale Flow.vi"], names);
+    }
 }

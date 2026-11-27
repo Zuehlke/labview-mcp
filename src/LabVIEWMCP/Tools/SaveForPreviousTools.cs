@@ -168,7 +168,7 @@ internal sealed class SaveForPreviousTools(LvaiConnection connection)
     }
 
     private static (string? Version, string? From) PinOf(string file) =>
-        SaveVersions.PinFor(file) is { } listed ? (listed.Version, "listed")
+        SaveVersions.PinWithSource(file) is { } listed ? (listed.Version, listed.Via)
         : SaveVersions.PinAbove(file) is { } above ? (above.Version, "folder")
         : (null, null);
 

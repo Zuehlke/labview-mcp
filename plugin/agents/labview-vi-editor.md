@@ -375,7 +375,12 @@ panel, the layout, the icon and every typedef link stay. docs/in-place-edits.md.
    (project closed) where the request covers them, and name the rest in the report - a diagram
    comment has no in-place route.
 8. **A project pinned to an older LabVIEW**: read `saveVersionCheck` on every answer and end with
-   `lvai_save_for_previous` over the files it names (project closed); report each `savedAs`.
+   `lvai_save_for_previous` over the files it names (project closed); report each `savedAs`. No
+   `saveVersionCheck` means every file the call named or wrote is at or below the pin. Several
+   files to widen go into ONE `lvai_set_representation` with `editsJson`; with `projectPath` it
+   saves the callers of a VI whose panel numerics changed, so none is left unsaved in memory.
+9. **A library-PRIVATE VI cannot be run directly** (`lvai_run_vi_and_read_values` answers 1390):
+   verify it through a public caller of the library, and say so in the report.
 
 What is not measured is listed in the document (a map constant of the typedef is EMPTIED,
 growable nodes, a class's private data): say so in the report when the request touches one, and

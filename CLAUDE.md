@@ -83,7 +83,10 @@ refused (`projectChangeWhileParallel`) while top-level tool calls overlap or ove
 obeys it too (`ProjectChangeRefusalFromInside`): `lvai_graft_diagram` is refused, and
 `lvai_dqmh_place_handler` and the AF hook tools defer their source-only strip to the next
 `lvai_close_active_project` with `projectPath` (`deferredSourceOnly`) - place_handler's close under
-four other agents raised a modal dialog that stalled them all on 2026-11-18.
+four other agents raised a modal dialog that stalled them all on 2026-11-18. A tool's INTERNAL
+open through `projectPath` (the housekeeping tools, `lvai_set_representation`) obeys it unless
+that project is ACTIVE already; an overlap made only of READ calls (`ParallelCalls.ReadOnly`:
+exec_state, coercion_dots, describe_*) does not arm the window (both since 2026-11-27).
 Restart LabVIEW between two builds of the same application: a same-named VI of the earlier build,
 still in memory, captures a bare-name `Call` in silence.
 
@@ -382,7 +385,8 @@ from `lvai_create_override` by name. A message for an INTERFACE method comes fro
 Class -> methods -> LIBRARY -> messages: adding a class to a library after its messages
 leaves every `Do.vi` eBad. Remove a library's `<Item>` BEFORE deleting its files. A VI leaves a
 library with `lvai_remove_from_library`; one that another file of the project CALLS is refused
-(`hasCallers`) unless the caller leaves in the same call - disconnecting it raised a modal save
+(`hasCallers`), also with the caller leaving in the same call (it left broken), and so is one that
+calls a private member staying behind (`callsPrivateMembers`) - disconnecting it raised a modal save
 dialog that stopped every call for 601 s (2026-11-27, `docs/library-creation.md` §7). Never write
 `NI.Lib.ContainingLib` by hand. `docs/labview-actor-framework.md`.
 
@@ -530,10 +534,13 @@ read from the files. `lvai_save_for_previous` saves such files back in place (pr
 it does not cover `.lvlib`, `.lvclass` and `.lvproj`), and `lvai_check_links` names the
 `vi.lib` links an installed target release lacks. ASSUME EVERY SAVE THROUGH LabVIEW WRITES THE
 RUNNING VERSION and end such work with `lvai_save_for_previous`: `lvai_set_vi_icon` and
-`lvai_layout_diagram` wrote 26.0 into a 20.0 project with the project active (2026-11-27); only
-`lvai_set_representation` with `projectPath` was measured keeping the pin. This rule said until
-that day that a save in the project's instance keeps it, which an agent read as "project open
-is enough". Not measured: such files
+`lvai_layout_diagram` wrote 26.0 into a 20.0 project with the project active (2026-11-27), and
+so did `lvai_set_vi_descriptions`, `lvai_swap_subvis` and `lvai_create_typedef`; kept the pin:
+`lvai_set_representation` with `projectPath`, `lvai_bind_pane_typedef`, `lvai_create_library`,
+`lvai_add_to_library`, `lvai_remove_from_library`. The route does not tell - `saveVersionCheck`
+does, and NO `saveVersionCheck` means every file the call named or wrote is at or below its pin.
+This rule said until that day that a save in the project's instance keeps it, which an agent
+read as "project open is enough". Not measured: such files
 loaded by the older LabVIEW itself - only 2026 is installed here. `docs/save-version.md`.
 
 ## When a tool call fails

@@ -48,9 +48,13 @@ public sealed class LibraryRemoveCallersTests : IDisposable
     }
 
     [Fact]
-    public void A_caller_that_leaves_in_the_same_call_does_not_block()
+    // 2026-11-27, DosingLine copy: a caller taken out with its callee left broken (caller first) or
+    // raised the modal save dialog (callee first). It was allowed until that day.
+    public void A_caller_that_leaves_in_the_same_call_blocks_too()
     {
-        Assert.Empty(LibraryTools.CallersBlockingRemoval([_callee, _caller], _project));
+        var blocking = LibraryTools.CallersBlockingRemoval([_callee, _caller], _project);
+        Assert.Equal(_caller, Assert.Single(blocking[_callee]!.AsArray())!.GetValue<string>());
+        Assert.Null(blocking[_caller]);
     }
 
     [Fact]

@@ -113,14 +113,22 @@ internal static class SaveVersions
     /// The pinned save version that applies to a file: a project listing it, or listing the
     /// library or class that owns it (a member is listed by its owner, not by the project).
     /// </summary>
-    internal static (string Project, string Version)? PinFor(string filePath)
+    internal static (string Project, string Version)? PinFor(string filePath) =>
+        PinWithSource(filePath) is { } pin ? (pin.Project, pin.Version) : null;
+
+    /// <summary>
+    /// <see cref="PinFor"/> and how the file reached it: "listed" - the project lists the file
+    /// itself; "owner" - the project lists the library or class that owns it. A library member
+    /// was reported "listed" until 2026-11-27, which read as a project entry the file does not have.
+    /// </summary>
+    internal static (string Project, string Version, string Via)? PinWithSource(string filePath)
     {
         foreach (var project in ProjectMembership.ProjectsListing(filePath))
-            if (Pinned(project) is { } pin) return (project, pin);
+            if (Pinned(project) is { } pin) return (project, pin, "listed");
 
         foreach (var owner in OwnersOf(filePath))
             foreach (var project in ProjectMembership.ProjectsListing(owner))
-                if (Pinned(project) is { } pin) return (project, pin);
+                if (Pinned(project) is { } pin) return (project, pin, "owner");
         return null;
     }
 
@@ -265,6 +273,7 @@ internal static class SaveVersions
         var since = collected ? jobStart!.Value : before.StartedUtc;
 
         var findings = new JsonArray();
+        var raised = 0;
         foreach (var path in candidates.Order(StringComparer.OrdinalIgnoreCase))
         {
             DateTime written;
@@ -296,8 +305,8 @@ internal static class SaveVersions
             // in the folders above it (PinAbove), so the check judges it by the same rule. Measured
             // 2026-11-13: a VI generated into a 21.0 project's folder and given its icon BEFORE it was
             // listed was reported `was 21.0, savedAs 26.0` with no projectSaveVersion at all.
-            var listed = PinFor(path);
-            var pin = listed ?? PinAbove(path);
+            var listed = PinWithSource(path);
+            var pin = listed is { } l ? (l.Project, l.Version) : PinAbove(path);
             var upgraded = was is not null && Compare(now, was) > 0;
             var pastPin = pin is { } p && Compare(now, p.Version) > 0;
             if (!upgraded && !pastPin) continue;
@@ -308,10 +317,12 @@ internal static class SaveVersions
             {
                 finding["projectSaveVersion"] = pinned.Version;
                 finding["project"] = pinned.Project;
-                // "listed": the project lists the file (or its library/class); "folder": no project
-                // lists it yet, and every project in its folder and up to three above pins this.
-                finding["pinFrom"] = listed is null ? "folder" : "listed";
+                // "listed": the project lists the file; "owner": it lists the library or class that
+                // owns it; "folder": no project lists it yet, and every project in its folder and up
+                // to three above pins this.
+                finding["pinFrom"] = listed?.Via ?? "folder";
             }
+            if (upgraded) raised++;
             findings.Add(finding);
         }
         if (findings.Count == 0) return null;
@@ -321,13 +332,30 @@ internal static class SaveVersions
         return new JsonObject
         {
             ["files"] = findings,
-            ["warning"] = $"{findings.Count} file(s) were saved by this call in a NEWER LabVIEW version than " +
-                          "they had, or than their project pins (NI.LV.All.SaveVersion) - see `files`. A LabVIEW " +
-                          $"older than {newest} cannot open them. lvai_save_for_previous saves them back to the pin in " +
-                          "place (close the project first), or restore them from version control - before they " +
-                          "reach the target station. A save through the pinned project does NOT keep the pin " +
-                          "(docs/save-version.md §5).",
+            ["warning"] = Warning(findings.Count, raised, newest),
         };
+    }
+
+    /// <summary>
+    /// The warning says which of the two things happened. It said "saved in a NEWER version than
+    /// they had, or than their project pins" for every file until 2026-11-27, and an agent read a
+    /// re-save of a file that was 26.0 already (`was` 26.0, `savedAs` 26.0) as a fresh regression.
+    /// </summary>
+    internal static string Warning(int files, int raised, string newest)
+    {
+        var what = raised == files
+            ? $"{files} file(s) were saved by this call in a NEWER LabVIEW version than they had (`was`)"
+            : raised == 0
+                ? $"{files} file(s) saved by this call are NEWER than their project pins " +
+                  "(NI.LV.All.SaveVersion) - they were that new before the call already, so this call raised none"
+                : $"{files} file(s) saved by this call are NEWER than their project pins (NI.LV.All.SaveVersion); " +
+                  $"{raised} of them this call raised (`was` older than `savedAs`), the rest were that new already";
+        return what + $" - see `files`. A LabVIEW older than {newest} cannot open them. lvai_save_for_previous " +
+               "saves them back to the pin in place (with the files' project closed), or restore them from " +
+               "version control - before they reach the target station. Some saves through the pinned " +
+               "project keep the pin and some do not (docs/save-version.md §5): this check, not the route, " +
+               "says which. No saveVersionCheck on an answer means every file the call named or wrote is " +
+               "at or below its pin.";
     }
 
     /// <summary>

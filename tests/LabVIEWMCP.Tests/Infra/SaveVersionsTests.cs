@@ -234,6 +234,29 @@ public sealed class SaveVersionsTests : IDisposable
             """);
 
         Assert.Equal(("21.0"), SaveVersions.PinFor(vi)?.Version);
+        // 2026-11-27: a member read pinFrom "listed", as if the project listed the file itself
+        Assert.Equal("owner", SaveVersions.PinWithSource(vi)?.Via);
+        File.SetLastWriteTimeUtc(vi, DateTime.UtcNow);
+        var check = SaveVersions.Check(new SaveVersions.Before(DateTime.UtcNow.AddSeconds(-1),
+            new Dictionary<string, string?>()), new JsonObject { ["viPath"] = vi }, null)!;
+        Assert.Equal("owner", check["files"]![0]!["pinFrom"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// DosingLine, 2026-11-27: lvai_set_vi_icon re-saved a VI that lvai_layout_diagrams had saved as
+    /// 26.0 already (`was` 26.0, `savedAs` 26.0), and the warning still said "saved by this call in a
+    /// NEWER LabVIEW version than they had" - an agent read it as a fresh regression.
+    /// </summary>
+    [Fact]
+    public void The_warning_says_whether_the_call_raised_the_version_or_found_it_raised()
+    {
+        var already = SaveVersions.Warning(files: 4, raised: 0, newest: "26.0");
+        Assert.Contains("were that new before the call already", already);
+        Assert.DoesNotContain("than they had", already);
+
+        Assert.Contains("NEWER LabVIEW version than they had", SaveVersions.Warning(2, 2, "26.0"));
+        Assert.Contains("1 of them this call raised", SaveVersions.Warning(3, 1, "26.0"));
+        Assert.Contains("No saveVersionCheck on an answer means", SaveVersions.Warning(1, 1, "26.0"));
     }
 
     [Fact]

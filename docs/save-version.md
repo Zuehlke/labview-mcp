@@ -35,7 +35,7 @@ still be restored. An answer with nothing to report is not touched. The versions
 FILES, no LabVIEW: a resource file's `LVSR` block starts with the version word (`26008000` = 26.0,
 `20008000` = 20.0, measured on files LabVIEW 2026 and 2020 wrote); an XML file carries it as the root
 element's `LVVersion`. The pin that applies is the one of a project that lists the file, or lists the
-library or class that owns it (`pinFrom: "listed"`); for a file no project lists yet, the composer's
+library or class that owns it (`pinFrom: "listed"`, or `"owner"` for the owner since 2026-11-27); for a file no project lists yet, the composer's
 folder rule below (`pinFrom: "folder"` - measured 2026-11-13: a new VI given its icon before it was
 listed was reported with no pin at all). Files are recognised by extension (`.vi .ctl .vim .vit .ctt .lvclass
 .lvlib .lvproj`); a call naming more than 300 is not checked.
@@ -168,6 +168,22 @@ with NO project open wrote 26.0, as measured above. So what decides is the insta
 in, not whether a project is merely active. Not measured: the 2026-11-19 case again
 (`lvai_layout_diagram` with the pinned project active), and a file that is newer than the pin
 when the save starts.
+
+**Which tools keep the pin, per tool (measured 2026-11-27, DosingLine, a 20.0 project, LabVIEW 2026
+26.3.1).** Every file read with `lvai_save_for_previous dryRun` (`was`) after each step:
+
+| kept 20.0 | wrote 26.0 |
+|---|---|
+| `lvai_create_library` (members and the `.lvlib`, `LVVersion 20008000`), `lvai_add_to_library` (members re-saved, the caller relinked), `lvai_bind_pane_typedef` on a plain VI with `projectPath`, `lvai_set_representation` with `projectPath` (4 VIs), `lvai_remove_from_library` (the disconnected VI, read with `pylv_extract`) | `lvai_layout_diagram(s)`, `lvai_set_vi_icon`, `lvai_swap_subvis` (with its layout), `lvai_set_vi_descriptions` (project closed), `lvai_create_typedef` (no project) |
+
+So "every save through LabVIEW writes the running version" (CLAUDE.md until this day) was too
+broad, and "the instance decides" does not explain `lvai_swap_subvis`, which runs in the project's
+instance too - its layout step's own save is the likely writer, not measured apart. The rule kept
+is the check, not the route: `saveVersionCheck` on the answer. The warning was reworded the same
+day: it said "saved in a NEWER version than they had, or than their project pins" for every file,
+and an agent read a re-save of a file that was 26.0 already as a fresh regression; it now says
+which happened. A member of a library reads `pinFrom: "owner"` (it read `"listed"`, as if the
+project listed the file).
 
 ## 6. Save for Previous Version brings a re-saved VI back to the pin (measured 2026-11-20)
 
