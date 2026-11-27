@@ -1,0 +1,102 @@
+<VI _name="lvai_replace_primitive.vi" description="Replaces PRIMITIVE nodes of an existing VI IN PLACE - the IDE's right-click Replace - and saves the VI\3A To Unsigned Word Integer becomes To Long Integer with its wires still attached.\0A\0AMEASURED 2026-11-20 on LabVIEW 2026. The Style PROPERTY of {LV.Node} is a STRING\2C the primitive's name (To Long Integer\2C Add\2C Equal?)\2C so the nodes to replace are found by comparing it. The Replace METHOD takes the new primitive in PaletteString\2C as that same name\2C with Style and Path unwired\3B its Style INPUT is a uint32 and takes the primitive's resource number\2C so the Style property of a donor node cannot be wired into it (string into unsigned long). An unknown name is error 1054 and leaves the VI untouched.\0A\0AWHAT SURVIVES. A primitive of the same shape keeps every wire (To Unsigned Word Integer to To Long Integer\2C Add to Subtract). A different shape does not\3A Increment to Add leaves the x input open\2C Add to Increment leaves one wire loose. Nothing is repaired here - the caller reads the executability afterwards.\0A\0ATWO RUNS. With save FALSE and no indices the helper only LISTS\3A styles seen names every node of the diagram\2C and match lefts and match tops give the position of each node whose Style equals from style\2C in the order the indices count. With indices it replaces those matches and\2C with save TRUE\2C saves. Without save an unchanged VI is never written\2C which would re-save it in the running LabVIEW's version for nothing.\0A\0AThe references are collected ONCE before any Replace\2C because a Replace invalidates the reference it was called on and nothing is read from a node afterwards (error 1055). An index past the last match indexes a null reference\2C its Replace errors\2C and the error on the wire stops the save.\0A\0AThe VI is opened in the instance this helper runs in\2C or\2C with through active project TRUE\2C in the active project's application instance. Lists are pipe separated.">
+  <FreeLabel comment="Primitives replaced in place, by name" uid="4200" uid_parent="root"/>
+  <Control _name="vi path" description="Absolute path of the VI to edit. It is saved in place when save is TRUE." type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.v"/>
+  <Control _name="from style" description="The Style of the nodes to replace\2C which is the primitive's name\2C e.g. To Unsigned Word Integer." type="string" uid="4202" uid_parent="root" value="" outputs="value:4202.v"/>
+  <Control _name="to palette string" description="The name of the primitive they become\2C e.g. To Long Integer." type="string" uid="4203" uid_parent="root" value="" outputs="value:4203.v"/>
+  <Control _name="indices" description="Which matches to replace\2C as indices into the match list\2C pipe separated. Empty to replace none." type="string" uid="4204" uid_parent="root" value="" outputs="value:4204.v"/>
+  <Control _name="save" description="TRUE saves the VI in place after the replaces. FALSE writes nothing." type="bool" uid="4205" uid_parent="root" value="false" outputs="value:4205.v"/>
+  <Control _name="through active project" description="TRUE opens the VI in the active project's application instance." type="bool" uid="4206" uid_parent="root" value="false" outputs="value:4206.v"/>
+  <Control _name="error in" conIdx="8" connection="recommended" description="Error before this VI runs." type="cluster{bool.status,int32.code,string.source}" uid="4207" uid_parent="root" value="[false,0,]" outputs="value:4207.err"/>
+
+  <Node _name="String To Path" inputs="string:4201.v" outputs="path:4210.path" uid="4210" uid_parent="root"/>
+  <Structure _name="Case Structure" selectin="4206.v" uid="4250" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4210.path" uid="4251" uid_parent="4250"/>
+    <Tunnel _id="In2" inputs="value:4207.err" uid="4252" uid_parent="4250"/>
+    <CaseFrame selector="True" selectout="" uid="4260" uid_parent="4250" label="Open in the active project's instance">
+      <Tunnel _id="In1" outputs="value:4261.path" uid="4261" uid_parent="4260"/>
+      <Tunnel _id="In2" outputs="value:4262.err" uid="4262" uid_parent="4260"/>
+      <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="reference:,error in (no error):4262.err" outputs="Project\3AActive Project:4263.proj,reference out:,error out:4263.err" uid="4263" uid_parent="4260"/>
+      <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4263.proj,error in (no error):4263.err" outputs="Application:4264.app,reference out:,error out:4264.err" uid="4264" uid_parent="4260"/>
+      <Node _name="Open VI Reference" inputs="application reference (local):4264.app,vi path:4261.path,error in (no error):4264.err" outputs="vi reference:4265.ref,error out:4265.err" uid="4265" uid_parent="4260"/>
+      <Tunnel _id="Out1" inputs="value:4265.ref" uid="4266" uid_parent="4260"/>
+      <Tunnel _id="Out2" inputs="value:4265.err" uid="4267" uid_parent="4260"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="4270" uid_parent="4250" label="Open in the instance this helper runs in">
+      <Tunnel _id="In1" outputs="value:4271.path" uid="4271" uid_parent="4270"/>
+      <Tunnel _id="In2" outputs="value:4272.err" uid="4272" uid_parent="4270"/>
+      <Node _name="Open VI Reference" inputs="vi path:4271.path,error in (no error):4272.err" outputs="vi reference:4273.ref,error out:4273.err" uid="4273" uid_parent="4270"/>
+      <Tunnel _id="Out1" inputs="value:4273.ref" uid="4274" uid_parent="4270"/>
+      <Tunnel _id="Out2" inputs="value:4273.err" uid="4275" uid_parent="4270"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4280.ref" uid="4280" uid_parent="4250"/>
+    <Tunnel _id="Out2" outputs="value:4281.err" uid="4281" uid_parent="4250"/>
+  </Structure>
+
+  <Constant _name="Node Class Name" type="string" uid="4220" uid_parent="root" value="Node" outputs="value:4220.v"/>
+  <Constant _name="Block Diagram" type="uint16{FP,BD,Other}" uid="4221" uid_parent="root" value="1" outputs="value:4221.v"/>
+  <Constant _name="Node Reference" type="ref{LV.Node}" uid="4222" uid_parent="root" value="" outputs="value:4222.v"/>
+  <Call target="VI Scripting - Traverse.lvlib\3ATraverse for GObjects.vi" inputs="VI Refnum:4280.ref,Class Name:4220.v,error in (no error):4281.err,Traverse Target:4221.v,Other Refnum:,Traverse Generated Code (F):" outputs="dup VI Refnum:,References:4230.refs,# of Refs:4230.n,error out:4230.err" uid="4230" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4300" uid_parent="root" label="Keep the nodes whose Style is the one asked for">
+    <Tunnel _id="In1" inputs="value:4230.refs" mode="index" outputs="value:4301.g" uid="4301" uid_parent="4300"/>
+    <Tunnel _id="In2" inputs="value:4222.v" outputs="value:4302.cls" uid="4302" uid_parent="4300"/>
+    <Tunnel _id="In3" inputs="value:4202.v" outputs="value:4303.from" uid="4303" uid_parent="4300"/>
+    <Node _name="To More Specific Class" inputs="reference:4301.g,error in:,target class:4302.cls" outputs="specific class reference:4310.node,error out:4310.err" uid="4310" uid_parent="4300"/>
+    <Node _name="Property Node" fields="read+Style,read+Position\3ALeft,read+Position\3ATop" type="{LV.Node}" inputs="reference:4310.node,error in (no error):4310.err" outputs="Style:4311.style,Position\3ALeft:4311.left,Position\3ATop:4311.top,reference out:,error out:4311.err" uid="4311" uid_parent="4300"/>
+    <Node _name="Equal?" inputs="x:4311.style,y:4303.from" outputs="x = y?:4312.hit" uid="4312" uid_parent="4300"/>
+    <Tunnel _id="Out1" cond="4312.hit" inputs="value:4310.node" mode="index" outputs="value:4320.matches" uid="4320" uid_parent="4300"/>
+    <Tunnel _id="Out2" inputs="value:4311.style" mode="index" outputs="value:4321.styles" uid="4321" uid_parent="4300"/>
+    <Tunnel _id="Out3" cond="4312.hit" inputs="value:4311.left" mode="index" outputs="value:4322.lefts" uid="4322" uid_parent="4300"/>
+    <Tunnel _id="Out4" cond="4312.hit" inputs="value:4311.top" mode="index" outputs="value:4323.tops" uid="4323" uid_parent="4300"/>
+  </Structure>
+
+  <Constant _name="Line Format" type="string" uid="4330" uid_parent="root" value="%s" outputs="value:4330.v"/>
+  <Constant _name="Empty String Array" type="array{string.String}" uid="4331" uid_parent="root" value="[]" outputs="value:4331.v"/>
+  <Constant _name="Separator" type="string" uid="4332" uid_parent="root" value="|" outputs="value:4332.v"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4330.v,spreadsheet string:4204.v,array type (2D Dbl):4331.v,delimiter (Tab):4332.v" outputs="array:4333.array" uid="4333" uid_parent="root"/>
+
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4400" uid_parent="root" label="One requested match per iteration">
+    <Tunnel _id="In1" inputs="value:4333.array" mode="index" outputs="value:4401.index" uid="4401" uid_parent="4400"/>
+    <Tunnel _id="In2" inputs="value:4320.matches" outputs="value:4402.matches" uid="4402" uid_parent="4400"/>
+    <Tunnel _id="In3" inputs="value:4203.v" outputs="value:4403.to" uid="4403" uid_parent="4400"/>
+    <ShiftReg uid="4404" uid_parent="4400">
+      <Left inputs="value:4230.err" outputs="value:4405.err" uid="4405" uid_parent="4404"/>
+      <Right inputs="value:4412.err" outputs="value:4406.err" uid="4406" uid_parent="4404"/>
+    </ShiftReg>
+    <Node _name="Decimal String To Number" inputs="string:4401.index,offset:,default (0L):" outputs="offset past number:,number:4410.number" uid="4410" uid_parent="4400"/>
+    <Node _name="Index Array" inputs="array:4402.matches,index:4410.number" outputs="element:4411.node" uid="4411" uid_parent="4400"/>
+    <Node _name="Invoke Node" target="Replace" type="{LV.Node}" inputs="reference:4411.node,error in (no error):4405.err,Style:,Path:,PaletteString:4403.to" outputs="reference out:,error out:4412.err,Replace:" uid="4412" uid_parent="4400"/>
+    <Node _name="Unbundle By Name" fields="code" inputs="input cluster:4412.err" outputs="code:4413.code" uid="4413" uid_parent="4400"/>
+    <Tunnel _id="Out1" inputs="value:4413.code" mode="index" outputs="value:4420.codes" uid="4420" uid_parent="4400"/>
+  </Structure>
+
+  <Structure _name="Case Structure" selectin="4205.v" uid="4500" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:4280.ref" uid="4501" uid_parent="4500"/>
+    <Tunnel _id="In2" inputs="value:4406.err" uid="4502" uid_parent="4500"/>
+    <CaseFrame selector="True" selectout="" uid="4510" uid_parent="4500" label="Save in place; an error on the wire stops it">
+      <Tunnel _id="In1" outputs="value:4511.ref" uid="4511" uid_parent="4510"/>
+      <Tunnel _id="In2" outputs="value:4512.err" uid="4512" uid_parent="4510"/>
+      <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4511.ref,error in (no error):4512.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4513.err" uid="4513" uid_parent="4510"/>
+      <Tunnel _id="Out1" inputs="value:4513.err" uid="4514" uid_parent="4510"/>
+    </CaseFrame>
+    <CaseFrame selector="False" selectout="" uid="4520" uid_parent="4500" label="List only: nothing is written">
+      <Tunnel _id="In1" outputs="value:" uid="4521" uid_parent="4520"/>
+      <Tunnel _id="In2" outputs="value:4522.err" uid="4522" uid_parent="4520"/>
+      <Tunnel _id="Out1" inputs="value:4522.err" uid="4524" uid_parent="4520"/>
+    </CaseFrame>
+    <Tunnel _id="Out1" outputs="value:4530.err" uid="4530" uid_parent="4500"/>
+  </Structure>
+
+  <Node _name="Close Reference" inputs="reference:4280.ref,error in (no error):4530.err" outputs="error out:4540.err" uid="4540" uid_parent="root"/>
+  <Node _name="Array Size" inputs="array:4320.matches" outputs="size(s):4541.n" uid="4541" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="code,source" inputs="input cluster:4540.err" outputs="code:4542.code,source:4542.source" uid="4542" uid_parent="root"/>
+
+  <Indicator _name="styles seen" description="The Style of every node on the block diagram\2C at any depth\2C before any replace." type="array{string.String}" uid="4600" uid_parent="root" value="[]" inputs="value:4321.styles"/>
+  <Indicator _name="matches" description="How many nodes carry from style." type="int32" uid="4601" uid_parent="root" value="0" inputs="value:4541.n"/>
+  <Indicator _name="match lefts" description="Left position of each match\2C in index order." type="array{int32}" uid="4602" uid_parent="root" value="[]" inputs="value:4322.lefts"/>
+  <Indicator _name="match tops" description="Top position of each match\2C in index order." type="array{int32}" uid="4603" uid_parent="root" value="[]" inputs="value:4323.tops"/>
+  <Indicator _name="replace codes" description="Per requested index\2C the error code of the chain after its Replace." type="array{int32}" uid="4604" uid_parent="root" value="[]" inputs="value:4420.codes"/>
+  <Indicator _name="code" description="Zero when every replace and the save succeeded." type="int32" uid="4605" uid_parent="root" value="0" inputs="value:4542.code"/>
+  <Indicator _name="source" description="Source of the first error." type="string" uid="4606" uid_parent="root" value="" inputs="value:4542.source"/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" description="The error chain\3A open\2C replaces\2C save\2C close." type="cluster{bool.status,int32.code,string.source}" uid="4607" uid_parent="root" value="[false,0,]" inputs="value:4540.err"/>
+</VI>

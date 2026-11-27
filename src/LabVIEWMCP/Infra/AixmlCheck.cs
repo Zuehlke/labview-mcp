@@ -130,7 +130,7 @@ internal static class AixmlCheck
                            .Where(e => (string?)e.Attribute("uid") is { Length: > 0 })
                            .ToList();
 
-        CheckDuplicateUids(elements, findings);
+        CheckDuplicateUids(root, elements, findings);
         CheckParents(root, elements, findings);
         CheckNesting(root, findings);
         CheckRings(root, findings);
@@ -139,12 +139,14 @@ internal static class AixmlCheck
         CheckIndicatorValues(root, findings);
         CheckNestedArrays(root, findings);
         CheckWireEndsHaveUids(root, findings);
+        CheckTunnelIds(root, findings);
         CheckNetAttributes(root, findings);
         CheckTimestampValues(root, findings);
         CheckNonFiniteConstants(root, findings);
         CheckEventTimeoutInput(root, findings);
         CheckCommentLength(root, findings);
         CheckControlReadBeforeWait(root, findings);
+        CheckStopModuleNotLast(root, findings);
         CheckWebBrowserReference(root, findings);
         CheckXNodeWrittenAsNode(root, findings);
         CheckExecTrailer(xml, findings);
@@ -153,8 +155,100 @@ internal static class AixmlCheck
         CheckReservedRange(elements, findings);
         CheckMalleableName(root, findings);
         CheckViServerNames(root, findings);
+        CheckClassPropertyNode(root, findings);
+        CheckPrimitiveTerminalNames(root, findings);
 
         return findings;
+    }
+
+    /// <summary>
+    /// A WIRED terminal of a primitive <c>Node</c> that is a slip of a name the composer's tables
+    /// know - <c>.not. x</c> for Not's <c>.not. x?</c> (field report, 2026-11-14: the check passed
+    /// it, the composer refused it, one round trip). Only the same name with <c>?</c>, <c>.</c>,
+    /// brackets, spaces or case changed is reported: the tables are harvested and incomplete.
+    /// Measured over 1 500 cached NI exports (scripts/aixml_lint.py, the same rule): 0 findings;
+    /// an edit-distance rule fired 7 times, each a REAL terminal the tables lack.
+    /// </summary>
+    private static void CheckPrimitiveTerminalNames(XElement root, List<Finding> findings)
+    {
+        foreach (var node in root.Descendants("Node"))
+        {
+            if (node.Attribute("type") is not null) continue;
+            if ((string?)node.Attribute("_name") is not { } name
+                || PrimitiveTerminalNames.Of(UnescapeAixml(name)) is not { } known) continue;
+            foreach (var attribute in new[] { "inputs", "outputs" })
+            {
+                foreach (var entry in (((string?)node.Attribute(attribute)) ?? "").Split(','))
+                {
+                    var colon = entry.LastIndexOf(':');
+                    if (colon <= 0 || entry[(colon + 1)..].Trim().Length == 0) continue;
+                    var term = UnescapeAixml(entry[..colon]);
+                    if (term.StartsWith("?parm", StringComparison.Ordinal)
+                        || known.Any(k => string.Equals(k, term, StringComparison.OrdinalIgnoreCase))) continue;
+                    var near = known.Where(k => PrimitiveTerminalNames.Squash(k) == PrimitiveTerminalNames.Squash(term))
+                                    .Order(StringComparer.Ordinal).FirstOrDefault();
+                    if (near is null) continue;
+                    findings.Add(new Finding(Severity.Warning, "primitiveTerminalNearMiss",
+                        $"\"{term}\" is not a terminal of {UnescapeAixml(name)}; did you mean \"{near}\"? "
+                        + $"Terminal names are literal (known: {string.Join(", ", known.Order(StringComparer.Ordinal))}). "
+                        + "The pylabview composer refuses the node, NI's converter answers `Object terminal not found`.",
+                        (string?)node.Attribute("uid")));
+                }
+            }
+        }
+    }
+
+    /// <summary>The composer's CLASS_PROP_TYPE: an author's `{Auto.lvclass}`, library-qualified or not.</summary>
+    private static readonly System.Text.RegularExpressions.Regex NamedClassNodeType = new(
+        @"^\{\s*((?:[^{}:]+\.lvlib:)*[^{}:]+\.lvclass)\s*\}$",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// A node type on a LabVIEW CLASS wire: NI's export spelling <c>{UDClassInst}</c>, or the class
+    /// named by the author, <c>{Auto.lvclass}</c> / <c>{Lib.lvlib:Auto.lvclass}</c> (upstream #153,
+    /// which the composer reads too). The named spelling drew a false <c>viServerClassUnknown</c>
+    /// until 2026-11-25.
+    /// </summary>
+    internal static bool IsClassNodeType(string type) => ClassNodeName(type) is not null;
+
+    /// <summary>"" for <c>{UDClassInst}</c>, the class name for the named spelling, null otherwise.</summary>
+    private static string? ClassNodeName(string type)
+    {
+        if (type.Replace(" ", "") == "{UDClassInst}") return "";
+        var m = NamedClassNodeType.Match(UnescapeAixml(type).Trim());
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
+    /// <summary>
+    /// A Property Node on a LabVIEW CLASS - <c>type="{UDClassInst}"</c>, NI's export spelling (17 of
+    /// NI's DQMH examples, `Module ID`), or <c>type="{Auto.lvclass}"</c>, which names the class. The pylabview composer, the default backend, composes it
+    /// for LabVIEW 2026 since upstream #154 (2026-11-24) and refuses it for an older LabVIEW (not
+    /// measured there); it refused it everywhere until then. Each field IS one accessor call, so the
+    /// route for an older LabVIEW is a <c>Call</c> of the accessor
+    /// per field with the class and error wires chained through. A WARNING: NI's converter on grpc
+    /// was never measured on it.
+    /// </summary>
+    private static void CheckClassPropertyNode(XElement root, List<Finding> findings)
+    {
+        foreach (var node in root.Descendants("Node"))
+        {
+            if ((string?)node.Attribute("_name") != "Property Node") continue;
+            if ((string?)node.Attribute("type") is not { } type || ClassNodeName(type) is not { } named) continue;
+            var cls = named.Length > 0 ? named : "<Class>.lvclass";
+            var calls = (((string?)node.Attribute("fields")) ?? "").Split(',')
+                .Select(f => f.Split('+', 2))
+                .Where(p => p.Length == 2 && p[1].Trim().Length > 0)
+                .Select(p => $"`{cls}:{(p[0].Trim() == "write" ? "Write" : "Read")} {UnescapeAixml(p[1].Trim())}.vi`")
+                .ToList();
+            findings.Add(new Finding(Severity.Warning, "classPropertyNodeNotComposable",
+                $"A Property Node on a LabVIEW class ({UnescapeAixml(type).Trim()}) is composed by the pylabview "
+                + "composer, the default backend, for LabVIEW 2026 only, and refused for an older "
+                + "LabVIEW. There, call the class's accessor instead, one Call per field"
+                + (calls.Count > 0 ? $" ({string.Join(", ", calls)} by NI's default naming)" : "")
+                + ", with the class wire and the error wire chained through them; "
+                + "lvai_describe_class lists the accessors the class really has.",
+                (string?)node.Attribute("uid")));
+        }
     }
 
     /// <summary>The finding that KILLS LabVIEW inside ConvertAIXMLToVI; the RPC tools refuse it.</summary>
@@ -196,6 +290,9 @@ internal static class AixmlCheck
             var kind = (string?)node.Attribute("_name");
             if (kind is not ("Property Node" or "Invoke Node")) continue;
             if ((string?)node.Attribute("type") is not { Length: > 2 } cls || !cls.StartsWith('{')) continue;
+            // a node on a LabVIEW CLASS names the class's own accessors - no list knows them
+            // (CheckClassPropertyNode says what to do instead)
+            if (IsClassNodeType(cls)) continue;
             var uid = (string?)node.Attribute("uid");
 
             if (!ViServerVocabulary.IsKnownClass(cls))
@@ -457,6 +554,31 @@ internal static class AixmlCheck
         }
     }
 
+    private static readonly System.Text.RegularExpressions.Regex TunnelId =
+        new(@"^(In|Out|Local)[1-9][0-9]*$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// A Tunnel's <c>_id</c> IS its direction: NI's schema allows only <c>(In|Out)[1-9][0-9]*</c>
+    /// (stacked-sequence locals add <c>LocalN</c>), and the composer reads an <c>In</c> prefix as
+    /// input and anything else as output. A CLD benchmark build (2026-11-18) wrote
+    /// <c>_id="iFD"</c> and <c>"oB"</c>; the composer took both as outputs and failed with
+    /// "case tunnel iFD: no typed wire reaches it", a regeneration cycle later. aixml2vi.py's
+    /// <c>refuse_bad_tunnel_ids</c> and scripts/aixml_lint.py's <c>tunnel-id</c> say the same.
+    /// </summary>
+    private static void CheckTunnelIds(XElement root, List<Finding> findings)
+    {
+        foreach (var tunnel in root.Descendants("Tunnel"))
+        {
+            var id = (string?)tunnel.Attribute("_id") ?? "";
+            if (TunnelId.IsMatch(id)) continue;
+            findings.Add(new Finding(Severity.Error, "tunnelIdNotDirection",
+                $"Tunnel _id=\"{id}\": a tunnel's _id must be In<n> (input) or Out<n> (output), n from 1 - " +
+                "the prefix IS the direction. NI's schema refuses anything else (Error -2628), and the " +
+                "pylabview composer refuses it by name.",
+                (string?)tunnel.Attribute("uid")));
+        }
+    }
+
     private static void CheckIndicatorValues(XElement root, List<Finding> findings)
     {
         foreach (var element in root.DescendantsAndSelf())
@@ -573,25 +695,44 @@ internal static class AixmlCheck
     /// Two elements sharing a uid. NOT caught by LabVIEW, which silently renumbers one of them -
     /// measured: a file written with 9010 / 9020 / 9010 came back as 9045 / 9020 / 9010.
     ///
-    /// A WARNING RATHER THAN AN ERROR, because nothing breaks: the VI generated and ran. What you
-    /// lose is the correspondence between the file you wrote and the file you get back, and WHICH
-    /// of the two is renumbered is the generator's choice. <c>uid="0"</c> is exempt: it asks for no
-    /// number at all and was measured reusable.
+    /// A WARNING when nothing is nested inside the uid, because nothing breaks: the VI generated and
+    /// ran, and Fix renumbers it. What you lose is the correspondence between the file you wrote and
+    /// the file you get back. <c>uid="0"</c> is exempt: it asks for no number at all and was
+    /// measured reusable.
+    ///
+    /// AN ERROR (<c>duplicateParentUid</c>) when some element names the uid as its uid_parent: which
+    /// twin is the parent cannot be told, Fix leaves it alone, and the pylabview composer resolved
+    /// uid_parent through a map that keeps the LAST twin - so the children landed in the later
+    /// structure. Session-7 report M9, 2026-11-03: a new loop reused a later Case Structure's uids,
+    /// composed with only this warning, and the VI failed elsewhere. The composer refuses it now too.
     /// </summary>
-    private static void CheckDuplicateUids(List<XElement> elements, List<Finding> findings)
+    private static void CheckDuplicateUids(XElement root, List<XElement> elements, List<Finding> findings)
     {
         var duplicates = elements
             .Select(e => (string)e.Attribute("uid")!)
             .Where(uid => uid != Sentinel)
             .GroupBy(uid => uid, StringComparer.Ordinal)
             .Where(group => group.Count() > 1);
+        var parents = root.DescendantsAndSelf()
+            .Select(e => (string?)e.Attribute("uid_parent"))
+            .Where(p => p is { Length: > 0 })
+            .ToHashSet(StringComparer.Ordinal);
 
         foreach (var group in duplicates)
-            findings.Add(new Finding(Severity.Warning, "duplicateUid",
-                $"uid \"{group.Key}\" is used by {group.Count()} elements. LabVIEW accepts this and "
-                + "silently renumbers one of them, so the export will not match this file. "
-                + "Only uid=\"0\" may legally repeat.", group.Key));
+            findings.Add(parents.Contains(group.Key)
+                ? new Finding(Severity.Error, DuplicateParentUid,
+                    $"uid \"{group.Key}\" is used by {group.Count()} elements AND something is nested " +
+                    "inside it (a uid_parent names it), so which of them is the parent cannot be " +
+                    "told: LabVIEW renumbers one in silence, and the pylabview composer puts the " +
+                    "children into the LAST one. Give each element its own uid.", group.Key)
+                : new Finding(Severity.Warning, "duplicateUid",
+                    $"uid \"{group.Key}\" is used by {group.Count()} elements. LabVIEW accepts this and "
+                    + "silently renumbers one of them, so the export will not match this file. "
+                    + "Only uid=\"0\" may legally repeat.", group.Key));
     }
+
+    /// <summary>A shared uid something is nested inside - an error, see CheckDuplicateUids.</summary>
+    internal const string DuplicateParentUid = "duplicateParentUid";
 
     /// <summary>
     /// A <c>uid_parent</c> naming no element. THE ONE THAT SILENTLY CHANGES THE DIAGRAM - see the
@@ -1317,6 +1458,111 @@ internal static class AixmlCheck
     }
 
     /// <summary>
+    /// A call into a DQMH module's library that is not wired BEFORE that library's
+    /// <c>Stop Module.vi</c> on the same diagram. WARNING, code <c>stopModuleNotLast</c>.
+    ///
+    /// Nothing orders two nodes that no wire connects, so Stop Module then runs in parallel with
+    /// the request, and the module may stop before it answers. Session-7 report M7, 2026-11-03:
+    /// every Request and Wait for Reply of a headless caller timed out (403686 after the module's
+    /// 5 s), on the user's module and on Delacor's untouched template alike, and the run route was
+    /// suspected. The cause was the caller: Stop Module took its `error in` from Synchronize Module
+    /// Events, beside the request. Measured on LabVIEW 2026 over the same ActiveX route: wired that
+    /// way, 403686 after 5.4 s; with Stop Module wired after the request's `error out`, the reply in
+    /// 1.2 s, twice. Each structure on the diagram counts as one node - anything wired out of it
+    /// waits for all of it - and a call in another diagram than Stop Module's is not judged.
+    /// </summary>
+    private static void CheckStopModuleNotLast(XElement root, List<Finding> findings)
+    {
+        foreach (var stop in root.Descendants("Call"))
+        {
+            if (DqmhCall(stop) is not { IsStop: true } stopCall || stop.Parent is not { } diagram) continue;
+
+            XElement? On(XElement e)
+            {
+                var x = e;
+                while (x.Parent is not null && x.Parent != diagram) x = x.Parent;
+                return x.Parent == diagram ? x : null;
+            }
+
+            var producer = new Dictionary<string, XElement>(StringComparer.Ordinal);
+            foreach (var e in diagram.Descendants())
+                if (On(e) is { } rep)
+                    foreach (var net in NetsOf((string?)e.Attribute("outputs")))
+                        producer[net] = rep;
+            var next = new Dictionary<XElement, HashSet<XElement>>();
+            foreach (var e in diagram.Descendants())
+                if (On(e) is { } rep)
+                    foreach (var net in NetsOf((string?)e.Attribute("inputs")))
+                        if (producer.TryGetValue(net, out var from) && from != rep)
+                        {
+                            if (!next.TryGetValue(from, out var set)) next[from] = set = [];
+                            set.Add(rep);
+                        }
+
+            bool Reaches(XElement from, XElement to)
+            {
+                var seen = new HashSet<XElement> { from };
+                var queue = new Queue<XElement>([from]);
+                while (queue.TryDequeue(out var x))
+                    foreach (var y in next.GetValueOrDefault(x) ?? [])
+                    {
+                        if (y == to) return true;
+                        if (seen.Add(y)) queue.Enqueue(y);
+                    }
+                return false;
+            }
+
+            foreach (var call in diagram.Descendants("Call"))
+            {
+                if (call == stop || DqmhCall(call) is not { IsStop: false } other
+                    || !string.Equals(other.Library, stopCall.Library, StringComparison.OrdinalIgnoreCase)
+                    || On(call) is not { } rep || Reaches(rep, stop))
+                    continue;
+                var after = Reaches(stop, rep);
+                findings.Add(new Finding(Severity.Warning, StopModuleNotLast,
+                    $"{other.Vi} of {other.Library} is not wired before its Stop Module.vi (uid " +
+                    $"{(string?)stop.Attribute("uid")}): " +
+                    (after
+                        ? "it runs AFTER the module was stopped. "
+                        : "no wire orders the two, so they run in parallel and the module may stop " +
+                          "before it answers - a Request and Wait for Reply then times out (403686) " +
+                          "after the module's timeout. ") +
+                    "Measured 2026-11-03 on Delacor's own template: 403686 after 5.4 s with Stop " +
+                    "Module wired beside the request, the reply in 1.2 s with it wired after. Wire " +
+                    "Stop Module's error in from the last call's error out.",
+                    (string?)call.Attribute("uid")));
+            }
+        }
+    }
+
+    /// <summary>The code of <see cref="CheckStopModuleNotLast"/>.</summary>
+    internal const string StopModuleNotLast = "stopModuleNotLast";
+
+    /// <summary>A Call into a library, `Lib.lvlib\3AVI.vi`, split; null for any other target.</summary>
+    private static (string Library, string Vi, bool IsStop)? DqmhCall(XElement call)
+    {
+        var target = ((string?)call.Attribute("target") ?? "").Replace("\\3A", ":", StringComparison.OrdinalIgnoreCase);
+        var colon = target.IndexOf(".lvlib:", StringComparison.OrdinalIgnoreCase);
+        if (colon < 0) return null;
+        var library = target[..(colon + ".lvlib".Length)];
+        var vi = target[(colon + ".lvlib:".Length)..];
+        return (library, vi, string.Equals(vi, "Stop Module.vi", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>The net names of an `inputs`/`outputs` list: what follows each entry's last colon.</summary>
+    private static IEnumerable<string> NetsOf(string? list)
+    {
+        if (string.IsNullOrEmpty(list)) yield break;
+        foreach (var entry in list.Split(','))
+        {
+            var colon = entry.LastIndexOf(':');
+            if (colon < 0) continue;
+            var net = entry[(colon + 1)..].Trim();
+            if (net.Length > 0) yield return net;
+        }
+    }
+
+    /// <summary>
     /// A document whose <c>_name</c> ends in <c>.vim</c>. WARNING, not an error, and deliberately
     /// NOT repaired.
     ///
@@ -1655,6 +1901,53 @@ internal static class AixmlCheck
         return new Fixed(repaired, repairs, Check(repaired, policy));
     }
 
+    /// <summary>How many findings of one code are written out in full before the rest are folded.</summary>
+    internal const int FullFindingsPerCode = 3;
+
+    /// <summary>
+    /// The findings as written into an answer: the first <see cref="FullFindingsPerCode"/> of each
+    /// code in full, the rest of that code folded into ONE entry that carries their count and
+    /// uids. A CLD benchmark build (2026-11-19) named every tunnel of a Case Structure wrongly and
+    /// got the same 300-character rule back 110 times, a 43 KB answer for one mistake. `errors`
+    /// and `warnings` still count every finding. What is given up: the folded findings' own
+    /// message texts (for most codes the same sentence with another value in it) - their uids
+    /// stay, and a check of the corrected file names whatever is left.
+    /// </summary>
+    internal static JsonArray Collapsed(List<Finding> findings)
+    {
+        var array = new JsonArray();
+        var seen = new Dictionary<(Severity, string), int>();
+        var folded = new Dictionary<(Severity, string), JsonObject>();
+        foreach (var finding in findings)
+        {
+            var key = (finding.Severity, finding.Code);
+            var count = seen[key] = seen.GetValueOrDefault(key) + 1;
+            if (count <= FullFindingsPerCode)
+            {
+                array.Add(finding.ToJson());
+                continue;
+            }
+            if (!folded.TryGetValue(key, out var entry))
+            {
+                entry = new JsonObject
+                {
+                    ["severity"] = finding.Severity.ToString().ToLowerInvariant(),
+                    ["code"] = finding.Code,
+                    ["repeated"] = 0,
+                    ["uids"] = new JsonArray(),
+                    ["message"] = "",
+                };
+                folded[key] = entry;
+                array.Add(entry);
+            }
+            entry["repeated"] = count - FullFindingsPerCode;
+            if (finding.Uid is { } uid) entry["uids"]!.AsArray().Add(uid);
+            entry["message"] = $"{count - FullFindingsPerCode} more `{finding.Code}` finding(s), the same rule " +
+                               $"as the {FullFindingsPerCode} above, at the uids listed.";
+        }
+        return array;
+    }
+
     /// <summary>The whole answer, ready to embed in a tool result.</summary>
     internal static JsonObject Summarise(List<Finding> findings)
     {
@@ -1666,7 +1959,7 @@ internal static class AixmlCheck
             ["ok"] = errors == 0,
             ["errors"] = errors,
             ["warnings"] = warnings,
-            ["findings"] = new JsonArray([.. findings.Select(f => (JsonNode)f.ToJson())]),
+            ["findings"] = Collapsed(findings),
             ["note"] = errors == 0 && warnings == 0
                 ? "Nothing found. This checks ONLY what ValidateAIXML was measured not to check - "
                   + "duplicate uids, a uid_parent naming no element, a Ring default outside its "

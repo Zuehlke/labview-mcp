@@ -51,32 +51,31 @@ Pass the facts an agent needs in its prompt, or it rediscovers them from long do
 
 ## New VIs that belong together go into a library
 
-The user's rule of 2026-11-11: as soon as a request produces TWO OR MORE related new VIs (an
-application, a helper set), they end up in ONE new `.lvlib`. A single standalone VI stays loose,
-and EXISTING code is left as it is - with or without a library. You do it, after the last wave is
-verified, because it needs the project:
+TWO OR MORE related new VIs (an application, a helper set) end up in ONE new `.lvlib`. A single
+VI stays loose; EXISTING code is left as it is. You do it after the last wave is verified (it
+needs the project):
 
 1. `lvai_create_library` beside the VIs, with the VIs other code calls (the API) as `itemsJson`;
 2. `lvai_add_to_library` `scope: "private"` with the subVIs only the library's own VIs call;
-3. `lvai_move_to_folder` once per FUNCTION folder (`API`, `Helpers`, `UI`, ... - named for what
-   they hold), so the library is not flat;
+3. `lvai_move_to_folder` once per FUNCTION folder (`API`, `Helpers`, `UI`, ...), never flat;
 4. `lvai_exec_state` over every member (membership renames them). Fix every `audit` error a
-   tool answered; if one answered `deferredSourceOnly`, close the project with `projectPath`.
+   tool answered; if one answered `deferredSourceOnly`, close the project with `projectPath`;
+5. `lvai_bind_pane_typedef` per subVI whose pane carries a typedef (a builder cannot);
+6. pinned project: close it, `lvai_save_for_previous` every file a `saveVersionCheck` named.
 
 ## Reuse what the project already holds
 
 Pass the `.lvproj` to every builder. The VI agents search the project's own VIs before the
-palette and call a fit by name - project VIs are callable once loaded through the project.
+palette and call a fit by name (callable once loaded through the project).
 
 ## One agent, one output directory
 
-Two agents in one folder overwrite each other's files. Give each agent its own folder, for
-example `<project>\Tests\<ClassName>\`, and say so in its prompt.
+Two agents in one folder overwrite each other's files. Give each agent its own folder
+(`<project>\Tests\<ClassName>\`) and say so in its prompt.
 
 ## Check the station with `pylv_status`
 
-`pylv_status` is the start-up check (no LabVIEW, no NI service): backend in force, running
-LabVIEWs (NI's service is not asked); `lvai_status` answers the same on pylabview. Readiness is
+`pylv_status` is the start-up check (backend, running LabVIEWs); readiness is
 `lvai_ensure_labview`.
 
 ## Only you open and close projects
@@ -89,9 +88,9 @@ LabVIEW's copy over the `.lvproj`. So agents GENERATE files; you alone:
 - list VIs in a project (`lvai_add_vis_to_project`, never by editing the `.lvproj` by hand).
 
 The server enforces this. While tool calls overlap, or overlapped in the last 60 s, it refuses a
-project open or close with `projectChangeWhileParallel`. That applies to you too, so open a project
-once a wave has finished and the guard has lifted. Close with `projectPath`: that close also
-strips what place_handler deferred.
+project open or close with `projectChangeWhileParallel`. That applies to you too: open a project
+once a wave has finished. Close with `projectPath`: that close also strips what place_handler
+deferred.
 
 A test agent in a parallel build passes `leaveProjectOpen: true` to the test generators: they
 then close no project and list nothing, and report the test VIs for you to list.
@@ -102,5 +101,10 @@ still in memory, silently captures a bare-name call.
 
 ## Do not add work nobody asked for
 
-No negative-control test run unless the user asked for one. Batch lookups: one tool call with a
-comma-separated list beats several, because each round trip is a model turn.
+No negative-control test unless asked. Each round trip is a model turn: batch lookups, and
+drive an app one scenario per `lvai_running_vi` `steps` call (latched buttons are pressed by
+key; a control's state reads as `Name@Disabled`).
+
+A numeric's type or a same-shape primitive changes IN PLACE (`lvai_set_representation`,
+`lvai_replace_primitive`). `saveVersionCheck` names a file saved newer than the project's
+pin: `lvai_save_for_previous` brings it back.

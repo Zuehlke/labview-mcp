@@ -107,6 +107,69 @@ public sealed class InlineAuditTests : IDisposable
         Assert.True(annotated is null || !annotated.Contains("compiled-code"));
     }
 
+    private string Project(string name, string? sourceOnly)
+    {
+        var path = Path.Combine(_dir, name);
+        var property = sourceOnly is null ? "" :
+            $"\r\n\t<Property Name=\"NI.LV.All.SourceOnly\" Type=\"Bool\">{sourceOnly}</Property>";
+        File.WriteAllText(path, "<?xml version='1.0' encoding='UTF-8'?>\r\n<Project Type=\"Project\" LVVersion=\"26008000\">" +
+                                property + "\r\n\t<Item Name=\"My Computer\" Type=\"My Computer\"/>\r\n</Project>\r\n");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddHours(-1));
+        return path;
+    }
+
+    [Theory]
+    [InlineData("false")]
+    [InlineData(null)]
+    public void Compiled_code_kept_by_the_projects_own_setting_is_one_finding_on_the_project(string? sourceOnly)
+    {
+        // The live case (2026-11-23): lvai_dqmh_new_event in a project with SourceOnly false listed
+        // eight Delacor-written files, one finding each, on every call.
+        var project = Project("P.lvproj", sourceOnly);
+        var a = Copy(@"Libraries\M\A.vi", "compiled-code", "Compiled Caller.vi");
+        var b = Copy(@"Libraries\M\B.vi", "compiled-code", "Compiled Caller.vi");
+
+        var annotated = InlineAudit.Annotate(Answer(new { ok = true, files = new[] { a, b } }), DateTime.UtcNow.AddSeconds(-1));
+
+        var audit = JsonNode.Parse(annotated!)!["audit"]!;
+        Assert.Equal(1, audit["errors"]!.GetValue<int>());
+        var finding = Assert.Single(audit["findings"]!.AsArray())!;
+        Assert.Equal(project, finding["path"]!.GetValue<string>());
+        Assert.Equal("compiled-code", finding["rule"]!.GetValue<string>());
+        Assert.Contains("2 file(s)", finding["message"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Compiled_code_in_a_source_only_project_stays_a_finding_per_file()
+    {
+        Project("P.lvproj", "true");
+        var a = Copy(@"Libraries\M\A.vi", "compiled-code", "Compiled Caller.vi");
+        var b = Copy(@"Libraries\M\B.vi", "compiled-code", "Compiled Caller.vi");
+
+        var annotated = InlineAudit.Annotate(Answer(new { ok = true, files = new[] { a, b } }), DateTime.UtcNow.AddSeconds(-1));
+
+        var findings = JsonNode.Parse(annotated!)!["audit"]!["findings"]!.AsArray();
+        Assert.Equal(2, findings.Count);
+        Assert.All(findings, f => Assert.EndsWith(".vi", f!["path"]!.GetValue<string>()));
+    }
+
+    [Fact]
+    public void A_collected_answer_is_judged_from_its_jobs_start_not_the_collecting_call()
+    {
+        // Live, 2026-11-23: lvai_dqmh_new_event collected after three `stillRunning` answers had no
+        // audit - its files were written before the collecting call began.
+        var vi = Copy("Main.vi", "audit", "ATM Grafted.vi");
+        var job = DateTime.UtcNow.AddMinutes(-2);
+        File.SetLastWriteTimeUtc(vi, DateTime.UtcNow.AddSeconds(-30));
+        var collectingCall = DateTime.UtcNow;
+
+        Assert.Null(InlineAudit.Annotate(Answer(new { ok = true, viPath = vi }), collectingCall));
+
+        var collected = Answer(new Dictionary<string, object> { ["ok"] = true, ["viPath"] = vi,
+            [ResumableCall.JobStartedUtcKey] = job.ToString("o") });
+        Assert.Contains("automatic-error-handling", InlineAudit.Annotate(collected, collectingCall));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("not json")]

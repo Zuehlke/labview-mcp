@@ -213,6 +213,38 @@ def _extract_callee(path):
     return got
 
 
+def normalise_property_access(vi):
+    """A Property Node field with no `read+`/`write+` prefix READS, as the AIXML reference says
+    (and NI's converter takes it). Every site here partitions on "+", so a bare `Disabled` became
+    the property '' - "LV.Boolean declares no property ''" in a CLD benchmark build, 2026-11-17.
+    Rewritten once, at load, to the explicit `read+` form."""
+    for el in vi.iter("Node"):
+        if el.get("_name") != "Property Node" or not el.get("fields"):
+            continue
+        parts = split_top(el.get("fields"))
+        fixed = [p if (not p or "+" in p) else "read+" + p for p in parts]
+        if fixed != parts:
+            el.set("fields", ",".join(fixed))
+
+
+TUNNEL_ID_RE = re.compile(r"(In|Out|Local)[1-9][0-9]*")
+
+
+def refuse_bad_tunnel_ids(vi):
+    """A Tunnel's `_id` IS its direction: every site here reads `startswith("In")` as input and
+    anything else as output. NI's schema allows only `(In|Out)[1-9][0-9]*` (stacked-sequence
+    locals add `LocalN`); gRPC refuses anything else at the schema. The composer took `_id="iFD"`
+    as an OUTPUT and failed far later with "case tunnel iFD: no typed wire reaches it" - a CLD
+    benchmark build lost a regeneration cycle to it, 2026-11-18. Refused here, by name, first."""
+    bad = [(el.get("uid"), el.get("_id")) for el in vi.iter("Tunnel")
+           if not TUNNEL_ID_RE.fullmatch(el.get("_id") or "")]
+    if bad:
+        raise Unsupported(
+            "Tunnel _id %s: a tunnel's _id must be In<n> (input) or Out<n> (output), n from 1 - "
+            "the prefix IS the direction (NI's schema: (In|Out)[1-9][0-9]*)"
+            % ", ".join("%r (uid %s)" % (i or "", u) for u, i in bad[:5]))
+
+
 def split_top(s, sep=","):
     """Split at `sep` outside braces and brackets."""
     out, depth, cur = [], 0, []
@@ -232,8 +264,9 @@ def split_top(s, sep=","):
 
 def split_field(s):
     """'array.2{double}.Readings' -> ('array.2{double}', 'Readings'); 'double' -> ('double', None).
-    The type is read greedily - a word, an optional .N after `array`, an optional {...} - and
-    whatever follows a '.' is the label, which may itself contain anything."""
+    The type is read greedily - a word, an optional .N after `array`, an optional {...} (two of
+    them after `ref`: ref{UserEvent}{bool.stop}) - and whatever follows a '.' is the label, which
+    may itself contain anything."""
     m = re.match(r"[A-Za-z0-9_]+", s)
     if not m:
         raise Unsupported("unreadable type %r" % s)
@@ -242,16 +275,21 @@ def split_field(s):
         m2 = re.match(r"\.(\d+)(?=\{)", s[i:])
         if m2:
             i += m2.end()
-    # one {...} group, or two after `ref` - a strictly typed refnum, ref{LV.SceneGraphDisplay}
-    # {ref{LV.SceneNode}}, as a queue's element (NI's 3D Picture Control VIs)
+    # a refnum that holds a type - ref{Queue|UserEvent|Notifier}{T}, ref{LV.X}{T} - carries its
+    # payload in a SECOND brace group; read with one, a cluster of user events (the helper loop's
+    # events typedef, cluster{ref{UserEvent}{bool.stop}.stop}) was refused as unreadable
+    # (2026-10-26) while the same refnum composed as a top-level control
+    # (also a strictly typed refnum, ref{LV.SceneGraphDisplay}{ref{LV.SceneNode}}, as a queue's
+    # element - NI's 3D Picture Control VIs)
     for _ in range(2 if m.group(0) == "ref" else 1):
-        if i < len(s) and s[i] == "{":
-            depth = 0
-            for j in range(i, len(s)):
-                depth += {"{": 1, "}": -1}.get(s[j], 0)
-                if depth == 0:
-                    i = j + 1
-                    break
+        if not (i < len(s) and s[i] == "{"):
+            break
+        depth = 0
+        for j in range(i, len(s)):
+            depth += {"{": 1, "}": -1}.get(s[j], 0)
+            if depth == 0:
+                i = j + 1
+                break
     rest = s[i:]
     if rest and not rest.startswith("."):
         raise Unsupported("unreadable type %r" % s)
@@ -931,6 +969,40 @@ def _as_array(tree):
 
 def elem_of(tree):
     return fields(tree)[0]
+
+
+def wire_class(tree):
+    """The coercion class of a wire's type, for the wiring check: numeric (an enum included),
+    bool, string, path, or ("array", element class). None for everything the check does not
+    judge - clusters, refnums, variants, waveforms - so an unknown type is never a fault."""
+    tree = typedef_inner(tree)
+    if tree is None:
+        return None
+    t = tree.get("Type") or ""
+    if t.startswith("Num") or t.startswith("Unit"):
+        return "numeric"
+    if t in ("Boolean", "String", "Path"):
+        return t.lower()
+    if t == "Array" and fields(tree):
+        inner = wire_class(elem_of(tree))
+        return ("array", inner) if inner is not None else None
+    return None
+
+
+def wire_mismatch(src, want):
+    """True where LabVIEW has NO coercion from `src` to `want` - a broken wire NI's validation
+    refuses and the composer used to write in silence. Numeric to numeric coerces (a dot); a
+    variant, cluster or refnum on either side is not judged."""
+    a, b = wire_class(src), wire_class(want)
+    if a is None or b is None:
+        return False
+    if isinstance(a, tuple) and isinstance(b, tuple):
+        return a[1] != b[1]
+    return a != b
+
+
+def class_text(c):
+    return "array of %s" % c[1] if isinstance(c, tuple) else c
 
 
 def unlabel(tree):
@@ -2001,8 +2073,13 @@ class Composer:
         self.used_uids = set(lvheap.all_uids(self.fp)) | set(lvheap.all_uids(self.bd))
         self.ends = {}               # (aixml uid, terminal) -> (heap term uid, Diagram)
         self.net_type = {}           # net -> inlined type tree (unlabelled)
+        # (what, net, wanted type tree) for a sink whose type is FIXED - judged after wiring,
+        # when every net's type is known (check_wiring); and faults found while composing
+        self.sink_checks = []
+        self.wiring_faults = []
         self.loops = []              # (loop heap element, its inner Diagram, parent Diagram)
         self.report = []
+        self.validating = False     # --validate: wiring faults refuse instead of being reported
         self.search_dirs = []        # where a <Call> target is looked for; the output dir first
         self.resolver = None         # built on the first <Call> that needs the installation
         self.links = {}              # callee path -> {"name", "flat", "cons", "offsets": [uid]}
@@ -3678,6 +3755,7 @@ class Composer:
     XNODE_CALL_ROUTES = {"Match Regular Expression": "Match Regular Expression_Execute.vi"}
     PRIM_MODES = {"In Range and Coerce": ("includeHigh", "includeLow", "aggregate"),   # name -> mode attributes add_node writes
                   "Read from Text File": ("readLines", "convertEol"),
+                  "Write to Text File": ("convertEol",),
                   "Array To Cluster": ("elements",)}
     # COMPARE AGGREGATES (aggregate="true") is the 0x80000 bit of a comparison prim's objFlags,
     # one boolean for two whole clusters or arrays: read off NI's 3D Graph axes_auto_range.vi
@@ -3699,7 +3777,13 @@ class Composer:
                       # differing only in readLines="true", 2026-10-10 (lvpane_sweep.xml uses it)
                       # Convert EOL: 640 -> 33555072, the same way, 2026-11-01 (it was refused
                       # until then, and a test helper of the PC AI DI TDMS build dropped it)
-                      "Read from Text File": {"readLines": 0x4000000, "convertEol": 0x2000000}}
+                      "Read from Text File": {"readLines": 0x4000000, "convertEol": 0x2000000},
+                      # the same bit on the Write prim (8080): NI's own Line Stream To File.vi,
+                      # which NI exports with convertEol="true", has objFlags 33555072 there, and
+                      # two VIs composed without the attribute have 640. It was REFUSED until
+                      # 2026-11-19 ("mode convertEol=false is not composable yet", twice in a
+                      # timed build), and the reader printed no attribute for a Write with it set
+                      "Write to Text File": {"convertEol": 0x2000000}}
     for _n in AGGREGATE_PRIMS:
         PRIM_MODE_BITS.setdefault(_n, {})["aggregate"] = 0x80000
     del _n
@@ -4595,6 +4679,23 @@ class Composer:
             self._cat = cat
         return cat
 
+    def _nearest_property(self, cls, name):
+        """The known property name `name` most likely meant, for a refusal's text, or None. The
+        refusal named none, so `read+ClassName` cost a round trip where lvai_check_aixml had already
+        said `Class Name` (session-7 report M9, 2026-11-03). Spaces, colons, dots and case are
+        ignored first - that is the usual slip - then difflib over the class's own names."""
+        import difflib
+        table = self._vi_server_table()["props"]
+        own = set(table.get(cls, {})) | {n for c, n in self._catalogue() if c == cls}
+        every = own | {n for props in table.values() for n in props}
+        squash = lambda s: re.sub(r"[\s:._?]", "", s).lower()
+        for pool in (own, every):
+            same = sorted(n for n in pool if squash(n) == squash(name))
+            if same:
+                return same[0]
+        close = difflib.get_close_matches(name, sorted(own), n=1, cutoff=0.75)
+        return close[0] if close else None
+
     def _hgrow_terms(self, node):
         """The four fixed terminals of a property/invoke node by role: their DCO objFlags are
         0x10000 reference, 0x40001 reference out, 0x20000 error in, 0x80001 error out."""
@@ -4676,7 +4777,10 @@ class Composer:
                 if items_sub is not None:
                     cls, items, crow = sub, items_sub, table["classes"][sub]
         if items is None:
-            raise Unsupported("Property Node %s: property %r of %s is not in the harvested table" % (el.get("uid"), missing, cls))
+            near = self._nearest_property(cls, missing) if isinstance(missing, str) else None
+            raise Unsupported("Property Node %s: property %r of %s is not in the harvested table%s"
+                              % (el.get("uid"), missing, cls,
+                                 " - did you mean %r?" % near if near and near != missing else ""))
         diag = self.diag_of(el)
         got = self.instantiate("node/propNode/implicit" if linked else "node/propNode", own_uid=el.get("uid"))
         if got is None:
@@ -6670,11 +6774,25 @@ class Composer:
                     listed[direction].append((tname, net))
                 elif net is None and tname in other:
                     continue        # listed on the wrong side and unwired: nothing to place
+                elif net is None:
+                    # listed, unwired, and not on this callee's pane: a terminal a NEWER release of
+                    # the callee added. Clear Errors.vi's `specific error code to clear` is not on
+                    # LabVIEW 2020's, so the AF hook helpers would not compose there (B10, 2026-10-30)
+                    continue
                 else:
                     raise Unsupported("Call %r has no %s %r on its pane (has: %s)"
                                       % (target, "input" if direction == "in" else "output", tname,
                                          ", ".join(sorted(set(by_dir["in"]) | set(by_dir["out"])))))
+        wired_in = {tname for tname, net in listed["in"] if net}
+        for i in sorted(required_at):
+            if name_at.get(i) in by_dir["in"] and name_at[i] not in wired_in:
+                # NI's validation: "required input 'X' is not wired" - LabVIEW breaks the caller
+                self.wiring_faults.append("Call %r: required input %r is not wired"
+                                          % (target, name_at[i]))
         for tname, net in listed["in"]:
+            if net:
+                self.sink_checks.append(("Call %r input %r" % (target, tname), net,
+                                         by_dir["in"][tname][1]))
             # its OWN name: as `src` it overwrote the part's source, and the report line below
             # printed a wire type (`<Element 'TypeDesc' at 0x...>`) or `None` as where the Call
             # came from - reported by the pump-station cold build, 2026-11-01
@@ -8651,7 +8769,11 @@ class Composer:
                             if di == by_name[x]:
                                 r = copy.deepcopy(r)
                                 r.find("diagramIdx").text = str(i)
-                                ranges.append((int(r.findtext("start")), r))
+                                # both ranges START at INT_MIN (No Error ..INT_MIN, Error the whole
+                                # line), so the END breaks the tie: sorted by start alone an Error
+                                # frame authored first went first and LabVIEW loaded the VI broken,
+                                # "Selector values are not unique" (measured on LabVIEW 2020, 2026-10-28)
+                                ranges.append(((int(r.findtext("start")), int(r.findtext("end"))), r))
             else:
                 if kind == "string" and is_enum(it):
                     # NI's export QUOTES an enum case's items ("Off", "Auto".."Manual") - the
@@ -8933,6 +9055,12 @@ class Composer:
         dl.set("elements", str(len(dl)))
         if node.find("dIdx") is not None:
             node.find("dIdx").text = "0"
+        # the Timeout terminal (top-left corner) reads `timeoutin`, a net as a Case's `selectin`:
+        # AIXML had no way to wire it, so a composed Event Structure waited for ever (-1) and a
+        # Timeout frame never ran (B4, 2026-10-28)
+        tmo = [t for t in fixed if t.find("dco").get("class") == "eventTimeOut"]
+        if tmo:
+            self.ends[(el.get("uid"), "timeout")] = (tmo[0].get("uid"), parent)
         for e in node.iter("typeDesc"):
             if e.get("_t") is not None:
                 tree = plain(lvheap.strip_label(donor_types[int(e.get("_t"))]))
@@ -11711,13 +11839,30 @@ class Composer:
         diag.z.insert(0, lab)                   # z-order runs newest first
         diag.placed.append((lab, el))
 
+    def use_default_pane(self, pattern):
+        """The pattern a NEW VI gets: the DefaultConPane of the LabVIEW in use, else LabVIEW's own
+        4815 - what NI's converter and LabVIEW's File>New give it. The skeleton's 4833 only came
+        from the station the parts were cut on; with no such INI key, `lvai_connector_pane` said
+        4815 and the composer wrote 4833, so a pane authored by the tool's numbers came back with
+        three violations (LabVIEW 2020, 2026-11-03). A pane the document names (<?lvmcp pane?>)
+        still wins, and so does a conIdx past this pattern's slots."""
+        if pattern not in self.pane_codes:
+            self.report.append("WARNING: default connector pane %d is not a known pattern - kept %d"
+                               % (pattern, self.con_id))
+            return
+        self.con_id = pattern
+        self.fp.find("root/conPane/conId").text = str(pattern)
+
     def connector_pane(self):
         top = max([con for con, _, _, _ in self.pane_terms] or [-1])
         if top >= self.pane_codes.get(self.con_id, (0x108, 16))[1]:
             # a conIdx past the default pattern's slots: NI's converter then picks a larger
             # pattern by itself (4834, 20 slots, for conIdx up to 19 - CLAUDE.md); the same
             # family up to 4835's 28, refused beyond. Indexed past the list it was an IndexError.
-            bigger = [p for p in (4834, 4835) if self.pane_codes.get(p, (0, 0))[1] > top]
+            # 4833 first: under a 4815 default (no DefaultConPane) a document authored against
+            # 4833 - every helper, error out at 15 - keeps the pane it always had. What NI's
+            # converter picks there is not measured.
+            bigger = [p for p in (4833, 4834, 4835) if self.pane_codes.get(p, (0, 0))[1] > top]
             if not bigger:
                 raise Unsupported("conIdx %d needs a connector pane of more than 28 terminals" % top)
             self.con_id = bigger[0]
@@ -11852,6 +11997,8 @@ class Composer:
     def compose(self, aixml_path):
         vi = ET.parse(aixml_path).getroot()
         self.doc = vi
+        normalise_property_access(vi)
+        refuse_bad_tunnel_ids(vi)
         self.vi_name = unescape(vi.get("_name") or "Composed.vi")
         # the reader's connector pane PATTERN, after </VI> where NI's service ignores it: a
         # recomposed subVI keeps the pattern its callers were linked against (vi2aixml.py)
@@ -11973,6 +12120,22 @@ class Composer:
                 labels.append(el)
             else:
                 raise Unsupported("element <%s> is not composable yet" % el.tag)
+        # A uid two elements share AND something names as its uid_parent is ambiguous: this map
+        # keeps the LAST twin, so the children went into the later structure in silence (session-7
+        # report M9, 2026-11-03 - a new loop reused a later Case Structure's uids and the VI failed
+        # elsewhere). lvai_check_aixml calls it duplicateParentUid, an error. A shared uid nothing
+        # is nested in harmed nothing here and is renumbered by the C# side's repair; uid="0" asks
+        # for no number. None of 526 shipped AIXML documents nor 2169 cached NI exports has one.
+        seen, twins = set(), set()
+        for e in elements:
+            u = e.get("uid")
+            if u and u != "0":
+                (twins if u in seen else seen).add(u)
+        nested_twins = sorted(twins & {e.get("uid_parent") for e in elements + labels})
+        if nested_twins:
+            raise Unsupported("uid %s is used by more than one element and something is nested "
+                              "inside it (a uid_parent names it), so which one is the parent cannot "
+                              "be told - give each element its own uid" % ", ".join(nested_twins))
         by_uid = {e.get("uid"): e for e in elements}
         self._by_uid = by_uid
         self._elements = elements
@@ -12174,6 +12337,7 @@ class Composer:
         self.finish_events()
         self.pair_flat_seq_tunnels()
         nets = self.wire(elements)
+        self.check_wiring(elements)
         for el in labels:
             self.add_label(el)
         self.layout(nets)
@@ -12205,6 +12369,47 @@ class Composer:
         self.connector_pane()
         # escaped as NI escapes it (\2C, \3A, \0A, a doubled backslash), like a control's below
         self.description = unescape(vi.get("description") or "")
+
+    def check_wiring(self, elements):
+        """Refuse what NI's ValidateAIXML refuses and LabVIEW would load broken: an unwired
+        REQUIRED subVI input, and a wire with no coercion into a sink of FIXED type (an
+        indicator, a subVI input). The pylabview backend has no NI validation, so these used
+        to compose, write a VI and surface only as execState 0. Primitives are not judged -
+        they are polymorphic, and the donor's type says nothing about what they accept.
+
+        Only a wire whose SOURCE has an exact type is judged: a Control, a Constant, a subVI
+        Call's output. A primitive's output is typed from its donor part, which can be in
+        another mode - an Equal? comparing aggregates gives one boolean where its donor gave an
+        array of them, and judging that refused six working VIs of the suite and of scripts.
+
+        Only a VALIDATION refuses (--validate), as NI's split is: ValidateAIXML refuses these and
+        ConvertAIXMLToVI writes the broken VI, which some routes depend on - a call authored
+        with its inputs open to test linking, a method converted unvalidated and repaired
+        afterwards. A conversion writes the VI and names each fault in its report (2026-10-30:
+        refusing on convert failed PylabviewLlbContainerTests' unwired DAQmx Clear Task.vi)."""
+        exact = {net for el in elements if el.tag in ("Control", "Constant", "Call")
+                 for _, net in pairs(el.get("outputs")) if net}
+        for el in elements:
+            if el.tag != "Indicator" or not el.get("type"):
+                continue
+            ins = pairs(el.get("inputs"))
+            if not ins or not ins[0][1]:
+                continue
+            try:
+                want = type_tree(el.get("type"))
+            except Exception:
+                continue        # a type the check cannot build is not judged
+            self.sink_checks.append(("Indicator %r" % unescape(el.get("_name") or ""), ins[0][1], want))
+        for what, net, want in self.sink_checks:
+            src = self.net_type.get(net) if net in exact else None
+            if src is not None and wire_mismatch(src, want):
+                self.wiring_faults.append("%s: a %s wire (net %r) cannot feed a %s terminal"
+                                          % (what, class_text(wire_class(src)), net,
+                                             class_text(wire_class(want))))
+        if self.wiring_faults and self.validating:
+            raise Unsupported("wiring: " + "; ".join(self.wiring_faults))
+        for fault in self.wiring_faults:
+            self.report.append("WARNING: wiring: %s - LabVIEW will load this VI broken" % fault)
 
     def flat_pair_wires(self):
         """The wire joining the two halves of a frame-to-frame tunnel has no length: NI writes its
@@ -12794,6 +12999,8 @@ def main(argv):
     search = []
     args = []
     target = None
+    default_pane = None
+    validating = False
     i = 0
     while i < len(argv):
         if argv[i] == "--parts":
@@ -12801,6 +13008,13 @@ def main(argv):
         elif argv[i] == "--lv-version":
             # the LabVIEW major version to write for (25 for 2025); the skeleton's own otherwise
             target = int(argv[i + 1]); i += 2
+        elif argv[i] == "--default-pane":
+            # the pattern a NEW VI gets - the server passes the DefaultConPane of the LabVIEW in
+            # use, else LabVIEW's own 4815. Without it the skeleton's (4833, the station it was
+            # cut on), which no LabVIEW without that INI key would give a new VI (2026-11-03)
+            default_pane = int(argv[i + 1]); i += 2
+        elif argv[i] == "--validate":
+            validating = True; i += 1
         elif argv[i] == "--keep":
             keep = argv[i + 1]; i += 2
         elif argv[i] == "--search":
@@ -12811,7 +13025,10 @@ def main(argv):
             args.append(argv[i]); i += 1
     src, out_vi = args
     c = Composer(parts)
+    if default_pane is not None:
+        c.use_default_pane(default_pane)
     c.target_major = target
+    c.validating = validating
     c.search_dirs = [os.path.dirname(os.path.abspath(out_vi))] + search
     c.caller_file = os.path.abspath(out_vi)   # relative links are computed from the caller FILE
     try:

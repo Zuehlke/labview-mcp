@@ -10,6 +10,55 @@ namespace LabVIEWMcp.Tests.Tools;
 /// </summary>
 public class DqmhToolsTests
 {
+    // ---------------------------------------------------------------- reading a helper's arrays
+
+    /// <summary>
+    /// Session-7 report M8: a 7.1 frame's label is "#DQMH_CodeNeeded" + LF + the instructions. The
+    /// array was read one line at a time, so that element was dropped and the tool answered
+    /// codeNeededTextsBefore 0 while its helper deleted the label. The ActiveX route builds the
+    /// element in memory; the gRPC route parses LabVIEW's flattened XML, with the LF raw inside the
+    /// Val; a value built from that string alone is read the same way.
+    /// </summary>
+    [Fact]
+    public void A_string_array_element_with_a_line_break_is_read_whole()
+    {
+        const string label = "#DQMH_CodeNeeded\n1. Configure this Message Case\n2. Delete this text";
+        var com = DqmhTools.ToValue("Decoration Texts", "array{string}", new object[] { "", label, "a < b & c" });
+        const string flattened =
+            "<Array>\n<Name>Decoration Texts</Name>\n<Dimsize>3</Dimsize>\n" +
+            "<String>\n<Name></Name>\n<Val></Val>\n</String>\n" +
+            "<String>\n<Name></Name>\n<Val>#DQMH_CodeNeeded\n1. Configure this Message Case\n2. Delete this text</Val>\n</String>\n" +
+            "<String>\n<Name></Name>\n<Val>a &lt; b &amp; c</Val>\n</String>\n</Array>";
+        var grpc = new LabVIEWMcp.Infra.LvValuesXml.Value("Decoration Texts", "Array", null, flattened,
+                                                          LabVIEWMcp.Infra.LvNativeValue.ParseExact(flattened));
+        var stringOnly = grpc with { Element = null };
+
+        foreach (var value in new[] { com, grpc, stringOnly })
+        {
+            var texts = DqmhTools.Strings([value], "Decoration Texts");
+            Assert.Equal(["", label, "a < b & c"], texts);
+            Assert.Equal(1, texts.Count(DqmhFrameTools.IsCodeNeeded));
+        }
+    }
+
+    [Fact]
+    public void An_empty_array_reads_as_no_strings_not_its_type_template()
+    {
+        var empty = DqmhTools.ToValue("Decoration Texts", "array{string}", Array.Empty<object>());
+        Assert.Contains("<Val", empty.Xml);
+        Assert.Empty(DqmhTools.Strings([empty], "Decoration Texts"));
+        Assert.Empty(DqmhTools.Strings([empty], "No Such Indicator"));
+    }
+
+    [Fact]
+    public void An_int_array_and_a_scalar_string_read_as_their_texts()
+    {
+        var ints = DqmhTools.ToValue("Panel Wire Ends", "array{int32}", new object[] { 0, 2, -1 });
+        Assert.Equal(["0", "2", "-1"], DqmhTools.Strings([ints], "Panel Wire Ends"));
+        var scalar = DqmhTools.ToValue("Placement", "string", "inside;1,2,3,4");
+        Assert.Equal(["inside;1,2,3,4"], DqmhTools.Strings([scalar], "Placement"));
+    }
+
     [Fact]
     public void Bare_name_strips_only_a_trailing_lvlib()
     {

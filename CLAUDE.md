@@ -43,7 +43,8 @@ implements against it, the main-VI agent authors its scaffold in parallel with w
 standalone VI stays loose; existing code is never moved into or out of a library unasked. The
 orchestrator does it after the last wave: `lvai_create_library` with the API VIs,
 `lvai_add_to_library scope=private` for subVIs only the library calls, `lvai_move_to_folder` per
-function folder (never flat), then `lvai_exec_state` over the members. The VI agents search the
+function folder (never flat), then `lvai_exec_state` over the members and `lvai_bind_pane_typedef`
+per subVI whose pane carries a typedef (a builder cannot: it needs the project). The VI agents search the
 PROJECT's own VIs before the palette. `docs/orchestrator-brief.md`.
 
 **THE HOUSE RULES OF SAVED FILES ARE CHECKED WHERE A FILE IS WRITTEN, NOT AT THE END OF A BUILD**
@@ -82,7 +83,10 @@ refused (`projectChangeWhileParallel`) while top-level tool calls overlap or ove
 obeys it too (`ProjectChangeRefusalFromInside`): `lvai_graft_diagram` is refused, and
 `lvai_dqmh_place_handler` and the AF hook tools defer their source-only strip to the next
 `lvai_close_active_project` with `projectPath` (`deferredSourceOnly`) - place_handler's close under
-four other agents raised a modal dialog that stalled them all on 2026-11-18.
+four other agents raised a modal dialog that stalled them all on 2026-11-18. A tool's INTERNAL
+open through `projectPath` (the housekeeping tools, `lvai_set_representation`) obeys it unless
+that project is ACTIVE already; an overlap made only of READ calls (`ParallelCalls.ReadOnly`:
+exec_state, coercion_dots, describe_*) does not arm the window (both since 2026-11-27).
 Restart LabVIEW between two builds of the same application: a same-named VI of the earlier build,
 still in memory, captures a bare-name `Call` in silence.
 
@@ -227,6 +231,20 @@ call per set. A VI that does not end runs only with `runForMs` - the untimed
 helper blocks the whole gRPC service. An event-driven VI is verified by DRIVING its events
 (`signalsJson`), not by a start-up snapshot. Never report success from an empty answer.
 
+**AN APPLICATION THAT KEEPS RUNNING IS DRIVEN WITH `lvai_running_vi`, ONE SCENARIO PER CALL**
+(taken from the JorgenSteen fork, measured here 2026-11-27): `action: steps` runs start, set,
+press, signal, wait, read with `expect`, and stop in one call and checks the expectations itself
+(`expectations`, `firstFailure`); a failed action ends the scenario and a later `stop` still runs.
+A `press` on a TOP-LEVEL LATCHED boolean is a key press - key focus, then a space bar posted to
+the panel window (`pressedByKey`) - so the VI is never changed and no test copy is built; a
+disabled button does not react, and a latch inside a cluster is driven by signalling the whole
+cluster. Until 2026-11-27 the tool switched the latches to switch actions in memory
+(`latchedAsSwitch`, from the fork): run with the VI's project open, LabVIEW went on serving the
+switched actions for that path, in silence. A read name may be
+`Cluster.Element` or `Control@Disabled` / `@Blinking` / `@Visible` / `@Key Focus`. It works over
+ActiveX in LabVIEW's main instance. `lvai_describe_vi` `booleanActions` names which booleans
+latch. `docs/running-vi.md`.
+
 **EVERY VI WE CREATE CARRIES `error in` AND `error out`, on the BOTTOM ROW of the pane** (the user's
 rule of 2026-09-12):
 - the input is labelled `error in`, not NI's `error in (no error)` - but a CALLEE's terminal name
@@ -350,7 +368,11 @@ through NI's own providers or VI Server, never by writing the file - `lvai_creat
 NI's API writes it -> open is fine, and the providers REQUIRE it open and active (`Error 1055`
 otherwise). Close the project before any `lvai_create_class` or `lvai_create_interface`; read the
 `.lvproj` after every close - a close SAVES LabVIEW's in-memory copy over the file, and LabVIEW
-adopts every open VI when it saves (the close's `projectPath` sweep removes ours).
+adopts every open VI when it saves (the close's `projectPath` sweep removes ours). Every close
+answers `projectRewrite`: what the save changed in the `.lvproj` (a newer LabVIEW rewrites an
+older project with nothing edited) and where the file as it was is kept; `restoreProjectFile`
+puts it back byte for byte, for a session that changed nothing in the project on purpose.
+`docs/save-version.md` §3.
 
 **Order:** an interface and EVERY method it declares, before the first class that implements it
 (a declared method breaks every implementer until its override exists - a missing override makes
@@ -361,7 +383,11 @@ An override of ANY inherited method - a parent's, an interface's, `Message.lvcla
 from `lvai_create_override` by name. A message for an INTERFACE method comes from
 `lvai_create_message_class` with the interface as `actorClassPath`.
 Class -> methods -> LIBRARY -> messages: adding a class to a library after its messages
-leaves every `Do.vi` eBad. Remove a library's `<Item>` BEFORE deleting its files. Never write
+leaves every `Do.vi` eBad. Remove a library's `<Item>` BEFORE deleting its files. A VI leaves a
+library with `lvai_remove_from_library`; one that another file of the project CALLS is refused
+(`hasCallers`), also with the caller leaving in the same call (it left broken), and so is one that
+calls a private member staying behind (`callsPrivateMembers`) - disconnecting it raised a modal save
+dialog that stopped every call for 601 s (2026-11-27, `docs/library-creation.md` §7). Never write
 `NI.Lib.ContainingLib` by hand. `docs/labview-actor-framework.md`.
 
 **`lvai_add_class_method`** converts with `path` stand-ins, retypes the class terminals, adds the
@@ -392,7 +418,10 @@ VI and nothing reports it (`pylv_route` included) - check with `pylv_extract` fi
   a bind against an ordinary control succeeds and binds nothing;
 - constants: `lvai_bind_typedef_constants` for one feeding a subVI call; any other (into
   `Bundle By Name`, a queue's element type) `lvai_swap_subvis constantsJson` with the `.ctl`;
-- a method's own pane: `lvai_bind_pane_typedef`.
+- a VI's own pane: `lvai_bind_pane_typedef` - with the `.lvclass` for a class member, with only
+  `projectPath` for any other VI (taken from the fork 2026-11-27 and measured here that day; it
+  was class-only until then). A BOUND pane follows its typedef: one edit of the `.ctl` then
+  reaches every caller, where an unbound copy keeps the old type in silence.
 
 Create a typedef with `lvai_create_typedef` (VI Server; nested typedefs in ONE run). A class field
 can carry a default (`double.Gain=1`) and may be a `path`. `docs/typedef-disconnect.md`.
@@ -403,6 +432,7 @@ can carry a default (`double.Gain=1`) and may be a `path`. `docs/typedef-disconn
 |---|---|
 | create a NEW VI | AIXML (`lvai_generate_vi`) |
 | edit an EXISTING VI | `pylv_route` first; an AIXML edit is a FULL REGENERATION |
+| widen or change a numeric's type, or swap a primitive of the same shape, in EXISTING code | `lvai_set_representation`, `lvai_replace_primitive` - in place, nothing regenerated |
 | a class, its private data, an accessor | NI's provider VIs through the class tools |
 | a DQMH module, or a vendor toolkit under `project\` | the `lvai_dqmh_*` tools (VI Server by path, generated wrappers over LOADED scripters) |
 | a property or method no RPC exposes | a generated VI Server helper - the exception; say which route and why |
@@ -413,6 +443,10 @@ the pylabview backend; NI's gRPC service is not to be supported in the medium te
 for gRPC's sake: when an architecture or performance decision has to choose, pylabview wins, and a
 feature is not held back because gRPC cannot do it (LVOOP class property nodes, issue #153, exist
 only there). gRPC code is not removed unasked - it is no longer invested in.
+**NI's SERVICE IS USED ONLY WHEN THE USER ASKS FOR IT** (the user's decision of 2026-11-27): no
+tool, agent or message switches to `backend: "grpc"` on its own or advises it. A `composerRefused`
+is reported with its `UNSUPPORTED` line and the step stops; until that day every agent repeated
+such a call once on grpc and several tool messages advised it. `docs/aixml-backends.md`.
 
 **The AIXML tools have two backends**, NI's gRPC service and our pylabview composer, chosen by
 the call's `backend`, `--aixml-backend` or `LABVIEWMCP_AIXML_BACKEND`; with none of them,
@@ -427,7 +461,13 @@ only ATTACHES, never starts LabVIEW. Pass `backend` only when you mean it.
 
 **`lvai_apply_aixml_to_vi` IS NOT CALLED. EVER - unless the user asks for it by name.** It answers
 `errorCode 0` and changes nothing. So an edit is a full regeneration, and **a VI whose existing
-front panel must survive cannot be edited**: say so and let the user choose. For a SUPPLIED panel
+front panel must survive cannot be edited**: say so and let the user choose - EXCEPT two edits
+made in place through VI Server, which keep panel, layout, icon and typedef links (this rule
+named no exception until 2026-11-27): a numeric's representation (`lvai_set_representation`, on a
+VI or a typedef `.ctl`, whose callers are backed up and saved with `projectPath`) and a primitive
+of the SAME SHAPE (`lvai_replace_primitive`). Both refuse a VI that is broken before the edit; a
+primitive of another shape is saved BROKEN and reported, with a backup - never repaired by
+removing bad wires. `docs/in-place-edits.md`. For a SUPPLIED panel
 with an empty diagram, `lvai_graft_diagram` grafts a generated scaffold into it (system clipboard:
 one graft at a time; `replaceDiagram` discards existing code). **Graft only the main GUI**; subVIs
 are regenerated. A latched button stays latched in the delivered VI. A control AIXML cannot create
@@ -484,6 +524,24 @@ LabVIEW dialogs yourself with the least-change button and report it.
 
 **A modal dialog stops the whole gRPC service.** Anything that can raise one - a missing file in a
 `.lvlib`, LMock's refusals, the auto-save recovery - is checked from the files first.
+
+**A PROJECT KEPT FOR AN OLDER LabVIEW PINS ITS SAVE VERSION** (`NI.LV.All.SaveVersion`;
+`lvai_describe_project` answers `saveVersion`). The composer writes the pinned version (LabVIEW
+2019 at the oldest) and `lvai_generate_vi` then skips the steps that would save through the
+running LabVIEW (`savingStepsSkipped`: tidy, clean-ups, icon). Every tool answer gets
+`saveVersionCheck` when the call saved a file NEWER than it was or than its pin - report-only,
+read from the files. `lvai_save_for_previous` saves such files back in place (project CLOSED;
+it does not cover `.lvlib`, `.lvclass` and `.lvproj`), and `lvai_check_links` names the
+`vi.lib` links an installed target release lacks. ASSUME EVERY SAVE THROUGH LabVIEW WRITES THE
+RUNNING VERSION and end such work with `lvai_save_for_previous`: `lvai_set_vi_icon` and
+`lvai_layout_diagram` wrote 26.0 into a 20.0 project with the project active (2026-11-27), and
+so did `lvai_set_vi_descriptions`, `lvai_swap_subvis` and `lvai_create_typedef`; kept the pin:
+`lvai_set_representation` with `projectPath`, `lvai_bind_pane_typedef`, `lvai_create_library`,
+`lvai_add_to_library`, `lvai_remove_from_library`. The route does not tell - `saveVersionCheck`
+does, and NO `saveVersionCheck` means every file the call named or wrote is at or below its pin.
+This rule said until that day that a save in the project's instance keeps it, which an agent
+read as "project open is enough". Not measured: such files
+loaded by the older LabVIEW itself - only 2026 is installed here. `docs/save-version.md`.
 
 ## When a tool call fails
 
@@ -547,6 +605,7 @@ document; `experiments/` does not ship.
 | Calling loaded project code | `docs/aixml-call-loaded-vi.md` | `lvai_generate_vi` |
 | Generate one or many VIs | `docs/bulk-operations.md` | `lvai_generate_vi`, `lvai_generate_vis` |
 | Run a VI and read every value; drive events | `docs/vi-server-reference.md` | `lvai_run_vi_and_read_values` |
+| Start a VI, drive it while it runs (press, set, read), stop it | `docs/running-vi.md` | `lvai_running_vi` |
 | Is a VI broken, and why | `docs/error-list.md` | `lvai_exec_state`, `lvai_error_list` |
 | House rules of SAVED files, no LabVIEW; wirelint upstream version | `docs/offline-audit-evaluation.md` | `lvai_audit_files` |
 | LabVIEW's outside state; VIs in memory | `docs/labview-state.md` | `lvai_labview_state`, `lvai_vis_in_memory` |
@@ -563,7 +622,7 @@ document; `experiments/` does not ship.
 | Class housekeeping: description, folders, members, VI descriptions | `docs/lvclass-creation.md` §10 | `lvai_set_class_description`, `lvai_move_to_folder`, `lvai_add_to_class`, `lvai_set_vi_descriptions` |
 | Interfaces | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_set_class_interfaces` |
 | Class methods | `docs/class-method-tooling.md` | `lvai_add_class_method` |
-| Libraries | `docs/library-creation.md` | `lvai_create_library`, `lvai_add_to_library` |
+| Libraries | `docs/library-creation.md` | `lvai_create_library`, `lvai_add_to_library`, `lvai_remove_from_library` |
 | Actor Framework; overrides | `docs/labview-actor-framework.md`, `docs/af-override-tools.md` | `lvai_create_message_class`, `lvai_create_override`, `lvai_af_add_hook` |
 | Typedefs | `docs/typedef-constants.md`, `docs/typedef-disconnect.md` | `lvai_create_typedef`, `lvai_describe_ctl`, `lvai_bind_*`, `lvai_coercion_dots` |
 | DQMH | `docs/dqmh-patterns.md`, `docs/dqmh-scripting.md` | `lvai_dqmh_reference`, `lvai_dqmh_*` |
@@ -572,6 +631,7 @@ document; `experiments/` does not ship.
 | LUnit; mocks | `docs/labview-lunit-testing.md`, `docs/labview-lmock-mocking.md` | `lvai_lunit_*`, `lvai_generate_mock_class` |
 | Placeholders and swaps | `docs/labview-unit-testing.md` §3a | `lvai_placeholder_subvi`, `lvai_swap_subvis` |
 | Change one constant | `docs/cold-build-typedef-gdevcon.md` §7 | `lvai_set_constant` |
+| Change a numeric's representation, or replace a primitive, in place | `docs/in-place-edits.md` | `lvai_set_representation`, `lvai_replace_primitive` |
 | pylabview route and edits | `docs/pylabview-controls.md`, `docs/connector-pane-repair.md` | `pylv_route`, `pylv_apply` |
 | Stale compiled code | `docs/pylabview-stale-compiled-code.md` | `pylv_apply` |
 | Network streams; tag refnums; IVI on pylabview | `docs/network-streams.md`, `docs/aixml-backends.md` | — |
@@ -580,6 +640,8 @@ document; `experiments/` does not ship.
 | Why a tool call failed with no detail | `docs/tool-argument-errors.md` | — |
 | Station check; crashes | `docs/aixml-backends.md`, `docs/labview-crash-signatures.md` | `pylv_status` (`labviewHealth`), `lvai_status` (`backend: "grpc"` for NI's service) |
 | Releases and versions | `docs/release-versioning.md` | `LabVIEWMCP --version` |
+| Files for an older LabVIEW: a project's pinned save version; `vi.lib` links the target lacks | `docs/save-version.md` | `saveVersionCheck` on every answer, `lvai_save_for_previous`, `lvai_describe_project`, `lvai_check_links` |
+| Test a branch build against LabVIEW before a client restart | `scripts/mcp_drive.py` (its header) | `python -I scripts/mcp_drive.py <exe> <calls.json>` |
 
 The served documents are embedded in the assembly and byte-verified on every build; all of `docs\`
 is copied beside the exe as well.

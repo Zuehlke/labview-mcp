@@ -36,6 +36,28 @@ internal static class ResumableCall
     private static readonly object Gate = new();
 
     /// <summary>
+    /// A COLLECTED answer's job start, machine-readable. The checks that judge files by "written since
+    /// the call began" (InlineAudit, SaveVersions) read it: the collecting call began AFTER the job
+    /// wrote its files. Measured 2026-11-23: a lvai_dqmh_new_event collected after three
+    /// `stillRunning` answers carried no `audit` at all, while lvai_audit_files found five
+    /// compiled-code errors in the files it wrote.
+    /// </summary>
+    internal const string JobStartedUtcKey = "jobStartedUtc";
+
+    /// <summary>The job start an answer carries (<see cref="JobStartedUtcKey"/>), or null.</summary>
+    internal static DateTime? JobStartedUtc(JsonNode? answer)
+    {
+        try
+        {
+            return answer?[JobStartedUtcKey]?.GetValue<string>() is { } s
+                   && DateTime.TryParse(s, System.Globalization.CultureInfo.InvariantCulture,
+                                        System.Globalization.DateTimeStyles.RoundtripKind, out var t)
+                ? t.ToUniversalTime() : null;
+        }
+        catch (Exception e) when (e is InvalidOperationException or FormatException) { return null; }
+    }
+
+    /// <summary>
     /// Runs <paramref name="work"/> under <paramref name="key"/> or attaches to the job already
     /// running under it, and answers within <paramref name="answerWithin"/>. <paramref name="family"/>
     /// keeps two DIFFERENT jobs of one tool from running at once: they would script the same LabVIEW.
@@ -44,12 +66,29 @@ internal static class ResumableCall
     /// <paramref name="label"/> names the job in another call's `anotherCallStillRunning` refusal
     /// in place of its key.
     /// </summary>
+    /// <summary>
+    /// The time this call waits before its own `stillRunning`: at least 1 s, and below the
+    /// server-wide <see cref="LateCalls.AnswerWithin"/> by <see cref="BeforeLateCalls"/>. A larger
+    /// answerWithinSeconds was LateCalls' generic `stillRunning` at 50 s, without this call's
+    /// `progress` or retry hint (found 2026-11-23); it is capped instead.
+    /// </summary>
+    internal static TimeSpan Budget(TimeSpan asked, TimeSpan lateCalls)
+    {
+        var cap = lateCalls - BeforeLateCalls;
+        if (cap < TimeSpan.FromSeconds(1)) cap = TimeSpan.FromSeconds(1);
+        if (asked <= TimeSpan.Zero) return TimeSpan.FromSeconds(1);
+        return asked > cap ? cap : asked;
+    }
+
+    /// <summary>How far ahead of LateCalls' own answer this call answers.</summary>
+    internal static readonly TimeSpan BeforeLateCalls = TimeSpan.FromSeconds(3);
+
     public static async Task<string> RunAsync(string family, string key, TimeSpan answerWithin,
         Func<Task<string>> work, string retryHint, CancellationToken ct, Func<JsonObject?>? progress = null,
         string? label = null)
     {
         var fullKey = family + "|" + key;
-        var budget = answerWithin <= TimeSpan.Zero ? TimeSpan.FromSeconds(1) : answerWithin;
+        var budget = Budget(answerWithin, LateCalls.AnswerWithin);
         Job? job;
         bool attached;
         lock (Gate)
@@ -194,6 +233,7 @@ internal static class ResumableCall
                 o["answeredFromEarlierCall"] = true;
                 o["answeredFromEarlierServerProcess"] = entry.Pid;
                 o["jobStartedAt"] = entry.Started.ToString("HH:mm:ss");
+                o[JobStartedUtcKey] = entry.Started.UtcDateTime.ToString("o");
                 return Indent(o);
             }
         }
@@ -250,6 +290,7 @@ internal static class ResumableCall
             {
                 o["answeredFromEarlierCall"] = true;
                 o["jobStartedAt"] = job.Started.ToString("HH:mm:ss");
+                o[JobStartedUtcKey] = job.Started.UtcDateTime.ToString("o");
                 return Indent(o);
             }
         }

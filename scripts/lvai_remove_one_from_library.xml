@@ -1,0 +1,15 @@
+<VI _name="lvai_remove_one_from_library.vi" description="Takes ONE VI out of its library on the VI's side: opens it in the ACTIVE project's application instance\2C invokes {LV.VI} DisconnectFromLibrary (NI's own method\2C used by LMock) and saves the VI. Measured 2026-11-14 on LabVIEW 2026: afterwards the VI's file names no owning library (LIBN gone)\2C but the .lvlib still lists it even after a Library Save in the same run - so lvai_remove_from_library removes the library's Item from the file afterwards\2C with the project closed. Used by lvai_remove_from_library.">
+  <Control _name="vi path" outputs="value:4201.value" type="path" uid="4201" uid_parent="root" value=""/>
+  <Control _name="error in" conIdx="11" connection="recommended" outputs="value:4206.value" type="cluster{bool.status,int32.code,string.source}" uid="4206" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="error in (no error):4206.value" outputs="Project\3AActive Project:4210.proj,reference out:,error out:4210.err" uid="4210" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4210.proj,error in (no error):4210.err" outputs="Application:4215.app,reference out:,error out:4215.err" uid="4215" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="application reference (local):4215.app,vi path:4201.value,error in (no error):4215.err" outputs="vi reference:4235.vi,error out:4235.err" uid="4235" uid_parent="root"/>
+  <Indicator _name="open error" inputs="value:4235.err" type="cluster{bool.status,int32.code,string.source}" uid="4236" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Invoke Node" target="DisconnectFromLibrary" type="{LV.VI}" inputs="reference:4235.vi,error in (no error):4235.err" outputs="reference out:4240.vi,error out:4240.err" uid="4240" uid_parent="root"/>
+  <Indicator _name="disconnect error" inputs="value:4240.err" type="cluster{bool.status,int32.code,string.source}" uid="4241" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4240.vi,error in (no error):4240.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4250.err" uid="4250" uid_parent="root"/>
+  <Indicator _name="save error" inputs="value:4250.err" type="cluster{bool.status,int32.code,string.source}" uid="4251" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Close Reference" inputs="reference:4240.vi,error in (no error):4250.err" outputs="error out:4290.err" uid="4290" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="15" connection="recommended" inputs="value:4290.err" type="cluster{bool.status,int32.code,string.source}" uid="4299" uid_parent="root" value="[false,0,]"/>
+  <FreeLabel _name="One VI leaves its library" uid="4300" uid_parent="root"/>
+</VI>

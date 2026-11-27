@@ -408,4 +408,24 @@ public class LabViewOwnershipTests
         Assert.DoesNotContain(state["windows"]!.AsArray(), w => w!["kind"]!.GetValue<string>() == WindowKinds.HiddenSystem);
         Assert.False(state["labview"]![0]!["startedByThisServer"]!.GetValue<bool>());
     }
+
+    /// <summary>
+    /// The windows of the 2026-11-14 wedge: the frame DISABLED behind "Save changes before
+    /// closing?" - the state in which an abort left LabVIEW resetting for good. A run must not abort
+    /// then; with the frame enabled nothing blocks.
+    /// </summary>
+    [Fact]
+    public void A_disabled_frame_behind_a_save_dialog_is_a_blocking_dialog()
+    {
+        var blocked = new FakeLabViewMachine();
+        blocked.AddProcess(7, "LabVIEW");
+        blocked.AddWindow(7, "LVFrame", "LabVIEW", visible: true, handle: 100, enabled: false);
+        blocked.AddWindow(7, "LVDChild", "Save changes before closing?", visible: true, owner: 100, enabled: false);
+        var free = new FakeLabViewMachine();
+        free.AddProcess(7, "LabVIEW");
+        free.AddWindow(7, "LVFrame", "LabVIEW", visible: true, handle: 100);
+
+        Assert.Contains("Save changes before closing?", LabViewState.BlockingDialog(blocked));
+        Assert.Null(LabViewState.BlockingDialog(free));
+    }
 }

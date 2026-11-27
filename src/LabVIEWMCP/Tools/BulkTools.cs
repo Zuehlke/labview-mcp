@@ -164,7 +164,8 @@ internal sealed class BulkTools(LvaiConnection connection)
                                                        : WithExecTrailerIgnored(answer, aiXmlFilePath);
         if (xnodes.Count > 0)
             answer = await WithXNodesPlacedAsync(answer, viPath, xnodes, timeoutSeconds, ct);
-        return await WithIconAsync(answer, viPath, icon, measureDiagram && !openVI, choice.Name,
+        return await WithIconAsync(answer, viPath, icon, measureDiagram && !openVI && KeptForOlderLabView(viPath) is null,
+                                   choice.Name,
                                    timeoutSeconds, ct);
     }
 
@@ -536,23 +537,22 @@ internal sealed class BulkTools(LvaiConnection connection)
                     ". The composer does not type-check wiring the way NI's validation does: " +
                     (Parsed(convert)?["errors"] is JsonArray
                         ? "`errors` in the convert step holds the Error List's lines with their " +
-                          "explanation - fix those, or generate the same document with backend grpc."
+                          "explanation - fix those."
                         : "the Error List's lines were NOT read (`errorsNotReadBecause` in the " +
-                          "convert step) - ask lvai_exec_state for them, or generate the same " +
-                          "document with backend grpc."));
+                          "convert step) - ask lvai_exec_state for them."));
             if (composed && Failed(convert))
                 return Outcome(false, "convert", steps, total, viPath, null,
                     (Field(convert, "errorKind") == "composerRefused"
                         ? "The pylabview composer REFUSED the document, by name, and wrote nothing: "
                         : "The pylabview composer failed and wrote nothing: ") +
                     Field(convert, "errorMessage") + ". The composer covers a subset of what NI's " +
-                    "converter does (docs/aixml-backends.md); generate the same document with " +
-                    "backend grpc to compare.");
+                    "converter does (docs/aixml-backends.md): report the refusal as it stands. NI's " +
+                    "service is used only when the user asks for it.");
             if (composed && Field(convert, "openError") is { Length: > 0 } openError)
                 return Outcome(false, "convert", steps, total, viPath, null,
                     "THE VI WAS WRITTEN by the pylabview composer and LabVIEW could NOT OPEN it - " +
                     openError + ". A file LabVIEW refuses to load is broken, not unmeasured; " +
-                    "generate the same document with backend grpc to compare.");
+                    "report it with LabVIEW's message.");
             if (Failed(convert) && unresolved is not null &&
                 RouteFailure(ErrorCode(convert), Field(convert, "errorMessage"),
                              unresolved, throwaway!.ValidatedAs) is { } routeNote)
@@ -722,10 +722,48 @@ internal sealed class BulkTools(LvaiConnection connection)
             // 2026-10-12, for both backends; a failure leaves the VI as generated and is reported.
             var cleanNote = "";
             // NI VISION'S IMAGE DISPLAY: the composer wrote each one as the plain IMAQ Image refnum
-            // and named it in its report; it is replaced with NI's .ctl here, before the panel is
+            // and named it in its report; it is replaced with NI's .ctl below, before the panel is
             // arranged and the diagram laid out around the display's real size (2026-11-17)
-            if (composed && DiagramCleanup.ImageDisplaysIn(Parsed(convert)?["composerReport"] as JsonArray)
-                    is { Count: > 0 } displays)
+            var displays = composed
+                ? DiagramCleanup.ImageDisplaysIn(Parsed(convert)?["composerReport"] as JsonArray)
+                : [];
+            var customControls = look is { Replacements.Count: > 0 };
+            var savingStepsAllowed = true;
+            // A VI WRITTEN FOR AN OLDER LabVIEW than the one running - its project pins that version -
+            // is not handed to the steps that SAVE it through LabVIEW: each would write the running
+            // LabVIEW's version over it (measured by both field reports). The Image Display and the
+            // custom controls are placed by a LabVIEW save too, so they are held back with the rest.
+            if (KeptForOlderLabView(viPath) is { } kept && !openVI
+                && (measureDiagram || cleanUpPanel || cleanUp || displays.Count > 0 || customControls))
+            {
+                var skipped = new JsonArray("tidyConstants", "cleanUpPanel", "cleanUpDiagram", "icon");
+                if (displays.Count > 0) skipped.Add("imageDisplays");
+                if (customControls) skipped.Add("controlLook");
+                steps.Add(new JsonObject
+                {
+                    ["step"] = "savingStepsSkipped",
+                    ["savedAs"] = kept.Version,
+                    ["labviewInUse"] = kept.Running,
+                    ["skipped"] = skipped,
+                    ["note"] = $"The VI is a LabVIEW {kept.Version} file and LabVIEW {kept.Running} is running: " +
+                               "the constant tidy, the panel and diagram clean-up and the icon each SAVE through " +
+                               "LabVIEW and would rewrite it as " + kept.Running + ". They were skipped, so the " +
+                               "diagram is the composer's own layout. Lay it out in a LabVIEW of the project's " +
+                               "version, or accept the upgrade with lvai_layout_diagram." +
+                               (displays.Count > 0
+                                   ? " The Image Display was NOT placed for the same reason: the control is a " +
+                                     "plain IMAQ Image refnum."
+                                   : "") +
+                               (customControls
+                                   ? " The custom controls (ctl attribute, controlStyle) were NOT placed for the " +
+                                     "same reason: the panel carries the stand-in controls."
+                                   : ""),
+                });
+                cleanNote += " Kept as a LabVIEW " + kept.Version + " file: the steps that save through LabVIEW " +
+                             "were skipped (savingStepsSkipped).";
+                savingStepsAllowed = false;
+            }
+            if (displays.Count > 0 && savingStepsAllowed)
             {
                 var placed = await new DiagramCleanup(connection).RunImageDisplaysAsync(
                     viPath, choice.Name, displays, timeoutSeconds, ct);
@@ -736,7 +774,7 @@ internal sealed class BulkTools(LvaiConnection connection)
             }
             // CUSTOM CONTROLS (a ctl attribute, controlStyle "fuse"): replaced from their .ctl in
             // LabVIEW, before the panel is arranged around their real sizes (issue #139)
-            if (look is { Replacements.Count: > 0 } || look?.Skipped.Count > 0)
+            if (savingStepsAllowed && (customControls || look?.Skipped.Count > 0))
             {
                 var looked = await ControlLook.RunAsync(connection, viPath, choice.Name, look!.Replacements,
                                                         timeoutSeconds, ct);
@@ -746,7 +784,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                 if (looked["ok"]?.GetValue<bool>() != true)
                     cleanNote += " The custom controls were NOT all placed: " + looked["note"]?.GetValue<string>();
             }
-            if (measureDiagram && !openVI)
+            if (measureDiagram && !openVI && savingStepsAllowed)
             {
                 // the CONSTANTS first (labels, white-space strings, array sizes), so the layout
                 // below lays out their final sizes - every deliverable, the user's rule of 2026-11-11
@@ -757,7 +795,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                     cleanNote += " The block diagram constants were NOT tidied - labels may show: " +
                                  tidied["note"]?.GetValue<string>();
             }
-            if (cleanUpPanel && !openVI)
+            if (cleanUpPanel && !openVI && savingStepsAllowed)
             {
                 // the FRONT PANEL first, for every VI but the main one (the user's rule of
                 // 2026-10-12); a LabVIEW save like the diagram's, so it too precedes the size
@@ -768,7 +806,7 @@ internal sealed class BulkTools(LvaiConnection connection)
                     cleanNote += " The front panel was NOT cleaned up - it is as generated: " +
                                  arranged["note"]?.GetValue<string>();
             }
-            if (cleanUp && !openVI)
+            if (cleanUp && !openVI && savingStepsAllowed)
             {
                 var cleaned = await (CleanUp?.Invoke(viPath, choice.Name, timeoutSeconds, ct)
                     ?? new DiagramCleanup(connection).RunAsync(viPath, choice.Name, timeoutSeconds, ct));
@@ -1230,6 +1268,19 @@ internal sealed class BulkTools(LvaiConnection connection)
         Json.LooksFailed(step)
         || (step["answer"] is JsonObject answer && Json.LooksFailed(answer))
         || (step["withinBudget"] is JsonValue within && within.TryGetValue<bool>(out var w) && !w);
+
+    /// <summary>
+    /// The VI's saved version and the running LabVIEW's, when the file is OLDER than that LabVIEW - which
+    /// a composed VI is only when its project pins an older save version (AixmlComposer.PinnedTarget).
+    /// Null when either is unknown or the file is not older.
+    /// </summary>
+    internal static (string Version, string Running)? KeptForOlderLabView(string viPath)
+    {
+        if (!File.Exists(viPath) || SaveVersions.Of(viPath) is not { } version) return null;
+        if (AixmlBackend.LabViewInUse() is not { } inUse) return null;
+        var running = $"{inUse - 2000}.0";
+        return SaveVersions.Compare(version, running) < 0 ? (version, running) : null;
+    }
 
     private static string? StepName(JsonObject step) =>
         step["step"] is JsonValue v && v.TryGetValue<string>(out var name) ? name : null;

@@ -17,7 +17,9 @@ namespace LabVIEWMcp.Infra;
 /// here is a silently miswired VI rather than an error:
 ///
 ///   1. A file with no symbolic uid is NOT rewritten at all - <see cref="Prepare"/> hands back the
-///      original path. Existing AIXML cannot be perturbed by a bug in this class.
+///      original path. Existing AIXML cannot be perturbed by a bug in this class. The one other
+///      rewrite (since 2026-11-18): a Call target with a LITERAL colon is written as NI's
+///      <c>\3A</c>; a file without one is still handed back untouched.
 ///   2. The mapping is injective by construction (one dictionary entry per distinct symbol) and
 ///      cannot collide with a number already in the file, because numbering starts above the
 ///      highest numeric uid present - and never below <see cref="AixmlCheck.SafeUidBase"/>, so a
@@ -40,10 +42,34 @@ internal static class SymbolicUids
     private static readonly HashSet<string> Prose =
         new(StringComparer.Ordinal) { "description", "value", "text", "label", "comment", "_name" };
 
+    /// <param name="Rewritten">symbolic uids were numbered (the map is not empty)</param>
+    /// <param name="TargetsEscaped">Call targets whose literal ':' was written as NI's <c>\3A</c></param>
     internal sealed record Result(
         string PathForLabview,
         IReadOnlyDictionary<string, int> Map,
-        bool Rewritten);
+        bool Rewritten,
+        int TargetsEscaped = 0);
+
+    /// <summary>
+    /// A library or class member's qualified name with a LITERAL colon,
+    /// <c>ATM Controller.lvlib:Look Up Account.vi</c> - the spelling <c>lvai_palette_index</c>
+    /// prints - written as NI exports it, <c>…lvlib\3ALook Up Account.vi</c>. A CLD benchmark
+    /// build (2026-11-18) spent five shell calls getting <c>\3A</c> through a Python generator
+    /// script (<c>"\\3A"</c>, <c>r"\3A"</c>, <c>chr(92)</c>); the composer unescapes both to the
+    /// same name, so the literal colon is accepted and normalised once, here, for both backends.
+    /// </summary>
+    private static int EscapeTargetColons(XDocument document)
+    {
+        var count = 0;
+        foreach (var call in document.Descendants("Call"))
+            foreach (var name in new[] { "target", "instance" })
+                if (call.Attribute(name) is { } attribute && attribute.Value.Contains(':'))
+                {
+                    attribute.Value = attribute.Value.Replace(":", "\\3A", StringComparison.Ordinal);
+                    count++;
+                }
+        return count;
+    }
 
     /// <summary>
     /// Returns the path to hand to LabVIEW. When the file uses no symbolic uid this is
@@ -105,8 +131,17 @@ internal static class SymbolicUids
             }
         }
 
+        var escaped = EscapeTargetColons(document);
+
         if (symbols.Count == 0)
-            return new Result(aixmlPath, new Dictionary<string, int>(), false);
+        {
+            if (escaped == 0)
+                return new Result(aixmlPath, new Dictionary<string, int>(), false);
+            var copy = RewrittenPath(aixmlPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(copy)!);
+            document.Save(copy, SaveOptions.DisableFormatting);
+            return new Result(copy, new Dictionary<string, int>(), false, escaped);
+        }
 
         // Above every number already present, so a symbol can never take a number the author used -
         // AND NEVER BELOW AixmlCheck.SafeUidBase. This started at highest + 1 until 2026-09-25, so a
@@ -125,7 +160,7 @@ internal static class SymbolicUids
         var target = RewrittenPath(aixmlPath);
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         document.Save(target, SaveOptions.DisableFormatting);
-        return new Result(target, map, true);
+        return new Result(target, map, true, escaped);
     }
 
     /// <summary>

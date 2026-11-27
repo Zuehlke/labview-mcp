@@ -1,0 +1,101 @@
+<VI _name="lvai_control_props.vi" description="List the state properties of every top-level front-panel control of a VI IN MEMORY\2C running or not\2C and of each element of a top-level cluster: one line per control\2C Label TAB Disabled TAB Blinking TAB Visible TAB Key Focus\2C each a number (Disabled 0 enabled\2C 1 disabled\2C 2 disabled and grayed\3B the others 0 or 1)\2C a cluster's element labelled Cluster.Element. A running VI's panel values are readable over ActiveX\2C its properties are not\3B CLD benchmark builds could not verify enabled/disabled buttons or a blinking LED (2026-11-17). Used by lvai_running_vi (read Control@Property).">
+  <Control _name="VI Path" conIdx="0" connection="required" description="Absolute path of a VI IN MEMORY\2C as a string." outputs="value:5000.value" type="string" uid="5000" uid_parent="root" value=""/>
+  <Constant _name="newline" outputs="value:5040.value" type="string" uid="5040" uid_parent="root" value="\0A"/>
+  <Constant _name="tab" outputs="value:5050.value" type="string" uid="5050" uid_parent="root" value="\09"/>
+  <Constant _name="string format" outputs="value:5060.value" type="string" uid="5060" uid_parent="root" value="%s"/>
+  <Constant _name="dot" outputs="value:5070.value" type="string" uid="5070" uid_parent="root" value="."/>
+  <Constant _name="cluster class" outputs="value:5080.value" type="ref{LV.Cluster}" uid="5080" uid_parent="root" value=""/>
+  <Node _name="String To Path" inputs="string:5000.value" outputs="path:5110.path" uid="5110" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:5110.path" outputs="vi reference:5120.vi reference,error out:5120.error out" uid="5120" uid_parent="root"/>
+  <FreeLabel comment="One line per control and cluster element." uid="5130" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:5120.vi reference,error in (no error):5120.error out" outputs="Front Panel:5223.panel,reference out:,error out:5223.err" uid="5223" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:5223.panel,error in (no error):5223.err" outputs="Controls[]:5224.controls,reference out:,error out:5224.err" uid="5224" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" label="One line per panel control" uid="5300" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5224.controls" mode="index" outputs="value:5301.ctl" uid="5301" uid_parent="5300"/>
+    <Tunnel _id="In2" inputs="value:5050.value" outputs="value:5302.tab" uid="5302" uid_parent="5300"/>
+    <Tunnel _id="In3" inputs="value:5040.value" outputs="value:5303.nl" uid="5303" uid_parent="5300"/>
+    <Tunnel _id="In4" inputs="value:5060.value" outputs="value:5304.fmt" uid="5304" uid_parent="5300"/>
+    <Tunnel _id="In5" inputs="value:5070.value" outputs="value:5305.dot" uid="5305" uid_parent="5300"/>
+    <Tunnel _id="In6" inputs="value:5080.value" outputs="value:5306.cls" uid="5306" uid_parent="5300"/>
+    <Node _name="Property Node" fields="read+Label.Text,read+Disabled,read+Blinking,read+Visible,read+Key Focus,read+Class Name" type="{LV.Control}" inputs="reference:5301.ctl,error in (no error):5390.err" outputs="Label.Text:5310.label,Disabled:5310.disabled,Blinking:5310.blinking,Visible:5310.visible,Key Focus:5310.focus,Class Name:5310.class,reference out:,error out:5310.err" uid="5310" uid_parent="5300"/>
+    <Node _name="Boolean To (0\2C1)" inputs="Boolean:5310.blinking" outputs="0\2C 1:5321.n" uid="5321" uid_parent="5300"/>
+    <Node _name="Boolean To (0\2C1)" inputs="Boolean:5310.visible" outputs="0\2C 1:5322.n" uid="5322" uid_parent="5300"/>
+    <Node _name="Boolean To (0\2C1)" inputs="Boolean:5310.focus" outputs="0\2C 1:5323.n" uid="5323" uid_parent="5300"/>
+    <Node _name="Number To Decimal String" inputs="number:5310.disabled" outputs="decimal integer string:5330.s" uid="5330" uid_parent="5300"/>
+    <Node _name="Number To Decimal String" inputs="number:5321.n" outputs="decimal integer string:5331.s" uid="5331" uid_parent="5300"/>
+    <Node _name="Number To Decimal String" inputs="number:5322.n" outputs="decimal integer string:5332.s" uid="5332" uid_parent="5300"/>
+    <Node _name="Number To Decimal String" inputs="number:5323.n" outputs="decimal integer string:5333.s" uid="5333" uid_parent="5300"/>
+    <Node _name="Concatenate Strings" inputs="string:5310.label,string:5302.tab,string:5330.s,string:5302.tab,string:5331.s,string:5302.tab,string:5332.s,string:5302.tab,string:5333.s" outputs="concatenated string:5340.line" uid="5340" uid_parent="5300"/>
+    <Structure _name="Case Structure" selectin="5310.class" uid="5600" uid_parent="5300">
+      <Tunnel _id="In1" inputs="value:5301.ctl" uid="5601" uid_parent="5600"/>
+      <Tunnel _id="In2" inputs="value:5310.err" uid="5602" uid_parent="5600"/>
+      <Tunnel _id="In3" inputs="value:5306.cls" uid="5603" uid_parent="5600"/>
+      <Tunnel _id="In4" inputs="value:5310.label" uid="5604" uid_parent="5600"/>
+      <Tunnel _id="In5" inputs="value:5302.tab" uid="5605" uid_parent="5600"/>
+      <Tunnel _id="In6" inputs="value:5303.nl" uid="5606" uid_parent="5600"/>
+      <Tunnel _id="In7" inputs="value:5304.fmt" uid="5607" uid_parent="5600"/>
+      <Tunnel _id="In8" inputs="value:5305.dot" uid="5608" uid_parent="5600"/>
+      <Tunnel _id="Out1" outputs="value:5609.block" uid="5609" uid_parent="5600"/>
+      <Tunnel _id="Out2" outputs="value:5610.err" uid="5610" uid_parent="5600"/>
+      <CaseFrame selector="&quot;Cluster&quot;" selectout="" label="One line per cluster element" uid="5620" uid_parent="5600">
+        <Tunnel _id="In1" outputs="value:5621.ctl" uid="5621" uid_parent="5620"/>
+        <Tunnel _id="In2" outputs="value:5622.err" uid="5622" uid_parent="5620"/>
+        <Tunnel _id="In3" outputs="value:5623.cls" uid="5623" uid_parent="5620"/>
+        <Tunnel _id="In4" outputs="value:5624.label" uid="5624" uid_parent="5620"/>
+        <Tunnel _id="In5" outputs="value:5625.tab" uid="5625" uid_parent="5620"/>
+        <Tunnel _id="In6" outputs="value:5626.nl" uid="5626" uid_parent="5620"/>
+        <Tunnel _id="In7" outputs="value:5627.fmt" uid="5627" uid_parent="5620"/>
+        <Tunnel _id="In8" outputs="value:5628.dot" uid="5628" uid_parent="5620"/>
+        <Node _name="To More Specific Class" inputs="reference:5621.ctl,error in:5622.err,target class:5623.cls" outputs="specific class reference:5630.cluster,error out:5630.err" uid="5630" uid_parent="5620"/>
+        <Node _name="Property Node" fields="read+Controls[]" type="{LV.Cluster}" inputs="reference:5630.cluster,error in (no error):5630.err" outputs="Controls[]:5631.elements,reference out:,error out:5631.err" uid="5631" uid_parent="5620"/>
+        <Node _name="Concatenate Strings" inputs="string:5624.label,string:5628.dot" outputs="concatenated string:5632.prefix" uid="5632" uid_parent="5620"/>
+        <Structure _name="For Loop" count="" maxin="" maxout="" label="One line per element" uid="5700" uid_parent="5620">
+          <Tunnel _id="In1" inputs="value:5631.elements" mode="index" outputs="value:5701.el" uid="5701" uid_parent="5700"/>
+          <Tunnel _id="In2" inputs="value:5625.tab" outputs="value:5702.tab" uid="5702" uid_parent="5700"/>
+          <Tunnel _id="In3" inputs="value:5632.prefix" outputs="value:5703.prefix" uid="5703" uid_parent="5700"/>
+          <Node _name="Property Node" fields="read+Label.Text,read+Disabled,read+Blinking,read+Visible,read+Key Focus" type="{LV.Control}" inputs="reference:5701.el,error in (no error):5790.err" outputs="Label.Text:5710.label,Disabled:5710.disabled,Blinking:5710.blinking,Visible:5710.visible,Key Focus:5710.focus,reference out:,error out:5710.err" uid="5710" uid_parent="5700"/>
+          <Node _name="Boolean To (0\2C1)" inputs="Boolean:5710.blinking" outputs="0\2C 1:5721.n" uid="5721" uid_parent="5700"/>
+          <Node _name="Boolean To (0\2C1)" inputs="Boolean:5710.visible" outputs="0\2C 1:5722.n" uid="5722" uid_parent="5700"/>
+          <Node _name="Boolean To (0\2C1)" inputs="Boolean:5710.focus" outputs="0\2C 1:5723.n" uid="5723" uid_parent="5700"/>
+          <Node _name="Number To Decimal String" inputs="number:5710.disabled" outputs="decimal integer string:5730.s" uid="5730" uid_parent="5700"/>
+          <Node _name="Number To Decimal String" inputs="number:5721.n" outputs="decimal integer string:5731.s" uid="5731" uid_parent="5700"/>
+          <Node _name="Number To Decimal String" inputs="number:5722.n" outputs="decimal integer string:5732.s" uid="5732" uid_parent="5700"/>
+          <Node _name="Number To Decimal String" inputs="number:5723.n" outputs="decimal integer string:5733.s" uid="5733" uid_parent="5700"/>
+          <Node _name="Concatenate Strings" inputs="string:5703.prefix,string:5710.label,string:5702.tab,string:5730.s,string:5702.tab,string:5731.s,string:5702.tab,string:5732.s,string:5702.tab,string:5733.s" outputs="concatenated string:5740.line" uid="5740" uid_parent="5700"/>
+          <Tunnel _id="Out1" inputs="value:5740.line" mode="index" outputs="value:5780.lines" uid="5780" uid_parent="5700"/>
+          <ShiftReg uid="5791" uid_parent="5700">
+            <Left inputs="value:5631.err" outputs="value:5790.err" uid="5790" uid_parent="5791"/>
+            <Right inputs="value:5710.err" outputs="value:5792.err" uid="5792" uid_parent="5791"/>
+          </ShiftReg>
+        </Structure>
+        <Node _name="Array To Spreadsheet String" inputs="format string:5627.fmt,array:5780.lines,delimiter (Tab):5626.nl" outputs="spreadsheet string:5640.block" uid="5640" uid_parent="5620"/>
+        <Tunnel _id="Out1" inputs="value:5640.block" uid="5641" uid_parent="5620"/>
+        <Tunnel _id="Out2" inputs="value:5792.err" uid="5642" uid_parent="5620"/>
+      </CaseFrame>
+      <CaseFrame selector="Default" selectout="" label="No elements" uid="5650" uid_parent="5600">
+        <Tunnel _id="In1" outputs="value:" uid="5651" uid_parent="5650"/>
+        <Tunnel _id="In2" outputs="value:5652.err" uid="5652" uid_parent="5650"/>
+        <Tunnel _id="In3" outputs="value:" uid="5653" uid_parent="5650"/>
+        <Tunnel _id="In4" outputs="value:" uid="5654" uid_parent="5650"/>
+        <Tunnel _id="In5" outputs="value:" uid="5655" uid_parent="5650"/>
+        <Tunnel _id="In6" outputs="value:" uid="5656" uid_parent="5650"/>
+        <Tunnel _id="In7" outputs="value:" uid="5657" uid_parent="5650"/>
+        <Tunnel _id="In8" outputs="value:" uid="5658" uid_parent="5650"/>
+        <Constant _name="no elements" outputs="value:5659.value" type="string" uid="5659" uid_parent="5650" value=""/>
+        <Tunnel _id="Out1" inputs="value:5659.value" uid="5660" uid_parent="5650"/>
+        <Tunnel _id="Out2" inputs="value:5652.err" uid="5661" uid_parent="5650"/>
+      </CaseFrame>
+    </Structure>
+    <Node _name="Concatenate Strings" inputs="string:5340.line,string:5303.nl,string:5609.block" outputs="concatenated string:5345.lines" uid="5345" uid_parent="5300"/>
+    <Tunnel _id="Out1" inputs="value:5345.lines" mode="index" outputs="value:5380.lines" uid="5380" uid_parent="5300"/>
+    <ShiftReg uid="5391" uid_parent="5300">
+      <Left inputs="value:5224.err" outputs="value:5390.err" uid="5390" uid_parent="5391"/>
+      <Right inputs="value:5610.err" outputs="value:5392.err" uid="5392" uid_parent="5391"/>
+    </ShiftReg>
+  </Structure>
+  <Node _name="Array To Spreadsheet String" inputs="format string:5060.value,array:5380.lines,delimiter (Tab):5040.value" outputs="spreadsheet string:5400.text" uid="5400" uid_parent="root"/>
+  <Indicator _name="Properties" description="One line per top-level control and per element of a top-level cluster (Cluster.Element): Label TAB Disabled TAB Blinking TAB Visible TAB Key Focus." inputs="value:5400.text" type="string" uid="5401" uid_parent="root" value=""/>
+  <Node _name="Close Reference" inputs="reference:5120.vi reference,error in (no error):5392.err" outputs="error out:5500.error out" uid="5500" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:5500.error out" outputs="xml string:5510.xml" uid="5510" uid_parent="root"/>
+  <Indicator _name="error xml" description="The whole chain's error cluster - open\2C read\2C close - flattened to XML." inputs="value:5510.xml" type="string" uid="5520" uid_parent="root" value=""/>
+</VI>

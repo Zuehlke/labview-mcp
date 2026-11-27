@@ -250,6 +250,25 @@ internal static class LabViewState
     internal static bool IsSystemClass(string className) =>
         SystemClassPrefixes.Any(p => className.StartsWith(p, StringComparison.Ordinal));
 
+    /// <summary>
+    /// A modal LabVIEW dialog that blocks the IDE right now - a visible LabVIEW frame DISABLED, as a
+    /// modal leaves it - described with the visible possible dialogs' titles; null when there is
+    /// none. For a caller about to ABORT a running VI: an abort issued while a modal blocks it left
+    /// LabVIEW in "Resetting VI" for good, even after the dialog was answered (measured twice on
+    /// 2026-11-14, LabVIEW 2026: a frame-removal helper behind "... is about to leave memory").
+    /// </summary>
+    internal static string? BlockingDialog(ILabViewMachine? machine = null)
+    {
+        LabViewSnapshot snapshot;
+        try { snapshot = Take(machine ?? Win32LabViewMachine.Instance); }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception) { return null; }
+        var frameDisabled = snapshot.Windows.Any(w => w.Kind == WindowKinds.Frame && w.Window.Visible && !w.Window.Enabled);
+        if (!frameDisabled) return null;
+        var titles = snapshot.Dialogs.Select(d => d.Window.Title.Length > 0 ? d.Window.Title : "(untitled)").ToList();
+        return "LabVIEW's frame is disabled, as a modal dialog leaves it" +
+               (titles.Count > 0 ? "; visible dialogs: " + string.Join(" | ", titles) : "");
+    }
+
     public static LabViewSnapshot Take(ILabViewMachine machine, string? autoSaveDirectory = null)
     {
         var labview = machine.Processes(LabViewProcess);

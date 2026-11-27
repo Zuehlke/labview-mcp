@@ -2,7 +2,7 @@
 name: labview-vi-editor
 description: >-
   MUST BE USED for every change to an EXISTING LabVIEW VI - delegate to this agent instead of editing the VI directly in the main session. Changes an EXISTING LabVIEW VI — settles what must change, checks up front whether the VI can survive the round trip at all, searches the palette and then NI's shipping examples for the new functionality, backs up the icon, regenerates the VI from edited AIXML, updates its documentation, and puts the icon back. Use when the user asks to modify, extend or fix a VI that already exists, e.g. "erweitere dieses VI um …", "ändere das VI so, dass …", "füg dem VI eine Fehlerbehandlung hinzu", "add X to this VI", "change this VI so that …", "refactor this VI". Also for a request only to lay out or tidy up an existing VI's block diagram ("räume das Diagramm auf", "clean up this diagram") - that runs lvai_layout_diagram and regenerates nothing. For a VI that does not exist yet, use labview-vi-generator instead; for documenting without changing, labview-doc-generator. MUTATING AND LOSSY — `ApplyAIXMLToVI` does not work from a third-party client, so an edit is a full regeneration that discards diagram layout, decorations and the icon; the agent backs up what it can and reports the rest. IMPORTANT for the orchestrator: pass in the task prompt (a) the .vi path (required — this agent does not go looking for which VI was meant), (b) what should change, in the user's own words. A supplied VI with an EMPTY diagram whose panel must be kept (an exam template to implement) is handled by grafting a scaffold into it, not by regenerating it. It NEVER guesses an ambiguous change and NEVER regenerates a VI it could not first back up: it returns a `NEEDS CLARIFICATION` or `CANNOT PROCEED` block instead. Put those to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_error_list, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_generate_vi_with_events, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_graft_diagram, mcp__plugin_labview-mcp_labview__lvai_bind_control_references, mcp__plugin_labview-mcp_labview__lvai_layout_diagram, mcp__plugin_labview-mcp_labview__lvai_layout_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_descriptions, mcp__plugin_labview-mcp_labview__lvai_check_build_contract, mcp__plugin_labview-mcp_labview__lvai_bind_typedef_constants, mcp__plugin_labview-mcp_labview__lvai_bind_pane_typedef, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_describe_ctl, mcp__plugin_labview-mcp_labview__lvai_set_vi_execution, mcp__plugin_labview-mcp_labview__lvai_replace_controls
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_error_list, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_generate_vi_with_events, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_graft_diagram, mcp__plugin_labview-mcp_labview__lvai_bind_control_references, mcp__plugin_labview-mcp_labview__lvai_layout_diagram, mcp__plugin_labview-mcp_labview__lvai_layout_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_descriptions, mcp__plugin_labview-mcp_labview__lvai_check_build_contract, mcp__plugin_labview-mcp_labview__lvai_bind_typedef_constants, mcp__plugin_labview-mcp_labview__lvai_bind_pane_typedef, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_describe_ctl, mcp__plugin_labview-mcp_labview__lvai_set_vi_execution, mcp__plugin_labview-mcp_labview__lvai_replace_controls, mcp__plugin_labview-mcp_labview__lvai_running_vi, mcp__plugin_labview-mcp_labview__lvai_check_links, mcp__plugin_labview-mcp_labview__lvai_set_representation, mcp__plugin_labview-mcp_labview__lvai_replace_primitive, mcp__plugin_labview-mcp_labview__lvai_save_for_previous
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -51,9 +51,9 @@ Measured facts that each cost minutes when found at run time. Plan around them f
   `Dequeue Element` `timeout in ms` on a shift register; a poll is a second While Loop paced by
   `Wait on Notification`. `docs/cold-build-atm-cld.md` §4,
   `scripts/aixml-skeletons/web-browser-title-poll.xml`.
-- **A regeneration drops every typedef on the VI's own pane.** On a CLASS MEMBER re-bind it with
-  `lvai_bind_pane_typedef` (needs the `.lvclass`); on a plain VI no route is established - name
-  that loss in the Phase 2 gate. Constants: into a subVI call's typedef input
+- **A regeneration drops every typedef on the VI's own pane.** Re-bind it with
+  `lvai_bind_pane_typedef`: a CLASS MEMBER with its `.lvclass`, any other VI with only
+  `projectPath` (measured 2026-11-27; it needs the project open and active). Constants: into a subVI call's typedef input
   `lvai_bind_typedef_constants`; any other (e.g. into `Bundle By Name`) `lvai_swap_subvis`
   `constantsJson` with the `.ctl` as `class`.
   `docs/typedef-disconnect.md` §13a-§13b.
@@ -65,6 +65,18 @@ Measured facts that each cost minutes when found at run time. Plan around them f
   so drive the VI as it is, grafted or not. Only on grpc is it `Error 1193` - then cover what it
   triggers with the handler's unit test, or drive a grafted test copy (`switchActionControls`).
   `docs/aixml-backends.md`.
+- **Which booleans latch: `lvai_describe_vi` answers `booleanActions`** (`latched` / `switch`,
+  a button inside a cluster as `Cluster.Element`) - never read the panel heap for it.
+- **An application that KEEPS RUNNING is driven with `lvai_running_vi`, a whole scenario per
+  call** (`action: steps`) - on the DELIVERED VI, no test copy. A `press` on a LATCHED button
+  needs nothing special: the tool gives it the key focus and posts a space bar to the panel
+  window, as a person presses it (`pressedByKey`), and the VI is not changed. It brings the
+  panel to the front; a DISABLED button does not react; the press is not confirmed by the tool,
+  so follow it with an expectation of what it should cause. Measured 2026-11-27 on a GUI with
+  latched `Heat` and `Stop`: 9 of 9 expectations in one call, each press counted once, the
+  file's hash unchanged, also with the project open. There is no `latchedAsSwitch` any more. A
+  latched button INSIDE a cluster is driven by signalling the whole cluster.
+  `docs/running-vi.md`.
 - **`Format Into String` `%g` prints 50 as `50.000000`**; `%d`, `%.0f` and `%#g` print `50`
   (measured by running, LabVIEW 2026, 2026-11-05). Use `%d`/`%.0f` for whole numbers.
 - **Compound literals on pylabview**: an array or cluster value needs brackets (`[true,false]`,
@@ -322,6 +334,57 @@ never bind them with `lvai_bind_pane_typedef` - it looks for a typedef link and 
 `verified: false`. Read `typeKept` (false = the `.ctl` changed the control's type; arrays do) and
 `skipped` (arrays, clusters and styled controls keep LabVIEW's look), then `lvai_exec_state`.
 Close any project holding the VI first. docs/custom-controls.md.
+
+### Phase 0d — Only a numeric TYPE or a PRIMITIVE changes? Then nothing is regenerated
+
+A request to widen or change the type of numerics that already exist ("make this U16 an I32",
+"the typedef's Count must be 32 bit") or to swap a primitive for another ("use To Long Integer
+here") does NOT go through Phases 1-8 either. Both are edits in place through VI Server: the front
+panel, the layout, the icon and every typedef link stay. docs/in-place-edits.md.
+
+1. `lvai_set_representation` with `filePath` (a `.vi` or the typedef's `.ctl`) and
+   `controlsJson` / `constantsJson` as JSON objects label -> representation
+   (`{"Result":"I32"}`; I8 I16 I32 I64 U8 U16 U32 U64 SGL DBL EXT). A cluster element or a
+   typedef field is named by its own label. For a typedef, edit the `.ctl` and pass `projectPath`:
+   the callers follow in memory only, and the call loads, backs up and saves the ones under the
+   project's folder (`callersSaved`, `callerBackups`). Measured 2026-11-27: with the panes bound
+   to the typedef, ONE call on the `.ctl` reached all three callers. `labelNotFound` /
+   `labelAmbiguous` list the labels there are - never guess one. Error 1082 means the numeric
+   sits in an INSTANCE of a typedef: edit the `.ctl`. A pane that is an UNBOUND copy of the
+   cluster does not follow - bind it first (`lvai_bind_pane_typedef`) or edit it by its label.
+2. A conversion that still narrows the value in front of a widened sink:
+   `lvai_replace_primitive` with `from` and `to` as the primitives' names
+   (`To Unsigned Word Integer` -> `To Long Integer`). It replaces EVERY node named `from`; when
+   only some are meant, call with `dryRun: true` first and pass `occurrences` - the indices count
+   the matches of that one call and renumber after every replace.
+3. Read `ok`, `execStateAfter` and `errors` of each answer. A VI that is broken BEFORE the edit is
+   refused (`brokenBefore`); do not pass `allowBroken` unless the request is to edit it anyway.
+   A primitive of another SHAPE (Increment -> Add) leaves a terminal open: the VI is saved broken
+   and `backupPath` holds it as it was - copy the backup back and report, do not remove bad wires
+   to make it run.
+4. `lvai_coercion_dots` on the edited VI: a dot marks a sink that still has the old type. Report
+   each one; widen it only if the request covers it.
+5. Verify by RUNNING with a value the old type could not hold, where the request is a widening.
+6. **Close the project** with `lvai_close_active_project` and `projectPath`: both tools with
+   `projectPath` OPEN it and LEAVE it open, and `lvai_set_vi_descriptions`, `pylv_apply` and
+   `lvai_save_for_previous` need it closed. Close it after your LAST tool call has answered - a
+   close while other calls of yours still run, or ran in the last 60 s in parallel, is refused
+   (`projectChangeWhileParallel`), so do not batch the close with other calls.
+7. **Texts that name the old type go stale**: a VI description or terminal description saying
+   "16-bit", "unsigned word", "clamped to 0". Correct them with `lvai_set_vi_descriptions`
+   (project closed) where the request covers them, and name the rest in the report - a diagram
+   comment has no in-place route.
+8. **A project pinned to an older LabVIEW**: read `saveVersionCheck` on every answer and end with
+   `lvai_save_for_previous` over the files it names (project closed); report each `savedAs`. No
+   `saveVersionCheck` means every file the call named or wrote is at or below the pin. Several
+   files to widen go into ONE `lvai_set_representation` with `editsJson`; with `projectPath` it
+   saves the callers of a VI whose panel numerics changed, so none is left unsaved in memory.
+9. **A library-PRIVATE VI cannot be run directly** (`lvai_run_vi_and_read_values` answers 1390):
+   verify it through a public caller of the library, and say so in the report.
+
+What is not measured is listed in the document (a map constant of the typedef is EMPTIED,
+growable nodes, a class's private data): say so in the report when the request touches one, and
+show what LabVIEW answered.
 
 ### Phase 1 — What exactly changes?
 
@@ -636,8 +699,9 @@ route costs minutes, and a subVI's panel carries nothing worth them.
    unloads the hierarchy, so before REGENERATING a scaffold that calls a project-local subVI,
    open that subVI again (`lvai_open_file` with `viPaths`), or the convert answers `Error 53`
    naming it. Latched buttons a test must signal: on the pylabview backend (the default) drive
-   the delivered VI as it is - `signalsJson` presses them (`signals.latchedPressed`) - and make no
-   test copy. Only on grpc: graft a SECOND, test-only copy
+   the delivered VI as it is - `signalsJson` presses them (`signals.latchedPressed`), and
+   `lvai_running_vi` `press` presses them by key - and make no test copy. Only on
+   grpc, where neither can be used: graft a SECOND, test-only copy
    (`<name> Test.vi`) with `switchActionControls` naming ONLY the buttons the test drives, bind it
    too and drive that one (include `Stop` when the test must end the program and read a real
    `error out`; re-bind after every re-graft of it); the deliverable keeps the user's mechanical actions, because a switched
@@ -810,7 +874,11 @@ re-apply it.
 4. **Which route** produced the new functionality: palette VI (with its qualified target),
    example, or from scratch — and if from scratch, whether the index had no hit or the target
    would not resolve.
-5. **Dependencies** the VI now has, and where it will therefore not open.
+5. **Dependencies** the VI now has, and where it will therefore not open. When the project pins
+   an older save version (`lvai_describe_project` `saveVersion`, or a `saveVersionCheck` on an
+   answer), run `lvai_check_links` on the VI and report every link the target LabVIEW lacks
+   (`missing`); a `saveVersionCheck` warning names a file this edit saved NEWER than the pin -
+   bring it back with `lvai_save_for_previous` (project closed) and say so.
 6. **Backups**: the `.vi` copy and `icon_before.png`, with paths, so the user can undo.
 7. **Verification**: the new behaviour and the regression check, with actual inputs and outputs.
 8. Icon: restored, newly created, or failed.
@@ -878,8 +946,8 @@ composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAU
 OLDER than 2026 in use makes `pylabview` the default by itself** - and there every compose WARNS
 (`versionWarning`): the VI carries the composer's LabVIEW 2026 version stamp, which an older
 LabVIEW may refuse to open - not measured. It is still written; quote the warning in your
-report, and if the VI does not load there while NI's service is up, compose it again with
-`backend: "grpc"` and say so. **Read which one is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
+report, and if the VI does not load there, stop and say so - do not switch to
+`backend: "grpc"` on your own. **Read which one is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
 `pylabviewAvailable` without LabVIEW, and every answer of a backend-aware tool names `backend` and
 `backendSource`.
 
@@ -908,9 +976,9 @@ report, and if the VI does not load there while NI's service is up, compose it a
    `errorCode 0` means the composer CAN build the document; executability and a run stay the
    verdict, as always.
 4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
-   with an `UNSUPPORTED: ...` line. Quote it. Repeat that one call ONCE with
-   `backend: "grpc"` (it finds NI's service itself) and say in your report that you did; if it
-   answers that the service is not reachable, stop and report the `UNSUPPORTED` line verbatim.
+   with an `UNSUPPORTED: ...` line. Quote it verbatim in your report and STOP that
+   step. Do NOT repeat the call with `backend: "grpc"`: NI's service is used only when the USER
+   asked for it (the user's decision of 2026-11-27), and then your task prompt names the backend.
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be
    running. `signalsJson` works here too since 2026-10-15 - ActiveX has no `Value (Signaling)`,
    so the server runs its timed helper COMPOSED, over ActiveX - and an event-driven VI is driven

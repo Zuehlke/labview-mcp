@@ -394,9 +394,12 @@ internal static class LabViewCom
     /// `lvai_read_values` helper - only when a value came back as an opaque COM object and a
     /// helper was given. Null otherwise.
     /// </param>
+    /// <param name="BlockedBy">Set when the run did not finish because a modal dialog blocks
+    /// LabVIEW: the VI was then LEFT RUNNING, not aborted (see <see cref="LabViewState.BlockingDialog"/>).</param>
     internal sealed record RunResult(int ExecState, bool Ran, bool Finished, bool Aborted,
                                      long RunMs, IReadOnlyList<string> SetProblems,
-                                     IReadOnlyList<Reading> Values, string? ReadBackXml = null);
+                                     IReadOnlyList<Reading> Values, string? ReadBackXml = null,
+                                     string? BlockedBy = null);
 
     /// <summary>
     /// A value LabVIEW's ActiveX server could not marshal. A WAVEFORM - one, or an array of them -
@@ -450,6 +453,12 @@ internal static class LabViewCom
             // run is read after, and its values are whatever the abort left.
             var values = finished || runForMs > 0 ? ReadAll(vi, names) : null;
             var aborted = false;
+
+            // NO ABORT BEHIND A MODAL: aborting a VI that a modal dialog blocks left LabVIEW in
+            // "Resetting VI" for good, even after the dialog was answered (measured twice,
+            // 2026-11-14). Left running, it finishes once somebody answers the dialog.
+            if (!finished && runForMs <= 0 && LabViewState.BlockingDialog() is { } dialog)
+                return new RunResult(state, true, false, false, runMs, [], [], null, dialog);
             if (!finished)
             {
                 try { Call(vi, "Abort"); aborted = true; }
@@ -465,6 +474,157 @@ internal static class LabViewCom
                     return Call(helper, "GetControlValue", "values xml") as string;
                 });
             return new RunResult(state, true, finished, aborted, runMs, [], values, readBack);
+        }), timeoutSeconds, ct);
+
+    // ------------------------------------------------------------ a VI that keeps running
+
+    internal sealed record StartResult(int StateBefore, int StateAfter, bool PanelOpen, bool AlreadyRunning,
+                                       IReadOnlyList<string> SetProblems);
+
+    /// <summary>
+    /// Start a VI and RETURN while it runs: inputs set, its front panel opened - a VI run without
+    /// waiting whose last reference closes is left to LabVIEW, and an open panel is what keeps a
+    /// top-level VI in memory (a field project's launch helper: open, show the panel, run without
+    /// waiting) - then Run without waiting. A broken VI is not run; one already running is left as
+    /// it is. In LabVIEW's MAIN instance, where an application the user starts by hand runs too.
+    /// </summary>
+    public static Task<StartResult> StartAsync(string viPath, IReadOnlyList<Input> inputs, bool openPanel,
+                                               int timeoutSeconds, CancellationToken ct,
+                                               string? namedSetHelper = null) =>
+        WithLabViewAsync(app => WithVi(app, viPath, vi =>
+        {
+            var before = Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture);
+            if (before == 0) return new StartResult(0, 0, false, false, []);
+            if (before is 2 or 3)
+                return new StartResult(before, before, Get(vi, "FPWinOpen") is true, true, []);
+            var problems = SetInputs(app, vi, viPath, inputs, namedSetHelper);
+            if (problems.Count > 0) return new StartResult(before, before, false, false, problems);
+            if (openPanel)
+                vi.GetType().InvokeMember("FPWinOpen", BindingFlags.SetProperty, null, vi, [true],
+                                          CultureInfo.InvariantCulture);
+            Call(vi, "Run", true);
+            Thread.Sleep(300);
+            var after = Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture);
+            return new StartResult(before, after, Get(vi, "FPWinOpen") is true, false, []);
+        }), timeoutSeconds, ct);
+
+    /// <summary>The VI's execution state and the named controls' and indicators' values, read as it runs.</summary>
+    public static Task<(int State, IReadOnlyList<Reading> Values)> ReadRunningAsync(
+        string viPath, IReadOnlyList<string> names, int timeoutSeconds, CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, viPath, vi =>
+            (Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture), (IReadOnlyList<Reading>)ReadAll(vi, names))),
+            timeoutSeconds, ct);
+
+    /// <summary>
+    /// Every top-level control's Disabled, Blinking, Visible and Key Focus, by label, read by the
+    /// composed `lvai_control_props` helper while the target is HELD (its Open VI Reference then
+    /// reaches the running VI in memory). ActiveX reads a control's VALUE only; CLD benchmark builds
+    /// could not verify enabled/disabled buttons or a blinking LED without this (2026-11-17).
+    /// </summary>
+    public static Task<(Dictionary<string, Dictionary<string, string>> Properties, string? ErrorXml)> ReadPropertiesAsync(
+        string viPath, string propsHelper, int timeoutSeconds, CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, viPath, _ => WithVi(app, propsHelper, helper =>
+        {
+            Call(helper, "SetControlValue", "VI Path", Path.GetFullPath(viPath));
+            Call(helper, "Run", false);
+            var text = Call(helper, "GetControlValue", "Properties") as string ?? "";
+            return (ParseProperties(text), Call(helper, "GetControlValue", "error xml") as string);
+        })), timeoutSeconds, ct);
+
+    /// <summary>The names <see cref="ParseProperties"/> gives each column, in the helper's order.</summary>
+    internal static readonly string[] PropertyColumns = ["Disabled", "Blinking", "Visible", "Key Focus"];
+
+    /// <summary>
+    /// The helper's lines, `Label TAB Disabled TAB Blinking TAB Visible TAB Key Focus`, as
+    /// label -> property -> text: Disabled as LabVIEW names its values (Enabled, Disabled,
+    /// Disabled and Grayed Out), the booleans TRUE/FALSE as a read of a boolean answers. The first
+    /// control of a label wins when two share one.
+    /// </summary>
+    internal static Dictionary<string, Dictionary<string, string>> ParseProperties(string text)
+    {
+        var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+        foreach (var line in text.Replace("\r", "", StringComparison.Ordinal).Split('\n'))
+        {
+            var cells = line.Split('\t');
+            if (cells.Length != PropertyColumns.Length + 1 || cells[0].Length == 0 || result.ContainsKey(cells[0])) continue;
+            var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Disabled"] = cells[1] switch { "0" => "Enabled", "1" => "Disabled", "2" => "Disabled and Grayed Out", var n => n },
+            };
+            for (var i = 1; i < PropertyColumns.Length; i++)
+                row[PropertyColumns[i]] = cells[i + 1] == "1" ? "TRUE" : "FALSE";
+            result[cells[0]] = row;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Set control values of a VI as it runs - SetControlValue, which fires NO Value Change event
+    /// (an event-driven VI is driven with Value (Signaling), the press/signal route). The problems,
+    /// empty when all took.
+    /// </summary>
+    public static Task<(int State, IReadOnlyList<string> Problems)> SetRunningAsync(
+        string viPath, IReadOnlyList<Input> inputs, int timeoutSeconds, CancellationToken ct,
+        string? namedSetHelper = null) =>
+        WithLabViewAsync(app => WithVi(app, viPath, vi =>
+            (Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture),
+             (IReadOnlyList<string>)SetInputs(app, vi, viPath, inputs, namedSetHelper))),
+            timeoutSeconds, ct);
+
+    internal sealed record StopResult(int StateBefore, int StateAfter, bool Aborted, long WaitedMs, bool PanelClosed);
+
+    /// <summary>
+    /// Wait up to <paramref name="waitMs"/> for the VI to end on its own (after a stop control was
+    /// pressed), then ABORT it if it still runs - Abort runs no cleanup the diagram may hold, which
+    /// the answer says - and close its panel when asked.
+    /// </summary>
+    public static Task<StopResult> StopAsync(string viPath, int waitMs, bool abort, bool closePanel,
+                                             int timeoutSeconds, CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, viPath, vi =>
+        {
+            var before = Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture);
+            var clock = Stopwatch.StartNew();
+            var state = before;
+            while (state is 2 or 3 && clock.ElapsedMilliseconds < waitMs)
+            {
+                Thread.Sleep(50);
+                state = Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture);
+            }
+            var aborted = false;
+            if (state is 2 or 3 && abort)
+            {
+                try { Call(vi, "Abort"); aborted = true; }
+                catch (Exception e) when (e is TargetInvocationException or COMException) { }
+                state = Convert.ToInt32(Get(vi, "ExecState"), CultureInfo.InvariantCulture);
+            }
+            var closed = false;
+            if (closePanel && state is not (2 or 3) && Get(vi, "FPWinOpen") is true)
+            {
+                vi.GetType().InvokeMember("FPWinOpen", BindingFlags.SetProperty, null, vi, [false],
+                                          CultureInfo.InvariantCulture);
+                closed = Get(vi, "FPWinOpen") is not true;
+            }
+            return new StopResult(before, state, aborted, clock.ElapsedMilliseconds, closed);
+        }), timeoutSeconds, ct);
+
+    /// <summary>
+    /// Run a composed HELPER VI to the end with string inputs and read string outputs - for what
+    /// ActiveX cannot do itself (Value (Signaling) on a VI that is already running).
+    /// </summary>
+    public static Task<IReadOnlyDictionary<string, string?>> RunHelperAsync(
+        string helperPath, IReadOnlyDictionary<string, string> inputs, IReadOnlyList<string> outputs,
+        int timeoutSeconds, CancellationToken ct) =>
+        WithLabViewAsync(app => WithVi(app, helperPath, helper =>
+        {
+            foreach (var (name, value) in inputs) Call(helper, "SetControlValue", name, value);
+            Call(helper, "Run", false);
+            var read = new Dictionary<string, string?>(StringComparer.Ordinal);
+            foreach (var name in outputs)
+            {
+                try { read[name] = Call(helper, "GetControlValue", name) as string; }
+                catch (Exception e) when (e is TargetInvocationException or COMException) { read[name] = null; }
+            }
+            return (IReadOnlyDictionary<string, string?>)read;
         }), timeoutSeconds, ct);
 
     internal sealed record HelperRun(int TargetExecState, bool Finished, long RunMs,

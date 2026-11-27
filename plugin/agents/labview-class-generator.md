@@ -2,7 +2,7 @@
 name: labview-class-generator
 description: >-
   MUST BE USED for every request for a LabVIEW class, class hierarchy, interface or LIBRARY (.lvlib) - delegate to this agent instead of building classes or libraries directly in the main session. Creates LabVIEW classes end to end — settles the data model, writes each `.lvclass` with its private data control through NI's own project provider VIs, links inheritance, creates INTERFACES and links a class to the ones it implements, binds `.ctl` typedef fields so they point at the file rather than carrying a de-linked copy, generates accessors on dynamic dispatch ONLY WHEN THE REQUEST ASKS FOR THEM (none by default), writes a short method on the class's own fields directly against its private data, and verifies the result from the files rather than from LabVIEW. Use whenever the user asks for a LabVIEW class or a class hierarchy, e.g. "erstelle mir eine Klasse …", "leg eine Klasse mit den Daten … an", "erstelle alle Accessoren dazu", "create a LabVIEW class for …", "add a child class that inherits from …", "erstelle dazu ein Interface", "create an interface the class implements". MUTATING — it writes `.lvclass` and `.vi` files and edits a `.lvproj`. It works in ONE LabVIEW session and restarts nothing. It ALWAYS finishes by handing off to a unit-test agent (Caraya by default, `labview-caraya-unit-test`), so a class comes back tested — the orchestrator does not have to ask for that separately, and should pass on any framework the user named instead. IMPORTANT for the orchestrator: pass in the task prompt (a) the class name(s) and, for each, the private data fields in the user's own words, (b) the target directory, (c) the parent class if there is one and any INTERFACES the class should implement, (d) the `.lvproj` path if one already exists. This agent NEVER invents a data model: if a field's type or a hierarchy's shape is ambiguous it stops and returns a `NEEDS CLARIFICATION` block. Put those questions to the user verbatim and continue THIS agent via SendMessage — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_error_list, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_create_class, mcp__plugin_labview-mcp_labview__lvai_create_interface, mcp__plugin_labview-mcp_labview__lvai_set_class_interfaces, mcp__plugin_labview-mcp_labview__lvai_create_accessors, mcp__plugin_labview-mcp_labview__lvai_add_class_field, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__pylv_extract, mcp__plugin_labview-mcp_labview__pylv_rebuild, mcp__plugin_labview-mcp_labview__lvai_describe_ctl, mcp__plugin_labview-mcp_labview__lvai_create_typedef, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__lvai_resave_ctl, mcp__plugin_labview-mcp_labview__lvai_bind_class_fields, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_bind_pane_typedef, mcp__plugin_labview-mcp_labview__lvai_add_class_method, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_class_test, mcp__plugin_labview-mcp_labview__lvai_generate_method_test, mcp__plugin_labview-mcp_labview__lvai_generate_caraya_test_runner, Agent, SendMessage, mcp__plugin_labview-mcp_labview__lvai_create_override, mcp__plugin_labview-mcp_labview__lvai_af_add_hook, mcp__plugin_labview-mcp_labview__lvai_af_remove_hook, mcp__plugin_labview-mcp_labview__lvai_set_class_description, mcp__plugin_labview-mcp_labview__lvai_move_to_folder, mcp__plugin_labview-mcp_labview__lvai_set_vi_descriptions, mcp__plugin_labview-mcp_labview__lvai_add_to_class, mcp__plugin_labview-mcp_labview__lvai_set_owner_icon, mcp__plugin_labview-mcp_labview__lvai_read_icons, mcp__plugin_labview-mcp_labview__lvai_create_library, mcp__plugin_labview-mcp_labview__lvai_add_to_library, mcp__plugin_labview-mcp_labview__lvai_create_message_class, mcp__plugin_labview-mcp_labview__lvai_labview_state, mcp__plugin_labview-mcp_labview__lvai_vis_in_memory, mcp__plugin_labview-mcp_labview__lvai_check_build_contract
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_error_list, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_create_class, mcp__plugin_labview-mcp_labview__lvai_create_interface, mcp__plugin_labview-mcp_labview__lvai_set_class_interfaces, mcp__plugin_labview-mcp_labview__lvai_create_accessors, mcp__plugin_labview-mcp_labview__lvai_add_class_field, mcp__plugin_labview-mcp_labview__lvai_describe_class, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__pylv_extract, mcp__plugin_labview-mcp_labview__pylv_rebuild, mcp__plugin_labview-mcp_labview__lvai_describe_ctl, mcp__plugin_labview-mcp_labview__lvai_create_typedef, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__lvai_resave_ctl, mcp__plugin_labview-mcp_labview__lvai_bind_class_fields, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_bind_pane_typedef, mcp__plugin_labview-mcp_labview__lvai_add_class_method, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_generate_class_test, mcp__plugin_labview-mcp_labview__lvai_generate_method_test, mcp__plugin_labview-mcp_labview__lvai_generate_caraya_test_runner, Agent, SendMessage, mcp__plugin_labview-mcp_labview__lvai_create_override, mcp__plugin_labview-mcp_labview__lvai_af_add_hook, mcp__plugin_labview-mcp_labview__lvai_af_remove_hook, mcp__plugin_labview-mcp_labview__lvai_set_class_description, mcp__plugin_labview-mcp_labview__lvai_move_to_folder, mcp__plugin_labview-mcp_labview__lvai_set_vi_descriptions, mcp__plugin_labview-mcp_labview__lvai_add_to_class, mcp__plugin_labview-mcp_labview__lvai_set_owner_icon, mcp__plugin_labview-mcp_labview__lvai_read_icons, mcp__plugin_labview-mcp_labview__lvai_create_library, mcp__plugin_labview-mcp_labview__lvai_add_to_library, mcp__plugin_labview-mcp_labview__lvai_create_message_class, mcp__plugin_labview-mcp_labview__lvai_labview_state, mcp__plugin_labview-mcp_labview__lvai_vis_in_memory, mcp__plugin_labview-mcp_labview__lvai_check_build_contract, mcp__plugin_labview-mcp_labview__lvai_remove_from_library, mcp__plugin_labview-mcp_labview__lvai_save_for_previous
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and
@@ -87,7 +87,11 @@ they were all measured, most of them twice.
   (`labview-caraya-unit-test`); use another framework's agent only where the user named one.
   Everything about how a test reaches class code lives in that agent and in
   `docs/labview-unit-testing.md` — do not re-derive it here, and do not hand-build a test yourself
-  because the handoff looked expensive.
+  because the handoff looked expensive. The ONE exception: a task that only HOUSEKEEPS an
+  existing library or class - membership (`lvai_add_to_library`, `lvai_remove_from_library`),
+  folders, scope, descriptions, icons - and creates or changes no VI's code has nothing new to
+  test: there is no handoff, and the report says so in point 6. Check that every member is still
+  executable (`lvai_exec_state`) instead.
 
 - **Never delete a `.lvclass` file while LabVIEW holds it** — its class is then in memory with no
   file behind it, and the next `Add Class to Project (path).vi` answers **`Error 1614`** at
@@ -776,7 +780,21 @@ project entry written with the project closed, the description and the members (
 built against its qualified name (Actor Framework: class, methods, library, messages). Its icon is
 `lvai_set_owner_icon` with the project closed, `applyToMembers=true` - Phase 4b's icon rules apply.
 A top-level VI that belongs directly under My Computer is listed with `lvai_add_vis_to_project
-targetLevel=true`. `docs/library-creation.md`.
+targetLevel=true`. A VI that must LEAVE a library goes out with `lvai_remove_from_library` (never by
+editing the `.lvlib`: the VI would keep claiming the library); judge it by `verify`, then run
+`lvai_exec_state` over the remaining members. A VI another file of the project CALLS is refused
+(`hasCallers`), also when its callers would leave in the same call - report that instead of working round
+it. A caller in `callersInThisLibrary` is the library's own code: taking it out too changes the
+library's API, so it is the user's decision, never a fix - the same for `callsPrivateMembers` (the
+leaving VI calls private members that stay, and would leave broken). `projectFolder` lists the removed VI in
+a project folder in the same call; a library folder the removal empties is removed with it
+(`emptyFoldersRemoved`). `docs/library-creation.md` §7.
+
+**A project pinned to an older LabVIEW** (`lvai_describe_project` `saveVersion` older than the
+LabVIEW in use): read `saveVersionCheck` on every answer - NO `saveVersionCheck` means every file
+the call named or wrote is at or below the pin, so there is nothing to prove. A file it names goes
+back with `lvai_save_for_previous` (project closed); report each `savedAs`. That tool does not
+cover `.lvlib`, `.lvclass`, `.lvproj`: report their `LVVersion` attribute.
 
 **Actor Framework MESSAGES** come from `lvai_create_message_class` (NI's own Message Maker), one per
 actor method, and only AFTER the actor is in its library - order: class, methods, LIBRARY,
@@ -807,8 +825,10 @@ Confirm the folder afterwards: `2 × fields` accessor VIs per class, one `.lvcla
 
 ### Phase 6 — Hand off to a unit-test agent. ALWAYS.
 
-**This phase is not optional and does not wait to be asked for.** A class with accessors and no
-tests is half a deliverable, and you are not the agent that writes them.
+**This phase is not optional and does not wait to be asked for** - for every task that creates or
+changes code. A class with accessors and no tests is half a deliverable, and you are not the agent
+that writes them. The one exception is the housekeeping task of the hard rules (membership,
+folders, scope, descriptions, icons of EXISTING code): it has no handoff, and that is not a defect.
 
 **A class WITHOUT accessors is still handed off, and the test agent must not add any.**
 `lvai_generate_method_test` observes a field through the class's own `Write <field>.vi` /
@@ -927,7 +947,9 @@ State, in this order:
    front of it, and a restart here means something is wrong that they should know about.
 6. **The unit tests**: which agent you handed off to, which framework and whether it was the default,
    and the numbers it came back with — `tests=` and `failures=` per suite, not "tests were written".
-   If you did not hand off, that is a defect in this run and you say so explicitly.
+   If you did not hand off, that is a defect in this run and you say so explicitly - except for a
+   pure housekeeping task, where you say "no handoff: housekeeping" and give the `lvai_exec_state`
+   verdict over every member instead.
 7. What the user must do by hand: re-open the project to see the new items, and anything you left
    because it needed their decision.
 8. Assumptions you made instead of asking.
@@ -1056,8 +1078,8 @@ composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAU
 OLDER than 2026 in use makes `pylabview` the default by itself** - and there every compose WARNS
 (`versionWarning`): the VI carries the composer's LabVIEW 2026 version stamp, which an older
 LabVIEW may refuse to open - not measured. It is still written; quote the warning in your
-report, and if the VI does not load there while NI's service is up, compose it again with
-`backend: "grpc"` and say so. **Read which one is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
+report, and if the VI does not load there, stop and say so - do not switch to
+`backend: "grpc"` on your own. **Read which one is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
 `pylabviewAvailable` without LabVIEW, and every answer of a backend-aware tool names `backend` and
 `backendSource`.
 
@@ -1086,9 +1108,9 @@ report, and if the VI does not load there while NI's service is up, compose it a
    `errorCode 0` means the composer CAN build the document; executability and a run stay the
    verdict, as always.
 4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
-   with an `UNSUPPORTED: ...` line. Quote it. Repeat that one call ONCE with
-   `backend: "grpc"` (it finds NI's service itself) and say in your report that you did; if it
-   answers that the service is not reachable, stop and report the `UNSUPPORTED` line verbatim.
+   with an `UNSUPPORTED: ...` line. Quote it verbatim in your report and STOP that
+   step. Do NOT repeat the call with `backend: "grpc"`: NI's service is used only when the USER
+   asked for it (the user's decision of 2026-11-27), and then your task prompt names the backend.
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be
    running. `signalsJson` works here too since 2026-10-15 - ActiveX has no `Value (Signaling)`,
    so the server runs its timed helper COMPOSED, over ActiveX - and an event-driven VI is driven

@@ -19,7 +19,9 @@ namespace LabVIEWMcp.Infra;
 ///   by its owner; executability stays with <c>lvai_exec_state</c>;
 /// - a VI whose source-only strip is DEFERRED (<see cref="DeferredSourceOnly"/>) is not reported
 ///   for compiled code: the next project close removes it;
-/// - a file it cannot parse is skipped here; <c>lvai_audit_files</c> reports it.
+/// - a file it cannot parse is skipped here; <c>lvai_audit_files</c> reports it;
+/// - compiled code in a project whose own setting keeps it is ONE finding on the project, not one
+///   per file (<see cref="FoldProjectSetting"/>).
 ///
 /// Which files: every existing LabVIEW file named anywhere in the answer and written since the call
 /// began, plus the members of a written library or class written since then too (a DQMH module
@@ -40,6 +42,9 @@ internal static class InlineAudit
         JsonObject root;
         try { root = JsonNode.Parse(answer) as JsonObject ?? throw new JsonException(); }
         catch (JsonException) { return null; }
+
+        // A collected answer: its files were written by the job, before this call began.
+        if (ResumableCall.JobStartedUtc(root) is { } jobStart && jobStart < startUtc) startUtc = jobStart;
 
         var findings = Findings(Written(root, startUtc - Slack));
         if (findings.Count == 0) return null;
@@ -69,10 +74,62 @@ internal static class InlineAudit
             if (File.Exists(owner)) TryRead(owner, facts);
 
         var writtenSet = new HashSet<string>(written, StringComparer.OrdinalIgnoreCase);
-        return LvFileAudit.Check(facts.Values.ToList(), [])
+        var findings = LvFileAudit.Check(facts.Values.ToList(), [])
             .Where(f => f.Severity == "error" && writtenSet.Contains(f.Path))
             .Where(f => !(f.Rule == "compiled-code" && DeferredSourceOnly.IsPending(f.Path)))
             .ToList();
+        return FoldProjectSetting(findings);
+    }
+
+    /// <summary>
+    /// Compiled code in files of a project whose "Separate compiled code from new project items"
+    /// (<c>NI.LV.All.SourceOnly</c>) is OFF or absent is the PROJECT's setting, not the tool's
+    /// doing: whoever writes a new item there - Delacor's DQMH scripting, NI's wizards - writes it
+    /// with compiled code. Listed per file it was eight findings on one `lvai_dqmh_new_event`
+    /// (live check, 2026-11-23) and the same again on every call; folded, it is ONE finding on the
+    /// `.lvproj` per call, with the count and an example. The project is the nearest `.lvproj`
+    /// above the file (every one in that folder must be off); a file with no project above it
+    /// keeps its own finding.
+    /// </summary>
+    internal static List<LvFileAudit.Finding> FoldProjectSetting(List<LvFileAudit.Finding> findings)
+    {
+        var byProject = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var kept = new List<LvFileAudit.Finding>();
+        foreach (var f in findings)
+        {
+            if (f.Rule == "compiled-code" && ProjectNotSourceOnly(f.Path) is { } project)
+            {
+                if (!byProject.TryGetValue(project, out var files)) byProject[project] = files = [];
+                files.Add(f.Path);
+            }
+            else kept.Add(f);
+        }
+        foreach (var (project, files) in byProject)
+            kept.Add(new LvFileAudit.Finding(project, "compiled-code", "error",
+                $"\"Separate compiled code from new project items\" is OFF in this project (NI.LV.All.SourceOnly), " +
+                $"so the {files.Count} file(s) this call wrote keep compiled code, e.g. {Path.GetFileName(files[0])}. " +
+                "That is the project's setting, not this tool's: it is the user's to change (Project Properties), " +
+                "and every new item keeps compiled code until it is."));
+        return kept;
+    }
+
+    /// <summary>The nearest project above the file when every project in that folder has
+    /// source-only OFF or absent; null otherwise, or when no project is found within 8 levels.</summary>
+    internal static string? ProjectNotSourceOnly(string file)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(Path.GetFullPath(file));
+            for (var level = 0; dir is not null && level < 8; level++, dir = Path.GetDirectoryName(dir))
+            {
+                var projects = Directory.GetFiles(dir, "*.lvproj");
+                if (projects.Length == 0) continue;
+                return projects.All(p => LvClass.ProjectSourceOnly(File.ReadAllText(p)) is not true)
+                    ? projects[0] : null;
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException) { }
+        return null;
     }
 
     internal static List<string> Written(JsonNode root, DateTime sinceUtc)

@@ -1749,6 +1749,20 @@ class Reader:
                 ring = next((p for p in (ddo.find("partsList") if ddo.find("partsList") is not None else [])
                              if p.get("class") == "stdRing"), None)
                 cls = "stdRing" if ring is not None else cls
+            if not ind:
+                # every boolean CONTROL with its mechanical action, the ones INSIDE a cluster
+                # included - `style` above reaches only a top-level boolean, and two benchmark
+                # builders (2026-11-18/19) grepped this heap by hand to learn whether the
+                # buttons of a cluster latch. After </VI> (`booleans`), for lvai_describe_vi
+                self.bool_actions = getattr(self, "bool_actions", [])
+                top = label_text(ddo)
+                if ddo.get("class") == "stdBool":
+                    self.bool_actions.append((top, bool(int(ddo.findtext("objFlags") or 0) & 0x20000)))
+                elif ddo.get("class") in ("stdClust", "typeDef"):
+                    for inner in ddo.iter():
+                        if inner is not ddo and inner.get("class") == "stdBool":
+                            self.bool_actions.append((top + "." + label_text(inner),
+                                                      bool(int(inner.findtext("objFlags") or 0) & 0x20000)))
             if cls == "stdBool" and not ind and int(ddo.findtext("objFlags") or 0) & 0x20000:
                 el.set("style", "latched")
             elif cls == "stdRing" and t is not None and "{" not in t:
@@ -4800,6 +4814,13 @@ def main(argv):
         # 4815 recomposed as 4833 - the XControl sweep, 2026-10-22). AFTER </VI>, the one place
         # NI's service ignores (docs/aixml-frontpanel-extension.md); the composer reads it.
         text += '\n<?lvmcp pane="%d"?>' % pane
+    acts = getattr(reader, "bool_actions", [])
+    if acts:
+        # which boolean controls LATCH and which are switches, cluster elements as
+        # `Cluster.Element` - the names lvai_running_vi takes
+        text += '\n<?lvmcp booleans latched="%s" switch="%s"?>' % (
+            html.escape("|".join(n for n, latched in acts if latched), quote=True),
+            html.escape("|".join(n for n, latched in acts if not latched), quote=True))
     for name, (status, detail) in sorted(reader.typedef_findings().items()):
         # a linked typedef whose embedded copy is stale (drift: the .ctl's definition was used) or
         # could not be checked against its .ctl (unresolved: the copy was used) - issue #136

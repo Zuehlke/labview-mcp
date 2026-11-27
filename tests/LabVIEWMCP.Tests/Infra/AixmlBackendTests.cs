@@ -152,7 +152,8 @@ public sealed class AixmlBackendTests
         var newer = AixmlComposer.WarningForOlderLabView(2020, 2026);
         Assert.NotNull(newer);
         Assert.DoesNotContain("LabVIEW class", newer);
-        Assert.Contains("backend grpc on that station", newer);
+        // no advice to switch to NI's service: it is used only when the user asks for it (2026-11-27)
+        Assert.DoesNotContain("backend grpc", newer);
     }
 
     /// <summary>Below the oldest target the warning says the file keeps the parts' stamp.</summary>

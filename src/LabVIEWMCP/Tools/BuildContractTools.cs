@@ -74,7 +74,7 @@ internal sealed class BuildContractTools(LvaiConnection connection)
     internal static string Plan(BuildContract.Document doc, string contractPath, string? callSkeletonsFor,
                                 string? forBuilder = null, string? contractText = null)
     {
-        var station = StationPaneDefault.Read();
+        var station = StationPaneDefault.ForNewViHere();
         var result = BuildContract.Plan(doc, station.Pattern, InstallationNamesake);
 
         var answer = new JsonObject
@@ -85,6 +85,7 @@ internal sealed class BuildContractTools(LvaiConnection connection)
             ["root"] = doc.Root,
             ["vis"] = doc.Vis.Count,
             ["stationPanePattern"] = station.Pattern,
+            ["stationPaneSource"] = station.Note,
             ["errors"] = new JsonArray([.. result.Errors.Select(f => (JsonNode)f.ToJson())]),
             ["warnings"] = new JsonArray([.. result.Warnings.Select(f => (JsonNode)f.ToJson())]),
             ["waves"] = new JsonArray([.. result.Waves.Select((wave, i) => (JsonNode)new JsonObject

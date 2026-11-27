@@ -109,8 +109,8 @@ composer (`pylabview`, no NI service at all). The user switches the SERVER DEFAU
 OLDER than 2026 in use makes `pylabview` the default by itself** - and there every compose WARNS
 (`versionWarning`): the VI carries the composer's LabVIEW 2026 version stamp, which an older
 LabVIEW may refuse to open - not measured. It is still written; quote the warning in your
-report, and if the VI does not load there while NI's service is up, compose it again with
-`backend: "grpc"` and say so. **Read which one is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
+report, and if the VI does not load there, stop and say so - do not switch to
+`backend: "grpc"` on your own. **Read which one is in force once, at the start**: `pylv_status` answers `aixmlBackend.serverDefault` and
 `pylabviewAvailable` without LabVIEW, and every answer of a backend-aware tool names `backend` and
 `backendSource`.
 
@@ -139,9 +139,9 @@ report, and if the VI does not load there while NI's service is up, compose it a
    `errorCode 0` means the composer CAN build the document; executability and a run stay the
    verdict, as always.
 4. **A refusal names a gap of the composer, not of your AIXML**: `errorKind: composerRefused`
-   with an `UNSUPPORTED: ...` line. Quote it. Repeat that one call ONCE with
-   `backend: "grpc"` (it finds NI's service itself) and say in your report that you did; if it
-   answers that the service is not reachable, stop and report the `UNSUPPORTED` line verbatim.
+   with an `UNSUPPORTED: ...` line. Quote it verbatim in your report and STOP that
+   step. Do NOT repeat the call with `backend: "grpc"`: NI's service is used only when the USER
+   asked for it (the user's decision of 2026-11-27), and then your task prompt names the backend.
 5. **A running LabVIEW is reached over ActiveX, which never STARTS LabVIEW** - it must already be
    running. `signalsJson` works here too since 2026-10-15 - ActiveX has no `Value (Signaling)`,
    so the server runs its timed helper COMPOSED, over ActiveX - and an event-driven VI is driven

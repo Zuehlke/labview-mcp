@@ -677,7 +677,11 @@ public sealed class AixmlCheckTests
             """);
 
         Assert.Empty(fixedUp.Repairs);
-        Assert.Contains(fixedUp.Remaining, f => f.Code == "duplicateUid");
+        // and it is an ERROR since 2026-11-03 (session-7 report M9): the composer put the child into
+        // the LAST twin, and lvai_generate_vi went ahead on a warning
+        var left = Assert.Single(fixedUp.Remaining, f => f.Code == AixmlCheck.DuplicateParentUid);
+        Assert.Equal(AixmlCheck.Severity.Error, left.Severity);
+        Assert.Equal("9010", left.Uid);
     }
 
     [Fact]

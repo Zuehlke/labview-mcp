@@ -1202,6 +1202,60 @@ internal static class LvClass
     }
 
     /// <summary>
+    /// Full paths of every VI that a library or class LISTED IN THE PROJECT owns, read from the
+    /// <c>.lvlib</c> / <c>.lvclass</c> files themselves (their member URLs are relative to the
+    /// owner). A project lists the owner, never its members - so a loose entry LabVIEW's save
+    /// drops for such a VI was dropped on purpose and must not be put back (a timed build of
+    /// 2026-11-18: four VIs just made private library members came back as loose entries).
+    /// An owner that cannot be read contributes nothing.
+    /// </summary>
+    /// <summary>The file an item URL names. A URL is relative to the referencing FILE, so its
+    /// leading <c>../</c> removes the file name (<see cref="RelativeUrl"/> is the inverse).
+    /// Null when the URL does not form a path.</summary>
+    public static string? ResolveUrl(string referencingFile, string url)
+    {
+        try
+        {
+            return Path.GetFullPath(Path.Combine(Path.GetFullPath(referencingFile),
+                                                 url.Replace('/', Path.DirectorySeparatorChar)));
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
+    }
+
+    public static HashSet<string> OwnedMemberPaths(string projectPath)
+    {
+        var owned = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (!File.Exists(projectPath)) return owned;
+            var owners = XDocument.Load(projectPath).Descendants("Item")
+                .Where(i => (string?)i.Attribute("Type") is "Library" or "LVClass")
+                .Select(i => (string?)i.Attribute("URL"))
+                .Where(u => u is { Length: > 0 });
+            foreach (var url in owners)
+            {
+                try
+                {
+                    if (ResolveUrl(projectPath, url!) is not { } owner || !File.Exists(owner)) continue;
+                    foreach (var member in XDocument.Load(owner).Descendants("Item")
+                                 .Where(i => (string?)i.Attribute("Type") == "VI")
+                                 .Select(i => (string?)i.Attribute("URL"))
+                                 .Where(u => u is { Length: > 0 }))
+                        if (ResolveUrl(owner, member!) is { } path) owned.Add(path);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Xml.XmlException) { }
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        catch (System.Xml.XmlException) { }
+        return owned;
+    }
+
+    /// <summary>
     /// The same VIs, plus WHERE each one sits: the chain of <c>&lt;Item&gt;</c> names between the
     /// target and the VI, <c>/</c>-joined, and empty for one listed at target level.
     ///

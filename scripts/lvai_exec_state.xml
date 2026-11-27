@@ -1,11 +1,48 @@
-<VI _name="lvai_exec_state.vi" description="Is this VI EXECUTABLE\3F Reads {LV.VI} Execution\3AState and VI Linker Errors through VI Server and hands both back as text.\0A\0AWHY IT EXISTS. Nothing in the generate-or-retarget chain answers this question. Measured 2026-09-09 over a ten-VI build\3A after a pylv_apply retarget the caller was Error 1003\2C not executable - and pylv_apply answered ok\3A true\2C its verify step listed all eight expected callTargets\2C the AIXML export showed every terminal wired\2C lvai_check_aixml found nothing and lvai_validate_aixml answered errorCode 0 on the source. The only way to notice was to RUN the VI\2C and a top-level UI loop never ends on its own\2C so noticing cost 2400 s and nine bisection probes. pylv_apply already names the gap in its own gatesNotChecked list - \22ExecState was not read - do it through VI Server\3B 0 means eBad\22 - so the hint was there and the reading was not.\0A\0AExecution\3AState is an enum\3A 0 eBad\2C 1 eIdle\2C 2 eRunTopLevel\2C 3 eRunning. Only 0 means broken. A VI that is merely idle reads 1\2C which is the normal answer for anything on disk that is not running.\0A\0AREAD ONLY\2C and opened WITHOUT an application instance on purpose - the same choice lvbd_coercion_dots makes\2C so this also answers while pylv_apply has the project closed. Opening and closing a VI REFERENCE does not burn the path for a later ConvertAIXMLToVI\3B only lvai_open_file does that.">
+<VI _name="lvai_exec_state.vi" description="Is this VI EXECUTABLE\3F Reads {LV.VI} Execution\3AState and VI Linker Errors through VI Server and hands both back as text.\0A\0AWHY IT EXISTS. Nothing in the generate-or-retarget chain answers this question. Measured 2026-09-09 over a ten-VI build\3A after a pylv_apply retarget the caller was Error 1003\2C not executable - and pylv_apply answered ok\3A true\2C its verify step listed all eight expected callTargets\2C the AIXML export showed every terminal wired\2C lvai_check_aixml found nothing and lvai_validate_aixml answered errorCode 0 on the source. The only way to notice was to RUN the VI\2C and a top-level UI loop never ends on its own\2C so noticing cost 2400 s and nine bisection probes. pylv_apply already names the gap in its own gatesNotChecked list - \22ExecState was not read - do it through VI Server\3B 0 means eBad\22 - so the hint was there and the reading was not.\0A\0AExecution\3AState is an enum\3A 0 eBad\2C 1 eIdle\2C 2 eRunTopLevel\2C 3 eRunning. Only 0 means broken. A VI that is merely idle reads 1\2C which is the normal answer for anything on disk that is not running.\0A\0AREAD ONLY. Opened in the ACTIVE PROJECT's application instance when a project is active - the copy the IDE edits - and in this helper's own instance only when none is\2C so this also answers while pylv_apply has the project closed. lvbd_coercion_dots made the same change on 2026-10-13. Until 2026-11-03 this opened WITHOUT an application instance\2C and on the ActiveX route that read a SECOND copy in LabVIEW's main instance\3A after typedef edits in the project it reported unchanged Delacor framework VIs broken (Get Errors 74/1073) until LabVIEW was restarted (session-7 report M5). `instance` says which copy was read. Opening and closing a VI REFERENCE does not burn the path for a later ConvertAIXMLToVI\3B only lvai_open_file does that.">
 
   <Control _name="vi path" conIdx="0" connection="required" description="Absolute path of the VI to interrogate\2C as a string." outputs="value:5000.value" type="string" uid="5000" uid_parent="root" value=""/>
+
+  <Control _name="own instance" description="TRUE reads the VI in this helper's own application instance also when a project is active. For the Error List of a broken VI that the project's instance refuses with error 1026." outputs="value:5005.value" type="bool" uid="5005" uid_parent="root" value="false"/>
 
   <FreeLabel comment="Read only: open, read, close the reference." uid="5010" uid_parent="root"/>
 
   <Node _name="String To Path" inputs="string:5000.value" outputs="path:5020.path" uid="5020" uid_parent="root"/>
-  <Node _name="Open VI Reference" inputs="vi path:5020.path,error in (no error):" outputs="vi reference:5030.vi reference,error out:5030.error out" uid="5030" uid_parent="root"/>
+
+  <FreeLabel comment="The project's copy when a project is active." uid="5200" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" inputs="reference:,error in (no error):" outputs="Project\3AActive Project:5201.proj,reference out:,error out:5201.error out" uid="5201" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:5201.proj,error in (no error):5201.error out" outputs="Application:5202.app,reference out:,error out:5202.error out" uid="5202" uid_parent="root"/>
+  <Node _name="Unbundle By Name" fields="status" inputs="input cluster:5202.error out" outputs="status:5203.status" uid="5203" uid_parent="root"/>
+
+  <Node _name="Or" inputs="x:5203.status,y:5005.value" outputs="x .or. y?:5204.own" uid="5204" uid_parent="root"/>
+
+  <Structure _name="Case Structure" selectin="5204.own" uid="5210" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:5202.app" uid="5211" uid_parent="5210"/>
+    <Tunnel _id="In2" inputs="value:5020.path" uid="5212" uid_parent="5210"/>
+
+    <CaseFrame selector="False" selectout="" uid="5220" uid_parent="5210">
+      <Tunnel _id="In1" outputs="value:5221.app" uid="5221" uid_parent="5220"/>
+      <Tunnel _id="In2" outputs="value:5222.path" uid="5222" uid_parent="5220"/>
+      <Node _name="Open VI Reference" inputs="application reference (local):5221.app,vi path:5222.path,error in (no error):" outputs="vi reference:5223.vi reference,error out:5223.error out" uid="5223" uid_parent="5220"/>
+      <Constant _name="project" type="string" value="project" outputs="value:5224.value" uid="5224" uid_parent="5220"/>
+      <Tunnel _id="Out1" inputs="value:5223.vi reference" uid="5225" uid_parent="5220"/>
+      <Tunnel _id="Out2" inputs="value:5223.error out" uid="5226" uid_parent="5220"/>
+      <Tunnel _id="Out3" inputs="value:5224.value" uid="5227" uid_parent="5220"/>
+    </CaseFrame>
+
+    <CaseFrame selector="True" selectout="" uid="5230" uid_parent="5210">
+      <Tunnel _id="In1" outputs="value:" uid="5231" uid_parent="5230"/>
+      <Tunnel _id="In2" outputs="value:5232.path" uid="5232" uid_parent="5230"/>
+      <Node _name="Open VI Reference" inputs="vi path:5232.path,error in (no error):" outputs="vi reference:5233.vi reference,error out:5233.error out" uid="5233" uid_parent="5230"/>
+      <Constant _name="own" type="string" value="own" outputs="value:5234.value" uid="5234" uid_parent="5230"/>
+      <Tunnel _id="Out1" inputs="value:5233.vi reference" uid="5235" uid_parent="5230"/>
+      <Tunnel _id="Out2" inputs="value:5233.error out" uid="5236" uid_parent="5230"/>
+      <Tunnel _id="Out3" inputs="value:5234.value" uid="5237" uid_parent="5230"/>
+    </CaseFrame>
+
+    <Tunnel _id="Out1" outputs="value:5030.vi reference" uid="5030" uid_parent="5210"/>
+    <Tunnel _id="Out2" outputs="value:5030.error out" uid="5213" uid_parent="5210"/>
+    <Tunnel _id="Out3" outputs="value:5214.instance" uid="5214" uid_parent="5210"/>
+  </Structure>
 
   <Node _name="Property Node" fields="read+Execution\3AState,read+VI Linker Errors" type="{LV.VI}" inputs="reference:5030.vi reference,error in (no error):5030.error out" outputs="Execution\3AState:5040.state,VI Linker Errors:5040.linker,reference out:5040.ref,error out:5040.error out" uid="5040" uid_parent="root"/>
 
@@ -31,6 +68,7 @@
   <Indicator _name="errors xml" conIdx="7" connection="recommended" description="{LV.VI} Get Errors - the lines LabVIEW's Error List shows for this VI\2C such as 'Add\3A Contains unwired or bad terminal' - as a string array flattened to XML. Empty for an executable VI. Read on its OWN error chain\2C so a refusal here (1073 on a VI that is running) never disturbs exec state\2C code or source." inputs="value:5043.xml" type="string" uid="5140" uid_parent="root" value=""/>
   <Indicator _name="details xml" conIdx="9" connection="recommended" description="Get Errors' Details - the explanation the Error List prints under each line\2C in the same order." inputs="value:5044.xml" type="string" uid="5150" uid_parent="root" value=""/>
   <Indicator _name="get errors code" conIdx="11" connection="recommended" description="The error code of Get Errors alone. Non-zero means the errors were NOT read\2C which is not the same as none." inputs="value:5045.code" type="int32" uid="5160" uid_parent="root" value="0"/>
+  <Indicator _name="instance" description="Which copy was read\3A project - the active project's application instance\2C the one the IDE edits\3B own - this helper's own instance\2C because no project is active." inputs="value:5214.instance" type="string" uid="5170" uid_parent="root" value=""/>
   <Indicator _name="code" conIdx="8" connection="recommended" inputs="value:5080.code" type="int32" uid="5120" uid_parent="root" value="0"/>
   <Indicator _name="source" conIdx="10" connection="recommended" inputs="value:5080.source" type="string" uid="5130" uid_parent="root" value=""/>
 </VI>

@@ -1,0 +1,21 @@
+<VI _name="lvai_focus_control.vi" description="Give ONE top-level front-panel control of a VI that is ALREADY RUNNING the key focus\2C and return. The caller then posts a space bar to the VI's panel window\2C which presses a LATCHED Boolean the way a person does - Value (Signaling) refuses a latch (Error 1193) and its Mechanical Action cannot be changed while the VI runs (Error 1073). Nothing of the target is changed. Open VI Reference by path reaches the VI in memory in the instance this helper runs in (LabVIEW's main instance\2C over ActiveX). A name that is no top-level control answers an error in error xml.">
+  <FreeLabel comment="Key focus for one control, found by its label" uid="5001" uid_parent="root"/>
+  <Control _name="VI Path" conIdx="0" connection="required" description="Absolute path of a VI ALREADY IN MEMORY - running\2C its panel open - as a string." outputs="value:5000.value" type="string" uid="5000" uid_parent="root" value=""/>
+  <Control _name="Control Name" description="The label of the top-level control that gets the key focus." outputs="value:5002.value" type="string" uid="5002" uid_parent="root" value=""/>
+  <Constant _name="focus" outputs="value:5003.value" type="bool" uid="5003" uid_parent="root" value="true"/>
+  <Node _name="String To Path" inputs="string:5000.value" outputs="path:5110.path" uid="5110" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:5110.path" outputs="vi reference:5120.vi reference,error out:5120.error out" uid="5120" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Front Panel" type="{LV.VI}" inputs="reference:5120.vi reference,error in (no error):5120.error out" outputs="Front Panel:6020.panel,reference out:,error out:6020.err" uid="6020" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Controls[]" type="{LV.Panel}" inputs="reference:6020.panel,error in (no error):6020.err" outputs="Controls[]:6021.controls,reference out:,error out:6021.err" uid="6021" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" label="One label per control" uid="6030" uid_parent="root">
+    <Tunnel _id="In1" inputs="value:6021.controls" mode="index" outputs="value:6031.ctl" uid="6031" uid_parent="6030"/>
+    <Node _name="Property Node" fields="read+Label.Text" type="{LV.Control}" inputs="reference:6031.ctl,error in (no error):" outputs="Label.Text:6032.label,reference out:,error out:" uid="6032" uid_parent="6030"/>
+    <Tunnel _id="Out1" inputs="value:6032.label" mode="index" outputs="value:6033.labels" uid="6033" uid_parent="6030"/>
+  </Structure>
+  <Node _name="Search 1D Array" inputs="1D array:6033.labels,element:5002.value,start index (0):" outputs="index of element:6110.idx" uid="6110" uid_parent="root"/>
+  <Node _name="Index Array" inputs="array:6021.controls,index:6110.idx" outputs="element:6111.ctl" uid="6111" uid_parent="root"/>
+  <Node _name="Property Node" fields="write+Key Focus" type="{LV.Control}" inputs="reference:6111.ctl,error in (no error):6021.err,Key Focus:5003.value" outputs="reference out:,error out:6120.err" uid="6120" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:5120.vi reference,error in (no error):6120.err" outputs="error out:7000.error out" uid="7000" uid_parent="root"/>
+  <Node _name="Flatten To XML" inputs="anything:7000.error out" outputs="xml string:7010.xml" uid="7010" uid_parent="root"/>
+  <Indicator _name="error xml" description="The whole chain's error cluster - open\2C find\2C focus\2C close - flattened to XML. Error 1055 on the Key Focus node means the name is no top-level control of the panel." inputs="value:7010.xml" type="string" uid="7020" uid_parent="root" value=""/>
+</VI>

@@ -156,11 +156,13 @@ internal static class AixmlComposer
         var inUse = context.Release ?? AixmlBackend.LabViewInUse();
         var parts = PartsRelease(setup.PartsDirectory);
         var targetRelease = TargetRelease(inUse, parts);
+        var (pinnedRelease, pinNote) = PinnedTarget(viPath, targetRelease ?? parts);
+        if (pinnedRelease is { } pinned) targetRelease = pinned;
         var result = await ComposeCoreAsync(setup, aixmlPath, viPath, searchFolders, targetRelease,
                                             context, timeoutSeconds, ct);
         return result with
         {
-            Warning = WarningForOlderLabView(inUse, parts),
+            Warning = Join(WarningForOlderLabView(inUse, parts), pinNote),
             Report = [.. ContextReport(context), .. result.Report],
         };
     }
@@ -265,6 +267,30 @@ internal static class AixmlComposer
     /// same stamps. The parts are still heap fragments cut from LabVIEW 2026 VIs, and that the
     /// older LabVIEW itself reads every one of them has not been measured on that LabVIEW.
     /// </summary>
+    /// <summary>
+    /// The release a project PINS for this VI (NI.LV.All.SaveVersion), when it is older than the one
+    /// the composer would write - the field reports' first gap (projects pinned to 21.0 and 18.0). A VI a
+    /// project lists, or a library it lists owns, takes that project's pin; a NEW VI takes the pin
+    /// every project in the folders above it agrees on. The composer writes no older than LabVIEW
+    /// 2019, so an older pin is reported instead of honoured. Null release with no note: no pin.
+    /// </summary>
+    internal static (int? Release, string? Note) PinnedTarget(string viPath, int? wouldWrite)
+    {
+        var pin = SaveVersions.PinFor(viPath) ?? (File.Exists(viPath) ? null : SaveVersions.PinAbove(viPath));
+        if (pin is not { } p || SaveVersions.Release(p.Version) is not { } release) return (null, null);
+        if (wouldWrite is { } would && release >= would) return (null, null);
+        return release >= OldestTargetRelease
+            ? (release, $"{p.Project} pins save version {p.Version}, so this VI was written as a LabVIEW " +
+                        $"{release} file. A step that SAVES it through a newer LabVIEW writes that LabVIEW's " +
+                        "version again (saveVersionCheck reports it).")
+            : (null, $"{p.Project} pins save version {p.Version}, older than the oldest the composer writes " +
+                     $"(LabVIEW {OldestTargetRelease}), so this VI is NOT in the project's version - re-save it " +
+                     "through the project in a LabVIEW that reads it, or compose it there.");
+    }
+
+    private static string? Join(string? a, string? b) =>
+        a is null ? b : b is null ? a : a + " " + b;
+
     internal static string? WarningForOlderLabView(int? labviewInUse, int? partsRelease) =>
         labviewInUse is { } lv && partsRelease is { } parts && lv < parts
             ? TargetRelease(lv, parts) is null
@@ -279,7 +305,7 @@ internal static class AixmlComposer
                         $"running it in LabVIEW {parts} and against LabVIEW's own {lv} save, not yet " +
                         $"in LabVIEW {lv} itself. NI's " +
                         $"gRPC service does not exist in LabVIEW {lv}, so backend grpc is no way out."
-                      : " and compose it with backend grpc on that station.")
+                      : ".")
             : null;
 
     /// <summary>VI -> AIXML, written to <paramref name="aixmlPath"/>.</summary>

@@ -89,6 +89,34 @@ public sealed class ParallelCallsTests
         Assert.Null(calls.ProjectChangeRefusal("lvai_close_active_project"));
     }
 
+    /// <summary>
+    /// DosingLine, 2026-11-27: after the last agent had finished, the orchestrator ran lvai_exec_state
+    /// beside lvai_coercion_dots, and its own close was refused for 60 s. Two reads overlapping are
+    /// not the evidence; a read beside a write still is, and a read still running still refuses.
+    /// </summary>
+    [Fact]
+    public void Reads_side_by_side_do_not_arm_the_window_but_a_read_beside_a_write_does()
+    {
+        var clock = new Clock();
+        var calls = new ParallelCalls(() => clock.Now);
+
+        clock.At(20, 0);
+        var exec = calls.Enter("lvai_exec_state");
+        var dots = calls.Enter("lvai_coercion_dots");
+        dots.Dispose(); exec.Dispose();
+        clock.At(20, 2);
+        using (var close = calls.Enter("lvai_close_active_project"))
+            Assert.Null(calls.ProjectChangeRefusal("lvai_close_active_project"));
+
+        clock.At(21, 0);
+        var generate = calls.Enter("lvai_generate_vi");
+        var read = calls.Enter("lvai_exec_state");
+        read.Dispose(); generate.Dispose();
+        clock.At(21, 5);
+        using var again = calls.Enter("lvai_close_active_project");
+        Assert.NotNull(calls.ProjectChangeRefusal("lvai_close_active_project"));
+    }
+
     /// <summary>A status call beside real work is still not the evidence; the work overlapping is.</summary>
     [Fact]
     public void A_status_call_neither_counts_nor_hides_real_overlap()

@@ -614,6 +614,7 @@ class	kind	name	files
 {LV.VI}	method	Ctrl Val.Get All	4
 {LV.VI}	method	Ctrl Val.Set	7
 {LV.VI}	method	Default Vals.Reinit All	1
+{LV.VI}	method	DisconnectFromLibrary	1
 {LV.VI}	method	FP.Center	1
 {LV.VI}	method	FP.Close	30
 {LV.VI}	method	FP.Old Open	1

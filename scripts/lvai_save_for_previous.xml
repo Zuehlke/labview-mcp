@@ -1,0 +1,13 @@
+<VI _name="lvai_save_for_previous.vi" description="Saves ONE VI or .ctl for an older LabVIEW with LabVIEW's own Save for Previous Version: Open VI Reference, {LV.VI} Save.For Previous, Close Reference. The same path as save path saves it in place. Only this file is written, none of its dependencies. Measured 2026-11-20 and 2026-11-23 (docs/save-version.md section 6): a 26.0 VI and a 26.0 typedef saved for the string 20.0 read 20.0. The ActiveX method SaveForPrevious with the same string wrote 25.0 instead (2026-11-23), which is why lvai_save_for_previous runs this helper.">
+  <Control _name="vi path" conIdx="11" connection="recommended" description="The VI or .ctl to save." type="string" uid="4200" uid_parent="root" value="" outputs="value:4200.s"/>
+  <Control _name="save path" conIdx="10" connection="recommended" description="Where to save. The same path as vi path saves in place." type="string" uid="4201" uid_parent="root" value="" outputs="value:4201.s"/>
+  <Control _name="target version" conIdx="9" connection="recommended" description="Oldest compatible target version as LabVIEW writes it, e.g. 20.0." type="string" uid="4203" uid_parent="root" value="20.0" outputs="value:4203.s"/>
+  <Control _name="error in" conIdx="8" connection="required" description="Error in." type="cluster{bool.status,int32.code,string.source}" uid="4202" uid_parent="root" value="[false,0,]" outputs="value:4202.err"/>
+  <Node _name="String To Path" inputs="string:4200.s" outputs="path:4210.p" uid="4210" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4201.s" outputs="path:4211.p" uid="4211" uid_parent="root"/>
+  <Node _name="Open VI Reference" inputs="vi path:4210.p,error in (no error):4202.err" outputs="vi reference:4220.vi,error out:4220.err" uid="4220" uid_parent="root"/>
+  <Node _name="Invoke Node" target="Save.For Previous" type="{LV.VI}" inputs="reference:4220.vi,error in (no error):4220.err,Path to saved file:4211.p,Oldest compatible target version:4203.s" outputs="reference out:,error out:4230.err" uid="4230" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4220.vi,error in (no error):4230.err" outputs="error out:4240.err" uid="4240" uid_parent="root"/>
+  <Indicator _name="error out" conIdx="0" connection="recommended" description="Error out." type="cluster{bool.status,int32.code,string.source}" uid="4290" uid_parent="root" value="[false,0,]" inputs="value:4240.err"/>
+  <FreeLabel comment="Saves one file for an older LabVIEW" uid="4291" uid_parent="root"/>
+</VI>

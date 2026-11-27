@@ -23,7 +23,10 @@ namespace LabVIEWMcp.Tools;
 /// members that call each other by it.
 ///
 /// WHAT DOES THE JOB is NI's own `{LV.Library}` `AddItem` followed by
-/// `Edit LVLibs.lvlib:Save All This Library.vi` - the pair `Create Child Actor.vi` ends with. Driven
+/// `Edit LVLibs.lvlib:Save All This Library.vi` - the pair `Create Child Actor.vi` ends with. Since
+/// 2026-11-03 the library FILE is saved on its own between the two, and Save All saves only the
+/// MODIFIED members: Save All stopped at a member that was broken at that moment, left the .lvlib
+/// unsaved and re-saved 21 unchanged members (session-7 report M3). Driven
 /// against an existing file it writes BOTH halves and relinks the callers. Verified on the same kind
 /// of change the hand edit broke: `Append To Log.vi`, called by three class methods, moved into
 /// `Aquarium.lvlib` and every caller still `execState 1` after a project close.
@@ -39,14 +42,19 @@ internal sealed class LibraryTools(LvaiConnection connection)
 {
     private const string HelperAixmlFileName = "lvai_add_one_to_library.xml";
 
+    /// <summary>The helper's indicator for the save of the LIBRARY FILE alone, before Save All.</summary>
+    internal const string LibrarySaveError = "library save error";
+
     /// <summary>Item keys accepted in <c>itemsJson</c>, read out of the parser below in full.</summary>
     private static readonly string[] ItemKeys = ["path", "name", "type"];
 
     [McpServerTool(Name = "lvai_add_to_library", Destructive = true, OpenWorld = true,
         Title = "Add existing classes or VIs to a LabVIEW library")]
     [Description("""
-        Library: add EXISTING classes or VIs to a `.lvlib` through NI's `{LV.Library}` `AddItem`
-        plus `Save All This Library.vi`, which RELINKS. MUTATING. Never write
+        Library: add EXISTING classes or VIs to a `.lvlib` through NI's `{LV.Library}` `AddItem`,
+        a save of the library file, then `Save All This Library.vi` on the modified members, which
+        RELINKS. A member that cannot be saved is reported under `memberSaveErrors` with the
+        membership already on disk - do not re-run then. MUTATING. Never write
         `NI.Lib.ContainingLib` by hand - that leaves every member eBad with all file checks green.
         Needs a project OPEN and ACTIVE (Error 1055 otherwise; pass projectPath to open it).
         It does NOT edit the .lvproj: entries that now belong through the library are named under
@@ -275,6 +283,7 @@ internal sealed class LibraryTools(LvaiConnection connection)
             // ONE RUN PER ITEM. The helper adds one item and saves the library, which keeps it
             // simple enough to read; the loop lives here so the CALLER still spends one turn.
             var added = new JsonArray();
+            var memberSaveErrors = new JsonArray();
             foreach (var item in items)
             {
                 var inputs = HelperInputs(library, item.Name, item.Path, item.Type, folder, scopeCode);
@@ -295,20 +304,39 @@ internal sealed class LibraryTools(LvaiConnection connection)
                         "holds the refusal. Items before it are in the library and saved.",
                         new JsonObject { ["itemsAdded"] = added.DeepClone(), ["steps"] = steps });
 
-                if (ErrorCode(Values(answer)) is { } code && code != 0)
-                    return Json.Document(new JsonObject
-                    {
-                        ["ok"] = false,
-                        ["failedAtItem"] = item.Name,
-                        ["errorCode"] = code,
-                        ["errorSource"] = ErrorSource(Values(answer)),
-                        ["libraryPath"] = library,
-                        ["itemsAdded"] = added.DeepClone(),
-                        ["steps"] = steps,
-                        ["note"] = "AddItem stopped at this item. The items before it are already " +
-                            "in the library and saved - re-run with only the ones that are left, " +
-                            "because re-adding one is refused.",
-                    });
+                // TWO ERRORS SINCE 2026-11-03 (session-7 report M3). The library file is saved on
+                // its own first, so when Save All then stops at a MEMBER - one still broken at that
+                // moment, or read-only - the membership is on disk anyway and the item counts as
+                // added; the member's error is reported, not mistaken for the add failing. Before,
+                // Save All stopped first and the .lvlib stayed unsaved while AddItem had happened
+                // in memory, and the answer said error 1.
+                var values = Values(answer);
+                var libraryCode = ErrorCode(values, LibrarySaveError);
+                if (ErrorCode(values) is { } code && code != 0)
+                {
+                    if (libraryCode is 0)
+                        memberSaveErrors.Add(new JsonObject
+                        {
+                            ["item"] = item.Name,
+                            ["errorCode"] = code,
+                            ["errorSource"] = ErrorSource(values),
+                        });
+                    else
+                        return Json.Document(new JsonObject
+                        {
+                            ["ok"] = false,
+                            ["failedAtItem"] = item.Name,
+                            ["errorCode"] = code,
+                            ["errorSource"] = ErrorSource(values),
+                            ["libraryPath"] = library,
+                            ["itemsAdded"] = added.DeepClone(),
+                            ["memberSaveErrors"] = memberSaveErrors.DeepClone(),
+                            ["steps"] = steps,
+                            ["note"] = "AddItem or the save of the library file stopped at this item. " +
+                                "The items before it are already in the library and saved - re-run " +
+                                "with only the ones that are left, because re-adding one is refused.",
+                        });
+                }
 
                 added.Add(new JsonObject
                 {
@@ -374,6 +402,28 @@ internal sealed class LibraryTools(LvaiConnection connection)
             {
                 verify["note"] = $"The library could not be re-read: {e.Message}";
             }
+
+            if (memberSaveErrors.Count > 0)
+                return Json.Document(new JsonObject
+                {
+                    ["ok"] = false,
+                    ["membershipSaved"] = verified,
+                    ["libraryPath"] = library,
+                    ["itemsAdded"] = added,
+                    ["memberSaveErrors"] = memberSaveErrors,
+                    ["verify"] = verify,
+                    ["projectEntriesToRemove"] =
+                        new JsonArray([.. items.Select(i => (JsonNode)i.Name)]),
+                    ["steps"] = steps,
+                    ["note"] = (verified
+                        ? "The items ARE in the library and the .lvlib on disk lists them - do NOT " +
+                          "re-run this call, re-adding is refused. "
+                        : "The .lvlib does not list every item asked for - read verify.missing. ") +
+                        "Saving the library's MODIFIED members stopped with the error under " +
+                        "memberSaveErrors, so a member AddItem relinked may be unsaved: a member that " +
+                        "is broken at this moment or read-only is the measured cause. Fix it, then " +
+                        "save it through the project, and check the callers with lvai_exec_state.",
+                });
 
             return Json.Document(new JsonObject
             {
@@ -465,6 +515,329 @@ internal sealed class LibraryTools(LvaiConnection connection)
     /// What the library holds now: its item names, their resolved paths, its virtual FOLDERS, and
     /// which folder each item sits in (null for the root).
     /// </summary>
+    internal const string RemoveHelperAixmlFileName = "lvai_remove_one_from_library.xml";
+
+    /// <summary>
+    /// For each VI to remove, the files under the project's folder whose link records name it - ALSO
+    /// those that leave in the same call; VIs nothing else calls are left out. The search is by FILE
+    /// NAME (<see cref="InPlaceEditTools.Callers"/>), so a same-named VI elsewhere counts too.
+    ///
+    /// A CALLER LEAVING WITH ITS CALLEE COUNTED AS NO CALLER until 2026-11-27; measured that day on
+    /// a copy of DosingLine (LabVIEW 2026 26.3.1), `Dosing Main.vi` taken out with its three helpers
+    /// in one call: in the given order (caller first) every call answered ok and the caller read
+    /// eBad afterwards, "Missing subVI Dosing Line.lvlib:Scale Flow.vi" - it kept the qualified
+    /// names; with the callees first, the caller was modified in memory and LabVIEW raised the modal
+    /// "Save changes before closing?". Neither order is safe, so such a group is refused.
+    /// </summary>
+    internal static JsonObject CallersBlockingRemoval(IReadOnlyList<string> vis, string projectPath)
+    {
+        var blocking = new JsonObject();
+        foreach (var vi in vis)
+        {
+            var callers = InPlaceEditTools.Callers(vi, projectPath)
+                .Where(c => !string.Equals(c, vi, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (callers.Count > 0)
+                blocking[vi] = new JsonArray([.. callers.Select(c => (JsonNode)c)]);
+        }
+        return blocking;
+    }
+
+    /// <summary>
+    /// The library's PRIVATE items (NI.LibItem.Scope 2) as full paths, at any folder depth.
+    /// </summary>
+    internal static List<string> PrivateMembers(string library)
+    {
+        var root = XDocument.Load(library).Root;
+        if (root is null) return [];
+        var found = new List<string>();
+        foreach (var item in root.Descendants("Item").Where(i => (string?)i.Attribute("Type") != "Folder"))
+        {
+            var scope = item.Elements("Property")
+                .FirstOrDefault(p => (string?)p.Attribute("Name") == "NI.LibItem.Scope")?.Value.Trim();
+            if (scope != "2" || (string?)item.Attribute("URL") is not { Length: > 0 } url || url.Contains('<')) continue;
+            try { found.Add(Path.GetFullPath(Path.Combine(library, url.Replace('/', '\\')))); }
+            catch (ArgumentException) { }
+        }
+        return found;
+    }
+
+    /// <summary>
+    /// For each VI to remove, the PRIVATE members of the library it calls that stay behind: outside
+    /// the library it may not call them, and it is saved broken. Measured 2026-11-27 (DosingLine copy,
+    /// LabVIEW 2026): `Dosing Main.vi` left `Dosing Line.lvlib` with `ok` true and read eBad after,
+    /// "This VI cannot access the referenced item in private scope" for its three private subVIs.
+    /// </summary>
+    internal static JsonObject PrivateCalleesBlockingRemoval(string library, IReadOnlyList<string> vis, string projectPath)
+    {
+        var leaving = new HashSet<string>(vis, StringComparer.OrdinalIgnoreCase);
+        var blocking = new JsonObject();
+        foreach (var member in PrivateMembers(library).Where(m => !leaving.Contains(m)))
+            foreach (var caller in InPlaceEditTools.Callers(member, projectPath).Where(leaving.Contains))
+            {
+                if (blocking[caller] is not JsonArray list) blocking[caller] = list = new JsonArray();
+                list.Add(member);
+            }
+        return blocking;
+    }
+
+    [McpServerTool(Name = "lvai_remove_from_library", Destructive = true, OpenWorld = true,
+        Title = "Take VIs out of a LabVIEW library")]
+    [Description("""
+        Library: take EXISTING VIs out of a `.lvlib` - the opposite of lvai_add_to_library. Each VI
+        is disconnected through NI's {LV.VI} DisconnectFromLibrary and saved (project OPEN and
+        ACTIVE), then the project is CLOSED and the VI's <Item> is removed from the .lvlib FILE -
+        LabVIEW's own library save keeps listing a disconnected VI (measured). Verified from the
+        files: `verify.stillClaimsLibrary` (the VI's own LIBN) and `verify.stillListed` (the
+        .lvlib) must be empty. `keepInProject` (default true) lists the VIs at the project's
+        target level, or in `projectFolder`; a library folder the call empties is removed
+        (`emptyFoldersRemoved`). A VI that another file under the project's folder CALLS is refused
+        (`hasCallers`, each caller named with its library under `callerOwners`;
+        `callersInThisLibrary` are the user's decision), ALSO when the caller leaves in the same call:
+        the disconnect would leave the caller modified and raise a modal save dialog. A VI that
+        CALLS a private member staying behind is refused too (`callsPrivateMembers`): it would
+        leave broken. A library-private VI becomes public. Classes and class members are refused.
+        """)]
+    public async Task<string> RemoveFromLibraryAsync(
+        [Description("Absolute path to the .lvlib the VIs leave")] string libraryPath,
+        [Description("The VIs to take out, ONE ABSOLUTE PATH PER LINE; each must be listed by the library")]
+        string viPaths,
+        [Description("The .lvproj the library belongs to - opened and made active, then closed")]
+        string projectPath,
+        [Description("List the removed VIs in the project afterwards (default: true) - at target level, or in projectFolder")]
+        bool keepInProject = true,
+        [Description("With keepInProject: the project's virtual folder to list them in, created if missing; omit for target level")]
+        string? projectFolder = null,
+        [Description("Remove a library folder this call left EMPTY (default: true); a folder empty before is kept")]
+        bool removeEmptyFolders = true,
+        [Description("Where to keep the generated helper VI")] string? helperViPath = null,
+        [Description("Regenerate the helper VI even when it exists")] bool regenerateHelper = false,
+        [Description("Local budget in seconds, per step")] int timeoutSeconds = 300,
+        [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
+        CancellationToken ct = default) =>
+        await Rpc.GuardAsync(() => BackendRoute.WithBackendAsync(backend, "lvai_remove_from_library", async () =>
+        {
+            var library = Path.GetFullPath(libraryPath);
+            if (!File.Exists(library) || !library.EndsWith(".lvlib", StringComparison.OrdinalIgnoreCase))
+                return Json.Error("notALibrary", $"No .lvlib at '{library}'. A class's members are not handled here.",
+                    new { libraryPath = library });
+            if (!File.Exists(projectPath))
+                return Json.Error("badArguments", $"No .lvproj at '{projectPath}'.", new { projectPath });
+            var vis = (viPaths ?? "").Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (vis.Count == 0)
+                return Json.Error("badArguments", "viPaths was empty. Pass one absolute .vi path per line.");
+            if (vis.FirstOrDefault(v => !File.Exists(v)) is { } absent)
+                return Json.Error("badArguments", $"No file at '{absent}'.", new { absent });
+            if (vis.FirstOrDefault(v => Path.GetExtension(v).ToLowerInvariant() is not (".vi" or ".ctl" or ".vim")) is { } other)
+                return Json.Error("badArguments", $"'{other}' is not a VI; only .vi, .ctl and .vim leave a library here.",
+                    new { other });
+
+            Existing existing;
+            try { existing = ReadLibrary(library); }
+            catch (Exception e) when (e is IOException or System.Xml.XmlException)
+            {
+                return Json.Error("libraryUnreadable", $"'{library}' could not be read as XML: {e.Message}");
+            }
+            if (vis.FirstOrDefault(v => !existing.Paths.Contains(v)) is { } notListed)
+                return Json.Error("notInLibrary", $"'{library}' does not list '{notListed}'.",
+                    new JsonObject
+                    {
+                        ["notListed"] = notListed,
+                        ["itemsInLibrary"] = new JsonArray([.. existing.Names.Select(n => (JsonNode)n)]),
+                    });
+
+            // A VI THAT OTHER FILES OF THE PROJECT CALL IS REFUSED, from the files, before LabVIEW.
+            // Measured 2026-11-27 on LabVIEW 2026 (26.3.1): disconnecting `Level Alarm.vi`, which
+            // `Tank Fill.lvlib:Tank Main.vi` calls, left that caller modified in memory, and the
+            // helper's close raised the modal "Save changes before closing?" - every call waited
+            // behind it (601 s) and nothing was removed. A member nothing calls left in 3.6 s. A
+            // caller that leaves in the same call counts too (CallersBlockingRemoval).
+            if (CallersBlockingRemoval(vis, Path.GetFullPath(projectPath)) is { Count: > 0 } blocking)
+            {
+                // WHICH LIBRARY EACH CALLER BELONGS TO decides whether "take the caller out too" is
+                // acceptable: a caller in the SAME library would leave it as well, which the user did
+                // not ask for (2026-11-27, Dosing Main.vi calling Format Flow.vi - the agent read the
+                // membership from the .lvlib itself).
+                var owners = new JsonObject();
+                foreach (var caller in blocking.SelectMany(kv => kv.Value!.AsArray()).Select(c => c!.GetValue<string>())
+                             .Distinct(StringComparer.OrdinalIgnoreCase))
+                    owners[caller] = new JsonArray([.. ViFile.Owners(caller).Select(o => (JsonNode)o)]);
+                var sameLibrary = owners.Where(kv => kv.Value!.AsArray().Any(o =>
+                    string.Equals(o!.GetValue<string>(), Path.GetFileName(library), StringComparison.OrdinalIgnoreCase)))
+                    .Select(kv => kv.Key).ToList();
+                return Json.Error("hasCallers",
+                    "Other files under the project's folder call the VI(s) to remove - `callers` names them per VI, " +
+                    "`callerOwners` the library or class each caller belongs to. Disconnecting a called VI modifies its " +
+                    "callers in memory, and LabVIEW then asks to save them in a modal dialog that stops every call. " +
+                    "Nothing was changed - and a caller taken out in the SAME call is refused too (measured: it left broken, or raised the dialog). Remove the calls first" +
+                    (sameLibrary.Count > 0
+                        ? $" - but {string.Join(", ", sameLibrary.Select(Path.GetFileName))} belong(s) to this same library, " +
+                          "so taking them out too changes the library's own API: that is the user's decision, not a fix."
+                        : "."),
+                    new JsonObject { ["callers"] = blocking, ["callerOwners"] = owners,
+                                     ["callersInThisLibrary"] = new JsonArray([.. sameLibrary.Select(c => (JsonNode)c)]) });
+            }
+
+            if (PrivateCalleesBlockingRemoval(library, vis, Path.GetFullPath(projectPath)) is { Count: > 0 } privateCallees)
+                return Json.Error("callsPrivateMembers",
+                    "The VI(s) to remove call PRIVATE members of this library that stay in it - `privateCallees` names " +
+                    "them per VI. Outside the library a VI may not call them, so it would leave BROKEN (measured: " +
+                    "\"cannot access the referenced item in private scope\"). Nothing was changed. Take those members " +
+                    "public first - that changes the library, so it is the user's decision.",
+                    new JsonObject { ["privateCallees"] = privateCallees });
+
+            var aixml = StatusTools.ScriptsDirectory() is { } scripts ? Path.Combine(scripts, RemoveHelperAixmlFileName) : null;
+            if (aixml is null || !File.Exists(aixml))
+                throw new FileNotFoundException($"{RemoveHelperAixmlFileName} was not found beside the exe (scriptsDirectory).");
+            var helperVi = Path.GetFullPath(helperViPath ?? Path.Combine(AixmlBackend.HelperFolder(), "lvai_remove_one_from_library.vi"));
+            if (Path.GetDirectoryName(helperVi) is { Length: > 0 } helperFolder) Directory.CreateDirectory(helperFolder);
+            var (builtVi, failure, helperGenerated) = await BackendRoute.HelperAsync(aixml, helperVi,
+                regenerateHelper, () => GenerateHelperAsync(aixml, helperVi, timeoutSeconds, ct), timeoutSeconds, ct);
+            if (failure is not null) return failure;
+
+            var steps = new JsonArray();
+            var opened = await new ActionTools(connection).OpenFileAsync(
+                viPath: null, viName: null, projectPath: Path.GetFullPath(projectPath),
+                projectName: Path.GetFileName(projectPath), checkActive: true, timeoutSeconds, ct: ct);
+            steps.Add(new JsonObject { ["step"] = "openProject", ["answer"] = Read(opened) });
+            if ((Read(opened) as JsonObject)?["projectBecameActive"]?.GetValue<bool>() is false)
+                return Json.Error("projectDidNotBecomeActive",
+                    "The project did not become active; the helper reaches the VI through Project:Active Project.",
+                    new JsonObject { ["steps"] = steps });
+
+            var disconnected = new List<string>();
+            var failed = new JsonArray();
+            foreach (var vi in vis)
+            {
+                var answer = await new RunTools(connection).RunViAndReadValuesAsync(
+                    builtVi, new JsonObject { ["vi path"] = vi }.ToJsonString(), includeRawXml: false,
+                    helperViPath: null, helperAixmlPath: null, regenerateHelper: false, timeoutSeconds, ct: ct);
+                steps.Add(new JsonObject { ["step"] = "disconnect", ["vi"] = vi, ["answer"] = Read(answer) });
+                var values = Values(answer);
+                var codes = new[] { "open error", "disconnect error", "save error", "error out" }
+                    .Select(k => (k, ErrorCode(values, k))).Where(c => c.Item2 is not 0).ToList();
+                if (BackendRoute.RunRefusal(answer) is { } refusal || codes.Count > 0)
+                    failed.Add(new JsonObject
+                    {
+                        ["vi"] = vi,
+                        ["problem"] = codes.Count > 0
+                            ? string.Join(", ", codes.Select(c => $"{c.Item1} {c.Item2?.ToString() ?? "unread"}"))
+                            : "the helper did not run - see steps",
+                    });
+                else
+                    disconnected.Add(vi);
+            }
+
+            // THE PROJECT CLOSED BEFORE THE FILE EDIT: a .lvlib this tool writes must not be open,
+            // or LabVIEW's next save of its copy puts the Item back.
+            var closed = await new CloseTools(connection).CloseActiveProjectAsync(
+                projectPath: Path.GetFullPath(projectPath), ct: ct, backend: BackendRoute.Current);
+            steps.Add(new JsonObject { ["step"] = "closeProject", ["answer"] = Read(closed) });
+
+            var removedItems = RemoveLibraryItems(library, disconnected);
+            // A FOLDER THIS CALL EMPTIED goes too (removeEmptyFolders); a folder that was empty
+            // before is not this call's. No tool removed one until 2026-11-27, and the DosingLine
+            // library kept an empty `API` folder after its only VI left.
+            var emptiedCandidates = disconnected.Select(v => existing.PlacedIn(Path.GetFileName(v)))
+                .OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var foldersRemoved = removeEmptyFolders ? RemoveEmptyLibraryFolders(library, emptiedCandidates) : [];
+
+            JsonNode? listed = null;
+            if (keepInProject && disconnected.Count > 0)
+            {
+                var toFolder = projectFolder is { Length: > 0 };
+                var added = await new TestTools(connection).AddVisToProjectAsync(
+                    Path.GetFullPath(projectPath), string.Join("\n", disconnected), folderName: toFolder ? projectFolder! : "SubVIs",
+                    targetLevel: !toFolder, timeoutSeconds: timeoutSeconds, ct: ct, backend: BackendRoute.Current);
+                listed = Read(added);
+                steps.Add(new JsonObject { ["step"] = "listInProject", ["answer"] = listed?.DeepClone() });
+            }
+
+            // ASK THE FILES: the VI's own LIBN, and the library's items.
+            var libraryName = Path.GetFileName(library);
+            var stillClaims = disconnected.Where(v => ViFile.Owners(v).Any(o =>
+                string.Equals(o, libraryName, StringComparison.OrdinalIgnoreCase))).ToList();
+            var after = ReadLibrary(library);
+            var stillListed = disconnected.Where(v => after.Paths.Contains(v)).ToList();
+            var ok = failed.Count == 0 && stillClaims.Count == 0 && stillListed.Count == 0;
+            return Json.Document(new JsonObject
+            {
+                ["ok"] = ok,
+                ["libraryPath"] = library,
+                ["removed"] = new JsonArray([.. disconnected.Except(stillClaims).Except(stillListed).Select(v => (JsonNode)v)]),
+                ["failed"] = failed,
+                ["itemsRemovedFromLibraryFile"] = new JsonArray([.. removedItems.Select(n => (JsonNode)n)]),
+                ["emptyFoldersRemoved"] = new JsonArray([.. foldersRemoved.Select(n => (JsonNode)n)]),
+                ["verify"] = new JsonObject
+                {
+                    ["stillClaimsLibrary"] = new JsonArray([.. stillClaims.Select(v => (JsonNode)v)]),
+                    ["stillListed"] = new JsonArray([.. stillListed.Select(v => (JsonNode)v)]),
+                    ["source"] = "the VIs' own LIBN and the saved .lvlib, read from disk",
+                },
+                ["listedInProject"] = keepInProject ? (listed?["ok"]?.DeepClone() ?? JsonValue.Create(false)) : null,
+                ["helperGenerated"] = helperGenerated,
+                ["steps"] = steps,
+                ["note"] = ok
+                    ? "Each VI is loose now. Run lvai_exec_state over its callers: one that named it by its " +
+                      "qualified name relinks on load."
+                    : "Read failed and verify: a VI the helper could not disconnect was left in the library.",
+            });
+        }));
+
+    /// <summary>
+    /// Removes the <c>&lt;Item Type="VI"&gt;</c> entries whose URL resolves to one of
+    /// <paramref name="vis"/> from the .lvlib, at any folder depth, self-closing or carrying
+    /// properties (a private item's NI.LibItem.Scope), keeping LabVIEW's own formatting. Returns the
+    /// item names removed. A URL resolves against the .lvlib treated as a directory.
+    /// </summary>
+    internal static List<string> RemoveLibraryItems(string library, IReadOnlyCollection<string> vis)
+    {
+        var removed = new List<string>();
+        if (vis.Count == 0) return removed;
+        var (text, style) = LvTextFile.Read(library);
+        var root = XDocument.Parse(text).Root!;
+        foreach (var item in root.Descendants("Item").Where(i => (string?)i.Attribute("Type") == "VI").ToList())
+        {
+            var url = (string?)item.Attribute("URL");
+            var name = (string?)item.Attribute("Name");
+            if (url is null || name is null || url.Contains('<')) continue;
+            string resolved;
+            try { resolved = Path.GetFullPath(Path.Combine(library, url.Replace('/', '\\'))); }
+            catch (ArgumentException) { continue; }
+            if (!vis.Contains(resolved, StringComparer.OrdinalIgnoreCase)) continue;
+            var head = $"<Item Name=\"{System.Security.SecurityElement.Escape(name)}\" Type=\"VI\" URL=\"{System.Security.SecurityElement.Escape(url)}\"";
+            var pattern = "\\r?\\n[ \\t]*" + Regex.Escape(head) + "(?:\\s*/>|>.*?</Item>)";
+            var before = text;
+            text = Regex.Replace(text, pattern, "", RegexOptions.Singleline);
+            if (text != before) removed.Add(name);
+        }
+        if (removed.Count > 0) LvTextFile.Write(library, text, style);
+        return removed;
+    }
+
+    /// <summary>
+    /// Removes the library's virtual folders among <paramref name="candidates"/> that hold no item
+    /// any more - written empty (<c>&lt;Item Name="X" Type="Folder"/&gt;</c>) or open and closed with
+    /// only white space between - keeping LabVIEW's formatting. Only top-level-of-file text is
+    /// touched; the project must be closed (we write the .lvlib). Returns the folder names removed.
+    /// </summary>
+    internal static List<string> RemoveEmptyLibraryFolders(string library, IReadOnlyCollection<string> candidates)
+    {
+        var removed = new List<string>();
+        if (candidates.Count == 0) return removed;
+        var (text, style) = LvTextFile.Read(library);
+        foreach (var name in candidates)
+        {
+            var head = $"<Item Name=\"{System.Security.SecurityElement.Escape(name)}\" Type=\"Folder\"";
+            var pattern = "\\r?\\n[ \\t]*" + Regex.Escape(head) + "(?:\\s*/>|>\\s*</Item>)";
+            var before = text;
+            text = Regex.Replace(text, pattern, "");
+            if (text != before) removed.Add(name);
+        }
+        if (removed.Count > 0) LvTextFile.Write(library, text, style);
+        return removed;
+    }
+
     private sealed record Existing(
         IReadOnlyList<string> Names,
         IReadOnlySet<string> Paths,
@@ -650,17 +1023,28 @@ internal sealed class LibraryTools(LvaiConnection connection)
     private static JsonObject? Values(string answer) =>
         (Read(answer) as JsonObject)?["values"] as JsonObject;
 
-    private static int? ErrorCode(JsonObject? values)
+    /// <summary>
+    /// An error cluster's code, in either shape a run answers: LabVIEW's flattened `xml` (what the
+    /// internal runs here get, nativeValues false) or `value: {status, code, source}` with no XML
+    /// (a nativeValues answer, as lvai_run_vi_and_read_values gives a caller).
+    /// </summary>
+    internal static int? ErrorCode(JsonObject? values, string indicator = "error out")
     {
-        if ((values?["error out"] as JsonObject)?["xml"]?.GetValue<string>() is not { } xml)
+        var cluster = values?[indicator] as JsonObject;
+        if (cluster?["value"] is JsonObject parsed && parsed["code"] is JsonValue c && c.TryGetValue<int>(out var direct))
+            return direct;
+        if (cluster?["xml"]?.GetValue<string>() is not { } xml)
             return null;
         var match = Regex.Match(xml, "<Name>code</Name>\\s*<Val>(-?\\d+)</Val>");
         return match.Success && int.TryParse(match.Groups[1].Value, out var code) ? code : null;
     }
 
-    private static string? ErrorSource(JsonObject? values)
+    private static string? ErrorSource(JsonObject? values, string indicator = "error out")
     {
-        if ((values?["error out"] as JsonObject)?["xml"]?.GetValue<string>() is not { } xml)
+        var cluster = values?[indicator] as JsonObject;
+        if (cluster?["value"] is JsonObject parsed && parsed["source"]?.GetValue<string>() is { } direct)
+            return direct.Length > 0 ? direct : null;
+        if (cluster?["xml"]?.GetValue<string>() is not { } xml)
             return null;
         var match = Regex.Match(xml, "<Name>source</Name>\\s*<Val>(.*?)</Val>", RegexOptions.Singleline);
         return match.Success && match.Groups[1].Value.Length > 0 ? match.Groups[1].Value : null;

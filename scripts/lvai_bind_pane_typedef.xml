@@ -58,12 +58,14 @@
     </Structure>
     <Tunnel _id="Out1" inputs="value:4288.value" mode="index" outputs="value:4289.value" uid="4289" uid_parent="4260"/>
     <Tunnel _id="Out2" inputs="value:4269.err" mode="index" outputs="value:4259.errs" uid="4259" uid_parent="4260"/>
+    <Tunnel _id="Out3" inputs="value:4269.err" outputs="value:4258.last" uid="4258" uid_parent="4260"/>
   </Structure>
   <Node _name="Add Array Elements" inputs="numeric array:4289.value" outputs="sum:4290.sum" uid="4290" uid_parent="root"/>
   <Indicator _name="terminals bound" type="int32" uid="4291" uid_parent="root" value="0" inputs="value:4290.sum"/>
   <Indicator _name="terminal names seen" type="array{string}" uid="4292" uid_parent="root" value="[]" inputs="value:4254.value"/>
   <Indicator _name="replace errors" type="array{cluster{bool.status,int32.code,string.source}}" uid="4293" uid_parent="root" value="[]" inputs="value:4259.errs"/>
-  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4215.app,Path:4231.path,error in (no error):4245.err" outputs="reference out:,error out:4300.err,LVClass.Open:4300.cls" uid="4300" uid_parent="root"/>
+  <Node _name="Merge Errors" inputs="error in:4245.err,error in:4258.last" outputs="error out:4295.err" uid="4295" uid_parent="root"/>
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4215.app,Path:4231.path,error in (no error):4295.err" outputs="reference out:,error out:4300.err,LVClass.Open:4300.cls" uid="4300" uid_parent="root"/>
   <Indicator _name="class open error" type="cluster{bool.status,int32.code,string.source}" uid="4301" uid_parent="root" value="[false,0,]" inputs="value:4300.err"/>
   <Node _name="Invoke Node" target="Save.Instrument" type="{LV.VI}" inputs="reference:4235.vi,error in (no error):4300.err,Path to saved file:,Save a Copy:,Without Diagram:" outputs="reference out:,error out:4310.err" uid="4310" uid_parent="root"/>
   <Indicator _name="save vi error" type="cluster{bool.status,int32.code,string.source}" uid="4311" uid_parent="root" value="[false,0,]" inputs="value:4310.err"/>
