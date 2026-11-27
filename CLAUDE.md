@@ -528,8 +528,12 @@ running LabVIEW (`savingStepsSkipped`: tidy, clean-ups, icon). Every tool answer
 `saveVersionCheck` when the call saved a file NEWER than it was or than its pin - report-only,
 read from the files. `lvai_save_for_previous` saves such files back in place (project CLOSED;
 it does not cover `.lvlib`, `.lvclass` and `.lvproj`), and `lvai_check_links` names the
-`vi.lib` links an installed target release lacks. A save in the PROJECT's instance kept the pin
-and one with no project open wrote the running version (2026-11-27). Not measured: such files
+`vi.lib` links an installed target release lacks. ASSUME EVERY SAVE THROUGH LabVIEW WRITES THE
+RUNNING VERSION and end such work with `lvai_save_for_previous`: `lvai_set_vi_icon` and
+`lvai_layout_diagram` wrote 26.0 into a 20.0 project with the project active (2026-11-27); only
+`lvai_set_representation` with `projectPath` was measured keeping the pin. This rule said until
+that day that a save in the project's instance keeps it, which an agent read as "project open
+is enough". Not measured: such files
 loaded by the older LabVIEW itself - only 2026 is installed here. `docs/save-version.md`.
 
 ## When a tool call fails

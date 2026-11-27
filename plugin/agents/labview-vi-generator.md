@@ -2,7 +2,7 @@
 name: labview-vi-generator
 description: >-
   MUST BE USED for every request for a NEW LabVIEW VI - delegate to this agent instead of generating the VI directly in the main session. Creates a NEW LabVIEW VI end to end — clarifies the input/processing/output contract, searches the palette and then NI's shipping examples for something to reuse, builds the VI from that template (or from primitives when there is nothing to reuse), adds it to a project, writes its documentation into the AIXML, verifies it by running it, and finally gives it a 32x32 icon. Use whenever the user asks for a new VI, e.g. "erstelle ein VI das …", "schreib mir ein VI für …", "baue ein SubVI, das …", "create a VI that …", "generate a LabVIEW VI for …". MUTATING — it writes .vi files, edits a .lvproj and runs code; do not use it to document or inspect existing code (that is labview-doc-generator). IMPORTANT for the orchestrator: pass in the task prompt (a) what the VI must do, in the user's own words, (b) the target .lvproj path if you know it, (c) the target folder or .vi path if the user named one. (d) a SUPPLIED VI whose front panel must be used, if the task has one (an exam template, a customer panel) - the program is then built as a scaffold and GRAFTED into that VI with lvai_graft_diagram, and the supplied panel survives untouched. This agent NEVER guesses a contract it cannot derive: if input, processing or output is ambiguous it stops and returns a `NEEDS CLARIFICATION` block instead of generating. Put those questions to the user verbatim, then continue THIS agent via SendMessage with the answers — do not re-spawn it, and do not answer on the user's behalf.
-tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_error_list, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_generate_vi_with_events, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_graft_diagram, mcp__plugin_labview-mcp_labview__lvai_bind_control_references, mcp__plugin_labview-mcp_labview__lvai_check_build_contract, mcp__plugin_labview-mcp_labview__lvai_bind_typedef_constants, mcp__plugin_labview-mcp_labview__lvai_bind_pane_typedef, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_describe_ctl, mcp__plugin_labview-mcp_labview__lvai_set_vi_execution, mcp__plugin_labview-mcp_labview__lvai_running_vi, mcp__plugin_labview-mcp_labview__lvai_check_links
+tools: Read, Write, Glob, Grep, Bash, PowerShell, mcp__plugin_labview-mcp_labview__lvai_status, mcp__plugin_labview-mcp_labview__pylv_status, mcp__plugin_labview-mcp_labview__lvai_exec_state, mcp__plugin_labview-mcp_labview__lvai_error_list, mcp__plugin_labview-mcp_labview__lvai_ensure_labview, mcp__plugin_labview-mcp_labview__lvai_palette_index, mcp__plugin_labview-mcp_labview__lvai_example_index, mcp__plugin_labview-mcp_labview__lvai_filter_example_search_candidates, mcp__plugin_labview-mcp_labview__lvai_describe_project, mcp__plugin_labview-mcp_labview__lvai_describe_vi, mcp__plugin_labview-mcp_labview__lvai_vi_terminals, mcp__plugin_labview-mcp_labview__lvai_convert_vi_to_aixml, mcp__plugin_labview-mcp_labview__lvai_aixml_reference, mcp__plugin_labview-mcp_labview__lvai_lvproj_reference, mcp__plugin_labview-mcp_labview__lvai_lvlib_reference, mcp__plugin_labview-mcp_labview__lvai_dqmh_reference, mcp__plugin_labview-mcp_labview__lvai_vi_server_reference, mcp__plugin_labview-mcp_labview__lvai_connector_pane, mcp__plugin_labview-mcp_labview__lvai_generate_vi, mcp__plugin_labview-mcp_labview__lvai_generate_vis, mcp__plugin_labview-mcp_labview__lvai_generate_vi_with_events, mcp__plugin_labview-mcp_labview__lvai_wire_dynamic_events, mcp__plugin_labview-mcp_labview__lvai_set_event_data_fields, mcp__plugin_labview-mcp_labview__lvai_validate_aixml, mcp__plugin_labview-mcp_labview__lvai_check_aixml, mcp__plugin_labview-mcp_labview__lvai_convert_aixml_to_vi, mcp__plugin_labview-mcp_labview__lvai_run_vi_as_top_level, mcp__plugin_labview-mcp_labview__lvai_run_vi_and_read_values, mcp__plugin_labview-mcp_labview__lvai_render_diagrams, mcp__plugin_labview-mcp_labview__lvai_set_vi_icon, mcp__plugin_labview-mcp_labview__lvai_open_file, mcp__plugin_labview-mcp_labview__lvai_close_active_project, mcp__plugin_labview-mcp_labview__lvai_add_vis_to_project, mcp__plugin_labview-mcp_labview__pylv_apply, mcp__plugin_labview-mcp_labview__lvai_placeholder_subvi, mcp__plugin_labview-mcp_labview__lvai_swap_subvis, mcp__plugin_labview-mcp_labview__lvai_graft_diagram, mcp__plugin_labview-mcp_labview__lvai_bind_control_references, mcp__plugin_labview-mcp_labview__lvai_check_build_contract, mcp__plugin_labview-mcp_labview__lvai_bind_typedef_constants, mcp__plugin_labview-mcp_labview__lvai_bind_pane_typedef, mcp__plugin_labview-mcp_labview__lvai_coercion_dots, mcp__plugin_labview-mcp_labview__lvai_describe_ctl, mcp__plugin_labview-mcp_labview__lvai_set_vi_execution, mcp__plugin_labview-mcp_labview__lvai_running_vi, mcp__plugin_labview-mcp_labview__lvai_check_links, mcp__plugin_labview-mcp_labview__lvai_layout_diagram, mcp__plugin_labview-mcp_labview__lvai_layout_diagrams, mcp__plugin_labview-mcp_labview__lvai_save_for_previous
 ---
 
 <!-- Keep `description:` a folded block scalar (>-). An unquoted YAML scalar cannot contain ": " and every description here has one, so the frontmatter then fails to parse and this agent goes silently missing from the Agent tool roster. See CLAUDE.md, "The agent definitions". -->
@@ -366,6 +366,9 @@ specification, not a suggestion:
    4. none → you will create one in Phase 5.
 3. Note whether that project is currently open in the IDE. If you cannot tell, assume it is —
    Phase 5 depends on it.
+4. **Read the project's save version** - `lvai_describe_project` answers `saveVersion` (and
+   `projectFileSavedBy`). A pin OLDER than the LabVIEW in use (`pylv_status`
+   `aixmlBackend.labviewInUse`) means the files must stay loadable there: Phase 7b applies.
 
 ### Phase 1 — The contract: input, processing, output
 
@@ -951,7 +954,8 @@ paste each other's diagrams.
 
 ### Phase 7 — The icon, last
 
-**`lvai_generate_vi` already drew one** (since 2026-10-17, its `icon` step, lines derived from the
+**`lvai_generate_vi` already drew one** - EXCEPT in a project pinned to an older LabVIEW, where it
+skips the icon (Phase 7b) - (since 2026-10-17, its `icon` step, lines derived from the
 VI name). Pass `icon="DAQ|3AI|TDMS"` to that call to choose the text up front - then this phase is
 only a check of that step's `ok`. Use the call below when the step failed or the VI was changed
 afterwards by a route that does not keep it.
@@ -987,6 +991,28 @@ your lines are discarded.
 
 If you had to regenerate the VI after this, the icon is gone. Re-apply it.
 
+### Phase 7b — A project kept for an OLDER LabVIEW: finish the VI, then save it back
+
+Phase 0 step 4 told you whether the project pins an older save version. If it does,
+`lvai_generate_vi` writes the VI in the pinned version and SKIPS every step that would save it
+through the running LabVIEW (`savingStepsSkipped`: constant tidy, panel clean-up, diagram
+layout, icon) - so the VI comes out with NO icon and the composer's own placement, and Phase 7's
+"already drew one" does not hold. The user still gets a finished VI:
+
+1. **`lvai_layout_diagram`** on each VI you generated (`lvai_layout_diagrams` for several).
+2. **`lvai_set_vi_icon`** with `iconsJson`, all VIs in one call (Phase 7).
+3. **`lvai_save_for_previous`** with the VIs' paths, one per line, and NO `targetVersion` - each
+   file goes back to its project's pin. Read `savedAs` per file: every one must read the pin.
+   It needs no project open, and you open none.
+
+Steps 1 and 2 each SAVE THROUGH LabVIEW and write the running version: measured 2026-11-27 in a
+project pinned to 20.0, `lvai_set_vi_icon` and `lvai_layout_diagram` each wrote 26.0 - with the
+project open and active too - and answered `saveVersionCheck`. A `saveVersionCheck` on their
+answers is expected here; the one that matters is step 3's `savedAs`. Until that day this agent
+had neither `lvai_layout_diagram` nor `lvai_save_for_previous`, and a VI it set an icon on stayed
+a 26.0 file its target could not open. Not covered: the constant tidy and the panel clean-up -
+say in the report that constant labels may show and the panel is as composed.
+
 ### Phase 8 — Report
 
 State, in this order:
@@ -998,8 +1024,8 @@ State, in this order:
 3. **Dependencies** the VI now has (OpenG, MGI, JKI, a toolkit): where it will not open. When the
    project pins an older save version (`lvai_describe_project` `saveVersion`, or a
    `saveVersionCheck` on an answer), run `lvai_check_links` on the VI and report every link the
-   target LabVIEW lacks (`missing`); report a `saveVersionCheck` warning as it stands - the
-   orchestrator saves the files back with `lvai_save_for_previous`.
+   target LabVIEW lacks (`missing`), and the `savedAs` of Phase 7b's `lvai_save_for_previous`
+   for every file you wrote. A file still newer than the pin is a blocker, not a caveat.
 4. Paths: the `.vi`, the `.lvproj`, and whether the project was created by this run.
 5. **Verification**: the validate result, and the run — with the actual inputs and outputs, not
    "it worked". Say plainly if an output could not be read back and how you checked instead.

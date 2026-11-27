@@ -365,6 +365,17 @@ panel, the layout, the icon and every typedef link stay. docs/in-place-edits.md.
 4. `lvai_coercion_dots` on the edited VI: a dot marks a sink that still has the old type. Report
    each one; widen it only if the request covers it.
 5. Verify by RUNNING with a value the old type could not hold, where the request is a widening.
+6. **Close the project** with `lvai_close_active_project` and `projectPath`: both tools with
+   `projectPath` OPEN it and LEAVE it open, and `lvai_set_vi_descriptions`, `pylv_apply` and
+   `lvai_save_for_previous` need it closed. Close it after your LAST tool call has answered - a
+   close while other calls of yours still run, or ran in the last 60 s in parallel, is refused
+   (`projectChangeWhileParallel`), so do not batch the close with other calls.
+7. **Texts that name the old type go stale**: a VI description or terminal description saying
+   "16-bit", "unsigned word", "clamped to 0". Correct them with `lvai_set_vi_descriptions`
+   (project closed) where the request covers them, and name the rest in the report - a diagram
+   comment has no in-place route.
+8. **A project pinned to an older LabVIEW**: read `saveVersionCheck` on every answer and end with
+   `lvai_save_for_previous` over the files it names (project closed); report each `savedAs`.
 
 What is not measured is listed in the document (a map constant of the typedef is EMPTIED,
 growable nodes, a class's private data): say so in the report when the request touches one, and

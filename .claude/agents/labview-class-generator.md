@@ -87,7 +87,11 @@ they were all measured, most of them twice.
   (`labview-caraya-unit-test`); use another framework's agent only where the user named one.
   Everything about how a test reaches class code lives in that agent and in
   `docs/labview-unit-testing.md` — do not re-derive it here, and do not hand-build a test yourself
-  because the handoff looked expensive.
+  because the handoff looked expensive. The ONE exception: a task that only HOUSEKEEPS an
+  existing library or class - membership (`lvai_add_to_library`, `lvai_remove_from_library`),
+  folders, scope, descriptions, icons - and creates or changes no VI's code has nothing new to
+  test: there is no handoff, and the report says so in point 6. Check that every member is still
+  executable (`lvai_exec_state`) instead.
 
 - **Never delete a `.lvclass` file while LabVIEW holds it** — its class is then in memory with no
   file behind it, and the next `Add Class to Project (path).vi` answers **`Error 1614`** at
