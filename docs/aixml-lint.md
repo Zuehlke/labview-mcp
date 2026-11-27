@@ -437,3 +437,12 @@ have to skip when Python or that corpus is missing rather than fail. Until that 
 `python scripts/aixml_lint_test.py` by hand after touching either file** — the same failure shape
 this repository has recorded twice, where a file being present said nothing about anything checking
 it.
+
+## `lvai_check_aixml` folds a repeated finding (2026-11-19)
+
+The first three findings of a code are written in full; the rest of that code become ONE entry
+with `repeated` (their count) and `uids`. `errors` and `warnings` still count every finding.
+Symptom: a benchmark build named every tunnel of a Case Structure after its signal
+(`_id="Reset"`) and got `tunnelIdNotDirection` 110 times, a 43 KB answer for one mistake. Given
+up: the folded findings' own message texts - for a code whose messages differ in more than the
+offending value, fix the three shown and check again.

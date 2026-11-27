@@ -56,7 +56,7 @@ Three costs came from interfaces nobody had fixed in advance:
 | key | meaning |
 |---|---|
 | `root` | the folder `path`s are relative to; default the contract's own folder |
-| `panePattern` | the pattern of new VIs; default the station's `DefaultConPane`. A class member (`owner` ending `.lvclass`) is always checked against 4815, because the class tools re-pane it there |
+| `panePattern` | the pattern of new VIs; default the station's `DefaultConPane`, else LabVIEW's own 4815 - the generator's rule; `stationPaneSource` says which (until 2026-11-18 an INI without the key answered `patternUnknown` and checked no slot). A class member (`owner` ending `.lvclass`) is always checked against 4815, because the class tools re-pane it there |
 | `types` | named type literals; a terminal writes `"type": "@Accounts"`. The long state cluster of a CLD application is written once instead of in every VI |
 | `kind` | `new` (default): a VI this build creates, held to the house rules. `supplied`: a panel the program is grafted into, with no pane rules. `existing`: made by a scripting tool (DQMH, class providers) or already there; terminals are optional. `test`: a unit test VI |
 | `owner` | the `.lvlib` or `.lvclass` the VI belongs to. It makes the qualified name `Owner:File.vi`, which a call must use where the bare name is ambiguous |

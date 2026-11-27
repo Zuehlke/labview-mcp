@@ -137,4 +137,21 @@ public class ResumableCallTests
         // a running job is never stale - a second call must attach, not start another into LabVIEW
         Assert.False(ResumableCall.IsStale(started, false, ran, started.AddHours(1), started.AddMinutes(4)));
     }
+
+    /// <summary>
+    /// answerWithinSeconds above the server-wide LateCalls budget (50 s) used to lose: LateCalls
+    /// answered its generic `stillRunning` first, without this call's progress. It is capped below.
+    /// </summary>
+    [Theory]
+    [InlineData(45, 50, 45)]
+    [InlineData(55, 50, 47)]
+    [InlineData(600, 50, 47)]
+    [InlineData(0, 50, 1)]
+    [InlineData(-3, 50, 1)]
+    [InlineData(30, 2, 1)]
+    public void The_budget_is_capped_below_the_server_wide_answer(int asked, int lateCalls, int expected)
+    {
+        Assert.Equal(TimeSpan.FromSeconds(expected),
+            ResumableCall.Budget(TimeSpan.FromSeconds(asked), TimeSpan.FromSeconds(lateCalls)));
+    }
 }

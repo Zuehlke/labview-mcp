@@ -851,6 +851,26 @@ def check_case_tunnels(elements: list[_El]) -> list[Finding]:
     return findings
 
 
+TUNNEL_ID_RE = re.compile(r"(In|Out|Local)[1-9][0-9]*")
+
+
+def check_tunnel_ids(elements: list[_El]) -> list[Finding]:
+    """A Tunnel's `_id` IS its direction: NI's schema allows only `(In|Out)[1-9][0-9]*`
+    (stacked-sequence locals add `LocalN`), and the composer reads an `In` prefix as input and
+    anything else as output. A CLD benchmark build (2026-11-18) wrote `_id="iFD"`; the composer
+    failed a regeneration later with "case tunnel iFD: no typed wire reaches it". The C# check
+    (`tunnelIdNotDirection`) and aixml2vi.py's `refuse_bad_tunnel_ids` say the same."""
+    findings: list[Finding] = []
+    for e in elements:
+        if e.tag != "Tunnel" or TUNNEL_ID_RE.fullmatch(e.el.get("_id") or ""):
+            continue
+        findings.append(Finding(
+            "error", "tunnel-id", e.uid, e.label(), e.path,
+            f"_id={e.el.get('_id')!r}: a tunnel's _id must be In<n> (input) or Out<n> (output), "
+            f"n from 1 - the prefix IS the direction (NI's schema: (In|Out)[1-9][0-9]*)."))
+    return findings
+
+
 def _load_catalogue() -> tuple[set[tuple[str, str]], set[str]]:
     """The VI Server property catalogue, for the ONE lookup that is safe against its gaps.
 
@@ -1071,7 +1091,8 @@ def check_vi_server_names(elements: list[_El]) -> list[Finding]:
         if e.tag != "Node" or e.name not in ("Property Node", "Invoke Node"):
             continue
         cls = e.el.get("type") or ""
-        if not cls.startswith("{"):
+        if not cls.startswith("{") or _is_class_node_type(cls):
+            # a node on a LabVIEW CLASS names the class's own accessors - no list knows them
             continue
         if cls.startswith("{LV.") and cls[4:-1] not in _VOCAB_CLASSES \
                 and cls not in _VOCAB_PROPS and cls not in _VOCAB_METHODS:
@@ -1129,6 +1150,133 @@ def check_vi_server_names(elements: list[_El]) -> list[Finding]:
                 f'method "{name}" on {cls} is in neither the catalogue nor any AIXML known to work'
                 + (f'; nearest: "{near}"' if near else "")
                 + ". ValidateAIXML answers `Invalid method` for an invented one."))
+    return findings
+
+
+# the composer's CLASS_PROP_TYPE: an author's {Auto.lvclass}, library-qualified or not (#153)
+_NAMED_CLASS_NODE_TYPE = re.compile(r"\{\s*((?:[^{}:]+\.lvlib:)*[^{}:]+\.lvclass)\s*\}", re.I)
+
+
+def _class_node_name(cls: str):
+    """"" for {UDClassInst}, the class for the named spelling {Auto.lvclass}, None otherwise."""
+    if cls.replace(" ", "") == "{UDClassInst}":
+        return ""
+    m = _NAMED_CLASS_NODE_TYPE.fullmatch(unescape(cls).strip())
+    return m.group(1) if m else None
+
+
+def _is_class_node_type(cls: str) -> bool:
+    return _class_node_name(cls) is not None
+
+
+def check_class_property_node(elements: list[_El]) -> list[Finding]:
+    """A Property Node on a LabVIEW CLASS (type="{UDClassInst}", NI's export spelling, or
+    type="{Auto.lvclass}", which names the class) - AixmlCheck.CheckClassPropertyNode. The pylabview composer, the default backend, composes it
+    for LabVIEW 2026 (upstream #154) and refuses it for an older LabVIEW. Each field IS one accessor
+    call, so the route there is a Call of the accessor per field. A WARNING: grpc was never measured on it."""
+    findings: list[Finding] = []
+    for e in elements:
+        if e.tag != "Node" or e.name != "Property Node":
+            continue
+        named = _class_node_name(e.el.get("type") or "")
+        if named is None:
+            continue
+        owner = named or "<Class>.lvclass"
+        calls = []
+        for entry in (e.el.get("fields") or "").split(","):
+            mode, plus, name = entry.partition("+")
+            if plus and name.strip():
+                calls.append("`%s:%s %s.vi`"
+                             % (owner, "Write" if mode.strip() == "write" else "Read", unescape(name.strip())))
+        findings.append(Finding(
+            "warning", "class-property-node-not-composable", e.uid, e.label(), e.path,
+            "A Property Node on a LabVIEW class (%s) is composed by the pylabview composer, "
+            % unescape(e.el.get("type") or "").strip()
+            + "the default backend, for LabVIEW 2026 only, and refused for an older LabVIEW. There, "
+            "call the class's accessor instead, one Call per field"
+            + (" (%s by NI's default naming)" % ", ".join(calls) if calls else "")
+            + ", with the class wire and the error wire chained through them; lvai_describe_class "
+            "lists the accessors the class really has."))
+    return findings
+
+
+def _load_primitive_terminals() -> dict[str, set[str]]:
+    """Primitive name -> every terminal name the composer's tables know for it - the SAME
+    tables aixml2vi.load_names reads: primitive-names.tsv / terminal-names.tsv (a checkout's
+    experiments/pylabview, else the pylabview bundle's app folder beside the server) plus the
+    supplements in scripts/aixml-pylabview. Absent tables give an empty map, which judges nothing."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    tables = next((d for d in (os.path.join(here, os.pardir, "experiments", "pylabview"),
+                               os.path.join(here, os.pardir, "pylabview", "app"))
+                   if os.path.exists(os.path.join(d, "primitive-names.tsv"))), None)
+    if tables is None:
+        return {}
+
+    def rows(path):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                for line in fh:
+                    if line.strip() and not line.startswith("#"):
+                        yield line.rstrip("\r\n").split("\t")
+        except OSError:
+            return
+
+    import html
+    rid_of: dict[str, tuple[str, int]] = {}
+    for path in (os.path.join(tables, "primitive-names.tsv"),
+                 os.path.join(here, "aixml-pylabview", "primitive-names-extra.tsv")):
+        for r in rows(path):
+            if len(r) < 2 or not r[0].isdigit():
+                continue
+            name = unescape(html.unescape(r[1]))
+            seen = int(r[2]) if len(r) > 2 and r[2].isdigit() else 0
+            if name not in rid_of or seen > rid_of[name][1]:
+                rid_of[name] = (r[0], seen)
+    by_rid: dict[str, set[str]] = {}
+    for path in (os.path.join(tables, "terminal-names.tsv"),
+                 os.path.join(here, "aixml-pylabview", "terminal-names-learned.tsv"),
+                 os.path.join(here, "aixml-pylabview", "terminal-names-extra.tsv")):
+        for r in rows(path):
+            if len(r) >= 4 and r[0].isdigit():
+                by_rid.setdefault(r[0], set()).add(unescape(html.unescape(r[3])))
+    return {name: by_rid[rid] for name, (rid, _) in rid_of.items() if rid in by_rid}
+
+
+_PRIM_TERMS = _load_primitive_terminals()
+
+
+def _squash_term(name: str) -> str:
+    return re.sub(r"[\s?.()]", "", name).lower()
+
+
+def check_primitive_terminal_names(elements: list[_El]) -> list[Finding]:
+    """A WIRED terminal of a primitive Node that is a near miss of a name the composer's tables
+    know - `.not. x` for Not's `.not. x?` (field report, 2026-11-14: the lint passed it, the
+    composer refused it, one round trip). Only the same name with `?`, `.`, brackets, spaces or
+    case changed is reported, because the tables are harvested and incomplete. Measured over 1 500
+    cached NI exports: that rule fires 0 times; an edit-distance rule (<= 2) fired 7 times, every
+    one a REAL terminal the tables lack (TDMS Get Properties' `property names`, Swap Values' `x`).
+    `?parmN` placeholders are the composer's own spelling and pass."""
+    findings: list[Finding] = []
+    if not _PRIM_TERMS:
+        return findings
+    for e in elements:
+        if e.tag != "Node" or e.el.get("type") or e.name not in _PRIM_TERMS:
+            continue
+        known = _PRIM_TERMS[e.name]
+        folded = {k.lower() for k in known}
+        for attr in ("inputs", "outputs"):
+            for term, net in parse_terminal_list(e.el.get(attr) or ""):
+                if not net or term.lower() in folded or term.startswith("?parm"):
+                    continue
+                near = sorted(k for k in known if _squash_term(k) == _squash_term(term))
+                if near:
+                    findings.append(Finding(
+                        "warning", "primitive-terminal-near-miss", e.uid, e.label(), e.path,
+                        f'"{term}" is not a terminal of {e.name}; did you mean "{near[0]}"? '
+                        f'Terminal names are literal (known: {", ".join(sorted(known))}). The '
+                        f"pylabview composer refuses the node, NI's converter answers "
+                        f"`Object terminal not found`."))
     return findings
 
 
@@ -1782,6 +1930,102 @@ def check_web_browser_reference(elements: list[_El]) -> list[Finding]:
     return findings
 
 
+def _dqmh_call(el) -> tuple[str, str, bool] | None:
+    """A Call into a library, `Lib.lvlib\\3AVI.vi`, split; None for any other target."""
+    target = re.sub(r"\\3[Aa]", ":", el.get("target") or "")
+    at = target.lower().find(".lvlib:")
+    if at < 0:
+        return None
+    library, vi = target[: at + len(".lvlib")], target[at + len(".lvlib:"):]
+    return library, vi, vi.lower() == "stop module.vi"
+
+
+def _nets_of(value: str | None) -> list[str]:
+    out = []
+    for entry in (value or "").split(","):
+        colon = entry.rfind(":")
+        if colon >= 0 and entry[colon + 1:].strip():
+            out.append(entry[colon + 1:].strip())
+    return out
+
+
+def check_stop_module_not_last(elements: list[_El]) -> list[Finding]:
+    """A call into a DQMH module's library that is not wired BEFORE that library's Stop
+    Module.vi on the same diagram.
+
+    No wire orders the two, so Stop Module runs in parallel and the module may stop before it
+    answers. Session-7 report M7, 2026-11-03: every Request and Wait for Reply of a headless
+    caller timed out (403686 after the module's 5 s), Delacor's untouched template included,
+    because Stop Module took its error in from Synchronize Module Events. Measured on LabVIEW
+    2026: 403686 after 5.4 s wired that way, the reply in 1.2 s with Stop Module after the
+    request. Each structure on the diagram is one node; a call in another diagram is not judged.
+
+    Kept equal to AixmlCheck.CheckStopModuleNotLast on the C# side.
+    """
+    findings: list[Finding] = []
+    for stop in elements:
+        if stop.tag != "Call" or stop.lexical_parent is None:
+            continue
+        parsed = _dqmh_call(stop.el)
+        if parsed is None or not parsed[2]:
+            continue
+        diagram = stop.lexical_parent
+
+        def on(e, diagram=diagram):
+            x = e
+            while x.lexical_parent is not None and x.lexical_parent is not diagram:
+                x = x.lexical_parent
+            return x if x.lexical_parent is diagram else None
+
+        under = [(e, on(e)) for e in elements if e is not diagram]
+        under = [(e, rep) for e, rep in under if rep is not None]
+        producer = {}
+        for e, rep in under:
+            for net in _nets_of(e.el.get("outputs")):
+                producer[net] = rep
+        nxt: dict[int, list] = collections.defaultdict(list)
+        for e, rep in under:
+            for net in _nets_of(e.el.get("inputs")):
+                src = producer.get(net)
+                if src is not None and src is not rep:
+                    nxt[id(src)].append(rep)
+
+        def reaches(a, b, nxt=nxt) -> bool:
+            seen, todo = {id(a)}, [a]
+            while todo:
+                for y in nxt.get(id(todo.pop()), ()):
+                    if y is b:
+                        return True
+                    if id(y) not in seen:
+                        seen.add(id(y))
+                        todo.append(y)
+            return False
+
+        for call, rep in under:
+            if call.tag != "Call" or call is stop:
+                continue
+            other = _dqmh_call(call.el)
+            if other is None or other[2] or other[0].lower() != parsed[0].lower() or reaches(rep, stop):
+                continue
+            after = reaches(stop, rep)
+            findings.append(
+                Finding(
+                    "warning",
+                    "stop-module-not-last",
+                    call.uid,
+                    call.label(),
+                    call.path,
+                    f"{other[1]} of {other[0]} is not wired before its Stop Module.vi (uid {stop.uid}): "
+                    + ("it runs AFTER the module was stopped. " if after else
+                       "no wire orders the two, so they run in parallel and the module may stop "
+                       "before it answers - a Request and Wait for Reply then times out (403686) "
+                       "after the module's timeout. ")
+                    + "Wire Stop Module's error in from the last call's error out.",
+                )
+            )
+    return findings
+
+
 def lint_file(path: str, new_vi: bool = False) -> list[Finding]:
     try:
         root = ET.parse(path).getroot()
@@ -1827,12 +2071,16 @@ def lint_file(path: str, new_vi: bool = False) -> list[Finding]:
     findings += check_comment_length(elements)
     findings += check_control_read_before_wait(elements)
     findings += check_web_browser_reference(elements)
+    findings += check_stop_module_not_last(elements)
     findings += check_value_escapes(elements)
     findings += check_case_tunnels(elements)
+    findings += check_tunnel_ids(elements)
     findings += check_raw_colons(elements)
     findings += check_type_grammar(elements)
     findings += check_property_nodes(elements)
     findings += check_vi_server_names(elements)
+    findings += check_class_property_node(elements)
+    findings += check_primitive_terminal_names(elements)
     findings += check_terminal_lists(elements)
     findings += check_net_attributes(elements)
     findings += check_types(elements)

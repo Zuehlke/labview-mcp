@@ -76,6 +76,13 @@ condition was that it must not cause more trouble than it saves, so it is delibe
   owner. Runnability stays with `lvai_exec_state`.
 - **A deferred strip is expected.** A VI whose source-only strip waits for the next project close
   (`DeferredSourceOnly`) is not reported for compiled code.
+- **A project's own setting is one finding, not one per file** (2026-11-23). In a project whose
+  "Separate compiled code from new project items" (`NI.LV.All.SourceOnly`) is off or absent, every
+  new item keeps compiled code, whoever writes it. Measured: one `lvai_dqmh_new_event` there was
+  eight findings on Delacor-written files, and the same again on every call. Now they fold into ONE
+  `compiled-code` finding on the nearest `.lvproj` above the files, with the count and an example.
+  The setting is the user's; what is given up is the per-file list, which `lvai_audit_files` still
+  gives. A file with no project above it (8 levels), or in a source-only project, keeps its own finding.
 - **Which files:** every existing LabVIEW file named in the answer and written since the call began
   (2 s slack), plus the members of a written `.lvlib`/`.lvclass` written since then. An owner is
   read even when not written, so the orphan rule can judge. No `.lvproj` (its only rule is a
@@ -89,7 +96,9 @@ From 2026-11-21 a build ENDED with `lvai_audit_files` over its folder, and the b
 orchestrator to fix every error it found. The user's decision of 2026-11-23 made it on demand:
 
 - **Every error it ever found is fixed where it arose.** The graft clears automatic error handling
-  (below). The DQMH tools strip compiled code (`sourceOnly`), and `ATM_DQMH_Cold_10` was clean.
+  (below). The DQMH tools strip compiled code from `Main.vi` (`sourceOnly`), and `ATM_DQMH_Cold_10`
+  was clean. (This said "the DQMH tools strip compiled code" until 2026-11-23: the files Delacor's
+  scripting writes keep it when the project's own setting says so - see the fold above.)
 - **The same error rules already run on every writing tool** (above), at the call that caused the
   defect. At the end of a build the same finding costs more to fix and says less about its cause.
 - **What it adds is warnings.** Description, terminal style and the `.lvproj` default changed no

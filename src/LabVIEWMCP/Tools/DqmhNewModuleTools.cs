@@ -61,7 +61,7 @@ internal sealed class DqmhNewModuleTools(LvaiConnection connection)
         [Description("Local budget in seconds; Delacor takes 20-45 s to script a module")]
         int timeoutSeconds = 600,
         [Description("Answer within this many seconds; past it the module is still scripted in the " +
-                     "server and the SAME call again collects the answer (the client gives up at 60 s)")]
+                     "server and the SAME call again collects the answer (the client gives up at 60 s) (at most 47: a larger value is capped below the server's own 50 s answer)")]
         int answerWithinSeconds = 45,
         [Description(DqmhTools.BackendDescription)] string? backend = null,
         CancellationToken ct = default) =>

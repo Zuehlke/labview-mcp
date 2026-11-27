@@ -113,14 +113,103 @@ public class PaneTypedefToolsTests
         Assert.Empty(TypedefTools.TypedefCtlNames(rsrc));
     }
 
+    // ---------------------------------------------------------------- the PANE, from real files
+
+    /// <summary>
+    /// The pane read off a REAL saved VI - the housekeeping fixture's Write Drink Type.vi, whose
+    /// `Drink Type` input is the class's Drink Type.ctl. Extracted with the bundled pylabview, as
+    /// the tool does; skipped where the bundle is absent.
+    /// </summary>
+    [Fact]
+    public async Task ABoundPaneTerminalIsReadOffTheSavedVi()
+    {
+        var rsrc = await ExtractAsync("Write Drink Type.vi");
+        if (rsrc is null) return;
+
+        var pane = TypedefTools.PaneTypedefs(rsrc);
+
+        Assert.NotNull(pane);
+        Assert.Contains(new TypedefTools.PaneTypedef("Drink Type", "Drink Type.ctl"), pane);
+    }
+
+    /// <summary>
+    /// THE FIELD PROJECT'S FALSE "VERIFIED", reproduced on a real file. Get Cost.vi of the same
+    /// class names Drink Type.ctl in its type list - through the class's private data, Beverage.ctl
+    /// - and has no typedef on its connector pane at all. The old check ("the .ctl is in the saved
+    /// file") passed it for any terminal; the pane read does not.
+    /// </summary>
+    [Fact]
+    public async Task ACtlUsedElsewhereInTheVi_IsNotATypedefOnThePane()
+    {
+        var rsrc = await ExtractAsync("Get Cost.vi");
+        if (rsrc is null) return;
+
+        Assert.Contains("Drink Type.ctl", TypedefTools.TypedefCtlNames(rsrc));
+        var pane = TypedefTools.PaneTypedefs(rsrc);
+        Assert.NotNull(pane);
+        Assert.DoesNotContain(pane, p => p.Ctl == "Drink Type.ctl");
+
+        var answer = Describe(BoundCost, new TypedefTools.SavedTypedefs(TypedefTools.TypedefCtlNames(rsrc), pane),
+                              terminal: "Cost", ctl: @"C:\p\Drink Type.ctl");
+        Assert.False(answer["ok"]!.GetValue<bool>());
+        Assert.False(answer["verified"]!.GetValue<bool>());
+        Assert.Empty((JsonArray)answer["typedefsMissingFromSavedFile"]!);
+        Assert.Contains("Cost", ((JsonArray)answer["terminalsNotBoundOnSavedPane"]!).Select(n => n!.GetValue<string>()));
+        Assert.Contains("something else in the VI uses it", answer["note"]!.GetValue<string>());
+    }
+
+    /// <summary>A file whose type list has no CONP, or a raw VCTP, cannot say what the pane carries.</summary>
+    [Fact]
+    public void AFileWithNoReadablePaneAnswersNull()
+    {
+        var rsrc = XElement.Parse("""
+            <RSRC><VCTP><Section Format="bin" File="x_VCTP.bin" /></VCTP></RSRC>
+            """);
+
+        Assert.Null(TypedefTools.PaneTypedefs(rsrc));
+    }
+
+    private static async Task<XElement?> ExtractAsync(string vi)
+    {
+        if (LabVIEWMcp.Infra.PyLabview.Locate() is null) return null;
+        var outDirectory = Path.Combine(Path.GetTempPath(), "LabVIEWMCP-tests", "panetypedef", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var (mainXml, failure) = await CtlTools.ExtractAsync(
+                LabVIEWMcp.Tests.Infra.OwnerHousekeepingTests.Fixture(vi), outDirectory, 120, default);
+            Assert.True(failure is null, failure);
+            return XDocument.Load(mainXml!).Root!;
+        }
+        finally
+        {
+            try { Directory.Delete(outDirectory, recursive: true); } catch (IOException) { }
+        }
+    }
+
     // ---------------------------------------------------------------- the verdict
 
-    private static JsonObject Describe(string runnerAnswer, SortedSet<string>? onDisk) =>
+    private static readonly IReadOnlyList<TypedefTools.PaneTypedef> ProfilBound =
+        [new("Profil", "Ofenprofil.ctl")];
+
+    private static TypedefTools.SavedTypedefs Saved(IReadOnlyList<TypedefTools.PaneTypedef>? pane, params string[] names) =>
+        new(new SortedSet<string>(names, StringComparer.OrdinalIgnoreCase), pane);
+
+    private static JsonObject Describe(string runnerAnswer, TypedefTools.SavedTypedefs? onDisk,
+                                       string terminal = "Profil", string ctl = @"C:\p\Ofenprofil.ctl") =>
         (JsonObject)JsonNode.Parse(TypedefTools.DescribePaneBind(
             runnerAnswer,
-            [new TypedefTools.PaneBinding("Profil", @"C:\p\Ofenprofil.ctl")],
+            [new TypedefTools.PaneBinding(terminal, ctl)],
             @"C:\p\Profil Setzen.vi", @"C:\p\Ofen.lvclass", "helper.vi", "helper.xml",
             helperGenerated: false, retried: false, [], onDisk))!;
+
+    /// <summary>A helper answer that bound one terminal named `Cost`.</summary>
+    private const string BoundCost = """
+        {"values":{
+          "terminals bound":{"type":"I32","value":"1"},
+          "terminal names seen":{"type":"Array","value":null,
+            "xml":"<Array><Name>terminal names seen</Name><Dimsize>1</Dimsize><String><Name></Name><Val>Cost</Val></String></Array>"}
+        }}
+        """;
 
     /// <summary>A helper answer shaped like the runner's, reporting one terminal bound.</summary>
     private const string BoundOne = """
@@ -134,14 +223,32 @@ public class PaneTypedefToolsTests
     [Fact]
     public void TheVerdictIsTheFileWhenTheCtlIsThere()
     {
-        var answer = Describe(BoundOne, new(StringComparer.OrdinalIgnoreCase)
-        {
-            "Ofenprofil.ctl",
-        });
+        var answer = Describe(BoundOne, Saved(ProfilBound, "Ofenprofil.ctl"));
 
         Assert.True(answer["ok"]!.GetValue<bool>());
         Assert.True(answer["verified"]!.GetValue<bool>());
         Assert.Empty((JsonArray)answer["typedefsMissingFromSavedFile"]!);
+        Assert.Empty((JsonArray)answer["terminalsNotBoundOnSavedPane"]!);
+    }
+
+    /// <summary>The .ctl in the file is not enough: the TERMINAL must carry it on the saved pane.</summary>
+    [Fact]
+    public void TheCtlInTheFileButNotOnTheTerminalIsNotAPass()
+    {
+        var answer = Describe(BoundOne, Saved([], "Ofenprofil.ctl"));
+
+        Assert.False(answer["verified"]!.GetValue<bool>());
+        Assert.Contains("Profil", ((JsonArray)answer["terminalsNotBoundOnSavedPane"]!).Select(n => n!.GetValue<string>()));
+    }
+
+    /// <summary>The names readable but the pane not: nothing is concluded, never a pass.</summary>
+    [Fact]
+    public void AnUnreadablePaneIsNotAPassEvenWithTheCtlInTheFile()
+    {
+        var answer = Describe(BoundOne, Saved(pane: null, "Ofenprofil.ctl"));
+
+        Assert.False(answer["ok"]!.GetValue<bool>());
+        Assert.Null(answer["verified"]);
     }
 
     /// <summary>
@@ -152,7 +259,7 @@ public class PaneTypedefToolsTests
     [Fact]
     public void AReportedBindWithNothingInTheFileIsNotOk()
     {
-        var answer = Describe(BoundOne, new(StringComparer.OrdinalIgnoreCase));
+        var answer = Describe(BoundOne, Saved([]));
 
         Assert.False(answer["ok"]!.GetValue<bool>());
         Assert.False(answer["verified"]!.GetValue<bool>());
@@ -185,8 +292,7 @@ public class PaneTypedefToolsTests
             """,
             [new TypedefTools.PaneBinding("Gibtsnicht", @"C:\p\Ofenprofil.ctl")],
             @"C:\p\Profil Setzen.vi", @"C:\p\Ofen.lvclass", "helper.vi", "helper.xml",
-            helperGenerated: false, retried: false, [],
-            new SortedSet<string>(StringComparer.OrdinalIgnoreCase) { "Ofenprofil.ctl" }))!;
+            helperGenerated: false, retried: false, [], Saved(ProfilBound, "Ofenprofil.ctl")))!;
 
         Assert.False(answer["ok"]!.GetValue<bool>());
         Assert.False(answer["verified"]!.GetValue<bool>());
@@ -214,8 +320,7 @@ public class PaneTypedefToolsTests
             """,
             [new TypedefTools.PaneBinding("Profil", @"C:\p\Ofenprofil.ctl")],
             @"C:\p\Profil Setzen.vi", @"C:\p\Ofen.lvclass", "helper.vi", "helper.xml",
-            helperGenerated: false, retried: false, [],
-            new SortedSet<string>(StringComparer.OrdinalIgnoreCase) { "Ofenprofil.ctl" }))!;
+            helperGenerated: false, retried: false, [], Saved(ProfilBound, "Ofenprofil.ctl")))!;
 
         Assert.False(answer["verified"]!.GetValue<bool>());
         Assert.Empty((JsonArray)answer["terminalsNotOnPanel"]!);

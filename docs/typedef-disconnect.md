@@ -1146,6 +1146,26 @@ about ten minutes, built behind a Case on an empty class path, and every stage o
 requested `.ctl` appearing as a `<Label>` in the saved VI's own type descriptors, and never on
 `terminalsBound`, which is the helper's own count and read `1` for the file with none.
 
+### 13b-b. CORRECTED 2026-11-18: A PLAIN VI DOES KEEP THE BINDING - with the project active and the save ordered
+
+13b said "what commits it for a VI that is not a class member is NOT established", and the tool
+refused every VI without an `.lvclass`. Two things in that measurement were not about class
+membership: `Loose Probe.vi` was in NO project, where `Replace` is a silent no-op outside the IDE's
+instance; and the helper's `Save.Instrument` had NO data dependency on the Replace loop - its error
+chain ran `Controls[]` -> `LVClass.Open` -> save, so LabVIEW was free to save before replacing.
+
+Measured on a CLD Boiler's `Boiler Next State.vi` (a `.lvlib` member, no class), project open and
+active, through NI's service, with a probe helper that saves right after the Replace loop (Merge
+Errors of the loop's last error): `verified: true`, `savedPaneTypedefs` `State` -> `Boiler State.ctl`
+and `Boiler Controls` -> `Boiler Controls.ctl`, two `TDCC` link objects in a separate `pylv_extract`
+of the saved file, both VIs `execState 1`, and the caller's coercion dots on those two terminals
+gone (4 -> 2, the two unbound clusters left). Both changes were in place in that one run, so the
+file does not say which of the two was the cause.
+
+So `lvai_bind_pane_typedef` takes a plain VI now: `lvclassPath` omitted, `projectPath` required,
+helper `scripts/lvai_bind_pane_typedef_plain.xml` (no class open, save after the loop). The class
+helper keeps its order and gained the same dependency: its class open now waits for the Replace loop.
+
 ### 13b-a. THE FILE CHECK ALONE IS A FALSE PASS - found on ACCEPTANCE, 2026-09-18
 
 The verdict above shipped as "the .ctl must be in the saved file", and the acceptance run in the

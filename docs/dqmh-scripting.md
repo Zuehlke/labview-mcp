@@ -1386,6 +1386,12 @@ answer. A finished job is dropped instead of handed out when LabVIEW restarted a
 when it finished more than ten minutes ago - a killed LabVIEW's "no port" failure was once handed
 to the same call on the next instance.
 
+**`answerWithinSeconds` is capped at 47 since 2026-11-23.** The server-wide `LateCalls` answers every
+call at 50 s (below). A larger value never took effect: `LateCalls` answered its generic
+`stillRunning` first, without the tool's `progress` or its own retry hint. `ResumableCall.Budget`
+now caps the value 3 s below `LateCalls.AnswerWithin`. A wait longer than ~47 s inside one call
+is not possible anyway: the client gives up at 60 s.
+
 **The restart that loses the answer is caused by ANOTHER tool's timeout - measured 2026-11-22.**
 Both ATM DQMH builds of that day (`C:\Temp\ATM_linted`, `C:\Temp\ATM_linted2`) lost the module
 answer the same way, read from the client's own log

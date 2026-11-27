@@ -109,7 +109,7 @@ internal sealed class DqmhTools(LvaiConnection connection)
         [Description("Local budget in seconds; the scripting itself takes tens of seconds")]
         int timeoutSeconds = 600,
         [Description("Answer within this many seconds; past it the work continues and the SAME " +
-                     "call again collects the answer (the client gives up at 60 s)")]
+                     "call again collects the answer (the client gives up at 60 s) (at most 47: a larger value is capped below the server's own 50 s answer)")]
         int answerWithinSeconds = 45,
         [Description(BackendDescription)] string? backend = null,
         [Description("""

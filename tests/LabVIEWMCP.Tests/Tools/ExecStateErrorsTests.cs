@@ -92,14 +92,26 @@ public sealed class ExecStateErrorsTests
 
     [Theory]
     [InlineData("0", "1026", true)]   // measured: Get Errors refused on a broken VI in a parallel run
-    [InlineData("2", "1073", false)]  // a running VI is not broken, nothing to retry for
+    [InlineData("1", "1026", true)]   // measured 2026-11-14: the same miss on executable VIs
+    [InlineData("0", "74", true)]     // a broken VI is asked again on any refusal
+    [InlineData("2", "1073", false)]  // a running VI is not broken, a second read answers the same
     [InlineData("0", "0", false)]     // lines read - no retry
-    public void Only_a_broken_VI_whose_lines_were_refused_is_asked_again(string state, string code, bool retry)
+    public void A_refused_read_is_asked_again_when_a_second_read_can_help(string state, string code, bool retry)
     {
         var (reading, _) = ExecStateTools.FromHelperRun(
             Ran(state, code == "0" ? Errors : NoErrors, code == "0" ? Details : NoErrors, code), Vi);
 
         Assert.Equal(retry, ExecStateTools.NeedsErrorsRetry(reading));
+    }
+
+    [Fact]
+    public void An_executable_VI_whose_lines_were_refused_is_called_harmless()
+    {
+        var (reading, _) = ExecStateTools.FromHelperRun(Ran("1", NoErrors, NoErrors, "1026"), Vi);
+        var (broken, _) = ExecStateTools.FromHelperRun(Ran("0", NoErrors, NoErrors, "1026"), Vi);
+
+        Assert.Contains("harmless", ExecStateTools.ErrorsNotReadBecause(reading!));
+        Assert.DoesNotContain("harmless", ExecStateTools.ErrorsNotReadBecause(broken!));
     }
 
     [Fact]

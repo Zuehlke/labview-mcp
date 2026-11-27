@@ -22,10 +22,19 @@ namespace LabVIEWMcp.Tools;
 /// Null when they were NOT read (a helper built before 2026-10-14, the direct ActiveX fallback, or
 /// Get Errors itself refused), which is not the same as an empty list.
 /// </param>
+/// <param name="Instance">
+/// Which copy was read: "project" - the active project's application instance, the one the IDE
+/// edits; "own" - the helper's own instance, no project being active; "main" - the direct ActiveX
+/// fallback, LabVIEW's main instance. Null from a helper built before 2026-11-03 (session-7 report
+/// M5: the helper always read its own instance, and on the ActiveX route that was a stale second
+/// copy in the main instance after typedef edits in the project).
+/// </param>
 internal sealed record ExecStateReading(int State, string LinkerErrors, int Code, string Source,
                                         bool LinkerErrorsRead = true,
                                         IReadOnlyList<ErrorListTools.ErrorLine>? Errors = null,
-                                        int? GetErrorsCode = null)
+                                        int? GetErrorsCode = null,
+                                        string? Instance = null,
+                                        string? ErrorsInstance = null)
 {
     /// <summary>The VI is not executable. Only 0 means this.</summary>
     internal bool Broken => State == 0;
@@ -73,7 +82,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         flattened XML; an empty `<Val>` means none; `linkerErrorsAvailable` says whether they were
         read. Use it after a pylv_apply retarget, after generating a VI that calls project-local
         code, and whenever green answers still leave doubt - it often sees what nothing else does.
-        It does not burn the path for a later regeneration and needs no project.
+        It does not burn the path for a later regeneration and needs no project; with a project
+        active it reads the PROJECT's copy, the one the IDE edits (`instance`: project, own, main).
         A broken CLASS MEMBER also gets `missingInterfaceOverrides` (from the files): interface
         methods the class does not override - a missing override breaks EVERY member of the class.
         `dispatchUnknown` lists members it could not classify; null plus
@@ -294,11 +304,14 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             broken = reading.Broken,
             couldNotOpen = reading.CouldNotOpen,
             meaning = Meaning(reading.State),
+            instance = reading.Instance,
             linkerErrors = reading.LinkerErrors,
             linkerErrorsAvailable = true,
             errors = ErrorsJson(reading),
             errorsRead = reading.Errors is not null,
             errorsNotReadBecause = ErrorsNotReadBecause(reading),
+            errorsFromInstance = reading.ErrorsInstance,
+            errorsInstanceNote = ErrorsInstanceNote(reading),
             code = reading.Code,
             source = reading.Source,
             note = reading.CouldNotOpen
@@ -406,6 +419,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             broken = r.Broken,
             couldNotOpen = r.CouldNotOpen,
             meaning = Meaning(r.State),
+            instance = r.Instance,
             via = "ActiveX",
             route = read.Route,
             helperViPath = read.HelperViPath,
@@ -414,6 +428,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
             errors = ErrorsJson(r),
             errorsRead = r.Errors is not null,
             errorsNotReadBecause = r.LinkerErrorsRead ? ErrorsNotReadBecause(r) : read.WhyNoHelper,
+            errorsFromInstance = r.ErrorsInstance,
+            errorsInstanceNote = ErrorsInstanceNote(r),
             linkerErrorsUnavailableBecause = read.WhyNoHelper,
             code = r.Code,
             source = r.Source,
@@ -469,8 +485,14 @@ internal sealed class ExecStateTools(LvaiConnection connection)
     /// </summary>
     internal static readonly string[] ErrorsReadBack = ["errors xml", "details xml", "get errors code"];
 
+    /// <summary>
+    /// Which copy the helper read - added 2026-11-03 (session-7 report M5). Optional like the
+    /// errors: a helper without it still gives a trusted state, with `instance` null.
+    /// </summary>
+    internal const string InstanceReadBack = "instance";
+
     /// <summary>Everything asked of the composed helper over ActiveX.</summary>
-    internal static readonly string[] ComReadBack = [.. HelperReadBack, .. ErrorsReadBack];
+    internal static readonly string[] ComReadBack = [.. HelperReadBack, .. ErrorsReadBack, InstanceReadBack];
 
     /// <summary>
     /// The Error List's lines for this VI from the helper's three Get Errors indicators, or null when
@@ -503,11 +525,47 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                 new System.Text.Json.Nodes.JsonObject { ["error"] = e.Error, ["detail"] = e.Detail }).ToArray());
 
     /// <summary>
-    /// A broken reading whose Error List lines Get Errors refused with a code of its own - the one
-    /// case worth running the helper a second time for. Pure.
+    /// A reading whose Error List lines Get Errors refused - worth running the helper a second time
+    /// for: a BROKEN VI on any code, and any VI on 1026 (VI Reference is invalid), the parallel miss
+    /// of docs/error-list.md §6. The 2026-11-14 end-to-end run answered 1026 repeatedly on
+    /// EXECUTABLE VIs, where the retry did not fire. 1073 (the VI is running) is not retried on an
+    /// executable VI: a second read answers the same. Pure.
     /// </summary>
     internal static bool NeedsErrorsRetry(ExecStateReading? r) =>
-        r is { Broken: true, Errors: null, GetErrorsCode: not null and not 0 };
+        r is { Errors: null, GetErrorsCode: 1026 } and { CouldNotOpen: false }
+        || r is { Broken: true, Errors: null, GetErrorsCode: not null and not 0 };
+
+    /// <summary>The helper's boolean input that forces its own application instance.</summary>
+    internal const string OwnInstanceInput = "own instance";
+
+    /// <summary>
+    /// A BROKEN VI read in the PROJECT's instance whose lines Get Errors refused with 1026 - also
+    /// after the retry. Measured 2026-11-19: with a project active the lines of a broken VI were
+    /// refused, and from then on those of a second broken VI in the same project too, while both
+    /// read at once with the project closed. Such a reading is worth one more helper run in the
+    /// helper's OWN instance. Pure.
+    /// </summary>
+    internal static bool NeedsOwnInstanceRead(ExecStateReading? r) =>
+        r is { Broken: true, Errors: null, GetErrorsCode: 1026, Instance: "project" };
+
+    /// <summary>
+    /// The project reading with the error lines of the own-instance reading, marked as such - or
+    /// the project reading unchanged when the other copy gave no lines or is not broken (then
+    /// its lines would explain nothing about this one). State, linker errors and instance stay
+    /// the PROJECT's: that is the copy the IDE edits. Pure.
+    /// </summary>
+    internal static ExecStateReading WithOwnInstanceErrors(ExecStateReading project, ExecStateReading? own) =>
+        own is { Broken: true, Errors: { Count: > 0 } lines }
+            ? project with { Errors = lines, ErrorsInstance = own.Instance ?? "own" }
+            : project;
+
+    /// <summary>Said beside `errors` when they were read from another copy than the state.</summary>
+    internal static string? ErrorsInstanceNote(ExecStateReading r) =>
+        r.ErrorsInstance is not { } from || from == r.Instance ? null
+        : $"The error lines were read from the helper's {from} instance: the {r.Instance} instance refused " +
+          "them (Get Errors error 1026). It is a second copy of the VI loaded WITHOUT the project, so a line " +
+          "about something only the project resolves (a library, a project-local callee) can be an " +
+          "artefact of that copy - the state above is the project's.";
 
     /// <summary>Get Errors' own error code, or null when the helper has no such indicator.</summary>
     internal static int? GetErrorsCodeOf(Func<string, string?> read) =>
@@ -519,6 +577,7 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         r.Errors is not null ? null
         : r.GetErrorsCode is { } code and not 0
             ? $"Get Errors answered error {code} instead of the Error List's lines"
+              + (r.State > 0 ? " - harmless here: the VI is executable, so no error line is missing" : "")
             : r.GetErrorsCode is null
                 ? "the helper that ran has no Get Errors step (built before 2026-10-14, or the direct ActiveX fallback)"
                 : "the lines could not be parsed";
@@ -577,6 +636,14 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                     if (FromHelperRun(again, full).Reading is { Errors: not null } retried)
                         reading = retried;
                 }
+                // ...AND IN THE HELPER'S OWN INSTANCE when the project's still refuses them
+                if (NeedsOwnInstanceRead(reading))
+                {
+                    var own = await route.RunHelper(helper,
+                        [new LabViewCom.Input(HelperInput, full, full), new LabViewCom.Input(OwnInstanceInput, true, "true")],
+                        ComReadBack, timeoutSeconds, ct);
+                    reading = WithOwnInstanceErrors(reading!, FromHelperRun(own, full).Reading);
+                }
                 if (reading is not null) return new ComReading(reading, "helper", helper, null);
                 why = notTrusted!;
             }
@@ -590,7 +657,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         try
         {
             var state = await route.ReadDirect(full, timeoutSeconds, ct);
-            return new ComReading(new ExecStateReading(state, "", 0, "", LinkerErrorsRead: false),
+            return new ComReading(new ExecStateReading(state, "", 0, "", LinkerErrorsRead: false,
+                                                       Instance: "main"),
                                   "direct", helper, why);
         }
         // the -1 contract holds on this route too: a VI LabVIEW refused to open is "could not
@@ -643,7 +711,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                          System.Globalization.CultureInfo.InvariantCulture, out var code) ? code : 0,
             Read("source")!.ReplaceLineEndings("\n"),
             Errors: ErrorLines(Read),
-            GetErrorsCode: GetErrorsCodeOf(Read)), null);
+            GetErrorsCode: GetErrorsCodeOf(Read),
+            Instance: InstanceOf(Read(InstanceReadBack))), null);
     }
 
     /// <summary>
@@ -933,7 +1002,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
                     int.TryParse(Value(values, "code"), out var code) ? code : 0,
                     Value(values, "source") ?? "",
                     Errors: ErrorLines(name => Value(values, name)),
-                    GetErrorsCode: GetErrorsCodeOf(name => Value(values, name)));
+                    GetErrorsCode: GetErrorsCodeOf(name => Value(values, name)),
+                    Instance: InstanceOf(Value(values, InstanceReadBack)));
             }
 
             // the same retry as the ActiveX route: measured 2026-10-14 on this route too - a grpc
@@ -951,6 +1021,10 @@ internal sealed class ExecStateTools(LvaiConnection connection)
 
     private static string? Value(JsonObject values, string name) =>
         values[name] is JsonObject entry ? entry["value"]?.GetValue<string>() : null;
+
+    /// <summary>The helper's `instance` answer, or null for a helper that has none (or answers nonsense).</summary>
+    internal static string? InstanceOf(string? text) =>
+        text?.Trim() is "project" or "own" ? text.Trim() : null;
 
     private async Task<string?> GenerateHelperAsync(
         string aixml, string helperVi, int timeoutSeconds, CancellationToken ct)

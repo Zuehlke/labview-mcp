@@ -392,7 +392,8 @@ VI and nothing reports it (`pylv_route` included) - check with `pylv_extract` fi
   a bind against an ordinary control succeeds and binds nothing;
 - constants: `lvai_bind_typedef_constants` for one feeding a subVI call; any other (into
   `Bundle By Name`, a queue's element type) `lvai_swap_subvis constantsJson` with the `.ctl`;
-- a method's own pane: `lvai_bind_pane_typedef`.
+- a VI's own pane: `lvai_bind_pane_typedef` - with the `.lvclass` for a class member, with only
+  `projectPath` for any other VI (measured 2026-11-18; it was class-only until then).
 
 Create a typedef with `lvai_create_typedef` (VI Server; nested typedefs in ONE run). A class field
 can carry a default (`double.Gain=1`) and may be a `path`. `docs/typedef-disconnect.md`.
@@ -563,7 +564,7 @@ document; `experiments/` does not ship.
 | Class housekeeping: description, folders, members, VI descriptions | `docs/lvclass-creation.md` §10 | `lvai_set_class_description`, `lvai_move_to_folder`, `lvai_add_to_class`, `lvai_set_vi_descriptions` |
 | Interfaces | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_set_class_interfaces` |
 | Class methods | `docs/class-method-tooling.md` | `lvai_add_class_method` |
-| Libraries | `docs/library-creation.md` | `lvai_create_library`, `lvai_add_to_library` |
+| Libraries | `docs/library-creation.md` | `lvai_create_library`, `lvai_add_to_library`, `lvai_remove_from_library` |
 | Actor Framework; overrides | `docs/labview-actor-framework.md`, `docs/af-override-tools.md` | `lvai_create_message_class`, `lvai_create_override`, `lvai_af_add_hook` |
 | Typedefs | `docs/typedef-constants.md`, `docs/typedef-disconnect.md` | `lvai_create_typedef`, `lvai_describe_ctl`, `lvai_bind_*`, `lvai_coercion_dots` |
 | DQMH | `docs/dqmh-patterns.md`, `docs/dqmh-scripting.md` | `lvai_dqmh_reference`, `lvai_dqmh_*` |

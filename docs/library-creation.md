@@ -134,3 +134,26 @@ each through the active project, adds, and saves them; the answer's `callers` li
 (`callerOpenFailed`); one that is not saved makes `ok` false. The scan is a heuristic: a same-named
 file elsewhere costs one load and one save, never a missed caller. A caller outside the project
 folder is not found.
+
+## 7. `lvai_remove_from_library` (taken from the JorgenSteen fork, measured here 2026-11-27)
+
+The opposite of `lvai_add_to_library`: each VI is disconnected through NI's `{LV.VI}`
+`DisconnectFromLibrary` and saved with the project open and active, then the project is closed and
+the VI's `<Item>` is taken out of the `.lvlib` file, because LabVIEW's own library save keeps
+listing a disconnected VI. The verdict comes from the files: `verify.stillClaimsLibrary` (the VI's
+own LIBN) and `verify.stillListed` (the `.lvlib`) must both be empty.
+
+Measured on LabVIEW 2026 (26.3.1, 32-bit), pylabview backend, on a copy of a three-member library
+(`Tank Main.vi` calling the private members `Scale Level.vi` and `Level Alarm.vi`):
+
+| removed | result |
+|---|---|
+| `Tank Main.vi`, which nothing calls | `ok` true in 3.6 s; both verify lists empty; the project closed with `projectRewrite.changed` false; no dialog |
+| `Level Alarm.vi`, which `Tank Main.vi` calls | the caller was left modified in memory and the helper's close raised the modal "Save changes before closing?" (`Tank Fill.lvlib:Tank Main.vi has unsaved changes`). The call waited 601 s behind it, `removed` was empty and the `.lvlib` unchanged. The dialog was answered by hand with Don't Save |
+
+So a VI that another file under the project's folder calls is refused from the files, before
+LabVIEW (`hasCallers`, each caller named, 0.1 s on the second case, nothing changed), unless the
+caller leaves in the same call. The fork's description said such a caller "relinks to it as a
+loose VI"; that was not what the second row showed. What it gives up: a called VI cannot be taken
+out alone, and the caller search is by file name (`InPlaceEditTools.Callers`), so a same-named VI
+elsewhere under the folder blocks too. Not measured: removing a caller and its callee in one call.

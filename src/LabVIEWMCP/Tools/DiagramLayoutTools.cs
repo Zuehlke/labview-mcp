@@ -76,7 +76,8 @@ internal sealed class DiagramLayoutTools(LvaiConnection connection)
         [Description("Local budget in seconds, per step and VI")] int timeoutSeconds = 240,
         [Description("Give each constant fan wire geometry of our own, as lvai_layout_diagram does")] bool routeFans = true,
         [Description("Answer within this many seconds; past it the layout goes on in the server and the " +
-                     "SAME call again collects the answer (the client gives up at 60 s). Default 45")]
+                     "SAME call again collects the answer (the client gives up at 60 s). Default 45, " +
+                     "at most 47: a larger value is capped below the server's own 50 s answer")]
         int answerWithinSeconds = 45,
         [Description(AixmlBackend.RouteParameterDescription)] string? backend = null,
         CancellationToken ct = default) =>
