@@ -59,8 +59,9 @@ internal sealed class ClassTools(LvaiConnection connection)
         FIELDS: scalars only (string, path, bool, double, single, timestamp, int/uint widths); a
         cluster, array or enum field is refused by name - use typedefFieldsJson for a typedef.
         INHERITANCE: parentClassPath is opened from its path (no project membership needed);
-        `parent opened: false` means a requested parent did not open. INTERFACES can only be linked
-        here, at creation (parentInterfaces) - finish each interface and all its methods first.
+        `parent opened: false` means a requested parent did not open. INTERFACES are linked here
+        (parentInterfaces) - finish each interface and all its methods first - or later on the
+        existing class with lvai_set_class_interfaces.
         ACCESSORS are a separate call: lvai_create_accessors. To add a field to a class that already
         has members use lvai_add_class_field - `overwrite` drops every member.
         docs/lvclass-creation.md.
@@ -85,8 +86,8 @@ internal sealed class ClassTools(LvaiConnection connection)
         string? parentClassPath = null,
         [Description("""
             Interfaces to implement, one absolute .lvclass path per line; each must be an interface
-            (checked from the file). Any number beside one parent. ONLY SETTABLE AT CREATION - adding
-            one later means deleting and recreating the class.
+            (checked from the file). Any number beside one parent. To add or remove one LATER
+            use lvai_set_class_interfaces - never delete and recreate the class for it.
             """)]
         string? parentInterfaces = null,
         [Description("""
@@ -487,9 +488,8 @@ internal sealed class ClassTools(LvaiConnection connection)
                         + $"[{string.Join(", ", info.Ancestors)}]. The provider opened "
                         + $"{provider.InterfacesOpened} refnum(s) - if that count matches what was "
                         + "asked for, the paths opened and it is the LINK that did not take; if it "
-                        + "is lower, a path did not open at all. Note that the link is only "
-                        + "settable AT CREATION TIME, so fixing this means creating the class "
-                        + "again rather than amending it.");
+                        + "is lower, a path did not open at all. Add the missing interface "
+                        + "to the class as it is with lvai_set_class_interfaces.");
 
                 var interfaceNote = interfacePaths.Count == 0 ? ""
                     : $", implementing {interfacePaths.Count} interface(s) "
@@ -650,8 +650,9 @@ internal sealed class ClassTools(LvaiConnection connection)
         you keep is never opened or saved over. No fields: if you want data, you want a class.
         An interface inherits only from interfaces (parentInterfaces).
         METHODS: add them with lvai_add_class_method. FINISH THE INTERFACE - the .lvclass AND every
-        method - BEFORE the first class that implements it: lvai_create_class links interfaces only
-        at creation, and a declared method breaks every implementing class until its override exists.
+        method - BEFORE the first class that implements it: a declared method breaks every
+        implementing class until its override exists. An EXISTING class takes the interface with
+        lvai_set_class_interfaces.
         Naming advice (not enforced): avoid a leading `I`; prefer a capability or category (`Lever`).
         Verified FROM THE FILE (IsInterface, no private data) - lvai_describe_project reports an
         interface as `Type="LVClass"` like a class. docs/lvclass-interfaces.md.
@@ -858,8 +859,8 @@ internal sealed class ClassTools(LvaiConnection connection)
                         + $"interface(s) did not land: [{string.Join(", ", missing)}]. It lists "
                         + $"[{string.Join(", ", info.Ancestors)}]. The provider opened "
                         + $"{provider.ParentsOpened} refnum(s) - a lower count than asked for "
-                        + "means a path did not open at all. The link is only settable AT CREATION "
-                        + "TIME, so this means creating the interface again.");
+                        + "means a path did not open at all. Add the missing parent to the "
+                        + "interface as it is with lvai_set_class_interfaces.");
 
                 var parentNote = parents.Count == 0
                     ? "inheriting from LabVIEW Object alone"
@@ -875,9 +876,9 @@ internal sealed class ClassTools(LvaiConnection connection)
                     + "tool's DESCRIPTION was corrected and this runtime note was not, so the "
                     + "answer a caller actually reads still sent them to the IDE. "
                     + "FINISH THE INTERFACE - the .lvclass AND every method - BEFORE creating the "
-                    + "first class that implements it: the interface list is a CREATION-TIME input "
-                    + "to lvai_create_class, and any class implementing this interface must "
-                    + "OVERRIDE every method it declares. Measured 2026-08-31: a missing override "
+                    + "first class that implements it: any class implementing this interface must "
+                    + "OVERRIDE every method it declares (an existing class takes the interface "
+                    + "with lvai_set_class_interfaces). Measured 2026-08-31: a missing override "
                     + "is Error 1003 on the whole class, with or without the require-override "
                     + "flag.");
             }

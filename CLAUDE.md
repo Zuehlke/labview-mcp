@@ -306,8 +306,10 @@ becomes a `path` element; bind the caller's cluster afterwards (`lvai_bind_pane_
 `lvai_swap_subvis` with the `.ctl` as the constant's class). `docs/typedef-constants.md`.
 
 **A DYNAMIC DISPATCH INPUT IS A REQUIRED TERMINAL**: leave it unwired and the test is `Error 1003`.
-Feed it a class constant, authored as a `path` constant and converted with `{LV.Constant}`
-`Replace` AFTER the nodes (`lvai_swap_subvis constantsJson`). `docs/labview-unit-testing.md` §3d.
+Feed it a class constant: on pylabview `<Constant type="ref{UDClassInst}">`, its class taken from
+the Call it feeds (also behind a `To More Specific Class`) or named with `class=`; otherwise
+authored as a `path` constant and converted with `{LV.Constant}` `Replace` AFTER the nodes
+(`lvai_swap_subvis constantsJson`). `docs/labview-unit-testing.md` §3d.
 
 **`lvai_swap_subvis`:**
 - It needs an ACTIVE project - `{LV.SubVI}` `Replace` is a silent no-op outside the IDE's instance.
@@ -338,7 +340,8 @@ The runner's `error out` 7002 means a failed suite. Write and run suites with
 **Ask whether LabVIEW COMPILES the thing before writing it.** A class, its private data control,
 its accessors, an interface, a library, an Actor Framework message, a typedef: each is created
 through NI's own providers or VI Server, never by writing the file - `lvai_create_class`,
-`lvai_create_interface`, `lvai_create_accessors`, `lvai_add_class_field`, `lvai_add_class_method`,
+`lvai_create_interface`, `lvai_set_class_interfaces`, `lvai_create_accessors`,
+`lvai_add_class_field`, `lvai_add_class_method`,
 `lvai_create_library`, `lvai_add_to_library`, `lvai_create_message_class`, `lvai_create_typedef`.
 `docs/lvclass-creation.md`.
 
@@ -350,9 +353,14 @@ otherwise). Close the project before any `lvai_create_class` or `lvai_create_int
 adopts every open VI when it saves (the close's `projectPath` sweep removes ours).
 
 **Order:** an interface and EVERY method it declares, before the first class that implements it
-(the link is creation-time only; a declared method breaks every implementer until its override
-exists - a missing override makes EVERY member of the class eBad, which only `lvai_exec_state`
-sees). Class -> methods -> LIBRARY -> messages: adding a class to a library after its messages
+(a declared method breaks every implementer until its override exists - a missing override makes
+EVERY member of the class eBad, which only `lvai_exec_state` sees). An EXISTING class takes or
+loses an interface with `lvai_set_class_interfaces` (VI Server `Write Parent Interfaces`; this rule
+said "the link is creation-time only" until 2026-11-27) - never delete and recreate it for that.
+An override of ANY inherited method - a parent's, an interface's, `Message.lvclass:Do.vi` - comes
+from `lvai_create_override` by name. A message for an INTERFACE method comes from
+`lvai_create_message_class` with the interface as `actorClassPath`.
+Class -> methods -> LIBRARY -> messages: adding a class to a library after its messages
 leaves every `Do.vi` eBad. Remove a library's `<Item>` BEFORE deleting its files. Never write
 `NI.Lib.ContainingLib` by hand. `docs/labview-actor-framework.md`.
 
@@ -553,7 +561,7 @@ document; `experiments/` does not ship.
 | Icons of VIs, classes, libraries | `docs/class-icons.md` | `lvai_set_vi_icon`, `lvai_set_owner_icon`, `lvai_read_icons` |
 | Classes and their private data | `docs/lvclass-creation.md` | `lvai_create_class`, `lvai_add_class_field`, `lvai_create_accessors`, `lvai_describe_class` |
 | Class housekeeping: description, folders, members, VI descriptions | `docs/lvclass-creation.md` §10 | `lvai_set_class_description`, `lvai_move_to_folder`, `lvai_add_to_class`, `lvai_set_vi_descriptions` |
-| Interfaces | `docs/lvclass-interfaces.md` | `lvai_create_interface` |
+| Interfaces | `docs/lvclass-interfaces.md` | `lvai_create_interface`, `lvai_set_class_interfaces` |
 | Class methods | `docs/class-method-tooling.md` | `lvai_add_class_method` |
 | Libraries | `docs/library-creation.md` | `lvai_create_library`, `lvai_add_to_library` |
 | Actor Framework; overrides | `docs/labview-actor-framework.md`, `docs/af-override-tools.md` | `lvai_create_message_class`, `lvai_create_override`, `lvai_af_add_hook` |

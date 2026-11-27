@@ -51,8 +51,9 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         "New > VI for Override"), so it carries Call Parent and the parent's pane. NEVER build an
         Actor Framework override with lvai_add_class_method or AIXML: AIXML cannot author Call
         Parent and a generated override is eBad. parentMethod is an AF lifecycle name (Pre Launch
-        Init, Actor Core, Stop Core, Handle Error, Handle Last Ack Core) or, for a plain class, the
-        parent method's .vi path.
+        Init, Actor Core, Stop Core, Handle Error, Handle Last Ack Core), or the parent method's
+        .vi path, or its NAME ("Do.vi", "Message.lvclass:Do.vi") - looked up in the class's parent
+        classes AND interfaces, so a Message child's Do.vi and an interface method work too.
         Refused from the files before LabVIEW: class missing, ancestry not reaching the parent,
         method already a member or a file at the new path, static parent method.
         NEEDS A PROJECT OPEN AND ACTIVE - pass projectPath and it is opened. A failure names its
@@ -64,8 +65,9 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
     public async Task<string> CreateOverrideAsync(
         [Description(@"Absolute path to the child class's .lvclass")] string classPath,
         [Description("""
-            An AF lifecycle method name ("Actor Core", "Stop Core.vi", ...) for an actor, or the
-            absolute path of the parent class method's .vi for any other class.
+            An AF lifecycle method name ("Actor Core", "Stop Core.vi", ...) for an actor; else the
+            absolute path of the parent (or interface) method's .vi, or its name as an ancestor
+            lists it ("Do.vi", "Message.lvclass:Do.vi").
             """)]
         string parentMethod,
         [Description("""
@@ -233,15 +235,36 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         }
         else
         {
-            parentVi = Path.GetFullPath(parentMethod);
-            if (!parentVi.EndsWith(".vi", StringComparison.OrdinalIgnoreCase) || !File.Exists(parentVi))
+            // THREE SPELLINGS: the parent .vi's path; the member's NAME ("Do.vi",
+            // "Message.lvclass:Do.vi"), looked for in the class's own ancestry - parent classes AND
+            // interfaces; or the symbolic URL the parent's class file writes
+            // ("/<vilib>/ActorFramework/Message/Do.vi"). Only the path existed before 2026-11-27.
+            LvClass.ClassInfo owner;
+            var looksLikePath = Path.IsPathFullyQualified(parentMethod) ||
+                                (parentMethod.Contains('\\') && !parentMethod.StartsWith("/<", StringComparison.Ordinal));
+            if (looksLikePath)
+            {
+                parentVi = Path.GetFullPath(parentMethod);
+                if (!parentVi.EndsWith(".vi", StringComparison.OrdinalIgnoreCase) || !File.Exists(parentVi))
+                    return (null, Json.Error("parentMethodMissing", $"No parent method .vi at '{parentVi}'."));
+                if (OwningClass(parentVi) is not { } listed)
+                    return (null, Json.Error("parentMethodNotAMember",
+                        $"No .lvclass beside '{parentVi}' lists it as a member, so it is not a class " +
+                        "method that can be overridden."));
+                owner = listed;
+            }
+            else if (InheritedMethod(full, parentMethod) is { } inherited)
+            {
+                (owner, parentVi) = inherited;
+            }
+            else
+            {
                 return (null, Json.Error("parentMethodMissing",
                     $"'{parentMethod}' is neither an AF lifecycle method (" +
-                    string.Join(", ", AfOverrides.LifecycleMethods) + ") nor an existing .vi."));
-            if (OwningClass(parentVi) is not { } owner)
-                return (null, Json.Error("parentMethodNotAMember",
-                    $"No .lvclass beside '{parentVi}' lists it as a member, so it is not a class " +
-                    "method that can be overridden."));
+                    string.Join(", ", AfOverrides.LifecycleMethods) + "), nor an existing .vi, nor a " +
+                    $"method an ancestor class or interface of '{info.ClassName}' lists under that name.",
+                    new { classPath = full, ancestors = info.Ancestors }));
+            }
             parentClass = owner.Path;
             var member = owner.Members.First(m => string.Equals(m.Name, Path.GetFileName(parentVi),
                 StringComparison.OrdinalIgnoreCase));
@@ -290,30 +313,68 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
                 LvClass.ClassInfo info;
                 try { info = LvClass.Read(candidate); }
                 catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException or IOException) { continue; }
-                if (info.Members.Any(m => m.Url.Length > 0 && string.Equals(
-                        Path.GetFullPath(Path.Combine(info.Path, m.Url.Replace('/', '\\'))), vi,
+                // through LvClass.MemberPath: a vi.lib class names its members symbolically
+                // (/<vilib>/ActorFramework/Message/Do.vi), which is no relative path
+                if (info.Members.Any(m => string.Equals(LvClass.MemberPath(info.Path, m.Url), vi,
                         StringComparison.OrdinalIgnoreCase)))
                     return info;
             }
         return null;
     }
 
-    /// <summary>True when the parent links of <paramref name="child"/> reach <paramref name="ancestor"/>.</summary>
-    internal static bool Descends(string child, string ancestor)
+    /// <summary>
+    /// True when the parent links of <paramref name="child"/> reach <paramref name="ancestor"/> -
+    /// through its parent CLASSES and through the INTERFACES it (or an ancestor) implements: an
+    /// interface method is overridden like any other (measured 2026-11-27, NI's provider on an
+    /// interface's dynamic method), and the class chain alone refused it as `notADescendant`.
+    /// </summary>
+    internal static bool Descends(string child, string ancestor) =>
+        Ancestry(child).Any(a => string.Equals(a.Path, Path.GetFullPath(ancestor), StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Every class and interface above <paramref name="classPath"/>, nearest first.</summary>
+    internal static IEnumerable<LvClass.ClassInfo> Ancestry(string classPath)
     {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var current = child;
-        for (var depth = 0; depth < 16 && seen.Add(Path.GetFullPath(current)); depth++)
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Path.GetFullPath(classPath) };
+        var queue = new Queue<string>();
+        queue.Enqueue(classPath);
+        for (var visited = 0; queue.Count > 0 && visited < 64; visited++)
         {
             LvClass.ClassInfo info;
-            try { info = LvClass.Read(current); }
-            catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException or IOException) { return false; }
-            if (info.BaseClass?.ResolvedPath is not { Length: > 0 } parent || !File.Exists(parent)) return false;
-            if (string.Equals(Path.GetFullPath(parent), Path.GetFullPath(ancestor), StringComparison.OrdinalIgnoreCase))
-                return true;
-            current = parent;
+            try { info = LvClass.Read(queue.Dequeue()); }
+            catch (Exception e) when (e is InvalidDataException or System.Xml.XmlException or IOException) { continue; }
+            if (visited > 0) yield return info;
+            // the base class first, so the nearest implementation of a method is found first
+            foreach (var link in info.ParentLinks.OrderBy(l => l.Kind == LvClass.ParentLink.Interface ? 1 : 0))
+                if (link.ResolvedPath is { Length: > 0 } parent && File.Exists(parent) && seen.Add(Path.GetFullPath(parent)))
+                    queue.Enqueue(parent);
         }
-        return false;
+    }
+
+    /// <summary>
+    /// The ancestor method <paramref name="spec"/> names: a member name ("Do.vi", "Do",
+    /// "Message.lvclass:Do.vi") or the symbolic URL its class file writes. The nearest ancestor
+    /// that lists it and whose file exists; null when none does.
+    /// </summary>
+    internal static (LvClass.ClassInfo Owner, string Vi)? InheritedMethod(string classPath, string spec)
+    {
+        spec = spec.Trim();
+        var symbolic = spec.StartsWith("/<", StringComparison.Ordinal);
+        var parts = spec.Split(':', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return null;
+        var file = parts[^1].EndsWith(".vi", StringComparison.OrdinalIgnoreCase) ? parts[^1] : parts[^1] + ".vi";
+        var ownerName = !symbolic && parts.Length > 1 ? parts[^2] : null;
+        foreach (var ancestor in Ancestry(classPath))
+        {
+            if (ownerName is not null &&
+                !string.Equals(ancestor.ClassName + ".lvclass", ownerName, StringComparison.OrdinalIgnoreCase))
+                continue;
+            var member = ancestor.Members.FirstOrDefault(m => symbolic
+                ? string.Equals(m.Url, spec, StringComparison.OrdinalIgnoreCase)
+                : string.Equals(m.Name, file, StringComparison.OrdinalIgnoreCase));
+            if (member is not null && LvClass.MemberPath(ancestor.Path, member.Url) is { } vi && File.Exists(vi))
+                return (ancestor, vi);
+        }
+        return null;
     }
 
     /// <summary>The bare scope word of <see cref="LvClass.Member.Scope"/>.</summary>
@@ -1031,7 +1092,7 @@ internal sealed class AfOverrideTools(LvaiConnection connection)
         return Json.Error(first.Kind, first.Message + " Nothing was changed.", body);
     }
 
-    private async Task<(string? Project, string? Error)> EnsureProjectAsync(
+    internal async Task<(string? Project, string? Error)> EnsureProjectAsync(
         string? projectPath, JsonArray steps, int timeoutSeconds, CancellationToken ct)
     {
         var actions = new ActionTools(connection);

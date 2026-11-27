@@ -49,23 +49,29 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
     private const int MaxAncestorWalk = 16;
 
     [McpServerTool(Name = "lvai_create_message_class", Destructive = true, OpenWorld = true,
-        Title = "Create an Actor Framework message class for one actor method")]
+        Title = "Create an Actor Framework message class for one actor or interface method")]
     [Description("""
-        AF: create an Actor Framework MESSAGE class for one public actor method - the class, one
-        private data field per method parameter, the `Do.vi` override calling the method and
-        `Send <Method>.vi`. MUTATING. Drives NI's Message Maker; never author Do.vi yourself (a
-        generated override is always eBad).
-        Needs a project OPEN and ACTIVE (Error 1055 otherwise; pass projectPath to open it). The
-        actor must descend from Actor.lvclass. Put the actor in its LIBRARY FIRST - order: class,
+        AF: create an Actor Framework MESSAGE class for one public method of an actor OR OF AN
+        INTERFACE - the class, one private data field per method parameter, the `Do.vi` override
+        calling the method and `Send <Method>.vi`. MUTATING. Drives NI's Message Maker; never
+        author Do.vi yourself (a generated override is always eBad).
+        INTERFACE MESSAGE (how a nested actor reports to its caller without knowing its class):
+        pass the interface's .lvclass as actorClassPath; Do.vi casts the receiving actor to the
+        interface and calls the method (`targetIsInterface`).
+        Needs a project OPEN and ACTIVE (Error 1055 otherwise; pass projectPath to open it). A
+        class must descend from Actor.lvclass. Put the actor in its LIBRARY FIRST - order: class,
         methods, library, messages; an actor added to a .lvlib afterwards leaves every Do.vi eBad
         and the repair is rebuilding the messages.
         The class is saved at the end; `verify` (`fields`, `members`) is read from the saved file.
         """)]
     public async Task<string> CreateMessageClassAsync(
-        [Description(@"Absolute path to the actor's .lvclass - it must descend from Actor.lvclass")]
+        [Description("""
+            Absolute path to the actor's .lvclass (it must descend from Actor.lvclass), or to an
+            INTERFACE's .lvclass for an interface message.
+            """)]
         string actorClassPath,
         [Description("""
-            The actor method to call, e.g. "Increment". Must be a PUBLIC member beside the class on
+            The actor (or interface) method to call, e.g. "Increment". Must be a PUBLIC member beside the class on
             disk (`methodNotPublic` otherwise); its non-class, non-error inputs become the payload.
             """)]
         string actorMethodName,
@@ -153,18 +159,37 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
             // WALKING THE PARENT LINKS DOES TWO JOBS AT ONCE: it proves the class really is an
             // actor, and the Actor.lvclass it lands on names the installation - so the template and
             // the message parent come from the SAME LabVIEW as the actor rather than from a guess.
-            if (ActorInstallationRoot(actorFull) is not { } installRoot)
+            //
+            // AN INTERFACE IS A TARGET TOO, and has no Actor above it to walk to. Measured
+            // 2026-11-27 on LabVIEW 2026: the same Message Maker chain run on an interface and its
+            // dynamic method ends in a Do.vi that casts `Actor in` to the interface (the class
+            // constant on both To More Specific Class nodes) and calls the interface method, with
+            // Do.vi and the Send VI at execState 1 read cold. This check refused it as
+            // `notAnActor` until then, and a message for an interface method cost a donor actor
+            // class, a swap and a clean-up. Its installation is the LabVIEW in use.
+            var installRoot = ActorInstallationRoot(actorFull);
+            if (installRoot is null && actorInfo.IsInterface)
+                installRoot = LabViewRoots.InUse().FirstOrDefault(root =>
+                    File.Exists(Path.Combine(root, MessageRelative)));
+            if (installRoot is null && !actorInfo.IsInterface)
                 return Json.Error("notAnActor",
-                    $"'{actorInfo.ClassName}' does not descend from " +
+                    $"'{actorInfo.ClassName}' is neither an interface nor a descendant of " +
                     "Actor Framework.lvlib:Actor.lvclass, so a message for it would have nothing " +
                     "to deliver to. Create it with lvai_create_class and parentClassPath pointing " +
-                    "at vi.lib\\ActorFramework\\Actor\\Actor.lvclass first.",
+                    "at vi.lib\\ActorFramework\\Actor\\Actor.lvclass first - or build the message " +
+                    "for an interface the receiving actor implements.",
                     new JsonObject
                     {
                         ["classPath"] = actorFull,
                         ["ancestors"] = new JsonArray(
                             [.. actorInfo.Ancestors.Select(a => (JsonNode)a!)]),
                     });
+            if (installRoot is null && !(templatePath is { Length: > 0 } && parentClassPath is { Length: > 0 }))
+                return Json.Error("actorFrameworkNotFound",
+                    "No LabVIEW installation with vi.lib\\ActorFramework\\Message\\Message.lvclass was " +
+                    "found for this interface message (an interface has no Actor ancestor that names " +
+                    "one). Start LabVIEW, or pass templatePath and parentClassPath.",
+                    new { classPath = actorFull });
 
             var name = className is { Length: > 0 } ? className : $"{methodBase} Msg";
             var destination = Path.GetFullPath(directory is { Length: > 0 }
@@ -180,13 +205,13 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                     new { newClassPath });
 
             var template = templatePath is { Length: > 0 }
-                ? Path.GetFullPath(templatePath) : Path.Combine(installRoot, TemplateRelative);
+                ? Path.GetFullPath(templatePath) : Path.Combine(installRoot!, TemplateRelative);
             if (!File.Exists(template))
                 return Json.Error("templateMissing",
                     $"No message template at '{template}'.", new { templatePath = template });
 
             var parent = parentClassPath is { Length: > 0 }
-                ? Path.GetFullPath(parentClassPath) : Path.Combine(installRoot, MessageRelative);
+                ? Path.GetFullPath(parentClassPath) : Path.Combine(installRoot!, MessageRelative);
             if (!File.Exists(parent))
                 return Json.Error("messageParentMissing",
                     $"No Message.lvclass at '{parent}'.", new { parentClassPath = parent });
@@ -283,6 +308,19 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                 verify["members"] = new JsonArray(
                     [.. info.Members.Select(m => (JsonNode)m.Name!)]);
                 verify["inheritsFrom"] = info.BaseClass?.Name;
+
+                // BOTH MEMBERS MUST BE LISTED. Measured 2026-11-27: one run answered 0 at every
+                // stage and saved a class that still listed the template's `Send Template.vi`
+                // beside a `Send <Method>.vi` on disk - Do.vi and the Send VI eBad, and this
+                // answer would have said ok (the next run in the same session was sound; the
+                // cause is open). So membership gates `ok`.
+                var sendName = Scalar(values, "new send method") is { Length: > 0 } send
+                    ? Path.GetFileName(send) : $"Send {methodBase}.vi";
+                var expected = new[] { "Do.vi", sendName };
+                var unlisted = expected.Where(e => !info.Members.Any(m =>
+                    string.Equals(m.Name, e, StringComparison.OrdinalIgnoreCase))).ToList();
+                verify["membersMissing"] = new JsonArray([.. unlisted.Select(u => (JsonNode)u)]);
+                if (unlisted.Count > 0) verified = false;
                 verify["privateDataBytes"] = info.PrivateDataBytes;
 
                 // THE PAYLOAD FIELD IS THE CHECK THAT MATTERS. Its absence is exactly what the
@@ -346,21 +384,26 @@ internal sealed class ActorFrameworkTools(LvaiConnection connection)
                 ["doMethodPath"] = doPath,
                 ["payloadControlCount"] = Scalar(values, "payload control count"),
                 ["actorClassPath"] = actorFull,
+                ["targetIsInterface"] = actorInfo.IsInterface,
                 ["actorMethodPath"] = methodPath,
                 ["templatePath"] = template,
                 ["parentClassPath"] = parent,
                 ["helperViPath"] = helperVi,
                 ["helperAixmlPath"] = Path.GetFullPath(aixml),
                 ["helperGenerated"] = helperGenerated,
-                ["verify"] = verified ? verify : null,
+                ["verify"] = File.Exists(newClassPath) ? verify : null,
                 ["steps"] = steps,
                 ["note"] = verified
                     ? "Created and verified from the class file. The class is SAVED, so it survives " +
                       "the next project close - a run that saved only the VIs was measured leaving " +
                       "both eBad afterwards. Check the two VIs with lvai_exec_state: every " +
                       "file-level check here is green for a class whose members do not compile."
-                    : "Every stage reported 0 but no .lvclass is at the expected path, so nothing " +
-                      "can be verified. Treat this as a failure.",
+                    : File.Exists(newClassPath)
+                        ? "Every stage reported 0 but the saved class does not list both Do.vi and the " +
+                          "Send VI (`verify.membersMissing`) or a VI kept compiled code - the class is " +
+                          "not usable. Delete its folder with the project CLOSED and call again."
+                        : "Every stage reported 0 but no .lvclass is at the expected path, so nothing " +
+                          "can be verified. Treat this as a failure.",
             });
         }));
 

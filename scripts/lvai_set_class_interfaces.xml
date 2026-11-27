@@ -1,0 +1,39 @@
+<VI _name="lvai_set_class_interfaces.vi" description="Writes the COMPLETE list of interfaces an existing class (or interface) inherits from\2C through {LV.LVClassLibrary} Write Parent Interfaces - the method NI's own Add Class to Project (path).vi uses - and saves the class. The list REPLACES the one the class had\2C so the caller passes the interfaces to keep as well. Paths arrive pipe-separated with a count\2C as in lvai_create_class.xml. Prompt To Save? is false\3A the class is saved here. Needs a project open and ACTIVE.">
+  <FreeLabel comment="Replace the class's parent interfaces" uid="4001" uid_parent="root"/>
+  <Control _name="class path" type="string" uid="4100" uid_parent="root" value="" outputs="value:4100.value"/>
+  <Control _name="interface paths" type="string" uid="4101" uid_parent="root" value="" outputs="value:4101.value"/>
+  <Control _name="interface count" type="string" uid="4102" uid_parent="root" value="0" outputs="value:4102.value"/>
+  <Node _name="Property Node" fields="read+Project\3AActive Project" type="{LV.Application}" outputs="Project\3AActive Project:4200.proj,reference out:,error out:4200.error out" uid="4200" uid_parent="root"/>
+  <Node _name="Property Node" fields="read+Application" type="{LV.Project}" inputs="reference:4200.proj,error in (no error):4200.error out" outputs="Application:4210.app,reference out:,error out:4210.error out" uid="4210" uid_parent="root"/>
+  <Node _name="String To Path" inputs="string:4100.value" outputs="path:4220.path" uid="4220" uid_parent="root"/>
+  <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4210.app,Path:4220.path,error in (no error):4210.error out" outputs="reference out:,error out:4230.error out,LVClass.Open:4230.cls" uid="4230" uid_parent="root"/>
+  <Indicator _name="class open error" inputs="value:4230.error out" type="cluster{bool.status,int32.code,string.source}" uid="4500" uid_parent="root" value="[false,0,]"/>
+  <Constant _name="empty format" outputs="value:4240.value" type="string" uid="4240" uid_parent="root" value=""/>
+  <Constant _name="pipe delimiter" outputs="value:4241.value" type="string" uid="4241" uid_parent="root" value="|"/>
+  <Constant _name="string array type" outputs="value:4242.value" type="array{string}" uid="4242" uid_parent="root" value="[]"/>
+  <Node _name="Spreadsheet String To Array" inputs="format string:4240.value,spreadsheet string:4101.value,array type (2D Dbl):4242.value,delimiter (Tab):4241.value" outputs="array:4244.array" uid="4244" uid_parent="root"/>
+  <Node _name="Decimal String To Number" inputs="string:4102.value" outputs="number:4246.number" uid="4246" uid_parent="root"/>
+  <Structure _name="For Loop" count="" maxin="4246.number" maxout="" uid="4250" uid_parent="root" label="Open one interface per iteration">
+    <Tunnel _id="In1" inputs="value:4244.array" mode="index" outputs="value:4251.value" uid="4251" uid_parent="4250"/>
+    <Tunnel _id="In2" inputs="value:4210.app" outputs="value:4252.value" uid="4252" uid_parent="4250"/>
+    <Node _name="String To Path" inputs="string:4251.value" outputs="path:4253.path" uid="4253" uid_parent="4250"/>
+    <Node _name="Invoke Node" target="LVClass.Open" type="{LV.Application}" inputs="reference:4252.value,Path:4253.path" outputs="reference out:,error out:,LVClass.Open:4254.cls" uid="4254" uid_parent="4250"/>
+    <Tunnel _id="Out1" inputs="value:4254.cls" mode="index" outputs="value:4255.value" uid="4255" uid_parent="4250"/>
+  </Structure>
+  <Node _name="Array Size" inputs="array:4255.value" outputs="size(s):4258.size" uid="4258" uid_parent="root"/>
+  <Indicator _name="interfaces opened" inputs="value:4258.size" type="int32" uid="4502" uid_parent="root" value="0"/>
+  <Constant _name="Prompt To Save?" outputs="value:4260.value" type="bool" uid="4260" uid_parent="root" value="false"/>
+  <Node _name="Invoke Node" target="Write Parent Interfaces" type="{LV.LVClassLibrary}" inputs="reference:4230.cls,error in (no error):4230.error out,Interfaces:4255.value,Prompt To Save?:4260.value" outputs="reference out:4262.cls,error out:4262.error out" uid="4262" uid_parent="root"/>
+  <Indicator _name="write interfaces error" inputs="value:4262.error out" type="cluster{bool.status,int32.code,string.source}" uid="4504" uid_parent="root" value="[false,0,]"/>
+  <Node _name="Invoke Node" target="Save" type="{LV.LVClassLibrary}" inputs="reference:4262.cls,error in (no error):4262.error out" outputs="reference out:,error out:4270.error out" uid="4270" uid_parent="root"/>
+  <Indicator _name="save class error" inputs="value:4270.error out" type="cluster{bool.status,int32.code,string.source}" uid="4506" uid_parent="root" value="[false,0,]"/>
+  <Structure _name="For Loop" count="" maxin="" maxout="" uid="4280" uid_parent="root" label="Release one interface refnum per iteration">
+    <Tunnel _id="In1" inputs="value:4255.value" mode="index" outputs="value:4281.value" uid="4281" uid_parent="4280"/>
+    <Tunnel _id="In2" inputs="value:4270.error out" outputs="value:4282.value" uid="4282" uid_parent="4280"/>
+    <Node _name="Close Reference" inputs="reference:4281.value,error in (no error):4282.value" outputs="error out:" uid="4283" uid_parent="4280"/>
+  </Structure>
+  <Node _name="Close Reference" inputs="reference:4230.cls,error in (no error):4270.error out" outputs="error out:4290.error out" uid="4290" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4210.app,error in (no error):4290.error out" outputs="error out:4292.error out" uid="4292" uid_parent="root"/>
+  <Node _name="Close Reference" inputs="reference:4200.proj,error in (no error):4292.error out" outputs="error out:4294.error out" uid="4294" uid_parent="root"/>
+  <Indicator _name="error out" inputs="value:4294.error out" type="cluster{bool.status,int32.code,string.source}" uid="4508" uid_parent="root" value="[false,0,]"/>
+</VI>

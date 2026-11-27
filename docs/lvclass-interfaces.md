@@ -114,12 +114,53 @@ and in the file:
 <Item Name="Pryable.lvclass" Type="Parent" URL="../Pryable.lvclass"/>
 ```
 
-**THE LINK IS ONLY SETTABLE AT CREATION TIME.** NI's provider takes it as an input and there is no
-scriptable way to add one afterwards — `CLSUIP_ChangeInterfaceInheritance.vi` is a **modal dialog**
-(its pane carries `Cancelled` and `Selected Interface Items`), and a modal dialog stops the whole
-gRPC service until a human dismisses it. So a class that should implement an interface has to be
-*created* with it. A run that got this wrong deleted and rebuilt the class before generating
-accessors, which is the correct remedy and worth knowing in advance.
+**THE LINK CAN BE WRITTEN LATER TOO — `lvai_set_class_interfaces`, §2.2a.** This paragraph said
+"THE LINK IS ONLY SETTABLE AT CREATION TIME … there is no scriptable way to add one afterwards"
+from 2026-08-31 to 2026-11-27, and the tool descriptions, the class agent and `CLAUDE.md` repeated
+it. What was measured then is still true: `CLSUIP_ChangeInterfaceInheritance.vi` is a **modal
+dialog** (its pane carries `Cancelled` and `Selected Interface Items`), and a modal dialog stops
+the service until a human dismisses it. The conclusion drawn from it was not: that VI is the
+dialog's front end, not the only route. A class created without its interface was deleted and
+rebuilt, accessors and overrides included.
+
+### 2.2a Adding or removing an interface on an EXISTING class — `lvai_set_class_interfaces`
+
+**The route is VI Server: `{LV.LVClassLibrary}` `Write Parent Interfaces`**, inputs `Interfaces`
+(an array of `{LV.LVClassLibrary}` refnums) and `Prompt To Save?`. It was in plain sight: NI's own
+`Add Class to Project (path).vi` — the provider `lvai_create_class` drives — calls it, with
+`Prompt To Save?` false (read from its export, 2026-11-27), and `docs/vi-server-aixml-names.tsv`
+has listed the name since the harvest. The symptom that led there was a user's problem report
+(2026-11-26): an actor with overrides, hooks, accessors and typedef fields needed an interface, and
+recreating it was not practical; the report's own way out was one `<Item Type="Parent">` line
+written into the class file by hand.
+
+Measured 2026-11-27 on LabVIEW 2026 (32-bit, 26.3.1f1), helper `scripts/lvai_set_class_interfaces.xml`
+(`LVClass.Open` on the class and on each interface, `Write Parent Interfaces`, `Save`, every refnum
+closed), project open and active:
+
+| run | class before | call | saved file | cold |
+|---|---|---|---|---|
+| add | `Hand Msg.lvclass`: child of `Message.lvclass`, one field, member `Do.vi` (NI's override provider) | interface `Probe Caller Interface` | `<Item Name="Probe Caller Interface.lvclass" Type="Parent" URL="../../Probe Caller Interface/Probe Caller Interface.lvclass"/>` beside the Message link; `Do.vi` still listed | — |
+| override | the same class | `CLSUIP_CreateOverride` on the interface's `RX Value.vi` | `RX Value.vi` listed | `Do.vi` and `RX Value.vi` `execState 1` |
+| remove | the same class | an EMPTY interface list | only the Message link left; `Do.vi` and `RX Value.vi` still listed | — |
+
+Every stage answered `error out` 0; 197 ms and 121 ms inside LabVIEW.
+
+- **The method REPLACES the list.** The tool therefore writes what the file lists, minus
+  `removeInterfaces`, plus `addInterfaces`, and refuses (`parentLinkUnresolved`) when an existing
+  parent link cannot be opened — it could be an interface the write would drop.
+- **Refused from the files, before LabVIEW:** a path that is not an interface (the same check as
+  `parentInterfaces`), an interface to remove that the class does not list (`interfaceNotLinked`),
+  a class added to itself, a cycle (`inheritanceCycle`). A list that already matches answers
+  `changed: false` and writes nothing.
+- **After an add the class owes its overrides.** The answer carries `missingInterfaceOverrides`,
+  the same file-level check `lvai_exec_state` makes for a broken member (§3.1): until each dynamic
+  interface method is overridden, every member of the class is broken. Create each with
+  `lvai_create_override` — `parentMethod` `"<Interface>.lvclass:<Method>.vi"` — which takes an
+  interface method since the same day (`docs/af-override-tools.md` §2).
+- **Not measured:** a class inside a `.lvlib`; an interface whose dynamic method has the name of a
+  STATIC member the class already has (the report's donor class was exactly that and was not
+  tried); the grpc backend.
 
 **An interface link and a parent class link are the SAME kind of item.** Both arrive as
 `<Item Type="Parent">` inside `Parent Libraries`, so `ClassInfo.Ancestors` mixes them and its

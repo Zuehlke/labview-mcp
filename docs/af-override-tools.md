@@ -38,8 +38,32 @@ these tools automate; its shape letters (A, B, B-after, C, D) are kept so the tw
 
 ## 2. `lvai_create_override`
 
-Inputs: `classPath`, `parentMethod` (an AF lifecycle name, or the path of a plain parent class's
-`.vi`), optional `projectPath`, optional `newViPath`.
+Inputs: `classPath`, `parentMethod`, optional `projectPath`, optional `newViPath`. `parentMethod`
+is one of:
+
+- an AF lifecycle name (`Actor Core`, `Stop Core.vi`, …) for an actor;
+- the path of the parent method's `.vi` — a parent CLASS's or an INTERFACE's;
+- the method's NAME as an ancestor lists it: `Do.vi`, `Do`, `Message.lvclass:Do.vi`, or the
+  symbolic URL from the class file (`/<vilib>/ActorFramework/Message/Do.vi`). The class's parent
+  classes are searched first, then the interfaces it and its ancestors implement; the nearest
+  ancestor that lists the member wins.
+
+**Until 2026-11-27 only the first two existed, and the second did not work for a `vi.lib` class.**
+A problem report (2026-11-26) called this section's own measured case through the tool —
+`Message.lvclass:Do.vi` for a `Message` child — and got `parentMethodNotAMember`: "No .lvclass
+beside '…\vi.lib\ActorFramework\Message\Do.vi' lists it as a member". `Message.lvclass` does list
+it, as `URL="/<vilib>/ActorFramework/Message/Do.vi"`, and the membership check read every member
+URL as a path relative to the class file. A class in the installation writes its members
+SYMBOLICALLY; a class of your own writes `../Do.vi`. `LvClass.MemberPath` resolves both, the
+symbolic form inside the installation the class file itself is in. The helper route had been
+measured on 2026-09-17; the file-level check in front of it was only ever tested against classes
+of our own. Re-measured 2026-11-27 with the check out of the way: every stage 0, `Do.vi`
+`execState 1` cold.
+
+**An interface method is overridden the same way** (measured the same day: NI's provider on the
+dynamic `RX Value.vi` of an interface the class had just been given, every stage 0, `execState 1`
+cold). The ancestry check followed the parent CLASS chain only and answered `notADescendant`; it
+follows interface links too now.
 
 Checked from the files before LabVIEW, each with a named error:
 
@@ -47,7 +71,8 @@ Checked from the files before LabVIEW, each with a named error:
 |---|---|
 | the class file exists and reads | `classNotFound`, `classUnreadable` |
 | an AF name: the class's parent links reach `Actor.lvclass`; the parent `.vi` is taken from **that** installation's `vi.lib\ActorFramework\Actor\` | `notAnActor`, `parentMethodMissing` |
-| a `.vi` path: a `.lvclass` beside it (or up to two folders up) lists it; it is not static; the class descends from that class | `parentMethodNotAMember`, `parentMethodIsStatic`, `notADescendant` |
+| a `.vi` path: a `.lvclass` beside it (or up to two folders up) lists it; it is not static; the class descends from that class or implements that interface | `parentMethodNotAMember`, `parentMethodIsStatic`, `notADescendant` |
+| a name: an ancestor class or interface lists a member of that name whose file exists | `parentMethodMissing` |
 | the class does not list the method yet, no file sits at the new path, its folder exists, the file name is the parent's | `overrideAlreadyExists`, `fileExists`, `folderMissing`, `badArguments` |
 
 - **`vi name in memory` is derived, library-qualified.** It is `<Lib>.lvlib:<Class>.lvclass:<file>`

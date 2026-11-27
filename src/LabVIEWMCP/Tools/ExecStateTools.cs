@@ -712,6 +712,16 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         if (owner is null)
             return new(null, [], null, [], [],
                 "notAClassMember: no .lvclass beside the VI or up to two folders up lists it.");
+        return await InterfaceOverridesOfClassAsync(owner, paneDispatch);
+    }
+
+    /// <summary>
+    /// The same check for a CLASS rather than for one of its VIs - what lvai_set_class_interfaces
+    /// answers after it linked an interface, when the overrides are exactly what is still owed.
+    /// </summary>
+    internal static async Task<InterfaceOverrideReport> InterfaceOverridesOfClassAsync(
+        LvClass.ClassInfo owner, Func<string, Task<bool?>> paneDispatch)
+    {
         if (owner.IsInterface)
             return new(owner.Path, [], null, [], [],
                 "ownerIsAnInterface: an interface implements nothing, so it overrides nothing.");
@@ -770,7 +780,8 @@ internal sealed class ExecStateTools(LvaiConnection connection)
 
             foreach (var member in iface.Members.Where(m => m.Type == "VI"))
             {
-                var memberPath = Path.GetFullPath(Path.Combine(iface.Path, member.Url));
+                var memberPath = LvClass.MemberPath(iface.Path, member.Url)
+                                 ?? Path.GetFullPath(Path.Combine(iface.Path, member.Url));
                 var dynamic = member.DynamicDispatch
                               ?? (File.Exists(memberPath) ? await paneDispatch(memberPath) : null);
                 if (dynamic is null)

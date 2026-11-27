@@ -2007,7 +2007,43 @@ That is the portable way to get a line-ending constant onto a generated diagram.
 
 ### Class constant - the seed of a class wire
 
-**AIXML cannot author one, so it is written as a `path` constant and swapped afterwards.** A
+**On the pylabview backend a class constant is authored directly**, as NI's export spells it:
+
+```xml
+<Constant _name="Interface target" type="ref{UDClassInst}" value="" outputs="value:4210.value" uid="4210" uid_parent="root"/>
+```
+
+The type string does not name the class, so the composer takes it from where the wire goes:
+
+1. the class terminal of a `Call` the constant feeds;
+2. the class a class Property Node it feeds names (next section);
+3. **the class terminal of the Call BEHIND A CAST** - the constant is the `target class` of a
+   `To More Specific Class` (or the `target object` of a `Preserve Run-Time Class`) whose output
+   feeds a Call. Loop tunnels, shift registers and a Case Structure's tunnels on the way are
+   followed;
+4. **`class=` on the constant**, when nothing downstream names it - a cast whose output is left
+   unwired, an element of a `Bundle`. Either the qualified name (found near the VI or in the
+   installation) or the `.lvclass` path, which wins over 1-3:
+
+```xml
+<Constant _name="Interface target" type="ref{UDClassInst}" class="Probe Caller Interface.lvclass" value="" .../>
+<Constant _name="Actor source" type="ref{UDClassInst}" class="Actor Framework.lvlib\3AActor.lvclass" value="" .../>
+<Constant _name="Seed" type="ref{UDClassInst}" class="C:\5CProj\5CMotor\5CMotor.lvclass" value="" .../>
+```
+
+A constant nothing names is refused (`composerRefused`), and the refusal says both ways out.
+3 and 4 exist since 2026-11-27: a problem report had a class constant as the target of a
+`To More Specific Class` refused - "must feed a class terminal of a Call" - and fell back on the
+`path` route below. Measured that day on LabVIEW 2026: the report's document (constant -> cast ->
+interface method call) and a cast with an unwired output and `class=` on both constants compose
+and read `execState 1`, the second through `lvai_generate_vi` in one call. `class=` is our
+extension and is for the pylabview backend only: NI's schema is closed, so NI's converter is
+expected to refuse the attribute (`Error -2628`; not measured). The reader writes the same fact
+after `</VI>` as `<?lvmcp classes uid="…" names="…"?>`, which the composer honours too (measured
+on the report's document the same day), so an export recomposes without `class=`.
+
+**On the grpc backend AIXML cannot author one, so it is written as a `path` constant and swapped
+afterwards.** A
 dynamic-dispatch input is required in practice (unwired, the caller is `Error 1003`), so a chain of
 class calls - a method inside a loop, an accessor chain in a test - needs an object to start from.
 Author it as a labelled `path` constant on the class input:
