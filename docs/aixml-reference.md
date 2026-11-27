@@ -2023,7 +2023,11 @@ The type string does not name the class, so the composer takes it from where the
    followed;
 4. **`class=` on the constant**, when nothing downstream names it - a cast whose output is left
    unwired, an element of a `Bundle`. Either the qualified name (found near the VI or in the
-   installation) or the `.lvclass` path, which wins over 1-3:
+   installation) or the `.lvclass` path, which wins over 1-3. **Prefer the path for a class of
+   your own**: the name is looked for near the VI being written, and a class in a SIBLING folder
+   is not found (measured 2026-11-27: `class="Nested Actor.lvclass"` on a constant in a member
+   of `Parent Actor\` was refused, "no such .lvclass in the installation or near the VI"; the
+   escaped absolute path composed). A VI one folder ABOVE the class found it by name:
 
 ```xml
 <Constant _name="Interface target" type="ref{UDClassInst}" class="Probe Caller Interface.lvclass" value="" .../>

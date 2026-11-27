@@ -848,8 +848,10 @@ internal sealed class ExecStateTools(LvaiConnection connection)
         ["missingInterfaceOverridesNote"] = report.Missing is { Count: > 0 }
             ? "A MISSING OVERRIDE ALONE BROKE EVERY MEMBER OF ITS CLASS in this repository's " +
               "measurements (docs/cold-build-filterbench.md section 2), and the broken VI does " +
-              "not name it, because the fault is the class's. Write the override " +
-              "(lvai_add_class_method) and read execState again. A candidate, not a verdict: " +
+              "not name it, because the fault is the class's. Create the override with " +
+              "lvai_create_override (parentMethod \"<Interface>.lvclass:<Method>.vi\"; " +
+              "lvai_add_class_method when its body is authored in AIXML) and read execState " +
+              "again. A candidate, not a verdict: " +
               "NI's own Basic Interfaces example has Prying Tool implement Lever without " +
               "overriding Multiply Force.vi; `mustOverride` is the interface's own flag."
             : null,
