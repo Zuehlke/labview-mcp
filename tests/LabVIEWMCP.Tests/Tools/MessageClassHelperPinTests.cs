@@ -31,13 +31,37 @@ public sealed class MessageClassHelperPinTests
     [Fact]
     public void The_class_is_opened_once_right_after_Copy_Class()
     {
-        var open = Node(e => (string?)e.Attribute("target") == "LVClass.Open");
+        // two LVClass.Open since the parent fix: 4700 holds the new class, 4710 opens its parent
+        var open = Node(e => (string?)e.Attribute("uid") == "4700");
+        Assert.Equal("LVClass.Open", (string?)open.Attribute("target"));
         Assert.Equal("4230.error out", Input(open, "error in (no error)"));
         Assert.Equal("4230.newclass", Input(open, "Path"));
 
-        // every Message Maker step after Copy Class follows the open in the error chain
+        // every Message Maker step after Copy Class follows the open (and the parent link) in the error chain
         var copyMember = Node(e => ((string?)e.Attribute("target"))?.Contains("Copy Member Data") == true);
-        Assert.Equal("4700.err", Input(copyMember, "error in (no error)"));
+        Assert.Equal("4714.err", Input(copyMember, "error in (no error)"));
+    }
+
+    /// <summary>
+    /// Report of 2026-11-27, server 3.2.9 (LabVIEW 2026 64-bit): the interface message saved with no
+    /// `Parent Libraries` item and its Send VI eBad. Copy Class.vi writes `Parent Class` on its OWN
+    /// refnum in the DEFAULT instance and closes it unsaved; the class this helper holds and saves is
+    /// the project instance's. So the parent is written on the held refnum, before any member work.
+    /// </summary>
+    [Fact]
+    public void The_parent_is_written_on_the_held_refnum_before_the_member_data()
+    {
+        var parentOpen = Node(e => (string?)e.Attribute("uid") == "4710");
+        Assert.Equal("LVClass.Open", (string?)parentOpen.Attribute("target"));
+        Assert.Equal("4224.path", Input(parentOpen, "Path"));
+        Assert.Equal("4700.err", Input(parentOpen, "error in (no error)"));
+
+        var write = Node(e => (string?)e.Attribute("fields") == "write+Parent Class");
+        Assert.Equal("4700.cls", Input(write, "reference"));
+        Assert.Equal("4710.parent", Input(write, "Parent Class"));
+
+        Assert.Contains(Vi.Descendants("Node"), n => (string?)n.Attribute("_name") == "Close Reference"
+                                                     && Input(n, "reference") == "4710.parent");
     }
 
     [Fact]

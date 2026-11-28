@@ -1548,6 +1548,33 @@ afterwards (`lvai_set_class_interfaces`, `lvclass-interfaces.md` section 2.2a), 
 the interface method from `lvai_create_override` with `parentMethod`
 `"<Interface>.lvclass:<Method>.vi"` (`af-override-tools.md` section 2).
 
+**The parent link went missing next (report on server 3.2.9, LabVIEW 2026 64-bit, same day).**
+With the pin in place, the interface message listed both members, but its `.lvclass` had NO
+`<Item Type="Parent Libraries">`: the class derived from LabVIEW Object, `Send RX Value.vi` was
+eBad ("Wire: Class conflict"), and the answer still said `ok: true` with
+`inheritsFrom: Message.lvclass` - read off the decoded `NI.LVClass.Geneology`, the fallback
+`LvClass.BaseClass` takes when a file has no parent items. The morning's broken file here had the
+same gap (table above). Where the link comes from explains it: `Copy Class.vi` saves a copy of the
+template (which has no `Parent Libraries` item either, only the Geneology), opens that copy in the
+DEFAULT application instance, writes `Parent Class` there and closes the reference UNSAVED. The
+class this helper holds and saves lives in the PROJECT's instance, so whether its save writes the
+link depends on LabVIEW resolving the Geneology when it loads the copy - which it did in every run
+on 32-bit here, and did not on the reporter's 64-bit station.
+
+**Fix: the helper writes the parent itself**, on the held refnum, right after the pin:
+`LVClass.Open` of `parent class path`, `{LV.LVClassLibrary}` `write Parent Class`, close that
+reference - Copy Class's own step, in the instance that saves. And `ok` no longer trusts the
+fallback: it needs a `Parent Libraries` link that opens to the parent (`verify.parentLinked`,
+`verify.parentLinks`) AND `execState` 1 for `Do.vi` and the Send VI, read with the project open
+(`execState`). Measured after the change, 32-bit: interface and actor message `parentLinked:
+true`, `execState` 1/1, all four VIs `execState 1` cold; `MessageClassParentLinkTests` runs the
+gate on the real broken file and a sound one. On 64-bit not measured.
+
+**Not changed: the project is left open, and each close rewrites the `.lvproj`.** The tool
+reopens the project after listing the class so that a following call without `projectPath`
+finds it active. The rewrite the report saw (`NI.LV.All.SaveVersion` added) is LabVIEW's own save,
+reported by `projectRewrite` with a backup; it lost no entry.
+
 **The class is listed in the project now** (`projectEntry`, 2026-11-27): after a verified run the
 active project is saved and closed, the entry written into the `.lvproj`, and the project opened
 again - so a following call without `projectPath` still finds it active. While agents share
